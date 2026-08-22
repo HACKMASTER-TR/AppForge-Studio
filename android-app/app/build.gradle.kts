@@ -20,6 +20,36 @@ android {
             .orElse("")
             .get()
 
+    val ciDebugKeystorePath =
+        System.getenv("APPFORGE_DEBUG_KEYSTORE_PATH")
+
+    val ciDebugStorePassword =
+        System.getenv("APPFORGE_DEBUG_STORE_PASSWORD")
+
+    val ciDebugKeyAlias =
+        System.getenv("APPFORGE_DEBUG_KEY_ALIAS")
+            ?: "appforge-debug"
+
+    val ciDebugKeyPassword =
+        System.getenv("APPFORGE_DEBUG_KEY_PASSWORD")
+            ?: ciDebugStorePassword.orEmpty()
+
+    val ciDebugSigning =
+        if (
+            !ciDebugKeystorePath.isNullOrBlank() &&
+            !ciDebugStorePassword.isNullOrBlank()
+        ) {
+            signingConfigs.create("ciDebug") {
+                storeFile = file(requireNotNull(ciDebugKeystorePath))
+                storePassword = ciDebugStorePassword.orEmpty()
+                keyAlias = ciDebugKeyAlias
+                keyPassword = ciDebugKeyPassword
+                storeType = "PKCS12"
+            }
+        } else {
+            null
+        }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -34,11 +64,20 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            ciDebugSigning?.let {
+                signingConfig = it
+            }
+        }
+
         getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true
+
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
+                getDefaultProguardFile(
+                    "proguard-android-optimize.txt"
+                ),
                 "proguard-rules.pro"
             )
         }
@@ -48,11 +87,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
+    val composeBom =
+        platform("androidx.compose:compose-bom:2026.08.00")
+
     implementation(composeBom)
 
     implementation("androidx.core:core-ktx:1.19.0")
@@ -62,10 +102,18 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    implementation("com.google.android.play:integrity:1.6.0")
-    implementation("com.android.billingclient:billing-ktx:9.1.0")
-    implementation("com.google.ai.edge.litertlm:litertlm-android:0.11.0")
+    implementation(
+        "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
+    )
+    implementation(
+        "com.google.android.play:integrity:1.6.0"
+    )
+    implementation(
+        "com.android.billingclient:billing-ktx:9.1.0"
+    )
+    implementation(
+        "com.google.ai.edge.litertlm:litertlm-android:0.11.0"
+    )
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
