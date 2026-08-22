@@ -15,6 +15,8 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.net.Uri
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.os.Environment
 import android.os.Build
@@ -92,6 +94,78 @@ private val Bg = Color(0xFF08070D)
 private val Card2 = Color(0xFF111820)
 private val Accent = Color(0xFF8CC9F6)
 private val TextSecondary = Color(0xFFA5ADB7)
+
+private enum class AiDownloadNetwork {
+    WIFI,
+    MOBILE,
+    OFFLINE
+}
+
+private fun getAiDownloadNetwork(
+    context: Context
+): AiDownloadNetwork {
+
+    val manager =
+        context.getSystemService(
+            Context.CONNECTIVITY_SERVICE
+        ) as? ConnectivityManager
+            ?: return AiDownloadNetwork.OFFLINE
+
+    val network =
+        manager.activeNetwork
+            ?: return AiDownloadNetwork.OFFLINE
+
+    val capabilities =
+        manager.getNetworkCapabilities(
+            network
+        )
+            ?: return AiDownloadNetwork.OFFLINE
+
+    val internetAvailable =
+        capabilities.hasCapability(
+            NetworkCapabilities.NET_CAPABILITY_INTERNET
+        ) &&
+        capabilities.hasCapability(
+            NetworkCapabilities.NET_CAPABILITY_VALIDATED
+        )
+
+    if (!internetAvailable) {
+        return AiDownloadNetwork.OFFLINE
+    }
+
+    if (
+        capabilities.hasTransport(
+            NetworkCapabilities.TRANSPORT_WIFI
+        ) ||
+        capabilities.hasTransport(
+            NetworkCapabilities.TRANSPORT_ETHERNET
+        )
+    ) {
+        return AiDownloadNetwork.WIFI
+    }
+
+    if (
+        capabilities.hasTransport(
+            NetworkCapabilities.TRANSPORT_CELLULAR
+        )
+    ) {
+        return AiDownloadNetwork.MOBILE
+    }
+
+    /*
+     * Bilinmeyen bağlantı türü:
+     * ölçümlü ise mobil gibi davran,
+     * ölçümsüz ise Wi-Fi gibi davran.
+     */
+    return if (
+        manager.isActiveNetworkMetered
+    ) {
+        AiDownloadNetwork.MOBILE
+    } else {
+        AiDownloadNetwork.WIFI
+    }
+}
+
 
 private enum class AppScreen { HOME, MODE_SELECT, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
@@ -323,6 +397,27 @@ private fun AppForgeApp() {
             )
         }
 
+    var showMobileAiDownloadDialog by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+    var mobileAiAllowedForSession by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+    var mobileAiDeclinedForSession by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
     val aiModelPicker =
         rememberLauncherForActivityResult(
             contract =
@@ -361,6 +456,172 @@ private fun AppForgeApp() {
                 }
             }
         }
+
+
+    // AI_NETWORK_AUTO_INSTALL_V1
+    //
+    // Wi-Fi:
+    //   otomatik indir.
+    //
+    // Mobil veri:
+    //   kullanıcıdan izin iste.
+    //
+    // Kullanıcı Wi-Fi beklemeyi seçerse:
+    //   bu uygulama oturumu boyunca tekrar sorma.
+    //   Wi-Fi geldiğinde otomatik devam et.
+    LaunchedEffect(
+        aiModelInfo,
+        mobileAiAllowedForSession,
+        mobileAiDeclinedForSession
+    ) {
+        while (
+            aiModelInfo == null
+        ) {
+
+            if (
+                aiModelInstalling
+            ) {
+                delay(
+                    2_000L
+                )
+
+                continue
+            }
+
+            when (
+                getAiDownloadNetwork(
+                    context
+                )
+            ) {
+
+                AiDownloadNetwork.OFFLINE -> {
+                    aiModelImportMessage =
+                        "Yerel AI hazırlanacak • internet bağlantısı bekleniyor."
+
+                    delay(
+                        10_000L
+                    )
+
+                    continue
+                }
+
+
+                AiDownloadNetwork.MOBILE -> {
+
+                    if (
+                        !mobileAiAllowedForSession
+                    ) {
+
+                        if (
+                            !mobileAiDeclinedForSession
+                        ) {
+                            showMobileAiDownloadDialog =
+                                true
+                        }
+
+                        aiModelImportMessage =
+                            "Yerel AI • Wi-Fi bekleniyor."
+
+                        delay(
+                            3_000L
+                        )
+
+                        continue
+                    }
+                }
+
+
+                AiDownloadNetwork.WIFI -> {
+                    /*
+                     * Kullanıcıdan hiçbir şey istemeden
+                     * otomatik devam.
+                     */
+                }
+            }
+
+
+            showMobileAiDownloadDialog =
+                false
+
+            aiModelInstalling =
+                true
+
+            aiModelInstallProgress =
+                0
+
+            aiModelImportMessage =
+                "Yerel AI hazırlanıyor • %0"
+
+
+            try {
+
+                val installed =
+                    LocalAiModelDownloader
+                        .install(
+                            context
+                        ) {
+                            value ->
+
+                            aiModelInstallProgress =
+                                value
+
+                            aiModelImportMessage =
+                                "Yerel AI hazırlanıyor • %$value"
+                        }
+
+
+                aiModelInfo =
+                    installed
+
+                aiModelInstallProgress =
+                    100
+
+                aiModelImportMessage =
+                    "Yerel AI hazır • cihaz üzerinde çalışıyor."
+
+
+            } catch (
+                t: Throwable
+            ) {
+
+                val reason =
+                    t.message
+                        .orEmpty()
+
+                aiModelImportMessage =
+                    when {
+
+                        reason.contains(
+                            "boş alan",
+                            ignoreCase = true
+                        ) ->
+                            "Yerel AI için yeterli depolama alanı bekleniyor."
+
+                        else ->
+                            "Yerel AI hazırlanamadı • otomatik tekrar denenecek."
+                    }
+
+
+                delay(
+                    if (
+                        reason.contains(
+                            "boş alan",
+                            ignoreCase = true
+                        )
+                    ) {
+                        300_000L
+                    } else {
+                        60_000L
+                    }
+                )
+
+            } finally {
+
+                aiModelInstalling =
+                    false
+            }
+        }
+    }
 
 
     val startBuildWithDraft: (ProjectDraft) -> Unit = { buildDraft ->
@@ -554,6 +815,84 @@ private fun AppForgeApp() {
             outline = Color(0xFF3B4652)
         )
     ) {
+
+        // MOBILE_AI_DOWNLOAD_DIALOG_V1
+        if (
+            showMobileAiDownloadDialog &&
+            aiModelInfo == null
+        ) {
+            AlertDialog(
+                onDismissRequest = {
+                    showMobileAiDownloadDialog =
+                        false
+
+                    mobileAiDeclinedForSession =
+                        true
+
+                    aiModelImportMessage =
+                        "Yerel AI • Wi-Fi bekleniyor."
+                },
+
+                title = {
+                    Text(
+                        "Yerel AI"
+                    )
+                },
+
+                text = {
+                    Text(
+                        "Yerel AI modeli yaklaşık 586 MB. " +
+                        "Şu anda mobil veri kullanıyorsun. " +
+                        "Mobil veri ile indirilsin mi?"
+                    )
+                },
+
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showMobileAiDownloadDialog =
+                                false
+
+                            mobileAiDeclinedForSession =
+                                false
+
+                            mobileAiAllowedForSession =
+                                true
+
+                            aiModelImportMessage =
+                                "Yerel AI mobil veri ile hazırlanıyor..."
+                        }
+                    ) {
+                        Text(
+                            "Mobil Veriyle İndir"
+                        )
+                    }
+                },
+
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showMobileAiDownloadDialog =
+                                false
+
+                            mobileAiAllowedForSession =
+                                false
+
+                            mobileAiDeclinedForSession =
+                                true
+
+                            aiModelImportMessage =
+                                "Yerel AI • Wi-Fi bekleniyor."
+                        }
+                    ) {
+                        Text(
+                            "Wi-Fi Bekle"
+                        )
+                    }
+                }
+            )
+        }
+
         Surface(Modifier.fillMaxSize(), color = Bg) {
             when (screen) {
                 AppScreen.HOME ->
