@@ -9,6 +9,9 @@ on:
       - "android-app/**"
       - ".github/workflows/android-debug.yml"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -45,7 +48,6 @@ jobs:
             > "$RUNNER_TEMP/appforge-debug.p12"
 
           chmod 600 "$RUNNER_TEMP/appforge-debug.p12"
-
           test -s "$RUNNER_TEMP/appforge-debug.p12"
 
       - name: Verify CI signing key
@@ -77,9 +79,40 @@ jobs:
             :app:assembleDebug \
             --stacktrace
 
-      - name: Upload debug APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: AppForge-Studio-v3.0-debug
-          path: android-app/app/build/outputs/apk/debug/*.apk
+      - name: Prepare latest APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APK="$(find android-app/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1)"
+
+          test -n "$APK"
+          test -s "$APK"
+
+          cp "$APK" AppForgeStudio-latest.apk
+
+          echo "APK hazır:"
+          ls -lh AppForgeStudio-latest.apk
+
+      - name: Publish latest APK release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if gh release view appforge-studio-latest >/dev/null 2>&1; then
+            gh release upload \
+              appforge-studio-latest \
+              AppForgeStudio-latest.apk \
+              --clobber
+          else
+            gh release create \
+              appforge-studio-latest \
+              AppForgeStudio-latest.apk \
+              --title "AppForge Studio Latest" \
+              --notes "Latest signed AppForge Studio APK." \
+              --target "$GITHUB_SHA"
+          fi
+
+          echo "APK GitHub Release'e yüklendi."
