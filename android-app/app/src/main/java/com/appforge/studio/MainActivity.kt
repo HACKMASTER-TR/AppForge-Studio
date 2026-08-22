@@ -619,7 +619,7 @@ private fun AppForgeApp() {
                                     .loadBuildApiKey(
                                         context
                                     )
-                                    .orEmpty()""
+                                    .orEmpty()
                             step = 1
                             screen = AppScreen.BUILDER
                             status = "Proje yüklendi: ${saved.name}"
