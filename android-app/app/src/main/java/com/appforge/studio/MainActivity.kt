@@ -66,6 +66,7 @@ import com.appforge.studio.security.AppSignatureVerifier
 import com.appforge.studio.security.ProStatus
 import com.appforge.studio.security.StudioSecurityClient
 import com.appforge.studio.security.StudioBillingManager
+import com.appforge.studio.security.SecureAccountStore
 import com.appforge.studio.security.StudioPlanPrice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -102,8 +103,22 @@ private fun AppForgeApp() {
     var step by remember { mutableIntStateOf(1) }
 
     var serverUrl by remember { mutableStateOf(draft.buildServiceUrl) }
-    var apiKey by remember { mutableStateOf(draft.buildApiKey) }
-    var session by remember { mutableStateOf<Session?>(null) }
+    var apiKey by remember {
+        mutableStateOf(
+            SecureAccountStore
+                .loadBuildApiKey(context)
+                .orEmpty()
+                .ifBlank {
+                    draft.buildApiKey
+                }
+        )
+    }
+    var session by remember {
+        mutableStateOf<Session?>(
+            SecureAccountStore
+                .loadSession(context)
+        )
+    }
     var prefs by remember { mutableStateOf(AppSettingsStore.load(context)) }
     var proStatus by remember { mutableStateOf<ProStatus?>(null) }
     var proSecurityMessage by remember { mutableStateOf("") }
@@ -599,7 +614,12 @@ private fun AppForgeApp() {
                             draft = it
                             currentProjectId = saved.id
                             serverUrl = it.buildServiceUrl
-                            apiKey = ""
+                            apiKey =
+                                SecureAccountStore
+                                    .loadBuildApiKey(
+                                        context
+                                    )
+                                    .orEmpty()""
                             step = 1
                             screen = AppScreen.BUILDER
                             status = "Proje yüklendi: ${saved.name}"
@@ -614,10 +634,42 @@ private fun AppForgeApp() {
                 AppScreen.ACCOUNT -> AccountScreen(
                     serverUrl = serverUrl,
                     session = session,
-                    onSession = { session = it },
+                    onSession = {
+                        session = it
+
+                        if (it != null) {
+                            SecureAccountStore
+                                .saveSession(
+                                    context,
+                                    it
+                                )
+                        } else {
+                            SecureAccountStore
+                                .clearAll(
+                                    context
+                                )
+
+                            apiKey = ""
+
+                            draft =
+                                draft.copy(
+                                    buildApiKey = ""
+                                )
+                        }
+                    },
                     onApiKeyCreated = {
                         apiKey = it
-                        draft = draft.copy(buildApiKey = it)
+
+                        draft =
+                            draft.copy(
+                                buildApiKey = it
+                            )
+
+                        SecureAccountStore
+                            .saveBuildApiKey(
+                                context,
+                                it
+                            )
                     },
                     onBack = { screen = AppScreen.BUILDER }
                 )
