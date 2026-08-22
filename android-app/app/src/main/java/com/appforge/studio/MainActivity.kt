@@ -45,6 +45,7 @@ import com.appforge.studio.ai.AppForgeLocalAssistant
 import com.appforge.studio.ai.LocalAiBackend
 import com.appforge.studio.ai.LocalAiModelInfo
 import com.appforge.studio.ai.LocalAiModelStore
+import com.appforge.studio.ai.LocalAiModelDownloader
 import com.appforge.studio.i18n.StudioI18n
 import com.appforge.studio.io.AppSettingsStore
 import com.appforge.studio.io.KeystoreVault
@@ -305,6 +306,20 @@ private fun AppForgeApp() {
         remember {
             mutableStateOf(
                 ""
+            )
+        }
+
+    var aiModelInstalling by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+    var aiModelInstallProgress by
+        remember {
+            mutableIntStateOf(
+                0
             )
         }
 
@@ -985,6 +1000,56 @@ private fun AppForgeApp() {
                         aiModelInfo,
                     importMessage =
                         aiModelImportMessage,
+                    installing =
+                        aiModelInstalling,
+                    installProgress =
+                        aiModelInstallProgress,
+                    onInstallDefaultModel = {
+                        if (
+                            !aiModelInstalling
+                        ) {
+                            scope.launch {
+                                aiModelInstalling =
+                                    true
+
+                                aiModelInstallProgress =
+                                    0
+
+                                aiModelImportMessage =
+                                    "Yerel AI hazırlanıyor..."
+
+                                try {
+                                    val installed =
+                                        LocalAiModelDownloader
+                                            .install(
+                                                context
+                                            ) {
+                                                progress ->
+
+                                                aiModelInstallProgress =
+                                                    progress
+
+                                                aiModelImportMessage =
+                                                    "Yerel AI indiriliyor • %$progress"
+                                            }
+
+                                    aiModelInfo =
+                                        installed
+
+                                    aiModelImportMessage =
+                                        "Yerel AI kuruldu • ${installed.name}"
+                                } catch (
+                                    t: Throwable
+                                ) {
+                                    aiModelImportMessage =
+                                        "Yerel AI kurulamadı: ${t.message}"
+                                } finally {
+                                    aiModelInstalling =
+                                        false
+                                }
+                            }
+                        }
+                    },
                     onImportModel = {
                         aiModelPicker.launch(
                             arrayOf(
@@ -999,7 +1064,7 @@ private fun AppForgeApp() {
                     },
                     onBack = {
                         screen =
-                            AppScreen.BUILDER
+                            AppScreen.HOME
                     }
                 )
 
@@ -4841,6 +4906,9 @@ private fun LocalAiAssistantScreen(
     languageCode: String,
     modelInfo: LocalAiModelInfo?,
     importMessage: String,
+    installing: Boolean,
+    installProgress: Int,
+    onInstallDefaultModel: () -> Unit,
     onImportModel: () -> Unit,
     onModelChanged: (LocalAiModelInfo?) -> Unit,
     onBack: () -> Unit
@@ -5298,7 +5366,7 @@ private fun LocalAiAssistantScreen(
                                     ) {
                                         "${humanBytes(modelInfo.sizeBytes)} • ${modelInfo.sha256.take(12)}…"
                                     } else {
-                                        ".litertlm model dosyası içe aktar"
+                                        "Hazır Yerel AI modelini kur veya kendi .litertlm modelini seç"
                                     },
                                     color =
                                         TextSecondary,
@@ -5314,16 +5382,53 @@ private fun LocalAiAssistantScreen(
                         ) {
                             Button(
                                 onClick =
-                                    onImportModel,
+                                    onInstallDefaultModel,
+                                enabled =
+                                    !installing,
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
                             ) {
                                 Text(
-                                    t(
-                                        languageCode,
-                                        "import_ai_model"
-                                    )
+                                    if (
+                                        installing
+                                    ) {
+                                        "YEREL AI İNDİRİLİYOR • %$installProgress"
+                                    } else {
+                                        "✨ YEREL AI'Yİ KUR • 586 MB"
+                                    }
+                                )
+                            }
+
+                            if (
+                                installing
+                            ) {
+                                LinearProgressIndicator(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                )
+
+                                Text(
+                                    "İndirme devam ediyor • %$installProgress",
+                                    color =
+                                        TextSecondary,
+                                    fontSize =
+                                        11.sp
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick =
+                                    onImportModel,
+                                enabled =
+                                    !installing,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                            ) {
+                                Text(
+                                    "KENDİ .litertlm MODELİMİ SEÇ"
                                 )
                             }
                         } else {

@@ -328,6 +328,83 @@ object LocalAiModelStore {
         return info
     }
 
+    fun installDownloadedModel(
+        context: Context,
+        source: File,
+        displayName: String,
+        sha256: String
+    ): LocalAiModelInfo {
+
+        require(
+            source.exists() &&
+            source.length() >
+                100L * 1024L * 1024L
+        ) {
+            "İndirilen model dosyası geçersiz."
+        }
+
+        val dir =
+            modelDir(
+                context
+            )
+
+        val target =
+            File(
+                dir,
+                "appforge-assistant.litertlm"
+            )
+
+        if (
+            target.exists()
+        ) {
+            target.delete()
+        }
+
+        val moved =
+            source.renameTo(
+                target
+            )
+
+        if (!moved) {
+            source.copyTo(
+                target,
+                overwrite = true
+            )
+
+            source.delete()
+        }
+
+        require(
+            target.exists() &&
+            target.length() > 0L
+        ) {
+            "Model uygulama depolamasına taşınamadı."
+        }
+
+        val info =
+            LocalAiModelInfo(
+                name =
+                    displayName,
+                path =
+                    target.absolutePath,
+                sizeBytes =
+                    target.length(),
+                sha256 =
+                    sha256,
+                importedAt =
+                    System.currentTimeMillis(),
+                backend =
+                    LocalAiBackend.CPU
+            )
+
+        saveMeta(
+            context,
+            info
+        )
+
+        return info
+    }
+
     fun remove(
         context: Context
     ) {
