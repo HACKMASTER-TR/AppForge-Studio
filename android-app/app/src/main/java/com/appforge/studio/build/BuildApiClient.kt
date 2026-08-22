@@ -192,69 +192,114 @@ class BuildApiClient(
             })
         }.toString()
 
-        conn.outputStream.buffered().use { out ->
-            writeTextPart(out, boundary, "config", config)
-
-            if (
-                draft.sourceMode == SourceMode.LOCAL &&
-                projectZip != null
-            ) {
-                writeFilePart(
-                    out = out,
-                    boundary = boundary,
-                    name = "project",
-                    filename = "project.zip",
-                    mime = "application/zip",
-                    input = projectZip.inputStream()
-                )
-            }
-
-            if (
-                draft.signingMode == SigningMode.CUSTOM &&
-                !draft.keystoreUri.isNullOrBlank()
-            ) {
-                val uri = Uri.parse(draft.keystoreUri)
-                writeUriPart(
-                    out,
-                    boundary,
-                    "keystore",
-                    draft.keystoreName.ifBlank { "release.jks" },
-                    "application/octet-stream",
-                    uri
-                )
-            }
-
-            if (!draft.iconUri.isNullOrBlank()) {
-                writeUriPart(
-                    out,
-                    boundary,
-                    "icon",
-                    draft.iconName.ifBlank { "icon.png" },
-                    "image/png",
-                    Uri.parse(draft.iconUri)
-                )
-            }
-
-            if (!draft.firebaseConfigUri.isNullOrBlank()) {
-                writeUriPart(
-                    out,
-                    boundary,
-                    "firebaseConfig",
-                    "google-services.json",
-                    "application/json",
-                    Uri.parse(draft.firebaseConfigUri)
-                )
-            }
-
-            out.write("--$boundary--\r\n".toByteArray())
-            out.flush()
-        }
-
-        val json = JSONObject(readResponse(conn))
-        return BuildCreateResult(
-            buildId = json.getString("buildId"),
-            status = json.getString("status")
+        val multipartBody = File.createTempFile(
+            "appforge-build-",
+            ".multipart",
+            context.cacheDir
         )
+
+        try {
+            multipartBody.outputStream().buffered().use { out ->
+                writeTextPart(out, boundary, "config", config)
+
+                if (
+                    draft.sourceMode == SourceMode.LOCAL &&
+                    projectZip != null
+                ) {
+                    writeFilePart(
+                        out = out,
+                        boundary = boundary,
+                        name = "project",
+                        filename = "project.zip",
+                        mime = "application/zip",
+                        input = projectZip.inputStream()
+                    )
+                }
+
+                if (
+                    draft.signingMode == SigningMode.CUSTOM &&
+                    !draft.keystoreUri.isNullOrBlank()
+                ) {
+                    val uri = Uri.parse(draft.keystoreUri)
+
+                    writeUriPart(
+                        out,
+                        boundary,
+                        "keystore",
+                        draft.keystoreName.ifBlank {
+                            "release.jks"
+                        },
+                        "application/octet-stream",
+                        uri
+                    )
+                }
+
+                if (!draft.iconUri.isNullOrBlank()) {
+                    writeUriPart(
+                        out,
+                        boundary,
+                        "icon",
+                        draft.iconName.ifBlank {
+                            "icon.png"
+                        },
+                        "image/png",
+                        Uri.parse(draft.iconUri)
+                    )
+                }
+
+                if (!draft.firebaseConfigUri.isNullOrBlank()) {
+                    writeUriPart(
+                        out,
+                        boundary,
+                        "firebaseConfig",
+                        "google-services.json",
+                        "application/json",
+                        Uri.parse(draft.firebaseConfigUri)
+                    )
+                }
+
+                out.write(
+                    "--$boundary--\r\n".toByteArray()
+                )
+                out.flush()
+            }
+
+            val bodyLength = multipartBody.length()
+
+            require(bodyLength > 0L) {
+                "Multipart build isteği boş oluşturuldu."
+            }
+
+            // Content-Length önceden belli.
+            // Railway'e chunked transfer kullanılmadan,
+            // dosya RAM'e tamamen alınmadan gönderilir.
+            conn.setFixedLengthStreamingMode(bodyLength)
+
+            multipartBody.inputStream()
+                .buffered()
+                .use { input ->
+                    conn.outputStream
+                        .buffered()
+                        .use { out ->
+                            input.copyTo(
+                                out,
+                                1024 * 1024
+                            )
+                            out.flush()
+                        }
+                }
+
+            val json = JSONObject(
+                readResponse(conn)
+            )
+
+            return BuildCreateResult(
+                buildId = json.getString("buildId"),
+                status = json.getString("status")
+            )
+        } finally {
+            multipartBody.delete()
+        }
     }
 
     fun getBuild(buildId: String): BuildStatusResult {
