@@ -2,6 +2,7 @@
 
 package com.appforge.studio
 
+import android.app.DownloadManager
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -15,6 +16,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -6162,12 +6164,35 @@ private fun BuildStep(
                                     BuildApiClient(context, serverUrl, apiKey)
                                         .createDownloadTicket(id, "apk")
                                 }
-                                context.startActivity(
-                                    Intent(
-                                        Intent.ACTION_VIEW,
+                                val request =
+                                    DownloadManager.Request(
                                         Uri.parse(ticket.url)
                                     )
-                                )
+                                        .setTitle("AppForge APK")
+                                        .setDescription("APK indiriliyor")
+                                        .setMimeType(
+                                            "application/vnd.android.package-archive"
+                                        )
+                                        .setNotificationVisibility(
+                                            DownloadManager.Request
+                                                .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                                        )
+                                        .setAllowedOverMetered(true)
+                                        .setAllowedOverRoaming(true)
+                                        .setDestinationInExternalPublicDir(
+                                            Environment.DIRECTORY_DOWNLOADS,
+                                            "AppForge-${id.take(8)}.apk"
+                                        )
+
+                                val manager =
+                                    context.getSystemService(
+                                        Context.DOWNLOAD_SERVICE
+                                    ) as DownloadManager
+
+                                manager.enqueue(request)
+
+                                downloadMessage =
+                                    "APK indiriliyor • İndirilenler klasörüne kaydedilecek."
                             } catch (t: Throwable) {
                                 downloadMessage = "İndirme hatası: ${t.message}"
                             }
@@ -6189,12 +6214,35 @@ private fun BuildStep(
                                     BuildApiClient(context, serverUrl, apiKey)
                                         .createDownloadTicket(id, "aab")
                                 }
-                                context.startActivity(
-                                    Intent(
-                                        Intent.ACTION_VIEW,
+                                val request =
+                                    DownloadManager.Request(
                                         Uri.parse(ticket.url)
                                     )
-                                )
+                                        .setTitle("AppForge AAB")
+                                        .setDescription("AAB indiriliyor")
+                                        .setMimeType(
+                                            "application/octet-stream"
+                                        )
+                                        .setNotificationVisibility(
+                                            DownloadManager.Request
+                                                .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                                        )
+                                        .setAllowedOverMetered(true)
+                                        .setAllowedOverRoaming(true)
+                                        .setDestinationInExternalPublicDir(
+                                            Environment.DIRECTORY_DOWNLOADS,
+                                            "AppForge-${id.take(8)}.aab"
+                                        )
+
+                                val manager =
+                                    context.getSystemService(
+                                        Context.DOWNLOAD_SERVICE
+                                    ) as DownloadManager
+
+                                manager.enqueue(request)
+
+                                downloadMessage =
+                                    "AAB indiriliyor • İndirilenler klasörüne kaydedilecek."
                             } catch (t: Throwable) {
                                 downloadMessage = "İndirme hatası: ${t.message}"
                             }
