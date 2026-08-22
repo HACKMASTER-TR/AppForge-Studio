@@ -1084,6 +1084,7 @@ private fun AppForgeApp() {
                                 logs = logs,
                                 preflight = preflight,
                                 buildId = buildId,
+                                appName = draft.appName,
                                 serverUrl = serverUrl,
                                 apiKey = apiKey,
                                 apkUrl = apkUrl,
@@ -6178,6 +6179,7 @@ private fun BuildStep(
     logs: List<String>,
     preflight: List<String>,
     buildId: String?,
+    appName: String,
     serverUrl: String,
     apiKey: String,
     apkUrl: String?,
@@ -6233,7 +6235,7 @@ private fun BuildStep(
                                         .setAllowedOverRoaming(true)
                                         .setDestinationInExternalPublicDir(
                                             Environment.DIRECTORY_DOWNLOADS,
-                                            "AppForge-${id.take(8)}.apk"
+                                            artifactDownloadName(appName, id, "apk")
                                         )
 
                                 val manager =
@@ -6283,7 +6285,7 @@ private fun BuildStep(
                                         .setAllowedOverRoaming(true)
                                         .setDestinationInExternalPublicDir(
                                             Environment.DIRECTORY_DOWNLOADS,
-                                            "AppForge-${id.take(8)}.aab"
+                                            artifactDownloadName(appName, id, "aab")
                                         )
 
                                 val manager =
@@ -8972,4 +8974,40 @@ private fun InfoLine(label: String, value: String) {
             Text(value, fontSize = 12.sp)
         }
     }
+}
+
+
+private fun artifactDownloadName(
+    appName: String,
+    buildId: String,
+    extension: String
+): String {
+    val safeName =
+        appName
+            .trim()
+            .replace(
+                Regex("""[^\p{L}\p{N}._-]+"""),
+                "_"
+            )
+            .trim(
+                '_',
+                '-',
+                '.'
+            )
+            .take(60)
+            .ifBlank {
+                "AppForge-App"
+            }
+
+    val safeExtension =
+        if (
+            extension.lowercase() ==
+            "aab"
+        ) {
+            "aab"
+        } else {
+            "apk"
+        }
+
+    return "$safeName-${buildId.take(8)}.$safeExtension"
 }
