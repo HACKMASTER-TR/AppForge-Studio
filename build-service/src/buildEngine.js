@@ -626,7 +626,7 @@ include(":app")
   await fs.writeFile(
     path.join(projectDir, "build.gradle.kts"),
 `plugins {
-    id("com.android.application") version "9.1.2" apply false
+    id("com.android.application") version "9.1.1" apply false
     ${firebaseEnabled ? 'id("com.google.gms.google-services") version "4.5.0" apply false' : ""}
     ${c.firebase?.crashlytics ? 'id("com.google.firebase.crashlytics") version "3.0.7" apply false' : ""}
 }
