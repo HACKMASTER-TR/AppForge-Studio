@@ -7035,8 +7035,7 @@ private fun installDownloadedApk(
         manager.getUriForDownloadedFile(
             downloadId
         )
-            ?: return
-                "İndirilen APK bulunamadı."
+            ?: return "İndirilen APK bulunamadı."
 
 
     val installIntent =
