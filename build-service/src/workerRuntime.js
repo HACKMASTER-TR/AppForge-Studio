@@ -117,12 +117,16 @@ async function workerLoop(workerSlotId, capabilities) {
       interval.unref();
 
       try {
+        console.log(
+          `Worker ${workerSlotId} claimed job ${job.id} build ${job.build_id}`
+        );
+
         await executeBuild({
           jobId: job.id,
           buildId: job.build_id,
           userId: job.user_id,
           teamId: job.team_id,
-          workerId,
+          workerId: workerSlotId,
           ...job.payload
         });
 
