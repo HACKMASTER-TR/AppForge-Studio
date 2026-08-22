@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AppForge Admin</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      background: #07101f;
+      color: #eef3ff;
+    }
+    body { margin: 0; background: #07101f; }
+    header {
+      padding: 24px;
+      background: linear-gradient(135deg,#111d34,#0a1324);
+      border-bottom: 1px solid #26334d;
+      position: sticky; top: 0;
+    }
+    main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+      gap: 14px;
+    }
+    .card {
+      background: #101b2e;
+      border: 1px solid #22304b;
+      border-radius: 18px;
+      padding: 18px;
+    }
+    input,button {
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid #34435f;
+      background: #0d1728;
+      color: #fff;
+    }
+    button { cursor:pointer; background:#5f71ff; border:0; font-weight:700; }
+    table { width:100%; border-collapse:collapse; }
+    th,td { text-align:left; padding:10px; border-bottom:1px solid #26334d; font-size:13px; }
+    .muted { color:#9aa8c2; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; }
+    .big { font-size:30px; font-weight:800; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AppForge Admin</h1>
+    <div class="row">
+      <input id="token" placeholder="Admin JWT" style="min-width:420px" />
+      <button onclick="loadAll()">Yenile</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid">
+      <div class="card"><div class="muted">Kullanıcı</div><div id="users" class="big">-</div></div>
+      <div class="card"><div class="muted">Toplam Build</div><div id="builds" class="big">-</div></div>
+      <div class="card"><div class="muted">Kuyruk</div><div id="queue" class="big">-</div></div>
+      <div class="card"><div class="muted">Başarılı</div><div id="success" class="big">-</div></div>
+      <div class="card"><div class="muted">Worker</div><div id="workerCount" class="big">-</div></div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h2>Android Worker'lar</h2>
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Worker</th><th>Toolchain</th><th>Capabilities</th><th>Version</th><th>Son Görülme</th>
+            </tr>
+          </thead>
+          <tbody id="workerRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h2>Son Build'ler</h2>
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Build ID</th><th>Kullanıcı</th><th>Uygulama</th>
+              <th>Paket</th><th>Durum</th><th>Tarih</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+<script>
+async function api(path) {
+  const token = document.getElementById("token").value.trim();
+  const r = await fetch(path, {
+    headers: { Authorization: "Bearer " + token }
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || "İstek başarısız");
+  return j;
+}
+
+async function loadAll() {
+  try {
+    const [data, workerData] = await Promise.all([
+      api("/api/admin/overview"),
+      api("/api/admin/workers")
+    ]);
+
+    users.textContent = data.users;
+    builds.textContent = data.builds;
+    queue.textContent = `${data.queue.active}/${data.queue.pending}`;
+    success.textContent = data.success;
+    workerCount.textContent = workerData.workers.length;
+
+    workerRows.innerHTML = "";
+    for (const w of workerData.workers) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(w.worker_id)}</td>
+        <td>${w.toolchain_ok ? "OK" : "HATA"}</td>
+        <td>${escapeHtml((w.capabilities || []).join(", "))}</td>
+        <td>${escapeHtml(w.version)}</td>
+        <td>${new Date(w.last_seen_at).toLocaleString()}</td>`;
+      workerRows.appendChild(tr);
+    }
+
+    rows.innerHTML = "";
+    for (const b of data.recentBuilds) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(b.id)}</td>
+        <td>${escapeHtml(b.email)}</td>
+        <td>${escapeHtml(b.app_name)}</td>
+        <td>${escapeHtml(b.package_name)}</td>
+        <td>${escapeHtml(b.status)}</td>
+        <td>${new Date(b.created_at).toLocaleString()}</td>`;
+      rows.appendChild(tr);
+    }
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+function escapeHtml(v) {
+  return String(v ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;");
+}
+</script>
+</body>
+</html>

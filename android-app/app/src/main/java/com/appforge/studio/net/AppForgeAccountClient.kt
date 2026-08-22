@@ -1,0 +1,129 @@
+package com.appforge.studio.net
+
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+
+data class Session(
+    val token: String,
+    val userId: String,
+    val email: String,
+    val displayName: String,
+    val emailVerified: Boolean,
+    val twoFactorEnabled: Boolean
+)
+
+sealed class LoginResult {
+    data class Success(val session: Session) : LoginResult()
+    data class TwoFactorRequired(val challengeToken: String) : LoginResult()
+}
+
+class AppForgeAccountClient(
+    private val baseUrl: String
+) {
+    fun register(
+        email: String,
+        password: String,
+        displayName: String
+    ): Session {
+        val json = request(
+            "/api/auth/register",
+            JSONObject().apply {
+                put("email", email)
+                put("password", password)
+                put("displayName", displayName)
+            }
+        )
+        return session(json)
+    }
+
+    fun login(email: String, password: String): LoginResult {
+        val json = request(
+            "/api/auth/login",
+            JSONObject().apply {
+                put("email", email)
+                put("password", password)
+            }
+        )
+
+        if (json.optBoolean("requiresTwoFactor", false)) {
+            return LoginResult.TwoFactorRequired(
+                json.getString("challengeToken")
+            )
+        }
+
+        return LoginResult.Success(session(json))
+    }
+
+    fun verifyTwoFactor(
+        challengeToken: String,
+        code: String
+    ): Session {
+        val json = request(
+            "/api/auth/2fa/verify-login",
+            JSONObject().apply {
+                put("challengeToken", challengeToken)
+                put("code", code)
+            }
+        )
+        return session(json)
+    }
+
+    private fun session(json: JSONObject): Session {
+        val user = json.getJSONObject("user")
+
+        return Session(
+            token = json.getString("token"),
+            userId = user.getString("id"),
+            email = user.getString("email"),
+            displayName = user.optString("displayName"),
+            emailVerified = user.optBoolean("emailVerified", false),
+            twoFactorEnabled = user.optBoolean("twoFactorEnabled", false)
+        )
+    }
+
+    private fun request(
+        path: String,
+        body: JSONObject
+    ): JSONObject {
+        val conn =
+            (URL(baseUrl.trimEnd('/') + path).openConnection()
+                as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                connectTimeout = 15_000
+                readTimeout = 20_000
+                setRequestProperty(
+                    "Content-Type",
+                    "application/json; charset=utf-8"
+                )
+            }
+
+        conn.outputStream.use {
+            it.write(body.toString().toByteArray())
+        }
+
+        val text =
+            if (conn.responseCode in 200..299) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                conn.errorStream
+                    ?.bufferedReader()
+                    ?.use { it.readText() }
+                    .orEmpty()
+            }
+
+        if (conn.responseCode !in 200..299) {
+            throw IllegalStateException(
+                runCatching {
+                    JSONObject(text).optString(
+                        "error",
+                        "İstek başarısız."
+                    )
+                }.getOrDefault("İstek başarısız.")
+            )
+        }
+
+        return JSONObject(text)
+    }
+}

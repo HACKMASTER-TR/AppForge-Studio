@@ -1,0 +1,90 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: appforge
+      POSTGRES_USER: appforge
+      POSTGRES_PASSWORD: change_me
+    ports:
+      - "5432:5432"
+    volumes:
+      - appforge_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appforge -d appforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      DATABASE_URL: postgresql://appforge:change_me@postgres:5432/appforge
+      JWT_SECRET: replace-with-a-long-random-secret-at-least-32-chars
+      RUN_INLINE_WORKER: "false"
+      SHARED_INPUT_ROOT: /shared-inputs
+      OUTPUT_ROOT: /outputs
+      WORK_ROOT: /work
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - appforge_inputs:/shared-inputs
+      - appforge_outputs:/outputs
+      - appforge_work:/work
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: appforge
+      MINIO_ROOT_PASSWORD: appforge_dev_secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - appforge_minio:/data
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      args:
+        ANDROID_SDK_LICENSE_ACCEPTED: ${ANDROID_SDK_LICENSE_ACCEPTED:-false}
+        ANDROID_CMDLINE_TOOLS_VERSION: "15859902"
+        ANDROID_CMDLINE_TOOLS_SHA256: "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
+        GRADLE_VERSION: "9.3.1"
+    environment:
+      DATABASE_URL: postgresql://appforge:change_me@postgres:5432/appforge
+      JWT_SECRET: replace-with-a-long-random-secret-at-least-32-chars
+      SHARED_INPUT_ROOT: /shared-inputs
+      OUTPUT_ROOT: /outputs
+      WORK_ROOT: /work
+      GRADLE_CACHE_ROOT: /gradle-cache
+      GRADLE_BIN: gradle
+      WORKER_STRICT_TOOLCHAIN: "true"
+      EXPECTED_ANDROID_API: "37"
+      EXPECTED_BUILD_TOOLS: "36.0.0"
+      EXPECTED_GRADLE: "9.3.1"
+      EXPECTED_JDK_MAJOR: "17"
+      BUILD_CONCURRENCY: "2"
+      WORKER_CAPABILITIES: android-api-37,build-tools-36.0.0,java-17,gradle
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - appforge_inputs:/shared-inputs
+      - appforge_outputs:/outputs
+      - appforge_work:/work
+      - appforge_gradle_cache:/gradle-cache
+
+volumes:
+  appforge_pg:
+  appforge_inputs:
+  appforge_outputs:
+  appforge_work:
+  appforge_gradle_cache:
+  appforge_minio:
