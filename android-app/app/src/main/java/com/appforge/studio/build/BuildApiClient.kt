@@ -100,6 +100,18 @@ class BuildApiClient(
             error("Özel keystore ile imzalama için Build Service HTTPS olmalı.")
         }
 
+        val directProjectKey =
+            if (
+                draft.sourceMode == SourceMode.LOCAL &&
+                projectZip != null
+            ) {
+                createDirectProjectUpload(
+                    projectZip
+                )
+            } else {
+                null
+            }
+
         val boundary = "----AppForge${UUID.randomUUID()}"
         val conn = connection("/api/builds").apply {
             requestMethod = "POST"
@@ -200,19 +212,21 @@ class BuildApiClient(
 
         try {
             multipartBody.outputStream().buffered().use { out ->
-                writeTextPart(out, boundary, "config", config)
+                writeTextPart(
+                    out,
+                    boundary,
+                    "config",
+                    config
+                )
 
                 if (
-                    draft.sourceMode == SourceMode.LOCAL &&
-                    projectZip != null
+                    !directProjectKey.isNullOrBlank()
                 ) {
-                    writeFilePart(
-                        out = out,
-                        boundary = boundary,
-                        name = "project",
-                        filename = "project.zip",
-                        mime = "application/zip",
-                        input = projectZip.inputStream()
+                    writeStringPart(
+                        out,
+                        boundary,
+                        "projectObjectKey",
+                        directProjectKey
                     )
                 }
 
@@ -800,6 +814,238 @@ class BuildApiClient(
             }
         }
     }
+
+    private fun createDirectProjectUpload(
+        projectZip: File
+    ): String {
+        require(
+            projectZip.exists() &&
+            projectZip.isFile
+        ) {
+            "Proje ZIP dosyası bulunamadı."
+        }
+
+        require(
+            projectZip.length() > 0L
+        ) {
+            "Proje ZIP dosyası boş."
+        }
+
+        val requestBody =
+            JSONObject()
+                .put(
+                    "sizeBytes",
+                    projectZip.length()
+                )
+                .toString()
+                .toByteArray(
+                    Charsets.UTF_8
+                )
+
+        val createConn =
+            connection(
+                "/api/uploads/build-input"
+            ).apply {
+                requestMethod =
+                    "POST"
+
+                doOutput =
+                    true
+
+                connectTimeout =
+                    20_000
+
+                readTimeout =
+                    30_000
+
+                setRequestProperty(
+                    "Content-Type",
+                    "application/json; charset=utf-8"
+                )
+
+                setFixedLengthStreamingMode(
+                    requestBody.size
+                )
+            }
+
+        createConn.outputStream.use {
+            it.write(
+                requestBody
+            )
+            it.flush()
+        }
+
+        val uploadJson =
+            JSONObject(
+                readResponse(
+                    createConn
+                )
+            )
+
+        createConn.disconnect()
+
+        val uploadUrl =
+            uploadJson.getString(
+                "uploadUrl"
+            )
+
+        val objectKey =
+            uploadJson.getString(
+                "objectKey"
+            )
+
+        uploadProjectToSignedUrl(
+            uploadUrl,
+            projectZip
+        )
+
+        return objectKey
+    }
+
+
+    private fun uploadProjectToSignedUrl(
+        uploadUrl: String,
+        projectZip: File
+    ) {
+        val conn =
+            (
+                URL(
+                    uploadUrl
+                ).openConnection()
+                    as HttpURLConnection
+            ).apply {
+                requestMethod =
+                    "PUT"
+
+                doOutput =
+                    true
+
+                connectTimeout =
+                    30_000
+
+                readTimeout =
+                    600_000
+
+                setFixedLengthStreamingMode(
+                    projectZip.length()
+                )
+            }
+
+        try {
+            projectZip
+                .inputStream()
+                .buffered()
+                .use { input ->
+
+                    conn.outputStream
+                        .buffered()
+                        .use { output ->
+
+                            val buffer =
+                                ByteArray(
+                                    1024 * 1024
+                                )
+
+                            while (true) {
+                                val count =
+                                    input.read(
+                                        buffer
+                                    )
+
+                                if (
+                                    count < 0
+                                ) {
+                                    break
+                                }
+
+                                output.write(
+                                    buffer,
+                                    0,
+                                    count
+                                )
+                            }
+
+                            output.flush()
+                        }
+                }
+
+            val status =
+                conn.responseCode
+
+            val responseText =
+                (
+                    if (
+                        status in
+                        200..299
+                    ) {
+                        conn.inputStream
+                    } else {
+                        conn.errorStream
+                    }
+                )
+                    ?.bufferedReader()
+                    ?.use {
+                        it.readText()
+                    }
+                    .orEmpty()
+
+            if (
+                status !in
+                200..299
+            ) {
+                error(
+                    "S3 proje yükleme hatası " +
+                    "$status: " +
+                    responseText.take(
+                        1000
+                    )
+                )
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+
+    private fun writeStringPart(
+        out: OutputStream,
+        boundary: String,
+        name: String,
+        value: String
+    ) {
+        out.write(
+            "--$boundary\r\n"
+                .toByteArray()
+        )
+
+        out.write(
+            (
+                "Content-Disposition: " +
+                "form-data; " +
+                "name=\"$name\"\r\n"
+            ).toByteArray()
+        )
+
+        out.write(
+            (
+                "Content-Type: " +
+                "text/plain; " +
+                "charset=UTF-8\r\n\r\n"
+            ).toByteArray()
+        )
+
+        out.write(
+            value.toByteArray(
+                Charsets.UTF_8
+            )
+        )
+
+        out.write(
+            "\r\n"
+                .toByteArray()
+        )
+    }
+
 
     private fun writeTextPart(
         out: OutputStream,
