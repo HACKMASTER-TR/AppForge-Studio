@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.appforge.studio
 
 import android.content.ClipData
@@ -54,6 +56,7 @@ import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
 import com.appforge.studio.net.AppForgeAccountClient
+import com.appforge.studio.net.LoginResult
 import com.appforge.studio.net.RemoteTemplate
 import com.appforge.studio.net.Session
 import com.appforge.studio.net.WorkspaceClient
@@ -6597,11 +6600,23 @@ private fun AccountScreen(
                                 busy = true
                                 scope.launch {
                                     try {
-                                        val s = withContext(Dispatchers.IO) {
-                                            AppForgeAccountClient(serverUrl).login(email, password)
+                                        val loginResult =
+                                            withContext(Dispatchers.IO) {
+                                                AppForgeAccountClient(serverUrl)
+                                                    .login(email, password)
+                                            }
+
+                                        when (loginResult) {
+                                            is LoginResult.Success -> {
+                                                onSession(loginResult.session)
+                                                message = "Giriş başarılı."
+                                            }
+
+                                            is LoginResult.TwoFactorRequired -> {
+                                                message =
+                                                    "Bu hesap için iki aşamalı doğrulama gerekiyor."
+                                            }
                                         }
-                                        onSession(s)
-                                        message = "Giriş başarılı."
                                     } catch (t: Throwable) {
                                         message = "Hata: ${t.message}"
                                     } finally { busy = false }

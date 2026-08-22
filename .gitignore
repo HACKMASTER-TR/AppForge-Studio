@@ -11,7 +11,8 @@ google-services.json
 local.properties
 
 .gradle/
-**/build/
+/android-app/build/
+/android-app/app/build/
 captures/
 .externalNativeBuild/
 .cxx/

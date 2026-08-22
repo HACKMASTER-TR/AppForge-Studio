@@ -69,6 +69,95 @@ class AppForgeAccountClient(
         return session(json)
     }
 
+
+    fun createBuildApiToken(
+        sessionToken: String,
+        name: String = "Android App"
+    ): String {
+        val conn =
+            (
+                URL(
+                    baseUrl.trimEnd('/') +
+                        "/api/auth/api-tokens"
+                ).openConnection()
+                as HttpURLConnection
+            ).apply {
+                requestMethod = "POST"
+                doOutput = true
+
+                connectTimeout =
+                    15_000
+
+                readTimeout =
+                    20_000
+
+                setRequestProperty(
+                    "Content-Type",
+                    "application/json; charset=utf-8"
+                )
+
+                setRequestProperty(
+                    "Authorization",
+                    "Bearer $sessionToken"
+                )
+            }
+
+        val body =
+            JSONObject()
+                .put(
+                    "name",
+                    name
+                )
+
+        conn.outputStream.use {
+            it.write(
+                body.toString()
+                    .toByteArray()
+            )
+        }
+
+        val text =
+            if (
+                conn.responseCode in
+                200..299
+            ) {
+                conn.inputStream
+                    .bufferedReader()
+                    .use {
+                        it.readText()
+                    }
+            } else {
+                conn.errorStream
+                    ?.bufferedReader()
+                    ?.use {
+                        it.readText()
+                    }
+                    .orEmpty()
+            }
+
+        if (
+            conn.responseCode !in
+            200..299
+        ) {
+            throw IllegalStateException(
+                runCatching {
+                    JSONObject(text)
+                        .optString(
+                            "error",
+                            "API token oluşturulamadı."
+                        )
+                }.getOrDefault(
+                    "API token oluşturulamadı."
+                )
+            )
+        }
+
+        return JSONObject(text)
+            .getString(
+                "token"
+            )
+    }
+
     private fun session(json: JSONObject): Session {
         val user = json.getJSONObject("user")
 
