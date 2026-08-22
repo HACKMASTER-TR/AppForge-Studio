@@ -336,6 +336,9 @@ export async function executeBuild(job) {
   const startedAtMs =
     Date.now();
 
+  let buildSucceeded =
+    false;
+
   const work =
     path.join(
       config.workRoot,
@@ -541,18 +544,26 @@ export async function executeBuild(job) {
     }
 
     await appendLog(buildId, "Build başarıyla tamamlandı.");
+
+    buildSucceeded =
+      true;
   } catch (error) {
     await appendLog(buildId, `HATA: ${String(error?.message || error)}`);
     throw error;
   } finally {
-    for (const ref of [
-      projectRef,
-      keystoreRef,
-      iconRef,
-      firebaseConfigRef
-    ]) {
-      if (!ref) continue;
-      try { await deleteInput(ref); } catch {}
+    if (buildSucceeded) {
+      for (const ref of [
+        projectRef,
+        keystoreRef,
+        iconRef,
+        firebaseConfigRef
+      ]) {
+        if (!ref) continue;
+
+        try {
+          await deleteInput(ref);
+        } catch {}
+      }
     }
 
     try {

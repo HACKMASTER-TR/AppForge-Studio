@@ -137,6 +137,11 @@ async function workerLoop(workerSlotId, capabilities) {
           job.team_id
         );
       } catch (error) {
+        console.error(
+          `[WORKER BUILD ERROR] job=${job?.id} build=${job?.build_id}`,
+          error?.stack || error
+        );
+
         if (error?.code === "BUILD_CANCELLED") {
           await markCancelledJob(
             job,
