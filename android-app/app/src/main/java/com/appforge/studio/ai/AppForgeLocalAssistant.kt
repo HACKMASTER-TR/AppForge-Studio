@@ -17,6 +17,112 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.Closeable
 import java.io.File
+import java.nio.charset.Charset
+
+
+private fun cleanAssistantOutput(
+    raw: String
+): String {
+
+    var text =
+        raw
+
+    /*
+     * Bazı LiteRT-LM çıktılarında UTF-8 metin
+     * Windows-1252 olarak yorumlanmış görünebiliyor:
+     *
+     * geÃ§erli -> geçerli
+     * GÃ¶rev    -> Görev
+     * seÃ§      -> seç
+     */
+    val looksBroken =
+        text.contains("Ã") ||
+        text.contains("Ä") ||
+        text.contains("Å") ||
+        text.contains("Â")
+
+    if (looksBroken) {
+        text =
+            runCatching {
+                String(
+                    text.toByteArray(
+                        Charset.forName(
+                            "windows-1252"
+                        )
+                    ),
+                    Charsets.UTF_8
+                )
+            }.getOrDefault(
+                text
+            )
+    }
+
+    /*
+     * Modelin kullanıcıya gösterilmemesi gereken
+     * düşünme bölümünü kaldır.
+     */
+    text =
+        text.replace(
+            Regex(
+                "(?is)<think>.*?</think>"
+            ),
+            ""
+        )
+
+    /*
+     * Streaming sırasında </think> henüz gelmediyse
+     * yarım düşünme içeriğini de ekranda gösterme.
+     */
+    text =
+        text.replace(
+            Regex(
+                "(?is)<think>.*$"
+            ),
+            ""
+        )
+
+    text =
+        text.replace(
+            "</think>",
+            "",
+            ignoreCase = true
+        )
+
+    /*
+     * UI henüz Markdown renderer kullanmadığı için
+     * ham Markdown işaretlerini temizle.
+     */
+    text =
+        text.replace(
+            "**",
+            ""
+        )
+
+    text =
+        text.replace(
+            "__",
+            ""
+        )
+
+    text =
+        text.replace(
+            "`",
+            ""
+        )
+
+    return text
+        .replace(
+            "\r\n",
+            "\n"
+        )
+        .replace(
+            Regex(
+                "\n{3,}"
+            ),
+            "\n\n"
+        )
+        .trimStart()
+}
 
 data class LocalAiInitResult(
     val backend: LocalAiBackend,
@@ -152,9 +258,18 @@ class AppForgeLocalAssistant(
                         prompt
                     )
                     .collect {
-                        onPartial(
-                            it.toString()
-                        )
+                        val cleaned =
+                            cleanAssistantOutput(
+                                it.toString()
+                            )
+
+                        if (
+                            cleaned.isNotBlank()
+                        ) {
+                            onPartial(
+                                cleaned
+                            )
+                        }
                     }
             }
         }
@@ -255,6 +370,12 @@ class AppForgeLocalAssistant(
                     AppForge yerel bağlamıyla çelişme ve bilmediğin AppForge özelliğini uydurma.
                     Güncel internet bilgisine erişemediğin durumlarda bunu açıkça belirt.
                     Parola, API anahtarı ve keystore şifresi isteme veya yanıt içinde tekrarlama.
+
+                    Kullanıcıya yalnızca nihai cevabı göster.
+                    İç düşünme, reasoning, chain-of-thought veya <think> bölümü gösterme.
+                    Türkçe soruya düzgün UTF-8 Türkçe ile cevap ver.
+                    Gereksiz Markdown işaretleri kullanma.
+                    Kısa paragraflar ve okunabilir maddeler kullan.
                     """.trimIndent()
                 ),
             samplerConfig =
