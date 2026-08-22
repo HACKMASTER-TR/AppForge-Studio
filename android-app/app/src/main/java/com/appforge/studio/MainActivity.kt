@@ -87,12 +87,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private val Bg = Color(0xFF07101F)
-private val Card2 = Color(0xFF15233A)
-private val Accent = Color(0xFF6B7CFF)
-private val TextSecondary = Color(0xFF9EABC3)
+private val Bg = Color(0xFF08070D)
+private val Card2 = Color(0xFF111820)
+private val Accent = Color(0xFF8CC9F6)
+private val TextSecondary = Color(0xFFA5ADB7)
 
-private enum class AppScreen { MODE_SELECT, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { HOME, MODE_SELECT, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 @Composable
 private fun AppForgeApp() {
@@ -101,7 +101,7 @@ private fun AppForgeApp() {
 
     var draft by remember { mutableStateOf(ProjectDraft()) }
     var currentProjectId by remember { mutableStateOf<String?>(null) }
-    var screen by remember { mutableStateOf(AppScreen.MODE_SELECT) }
+    var screen by remember { mutableStateOf(AppScreen.HOME) }
     var step by remember { mutableIntStateOf(1) }
 
     var serverUrl by remember { mutableStateOf(draft.buildServiceUrl) }
@@ -528,12 +528,130 @@ private fun AppForgeApp() {
     MaterialTheme(
         colorScheme = darkColorScheme(
             primary = Accent,
+            onPrimary = Color(0xFF061827),
+            secondary = Color(0xFFB79CE5),
             background = Bg,
-            surface = Card2
+            onBackground = Color(0xFFE8EDF4),
+            surface = Card2,
+            onSurface = Color(0xFFE8EDF4),
+            surfaceVariant = Color(0xFF18212A),
+            onSurfaceVariant = TextSecondary,
+            outline = Color(0xFF3B4652)
         )
     ) {
         Surface(Modifier.fillMaxSize(), color = Bg) {
             when (screen) {
+                AppScreen.HOME ->
+                    StudioHomeScreen(
+                        proUnlocked =
+                            proStatus?.active == true,
+
+                        onCreateQuick = {
+                            val fresh =
+                                createQuickDraft(
+                                    ProjectDraft()
+                                )
+
+                            draft = fresh
+
+                            currentProjectId =
+                                null
+
+                            serverUrl =
+                                fresh.buildServiceUrl
+
+                            status =
+                                "Hızlı oluşturma hazır."
+
+                            screen =
+                                AppScreen.QUICK
+                        },
+
+                        onCreateAdvanced = {
+                            val fresh =
+                                ProjectDraft()
+
+                            draft = fresh
+
+                            currentProjectId =
+                                null
+
+                            serverUrl =
+                                fresh.buildServiceUrl
+
+                            step = 1
+
+                            status =
+                                "Gelişmiş oluşturma hazır."
+
+                            screen =
+                                AppScreen.BUILDER
+                        },
+
+                        onOpenProject = {
+                            saved ->
+
+                            ProjectLibrary
+                                .restore(
+                                    context,
+                                    saved.id
+                                )
+                                ?.let {
+                                    restored ->
+
+                                    draft =
+                                        restored
+
+                                    currentProjectId =
+                                        saved.id
+
+                                    serverUrl =
+                                        restored
+                                            .buildServiceUrl
+
+                                    apiKey =
+                                        SecureAccountStore
+                                            .loadBuildApiKey(
+                                                context
+                                            )
+                                            .orEmpty()
+
+                                    step = 1
+
+                                    screen =
+                                        AppScreen.BUILDER
+
+                                    status =
+                                        "Proje yüklendi: ${saved.name}"
+                                }
+                        },
+
+                        onOpenTemplates = {
+                            screen =
+                                AppScreen.TEMPLATES
+                        },
+
+                        onOpenSettings = {
+                            screen =
+                                AppScreen.SETTINGS
+                        },
+
+                        onOpenAccount = {
+                            screen =
+                                AppScreen.ACCOUNT
+                        },
+
+                        onOpenHistory = {
+                            screen =
+                                AppScreen.HISTORY
+                        },
+
+                        onOpenPro = {
+                            screen =
+                                AppScreen.PRO
+                        }
+                    )
+
                 AppScreen.MODE_SELECT ->
                     CreateModeSelectionScreen(
                         onQuick = {
@@ -567,7 +685,7 @@ private fun AppForgeApp() {
                         },
                         onBack = {
                             screen =
-                                AppScreen.MODE_SELECT
+                                AppScreen.HOME
                         },
                         onPickSource = {
                             sourcePicker.launch(
@@ -610,7 +728,7 @@ private fun AppForgeApp() {
 
                 AppScreen.LIBRARY -> ProjectLibraryScreen(
                     proUnlocked = proStatus?.active == true,
-                    onBack = { screen = AppScreen.BUILDER },
+                    onBack = { screen = AppScreen.HOME },
                     onLoad = { saved ->
                         ProjectLibrary.restore(context, saved.id)?.let {
                             draft = it
@@ -630,7 +748,7 @@ private fun AppForgeApp() {
                 )
 
                 AppScreen.HISTORY -> BuildHistoryScreen(
-                    onBack = { screen = AppScreen.BUILDER }
+                    onBack = { screen = AppScreen.HOME }
                 )
 
                 AppScreen.ACCOUNT -> AccountScreen(
@@ -673,7 +791,7 @@ private fun AppForgeApp() {
                                 it
                             )
                     },
-                    onBack = { screen = AppScreen.BUILDER }
+                    onBack = { screen = AppScreen.HOME }
                 )
 
                 AppScreen.TEMPLATES -> TemplatesScreen(
@@ -685,14 +803,14 @@ private fun AppForgeApp() {
                         step = 1
                         screen = AppScreen.BUILDER
                     },
-                    onBack = { screen = AppScreen.BUILDER }
+                    onBack = { screen = AppScreen.HOME }
                 )
 
 
                 AppScreen.SETTINGS -> SettingsHubScreen(
                     languageCode = prefs.languageCode,
                     proUnlocked = proStatus?.active == true,
-                    onBack = { screen = AppScreen.BUILDER },
+                    onBack = { screen = AppScreen.HOME },
                     onOpenLanguage = { screen = AppScreen.LANGUAGE },
                     onOpenKeystore = { screen = AppScreen.KEYSTORES },
                     onOpenPro = { screen = AppScreen.PRO },
@@ -905,15 +1023,15 @@ private fun AppForgeApp() {
                             IconButton(
                                 onClick = {
                                     screen =
-                                        AppScreen.MODE_SELECT
+                                        AppScreen.HOME
                                 }
                             ) {
                                 Text("←")
                             }
                         },
                         actions = {
-                            IconButton(onClick = { screen = AppScreen.LIBRARY }) {
-                                Text("📁")
+                            IconButton(onClick = { screen = AppScreen.HOME }) {
+                                Text("⌂")
                             }
                             IconButton(onClick = { screen = AppScreen.HISTORY }) {
                                 Text("🧾")
