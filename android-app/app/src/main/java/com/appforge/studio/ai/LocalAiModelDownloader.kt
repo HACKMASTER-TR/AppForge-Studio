@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
@@ -140,8 +141,9 @@ object LocalAiModelDownloader {
                     )
                     .use { input ->
 
-                        temp.outputStream(
-                            append = resume
+                        FileOutputStream(
+                            temp,
+                            resume
                         )
                             .buffered(
                                 1024 * 1024
