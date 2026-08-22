@@ -3241,6 +3241,23 @@ async function runGradle(
       let settled = false;
       let cancellationRequested = false;
 
+      const recentGradleLines = [];
+
+      const rememberGradleLine = line => {
+        const text =
+          String(line || "").trim();
+
+        if (!text) return;
+
+        recentGradleLines.push(text);
+
+        if (
+          recentGradleLines.length > 80
+        ) {
+          recentGradleLines.shift();
+        }
+      };
+
       const child =
         spawn(
           config.gradleBin,
@@ -3345,13 +3362,16 @@ async function runGradle(
             .split(/\r?\n/)
             .filter(Boolean)
             .forEach(
-              line =>
+              line => {
+                rememberGradleLine(line);
+
                 appendLog(
                   buildId,
                   line
                 ).catch(
                   () => {}
-                )
+                );
+              }
             );
         }
       );
@@ -3363,13 +3383,16 @@ async function runGradle(
             .split(/\r?\n/)
             .filter(Boolean)
             .forEach(
-              line =>
+              line => {
+                rememberGradleLine(line);
+
                 appendLog(
                   buildId,
                   line
                 ).catch(
                   () => {}
-                )
+                );
+              }
             );
         }
       );
@@ -3403,9 +3426,23 @@ async function runGradle(
           if (code === 0) {
             resolve();
           } else {
+            const tail =
+              recentGradleLines
+                .slice(-80)
+                .join("\n");
+
+            console.error(
+              `[GRADLE FAILURE ${buildId}]\n${tail}`
+            );
+
             reject(
               new Error(
-                `Gradle başarısız. Çıkış kodu: ${code}`
+                `Gradle başarısız. Çıkış kodu: ${code}` +
+                (
+                  tail
+                    ? `\n\n--- GRADLE SON ÇIKTI ---\n${tail}`
+                    : ""
+                )
               )
             );
           }
