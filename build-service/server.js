@@ -1936,6 +1936,51 @@ app.post(
   requireScope,
   verifiedEmailRequired,
   buildRateLimit,
+
+  (req, res, next) => {
+    const requestId =
+      crypto.randomUUID();
+
+    const startedAt =
+      Date.now();
+
+    req.appforgeBuildTrace = {
+      requestId,
+      startedAt
+    };
+
+    console.log(
+      `[BUILD ${requestId}] 00 request-start ` +
+      `content-type=${req.get("content-type") || "-"} ` +
+      `content-length=${req.get("content-length") || "-"}`
+    );
+
+    res.on(
+      "finish",
+      () => {
+        console.log(
+          `[BUILD ${requestId}] FINISH ` +
+          `status=${res.statusCode} ` +
+          `elapsed=${Date.now() - startedAt}ms`
+        );
+      }
+    );
+
+    res.on(
+      "close",
+      () => {
+        if (!res.writableEnded) {
+          console.warn(
+            `[BUILD ${requestId}] CLIENT-CLOSED ` +
+            `elapsed=${Date.now() - startedAt}ms`
+          );
+        }
+      }
+    );
+
+    next();
+  },
+
   upload.fields([
     {
       name: "project",
@@ -1955,6 +2000,21 @@ app.post(
     }
   ]),
   async (req, res) => {
+    const trace =
+      req.appforgeBuildTrace || {
+        requestId: "unknown",
+        startedAt: Date.now()
+      };
+
+    const mark = name => {
+      console.log(
+        `[BUILD ${trace.requestId}] ${name} ` +
+        `elapsed=${Date.now() - trace.startedAt}ms`
+      );
+    };
+
+    mark("01 multer-complete");
+
     try {
       const c =
         JSON.parse(
@@ -1994,6 +2054,8 @@ app.post(
             )
           : null;
 
+      mark("02 s3-head-validated");
+
       if (
         incomingProject &&
         directProjectRef
@@ -2023,13 +2085,19 @@ app.post(
         c
       );
 
+      mark("03 pro-checked");
+
       await applyServerBranding(
         req.user.id,
         c
       );
 
+      mark("04 branding-applied");
+
       // A distinct package is a distinct project.
       // Rebuilding the same package updates the same project and does not consume a new slot.
+      mark("05 project-upsert-start");
+
       await upsertProject(
         req.user.id,
         {
@@ -2043,6 +2111,8 @@ app.post(
             c
         }
       );
+
+      mark("06 project-upsert-done");
 
       const report =
         preflight(
@@ -2068,6 +2138,8 @@ app.post(
           }
         );
 
+      mark("07 preflight-done");
+
       const cacheKey =
         await computeCacheKey(
           c,
@@ -2086,6 +2158,8 @@ app.post(
               incomingFirebase
           }
         );
+
+      mark("08 cache-key-done");
 
       const normalizedIdempotencyKey =
         normalizeIdempotencyKey(
@@ -2145,10 +2219,14 @@ app.post(
           });
       }
 
+      mark("09 idempotency-done");
+
       const cached =
         await findCache(
           cacheKey
         );
+
+      mark("10 cache-lookup-done");
 
       const buildId =
         uuidv4();
@@ -2219,7 +2297,9 @@ app.post(
           ]
         );
 
-        await rememberIdempotency(
+        mark("14 enqueue-done");
+
+      await rememberIdempotency(
           req.user.id,
           normalizedIdempotencyKey,
           cacheKey,
@@ -2284,6 +2364,8 @@ app.post(
             )
           : null;
 
+      mark("11 build-insert-start");
+
       await query(
         `INSERT INTO appforge_builds(
            id,
@@ -2324,6 +2406,8 @@ app.post(
         ]
       );
 
+      mark("12 build-insert-done");
+
       const requiredCapabilities =
         Array.isArray(
           c.workerRequirements
@@ -2334,6 +2418,8 @@ app.post(
               "java-17",
               "gradle"
             ];
+
+      mark("13 enqueue-start");
 
       await enqueueJob({
         buildId,
@@ -2360,6 +2446,13 @@ app.post(
         buildId
       );
 
+      mark("15 idempotency-saved");
+
+      const finalQueueStats =
+        await queueStats();
+
+      mark("16 queue-stats-done");
+
       res
         .status(202)
         .json({
@@ -2368,7 +2461,7 @@ app.post(
           cacheHit: false,
           requiredCapabilities,
           queue:
-            await queueStats()
+            finalQueueStats
         });
     } catch (error) {
       res
