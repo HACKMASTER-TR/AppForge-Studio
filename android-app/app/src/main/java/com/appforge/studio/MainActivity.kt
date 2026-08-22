@@ -647,7 +647,7 @@ private fun AppForgeApp() {
                         runCatching {
                             val intent = Intent(
                                 Intent.ACTION_SENDTO,
-                                Uri.parse("mailto:gamecrafter1520@gmail.com")
+                                Uri.parse("mailto:28550040284a@gmail.com")
                             )
                             intent.putExtra(Intent.EXTRA_SUBJECT, "AppForge Studio Geri Bildirim")
                             context.startActivity(intent)
@@ -7439,7 +7439,7 @@ private fun SettingsHubScreen(
         SettingsEntry(
             "✉",
             t(languageCode, "send_feedback"),
-            "gamecrafter1520@gmail.com",
+            "28550040284a@gmail.com",
             onFeedback
         ),
         SettingsEntry(
