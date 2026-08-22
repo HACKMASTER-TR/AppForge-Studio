@@ -63,22 +63,22 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private val HomeBackground =
-    Color(0xFF08070D)
+    Color(0xFF070B0D)
 
 private val HomeCard =
-    Color(0xFF11161C)
+    Color(0xFF10181A)
 
 private val HomeCardStrong =
-    Color(0xFF151B22)
+    Color(0xFF162126)
 
 private val HomeBlue =
-    Color(0xFF8CC9F6)
+    Color(0xFF6EE7B7)
 
 private val HomeBlueStrong =
-    Color(0xFF5E9EDD)
+    Color(0xFF10B981)
 
 private val HomePurple =
-    Color(0xFFB79CE5)
+    Color(0xFFF59E0B)
 
 private val HomeTextSecondary =
     Color(0xFFA5ADB7)
@@ -280,7 +280,7 @@ internal fun StudioHomeScreen(
                         fontWeight =
                             FontWeight.Light,
                         color =
-                            Color(0xFF0A2940)
+                            Color(0xFF07140F)
                     )
 
                     Text(
@@ -289,7 +289,7 @@ internal fun StudioHomeScreen(
                         fontWeight =
                             FontWeight.Bold,
                         color =
-                            Color(0xFF0A2940)
+                            Color(0xFF07140F)
                     )
                 }
             }
@@ -576,7 +576,7 @@ private fun StudioAnimatedBackground() {
                     colors =
                         listOf(
                             Color(
-                                0xFF00D6E8
+                                0xFF10B981
                             ).copy(
                                 alpha = 0.16f
                             ),
@@ -599,7 +599,7 @@ private fun StudioAnimatedBackground() {
                     colors =
                         listOf(
                             Color(
-                                0xFF933EFF
+                                0xFFFF7A18
                             ).copy(
                                 alpha = 0.14f
                             ),
@@ -622,7 +622,7 @@ private fun StudioAnimatedBackground() {
                     colors =
                         listOf(
                             Color(
-                                0xFF216DFF
+                                0xFFEC4899
                             ).copy(
                                 alpha = 0.11f
                             ),
