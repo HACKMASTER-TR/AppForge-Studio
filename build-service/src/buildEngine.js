@@ -2941,7 +2941,7 @@ ${deepLinkHandling}
 
     override fun onDestroy() {
         ${c.billing?.enabled ? "billingClient?.endConnection()" : ""}
-        bannerAdView?.destroy()
+        ${c.admob?.enabled ? "bannerAdView?.destroy()" : ""}
         ${bridgeEnabled ? `
         if (
             WebViewFeature.isFeatureSupported(
