@@ -111,7 +111,7 @@ class BuildApiClient(
             }
             doOutput = true
             setChunkedStreamingMode(64 * 1024)
-            readTimeout = 120_000
+            readTimeout = 600_000
             setRequestProperty(
                 "Content-Type",
                 "multipart/form-data; boundary=$boundary"
