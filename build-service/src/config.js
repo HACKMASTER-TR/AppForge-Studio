@@ -54,7 +54,7 @@ export const config = {
   ),
   workerCapabilities: csv(
     "WORKER_CAPABILITIES",
-    "android-api-37,build-tools-36.0.0,java-17,gradle"
+    "android-api-37,build-tools-37.0.0,java-17,gradle"
   ),
   workerStrictToolchain: boolEnv(
     "WORKER_STRICT_TOOLCHAIN",
@@ -64,7 +64,7 @@ export const config = {
     process.env.EXPECTED_ANDROID_API || 37
   ),
   expectedBuildTools: String(
-    process.env.EXPECTED_BUILD_TOOLS || "36.0.0"
+    process.env.EXPECTED_BUILD_TOOLS || "37.0.0"
   ),
   expectedGradle: String(
     process.env.EXPECTED_GRADLE || "9.3.1"

@@ -203,15 +203,36 @@ export async function runToolchainDoctor() {
       gradleText
     );
 
-  const platformJar =
+  const platformCandidates =
     root
-      ? path.join(
-          root,
-          "platforms",
-          `android-${config.expectedAndroidApi}`,
-          "android.jar"
-        )
-      : "";
+      ? [
+          path.join(
+            root,
+            "platforms",
+            `android-${config.expectedAndroidApi}`,
+            "android.jar"
+          ),
+          path.join(
+            root,
+            "platforms",
+            `android-${config.expectedAndroidApi}.0`,
+            "android.jar"
+          )
+        ]
+      : [];
+
+  let platformJar = "";
+
+  for (const candidate of platformCandidates) {
+    if (await exists(candidate)) {
+      platformJar = candidate;
+      break;
+    }
+  }
+
+  if (!platformJar && platformCandidates.length) {
+    platformJar = platformCandidates[0];
+  }
 
   const buildToolsDir =
     root
