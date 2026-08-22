@@ -2,6 +2,7 @@ package com.appforge.studio.io
 
 import android.content.Context
 import com.appforge.studio.model.ProjectDraft
+import com.appforge.studio.model.DEFAULT_BUILD_SERVICE_URL
 import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
 import org.json.JSONArray
@@ -251,7 +252,16 @@ object ProjectLibrary {
             purchaseVerificationUrl = obj.optString("purchaseVerificationUrl"),
             firebaseAnalyticsEnabled = obj.optBoolean("firebaseAnalyticsEnabled", false),
             firebaseCrashlyticsEnabled = obj.optBoolean("firebaseCrashlyticsEnabled", false),
-            buildServiceUrl = obj.optString("buildServiceUrl", "http://10.0.2.2:8080")
+            buildServiceUrl =
+                obj
+                    .optString(
+                        "buildServiceUrl",
+                        DEFAULT_BUILD_SERVICE_URL
+                    )
+                    .trim()
+                    .ifBlank {
+                        DEFAULT_BUILD_SERVICE_URL
+                    }
         )
     }
 

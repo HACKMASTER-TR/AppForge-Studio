@@ -1,5 +1,8 @@
 package com.appforge.studio.model
 
+const val DEFAULT_BUILD_SERVICE_URL =
+    "https://appforge-studio-production.up.railway.app"
+
 data class ProjectDraft(
     var appName: String = "",
     var packageName: String = "com.example.myapp",
@@ -70,7 +73,7 @@ data class ProjectDraft(
     var firebaseConfigUri: String? = null,
     var firebaseConfigName: String = "",
 
-    var buildServiceUrl: String = "",
+    var buildServiceUrl: String = DEFAULT_BUILD_SERVICE_URL,
     var buildApiKey: String = ""
 )
 
