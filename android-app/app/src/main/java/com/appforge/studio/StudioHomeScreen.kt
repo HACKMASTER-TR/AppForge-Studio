@@ -90,6 +90,7 @@ internal fun StudioHomeScreen(
     onCreateQuick: () -> Unit,
     onCreateAdvanced: () -> Unit,
     onOpenProject: (SavedProject) -> Unit,
+    onOpenAi: () -> Unit,
     onOpenTemplates: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAccount: () -> Unit,
@@ -175,29 +176,27 @@ internal fun StudioHomeScreen(
                     )
                 }
 
-                IconButton(
+                LabeledActionButton(
+                    icon = "✨",
+                    label = "Yerel AI",
+                    onClick = onOpenAi
+                )
+
+                LabeledActionButton(
+                    icon = "★",
+                    label = "Pro",
                     onClick = onOpenPro
-                ) {
-                    Text(
-                        text = "★",
-                        fontSize = 30.sp,
-                        color = Color(0xFFFFD91A)
-                    )
-                }
+                )
 
                 Box {
-                    IconButton(
+                    LabeledActionButton(
+                        icon = "⋮",
+                        label = "Menü",
                         onClick = {
                             showTopMenu =
                                 !showTopMenu
                         }
-                    ) {
-                        Text(
-                            text = "⋮",
-                            fontSize = 30.sp,
-                            color = Color.White
-                        )
-                    }
+                    )
 
                     DropdownMenu(
                         expanded = showTopMenu,
@@ -376,6 +375,8 @@ internal fun StudioHomeScreen(
 
             StudioBottomNavigation(
                 onProjects = {},
+                onAi =
+                    onOpenAi,
                 onTemplates =
                     onOpenTemplates,
                 onSettings =
@@ -733,17 +734,11 @@ private fun ProjectHomeCard(
             }
 
             Box {
-                IconButton(
-                    onClick =
-                        onMenu
-                ) {
-                    Text(
-                        text = "⋮",
-                        fontSize = 28.sp,
-                        color =
-                            HomeTextSecondary
-                    )
-                }
+                LabeledActionButton(
+                    icon = "⋮",
+                    label = "Menü",
+                    onClick = onMenu
+                )
 
                 DropdownMenu(
                     expanded =
@@ -902,6 +897,7 @@ private fun EmptyProjectsCard() {
 @Composable
 private fun StudioBottomNavigation(
     onProjects: () -> Unit,
+    onAi: () -> Unit,
     onTemplates: () -> Unit,
     onSettings: () -> Unit
 ) {
@@ -942,6 +938,14 @@ private fun StudioBottomNavigation(
                 selected = true,
                 onClick =
                     onProjects
+            )
+
+            BottomNavigationItem(
+                icon = "✨",
+                label = "Yerel AI",
+                selected = false,
+                onClick =
+                    onAi
             )
 
             BottomNavigationItem(

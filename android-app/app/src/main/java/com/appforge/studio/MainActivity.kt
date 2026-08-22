@@ -626,6 +626,11 @@ private fun AppForgeApp() {
                                 }
                         },
 
+                        onOpenAi = {
+                            screen =
+                                AppScreen.AI_ASSISTANT
+                        },
+
                         onOpenTemplates = {
                             screen =
                                 AppScreen.TEMPLATES
@@ -1020,36 +1025,38 @@ private fun AppForgeApp() {
                             }
                         },
                         navigationIcon = {
-                            IconButton(
+                            LabeledActionButton(
+                                icon = "←",
+                                label = "Geri",
                                 onClick = {
                                     screen =
                                         AppScreen.HOME
                                 }
-                            ) {
-                                Text("←")
-                            }
+                            )
                         },
-                        actions = {
-                            IconButton(onClick = { screen = AppScreen.HOME }) {
-                                Text("⌂")
-                            }
-                            IconButton(onClick = { screen = AppScreen.HISTORY }) {
-                                Text("🧾")
-                            }
-                            IconButton(onClick = { screen = AppScreen.TEMPLATES }) {
-                                Text("🧩")
-                            }
-                            IconButton(onClick = { screen = AppScreen.AI_ASSISTANT }) {
-                                Text("✨")
-                            }
-                            IconButton(onClick = { screen = AppScreen.SETTINGS }) {
-                                Text("⚙️")
-                            }
-                            IconButton(onClick = { screen = AppScreen.ACCOUNT }) {
-                                Text("👤")
-                            }
-                        },
+                        actions = {},
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
+                    )
+
+                    BuilderShortcutBar(
+                        onHome = {
+                            screen = AppScreen.HOME
+                        },
+                        onHistory = {
+                            screen = AppScreen.HISTORY
+                        },
+                        onTemplates = {
+                            screen = AppScreen.TEMPLATES
+                        },
+                        onAi = {
+                            screen = AppScreen.AI_ASSISTANT
+                        },
+                        onSettings = {
+                            screen = AppScreen.SETTINGS
+                        },
+                        onAccount = {
+                            screen = AppScreen.ACCOUNT
+                        }
                     )
 
                     LinearProgressIndicator(
