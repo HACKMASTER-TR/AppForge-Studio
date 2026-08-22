@@ -8,7 +8,8 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
-  DeleteObjectCommand
+  DeleteObjectCommand,
+  HeadObjectCommand
 } from "@aws-sdk/client-s3";
 import {
   getSignedUrl
@@ -138,6 +139,164 @@ async function fileMetadata(file) {
       hash.digest("hex")
   };
 }
+
+
+export async function createDirectInputUpload(
+  userId,
+  expiresInSeconds = 900
+) {
+  if (
+    config.storageDriver !==
+    "s3"
+  ) {
+    throw new Error(
+      "Doğrudan yükleme yalnızca S3 storage ile kullanılabilir."
+    );
+  }
+
+  const safeUserId =
+    String(userId || "")
+      .replace(
+        /[^a-zA-Z0-9_-]/g,
+        ""
+      );
+
+  if (!safeUserId) {
+    throw new Error(
+      "Geçersiz kullanıcı kimliği."
+    );
+  }
+
+  const key =
+    `uploads/${safeUserId}/${crypto.randomUUID()}/project.zip`;
+
+  const uploadUrl =
+    await getSignedUrl(
+      s3,
+      new PutObjectCommand({
+        Bucket:
+          config.s3Bucket,
+        Key:
+          key
+      }),
+      {
+        expiresIn:
+          Math.max(
+            60,
+            Math.min(
+              Number(
+                expiresInSeconds
+              ) || 900,
+              3600
+            )
+          )
+      }
+    );
+
+  return {
+    driver:
+      "s3",
+    key,
+    uploadUrl,
+    expiresInSeconds:
+      Math.max(
+        60,
+        Math.min(
+          Number(
+            expiresInSeconds
+          ) || 900,
+          3600
+        )
+      )
+  };
+}
+
+export async function validateDirectInputUpload(
+  userId,
+  key,
+  maxBytes =
+    220 * 1024 * 1024
+) {
+  if (
+    config.storageDriver !==
+    "s3"
+  ) {
+    throw new Error(
+      "Doğrudan S3 yükleme aktif değil."
+    );
+  }
+
+  const safeUserId =
+    String(userId || "")
+      .replace(
+        /[^a-zA-Z0-9_-]/g,
+        ""
+      );
+
+  const prefix =
+    `uploads/${safeUserId}/`;
+
+  if (
+    !key ||
+    !String(key).startsWith(
+      prefix
+    )
+  ) {
+    const error =
+      new Error(
+        "Geçersiz upload object key."
+      );
+
+    error.status = 403;
+
+    throw error;
+  }
+
+  const head =
+    await s3.send(
+      new HeadObjectCommand({
+        Bucket:
+          config.s3Bucket,
+        Key:
+          String(key)
+      })
+    );
+
+  const sizeBytes =
+    Number(
+      head.ContentLength || 0
+    );
+
+  if (
+    sizeBytes <= 0
+  ) {
+    throw new Error(
+      "Yüklenen proje dosyası boş."
+    );
+  }
+
+  if (
+    sizeBytes > maxBytes
+  ) {
+    const error =
+      new Error(
+        "Proje ZIP dosyası 220 MB sınırını aşıyor."
+      );
+
+    error.status = 413;
+
+    throw error;
+  }
+
+  return {
+    driver:
+      "s3",
+    key:
+      String(key),
+    sizeBytes
+  };
+}
+
 
 export function inputKey(
   buildId,

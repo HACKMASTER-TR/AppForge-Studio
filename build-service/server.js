@@ -94,7 +94,9 @@ import {
 import {
   putInput,
   deliveryUrl,
-  localOutputFile
+  localOutputFile,
+  createDirectInputUpload,
+  validateDirectInputUpload
 } from "./src/storage.js";
 import {
   createPersistentDownloadTicket,
@@ -1682,6 +1684,85 @@ app.get(
           30
       )
     );
+  }
+);
+
+
+// -----------------------------------------------------------------------------
+// Direct S3 build input upload
+// -----------------------------------------------------------------------------
+app.post(
+  "/api/uploads/build-input",
+  authRequired,
+  requireScope("build:write"),
+  verifiedEmailRequired,
+  async (req, res) => {
+    try {
+      const requestedSize =
+        Number(
+          req.body?.sizeBytes ||
+          0
+        );
+
+      if (
+        !Number.isFinite(
+          requestedSize
+        ) ||
+        requestedSize <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "sizeBytes gerekli."
+          });
+      }
+
+      if (
+        requestedSize >
+        220 * 1024 * 1024
+      ) {
+        return res
+          .status(413)
+          .json({
+            error:
+              "Proje ZIP dosyası 220 MB sınırını aşıyor."
+          });
+      }
+
+      const upload =
+        await createDirectInputUpload(
+          req.user.id,
+          900
+        );
+
+      res
+        .status(201)
+        .json({
+          uploadUrl:
+            upload.uploadUrl,
+          objectKey:
+            upload.key,
+          expiresInSeconds:
+            upload.expiresInSeconds,
+          maxBytes:
+            220 * 1024 * 1024
+        });
+    } catch (error) {
+      res
+        .status(
+          Number(
+            error?.status
+          ) || 400
+        )
+        .json({
+          error:
+            String(
+              error?.message ||
+              error
+            )
+        });
+    }
   }
 );
 
