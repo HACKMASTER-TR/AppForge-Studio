@@ -33,3 +33,8 @@ build-service/work/
 build-service/output/
 build-service/cache/
 *.log
+
+# Android signing keys
+*.jks
+*.keystore
+*.p12
