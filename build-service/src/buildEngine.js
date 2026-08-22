@@ -46,9 +46,16 @@ async function appendLog(
   buildId,
   line
 ) {
+  const text =
+    String(line ?? "");
+
+  console.log(
+    `[BUILD-LOG ${buildId}] ${text}`
+  );
+
   return appendBuildLog(
     buildId,
-    line
+    text
   );
 }
 
