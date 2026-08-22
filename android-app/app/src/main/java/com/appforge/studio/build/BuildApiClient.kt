@@ -110,7 +110,6 @@ class BuildApiClient(
                 )
             }
             doOutput = true
-            setChunkedStreamingMode(64 * 1024)
             readTimeout = 600_000
             setRequestProperty(
                 "Content-Type",
