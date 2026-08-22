@@ -69,6 +69,7 @@ export async function computeCacheKey(
   configObject,
   {
     projectFile,
+    projectIdentity = null,
     keystoreFile,
     iconFile,
     firebaseConfigFile
@@ -76,6 +77,7 @@ export async function computeCacheKey(
 ) {
   const inputHashes = {
     project:
+      projectIdentity ||
       await fileSha256(projectFile),
     keystore:
       await fileSha256(keystoreFile),

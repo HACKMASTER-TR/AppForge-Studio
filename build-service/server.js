@@ -96,7 +96,8 @@ import {
   deliveryUrl,
   localOutputFile,
   createDirectInputUpload,
-  validateDirectInputUpload
+  validateDirectInputUpload,
+  deleteInput
 } from "./src/storage.js";
 import {
   createPersistentDownloadTicket,
@@ -1978,6 +1979,33 @@ app.post(
         req.files?.project?.[0]?.path ||
         null;
 
+      const directProjectKey =
+        String(
+          req.body?.projectObjectKey ||
+          ""
+        ).trim() ||
+        null;
+
+      const directProjectRef =
+        directProjectKey
+          ? await validateDirectInputUpload(
+              req.user.id,
+              directProjectKey
+            )
+          : null;
+
+      if (
+        incomingProject &&
+        directProjectRef
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "project ve projectObjectKey aynı anda gönderilemez."
+          });
+      }
+
       const incomingKeystore =
         req.files?.keystore?.[0]?.path ||
         null;
@@ -2022,7 +2050,8 @@ app.post(
           {
             hasProject:
               Boolean(
-                incomingProject
+                incomingProject ||
+                directProjectRef
               ),
             hasKeystore:
               Boolean(
@@ -2045,6 +2074,10 @@ app.post(
           {
             projectFile:
               incomingProject,
+            projectIdentity:
+              directProjectRef
+                ? `direct-s3:${directProjectRef.key}:${directProjectRef.sizeBytes}`
+                : null,
             keystoreFile:
               incomingKeystore,
             iconFile:
@@ -2085,6 +2118,16 @@ app.post(
             await fs.rm(
               f,
               { force: true }
+            );
+          } catch {}
+        }
+
+        if (
+          directProjectRef
+        ) {
+          try {
+            await deleteInput(
+              directProjectRef
             );
           } catch {}
         }
@@ -2183,6 +2226,16 @@ app.post(
           buildId
         );
 
+        if (
+          directProjectRef
+        ) {
+          try {
+            await deleteInput(
+              directProjectRef
+            );
+          } catch {}
+        }
+
         return res
           .status(201)
           .json({
@@ -2193,13 +2246,16 @@ app.post(
       }
 
       const projectRef =
-        incomingProject
-          ? await putInput(
-              buildId,
-              "project.zip",
-              incomingProject
-            )
-          : null;
+        directProjectRef ||
+        (
+          incomingProject
+            ? await putInput(
+                buildId,
+                "project.zip",
+                incomingProject
+              )
+            : null
+        );
 
       const keystoreRef =
         incomingKeystore
