@@ -70,7 +70,7 @@ data class ProjectDraft(
     var firebaseConfigUri: String? = null,
     var firebaseConfigName: String = "",
 
-    var buildServiceUrl: String = "http://10.0.2.2:8080",
+    var buildServiceUrl: String = "",
     var buildApiKey: String = ""
 )
 
