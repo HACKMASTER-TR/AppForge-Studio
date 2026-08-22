@@ -635,8 +635,7 @@ include(":app")
 
   await fs.writeFile(
     path.join(projectDir, "gradle.properties"),
-`org.gradle.jvmargs=-Xmx512m -XX:MaxMetaspaceSize=192m -Dfile.encoding=UTF-8
-org.gradle.workers.max=1
+`org.gradle.workers.max=1
 org.gradle.parallel=false
 org.gradle.vfs.watch=false
 android.useAndroidX=true
@@ -3280,7 +3279,15 @@ async function runGradle(
             shell:
               process.platform ===
               "win32",
-            env
+            env: {
+              ...env,
+              GRADLE_OPTS:
+                "-Xmx384m " +
+                "-XX:MaxMetaspaceSize=128m " +
+                "-XX:+UseSerialGC " +
+                "-Dfile.encoding=UTF-8 " +
+                "-Dorg.gradle.daemon=false"
+            }
           }
         );
 
