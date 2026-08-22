@@ -17,6 +17,8 @@ import android.webkit.WebViewClient
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -6188,6 +6190,7 @@ private fun BuildStep(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var downloadMessage by remember { mutableStateOf("") }
+    var apkDownloadId by remember { mutableStateOf<Long?>(null) }
 
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Section("9. Derleme", "Güvenli Build Service + Play Store ön-kontrol.") }
@@ -6243,10 +6246,14 @@ private fun BuildStep(
                                         Context.DOWNLOAD_SERVICE
                                     ) as DownloadManager
 
-                                manager.enqueue(request)
+                                val queuedId =
+                                    manager.enqueue(request)
+
+                                apkDownloadId =
+                                    queuedId
 
                                 downloadMessage =
-                                    "APK indiriliyor • İndirilenler klasörüne kaydedilecek."
+                                    "APK indiriliyor • İndirme tamamlanınca APK'YI KUR butonuna bas."
                             } catch (t: Throwable) {
                                 downloadMessage = "İndirme hatası: ${t.message}"
                             }
@@ -6254,6 +6261,28 @@ private fun BuildStep(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("APK'YI İNDİR") }
+            }
+        }
+
+        if (apkDownloadId != null) {
+            item {
+                Button(
+                    onClick = {
+                        val id =
+                            apkDownloadId
+                                ?: return@Button
+
+                        downloadMessage =
+                            installDownloadedApk(
+                                context = context,
+                                downloadId = id
+                            )
+                    },
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text("APK'YI KUR")
+                }
             }
         }
 
@@ -6315,6 +6344,163 @@ private fun BuildStep(
         items(logs.takeLast(100)) {
             Text(it, color = TextSecondary, fontSize = 12.sp)
         }
+    }
+}
+
+
+private fun installDownloadedApk(
+    context: Context,
+    downloadId: Long
+): String {
+
+    // Android 8 ve üzeri için özel APK kurulum izni.
+    if (
+        Build.VERSION.SDK_INT >=
+        Build.VERSION_CODES.O &&
+        !context.packageManager
+            .canRequestPackageInstalls()
+    ) {
+        return runCatching {
+
+            val permissionIntent =
+                Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse(
+                        "package:${context.packageName}"
+                    )
+                ).apply {
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK
+                    )
+                }
+
+            context.startActivity(
+                permissionIntent
+            )
+
+            "Bu kaynaktan izin ver seçeneğini aç. " +
+                "Sonra AppForge Studio'ya dönüp " +
+                "APK'YI KUR'a tekrar bas."
+
+        }.getOrElse {
+            "APK yükleme izni ekranı açılamadı: ${it.message}"
+        }
+    }
+
+
+    val manager =
+        context.getSystemService(
+            Context.DOWNLOAD_SERVICE
+        ) as DownloadManager
+
+
+    val query =
+        DownloadManager.Query()
+            .setFilterById(
+                downloadId
+            )
+
+
+    val status =
+        runCatching {
+
+            manager.query(query)
+                .use { cursor ->
+
+                    if (
+                        !cursor.moveToFirst()
+                    ) {
+                        return@runCatching
+                            DownloadManager.STATUS_FAILED
+                    }
+
+                    val statusIndex =
+                        cursor.getColumnIndex(
+                            DownloadManager.COLUMN_STATUS
+                        )
+
+                    if (
+                        statusIndex < 0
+                    ) {
+                        return@runCatching
+                            DownloadManager.STATUS_FAILED
+                    }
+
+                    cursor.getInt(
+                        statusIndex
+                    )
+                }
+
+        }.getOrElse {
+
+            return "İndirme durumu okunamadı: ${it.message}"
+        }
+
+
+    when (status) {
+
+        DownloadManager.STATUS_PENDING,
+        DownloadManager.STATUS_RUNNING,
+        DownloadManager.STATUS_PAUSED -> {
+
+            return "APK henüz indiriliyor."
+        }
+
+        DownloadManager.STATUS_FAILED -> {
+
+            return "APK indirmesi başarısız."
+        }
+
+        DownloadManager.STATUS_SUCCESSFUL -> {
+            // Kuruluma devam.
+        }
+
+        else -> {
+
+            return "APK henüz kuruluma hazır değil."
+        }
+    }
+
+
+    val apkUri =
+        manager.getUriForDownloadedFile(
+            downloadId
+        )
+            ?: return
+                "İndirilen APK bulunamadı."
+
+
+    val installIntent =
+        Intent(
+            Intent.ACTION_VIEW
+        ).apply {
+
+            setDataAndType(
+                apkUri,
+                "application/vnd.android.package-archive"
+            )
+
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK
+            )
+        }
+
+
+    return runCatching {
+
+        context.startActivity(
+            installIntent
+        )
+
+        "Android APK yükleyici açıldı."
+
+    }.getOrElse {
+
+        "APK yükleyici açılamadı: ${it.message}"
     }
 }
 
