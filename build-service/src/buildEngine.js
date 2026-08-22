@@ -635,9 +635,13 @@ include(":app")
 
   await fs.writeFile(
     path.join(projectDir, "gradle.properties"),
-`org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
+`org.gradle.jvmargs=-Xmx768m -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8
+org.gradle.workers.max=1
+org.gradle.parallel=false
+org.gradle.vfs.watch=false
 android.useAndroidX=true
 kotlin.code.style=official
+kotlin.compiler.execution.strategy=in-process
 `
   );
 
