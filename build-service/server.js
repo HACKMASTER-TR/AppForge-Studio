@@ -1526,7 +1526,7 @@ app.post(
 app.post(
   "/api/projects/:id/builds",
   authRequired,
-  requireScope,
+  requireScope("build:write"),
   verifiedEmailRequired,
   buildRateLimit,
   async (req, res) => {
@@ -1933,7 +1933,7 @@ app.get(
 app.post(
   "/api/builds",
   authRequired,
-  requireScope,
+  requireScope("build:write"),
   verifiedEmailRequired,
   buildRateLimit,
 
