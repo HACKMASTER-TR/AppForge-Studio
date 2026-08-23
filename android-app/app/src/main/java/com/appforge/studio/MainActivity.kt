@@ -1233,8 +1233,9 @@ private fun AppForgeApp() {
                         },
 
                         onOpenHistory = {
-                            screen =
+                            openWorkspaceScreen(
                                 AppScreen.HISTORY
+                            )
                         },
 
                         onOpenPro = {
@@ -1399,7 +1400,9 @@ private fun AppForgeApp() {
                         step = 1
                         screen = AppScreen.BUILDER
                     },
-                    onBack = { screen = AppScreen.HOME }
+                    onBack = {
+                        returnFromWorkspace()
+                    }
                 )
 
 
@@ -1703,7 +1706,9 @@ private fun AppForgeApp() {
                             )
                         },
                         onAccount = {
-                            screen = AppScreen.ACCOUNT
+                            openWorkspaceScreen(
+                                AppScreen.ACCOUNT
+                            )
                         }
                     )
 
