@@ -64,6 +64,37 @@ RUN npm install --omit=dev
 
 COPY . .
 
+# AppForge FAST BUILD runtime.
+# Bu kod Worker image oluşturulurken yalnızca bir kez DEX'e çevrilir.
+# Kullanıcı APK build'lerinde D8/Gradle tekrar çalıştırılmaz.
+RUN rm -rf /tmp/appforge-fast-classes \
+    && mkdir -p /tmp/appforge-fast-classes /opt/appforge-fast-runtime \
+    && javac \
+       -encoding UTF-8 \
+       -source 17 \
+       -target 17 \
+       -classpath "$ANDROID_HOME/platforms/android-37.0/android.jar" \
+       -d /tmp/appforge-fast-classes \
+       fast-runtime/FastActivity.java \
+    && "$ANDROID_HOME/build-tools/36.0.0/d8" \
+       --release \
+       --min-api 26 \
+       --output /opt/appforge-fast-runtime \
+       $(find /tmp/appforge-fast-classes -type f -name '*.class') \
+    && test -s /opt/appforge-fast-runtime/classes.dex \
+    && keytool \
+       -genkeypair \
+       -keystore /opt/appforge-fast-runtime/debug.keystore \
+       -storepass android \
+       -keypass android \
+       -alias androiddebugkey \
+       -keyalg RSA \
+       -keysize 2048 \
+       -validity 10000 \
+       -dname "CN=Android Debug,O=Android,C=US" \
+       -noprompt \
+    && rm -rf /tmp/appforge-fast-classes
+
 RUN node scripts/toolchain-doctor.js --json --strict
 
 HEALTHCHECK --interval=30s --timeout=15s --start-period=20s --retries=3 \
