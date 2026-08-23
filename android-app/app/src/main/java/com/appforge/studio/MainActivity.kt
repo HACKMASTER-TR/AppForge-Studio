@@ -1363,15 +1363,16 @@ private fun AppForgeApp() {
                             )
                         },
                         onBuild = {
-                            val quick =
-                                createQuickDraft(
-                                    draft
-                                )
-
-                            draft = quick
-
+                            /*
+                             * Quick varsayılanları ekrana girerken
+                             * zaten uygulanıyor.
+                             *
+                             * Build sırasında tekrar createQuickDraft()
+                             * çağırmak kamera/konum gibi sonradan
+                             * değiştirilmiş ayarları sıfırlıyordu.
+                             */
                             startBuildWithDraft(
-                                quick
+                                draft
                             )
                         }
                     )
