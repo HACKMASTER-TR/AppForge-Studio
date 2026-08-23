@@ -187,14 +187,6 @@ export function getFastBuildDecision(
   }
 
   if (
-    c.deepLink?.enabled
-  ) {
-    reasons.push(
-      "deep link"
-    );
-  }
-
-  if (
     c.nativeBridge?.enabled
   ) {
     reasons.push(
@@ -349,6 +341,74 @@ export async function buildFastApk({
       c.orientation
     );
 
+  const deepLinkEnabled =
+    c.deepLink?.enabled === true;
+
+  const deepLinkScheme =
+    String(
+      c.deepLink?.scheme || ""
+    ).trim();
+
+  const deepLinkHost =
+    String(
+      c.deepLink?.host || ""
+    ).trim();
+
+  let deepLinkPathPrefix =
+    String(
+      c.deepLink?.pathPrefix || "/"
+    ).trim();
+
+  if (deepLinkEnabled) {
+    if (
+      !/^[A-Za-z][A-Za-z0-9+.-]*$/.test(
+        deepLinkScheme
+      )
+    ) {
+      throw new Error(
+        "FAST BUILD: geçersiz Deep Link scheme."
+      );
+    }
+
+    if (
+      !/^[A-Za-z0-9.-]+$/.test(
+        deepLinkHost
+      )
+    ) {
+      throw new Error(
+        "FAST BUILD: geçersiz Deep Link host."
+      );
+    }
+
+    if (
+      !deepLinkPathPrefix.startsWith("/")
+    ) {
+      deepLinkPathPrefix =
+        "/" + deepLinkPathPrefix;
+    }
+  }
+
+  const deepLinkIntentFilter =
+    deepLinkEnabled
+      ? `
+            <intent-filter>
+                <action
+                    android:name="android.intent.action.VIEW" />
+
+                <category
+                    android:name="android.intent.category.DEFAULT" />
+
+                <category
+                    android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="${xml(deepLinkScheme)}"
+                    android:host="${xml(deepLinkHost)}"
+                    android:pathPrefix="${xml(deepLinkPathPrefix)}" />
+            </intent-filter>
+`
+      : "";
+
   const hasCustomIcon =
     Boolean(
       iconFile
@@ -417,6 +477,7 @@ ${notificationPermission}${cameraPermission}${locationPermission}
         <activity
             android:name="com.appforge.runtime.FastActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:screenOrientation="${orientation}">
 
             <intent-filter>
@@ -426,7 +487,7 @@ ${notificationPermission}${cameraPermission}${locationPermission}
                 <category
                     android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
+${deepLinkIntentFilter}
         </activity>
 
     </application>
@@ -570,6 +631,14 @@ ${notificationPermission}${cameraPermission}${locationPermission}
 
     location:
       c.features?.location === true,
+
+    deepLinkEnabled,
+
+    deepLinkScheme,
+
+    deepLinkHost,
+
+    deepLinkPathPrefix,
 
     fullscreen:
       c.features?.fullscreen === true,

@@ -57,6 +57,12 @@ public final class FastActivity extends Activity {
     private String
         pendingGeolocationOrigin;
 
+    private String
+        pendingDeepLink;
+
+    private boolean
+        pageReady = false;
+
     private JSONObject config;
     private View splashView;
     private long splashStartedAt;
@@ -66,6 +72,10 @@ public final class FastActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         config = loadConfig();
+
+        captureDeepLink(
+            getIntent()
+        );
 
         configureWindow();
 
@@ -320,6 +330,148 @@ public final class FastActivity extends Activity {
         );
     }
 
+    private boolean isConfiguredDeepLink(
+        Uri uri
+    ) {
+        if (
+            uri == null ||
+            !config.optBoolean(
+                "deepLinkEnabled",
+                false
+            )
+        ) {
+            return false;
+        }
+
+        String expectedScheme =
+            config.optString(
+                "deepLinkScheme",
+                ""
+            );
+
+        String expectedHost =
+            config.optString(
+                "deepLinkHost",
+                ""
+            );
+
+        String expectedPath =
+            config.optString(
+                "deepLinkPathPrefix",
+                "/"
+            );
+
+        String actualScheme =
+            uri.getScheme();
+
+        String actualHost =
+            uri.getHost();
+
+        String actualPath =
+            uri.getPath();
+
+        if (
+            actualScheme == null ||
+            !actualScheme.equalsIgnoreCase(
+                expectedScheme
+            )
+        ) {
+            return false;
+        }
+
+        if (
+            actualHost == null ||
+            !actualHost.equalsIgnoreCase(
+                expectedHost
+            )
+        ) {
+            return false;
+        }
+
+        if (
+            actualPath == null
+        ) {
+            actualPath =
+                "/";
+        }
+
+        return actualPath.startsWith(
+            expectedPath
+        );
+    }
+
+    private void captureDeepLink(
+        Intent intent
+    ) {
+        if (
+            intent == null
+        ) {
+            return;
+        }
+
+        Uri uri =
+            intent.getData();
+
+        if (
+            isConfiguredDeepLink(
+                uri
+            )
+        ) {
+            pendingDeepLink =
+                uri.toString();
+        }
+    }
+
+    private void deliverPendingDeepLink(
+        WebView view
+    ) {
+        if (
+            !pageReady ||
+            view == null ||
+            pendingDeepLink == null
+        ) {
+            return;
+        }
+
+        String link =
+            pendingDeepLink;
+
+        pendingDeepLink =
+            null;
+
+        String encoded =
+            JSONObject.quote(
+                link
+            );
+
+        String javascript =
+            "(function(){" +
+            "var url=" + encoded + ";" +
+            "window.AppForgeDeepLink=url;" +
+
+            "try{" +
+            "window.dispatchEvent(" +
+            "new CustomEvent(" +
+            "'appforge-deeplink'," +
+            "{detail:{url:url}}" +
+            ")" +
+            ");" +
+            "}catch(e){}" +
+
+            "try{" +
+            "if(typeof window.onAppForgeDeepLink==='function'){" +
+            "window.onAppForgeDeepLink(url);" +
+            "}" +
+            "}catch(e){}" +
+
+            "})();";
+
+        view.evaluateJavascript(
+            javascript,
+            null
+        );
+    }
+
     private JSONObject loadConfig() {
         try {
             InputStream input =
@@ -464,6 +616,13 @@ public final class FastActivity extends Activity {
                     );
 
                     installCaptureDetector(
+                        view
+                    );
+
+                    pageReady =
+                        true;
+
+                    deliverPendingDeepLink(
                         view
                     );
                 }
@@ -1790,6 +1949,27 @@ public final class FastActivity extends Activity {
 
         cameraCaptureUri =
             null;
+    }
+
+    @Override
+    protected void onNewIntent(
+        Intent intent
+    ) {
+        super.onNewIntent(
+            intent
+        );
+
+        setIntent(
+            intent
+        );
+
+        captureDeepLink(
+            intent
+        );
+
+        deliverPendingDeepLink(
+            webView
+        );
     }
 
     @Override

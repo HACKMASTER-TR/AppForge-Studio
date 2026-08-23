@@ -2835,6 +2835,85 @@ private fun QuickCreateScreen(
             }
         }
 
+        Card(
+            modifier =
+                Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                verticalAlignment =
+                    Alignment.CenterVertically,
+                horizontalArrangement =
+                    Arrangement.SpaceBetween
+            ) {
+                Column(
+                    modifier =
+                        Modifier.weight(1f)
+                ) {
+                    Text(
+                        "🔗 Deep Link",
+                        fontWeight =
+                            FontWeight.SemiBold
+                    )
+
+                    Spacer(
+                        Modifier.height(4.dp)
+                    )
+
+                    Text(
+                        if (
+                            draft.deepLinkEnabled
+                        ) {
+                            "appforge://${draft.packageName.lowercase()}/"
+                        } else {
+                            "Bağlantıdan uygulamayı doğrudan aç."
+                        },
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+                }
+
+                Spacer(
+                    Modifier.width(12.dp)
+                )
+
+                Switch(
+                    checked =
+                        draft.deepLinkEnabled,
+                    onCheckedChange = {
+                        enabled ->
+
+                        onDraftChange(
+                            draft.copy(
+                                deepLinkEnabled =
+                                    enabled,
+                                deepLinkScheme =
+                                    if (enabled) {
+                                        "appforge"
+                                    } else {
+                                        draft.deepLinkScheme
+                                    },
+                                deepLinkHost =
+                                    if (enabled) {
+                                        draft.packageName
+                                            .lowercase()
+                                    } else {
+                                        draft.deepLinkHost
+                                    },
+                                deepLinkPathPrefix =
+                                    "/"
+                            )
+                        )
+                    }
+                )
+            }
+        }
+
         Button(
             onClick =
                 onBuild,
