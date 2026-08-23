@@ -187,14 +187,6 @@ export function getFastBuildDecision(
   }
 
   if (
-    c.features?.downloads
-  ) {
-    reasons.push(
-      "native indirme yöneticisi"
-    );
-  }
-
-  if (
     c.features?.camera
   ) {
     reasons.push(
@@ -559,6 +551,9 @@ export async function buildFastApk({
 
     fileUpload:
       c.features?.fileUpload !== false,
+
+    downloads:
+      c.features?.downloads === true,
 
     fullscreen:
       c.features?.fullscreen === true,

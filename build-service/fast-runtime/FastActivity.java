@@ -1,22 +1,29 @@
 package com.appforge.runtime;
 
 import android.app.Activity;
+import android.app.DownloadManager;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
+import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.URLUtil;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONObject;
 
@@ -277,6 +284,189 @@ public final class FastActivity extends Activity {
                 }
             }
         );
+        if (
+            config.optBoolean(
+                "downloads",
+                false
+            )
+        ) {
+            webView.setDownloadListener(
+                (
+                    url,
+                    userAgent,
+                    contentDisposition,
+                    mimeType,
+                    contentLength
+                ) ->
+                    enqueueDownload(
+                        url,
+                        userAgent,
+                        contentDisposition,
+                        mimeType
+                    )
+            );
+        }
+
+    }
+
+    private void enqueueDownload(
+        String url,
+        String userAgent,
+        String contentDisposition,
+        String mimeType
+    ) {
+        if (
+            url == null ||
+            !(
+                url.startsWith("https://") ||
+                url.startsWith("http://")
+            )
+        ) {
+            Toast.makeText(
+                this,
+                "Bu indirme bağlantısı desteklenmiyor.",
+                Toast.LENGTH_SHORT
+            ).show();
+
+            return;
+        }
+
+        try {
+            String fileName =
+                URLUtil.guessFileName(
+                    url,
+                    contentDisposition,
+                    mimeType
+                );
+
+            DownloadManager.Request request =
+                new DownloadManager.Request(
+                    Uri.parse(url)
+                );
+
+            request.setTitle(
+                fileName
+            );
+
+            request.setDescription(
+                "Dosya indiriliyor..."
+            );
+
+            request.setAllowedOverMetered(
+                true
+            );
+
+            request.setAllowedOverRoaming(
+                true
+            );
+
+            request.setNotificationVisibility(
+                DownloadManager.Request
+                    .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+            );
+
+            if (
+                mimeType != null &&
+                !mimeType.trim().isEmpty()
+            ) {
+                request.setMimeType(
+                    mimeType
+                );
+            }
+
+            if (
+                userAgent != null &&
+                !userAgent.trim().isEmpty()
+            ) {
+                request.addRequestHeader(
+                    "User-Agent",
+                    userAgent
+                );
+            }
+
+            String cookies =
+                CookieManager
+                    .getInstance()
+                    .getCookie(url);
+
+            if (
+                cookies != null &&
+                !cookies.trim().isEmpty()
+            ) {
+                request.addRequestHeader(
+                    "Cookie",
+                    cookies
+                );
+            }
+
+            String referer =
+                webView != null
+                    ? webView.getUrl()
+                    : null;
+
+            if (
+                referer != null &&
+                (
+                    referer.startsWith("https://") ||
+                    referer.startsWith("http://")
+                )
+            ) {
+                request.addRequestHeader(
+                    "Referer",
+                    referer
+                );
+            }
+
+            if (
+                Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.Q
+            ) {
+                request.setDestinationInExternalPublicDir(
+                    Environment.DIRECTORY_DOWNLOADS,
+                    fileName
+                );
+            } else {
+                /*
+                 * Android 8/9:
+                 * Ek depolama izni istemeden uygulamanın
+                 * harici Downloads klasörüne kaydet.
+                 */
+                request.setDestinationInExternalFilesDir(
+                    this,
+                    Environment.DIRECTORY_DOWNLOADS,
+                    fileName
+                );
+            }
+
+            DownloadManager manager =
+                (DownloadManager)
+                    getSystemService(
+                        Context.DOWNLOAD_SERVICE
+                    );
+
+            if (manager == null) {
+                throw new IllegalStateException(
+                    "DownloadManager kullanılamıyor."
+                );
+            }
+
+            manager.enqueue(
+                request
+            );
+
+            Toast.makeText(
+                this,
+                "İndirme başlatıldı: " + fileName,
+                Toast.LENGTH_SHORT
+            ).show();
+
+        } catch (Throwable error) {
+            Toast.makeText(
+                this,
+                "İndirme başlatılamadı.",
+                Toast.LENGTH_SHORT
+            ).show();
+        }
     }
 
     private void loadStartPage() {

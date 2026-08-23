@@ -2050,7 +2050,7 @@ private fun createQuickDraft(
         fileUpload =
             true,
         downloads =
-            false,
+            true,
         fullscreen =
             false,
         notifications =
