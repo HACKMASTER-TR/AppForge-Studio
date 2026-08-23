@@ -8087,6 +8087,36 @@ private fun AppearanceStep(
                 "Otomatik"
         }
 
+    val darkPresetSelected =
+        d.primaryColor.equals(
+            "#6B7CFF",
+            true
+        ) &&
+        d.backgroundColor.equals(
+            "#07101F",
+            true
+        )
+
+    val lightPresetSelected =
+        d.primaryColor.equals(
+            "#3F51B5",
+            true
+        ) &&
+        d.backgroundColor.equals(
+            "#FFFFFF",
+            true
+        )
+
+    val oledPresetSelected =
+        d.primaryColor.equals(
+            "#8CC9F6",
+            true
+        ) &&
+        d.backgroundColor.equals(
+            "#000000",
+            true
+        )
+
     LazyColumn(
         contentPadding =
             PaddingValues(
@@ -8141,7 +8171,7 @@ private fun AppearanceStep(
                         ) {
                             "Henüz özel ikon seçilmedi."
                         } else {
-                            "✓ ${d.iconName}"
+                            "✓ Özel ikon seçildi"
                         },
                         color =
                             TextSecondary,
@@ -8272,7 +8302,9 @@ private fun AppearanceStep(
                 modifier =
                     Modifier.fillMaxWidth()
             ) {
-                Button(
+                FilterChip(
+                    selected =
+                        darkPresetSelected,
                     onClick = {
                         update(
                             d.copy(
@@ -8287,17 +8319,16 @@ private fun AppearanceStep(
                             )
                         )
                     },
+                    label = {
+                        Text("Koyu")
+                    },
                     modifier =
-                        Modifier.weight(
-                            1f
-                        )
-                ) {
-                    Text(
-                        "Koyu"
-                    )
-                }
+                        Modifier.weight(1f)
+                )
 
-                OutlinedButton(
+                FilterChip(
+                    selected =
+                        lightPresetSelected,
                     onClick = {
                         update(
                             d.copy(
@@ -8312,17 +8343,16 @@ private fun AppearanceStep(
                             )
                         )
                     },
+                    label = {
+                        Text("Açık")
+                    },
                     modifier =
-                        Modifier.weight(
-                            1f
-                        )
-                ) {
-                    Text(
-                        "Açık"
-                    )
-                }
+                        Modifier.weight(1f)
+                )
 
-                OutlinedButton(
+                FilterChip(
+                    selected =
+                        oledPresetSelected,
                     onClick = {
                         update(
                             d.copy(
@@ -8337,15 +8367,12 @@ private fun AppearanceStep(
                             )
                         )
                     },
+                    label = {
+                        Text("OLED")
+                    },
                     modifier =
-                        Modifier.weight(
-                            1f
-                        )
-                ) {
-                    Text(
-                        "OLED"
-                    )
-                }
+                        Modifier.weight(1f)
+                )
             }
         }
 
@@ -8570,34 +8597,451 @@ private fun AppearanceStep(
 }
 
 @Composable
-private fun NativeBridgeStep(d: ProjectDraft, update: (ProjectDraft) -> Unit) {
-    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { Section("4. Native Bridge", "Web sayfasından Android özellikleri.") }
-        item { Toggle("JavaScript Bridge", d.javascriptBridge) { update(d.copy(javascriptBridge = it)) } }
+private fun NativeBridgeStep(
+    d: ProjectDraft,
+    update: (ProjectDraft) -> Unit
+) {
+    val featureCount =
+        if (
+            d.javascriptBridge
+        ) {
+            listOf(
+                d.shareBridge,
+                d.clipboardBridge,
+                d.vibrationBridge,
+                d.qrScanner
+            ).count {
+                it
+            }
+        } else {
+            0
+        }
 
-        if (d.javascriptBridge) {
-            if (d.sourceMode == SourceMode.URL) {
+    val bridgeModeText =
+        when {
+            !d.javascriptBridge ->
+                "Kapalı"
+
+            d.sourceMode ==
+                SourceMode.LOCAL ->
+                "Yerel içerik"
+
+            d.remoteBridgeAllowed ->
+                "HTTPS uzak origin"
+
+            else ->
+                "Uzak içerikte kapalı"
+        }
+
+    LazyColumn(
+        contentPadding =
+            PaddingValues(
+                20.dp
+            ),
+        verticalArrangement =
+            Arrangement.spacedBy(
+                14.dp
+            )
+    ) {
+        item {
+            Section(
+                "4. Native Bridge",
+                "Web içeriğine güvenli Android özellikleri ekle."
+            )
+        }
+
+        item {
+            Card(
+                colors =
+                    CardDefaults
+                        .cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            10.dp
+                        )
+                ) {
+                    Text(
+                        "Native Bridge durumu",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Text(
+                        if (
+                            d.javascriptBridge
+                        ) {
+                            "✓ JavaScript Bridge açık"
+                        } else {
+                            "○ JavaScript Bridge kapalı"
+                        },
+                        fontSize =
+                            13.sp
+                    )
+
+                    Text(
+                        "Mod: $bridgeModeText",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "$featureCount / 4 Android özelliği açık",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+                }
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "JavaScript Bridge",
+                description =
+                    "Web sayfasının AppForge Android API'lerine erişmesini sağlayan ana bağlantıdır.",
+                checked =
+                    d.javascriptBridge,
+                recommended =
+                    true
+            ) {
+                update(
+                    d.copy(
+                        javascriptBridge =
+                            it
+                    )
+                )
+            }
+        }
+
+        if (
+            d.javascriptBridge
+        ) {
+            if (
+                d.sourceMode ==
+                SourceMode.URL
+            ) {
                 item {
-                    Toggle(
-                        "Uzak URL'de Native Bridge'e izin ver",
-                        d.remoteBridgeAllowed
+                    FeatureToggleCard(
+                        title =
+                            "Uzak URL'de Native Bridge",
+                        description =
+                            "Bridge yalnız seçtiğin HTTPS web kaynağında kullanılabilir.",
+                        checked =
+                            d.remoteBridgeAllowed
                     ) {
-                        update(d.copy(remoteBridgeAllowed = it))
+                        update(
+                            d.copy(
+                                remoteBridgeAllowed =
+                                    it
+                            )
+                        )
                     }
                 }
-                if (d.remoteBridgeAllowed) {
+
+                if (
+                    d.remoteBridgeAllowed
+                ) {
                     item {
-                        NoteCard(
-                            "Uzak Native Bridge yalnız seçilen HTTPS origininde çalışır. Yine de yalnız tamamen güvendiğin site için aç."
+                        Card(
+                            colors =
+                                CardDefaults
+                                    .cardColors(
+                                        containerColor =
+                                            Card2
+                                    ),
+                            shape =
+                                RoundedCornerShape(
+                                    18.dp
+                                ),
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier =
+                                    Modifier.padding(
+                                        16.dp
+                                    ),
+                                verticalArrangement =
+                                    Arrangement.spacedBy(
+                                        7.dp
+                                    )
+                            ) {
+                                Text(
+                                    "⚠ Güvenlik",
+                                    fontWeight =
+                                        FontWeight.Bold
+                                )
+
+                                Text(
+                                    "Uzak Native Bridge yalnız tamamen güvendiğin HTTPS sitesi için açık olmalı.",
+                                    color =
+                                        TextSecondary,
+                                    fontSize =
+                                        12.sp,
+                                    lineHeight =
+                                        17.sp
+                                )
+
+                                if (
+                                    d.webUrl.isNotBlank()
+                                ) {
+                                    Text(
+                                        "Kaynak: ${d.webUrl}",
+                                        color =
+                                            Accent,
+                                        fontSize =
+                                            11.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Row(
+                    horizontalArrangement =
+                        Arrangement.spacedBy(
+                            8.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Button(
+                        onClick = {
+                            update(
+                                d.copy(
+                                    shareBridge =
+                                        true,
+                                    clipboardBridge =
+                                        true,
+                                    vibrationBridge =
+                                        true,
+                                    qrScanner =
+                                        true
+                                )
+                            )
+                        },
+                        modifier =
+                            Modifier.weight(
+                                1f
+                            )
+                    ) {
+                        Text(
+                            "Tümünü aç"
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            update(
+                                d.copy(
+                                    shareBridge =
+                                        false,
+                                    clipboardBridge =
+                                        false,
+                                    vibrationBridge =
+                                        false,
+                                    qrScanner =
+                                        false
+                                )
+                            )
+                        },
+                        modifier =
+                            Modifier.weight(
+                                1f
+                            )
+                    ) {
+                        Text(
+                            "Tümünü kapat"
                         )
                     }
                 }
             }
 
-            item { Toggle("Paylaşım", d.shareBridge) { update(d.copy(shareBridge = it)) } }
-            item { Toggle("Panoya kopyalama", d.clipboardBridge) { update(d.copy(clipboardBridge = it)) } }
-            item { Toggle("Titreşim / Haptic", d.vibrationBridge) { update(d.copy(vibrationBridge = it)) } }
-            item { Toggle("QR / Barkod Tarayıcı", d.qrScanner) { update(d.copy(qrScanner = it)) } }
+            item {
+                Text(
+                    "Android API'leri",
+                    fontWeight =
+                        FontWeight.Bold,
+                    fontSize =
+                        14.sp
+                )
+            }
+
+            item {
+                FeatureToggleCard(
+                    title =
+                        "Paylaşım",
+                    description =
+                        "Web içeriğinden Android paylaşım ekranını açmayı sağlar.",
+                    checked =
+                        d.shareBridge,
+                    recommended =
+                        true
+                ) {
+                    update(
+                        d.copy(
+                            shareBridge =
+                                it
+                        )
+                    )
+                }
+            }
+
+            item {
+                FeatureToggleCard(
+                    title =
+                        "Panoya kopyalama",
+                    description =
+                        "Web uygulamasının metni Android panosuna kopyalayabilmesini sağlar.",
+                    checked =
+                        d.clipboardBridge,
+                    recommended =
+                        true
+                ) {
+                    update(
+                        d.copy(
+                            clipboardBridge =
+                                it
+                        )
+                    )
+                }
+            }
+
+            item {
+                FeatureToggleCard(
+                    title =
+                        "Titreşim / Haptic",
+                    description =
+                        "Web uygulamasından kısa titreşim ve haptic geri bildirim çalıştırır.",
+                    checked =
+                        d.vibrationBridge,
+                    permission =
+                        "Titreşim"
+                ) {
+                    update(
+                        d.copy(
+                            vibrationBridge =
+                                it
+                        )
+                    )
+                }
+            }
+
+            item {
+                Card(
+                    colors =
+                        CardDefaults
+                            .cardColors(
+                                containerColor =
+                                    Card2
+                            ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    16.dp
+                                ),
+                        verticalAlignment =
+                            Alignment.CenterVertically,
+                        horizontalArrangement =
+                            Arrangement.spacedBy(
+                                14.dp
+                            )
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier.weight(
+                                    1f
+                                ),
+                            verticalArrangement =
+                                Arrangement.spacedBy(
+                                    5.dp
+                                )
+                        ) {
+                            Text(
+                                "QR / Barkod Tarayıcı",
+                                fontWeight =
+                                    FontWeight.Medium
+                            )
+
+                            Text(
+                                "QR kod ve barkod taramayı Android üzerinden açar.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp,
+                                lineHeight =
+                                    17.sp
+                            )
+
+                            Text(
+                                "⚡ Normal FAST BUILD destekli",
+                                color =
+                                    Accent,
+                                fontSize =
+                                    11.sp,
+                                fontWeight =
+                                    FontWeight.Medium
+                            )
+                        }
+
+                        Switch(
+                            checked =
+                                d.qrScanner,
+                            onCheckedChange = {
+                                update(
+                                    d.copy(
+                                        qrScanner =
+                                            it
+                                    )
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+
+            item {
+                NoteCard(
+                    "Web tarafında özellikler window.AppForge API'si üzerinden kullanılabilir. QR sonucu event olarak web sayfasına iletilir."
+                )
+            }
+        } else {
+            item {
+                NoteCard(
+                    "Android Bridge özelliklerini kullanmak için önce JavaScript Bridge'i aç."
+                )
+            }
         }
     }
 }
