@@ -6925,7 +6925,12 @@ private fun BuildStep(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var downloadMessage by remember { mutableStateOf("") }
-    var apkDownloadId by remember { mutableStateOf<Long?>(null) }
+    var apkDownloadId by
+        remember(buildId) {
+            mutableStateOf<Long?>(
+                null
+            )
+        }
 
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Section("9. Derleme", "Güvenli Build Service + Play Store ön-kontrol.") }
@@ -7007,11 +7012,32 @@ private fun BuildStep(
                             apkDownloadId
                                 ?: return@Button
 
-                        downloadMessage =
-                            installDownloadedApk(
-                                context = context,
-                                downloadId = id
-                            )
+                        scope.launch {
+
+                            downloadMessage =
+                                "APK hazırlanıyor • indirme kontrol ediliyor..."
+
+                            val waitError =
+                                waitForApkDownload(
+                                    context = context,
+                                    downloadId = id
+                                )
+
+                            if (
+                                waitError != null
+                            ) {
+                                downloadMessage =
+                                    waitError
+
+                                return@launch
+                            }
+
+                            downloadMessage =
+                                installDownloadedApk(
+                                    context = context,
+                                    downloadId = id
+                                )
+                        }
                     },
                     modifier =
                         Modifier.fillMaxWidth()
@@ -7080,6 +7106,125 @@ private fun BuildStep(
             Text(it, color = TextSecondary, fontSize = 12.sp)
         }
     }
+}
+
+
+private suspend fun waitForApkDownload(
+    context: Context,
+    downloadId: Long,
+    timeoutMs: Long = 120_000L
+): String? {
+
+    val manager =
+        context.getSystemService(
+            Context.DOWNLOAD_SERVICE
+        ) as DownloadManager
+
+    val deadline =
+        System.currentTimeMillis() +
+            timeoutMs
+
+
+    while (
+        System.currentTimeMillis() <
+        deadline
+    ) {
+
+        val result =
+            withContext(
+                Dispatchers.IO
+            ) {
+
+                val query =
+                    DownloadManager.Query()
+                        .setFilterById(
+                            downloadId
+                        )
+
+                var status: Int? =
+                    null
+
+                runCatching {
+
+                    manager
+                        .query(query)
+                        .use { cursor ->
+
+                            if (
+                                cursor.moveToFirst()
+                            ) {
+
+                                val index =
+                                    cursor
+                                        .getColumnIndex(
+                                            DownloadManager
+                                                .COLUMN_STATUS
+                                        )
+
+                                if (
+                                    index >= 0
+                                ) {
+                                    status =
+                                        cursor
+                                            .getInt(
+                                                index
+                                            )
+                                }
+                            }
+                        }
+                }
+
+                val apkUri =
+                    runCatching {
+                        manager
+                            .getUriForDownloadedFile(
+                                downloadId
+                            )
+                    }.getOrNull()
+
+                Pair(
+                    status,
+                    apkUri
+                )
+            }
+
+
+        val currentStatus =
+            result.first
+
+        val apkUri =
+            result.second
+
+
+        /*
+         * URI oluştuysa dosya Android DownloadManager
+         * tarafından kuruluma hazır hale gelmiştir.
+         */
+        if (
+            apkUri != null
+        ) {
+            return null
+        }
+
+
+        if (
+            currentStatus ==
+            DownloadManager.STATUS_FAILED
+        ) {
+            return "APK indirmesi başarısız."
+        }
+
+
+        delay(
+            500L
+        )
+    }
+
+
+    return (
+        "APK indirmesi devam ediyor. " +
+        "İndirme tamamlanınca tekrar APK'YI KUR'a bas."
+    )
 }
 
 
@@ -7203,8 +7348,11 @@ private fun installDownloadedApk(
         }
 
         else -> {
-
-            return "APK henüz kuruluma hazır değil."
+            /*
+             * Bazı Android / Samsung DownloadManager
+             * sürümleri ara durum kodları döndürebiliyor.
+             * Dosya URI'si aşağıda tekrar kontrol edilecek.
+             */
         }
     }
 
@@ -7213,7 +7361,10 @@ private fun installDownloadedApk(
         manager.getUriForDownloadedFile(
             downloadId
         )
-            ?: return "İndirilen APK bulunamadı."
+            ?: return (
+                "APK henüz indiriliyor. " +
+                "İndirme tamamlanınca tekrar dene."
+            )
 
 
     val installIntent =
