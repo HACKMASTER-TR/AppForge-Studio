@@ -357,38 +357,203 @@ public final class FastActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void download(
+        public String download(
             String url
         ) {
-
             if (
                 !config.optBoolean(
                     "downloads",
                     false
                 )
             ) {
-                return;
+                return "ERROR|Downloads kapalı";
             }
-            runOnUiThread(
-                () -> {
-                    if (
-                        !handlePotentialDownload(
-                            url
-                        )
-                    ) {
-                        enqueueDownload(
-                            url,
-                            webView != null
-                                ? webView
-                                    .getSettings()
-                                    .getUserAgentString()
-                                : "",
-                            null,
-                            null
+
+            if (
+                url == null ||
+                !(
+                    url.startsWith("https://") ||
+                    url.startsWith("http://")
+                )
+            ) {
+                return "ERROR|Geçersiz URL";
+            }
+
+            try {
+                String fileName =
+                    URLUtil.guessFileName(
+                        url,
+                        null,
+                        null
+                    );
+
+                DownloadManager.Request request =
+                    new DownloadManager.Request(
+                        Uri.parse(url)
+                    );
+
+                request.setTitle(
+                    fileName
+                );
+
+                request.setDescription(
+                    "Dosya indiriliyor..."
+                );
+
+                request.setAllowedOverMetered(
+                    true
+                );
+
+                request.setAllowedOverRoaming(
+                    true
+                );
+
+                request.setNotificationVisibility(
+                    DownloadManager.Request
+                        .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                );
+
+                request.setDestinationInExternalPublicDir(
+                    Environment.DIRECTORY_DOWNLOADS,
+                    fileName
+                );
+
+                DownloadManager manager =
+                    (DownloadManager)
+                        getSystemService(
+                            Context.DOWNLOAD_SERVICE
                         );
-                    }
+
+                if (manager == null) {
+                    return "ERROR|DownloadManager null";
                 }
-            );
+
+                long id =
+                    manager.enqueue(
+                        request
+                    );
+
+                return (
+                    "OK|" +
+                    id +
+                    "|" +
+                    fileName
+                );
+
+            } catch (Throwable error) {
+                return (
+                    "ERROR|" +
+                    error.getClass().getSimpleName() +
+                    "|" +
+                    String.valueOf(
+                        error.getMessage()
+                    )
+                );
+            }
+        }
+
+        @JavascriptInterface
+        public String status(
+            String idText
+        ) {
+            try {
+                long id =
+                    Long.parseLong(
+                        idText
+                    );
+
+                DownloadManager manager =
+                    (DownloadManager)
+                        getSystemService(
+                            Context.DOWNLOAD_SERVICE
+                        );
+
+                if (manager == null) {
+                    return "ERROR|DownloadManager null";
+                }
+
+                DownloadManager.Query query =
+                    new DownloadManager.Query()
+                        .setFilterById(id);
+
+                android.database.Cursor cursor =
+                    manager.query(
+                        query
+                    );
+
+                if (
+                    cursor == null ||
+                    !cursor.moveToFirst()
+                ) {
+                    if (cursor != null) {
+                        cursor.close();
+                    }
+
+                    return "ERROR|Kayıt bulunamadı";
+                }
+
+                int status =
+                    cursor.getInt(
+                        cursor.getColumnIndexOrThrow(
+                            DownloadManager.COLUMN_STATUS
+                        )
+                    );
+
+                int reason =
+                    cursor.getInt(
+                        cursor.getColumnIndexOrThrow(
+                            DownloadManager.COLUMN_REASON
+                        )
+                    );
+
+                long downloaded =
+                    cursor.getLong(
+                        cursor.getColumnIndexOrThrow(
+                            DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR
+                        )
+                    );
+
+                long total =
+                    cursor.getLong(
+                        cursor.getColumnIndexOrThrow(
+                            DownloadManager.COLUMN_TOTAL_SIZE_BYTES
+                        )
+                    );
+
+                String localUri =
+                    cursor.getString(
+                        cursor.getColumnIndexOrThrow(
+                            DownloadManager.COLUMN_LOCAL_URI
+                        )
+                    );
+
+                cursor.close();
+
+                return (
+                    "STATUS|" +
+                    status +
+                    "|REASON|" +
+                    reason +
+                    "|BYTES|" +
+                    downloaded +
+                    "/" +
+                    total +
+                    "|URI|" +
+                    String.valueOf(
+                        localUri
+                    )
+                );
+
+            } catch (Throwable error) {
+                return (
+                    "ERROR|" +
+                    error.getClass().getSimpleName() +
+                    "|" +
+                    String.valueOf(
+                        error.getMessage()
+                    )
+                );
+            }
         }
     }
 
