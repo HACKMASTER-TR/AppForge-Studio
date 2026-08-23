@@ -88,7 +88,7 @@ RUN gradle     -p fast-sdk-bundle     --no-daemon     --stacktrace     prepareFa
 # DEX'e çevrilir. Kullanıcı build'inde D8 çalışmaz.
 # =========================================================
 
-RUN bash scripts/build-fast-qr-pack.sh
+# QR Fast pack yeni Android template ile oluşturulacak.
 
 
 # =========================================================
