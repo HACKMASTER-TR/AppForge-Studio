@@ -103,12 +103,14 @@ OPTIONAL_MODULE_JAR=""
 for jar in "$TMP"/aar/*/classes.jar; do
     [ -f "$jar" ] || continue
 
-    if jar tf "$jar" 2>/dev/null | \
-       grep -Fqx \
-       "com/google/android/gms/common/api/OptionalModuleApi.class"
-    then
-        OPTIONAL_MODULE_JAR="$jar"
-        break
+    CLASS_LIST="$TMP/optional-module-classes.txt"
+
+    if jar tf "$jar" > "$CLASS_LIST" 2>/dev/null; then
+        if grep -Fqx           "com/google/android/gms/common/api/OptionalModuleApi.class"           "$CLASS_LIST"
+        then
+            OPTIONAL_MODULE_JAR="$jar"
+            break
+        fi
     fi
 done
 
