@@ -13,6 +13,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -231,6 +232,9 @@ public final class FastActivity extends Activity {
                     );
 
                     hideSplash();
+                    installDownloadInterceptor(
+                        view
+                    );
                 }
 
                 @Override
@@ -318,6 +322,11 @@ public final class FastActivity extends Activity {
                 false
             )
         ) {
+            webView.addJavascriptInterface(
+                new DownloadBridge(),
+                "AppForgeDownloads"
+            );
+
             webView.setDownloadListener(
                 (
                     url,
@@ -335,6 +344,75 @@ public final class FastActivity extends Activity {
             );
         }
 
+    }
+
+    private final class DownloadBridge {
+        @JavascriptInterface
+        public void download(
+            String url
+        ) {
+            runOnUiThread(
+                () -> {
+                    if (
+                        !handlePotentialDownload(
+                            url
+                        )
+                    ) {
+                        enqueueDownload(
+                            url,
+                            webView != null
+                                ? webView
+                                    .getSettings()
+                                    .getUserAgentString()
+                                : "",
+                            null,
+                            null
+                        );
+                    }
+                }
+            );
+        }
+    }
+
+    private void installDownloadInterceptor(
+        WebView view
+    ) {
+        if (
+            view == null ||
+            !config.optBoolean(
+                "downloads",
+                false
+            )
+        ) {
+            return;
+        }
+
+        String javascript =
+            "(function(){" +
+            "if(window.__appforgeDownloadInterceptor)return;" +
+            "window.__appforgeDownloadInterceptor=true;" +
+            "document.addEventListener('click',function(e){" +
+            "var n=e.target;" +
+            "while(n&&n.tagName!=='A'){n=n.parentElement;}" +
+            "if(!n||!n.href)return;" +
+            "var h=n.href;" +
+            "var p='';" +
+            "try{p=(new URL(h)).pathname.toLowerCase();}" +
+            "catch(x){p=h.toLowerCase();}" +
+            "var ok=/\\.(pdf|zip|apk|aab|rar|7z|doc|docx|xls|xlsx|ppt|pptx|csv|txt)$/.test(p);" +
+            "if(!ok)return;" +
+            "e.preventDefault();" +
+            "e.stopPropagation();" +
+            "if(window.AppForgeDownloads){" +
+            "window.AppForgeDownloads.download(h);" +
+            "}" +
+            "},true);" +
+            "})();";
+
+        view.evaluateJavascript(
+            javascript,
+            null
+        );
     }
 
     private boolean handlePotentialDownload(
@@ -567,10 +645,20 @@ public final class FastActivity extends Activity {
             ).show();
 
         } catch (Throwable error) {
+            String reason =
+                error.getMessage();
+
             Toast.makeText(
                 this,
-                "İndirme başlatılamadı.",
-                Toast.LENGTH_SHORT
+                "İndirme hatası: " +
+                error.getClass()
+                    .getSimpleName() +
+                (
+                    reason != null
+                    ? " • " + reason
+                    : ""
+                ),
+                Toast.LENGTH_LONG
             ).show();
         }
     }
