@@ -99,9 +99,10 @@ RUN gradle \
     --no-daemon \
     :app:assembleRelease \
     && mkdir -p /opt/appforge-fast-extended \
-    && cp \
-       fast-extended-template/app/build/outputs/apk/release/app-release.apk \
-       /opt/appforge-fast-extended/template.apk \
+    && EXTENDED_APK="$(find fast-extended-template/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)" \
+    && test -n "$EXTENDED_APK" \
+    && echo "FAST EXTENDED APK: $EXTENDED_APK" \
+    && cp "$EXTENDED_APK" /opt/appforge-fast-extended/template.apk \
     && test -s /opt/appforge-fast-extended/template.apk
 
 # AppForge FAST BUILD runtime.
