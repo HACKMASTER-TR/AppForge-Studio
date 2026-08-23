@@ -9052,131 +9052,741 @@ private fun MonetizationStep(
     update: (ProjectDraft) -> Unit,
     onPickFirebase: () -> Unit
 ) {
-    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Section("5. Para Kazanma + Firebase", "AdMob, Billing, Analytics ve Crashlytics.") }
+    val admobConfigured =
+        !draft.admobEnabled ||
+        draft.admobAppId
+            .startsWith(
+                "ca-app-pub-"
+            )
 
-        item { Toggle("AdMob", draft.admobEnabled) { update(draft.copy(admobEnabled = it)) } }
+    val billingProductCount =
+        (
+            draft.billingProductIds
+                .split(",") +
+            draft.billingSubscriptionIds
+                .split(",") +
+            draft.consumableProductIds
+                .split(",")
+        )
+            .map {
+                it.trim()
+            }
+            .count {
+                it.isNotBlank()
+            }
 
-        if (draft.admobEnabled) {
-            item {
-                OutlinedTextField(
-                    value = draft.admobAppId,
-                    onValueChange = { update(draft.copy(admobAppId = it.trim())) },
-                    label = { Text("AdMob App ID") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = draft.admobBannerUnitId,
-                    onValueChange = { update(draft.copy(admobBannerUnitId = it.trim())) },
-                    label = { Text("Banner Ad Unit ID") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = draft.admobInterstitialUnitId,
-                    onValueChange = { update(draft.copy(admobInterstitialUnitId = it.trim())) },
-                    label = { Text("Interstitial Ad Unit ID") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                OutlinedTextField(
-                    value = draft.admobRewardedUnitId,
-                    onValueChange = { update(draft.copy(admobRewardedUnitId = it.trim())) },
-                    label = { Text("Rewarded Ad Unit ID") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                Toggle("UMP / GDPR", draft.umpConsentEnabled) {
-                    update(draft.copy(umpConsentEnabled = it))
-                }
-            }
+    val firebaseEnabled =
+        draft.firebaseAnalyticsEnabled ||
+        draft.firebaseCrashlyticsEnabled
+
+    val firebaseConfigured =
+        !firebaseEnabled ||
+        draft.firebaseConfigName
+            .isNotBlank()
+
+    val enabledServiceCount =
+        listOf(
+            draft.admobEnabled,
+            draft.billingEnabled,
+            draft.firebaseAnalyticsEnabled,
+            draft.firebaseCrashlyticsEnabled
+        ).count {
+            it
+        }
+
+    LazyColumn(
+        contentPadding =
+            PaddingValues(
+                20.dp
+            ),
+        verticalArrangement =
+            Arrangement.spacedBy(
+                14.dp
+            )
+    ) {
+        item {
+            Section(
+                "5. Para Kazanma + Firebase",
+                "AdMob, Google Play Billing, Analytics ve Crashlytics."
+            )
         }
 
         item {
-            Toggle("Google Play Billing", draft.billingEnabled) {
-                update(draft.copy(billingEnabled = it))
-            }
-        }
-
-        if (draft.billingEnabled) {
-            item {
-                OutlinedTextField(
-                    value = draft.billingProductIds,
-                    onValueChange = { update(draft.copy(billingProductIds = it)) },
-                    label = { Text("Kalıcı ürün ID'leri") },
-                    supportingText = { Text("premium,remove_ads") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            item {
-                OutlinedTextField(
-                    value = draft.billingSubscriptionIds,
-                    onValueChange = { update(draft.copy(billingSubscriptionIds = it)) },
-                    label = { Text("Abonelik ID'leri") },
-                    supportingText = { Text("pro_monthly,pro_yearly") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            item {
-                OutlinedTextField(
-                    value = draft.consumableProductIds,
-                    onValueChange = { update(draft.copy(consumableProductIds = it)) },
-                    label = { Text("Consumable ürün ID'leri") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            item {
-                OutlinedTextField(
-                    value = draft.removeAdsProductId,
-                    onValueChange = { update(draft.copy(removeAdsProductId = it.trim())) },
-                    label = { Text("Reklam kaldırma ürün ID") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            item {
-                OutlinedTextField(
-                    value = draft.purchaseVerificationUrl,
-                    onValueChange = { update(draft.copy(purchaseVerificationUrl = it.trim())) },
-                    label = { Text("Satın alma doğrulama URL") },
-                    supportingText = { Text("https://api.site.com/api/verify-purchase") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        item { Text("Firebase", fontWeight = FontWeight.Bold) }
-
-        item {
-            Toggle("Firebase Analytics", draft.firebaseAnalyticsEnabled) {
-                update(draft.copy(firebaseAnalyticsEnabled = it))
-            }
-        }
-
-        item {
-            Toggle("Firebase Crashlytics", draft.firebaseCrashlyticsEnabled) {
-                update(draft.copy(firebaseCrashlyticsEnabled = it))
-            }
-        }
-
-        if (draft.firebaseAnalyticsEnabled || draft.firebaseCrashlyticsEnabled) {
-            item {
-                Button(onClick = onPickFirebase, modifier = Modifier.fillMaxWidth()) {
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor =
+                            Card2
+                    ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            8.dp
+                        )
+                ) {
                     Text(
-                        if (draft.firebaseConfigName.isBlank())
-                            "google-services.json SEÇ"
-                        else
-                            "Firebase: ${draft.firebaseConfigName}"
+                        "Production servisleri",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Text(
+                        "$enabledServiceCount / 4 servis açık",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            13.sp
+                    )
+
+                    Text(
+                        if (
+                            admobConfigured &&
+                            firebaseConfigured
+                        ) {
+                            "✓ Yapılandırma durumu iyi"
+                        } else {
+                            "⚠ Eksik yapılandırma var"
+                        },
+                        color =
+                            if (
+                                admobConfigured &&
+                                firebaseConfigured
+                            ) {
+                                Accent
+                            } else {
+                                TextSecondary
+                            },
+                        fontWeight =
+                            FontWeight.Medium,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Bu servisler açık olduğunda derleme ek Android SDK'ları içerir.",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp,
+                        lineHeight =
+                            17.sp
                     )
                 }
+            }
+        }
+
+        item {
+            Text(
+                "Reklam",
+                fontWeight =
+                    FontWeight.Bold,
+                fontSize =
+                    14.sp
+            )
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Google AdMob",
+                description =
+                    "Banner, geçiş ve ödüllü reklam SDK'sını uygulamaya ekler.",
+                checked =
+                    draft.admobEnabled
+            ) {
+                update(
+                    draft.copy(
+                        admobEnabled =
+                            it
+                    )
+                )
+            }
+        }
+
+        if (
+            draft.admobEnabled
+        ) {
+            item {
+                OutlinedTextField(
+                    value =
+                        draft.admobAppId,
+                    onValueChange = {
+                        update(
+                            draft.copy(
+                                admobAppId =
+                                    it.trim()
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "AdMob App ID"
+                        )
+                    },
+                    placeholder = {
+                        Text(
+                            "ca-app-pub-...~..."
+                        )
+                    },
+                    isError =
+                        draft.admobAppId
+                            .isNotBlank() &&
+                        !draft.admobAppId
+                            .startsWith(
+                                "ca-app-pub-"
+                            ),
+                    supportingText = {
+                        if (
+                            draft.admobAppId
+                                .isBlank()
+                        ) {
+                            Text(
+                                "AdMob uygulama kimliğini gir."
+                            )
+                        } else if (
+                            admobConfigured
+                        ) {
+                            Text(
+                                "✓ App ID biçimi uygun"
+                            )
+                        } else {
+                            Text(
+                                "AdMob App ID ca-app-pub- ile başlamalı."
+                            )
+                        }
+                    },
+                    singleLine = true,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value =
+                        draft.admobBannerUnitId,
+                    onValueChange = {
+                        update(
+                            draft.copy(
+                                admobBannerUnitId =
+                                    it.trim()
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Banner Ad Unit ID"
+                        )
+                    },
+                    placeholder = {
+                        Text(
+                            "İsteğe bağlı"
+                        )
+                    },
+                    singleLine = true,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value =
+                        draft.admobInterstitialUnitId,
+                    onValueChange = {
+                        update(
+                            draft.copy(
+                                admobInterstitialUnitId =
+                                    it.trim()
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Geçiş reklamı Unit ID"
+                        )
+                    },
+                    placeholder = {
+                        Text(
+                            "İsteğe bağlı"
+                        )
+                    },
+                    singleLine = true,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value =
+                        draft.admobRewardedUnitId,
+                    onValueChange = {
+                        update(
+                            draft.copy(
+                                admobRewardedUnitId =
+                                    it.trim()
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Ödüllü reklam Unit ID"
+                        )
+                    },
+                    placeholder = {
+                        Text(
+                            "İsteğe bağlı"
+                        )
+                    },
+                    singleLine = true,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                FeatureToggleCard(
+                    title =
+                        "UMP / GDPR izin yönetimi",
+                    description =
+                        "Gerekli bölgelerde reklam izni ve gizlilik onayı akışını etkinleştirir.",
+                    checked =
+                        draft.umpConsentEnabled,
+                    recommended =
+                        true
+                ) {
+                    update(
+                        draft.copy(
+                            umpConsentEnabled =
+                                it
+                        )
+                    )
+                }
+            }
+
+            item {
+                NoteCard(
+                    "Yayın öncesi reklam gösterimlerini ve UMP izin akışını gerçek cihazda test et."
+                )
+            }
+        }
+
+        item {
+            Text(
+                "Google Play",
+                fontWeight =
+                    FontWeight.Bold,
+                fontSize =
+                    14.sp
+            )
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Google Play Billing",
+                description =
+                    "Tek seferlik ürünler, abonelikler ve uygulama içi satın almaları etkinleştirir.",
+                checked =
+                    draft.billingEnabled
+            ) {
+                update(
+                    draft.copy(
+                        billingEnabled =
+                            it
+                    )
+                )
+            }
+        }
+
+        if (
+            draft.billingEnabled
+        ) {
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                5.dp
+                            )
+                    ) {
+                        Text(
+                            "Billing özeti",
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            "$billingProductCount ürün tanımlı",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+
+                        Text(
+                            if (
+                                draft.purchaseVerificationUrl
+                                    .startsWith(
+                                        "https://"
+                                    )
+                            ) {
+                                "✓ Sunucu doğrulaması tanımlı"
+                            } else {
+                                "○ Sunucu doğrulaması tanımlı değil"
+                            },
+                            fontSize =
+                                12.sp
+                        )
+                    }
+                }
+            }
+
+            item {
+                OutlinedTextField(
+                    value =
+                        draft.billingProductIds,
+                    onValueChange = {
+                        update(
+                            draft.copy(
+                                billingProductIds =
+                                    it
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Tek seferlik ürün ID'leri"
+                        )
+                    },
+                    supportingText = {
+                        Text(
+                            "Örn: premium,remove_ads"
+                        )
+                    },
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value =
+                        draft.billingSubscriptionIds,
+                    onValueChange = {
+                        update(
+                            draft.copy(
+                                billingSubscriptionIds =
+                                    it
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Abonelik ID'leri"
+                        )
+                    },
+                    supportingText = {
+                        Text(
+                            "Örn: pro_monthly,pro_yearly"
+                        )
+                    },
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value =
+                        draft.consumableProductIds,
+                    onValueChange = {
+                        update(
+                            draft.copy(
+                                consumableProductIds =
+                                    it
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Tüketilebilir ürün ID'leri"
+                        )
+                    },
+                    supportingText = {
+                        Text(
+                            "Virgülle ayır."
+                        )
+                    },
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value =
+                        draft.removeAdsProductId,
+                    onValueChange = {
+                        update(
+                            draft.copy(
+                                removeAdsProductId =
+                                    it.trim()
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Reklam kaldırma ürün ID"
+                        )
+                    },
+                    singleLine = true,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value =
+                        draft.purchaseVerificationUrl,
+                    onValueChange = {
+                        update(
+                            draft.copy(
+                                purchaseVerificationUrl =
+                                    it.trim()
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Satın alma doğrulama URL"
+                        )
+                    },
+                    placeholder = {
+                        Text(
+                            "https://api.site.com/api/verify-purchase"
+                        )
+                    },
+                    isError =
+                        draft.purchaseVerificationUrl
+                            .isNotBlank() &&
+                        !draft.purchaseVerificationUrl
+                            .startsWith(
+                                "https://"
+                            ),
+                    supportingText = {
+                        if (
+                            draft.purchaseVerificationUrl
+                                .isBlank()
+                        ) {
+                            Text(
+                                "Production için sunucu tarafı doğrulama önerilir."
+                            )
+                        } else if (
+                            draft.purchaseVerificationUrl
+                                .startsWith(
+                                    "https://"
+                                )
+                        ) {
+                            Text(
+                                "✓ HTTPS doğrulama adresi"
+                            )
+                        } else {
+                            Text(
+                                "Doğrulama adresi HTTPS olmalı."
+                            )
+                        }
+                    },
+                    singleLine = true,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        item {
+            Text(
+                "Firebase",
+                fontWeight =
+                    FontWeight.Bold,
+                fontSize =
+                    14.sp
+            )
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Firebase Analytics",
+                description =
+                    "Uygulama kullanım olaylarını Firebase Analytics ile ölçer.",
+                checked =
+                    draft.firebaseAnalyticsEnabled
+            ) {
+                update(
+                    draft.copy(
+                        firebaseAnalyticsEnabled =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Firebase Crashlytics",
+                description =
+                    "Uygulama çökmelerini ve hata raporlarını Firebase Crashlytics'e gönderir.",
+                checked =
+                    draft.firebaseCrashlyticsEnabled
+            ) {
+                update(
+                    draft.copy(
+                        firebaseCrashlyticsEnabled =
+                            it
+                    )
+                )
+            }
+        }
+
+        if (
+            firebaseEnabled
+        ) {
+            item {
+                Button(
+                    onClick =
+                        onPickFirebase,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (
+                            draft.firebaseConfigName
+                                .isBlank()
+                        ) {
+                            "google-services.json SEÇ"
+                        } else {
+                            "✓ Firebase yapılandırması seçildi"
+                        }
+                    )
+                }
+            }
+
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                6.dp
+                            )
+                    ) {
+                        Text(
+                            "Firebase durumu",
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            if (
+                                draft.firebaseAnalyticsEnabled
+                            ) {
+                                "✓ Analytics açık"
+                            } else {
+                                "○ Analytics kapalı"
+                            },
+                            fontSize =
+                                12.sp
+                        )
+
+                        Text(
+                            if (
+                                draft.firebaseCrashlyticsEnabled
+                            ) {
+                                "✓ Crashlytics açık"
+                            } else {
+                                "○ Crashlytics kapalı"
+                            },
+                            fontSize =
+                                12.sp
+                        )
+
+                        Text(
+                            if (
+                                firebaseConfigured
+                            ) {
+                                "✓ google-services.json hazır"
+                            } else {
+                                "⚠ google-services.json gerekli"
+                            },
+                            color =
+                                if (
+                                    firebaseConfigured
+                                ) {
+                                    Accent
+                                } else {
+                                    TextSecondary
+                                },
+                            fontSize =
+                                12.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        if (
+            enabledServiceCount == 0
+        ) {
+            item {
+                NoteCard(
+                    "AdMob, Billing ve Firebase kapalı. Bu bölüm isteğe bağlıdır."
+                )
             }
         }
     }
