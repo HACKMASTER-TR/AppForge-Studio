@@ -25,6 +25,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
+import androidx.core.content.FileProvider
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7233,13 +7234,11 @@ private fun installDownloadedApk(
     downloadId: Long
 ): String {
 
-    // Android 8 ve üzeri için özel APK kurulum izni.
     if (
-        Build.VERSION.SDK_INT >=
-        Build.VERSION_CODES.O &&
-        !context.packageManager
-            .canRequestPackageInstalls()
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        !context.packageManager.canRequestPackageInstalls()
     ) {
+
         return runCatching {
 
             context
@@ -7270,11 +7269,10 @@ private fun installDownloadedApk(
                 permissionIntent
             )
 
-            "Bu kaynaktan izin ver seçeneğini aç. " +
-                "AppForge Studio'ya döndüğünde " +
-                "APK yükleyici otomatik açılacak."
+            "Bu kaynaktan izin ver seçeneğini aç ve AppForge Studio'ya geri dön."
 
         }.getOrElse {
+
             "APK yükleme izni ekranı açılamadı: ${it.message}"
         }
     }
@@ -7286,164 +7284,144 @@ private fun installDownloadedApk(
         ) as DownloadManager
 
 
-    val query =
-        DownloadManager.Query()
-            .setFilterById(
-                downloadId
-            )
-
-
-    val status =
-        runCatching {
-
-            manager.query(query)
-                .use { cursor ->
-
-                    if (
-                        !cursor.moveToFirst()
-                    ) {
-                        return@runCatching
-                            DownloadManager.STATUS_FAILED
-                    }
-
-                    val statusIndex =
-                        cursor.getColumnIndex(
-                            DownloadManager.COLUMN_STATUS
-                        )
-
-                    if (
-                        statusIndex < 0
-                    ) {
-                        return@runCatching
-                            DownloadManager.STATUS_FAILED
-                    }
-
-                    cursor.getInt(
-                        statusIndex
-                    )
-                }
-
-        }.getOrElse {
-
-            return "İndirme durumu okunamadı: ${it.message}"
-        }
-
-
-    when (status) {
-
-        DownloadManager.STATUS_PENDING,
-        DownloadManager.STATUS_RUNNING,
-        DownloadManager.STATUS_PAUSED -> {
-
-            return "APK henüz indiriliyor."
-        }
-
-        DownloadManager.STATUS_FAILED -> {
-
-            return "APK indirmesi başarısız."
-        }
-
-        DownloadManager.STATUS_SUCCESSFUL -> {
-            // Kuruluma devam.
-        }
-
-        else -> {
-            /*
-             * Bazı Android / Samsung DownloadManager
-             * sürümleri ara durum kodları döndürebiliyor.
-             * Dosya URI'si aşağıda tekrar kontrol edilecek.
-             */
-        }
-    }
-
-
-    val apkUri =
+    val downloadedUri =
         manager.getUriForDownloadedFile(
             downloadId
         )
             ?: return (
-                "APK henüz indiriliyor. " +
-                "İndirme tamamlanınca tekrar dene."
+                "İndirilen APK bulunamadı. " +
+                "APK'YI İNDİR butonuna tekrar bas."
             )
-
-
-    val installIntent =
-        Intent(
-            Intent.ACTION_INSTALL_PACKAGE,
-            apkUri
-        ).apply {
-
-            clipData =
-                ClipData.newRawUri(
-                    "AppForge APK",
-                    apkUri
-                )
-
-            addFlags(
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-
-            addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK
-            )
-        }
-
-
-    val primaryResult =
-        runCatching {
-
-            context.startActivity(
-                installIntent
-            )
-
-            "Android APK yükleyici açıldı."
-        }
-
-
-    if (
-        primaryResult.isSuccess
-    ) {
-        return primaryResult
-            .getOrThrow()
-    }
-
-
-    /*
-     * Bazı Samsung / Android sürümlerinde
-     * ACTION_INSTALL_PACKAGE yerine MIME ACTION_VIEW
-     * daha iyi çalışabiliyor.
-     */
-    val fallbackIntent =
-        Intent(
-            Intent.ACTION_VIEW
-        ).apply {
-
-            setDataAndType(
-                apkUri,
-                "application/vnd.android.package-archive"
-            )
-
-            clipData =
-                ClipData.newRawUri(
-                    "AppForge APK",
-                    apkUri
-                )
-
-            addFlags(
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-
-            addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK
-            )
-        }
 
 
     return runCatching {
 
-        context.startActivity(
-            fallbackIntent
-        )
+        /*
+         * DownloadManager URI'sini doğrudan yükleyiciye
+         * vermiyoruz. APK önce AppForge cache alanına
+         * kopyalanıyor.
+         */
+        val installerDir =
+            File(
+                context.cacheDir,
+                "apk-installer"
+            ).apply {
+                mkdirs()
+            }
+
+
+        val apkFile =
+            File(
+                installerDir,
+                "AppForge-generated.apk"
+            )
+
+
+        context.contentResolver
+            .openInputStream(
+                downloadedUri
+            )
+            ?.use { input ->
+
+                apkFile
+                    .outputStream()
+                    .use { output ->
+
+                        input.copyTo(
+                            output
+                        )
+                    }
+            }
+            ?: error(
+                "İndirilen APK okunamadı."
+            )
+
+
+        if (
+            !apkFile.exists() ||
+            apkFile.length() <= 0L
+        ) {
+            error(
+                "APK geçici klasöre kopyalanamadı."
+            )
+        }
+
+
+        val installUri =
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                apkFile
+            )
+
+
+        val primaryIntent =
+            Intent(
+                Intent.ACTION_INSTALL_PACKAGE,
+                installUri
+            ).apply {
+
+                clipData =
+                    ClipData.newRawUri(
+                        "AppForge APK",
+                        installUri
+                    )
+
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK
+                )
+            }
+
+
+        val primary =
+            runCatching {
+
+                context.startActivity(
+                    primaryIntent
+                )
+
+                true
+            }.getOrDefault(
+                false
+            )
+
+
+        if (!primary) {
+
+            val fallbackIntent =
+                Intent(
+                    Intent.ACTION_VIEW
+                ).apply {
+
+                    setDataAndType(
+                        installUri,
+                        "application/vnd.android.package-archive"
+                    )
+
+                    clipData =
+                        ClipData.newRawUri(
+                            "AppForge APK",
+                            installUri
+                        )
+
+                    addFlags(
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK
+                    )
+                }
+
+            context.startActivity(
+                fallbackIntent
+            )
+        }
+
 
         "Android APK yükleyici açıldı."
 
@@ -7452,6 +7430,7 @@ private fun installDownloadedApk(
         "APK yükleyici açılamadı: ${it.message}"
     }
 }
+
 
 @Composable
 private fun ProjectLibraryScreen(
