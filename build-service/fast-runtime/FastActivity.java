@@ -63,6 +63,9 @@ public final class FastActivity extends Activity {
     private boolean
         pageReady = false;
 
+    private volatile String
+        currentMainUrl = "";
+
     private JSONObject config;
     private View splashView;
     private long splashStartedAt;
@@ -609,6 +612,11 @@ public final class FastActivity extends Activity {
                         url
                     );
 
+                    currentMainUrl =
+                        url != null
+                            ? url
+                            : "";
+
                     hideSplash();
 
                     installDownloadInterceptor(
@@ -616,6 +624,10 @@ public final class FastActivity extends Activity {
                     );
 
                     installCaptureDetector(
+                        view
+                    );
+
+                    installNativeBridgeShim(
                         view
                     );
 
@@ -985,6 +997,11 @@ public final class FastActivity extends Activity {
             "AppForgeCaptureHint"
         );
 
+        webView.addJavascriptInterface(
+            new FastNativeBridge(),
+            "AppForgeFastNative"
+        );
+
         if (
             config.optBoolean(
                 "downloads",
@@ -1009,6 +1026,429 @@ public final class FastActivity extends Activity {
         }
 
     }
+
+    private boolean isTrustedNativeBridgePage() {
+        if (
+            !config.optBoolean(
+                "nativeBridge",
+                false
+            )
+        ) {
+            return false;
+        }
+
+        String mode =
+            config.optString(
+                "sourceMode",
+                "LOCAL"
+            );
+
+        String actual =
+            currentMainUrl != null
+                ? currentMainUrl.trim()
+                : "";
+
+        if (
+            "LOCAL".equalsIgnoreCase(
+                mode
+            )
+        ) {
+            return actual.startsWith(
+                "file://"
+            );
+        }
+
+        if (
+            !"URL".equalsIgnoreCase(
+                mode
+            ) ||
+            !config.optBoolean(
+                "nativeBridgeAllowRemote",
+                false
+            )
+        ) {
+            return false;
+        }
+
+        try {
+            Uri expected =
+                Uri.parse(
+                    config.optString(
+                        "webUrl",
+                        ""
+                    )
+                );
+
+            Uri page =
+                Uri.parse(
+                    actual
+                );
+
+            if (
+                !"https".equalsIgnoreCase(
+                    expected.getScheme()
+                ) ||
+                !"https".equalsIgnoreCase(
+                    page.getScheme()
+                )
+            ) {
+                return false;
+            }
+
+            String expectedHost =
+                expected.getHost();
+
+            String pageHost =
+                page.getHost();
+
+            if (
+                expectedHost == null ||
+                pageHost == null ||
+                !expectedHost.equalsIgnoreCase(
+                    pageHost
+                )
+            ) {
+                return false;
+            }
+
+            return
+                expected.getPort() ==
+                page.getPort();
+
+        } catch (
+            Throwable ignored
+        ) {
+            return false;
+        }
+    }
+
+
+    private String safeBridgeText(
+        String value,
+        int maxLength
+    ) {
+        String text =
+            value != null
+                ? value
+                : "";
+
+        if (
+            text.length() >
+            maxLength
+        ) {
+            return text.substring(
+                0,
+                maxLength
+            );
+        }
+
+        return text;
+    }
+
+
+    public final class FastNativeBridge {
+
+        @JavascriptInterface
+        public boolean isEnabled() {
+            return isTrustedNativeBridgePage();
+        }
+
+
+        @JavascriptInterface
+        public String share(
+            String title,
+            String text
+        ) {
+            if (
+                !isTrustedNativeBridgePage() ||
+                !config.optBoolean(
+                    "shareBridge",
+                    false
+                )
+            ) {
+                return "ERROR|Share kapalı";
+            }
+
+            final String safeTitle =
+                safeBridgeText(
+                    title,
+                    400
+                );
+
+            final String safeText =
+                safeBridgeText(
+                    text,
+                    40000
+                );
+
+            runOnUiThread(
+                () -> {
+                    try {
+                        Intent intent =
+                            new Intent(
+                                Intent.ACTION_SEND
+                            );
+
+                        intent.setType(
+                            "text/plain"
+                        );
+
+                        intent.putExtra(
+                            Intent.EXTRA_SUBJECT,
+                            safeTitle
+                        );
+
+                        intent.putExtra(
+                            Intent.EXTRA_TEXT,
+                            safeText
+                        );
+
+                        startActivity(
+                            Intent.createChooser(
+                                intent,
+                                safeTitle.isEmpty()
+                                    ? "Paylaş"
+                                    : safeTitle
+                            )
+                        );
+
+                    } catch (
+                        Throwable error
+                    ) {
+                        Toast.makeText(
+                            FastActivity.this,
+                            "Paylaşım açılamadı.",
+                            Toast.LENGTH_SHORT
+                        ).show();
+                    }
+                }
+            );
+
+            return "OK";
+        }
+
+
+        @JavascriptInterface
+        public String copy(
+            String text
+        ) {
+            if (
+                !isTrustedNativeBridgePage() ||
+                !config.optBoolean(
+                    "clipboardBridge",
+                    false
+                )
+            ) {
+                return "ERROR|Clipboard kapalı";
+            }
+
+            final String safeText =
+                safeBridgeText(
+                    text,
+                    40000
+                );
+
+            runOnUiThread(
+                () -> {
+                    android.content.ClipboardManager clipboard =
+                        (android.content.ClipboardManager)
+                            getSystemService(
+                                Context.CLIPBOARD_SERVICE
+                            );
+
+                    if (
+                        clipboard != null
+                    ) {
+                        clipboard.setPrimaryClip(
+                            android.content.ClipData
+                                .newPlainText(
+                                    "AppForge",
+                                    safeText
+                                )
+                        );
+                    }
+                }
+            );
+
+            return "OK";
+        }
+
+
+        @JavascriptInterface
+        public String vibrate(
+            int milliseconds
+        ) {
+            if (
+                !isTrustedNativeBridgePage() ||
+                !config.optBoolean(
+                    "vibrationBridge",
+                    false
+                )
+            ) {
+                return "ERROR|Vibration kapalı";
+            }
+
+            final int duration =
+                Math.max(
+                    1,
+                    Math.min(
+                        1000,
+                        milliseconds
+                    )
+                );
+
+            runOnUiThread(
+                () -> {
+                    android.os.Vibrator vibrator =
+                        (android.os.Vibrator)
+                            getSystemService(
+                                Context.VIBRATOR_SERVICE
+                            );
+
+                    if (
+                        vibrator == null
+                    ) {
+                        return;
+                    }
+
+                    if (
+                        Build.VERSION.SDK_INT >=
+                        Build.VERSION_CODES.O
+                    ) {
+                        vibrator.vibrate(
+                            android.os.VibrationEffect
+                                .createOneShot(
+                                    duration,
+                                    android.os.VibrationEffect
+                                        .DEFAULT_AMPLITUDE
+                                )
+                        );
+                    } else {
+                        vibrator.vibrate(
+                            duration
+                        );
+                    }
+                }
+            );
+
+            return "OK";
+        }
+    }
+
+
+    private void installNativeBridgeShim(
+        WebView view
+    ) {
+        if (
+            view == null ||
+            !config.optBoolean(
+                "nativeBridge",
+                false
+            )
+        ) {
+            return;
+        }
+
+        String javascript =
+            "(function(){" +
+
+            "if(window.__appforgeFastBridgeV1)return;" +
+            "window.__appforgeFastBridgeV1=true;" +
+
+            "if(!window.AppForgeFastNative)return;" +
+
+            "var bridge={" +
+
+            "platform:function(){" +
+            "return 'android';" +
+            "}," +
+
+            "appVersion:function(){" +
+            "return " +
+            JSONObject.quote(
+                config.optString(
+                    "versionName",
+                    "1.0.0"
+                )
+            ) +
+            ";" +
+            "}," +
+
+            (
+                config.optBoolean(
+                    "shareBridge",
+                    false
+                )
+                    ? (
+                        "share:function(title,text){" +
+                        "return window.AppForgeFastNative.share(" +
+                        "String(title||'').slice(0,400)," +
+                        "String(text||'').slice(0,40000)" +
+                        ");" +
+                        "},"
+                    )
+                    : ""
+            ) +
+
+            (
+                config.optBoolean(
+                    "clipboardBridge",
+                    false
+                )
+                    ? (
+                        "copy:function(text){" +
+                        "return window.AppForgeFastNative.copy(" +
+                        "String(text||'').slice(0,40000)" +
+                        ");" +
+                        "},"
+                    )
+                    : ""
+            ) +
+
+            (
+                config.optBoolean(
+                    "vibrationBridge",
+                    false
+                )
+                    ? (
+                        "vibrate:function(ms){" +
+                        "var n=Number(ms);" +
+                        "if(!Number.isFinite(n))n=100;" +
+                        "n=Math.max(1,Math.min(1000,Math.round(n)));" +
+                        "return window.AppForgeFastNative.vibrate(n);" +
+                        "},"
+                    )
+                    : ""
+            ) +
+
+            "isEnabled:function(){" +
+            "return window.AppForgeFastNative.isEnabled();" +
+            "}" +
+
+            "};" +
+
+            "try{" +
+            "Object.defineProperty(" +
+            "window," +
+            "'AppForge'," +
+            "{" +
+            "value:Object.freeze(bridge)," +
+            "configurable:false," +
+            "writable:false" +
+            "}" +
+            ");" +
+            "}catch(e){" +
+            "window.AppForge=bridge;" +
+            "}" +
+
+            "})();";
+
+        view.evaluateJavascript(
+            javascript,
+            null
+        );
+    }
+
 
     public final class CaptureHintBridge {
 

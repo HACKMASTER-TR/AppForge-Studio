@@ -187,14 +187,6 @@ export function getFastBuildDecision(
   }
 
   if (
-    c.nativeBridge?.enabled
-  ) {
-    reasons.push(
-      "Native Bridge"
-    );
-  }
-
-  if (
     c.nativeBridge?.qrScanner
   ) {
     reasons.push(
@@ -429,6 +421,15 @@ export async function buildFastApk({
 `
       : "";
 
+  const vibrationPermission =
+    c.nativeBridge?.enabled === true &&
+    c.nativeBridge?.vibration === true
+      ? `
+    <uses-permission
+        android:name="android.permission.VIBRATE" />
+`
+      : "";
+
   const cameraPermission =
     c.features?.camera === true
       ? `
@@ -466,7 +467,7 @@ export async function buildFastApk({
 
     <uses-permission
         android:name="android.permission.INTERNET" />
-${notificationPermission}${cameraPermission}${locationPermission}
+${notificationPermission}${vibrationPermission}${cameraPermission}${locationPermission}
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
@@ -631,6 +632,23 @@ ${deepLinkIntentFilter}
 
     location:
       c.features?.location === true,
+
+    nativeBridge:
+      c.nativeBridge?.enabled === true,
+
+    nativeBridgeAllowRemote:
+      c.nativeBridge?.allowRemote === true,
+
+    shareBridge:
+      c.nativeBridge?.share === true,
+
+    clipboardBridge:
+      c.nativeBridge?.clipboard === true,
+
+    vibrationBridge:
+      c.nativeBridge?.vibration === true,
+
+    versionName,
 
     deepLinkEnabled,
 
