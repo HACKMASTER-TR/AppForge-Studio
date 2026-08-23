@@ -1967,11 +1967,11 @@ private fun createQuickDraft(
             "1.0.0",
         versionCode = 1,
         buildOutput =
-            "both",
+            "apk",
         orientation =
             "unspecified",
         splashEnabled =
-            true,
+            false,
         splashText =
             base.appName
                 .ifBlank {
@@ -1992,7 +1992,7 @@ private fun createQuickDraft(
         fileUpload =
             true,
         downloads =
-            true,
+            false,
         fullscreen =
             false,
         notifications =
@@ -2006,16 +2006,15 @@ private fun createQuickDraft(
         deepLinkEnabled =
             false,
         javascriptBridge =
-            base.sourceMode ==
-            SourceMode.LOCAL,
+            false,
         remoteBridgeAllowed =
             false,
         shareBridge =
-            true,
+            false,
         clipboardBridge =
-            true,
+            false,
         vibrationBridge =
-            true,
+            false,
         qrScanner =
             false,
         admobEnabled =
