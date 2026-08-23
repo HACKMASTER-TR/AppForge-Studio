@@ -1640,7 +1640,20 @@ private fun AppForgeApp() {
                                 },
                                 onApiKey = {
                                     apiKey = it
-                                    draft = draft.copy(buildApiKey = it)
+
+                                    draft =
+                                        draft.copy(
+                                            buildApiKey = it
+                                        )
+
+                                    // API anahtarı proje JSON'una yazılmaz.
+                                    // Android Keystore ile şifrelenmiş
+                                    // hesap/genel ayar olarak saklanır.
+                                    SecureAccountStore
+                                        .saveBuildApiKey(
+                                            context,
+                                            it
+                                        )
                                 },
                                 onSave = {
                                     val packageName =
