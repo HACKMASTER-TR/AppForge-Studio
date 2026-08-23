@@ -14,6 +14,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.json.JSONObject;
@@ -30,6 +32,8 @@ public final class FastActivity extends Activity {
     private ValueCallback<Uri[]> fileChooserCallback;
 
     private JSONObject config;
+    private View splashView;
+    private long splashStartedAt;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,6 +49,16 @@ public final class FastActivity extends Activity {
 
         configureWebView();
 
+        webView.setBackgroundColor(
+            parseColor(
+                config.optString(
+                    "backgroundColor",
+                    "#07101F"
+                ),
+                Color.BLACK
+            )
+        );
+
         root.addView(
             webView,
             new FrameLayout.LayoutParams(
@@ -57,7 +71,23 @@ public final class FastActivity extends Activity {
             addWatermark(root);
         }
 
+        if (
+            config.optBoolean(
+                "splashEnabled",
+                false
+            )
+        ) {
+            addSplash(root);
+        }
+
         setContentView(root);
+
+        if (splashView != null) {
+            splashView.postDelayed(
+                this::hideSplash,
+                2000L
+            );
+        }
 
         loadStartPage();
     }
@@ -181,7 +211,20 @@ public final class FastActivity extends Activity {
         }
 
         webView.setWebViewClient(
-            new WebViewClient()
+            new WebViewClient() {
+                @Override
+                public void onPageFinished(
+                    WebView view,
+                    String url
+                ) {
+                    super.onPageFinished(
+                        view,
+                        url
+                    );
+
+                    hideSplash();
+                }
+            }
         );
 
         webView.setWebChromeClient(
@@ -269,6 +312,220 @@ public final class FastActivity extends Activity {
 
         webView.loadUrl(
             "file:///android_asset/site/index.html"
+        );
+    }
+
+    private void addSplash(
+        FrameLayout root
+    ) {
+        FrameLayout splash =
+            new FrameLayout(this);
+
+        splash.setBackgroundColor(
+            parseColor(
+                config.optString(
+                    "backgroundColor",
+                    "#07101F"
+                ),
+                Color.BLACK
+            )
+        );
+
+        LinearLayout content =
+            new LinearLayout(this);
+
+        content.setOrientation(
+            LinearLayout.VERTICAL
+        );
+
+        content.setGravity(
+            Gravity.CENTER
+        );
+
+        if (
+            config.optBoolean(
+                "hasCustomIcon",
+                false
+            )
+        ) {
+            try {
+                ImageView icon =
+                    new ImageView(this);
+
+                icon.setImageDrawable(
+                    getApplicationInfo()
+                        .loadIcon(
+                            getPackageManager()
+                        )
+                );
+
+                icon.setScaleType(
+                    ImageView.ScaleType.FIT_CENTER
+                );
+
+                LinearLayout.LayoutParams iconParams =
+                    new LinearLayout.LayoutParams(
+                        dp(112),
+                        dp(112)
+                    );
+
+                iconParams.bottomMargin =
+                    dp(20);
+
+                content.addView(
+                    icon,
+                    iconParams
+                );
+
+            } catch (
+                Throwable ignored
+            ) {
+            }
+        }
+
+        String splashText =
+            config.optString(
+                "splashText",
+                ""
+            ).trim();
+
+        if (
+            splashText.isEmpty()
+        ) {
+            splashText =
+                config.optString(
+                    "appName",
+                    "AppForge App"
+                );
+        }
+
+        if (
+            !splashText.isEmpty()
+        ) {
+            TextView title =
+                new TextView(this);
+
+            title.setText(
+                splashText
+            );
+
+            title.setTextColor(
+                Color.WHITE
+            );
+
+            title.setTextSize(
+                21f
+            );
+
+            title.setGravity(
+                Gravity.CENTER
+            );
+
+            title.setPadding(
+                dp(20),
+                dp(8),
+                dp(20),
+                dp(8)
+            );
+
+            content.addView(
+                title,
+                new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            );
+        }
+
+        FrameLayout.LayoutParams contentParams =
+            new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            );
+
+        contentParams.gravity =
+            Gravity.CENTER;
+
+        splash.addView(
+            content,
+            contentParams
+        );
+
+        root.addView(
+            splash,
+            new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        );
+
+        splashView =
+            splash;
+
+        splashStartedAt =
+            System.currentTimeMillis();
+    }
+
+    private void hideSplash() {
+        final View current =
+            splashView;
+
+        if (
+            current == null
+        ) {
+            return;
+        }
+
+        long elapsed =
+            System.currentTimeMillis()
+                - splashStartedAt;
+
+        long minimum =
+            450L;
+
+        if (
+            elapsed < minimum
+        ) {
+            current.postDelayed(
+                this::hideSplash,
+                minimum - elapsed
+            );
+
+            return;
+        }
+
+        splashView =
+            null;
+
+        current
+            .animate()
+            .alpha(0f)
+            .setDuration(180L)
+            .withEndAction(
+                () -> {
+                    if (
+                        current.getParent()
+                        instanceof android.view.ViewGroup
+                    ) {
+                        ((android.view.ViewGroup)
+                            current.getParent())
+                            .removeView(
+                                current
+                            );
+                    }
+                }
+            )
+            .start();
+    }
+
+    private int dp(
+        int value
+    ) {
+        return Math.round(
+            value *
+            getResources()
+                .getDisplayMetrics()
+                .density
         );
     }
 

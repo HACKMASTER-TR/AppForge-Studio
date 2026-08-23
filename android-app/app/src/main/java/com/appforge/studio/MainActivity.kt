@@ -1971,7 +1971,7 @@ private fun createQuickDraft(
         orientation =
             "unspecified",
         splashEnabled =
-            false,
+            true,
         splashText =
             base.appName
                 .ifBlank {

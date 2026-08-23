@@ -536,7 +536,10 @@ export async function executeBuild(job) {
               config:
                 c,
 
-              localKeystore
+              localKeystore,
+
+              iconFile:
+                uploadedIcon
             }
           );
 

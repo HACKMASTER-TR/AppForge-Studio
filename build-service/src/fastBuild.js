@@ -175,8 +175,7 @@ function command(
 export function getFastBuildDecision(
   c,
   {
-    outputType,
-    hasIcon = false
+    outputType
   } = {}
 ) {
   const reasons = [];
@@ -186,20 +185,6 @@ export function getFastBuildDecision(
   ) {
     reasons.push(
       "AAB/BOTH istendi"
-    );
-  }
-
-  if (hasIcon) {
-    reasons.push(
-      "özel uygulama ikonu"
-    );
-  }
-
-  if (
-    c.splashEnabled === true
-  ) {
-    reasons.push(
-      "özel splash ekranı"
     );
   }
 
@@ -296,7 +281,8 @@ export async function buildFastApk({
   workDir,
   siteDir,
   config: c,
-  localKeystore = null
+  localKeystore = null,
+  iconFile = null
 }) {
   const pkg =
     safePackageName(
@@ -397,6 +383,18 @@ export async function buildFastApk({
       c.orientation
     );
 
+  const hasCustomIcon =
+    Boolean(
+      iconFile
+    );
+
+  const iconAttributes =
+    hasCustomIcon
+      ? `
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"`
+      : "";
+
   const manifestXml =
 `<?xml version="1.0" encoding="utf-8"?>
 <manifest
@@ -415,7 +413,7 @@ export async function buildFastApk({
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
-        android:label="${xml(c.appName || "AppForge App")}"
+        android:label="${xml(c.appName || "AppForge App")}"${iconAttributes}
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="false">
 
@@ -445,6 +443,58 @@ export async function buildFastApk({
     "utf8"
   );
 
+  const compiledResources =
+    path.join(
+      workDir,
+      "compiled-res.zip"
+    );
+
+  if (
+    hasCustomIcon
+  ) {
+    const resourceDir =
+      path.join(
+        workDir,
+        "res"
+      );
+
+    const mipmapDir =
+      path.join(
+        resourceDir,
+        "mipmap"
+      );
+
+    await fs.mkdir(
+      mipmapDir,
+      {
+        recursive: true
+      }
+    );
+
+    await fs.copyFile(
+      iconFile,
+      path.join(
+        mipmapDir,
+        "ic_launcher.png"
+      )
+    );
+
+    await command(
+      AAPT2,
+      [
+        "compile",
+        "--dir",
+        resourceDir,
+        "-o",
+        compiledResources
+      ],
+      {
+        cwd:
+          workDir
+      }
+    );
+  }
+
   await command(
     AAPT2,
     [
@@ -455,6 +505,14 @@ export async function buildFastApk({
       ANDROID_JAR,
       "--manifest",
       manifest,
+      ...(
+        hasCustomIcon
+          ? [
+              "-R",
+              compiledResources
+            ]
+          : []
+      ),
       "--min-sdk-version",
       "26",
       "--target-sdk-version",
@@ -487,6 +545,19 @@ export async function buildFastApk({
 
     webUrl:
       c.webUrl || "",
+
+    appName:
+      c.appName || "AppForge App",
+
+    splashEnabled:
+      c.splashEnabled === true,
+
+    splashText:
+      c.splashText ||
+      c.appName ||
+      "AppForge App",
+
+    hasCustomIcon,
 
     fileUpload:
       c.features?.fileUpload !== false,
