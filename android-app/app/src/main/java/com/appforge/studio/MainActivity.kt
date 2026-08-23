@@ -84,9 +84,104 @@ import java.util.Date
 import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
+
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
         super.onCreate(savedInstanceState)
-        setContent { AppForgeApp() }
+
+        /*
+         * Android 13+ bildirim izni.
+         * Kullanıcıya ilk kez yalnızca bir defa sorulur.
+         */
+        if (
+            Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.TIRAMISU
+        ) {
+            val permissionPrefs =
+                getSharedPreferences(
+                    "appforge_permissions",
+                    Context.MODE_PRIVATE
+                )
+
+            val alreadyAsked =
+                permissionPrefs.getBoolean(
+                    "notifications_asked",
+                    false
+                )
+
+            val granted =
+                checkSelfPermission(
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+
+            if (
+                !alreadyAsked &&
+                !granted
+            ) {
+                permissionPrefs
+                    .edit()
+                    .putBoolean(
+                        "notifications_asked",
+                        true
+                    )
+                    .apply()
+
+                requestPermissions(
+                    arrayOf(
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    ),
+                    9101
+                )
+            }
+        }
+
+        setContent {
+            AppForgeApp()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        /*
+         * APK yükleme izni ekranından döndüğünde
+         * kuruluma otomatik devam et.
+         */
+        val installerPrefs =
+            getSharedPreferences(
+                "appforge_installer",
+                Context.MODE_PRIVATE
+            )
+
+        val pendingDownloadId =
+            installerPrefs.getLong(
+                "pending_download_id",
+                -1L
+            )
+
+        if (
+            pendingDownloadId > 0L &&
+            (
+                Build.VERSION.SDK_INT <
+                    Build.VERSION_CODES.O ||
+                packageManager
+                    .canRequestPackageInstalls()
+            )
+        ) {
+            installerPrefs
+                .edit()
+                .remove(
+                    "pending_download_id"
+                )
+                .apply()
+
+            installDownloadedApk(
+                context = this,
+                downloadId = pendingDownloadId
+            )
+        }
     }
 }
 
@@ -6899,6 +6994,18 @@ private fun installDownloadedApk(
     ) {
         return runCatching {
 
+            context
+                .getSharedPreferences(
+                    "appforge_installer",
+                    Context.MODE_PRIVATE
+                )
+                .edit()
+                .putLong(
+                    "pending_download_id",
+                    downloadId
+                )
+                .apply()
+
             val permissionIntent =
                 Intent(
                     Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
@@ -6916,8 +7023,8 @@ private fun installDownloadedApk(
             )
 
             "Bu kaynaktan izin ver seçeneğini aç. " +
-                "Sonra AppForge Studio'ya dönüp " +
-                "APK'YI KUR'a tekrar bas."
+                "AppForge Studio'ya döndüğünde " +
+                "APK yükleyici otomatik açılacak."
 
         }.getOrElse {
             "APK yükleme izni ekranı açılamadı: ${it.message}"
@@ -7015,6 +7122,12 @@ private fun installDownloadedApk(
                 apkUri,
                 "application/vnd.android.package-archive"
             )
+
+            clipData =
+                ClipData.newRawUri(
+                    "AppForge APK",
+                    apkUri
+                )
 
             addFlags(
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
