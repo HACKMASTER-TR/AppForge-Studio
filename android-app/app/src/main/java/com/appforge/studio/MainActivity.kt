@@ -7155,67 +7155,495 @@ private fun SourceStep(
     update: (ProjectDraft) -> Unit,
     onPick: () -> Unit
 ) {
-    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item { Section("1. Kaynak", "HTML/ZIP veya HTTPS web adresi.") }
+    val packageRegex =
+        Regex(
+            """^[A-Za-z_]\w*(\.[A-Za-z_]\w*)+$"""
+        )
+
+    val appNameValid =
+        d.appName.trim().isNotBlank()
+
+    val packageValid =
+        packageRegex.matches(
+            d.packageName.trim()
+        )
+
+    val localSourceValid =
+        !d.sourceUri.isNullOrBlank() &&
+        !d.startPage.isNullOrBlank()
+
+    val webUrlValid =
+        d.webUrl.trim()
+            .startsWith(
+                "https://",
+                ignoreCase = true
+            ) &&
+        d.webUrl.trim().length > 8
+
+    val sourceValid =
+        if (
+            d.sourceMode ==
+            SourceMode.LOCAL
+        ) {
+            localSourceValid
+        } else {
+            webUrlValid
+        }
+
+    val stepReady =
+        appNameValid &&
+        packageValid &&
+        sourceValid
+
+    LazyColumn(
+        contentPadding =
+            PaddingValues(
+                20.dp
+            ),
+        verticalArrangement =
+            Arrangement.spacedBy(
+                14.dp
+            )
+    ) {
+        item {
+            Section(
+                "1. Kaynak",
+                "Uygulama bilgilerini ve web içeriğini seç."
+            )
+        }
 
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        8.dp
+                    )
+            ) {
                 FilterChip(
-                    selected = d.sourceMode == SourceMode.LOCAL,
-                    onClick = { update(d.copy(sourceMode = SourceMode.LOCAL)) },
-                    label = { Text("HTML / ZIP") }
+                    selected =
+                        d.sourceMode ==
+                        SourceMode.LOCAL,
+                    onClick = {
+                        update(
+                            d.copy(
+                                sourceMode =
+                                    SourceMode.LOCAL
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "HTML / ZIP"
+                        )
+                    }
                 )
+
                 FilterChip(
-                    selected = d.sourceMode == SourceMode.URL,
-                    onClick = { update(d.copy(sourceMode = SourceMode.URL)) },
-                    label = { Text("Web URL") }
+                    selected =
+                        d.sourceMode ==
+                        SourceMode.URL,
+                    onClick = {
+                        update(
+                            d.copy(
+                                sourceMode =
+                                    SourceMode.URL
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Web URL"
+                        )
+                    }
                 )
             }
         }
 
         item {
             OutlinedTextField(
-                value = d.appName,
-                onValueChange = { appName ->
+                value =
+                    d.appName,
+                onValueChange = {
+                    appName ->
+
+                    /*
+                     * Paket adı hâlâ otomatik değerdeyse
+                     * uygulama adıyla birlikte güncelle.
+                     *
+                     * Kullanıcı paket adını elle değiştirmişse
+                     * artık üzerine yazma.
+                     */
+                    val oldAutoPackage =
+                        quickPackageName(
+                            d.appName
+                        )
+
+                    val shouldUpdatePackage =
+                        d.packageName.isBlank() ||
+                        d.packageName ==
+                            "com.example.myapp" ||
+                        d.packageName ==
+                            oldAutoPackage
+
                     update(
                         d.copy(
-                            appName = appName,
-                            packageName = quickPackageName(appName)
+                            appName =
+                                appName,
+                            packageName =
+                                if (
+                                    shouldUpdatePackage
+                                ) {
+                                    quickPackageName(
+                                        appName
+                                    )
+                                } else {
+                                    d.packageName
+                                }
                         )
                     )
                 },
-                label = { Text("Uygulama adı") },
-                modifier = Modifier.fillMaxWidth()
+                label = {
+                    Text(
+                        "Uygulama adı"
+                    )
+                },
+                placeholder = {
+                    Text(
+                        "Örn: Benim Uygulamam"
+                    )
+                },
+                singleLine = true,
+                isError =
+                    d.appName.isNotEmpty() &&
+                    !appNameValid,
+                supportingText = {
+                    if (
+                        d.appName.isEmpty()
+                    ) {
+                        Text(
+                            "Play Store ve cihazda görünecek isim."
+                        )
+                    } else if (
+                        appNameValid
+                    ) {
+                        Text(
+                            "✓ Uygulama adı geçerli"
+                        )
+                    } else {
+                        Text(
+                            "Uygulama adı boş bırakılamaz."
+                        )
+                    }
+                },
+                modifier =
+                    Modifier.fillMaxWidth()
             )
         }
 
         item {
             OutlinedTextField(
-                value = d.packageName,
-                onValueChange = { update(d.copy(packageName = it)) },
-                label = { Text("Paket adı") },
-                modifier = Modifier.fillMaxWidth()
+                value =
+                    d.packageName,
+                onValueChange = {
+                    packageName ->
+
+                    update(
+                        d.copy(
+                            packageName =
+                                packageName
+                                    .trim()
+                                    .lowercase()
+                        )
+                    )
+                },
+                label = {
+                    Text(
+                        "Paket adı"
+                    )
+                },
+                placeholder = {
+                    Text(
+                        "com.firma.uygulama"
+                    )
+                },
+                singleLine = true,
+                isError =
+                    d.packageName.isNotEmpty() &&
+                    !packageValid,
+                supportingText = {
+                    if (
+                        packageValid
+                    ) {
+                        Text(
+                            "✓ Paket adı geçerli"
+                        )
+                    } else {
+                        Text(
+                            "Örn: com.hackmaster.uygulama"
+                        )
+                    }
+                },
+                modifier =
+                    Modifier.fillMaxWidth()
             )
         }
 
-        if (d.sourceMode == SourceMode.LOCAL) {
+        if (
+            d.sourceMode ==
+            SourceMode.LOCAL
+        ) {
             item {
-                Button(onClick = onPick, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (d.sourceLabel.isBlank()) "HTML veya ZIP seç" else d.sourceLabel)
+                Button(
+                    onClick =
+                        onPick,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (
+                            d.sourceLabel
+                                .isBlank()
+                        ) {
+                            "HTML veya ZIP seç"
+                        } else {
+                            "Kaynağı değiştir"
+                        }
+                    )
+                }
+            }
+
+            if (
+                d.sourceLabel.isNotBlank()
+            ) {
+                item {
+                    Card(
+                        colors =
+                            CardDefaults
+                                .cardColors(
+                                    containerColor =
+                                        Card2
+                                ),
+                        shape =
+                            RoundedCornerShape(
+                                16.dp
+                            ),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier.padding(
+                                    16.dp
+                                ),
+                            verticalArrangement =
+                                Arrangement
+                                    .spacedBy(
+                                        6.dp
+                                    )
+                        ) {
+                            Text(
+                                "Seçilen kaynak",
+                                fontWeight =
+                                    FontWeight.Bold
+                            )
+
+                            Text(
+                                d.sourceLabel,
+                                color =
+                                    TextSecondary
+                            )
+
+                            if (
+                                !d.startPage
+                                    .isNullOrBlank()
+                            ) {
+                                Text(
+                                    "Başlangıç: ${
+                                        File(
+                                            d.startPage!!
+                                        ).name
+                                    }",
+                                    color =
+                                        TextSecondary,
+                                    fontSize =
+                                        12.sp
+                                )
+                            }
+
+                            Text(
+                                if (
+                                    localSourceValid
+                                ) {
+                                    "✓ Yerel proje hazır"
+                                } else {
+                                    "Kaynak doğrulanamadı"
+                                },
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+                    }
                 }
             }
         } else {
             item {
                 OutlinedTextField(
-                    value = d.webUrl,
-                    onValueChange = { update(d.copy(webUrl = it.trim())) },
-                    label = { Text("https://site.com") },
-                    modifier = Modifier.fillMaxWidth()
+                    value =
+                        d.webUrl,
+                    onValueChange = {
+                        update(
+                            d.copy(
+                                webUrl =
+                                    it.trim()
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Web adresi"
+                        )
+                    },
+                    placeholder = {
+                        Text(
+                            "https://site.com"
+                        )
+                    },
+                    singleLine = true,
+                    isError =
+                        d.webUrl.isNotBlank() &&
+                        !webUrlValid,
+                    supportingText = {
+                        if (
+                            d.webUrl.isBlank()
+                        ) {
+                            Text(
+                                "HTTPS web adresi gir."
+                            )
+                        } else if (
+                            webUrlValid
+                        ) {
+                            Text(
+                                "✓ HTTPS adresi geçerli"
+                            )
+                        } else {
+                            Text(
+                                "Adres https:// ile başlamalı."
+                            )
+                        }
+                    },
+                    modifier =
+                        Modifier.fillMaxWidth()
                 )
             }
         }
 
-        item { NoteCard(status) }
+        item {
+            Card(
+                colors =
+                    CardDefaults
+                        .cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            7.dp
+                        )
+                ) {
+                    Text(
+                        "Proje özeti",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Text(
+                        if (
+                            appNameValid
+                        ) {
+                            "✓ Uygulama adı"
+                        } else {
+                            "○ Uygulama adı gerekli"
+                        },
+                        fontSize =
+                            13.sp
+                    )
+
+                    Text(
+                        if (
+                            packageValid
+                        ) {
+                            "✓ Paket adı"
+                        } else {
+                            "○ Paket adı geçersiz"
+                        },
+                        fontSize =
+                            13.sp
+                    )
+
+                    Text(
+                        if (
+                            sourceValid
+                        ) {
+                            "✓ Kaynak hazır"
+                        } else {
+                            "○ Kaynak gerekli"
+                        },
+                        fontSize =
+                            13.sp
+                    )
+
+                    Spacer(
+                        Modifier.height(
+                            4.dp
+                        )
+                    )
+
+                    Text(
+                        if (
+                            stepReady
+                        ) {
+                            "✅ 1. aşama hazır"
+                        } else {
+                            "Eksik alanları tamamla."
+                        },
+                        fontWeight =
+                            FontWeight.Bold,
+                        color =
+                            if (
+                                stepReady
+                            ) {
+                                Accent
+                            } else {
+                                TextSecondary
+                            }
+                    )
+                }
+            }
+        }
+
+        if (
+            status.isNotBlank() &&
+            status != "Hazır"
+        ) {
+            item {
+                NoteCard(
+                    status
+                )
+            }
+        }
     }
 }
 
