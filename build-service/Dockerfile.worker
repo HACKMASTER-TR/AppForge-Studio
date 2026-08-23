@@ -64,6 +64,23 @@ RUN npm install --omit=dev
 
 COPY . .
 
+# =========================================================
+# AppForge FAST EXTENDED SDK bundle
+#
+# QR Scanner
+# AdMob
+# UMP
+# Google Play Billing
+# Firebase Analytics
+# Firebase Crashlytics
+#
+# Bu bağımlılıklar Worker image oluşturulurken yalnızca
+# bir kez çözülür. Kullanıcı build'lerinde tekrar
+# internetten indirilmez.
+# =========================================================
+
+RUN gradle     -p fast-sdk-bundle     --no-daemon     --stacktrace     prepareFastSdk
+
 # AppForge FAST BUILD runtime.
 # Bu kod Worker image oluşturulurken yalnızca bir kez DEX'e çevrilir.
 # Kullanıcı APK build'lerinde D8/Gradle tekrar çalıştırılmaz.
