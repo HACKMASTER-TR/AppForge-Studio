@@ -97,13 +97,12 @@ RUN gradle     -p fast-sdk-bundle     --no-daemon     --stacktrace     prepareFa
 RUN gradle \
     -p fast-extended-template \
     --no-daemon \
-    :app:assembleRelease \
+    --stacktrace \
+    :app:dependencies \
+    --configuration releaseRuntimeClasspath \
     && mkdir -p /opt/appforge-fast-extended \
-    && EXTENDED_APK="$(find fast-extended-template/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)" \
-    && test -n "$EXTENDED_APK" \
-    && echo "FAST EXTENDED APK: $EXTENDED_APK" \
-    && cp "$EXTENDED_APK" /opt/appforge-fast-extended/template.apk \
-    && test -s /opt/appforge-fast-extended/template.apk
+    && printf "ready\n" > /opt/appforge-fast-extended/cache-ready \
+    && test -s /opt/appforge-fast-extended/cache-ready
 
 # AppForge FAST BUILD runtime.
 # Bu kod Worker image oluşturulurken yalnızca bir kez DEX'e çevrilir.
