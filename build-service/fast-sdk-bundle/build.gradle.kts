@@ -190,3 +190,90 @@ tasks.register<Sync>(
         )
     }
 }
+
+
+// APPFORGE FAST QR FEATURE PACK
+// ============================================================
+// Yalnız QR / Barkod tarayıcı için gereken dependency ağını
+// ayrı klasöre çözer.
+// ============================================================
+
+val fastQrSdk =
+    configurations.create(
+        "fastQrSdk"
+    ) {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
+
+dependencies {
+    add(
+        "fastQrSdk",
+        "com.google.android.gms:" +
+            "play-services-code-scanner:" +
+            "16.1.0"
+    )
+}
+
+tasks.register<Sync>(
+    "prepareFastQrSdk"
+) {
+    from(
+        fastQrSdk
+    )
+
+    into(
+        layout
+            .buildDirectory
+            .dir(
+                "qr-bundle"
+            )
+    )
+
+    doLast {
+        val output =
+            layout
+                .buildDirectory
+                .dir(
+                    "qr-bundle"
+                )
+                .get()
+                .asFile
+
+        val files =
+            output
+                .listFiles()
+                ?.map {
+                    it.name
+                }
+                .orEmpty()
+                .sorted()
+
+        println()
+        println(
+            "===== APPFORGE FAST QR SDK ====="
+        )
+
+        files.forEach {
+            println(it)
+        }
+
+        println(
+            "================================"
+        )
+
+        check(
+            files.any {
+                it.contains(
+                    "play-services-code-scanner"
+                )
+            }
+        ) {
+            "QR Code Scanner SDK bulunamadı."
+        }
+
+        println(
+            "✅ FAST QR dependency paketi hazır."
+        )
+    }
+}

@@ -79,7 +79,7 @@ COPY . .
 # internetten indirilmez.
 # =========================================================
 
-RUN gradle     -p fast-sdk-bundle     --no-daemon     --stacktrace     prepareFastSdk
+RUN gradle     -p fast-sdk-bundle     --no-daemon     --stacktrace     prepareFastSdk prepareFastQrSdk
 
 # =========================================================
 # AppForge FAST EXTENDED template
