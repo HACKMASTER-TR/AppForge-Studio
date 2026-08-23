@@ -187,14 +187,6 @@ export function getFastBuildDecision(
   }
 
   if (
-    c.features?.location
-  ) {
-    reasons.push(
-      "konum"
-    );
-  }
-
-  if (
     c.deepLink?.enabled
   ) {
     reasons.push(
@@ -389,6 +381,17 @@ export async function buildFastApk({
 `
       : "";
 
+  const locationPermission =
+    c.features?.location === true
+      ? `
+    <uses-permission
+        android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION" />
+`
+      : "";
+
   const manifestXml =
 `<?xml version="1.0" encoding="utf-8"?>
 <manifest
@@ -403,7 +406,7 @@ export async function buildFastApk({
 
     <uses-permission
         android:name="android.permission.INTERNET" />
-${notificationPermission}${cameraPermission}
+${notificationPermission}${cameraPermission}${locationPermission}
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
@@ -564,6 +567,9 @@ ${notificationPermission}${cameraPermission}
 
     camera:
       c.features?.camera === true,
+
+    location:
+      c.features?.location === true,
 
     fullscreen:
       c.features?.fullscreen === true,

@@ -2777,6 +2777,64 @@ private fun QuickCreateScreen(
             }
         }
 
+        Card(
+            modifier =
+                Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                verticalAlignment =
+                    Alignment.CenterVertically,
+                horizontalArrangement =
+                    Arrangement.SpaceBetween
+            ) {
+                Column(
+                    modifier =
+                        Modifier.weight(1f)
+                ) {
+                    Text(
+                        "📍 Konum / Geolocation",
+                        fontWeight =
+                            FontWeight.SemiBold
+                    )
+
+                    Spacer(
+                        Modifier.height(4.dp)
+                    )
+
+                    Text(
+                        "Web uygulamasının cihaz konumuna erişmesine izin verir.",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+                }
+
+                Spacer(
+                    Modifier.width(12.dp)
+                )
+
+                Switch(
+                    checked =
+                        draft.location,
+                    onCheckedChange = {
+                        enabled ->
+
+                        onDraftChange(
+                            draft.copy(
+                                location =
+                                    enabled
+                            )
+                        )
+                    }
+                )
+            }
+        }
+
         Button(
             onClick =
                 onBuild,

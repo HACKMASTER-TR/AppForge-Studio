@@ -17,6 +17,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.webkit.CookieManager;
+import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
@@ -47,6 +48,14 @@ public final class FastActivity extends Activity {
     private ValueCallback<Uri[]> fileChooserCallback;
     private Uri cameraCaptureUri;
     private volatile boolean cameraCaptureRequestedByPage = false;
+
+    private boolean appPermissionRequestInFlight = false;
+
+    private GeolocationPermissions.Callback
+        pendingGeolocationCallback;
+
+    private String
+        pendingGeolocationOrigin;
 
     private JSONObject config;
     private View splashView;
@@ -146,8 +155,27 @@ public final class FastActivity extends Activity {
         }
 
         if (
+            config.optBoolean(
+                "location",
+                false
+            ) &&
+            !hasLocationPermission()
+        ) {
+            permissions.add(
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            );
+
+            permissions.add(
+                Manifest.permission.ACCESS_FINE_LOCATION
+            );
+        }
+
+        if (
             !permissions.isEmpty()
         ) {
+            appPermissionRequestInFlight =
+                true;
+
             requestPermissions(
                 permissions.toArray(
                     new String[0]
@@ -155,6 +183,141 @@ public final class FastActivity extends Activity {
                 APP_PERMISSION_REQUEST
             );
         }
+    }
+
+    private boolean hasLocationPermission() {
+        return
+            checkSelfPermission(
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) ==
+                PackageManager.PERMISSION_GRANTED ||
+            checkSelfPermission(
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) ==
+                PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean isTrustedGeolocationOrigin(
+        String origin
+    ) {
+        if (
+            origin == null ||
+            origin.trim().isEmpty()
+        ) {
+            return false;
+        }
+
+        String sourceMode =
+            config.optString(
+                "sourceMode",
+                "LOCAL"
+            );
+
+        if (
+            "LOCAL".equalsIgnoreCase(
+                sourceMode
+            )
+        ) {
+            return origin.startsWith(
+                "file://"
+            );
+        }
+
+        if (
+            !"URL".equalsIgnoreCase(
+                sourceMode
+            )
+        ) {
+            return false;
+        }
+
+        try {
+            Uri expected =
+                Uri.parse(
+                    config.optString(
+                        "webUrl",
+                        ""
+                    )
+                );
+
+            Uri actual =
+                Uri.parse(
+                    origin
+                );
+
+            if (
+                !"https".equalsIgnoreCase(
+                    expected.getScheme()
+                ) ||
+                !"https".equalsIgnoreCase(
+                    actual.getScheme()
+                )
+            ) {
+                return false;
+            }
+
+            String expectedHost =
+                expected.getHost();
+
+            String actualHost =
+                actual.getHost();
+
+            if (
+                expectedHost == null ||
+                actualHost == null ||
+                !expectedHost.equalsIgnoreCase(
+                    actualHost
+                )
+            ) {
+                return false;
+            }
+
+            return
+                expected.getPort() ==
+                actual.getPort();
+
+        } catch (
+            Throwable ignored
+        ) {
+            return false;
+        }
+    }
+
+    private void resolvePendingGeolocation() {
+        GeolocationPermissions.Callback callback =
+            pendingGeolocationCallback;
+
+        String origin =
+            pendingGeolocationOrigin;
+
+        pendingGeolocationCallback =
+            null;
+
+        pendingGeolocationOrigin =
+            null;
+
+        if (
+            callback == null ||
+            origin == null
+        ) {
+            return;
+        }
+
+        boolean allow =
+            config.optBoolean(
+                "location",
+                false
+            ) &&
+            isTrustedGeolocationOrigin(
+                origin
+            ) &&
+            hasLocationPermission();
+
+        callback.invoke(
+            origin,
+            allow,
+            false
+        );
     }
 
     private JSONObject loadConfig() {
@@ -259,6 +422,13 @@ public final class FastActivity extends Activity {
 
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
+
+        settings.setGeolocationEnabled(
+            config.optBoolean(
+                "location",
+                false
+            )
+        );
 
         if (
             config.optBoolean(
@@ -382,6 +552,72 @@ public final class FastActivity extends Activity {
                             }
                         }
                     );
+                }
+
+                @Override
+                public void onGeolocationPermissionsShowPrompt(
+                    String origin,
+                    GeolocationPermissions.Callback callback
+                ) {
+                    if (
+                        callback == null
+                    ) {
+                        return;
+                    }
+
+                    boolean trusted =
+                        config.optBoolean(
+                            "location",
+                            false
+                        ) &&
+                        isTrustedGeolocationOrigin(
+                            origin
+                        );
+
+                    if (
+                        !trusted
+                    ) {
+                        callback.invoke(
+                            origin,
+                            false,
+                            false
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        hasLocationPermission()
+                    ) {
+                        callback.invoke(
+                            origin,
+                            true,
+                            false
+                        );
+
+                        return;
+                    }
+
+                    pendingGeolocationOrigin =
+                        origin;
+
+                    pendingGeolocationCallback =
+                        callback;
+
+                    if (
+                        !appPermissionRequestInFlight
+                    ) {
+                        appPermissionRequestInFlight =
+                            true;
+
+                        requestPermissions(
+                            new String[] {
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                            },
+                            APP_PERMISSION_REQUEST
+                        );
+                    }
                 }
 
                 @Override
@@ -1554,6 +1790,31 @@ public final class FastActivity extends Activity {
 
         cameraCaptureUri =
             null;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+        int requestCode,
+        String[] permissions,
+        int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(
+            requestCode,
+            permissions,
+            grantResults
+        );
+
+        if (
+            requestCode !=
+                APP_PERMISSION_REQUEST
+        ) {
+            return;
+        }
+
+        appPermissionRequestInFlight =
+            false;
+
+        resolvePendingGeolocation();
     }
 
     @Override
