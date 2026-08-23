@@ -2727,633 +2727,642 @@ private fun QuickCreateScreen(
                         13.sp
                 )
             }
-        }
 
-        Card(
-            modifier =
-                Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                verticalAlignment =
-                    Alignment.CenterVertically,
-                horizontalArrangement =
-                    Arrangement.SpaceBetween
-            ) {
+            item {
                 Column(
                     modifier =
-                        Modifier.weight(1f)
-                ) {
-                    Text(
-                        "📷 Kamera ile fotoğraf",
-                        fontWeight =
-                            FontWeight.SemiBold
-                    )
-
-                    Spacer(
-                        Modifier.height(4.dp)
-                    )
-
-                    Text(
-                        "HTML kamera/capture alanlarının telefon kamerasını açmasına izin verir.",
-                        color =
-                            TextSecondary,
-                        fontSize =
-                            12.sp
-                    )
-                }
-
-                Spacer(
-                    Modifier.width(12.dp)
-                )
-
-                Switch(
-                    checked =
-                        draft.camera,
-                    onCheckedChange = {
-                        enabled ->
-
-                        onDraftChange(
-                            draft.copy(
-                                camera =
-                                    enabled
-                            )
+                        Modifier.fillMaxWidth(),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            12.dp
                         )
-                    }
-                )
-            }
-        }
-
-        Card(
-            modifier =
-                Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                verticalAlignment =
-                    Alignment.CenterVertically,
-                horizontalArrangement =
-                    Arrangement.SpaceBetween
-            ) {
-                Column(
-                    modifier =
-                        Modifier.weight(1f)
                 ) {
-                    Text(
-                        "📍 Konum / Geolocation",
-                        fontWeight =
-                            FontWeight.SemiBold
-                    )
-
-                    Spacer(
-                        Modifier.height(4.dp)
-                    )
-
-                    Text(
-                        "Web uygulamasının cihaz konumuna erişmesine izin verir.",
-                        color =
-                            TextSecondary,
-                        fontSize =
-                            12.sp
-                    )
-                }
-
-                Spacer(
-                    Modifier.width(12.dp)
-                )
-
-                Switch(
-                    checked =
-                        draft.location,
-                    onCheckedChange = {
-                        enabled ->
-
-                        onDraftChange(
-                            draft.copy(
-                                location =
-                                    enabled
-                            )
-                        )
-                    }
-                )
-            }
-        }
-
-        Card(
-            modifier =
-                Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                verticalAlignment =
-                    Alignment.CenterVertically,
-                horizontalArrangement =
-                    Arrangement.SpaceBetween
-            ) {
-                Column(
+                Card(
                     modifier =
-                        Modifier.weight(1f)
+                        Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        "🔗 Deep Link",
-                        fontWeight =
-                            FontWeight.SemiBold
-                    )
-
-                    Spacer(
-                        Modifier.height(4.dp)
-                    )
-
-                    Text(
-                        if (
-                            draft.deepLinkEnabled
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp),
+                        verticalAlignment =
+                            Alignment.CenterVertically,
+                        horizontalArrangement =
+                            Arrangement.SpaceBetween
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier.weight(1f)
                         ) {
-                            "appforge://${draft.packageName.lowercase()}/"
-                        } else {
-                            "Bağlantıdan uygulamayı doğrudan aç."
-                        },
-                        color =
-                            TextSecondary,
-                        fontSize =
-                            12.sp
-                    )
-                }
-
-                Spacer(
-                    Modifier.width(12.dp)
-                )
-
-                Switch(
-                    checked =
-                        draft.deepLinkEnabled,
-                    onCheckedChange = {
-                        enabled ->
-
-                        onDraftChange(
-                            draft.copy(
-                                deepLinkEnabled =
-                                    enabled,
-                                deepLinkScheme =
-                                    if (enabled) {
-                                        "appforge"
-                                    } else {
-                                        draft.deepLinkScheme
-                                    },
-                                deepLinkHost =
-                                    if (enabled) {
-                                        draft.packageName
-                                            .lowercase()
-                                    } else {
-                                        draft.deepLinkHost
-                                    },
-                                deepLinkPathPrefix =
-                                    "/"
+                            Text(
+                                "📷 Kamera ile fotoğraf",
+                                fontWeight =
+                                    FontWeight.SemiBold
                             )
+
+                            Spacer(
+                                Modifier.height(4.dp)
+                            )
+
+                            Text(
+                                "HTML kamera/capture alanlarının telefon kamerasını açmasına izin verir.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+
+                        Spacer(
+                            Modifier.width(12.dp)
+                        )
+
+                        Switch(
+                            checked =
+                                draft.camera,
+                            onCheckedChange = {
+                                enabled ->
+
+                                onDraftChange(
+                                    draft.copy(
+                                        camera =
+                                            enabled
+                                    )
+                                )
+                            }
                         )
                     }
-                )
-            }
-        }
-
-        Card(
-            modifier =
-                Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                verticalArrangement =
-                    Arrangement.spacedBy(12.dp)
-            ) {
-
-                Text(
-                    "🚀 FAST Extended",
-                    fontWeight =
-                        FontWeight.Bold,
-                    fontSize =
-                        18.sp
-                )
-
-                Text(
-                    "Native Bridge, QR, reklam, satın alma ve Firebase özellikleri.",
-                    color =
-                        TextSecondary,
-                    fontSize =
-                        12.sp
-                )
-
-                // ==========================================
-                // NATIVE BRIDGE
-                // ==========================================
-
-                Toggle(
-                    "🌉 Native Bridge",
-                    draft.javascriptBridge
-                ) { enabled ->
-
-                    onDraftChange(
-                        draft.copy(
-                            javascriptBridge =
-                                enabled,
-
-                            shareBridge =
-                                enabled,
-
-                            clipboardBridge =
-                                enabled,
-
-                            vibrationBridge =
-                                enabled,
-
-                            qrScanner =
-                                enabled
-                        )
-                    )
                 }
 
-                if (
-                    draft.javascriptBridge
+                Card(
+                    modifier =
+                        Modifier.fillMaxWidth()
                 ) {
-
-                    Toggle(
-                        "📤 Paylaşım",
-                        draft.shareBridge
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp),
+                        verticalAlignment =
+                            Alignment.CenterVertically,
+                        horizontalArrangement =
+                            Arrangement.SpaceBetween
                     ) {
-                        onDraftChange(
-                            draft.copy(
-                                shareBridge =
-                                    it
+                        Column(
+                            modifier =
+                                Modifier.weight(1f)
+                        ) {
+                            Text(
+                                "📍 Konum / Geolocation",
+                                fontWeight =
+                                    FontWeight.SemiBold
                             )
+
+                            Spacer(
+                                Modifier.height(4.dp)
+                            )
+
+                            Text(
+                                "Web uygulamasının cihaz konumuna erişmesine izin verir.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+
+                        Spacer(
+                            Modifier.width(12.dp)
+                        )
+
+                        Switch(
+                            checked =
+                                draft.location,
+                            onCheckedChange = {
+                                enabled ->
+
+                                onDraftChange(
+                                    draft.copy(
+                                        location =
+                                            enabled
+                                    )
+                                )
+                            }
                         )
                     }
+                }
 
-                    Toggle(
-                        "📋 Panoya kopyalama",
-                        draft.clipboardBridge
+                Card(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp),
+                        verticalAlignment =
+                            Alignment.CenterVertically,
+                        horizontalArrangement =
+                            Arrangement.SpaceBetween
                     ) {
-                        onDraftChange(
-                            draft.copy(
-                                clipboardBridge =
-                                    it
+                        Column(
+                            modifier =
+                                Modifier.weight(1f)
+                        ) {
+                            Text(
+                                "🔗 Deep Link",
+                                fontWeight =
+                                    FontWeight.SemiBold
                             )
+
+                            Spacer(
+                                Modifier.height(4.dp)
+                            )
+
+                            Text(
+                                if (
+                                    draft.deepLinkEnabled
+                                ) {
+                                    "appforge://${draft.packageName.lowercase()}/"
+                                } else {
+                                    "Bağlantıdan uygulamayı doğrudan aç."
+                                },
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+
+                        Spacer(
+                            Modifier.width(12.dp)
+                        )
+
+                        Switch(
+                            checked =
+                                draft.deepLinkEnabled,
+                            onCheckedChange = {
+                                enabled ->
+
+                                onDraftChange(
+                                    draft.copy(
+                                        deepLinkEnabled =
+                                            enabled,
+                                        deepLinkScheme =
+                                            if (enabled) {
+                                                "appforge"
+                                            } else {
+                                                draft.deepLinkScheme
+                                            },
+                                        deepLinkHost =
+                                            if (enabled) {
+                                                draft.packageName
+                                                    .lowercase()
+                                            } else {
+                                                draft.deepLinkHost
+                                            },
+                                        deepLinkPathPrefix =
+                                            "/"
+                                    )
+                                )
+                            }
                         )
                     }
+                }
 
-                    Toggle(
-                        "📳 Titreşim / Haptic",
-                        draft.vibrationBridge
+                Card(
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp),
+                        verticalArrangement =
+                            Arrangement.spacedBy(12.dp)
                     ) {
-                        onDraftChange(
-                            draft.copy(
-                                vibrationBridge =
-                                    it
-                            )
+
+                        Text(
+                            "🚀 FAST Extended",
+                            fontWeight =
+                                FontWeight.Bold,
+                            fontSize =
+                                18.sp
                         )
-                    }
 
-                    Toggle(
-                        "📷 QR / Barkod Tarayıcı",
-                        draft.qrScanner
-                    ) {
-                        onDraftChange(
-                            draft.copy(
-                                qrScanner =
-                                    it
-                            )
+                        Text(
+                            "Native Bridge, QR, reklam, satın alma ve Firebase özellikleri.",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
                         )
-                    }
 
-                    if (
-                        draft.sourceMode ==
-                            SourceMode.URL
-                    ) {
+                        // ==========================================
+                        // NATIVE BRIDGE
+                        // ==========================================
+
                         Toggle(
-                            "🌐 Uzak site Native Bridge",
-                            draft.remoteBridgeAllowed
+                            "🌉 Native Bridge",
+                            draft.javascriptBridge
+                        ) { enabled ->
+
+                            onDraftChange(
+                                draft.copy(
+                                    javascriptBridge =
+                                        enabled,
+
+                                    shareBridge =
+                                        enabled,
+
+                                    clipboardBridge =
+                                        enabled,
+
+                                    vibrationBridge =
+                                        enabled,
+
+                                    qrScanner =
+                                        enabled
+                                )
+                            )
+                        }
+
+                        if (
+                            draft.javascriptBridge
+                        ) {
+
+                            Toggle(
+                                "📤 Paylaşım",
+                                draft.shareBridge
+                            ) {
+                                onDraftChange(
+                                    draft.copy(
+                                        shareBridge =
+                                            it
+                                    )
+                                )
+                            }
+
+                            Toggle(
+                                "📋 Panoya kopyalama",
+                                draft.clipboardBridge
+                            ) {
+                                onDraftChange(
+                                    draft.copy(
+                                        clipboardBridge =
+                                            it
+                                    )
+                                )
+                            }
+
+                            Toggle(
+                                "📳 Titreşim / Haptic",
+                                draft.vibrationBridge
+                            ) {
+                                onDraftChange(
+                                    draft.copy(
+                                        vibrationBridge =
+                                            it
+                                    )
+                                )
+                            }
+
+                            Toggle(
+                                "📷 QR / Barkod Tarayıcı",
+                                draft.qrScanner
+                            ) {
+                                onDraftChange(
+                                    draft.copy(
+                                        qrScanner =
+                                            it
+                                    )
+                                )
+                            }
+
+                            if (
+                                draft.sourceMode ==
+                                    SourceMode.URL
+                            ) {
+                                Toggle(
+                                    "🌐 Uzak site Native Bridge",
+                                    draft.remoteBridgeAllowed
+                                ) {
+                                    onDraftChange(
+                                        draft.copy(
+                                            remoteBridgeAllowed =
+                                                it
+                                        )
+                                    )
+                                }
+
+                                Text(
+                                    "Yalnız güvendiğiniz HTTPS sitelerinde açın.",
+                                    color =
+                                        TextSecondary,
+                                    fontSize =
+                                        11.sp
+                                )
+                            }
+                        }
+
+
+                        Spacer(
+                            Modifier.height(4.dp)
+                        )
+
+
+                        // ==========================================
+                        // ADMOB
+                        // ==========================================
+
+                        Toggle(
+                            "💰 AdMob",
+                            draft.admobEnabled
                         ) {
                             onDraftChange(
                                 draft.copy(
-                                    remoteBridgeAllowed =
+                                    admobEnabled =
+                                        it,
+
+                                    umpConsentEnabled =
+                                        if (it) {
+                                            draft.umpConsentEnabled
+                                        } else {
+                                            false
+                                        }
+                                )
+                            )
+                        }
+
+                        if (
+                            draft.admobEnabled
+                        ) {
+
+                            OutlinedTextField(
+                                value =
+                                    draft.admobAppId,
+                                onValueChange = {
+                                    onDraftChange(
+                                        draft.copy(
+                                            admobAppId =
+                                                it.trim()
+                                        )
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        "AdMob App ID"
+                                    )
+                                },
+                                placeholder = {
+                                    Text(
+                                        "ca-app-pub-...~..."
+                                    )
+                                },
+                                singleLine =
+                                    true,
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            )
+
+                            OutlinedTextField(
+                                value =
+                                    draft.admobBannerUnitId,
+                                onValueChange = {
+                                    onDraftChange(
+                                        draft.copy(
+                                            admobBannerUnitId =
+                                                it.trim()
+                                        )
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        "Banner Unit ID"
+                                    )
+                                },
+                                singleLine =
+                                    true,
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            )
+
+                            OutlinedTextField(
+                                value =
+                                    draft.admobInterstitialUnitId,
+                                onValueChange = {
+                                    onDraftChange(
+                                        draft.copy(
+                                            admobInterstitialUnitId =
+                                                it.trim()
+                                        )
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        "Interstitial Unit ID"
+                                    )
+                                },
+                                singleLine =
+                                    true,
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            )
+
+                            OutlinedTextField(
+                                value =
+                                    draft.admobRewardedUnitId,
+                                onValueChange = {
+                                    onDraftChange(
+                                        draft.copy(
+                                            admobRewardedUnitId =
+                                                it.trim()
+                                        )
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        "Rewarded Unit ID"
+                                    )
+                                },
+                                singleLine =
+                                    true,
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            )
+
+                            Toggle(
+                                "🛡️ UMP Consent",
+                                draft.umpConsentEnabled
+                            ) {
+                                onDraftChange(
+                                    draft.copy(
+                                        umpConsentEnabled =
+                                            it
+                                    )
+                                )
+                            }
+                        }
+
+
+                        Spacer(
+                            Modifier.height(4.dp)
+                        )
+
+
+                        // ==========================================
+                        // BILLING
+                        // ==========================================
+
+                        Toggle(
+                            "🛒 Google Play Billing",
+                            draft.billingEnabled
+                        ) {
+                            onDraftChange(
+                                draft.copy(
+                                    billingEnabled =
                                         it
                                 )
                             )
                         }
 
-                        Text(
-                            "Yalnız güvendiğiniz HTTPS sitelerinde açın.",
-                            color =
-                                TextSecondary,
-                            fontSize =
-                                11.sp
+                        if (
+                            draft.billingEnabled
+                        ) {
+
+                            OutlinedTextField(
+                                value =
+                                    draft.billingProductIds,
+                                onValueChange = {
+                                    onDraftChange(
+                                        draft.copy(
+                                            billingProductIds =
+                                                it
+                                        )
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        "Ürün ID'leri"
+                                    )
+                                },
+                                placeholder = {
+                                    Text(
+                                        "premium,coins100"
+                                    )
+                                },
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            )
+
+                            OutlinedTextField(
+                                value =
+                                    draft.billingSubscriptionIds,
+                                onValueChange = {
+                                    onDraftChange(
+                                        draft.copy(
+                                            billingSubscriptionIds =
+                                                it
+                                        )
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        "Abonelik ID'leri"
+                                    )
+                                },
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            )
+
+                            OutlinedTextField(
+                                value =
+                                    draft.removeAdsProductId,
+                                onValueChange = {
+                                    onDraftChange(
+                                        draft.copy(
+                                            removeAdsProductId =
+                                                it.trim()
+                                        )
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        "Reklam kaldırma ürün ID"
+                                    )
+                                },
+                                singleLine =
+                                    true,
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            )
+                        }
+
+
+                        Spacer(
+                            Modifier.height(4.dp)
                         )
-                    }
-                }
 
 
-                Spacer(
-                    Modifier.height(4.dp)
-                )
+                        // ==========================================
+                        // FIREBASE
+                        // ==========================================
 
-
-                // ==========================================
-                // ADMOB
-                // ==========================================
-
-                Toggle(
-                    "💰 AdMob",
-                    draft.admobEnabled
-                ) {
-                    onDraftChange(
-                        draft.copy(
-                            admobEnabled =
-                                it,
-
-                            umpConsentEnabled =
-                                if (it) {
-                                    draft.umpConsentEnabled
-                                } else {
-                                    false
-                                }
-                        )
-                    )
-                }
-
-                if (
-                    draft.admobEnabled
-                ) {
-
-                    OutlinedTextField(
-                        value =
-                            draft.admobAppId,
-                        onValueChange = {
+                        Toggle(
+                            "📊 Firebase Analytics",
+                            draft.firebaseAnalyticsEnabled
+                        ) {
                             onDraftChange(
                                 draft.copy(
-                                    admobAppId =
-                                        it.trim()
-                                )
-                            )
-                        },
-                        label = {
-                            Text(
-                                "AdMob App ID"
-                            )
-                        },
-                        placeholder = {
-                            Text(
-                                "ca-app-pub-...~..."
-                            )
-                        },
-                        singleLine =
-                            true,
-                        modifier =
-                            Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value =
-                            draft.admobBannerUnitId,
-                        onValueChange = {
-                            onDraftChange(
-                                draft.copy(
-                                    admobBannerUnitId =
-                                        it.trim()
-                                )
-                            )
-                        },
-                        label = {
-                            Text(
-                                "Banner Unit ID"
-                            )
-                        },
-                        singleLine =
-                            true,
-                        modifier =
-                            Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value =
-                            draft.admobInterstitialUnitId,
-                        onValueChange = {
-                            onDraftChange(
-                                draft.copy(
-                                    admobInterstitialUnitId =
-                                        it.trim()
-                                )
-                            )
-                        },
-                        label = {
-                            Text(
-                                "Interstitial Unit ID"
-                            )
-                        },
-                        singleLine =
-                            true,
-                        modifier =
-                            Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value =
-                            draft.admobRewardedUnitId,
-                        onValueChange = {
-                            onDraftChange(
-                                draft.copy(
-                                    admobRewardedUnitId =
-                                        it.trim()
-                                )
-                            )
-                        },
-                        label = {
-                            Text(
-                                "Rewarded Unit ID"
-                            )
-                        },
-                        singleLine =
-                            true,
-                        modifier =
-                            Modifier.fillMaxWidth()
-                    )
-
-                    Toggle(
-                        "🛡️ UMP Consent",
-                        draft.umpConsentEnabled
-                    ) {
-                        onDraftChange(
-                            draft.copy(
-                                umpConsentEnabled =
-                                    it
-                            )
-                        )
-                    }
-                }
-
-
-                Spacer(
-                    Modifier.height(4.dp)
-                )
-
-
-                // ==========================================
-                // BILLING
-                // ==========================================
-
-                Toggle(
-                    "🛒 Google Play Billing",
-                    draft.billingEnabled
-                ) {
-                    onDraftChange(
-                        draft.copy(
-                            billingEnabled =
-                                it
-                        )
-                    )
-                }
-
-                if (
-                    draft.billingEnabled
-                ) {
-
-                    OutlinedTextField(
-                        value =
-                            draft.billingProductIds,
-                        onValueChange = {
-                            onDraftChange(
-                                draft.copy(
-                                    billingProductIds =
+                                    firebaseAnalyticsEnabled =
                                         it
                                 )
                             )
-                        },
-                        label = {
-                            Text(
-                                "Ürün ID'leri"
-                            )
-                        },
-                        placeholder = {
-                            Text(
-                                "premium,coins100"
-                            )
-                        },
-                        modifier =
-                            Modifier.fillMaxWidth()
-                    )
+                        }
 
-                    OutlinedTextField(
-                        value =
-                            draft.billingSubscriptionIds,
-                        onValueChange = {
+                        Toggle(
+                            "💥 Firebase Crashlytics",
+                            draft.firebaseCrashlyticsEnabled
+                        ) {
                             onDraftChange(
                                 draft.copy(
-                                    billingSubscriptionIds =
+                                    firebaseCrashlyticsEnabled =
                                         it
                                 )
                             )
-                        },
-                        label = {
-                            Text(
-                                "Abonelik ID'leri"
-                            )
-                        },
-                        modifier =
-                            Modifier.fillMaxWidth()
-                    )
+                        }
 
-                    OutlinedTextField(
-                        value =
-                            draft.removeAdsProductId,
-                        onValueChange = {
-                            onDraftChange(
-                                draft.copy(
-                                    removeAdsProductId =
-                                        it.trim()
-                                )
-                            )
-                        },
-                        label = {
-                            Text(
-                                "Reklam kaldırma ürün ID"
-                            )
-                        },
-                        singleLine =
-                            true,
-                        modifier =
-                            Modifier.fillMaxWidth()
-                    )
-                }
+                        if (
+                            draft.firebaseAnalyticsEnabled ||
+                            draft.firebaseCrashlyticsEnabled
+                        ) {
 
-
-                Spacer(
-                    Modifier.height(4.dp)
-                )
-
-
-                // ==========================================
-                // FIREBASE
-                // ==========================================
-
-                Toggle(
-                    "📊 Firebase Analytics",
-                    draft.firebaseAnalyticsEnabled
-                ) {
-                    onDraftChange(
-                        draft.copy(
-                            firebaseAnalyticsEnabled =
-                                it
-                        )
-                    )
-                }
-
-                Toggle(
-                    "💥 Firebase Crashlytics",
-                    draft.firebaseCrashlyticsEnabled
-                ) {
-                    onDraftChange(
-                        draft.copy(
-                            firebaseCrashlyticsEnabled =
-                                it
-                        )
-                    )
-                }
-
-                if (
-                    draft.firebaseAnalyticsEnabled ||
-                    draft.firebaseCrashlyticsEnabled
-                ) {
-
-                    Button(
-                        onClick =
-                            onPickFirebase,
-                        modifier =
-                            Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            if (
-                                draft.firebaseConfigName
-                                    .isBlank()
+                            Button(
+                                onClick =
+                                    onPickFirebase,
+                                modifier =
+                                    Modifier.fillMaxWidth()
                             ) {
-                                "google-services.json SEÇ"
-                            } else {
-                                "✅ ${draft.firebaseConfigName}"
+                                Text(
+                                    if (
+                                        draft.firebaseConfigName
+                                            .isBlank()
+                                    ) {
+                                        "google-services.json SEÇ"
+                                    } else {
+                                        "✅ ${draft.firebaseConfigName}"
+                                    }
+                                )
                             }
-                        )
+                        }
                     }
+                }
                 }
             }
-        }
-
-        Button(
+        }        Button(
             onClick =
                 onBuild,
             enabled =
