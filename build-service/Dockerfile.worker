@@ -81,6 +81,29 @@ COPY . .
 
 RUN gradle     -p fast-sdk-bundle     --no-daemon     --stacktrace     prepareFastSdk
 
+# =========================================================
+# AppForge FAST EXTENDED template
+#
+# Native Bridge
+# QR Scanner
+# AdMob / UMP
+# Google Play Billing
+# Firebase Analytics / Crashlytics
+#
+# Gradle burada yalnız Worker image oluşturulurken çalışır.
+# Kullanıcının APK build'i sırasında tekrar çalıştırılmaz.
+# =========================================================
+
+RUN gradle \
+    -p fast-extended-template \
+    --no-daemon \
+    :app:assembleRelease \
+    && mkdir -p /opt/appforge-fast-extended \
+    && cp \
+       fast-extended-template/app/build/outputs/apk/release/app-release.apk \
+       /opt/appforge-fast-extended/template.apk \
+    && test -s /opt/appforge-fast-extended/template.apk
+
 # AppForge FAST BUILD runtime.
 # Bu kod Worker image oluşturulurken yalnızca bir kez DEX'e çevrilir.
 # Kullanıcı APK build'lerinde D8/Gradle tekrar çalıştırılmaz.
