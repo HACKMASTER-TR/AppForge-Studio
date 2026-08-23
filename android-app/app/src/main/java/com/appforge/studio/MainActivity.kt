@@ -3362,7 +3362,9 @@ private fun QuickCreateScreen(
                 }
                 }
             }
-        }        Button(
+        }
+
+        Button(
             onClick =
                 onBuild,
             enabled =
