@@ -1352,6 +1352,15 @@ private fun AppForgeApp() {
                                 )
                             )
                         },
+                        onPickFirebase = {
+                            firebasePicker.launch(
+                                arrayOf(
+                                    "application/json",
+                                    "text/json",
+                                    "application/octet-stream"
+                                )
+                            )
+                        },
                         onAdvanced = {
                             step = 1
                             screen =
@@ -2275,6 +2284,7 @@ private fun QuickCreateScreen(
     onBack: () -> Unit,
     onPickSource: () -> Unit,
     onPickIcon: () -> Unit,
+    onPickFirebase: () -> Unit,
     onAdvanced: () -> Unit,
     onPreview: () -> Unit,
     onBuild: () -> Unit
@@ -2911,6 +2921,435 @@ private fun QuickCreateScreen(
                         )
                     }
                 )
+            }
+        }
+
+        Card(
+            modifier =
+                Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                verticalArrangement =
+                    Arrangement.spacedBy(12.dp)
+            ) {
+
+                Text(
+                    "🚀 FAST Extended",
+                    fontWeight =
+                        FontWeight.Bold,
+                    fontSize =
+                        18.sp
+                )
+
+                Text(
+                    "Native Bridge, QR, reklam, satın alma ve Firebase özellikleri.",
+                    color =
+                        TextSecondary,
+                    fontSize =
+                        12.sp
+                )
+
+                // ==========================================
+                // NATIVE BRIDGE
+                // ==========================================
+
+                Toggle(
+                    "🌉 Native Bridge",
+                    draft.javascriptBridge
+                ) { enabled ->
+
+                    onDraftChange(
+                        draft.copy(
+                            javascriptBridge =
+                                enabled,
+
+                            shareBridge =
+                                enabled,
+
+                            clipboardBridge =
+                                enabled,
+
+                            vibrationBridge =
+                                enabled,
+
+                            qrScanner =
+                                enabled
+                        )
+                    )
+                }
+
+                if (
+                    draft.javascriptBridge
+                ) {
+
+                    Toggle(
+                        "📤 Paylaşım",
+                        draft.shareBridge
+                    ) {
+                        onDraftChange(
+                            draft.copy(
+                                shareBridge =
+                                    it
+                            )
+                        )
+                    }
+
+                    Toggle(
+                        "📋 Panoya kopyalama",
+                        draft.clipboardBridge
+                    ) {
+                        onDraftChange(
+                            draft.copy(
+                                clipboardBridge =
+                                    it
+                            )
+                        )
+                    }
+
+                    Toggle(
+                        "📳 Titreşim / Haptic",
+                        draft.vibrationBridge
+                    ) {
+                        onDraftChange(
+                            draft.copy(
+                                vibrationBridge =
+                                    it
+                            )
+                        )
+                    }
+
+                    Toggle(
+                        "📷 QR / Barkod Tarayıcı",
+                        draft.qrScanner
+                    ) {
+                        onDraftChange(
+                            draft.copy(
+                                qrScanner =
+                                    it
+                            )
+                        )
+                    }
+
+                    if (
+                        draft.sourceMode ==
+                            SourceMode.URL
+                    ) {
+                        Toggle(
+                            "🌐 Uzak site Native Bridge",
+                            draft.remoteBridgeAllowed
+                        ) {
+                            onDraftChange(
+                                draft.copy(
+                                    remoteBridgeAllowed =
+                                        it
+                                )
+                            )
+                        }
+
+                        Text(
+                            "Yalnız güvendiğiniz HTTPS sitelerinde açın.",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                11.sp
+                        )
+                    }
+                }
+
+
+                Spacer(
+                    Modifier.height(4.dp)
+                )
+
+
+                // ==========================================
+                // ADMOB
+                // ==========================================
+
+                Toggle(
+                    "💰 AdMob",
+                    draft.admobEnabled
+                ) {
+                    onDraftChange(
+                        draft.copy(
+                            admobEnabled =
+                                it,
+
+                            umpConsentEnabled =
+                                if (it) {
+                                    draft.umpConsentEnabled
+                                } else {
+                                    false
+                                }
+                        )
+                    )
+                }
+
+                if (
+                    draft.admobEnabled
+                ) {
+
+                    OutlinedTextField(
+                        value =
+                            draft.admobAppId,
+                        onValueChange = {
+                            onDraftChange(
+                                draft.copy(
+                                    admobAppId =
+                                        it.trim()
+                                )
+                            )
+                        },
+                        label = {
+                            Text(
+                                "AdMob App ID"
+                            )
+                        },
+                        placeholder = {
+                            Text(
+                                "ca-app-pub-...~..."
+                            )
+                        },
+                        singleLine =
+                            true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            draft.admobBannerUnitId,
+                        onValueChange = {
+                            onDraftChange(
+                                draft.copy(
+                                    admobBannerUnitId =
+                                        it.trim()
+                                )
+                            )
+                        },
+                        label = {
+                            Text(
+                                "Banner Unit ID"
+                            )
+                        },
+                        singleLine =
+                            true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            draft.admobInterstitialUnitId,
+                        onValueChange = {
+                            onDraftChange(
+                                draft.copy(
+                                    admobInterstitialUnitId =
+                                        it.trim()
+                                )
+                            )
+                        },
+                        label = {
+                            Text(
+                                "Interstitial Unit ID"
+                            )
+                        },
+                        singleLine =
+                            true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            draft.admobRewardedUnitId,
+                        onValueChange = {
+                            onDraftChange(
+                                draft.copy(
+                                    admobRewardedUnitId =
+                                        it.trim()
+                                )
+                            )
+                        },
+                        label = {
+                            Text(
+                                "Rewarded Unit ID"
+                            )
+                        },
+                        singleLine =
+                            true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    Toggle(
+                        "🛡️ UMP Consent",
+                        draft.umpConsentEnabled
+                    ) {
+                        onDraftChange(
+                            draft.copy(
+                                umpConsentEnabled =
+                                    it
+                            )
+                        )
+                    }
+                }
+
+
+                Spacer(
+                    Modifier.height(4.dp)
+                )
+
+
+                // ==========================================
+                // BILLING
+                // ==========================================
+
+                Toggle(
+                    "🛒 Google Play Billing",
+                    draft.billingEnabled
+                ) {
+                    onDraftChange(
+                        draft.copy(
+                            billingEnabled =
+                                it
+                        )
+                    )
+                }
+
+                if (
+                    draft.billingEnabled
+                ) {
+
+                    OutlinedTextField(
+                        value =
+                            draft.billingProductIds,
+                        onValueChange = {
+                            onDraftChange(
+                                draft.copy(
+                                    billingProductIds =
+                                        it
+                                )
+                            )
+                        },
+                        label = {
+                            Text(
+                                "Ürün ID'leri"
+                            )
+                        },
+                        placeholder = {
+                            Text(
+                                "premium,coins100"
+                            )
+                        },
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            draft.billingSubscriptionIds,
+                        onValueChange = {
+                            onDraftChange(
+                                draft.copy(
+                                    billingSubscriptionIds =
+                                        it
+                                )
+                            )
+                        },
+                        label = {
+                            Text(
+                                "Abonelik ID'leri"
+                            )
+                        },
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            draft.removeAdsProductId,
+                        onValueChange = {
+                            onDraftChange(
+                                draft.copy(
+                                    removeAdsProductId =
+                                        it.trim()
+                                )
+                            )
+                        },
+                        label = {
+                            Text(
+                                "Reklam kaldırma ürün ID"
+                            )
+                        },
+                        singleLine =
+                            true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+                }
+
+
+                Spacer(
+                    Modifier.height(4.dp)
+                )
+
+
+                // ==========================================
+                // FIREBASE
+                // ==========================================
+
+                Toggle(
+                    "📊 Firebase Analytics",
+                    draft.firebaseAnalyticsEnabled
+                ) {
+                    onDraftChange(
+                        draft.copy(
+                            firebaseAnalyticsEnabled =
+                                it
+                        )
+                    )
+                }
+
+                Toggle(
+                    "💥 Firebase Crashlytics",
+                    draft.firebaseCrashlyticsEnabled
+                ) {
+                    onDraftChange(
+                        draft.copy(
+                            firebaseCrashlyticsEnabled =
+                                it
+                        )
+                    )
+                }
+
+                if (
+                    draft.firebaseAnalyticsEnabled ||
+                    draft.firebaseCrashlyticsEnabled
+                ) {
+
+                    Button(
+                        onClick =
+                            onPickFirebase,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            if (
+                                draft.firebaseConfigName
+                                    .isBlank()
+                            ) {
+                                "google-services.json SEÇ"
+                            } else {
+                                "✅ ${draft.firebaseConfigName}"
+                            }
+                        )
+                    }
+                }
             }
         }
 
