@@ -623,40 +623,219 @@ class AppForgeLocalAssistant(
                 val rawResult =
                     StringBuilder()
 
+                val streamBuffer =
+                    StringBuilder()
+
+                val openTag =
+                    "<final_answer>"
+
+                val closeTag =
+                    "</final_answer>"
+
+                var finalStarted =
+                    false
+
+                var finalEmitted =
+                    false
+
                 current
                     .sendMessageAsync(
                         prompt
                     )
                     .collect {
                         part ->
-                        rawResult.append(
+
+                        val chunk =
                             part.toString()
+
+                        rawResult.append(
+                            chunk
                         )
+
+                        if (
+                            finalEmitted
+                        ) {
+                            return@collect
+                        }
+
+                        streamBuffer.append(
+                            chunk
+                        )
+
+                        if (
+                            !finalStarted
+                        ) {
+                            val start =
+                                streamBuffer
+                                    .indexOf(
+                                        openTag,
+                                        ignoreCase = true
+                                    )
+
+                            if (
+                                start >= 0
+                            ) {
+                                streamBuffer.delete(
+                                    0,
+                                    start +
+                                        openTag.length
+                                )
+
+                                finalStarted =
+                                    true
+                            } else {
+                                /*
+                                 * Etiket iki streaming parçasının
+                                 * arasından bölünebilir.
+                                 * Yalnız son karakterleri sakla.
+                                 */
+                                val keep =
+                                    openTag.length +
+                                        4
+
+                                if (
+                                    streamBuffer.length >
+                                        keep
+                                ) {
+                                    streamBuffer.delete(
+                                        0,
+                                        streamBuffer.length -
+                                            keep
+                                    )
+                                }
+
+                                return@collect
+                            }
+                        }
+
+                        val end =
+                            streamBuffer
+                                .indexOf(
+                                    closeTag,
+                                    ignoreCase = true
+                                )
+
+                        if (
+                            end >= 0
+                        ) {
+                            val visible =
+                                streamBuffer
+                                    .substring(
+                                        0,
+                                        end
+                                    )
+
+                            val cleaned =
+                                cleanAssistantOutput(
+                                    visible
+                                )
+
+                            if (
+                                cleaned.isNotEmpty()
+                            ) {
+                                onPartial(
+                                    cleaned
+                                )
+                            }
+
+                            streamBuffer.clear()
+
+                            finalEmitted =
+                                true
+
+                            return@collect
+                        }
+
+                        /*
+                         * Kapanış etiketi streaming sırasında
+                         * bölünebileceği için son birkaç karakteri
+                         * tamponda tut.
+                         */
+                        val safeLength =
+                            streamBuffer.length -
+                                (
+                                    closeTag.length +
+                                        2
+                                )
+
+                        if (
+                            safeLength >
+                                0
+                        ) {
+                            val visible =
+                                streamBuffer
+                                    .substring(
+                                        0,
+                                        safeLength
+                                    )
+
+                            streamBuffer.delete(
+                                0,
+                                safeLength
+                            )
+
+                            val cleaned =
+                                cleanAssistantOutput(
+                                    visible
+                                )
+
+                            if (
+                                cleaned.isNotEmpty()
+                            ) {
+                                onPartial(
+                                    cleaned
+                                )
+                            }
+                        }
                     }
 
-                val selectedLanguage =
-                    AppSettingsStore
-                        .load(
-                            appContext
-                        )
-                        .languageCode
-
-                val finalAnswer =
-                    extractFinalAssistantAnswer(
-                        rawResult.toString(),
-                        selectedLanguage
-                    )
-
+                /*
+                 * Model final_answer etiketine uymazsa
+                 * eski güvenli ayıklayıcı devreye girer.
+                 */
                 if (
-                    finalAnswer.isNotBlank()
+                    !finalStarted
                 ) {
-                    onPartial(
-                        finalAnswer
-                    )
-                } else {
-                    error(
-                        "Yerel AI geçerli bir nihai cevap üretemedi."
-                    )
+                    val selectedLanguage =
+                        AppSettingsStore
+                            .load(
+                                appContext
+                            )
+                            .languageCode
+
+                    val finalAnswer =
+                        extractFinalAssistantAnswer(
+                            rawResult.toString(),
+                            selectedLanguage
+                        )
+
+                    if (
+                        finalAnswer.isNotBlank()
+                    ) {
+                        onPartial(
+                            finalAnswer
+                        )
+                    } else {
+                        error(
+                            "Yerel AI geçerli bir nihai cevap üretemedi."
+                        )
+                    }
+                } else if (
+                    !finalEmitted &&
+                    streamBuffer.isNotEmpty()
+                ) {
+                    val cleaned =
+                        cleanAssistantOutput(
+                            streamBuffer.toString()
+                        )
+
+                    if (
+                        cleaned.isNotEmpty()
+                    ) {
+                        onPartial(
+                            cleaned
+                        )
+                    }
                 }
             }
         }

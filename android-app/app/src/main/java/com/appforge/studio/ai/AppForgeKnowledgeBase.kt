@@ -82,7 +82,7 @@ object AppForgeKnowledgeBase {
 
     fun retrieve(
         question: String,
-        maxChunks: Int = 6
+        maxChunks: Int = 3
     ): List<KnowledgeChunk> {
         val tokens =
             tokenize(
