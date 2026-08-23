@@ -10596,59 +10596,473 @@ private fun BuildSettingsStep(
     onApiKey: (String) -> Unit,
     onSave: () -> Unit
 ) {
-    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item { Section("8. Build Service", "Sunucu, API anahtarı ve çıktı türü.") }
+    val apiKeyReady =
+        apiKey.isNotBlank()
+
+    val releaseSigning =
+        draft.signingMode ==
+            SigningMode.CUSTOM
+
+    val outputLabel =
+        when (
+            draft.buildOutput
+        ) {
+            "aab" ->
+                "AAB"
+
+            "both" ->
+                "APK + AAB"
+
+            else ->
+                "APK"
+        }
+
+    val buildRouteText =
+        when (
+            draft.buildOutput
+        ) {
+            "aab" ->
+                "AAB • Gradle bundleRelease"
+
+            "both" ->
+                "BOTH • FAST APK uygunsa Hybrid + AAB"
+
+            else ->
+                "APK • Uygunsa FAST BUILD"
+        }
+
+    val productionFeatureCount =
+        listOf(
+            draft.admobEnabled,
+            draft.billingEnabled,
+            draft.firebaseAnalyticsEnabled,
+            draft.firebaseCrashlyticsEnabled,
+            draft.qrScanner
+        ).count {
+            it
+        }
+
+    LazyColumn(
+        contentPadding =
+            PaddingValues(
+                20.dp
+            ),
+        verticalArrangement =
+            Arrangement.spacedBy(
+                14.dp
+            )
+    ) {
+        item {
+            Section(
+                "8. Build Service",
+                "Derleme sunucusu, API anahtarı ve çıktı türü."
+            )
+        }
 
         item {
-            OutlinedTextField(
-                value = serverUrl,
-                onValueChange = {},
-                readOnly = true,
-                singleLine = true,
-                label = {
-                    Text("Build Service URL")
-                },
-                supportingText = {
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor =
+                            Card2
+                    ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            7.dp
+                        )
+                ) {
                     Text(
-                        "AppForge resmi Build Service • Değiştirilemez"
+                        "Build Service durumu",
+                        fontWeight =
+                            FontWeight.Bold
                     )
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
 
-        item {
-            OutlinedTextField(
-                value = apiKey,
-                onValueChange = onApiKey,
-                label = { Text("Build API Key") },
-                supportingText = { Text("Sunucuda APPFORGE_API_KEY ayarlıysa gerekli.") },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+                    Text(
+                        "✓ Resmi AppForge Build Service",
+                        fontSize =
+                            13.sp
+                    )
 
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("apk", "aab", "both").forEach {
-                    FilterChip(
-                        selected = draft.buildOutput == it,
-                        onClick = { update(draft.copy(buildOutput = it)) },
-                        label = { Text(it.uppercase()) }
+                    Text(
+                        if (
+                            apiKeyReady
+                        ) {
+                            "✓ Build API Key hazır"
+                        } else {
+                            "○ Build API Key girilmedi"
+                        },
+                        color =
+                            if (
+                                apiKeyReady
+                            ) {
+                                Accent
+                            } else {
+                                TextSecondary
+                            },
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Çıktı: $outputLabel",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        buildRouteText,
+                        color =
+                            Accent,
+                        fontSize =
+                            12.sp,
+                        fontWeight =
+                            FontWeight.Medium
                     )
                 }
             }
         }
 
         item {
-            Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) {
-                Text("PROJEYİ KAYDET / GÜNCELLE")
+            OutlinedTextField(
+                value =
+                    serverUrl,
+                onValueChange = {},
+                readOnly = true,
+                singleLine = true,
+                label = {
+                    Text(
+                        "Build Service URL"
+                    )
+                },
+                supportingText = {
+                    Text(
+                        "AppForge resmi Build Service • Değiştirilemez"
+                    )
+                },
+                modifier =
+                    Modifier.fillMaxWidth()
+            )
+        }
+
+        item {
+            OutlinedTextField(
+                value =
+                    apiKey,
+                onValueChange =
+                    onApiKey,
+                label = {
+                    Text(
+                        "Build API Key"
+                    )
+                },
+                supportingText = {
+                    Text(
+                        if (
+                            apiKeyReady
+                        ) {
+                            "✓ API anahtarı girildi"
+                        } else {
+                            "Sunucuda APPFORGE_API_KEY kullanılıyorsa gereklidir."
+                        }
+                    )
+                },
+                visualTransformation =
+                    PasswordVisualTransformation(),
+                singleLine = true,
+                modifier =
+                    Modifier.fillMaxWidth()
+            )
+        }
+
+        item {
+            Text(
+                "Çıktı türü",
+                fontWeight =
+                    FontWeight.Bold,
+                fontSize =
+                    14.sp
+            )
+        }
+
+        item {
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        8.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                listOf(
+                    "apk",
+                    "aab",
+                    "both"
+                ).forEach {
+                    output ->
+                    FilterChip(
+                        selected =
+                            draft.buildOutput ==
+                                output,
+                        onClick = {
+                            update(
+                                draft.copy(
+                                    buildOutput =
+                                        output
+                                )
+                            )
+                        },
+                        label = {
+                            Text(
+                                output.uppercase()
+                            )
+                        },
+                        modifier =
+                            Modifier.weight(
+                                1f
+                            )
+                    )
+                }
+            }
+        }
+
+        item {
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor =
+                            Card2
+                    ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            8.dp
+                        )
+                ) {
+                    Text(
+                        "Çıktı bilgisi",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    when (
+                        draft.buildOutput
+                    ) {
+                        "aab" -> {
+                            Text(
+                                "AAB",
+                                fontWeight =
+                                    FontWeight.Medium
+                            )
+
+                            Text(
+                                "Google Play Console'a yüklemek için Android App Bundle oluşturur.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+
+                        "both" -> {
+                            Text(
+                                "APK + AAB",
+                                fontWeight =
+                                    FontWeight.Medium
+                            )
+
+                            Text(
+                                "Test/kurulum için APK ve Play Store için AAB birlikte oluşturulur.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "⚡ FAST uyumlu projelerde APK tarafı Hybrid olarak hızlandırılabilir.",
+                                color =
+                                    Accent,
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+
+                        else -> {
+                            Text(
+                                "APK",
+                                fontWeight =
+                                    FontWeight.Medium
+                            )
+
+                            Text(
+                                "Telefona doğrudan kurulabilen APK oluşturur.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "⚡ Uyumlu projelerde normal FAST BUILD kullanılır.",
+                                color =
+                                    Accent,
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor =
+                            Card2
+                    ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            6.dp
+                        )
+                ) {
+                    Text(
+                        "Production özeti",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Text(
+                        if (
+                            releaseSigning
+                        ) {
+                            "✓ Release Keystore"
+                        } else {
+                            "⚠ Debug signing"
+                        },
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "$productionFeatureCount production özelliği aktif",
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Firebase: ${
+                            if (
+                                draft.firebaseConfigUri != null
+                            ) {
+                                "Hazır"
+                            } else {
+                                "Yok"
+                            }
+                        }",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Billing: ${onOff(draft.billingEnabled)}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Crashlytics: ${onOff(draft.firebaseCrashlyticsEnabled)}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "QR/Barkod: ${onOff(draft.qrScanner)}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+                }
+            }
+        }
+
+        if (
+            !releaseSigning &&
+            (
+                draft.buildOutput ==
+                    "aab" ||
+                draft.buildOutput ==
+                    "both"
+            )
+        ) {
+            item {
+                NoteCard(
+                    "Play Store'a göndereceğin AAB için Release Keystore kullanman önerilir."
+                )
+            }
+        }
+
+        item {
+            Button(
+                onClick =
+                    onSave,
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "PROJEYİ KAYDET / GÜNCELLE"
+                )
             }
         }
 
         item {
             NoteCard(
-                "Firebase ${if (draft.firebaseConfigUri != null) "Hazır" else "Yok"} • Billing ${onOff(draft.billingEnabled)} • Crashlytics ${onOff(draft.firebaseCrashlyticsEnabled)}"
+                "Ayarları kaydettikten sonra Devam ile son derleme ve Play Store ön-kontrol ekranına geçebilirsin."
             )
         }
     }
