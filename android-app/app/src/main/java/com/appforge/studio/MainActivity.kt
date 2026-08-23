@@ -24,6 +24,7 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -273,6 +274,73 @@ private fun AppForgeApp() {
     var currentProjectId by remember { mutableStateOf<String?>(null) }
     var screen by remember { mutableStateOf(AppScreen.HOME) }
     var step by remember { mutableIntStateOf(1) }
+
+    /*
+     * Önizleme / Production / AI gibi yardımcı ekranlardan
+     * geri dönerken proje ve mevcut builder adımı korunur.
+     */
+    var workspaceReturnScreen by
+        remember {
+            mutableStateOf(
+                AppScreen.HOME
+            )
+        }
+
+    var workspaceReturnStep by
+        remember {
+            mutableIntStateOf(
+                1
+            )
+        }
+
+    fun openWorkspaceScreen(
+        target: AppScreen
+    ) {
+        workspaceReturnScreen =
+            screen
+
+        workspaceReturnStep =
+            step
+
+        screen =
+            target
+    }
+
+    fun returnFromWorkspace() {
+        val destination =
+            workspaceReturnScreen
+
+        screen =
+            destination
+
+        if (
+            destination ==
+            AppScreen.BUILDER
+        ) {
+            step =
+                workspaceReturnStep
+        }
+    }
+
+    BackHandler(
+        enabled =
+            screen ==
+                AppScreen.PREVIEW ||
+            screen ==
+                AppScreen.PRODUCTION ||
+            screen ==
+                AppScreen.AI_ASSISTANT ||
+            screen ==
+                AppScreen.HISTORY ||
+            screen ==
+                AppScreen.TEMPLATES ||
+            screen ==
+                AppScreen.SETTINGS ||
+            screen ==
+                AppScreen.ACCOUNT
+    ) {
+        returnFromWorkspace()
+    }
 
     var serverUrl by remember { mutableStateOf(draft.buildServiceUrl) }
     var apiKey by remember {
@@ -1141,23 +1209,27 @@ private fun AppForgeApp() {
                         },
 
                         onOpenAi = {
-                            screen =
+                            openWorkspaceScreen(
                                 AppScreen.AI_ASSISTANT
+                            )
                         },
 
                         onOpenTemplates = {
-                            screen =
+                            openWorkspaceScreen(
                                 AppScreen.TEMPLATES
+                            )
                         },
 
                         onOpenSettings = {
-                            screen =
+                            openWorkspaceScreen(
                                 AppScreen.SETTINGS
+                            )
                         },
 
                         onOpenAccount = {
-                            screen =
+                            openWorkspaceScreen(
                                 AppScreen.ACCOUNT
+                            )
                         },
 
                         onOpenHistory = {
@@ -1228,8 +1300,9 @@ private fun AppForgeApp() {
                                 AppScreen.BUILDER
                         },
                         onPreview = {
-                            screen =
+                            openWorkspaceScreen(
                                 AppScreen.PREVIEW
+                            )
                         },
                         onBuild = {
                             val quick =
@@ -1267,7 +1340,9 @@ private fun AppForgeApp() {
                 )
 
                 AppScreen.HISTORY -> BuildHistoryScreen(
-                    onBack = { screen = AppScreen.HOME }
+                    onBack = {
+                        returnFromWorkspace()
+                    }
                 )
 
                 AppScreen.ACCOUNT -> AccountScreen(
@@ -1310,7 +1385,9 @@ private fun AppForgeApp() {
                                 it
                             )
                     },
-                    onBack = { screen = AppScreen.HOME }
+                    onBack = {
+                        returnFromWorkspace()
+                    }
                 )
 
                 AppScreen.TEMPLATES -> TemplatesScreen(
@@ -1329,7 +1406,9 @@ private fun AppForgeApp() {
                 AppScreen.SETTINGS -> SettingsHubScreen(
                     languageCode = prefs.languageCode,
                     proUnlocked = proStatus?.active == true,
-                    onBack = { screen = AppScreen.HOME },
+                    onBack = {
+                        returnFromWorkspace()
+                    },
                     onOpenLanguage = { screen = AppScreen.LANGUAGE },
                     onOpenKeystore = { screen = AppScreen.KEYSTORES },
                     onOpenPro = { screen = AppScreen.PRO },
@@ -1430,8 +1509,7 @@ private fun AppForgeApp() {
                     draft = draft,
                     languageCode = prefs.languageCode,
                     onBack = {
-                        screen =
-                            AppScreen.BUILDER
+                        returnFromWorkspace()
                     },
                     onOpenProduction = {
                         screen =
@@ -1447,8 +1525,7 @@ private fun AppForgeApp() {
                         draft = it
                     },
                     onBack = {
-                        screen =
-                            AppScreen.BUILDER
+                        returnFromWorkspace()
                     },
                     onPreview = {
                         screen =
@@ -1562,8 +1639,7 @@ private fun AppForgeApp() {
                             it
                     },
                     onBack = {
-                        screen =
-                            AppScreen.HOME
+                        returnFromWorkspace()
                     }
                 )
 
@@ -1607,16 +1683,24 @@ private fun AppForgeApp() {
                             screen = AppScreen.HOME
                         },
                         onHistory = {
-                            screen = AppScreen.HISTORY
+                            openWorkspaceScreen(
+                                AppScreen.HISTORY
+                            )
                         },
                         onTemplates = {
-                            screen = AppScreen.TEMPLATES
+                            openWorkspaceScreen(
+                                AppScreen.TEMPLATES
+                            )
                         },
                         onAi = {
-                            screen = AppScreen.AI_ASSISTANT
+                            openWorkspaceScreen(
+                                AppScreen.AI_ASSISTANT
+                            )
                         },
                         onSettings = {
-                            screen = AppScreen.SETTINGS
+                            openWorkspaceScreen(
+                                AppScreen.SETTINGS
+                            )
                         },
                         onAccount = {
                             screen = AppScreen.ACCOUNT
@@ -1646,8 +1730,9 @@ private fun AppForgeApp() {
                     ) {
                         OutlinedButton(
                             onClick = {
-                                screen =
+                                openWorkspaceScreen(
                                     AppScreen.PREVIEW
+                                )
                             },
                             modifier =
                                 Modifier
@@ -1662,8 +1747,9 @@ private fun AppForgeApp() {
 
                         Button(
                             onClick = {
-                                screen =
+                                openWorkspaceScreen(
                                     AppScreen.PRODUCTION
+                                )
                             },
                             modifier =
                                 Modifier
@@ -1678,8 +1764,9 @@ private fun AppForgeApp() {
 
                         OutlinedButton(
                             onClick = {
-                                screen =
+                                openWorkspaceScreen(
                                     AppScreen.AI_ASSISTANT
+                                )
                             },
                             modifier =
                                 Modifier

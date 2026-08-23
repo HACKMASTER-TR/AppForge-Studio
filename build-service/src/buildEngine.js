@@ -1446,6 +1446,67 @@ function generatedMainActivity(c, pkg) {
         }
 ` : "";
 
+
+  // APPFORGE_STARTUP_RUNTIME_PERMISSIONS_V1
+  const startupRuntimePermissions =
+    (
+      c.features?.camera ||
+      c.features?.location ||
+      c.features?.notifications
+    )
+      ? `
+        val startupPermissions =
+            mutableListOf<String>()
+
+        ${c.features?.camera ? `
+        if (
+            ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.CAMERA
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            startupPermissions.add(
+                android.Manifest.permission.CAMERA
+            )
+        }
+        ` : ""}
+
+        ${c.features?.location ? `
+        if (
+            ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            startupPermissions.add(
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            )
+        }
+        ` : ""}
+
+        ${c.features?.notifications ? `
+        if (
+            android.os.Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            startupPermissions.add(
+                android.Manifest.permission.POST_NOTIFICATIONS
+            )
+        }
+        ` : ""}
+
+        if (startupPermissions.isNotEmpty()) {
+            requestPermissions(
+                startupPermissions.toTypedArray(),
+                7301
+            )
+        }
+`
+      : "";
+
   const notifications = c.features?.notifications ? `
         if (
             android.os.Build.VERSION.SDK_INT >=
@@ -2875,6 +2936,8 @@ ${dispatchFunction}
 
         setContentView(root)
 
+${startupRuntimePermissions}
+
         web.webViewClient =
             object : WebViewClient() {
                 ${isLocalSource ? `
@@ -2938,7 +3001,6 @@ ${webChrome}
 ${settings}
 ${bridgeSetup}
 ${downloads}
-${notifications}
 ${umpSetup}
 ${billingSetup}
 ${firebaseSetup}
