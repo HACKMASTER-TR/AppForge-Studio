@@ -3337,7 +3337,7 @@ async function runGradle(
           config.gradleBin,
           [
             ...tasks,
-            "--no-daemon",
+            "--daemon",
             "--build-cache",
             "--stacktrace"
           ],

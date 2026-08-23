@@ -7218,6 +7218,52 @@ private fun installDownloadedApk(
 
     val installIntent =
         Intent(
+            Intent.ACTION_INSTALL_PACKAGE,
+            apkUri
+        ).apply {
+
+            clipData =
+                ClipData.newRawUri(
+                    "AppForge APK",
+                    apkUri
+                )
+
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK
+            )
+        }
+
+
+    val primaryResult =
+        runCatching {
+
+            context.startActivity(
+                installIntent
+            )
+
+            "Android APK yükleyici açıldı."
+        }
+
+
+    if (
+        primaryResult.isSuccess
+    ) {
+        return primaryResult
+            .getOrThrow()
+    }
+
+
+    /*
+     * Bazı Samsung / Android sürümlerinde
+     * ACTION_INSTALL_PACKAGE yerine MIME ACTION_VIEW
+     * daha iyi çalışabiliyor.
+     */
+    val fallbackIntent =
+        Intent(
             Intent.ACTION_VIEW
         ).apply {
 
@@ -7245,7 +7291,7 @@ private fun installDownloadedApk(
     return runCatching {
 
         context.startActivity(
-            installIntent
+            fallbackIntent
         )
 
         "Android APK yükleyici açıldı."
@@ -9947,5 +9993,5 @@ private fun artifactDownloadName(
             "apk"
         }
 
-    return "$safeName-${buildId.take(8)}.$safeExtension"
+    return "$safeName.$safeExtension"
 }
