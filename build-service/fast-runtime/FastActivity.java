@@ -316,17 +316,17 @@ public final class FastActivity extends Activity {
                 }
             }
         );
+        webView.addJavascriptInterface(
+            new DownloadBridge(),
+            "AppForgeDownloads"
+        );
+
         if (
             config.optBoolean(
                 "downloads",
                 false
             )
         ) {
-            webView.addJavascriptInterface(
-                new DownloadBridge(),
-                "AppForgeDownloads"
-            );
-
             webView.setDownloadListener(
                 (
                     url,
@@ -346,11 +346,29 @@ public final class FastActivity extends Activity {
 
     }
 
-    private final class DownloadBridge {
+    public final class DownloadBridge {
+
+        @JavascriptInterface
+        public boolean isEnabled() {
+            return config.optBoolean(
+                "downloads",
+                false
+            );
+        }
+
         @JavascriptInterface
         public void download(
             String url
         ) {
+
+            if (
+                !config.optBoolean(
+                    "downloads",
+                    false
+                )
+            ) {
+                return;
+            }
             runOnUiThread(
                 () -> {
                     if (
