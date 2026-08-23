@@ -704,36 +704,63 @@ export async function executeBuild(job) {
         buildId
       );
 
-      await runGradle(
-        buildId,
-        android,
-        tasks,
-        {
-          ...process.env,
+      const gradleEnv = {
+        ...process.env,
 
-          APPFORGE_STORE_PASSWORD:
-            c.signing?.storePassword ||
-            "",
+        APPFORGE_STORE_PASSWORD:
+          c.signing?.storePassword ||
+          "",
 
-          APPFORGE_KEY_PASSWORD:
-            c.signing?.keyPassword ||
-            "",
+        APPFORGE_KEY_PASSWORD:
+          c.signing?.keyPassword ||
+          "",
 
-          APPFORGE_KEY_ALIAS:
-            c.signing?.alias ||
-            "",
+        APPFORGE_KEY_ALIAS:
+          c.signing?.alias ||
+          "",
 
-          APPFORGE_FAST_EXTENDED:
-            fastExtendedMode
-              ? "1"
-              : "0",
+        APPFORGE_FAST_EXTENDED:
+          fastExtendedMode
+            ? "1"
+            : "0",
 
-          GRADLE_USER_HOME:
-            fastExtendedMode
-              ? "/root/.gradle"
-              : config.gradleCacheRoot
-        }
-      );
+        GRADLE_USER_HOME:
+          fastExtendedMode
+            ? "/root/.gradle"
+            : config.gradleCacheRoot
+      };
+
+      /*
+       * APK + AAB aynı Gradle invocation içinde
+       * çalıştırıldığında düşük bellekli Worker'da
+       * mergeExtDexRelease sırasında daemon öldürülebiliyor.
+       *
+       * Her output task'ını ayrı single-use Gradle
+       * sürecinde çalıştır. Build cache ikinci task'ın
+       * önceki çıktıları tekrar kullanmasını sağlar.
+       */
+      for (const task of tasks) {
+        await throwIfCancelled(
+          buildId
+        );
+
+        await appendLog(
+          buildId,
+          `Gradle task başlatılıyor: ${task}`
+        );
+
+        await runGradle(
+          buildId,
+          android,
+          [task],
+          gradleEnv
+        );
+
+        await appendLog(
+          buildId,
+          `✅ Gradle task tamamlandı: ${task}`
+        );
+      }
 
       await throwIfCancelled(
         buildId
