@@ -5462,7 +5462,7 @@ private fun LocalAiAssistantScreen(
 
         if (!initialized) {
             status =
-                "Önce modeli başlat."
+                "Yerel AI hazırlanıyor. Birkaç saniye sonra tekrar dene."
             return
         }
 
@@ -5546,6 +5546,19 @@ private fun LocalAiAssistantScreen(
             }
     }
 
+    // AUTO_LOCAL_AI_START_V2
+    LaunchedEffect(
+        modelInfo?.path
+    ) {
+        if (
+            modelInfo != null &&
+            !initialized &&
+            !initializing
+        ) {
+            initializeModel()
+        }
+    }
+
     DisposableEffect(
         assistant
     ) {
@@ -5573,7 +5586,7 @@ private fun LocalAiAssistantScreen(
                     )
 
                     Text(
-                        "LiteRT-LM • Offline • AppForge Knowledge",
+                        "Cihazda çalışan Yerel AI • Çevrimdışı",
                         fontSize =
                             12.sp,
                         color =
@@ -5691,9 +5704,13 @@ private fun LocalAiAssistantScreen(
                                 )
                             ) {
                                 Text(
-                                    modelInfo
-                                        ?.name
-                                        ?: "Yerel model yüklenmedi",
+                                    if (
+                                        modelInfo != null
+                                    ) {
+                                        "AppForge Yerel AI"
+                                    } else {
+                                        "Yerel AI hazırlanıyor"
+                                    },
                                     fontWeight =
                                         FontWeight.Bold
                                 )
@@ -5703,9 +5720,9 @@ private fun LocalAiAssistantScreen(
                                         modelInfo !=
                                         null
                                     ) {
-                                        "${humanBytes(modelInfo.sizeBytes)} • ${modelInfo.sha256.take(12)}…"
+                                        "Cihaz üzerinde çalışıyor • Çevrimdışı"
                                     } else {
-                                        "Hazır Yerel AI modelini kur veya kendi .litertlm modelini seç"
+                                        "AppForge modeli otomatik olarak hazırlar"
                                     },
                                     color =
                                         TextSecondary,
@@ -5715,178 +5732,42 @@ private fun LocalAiAssistantScreen(
                             }
                         }
 
-                        if (
-                            modelInfo ==
-                            null
-                        ) {
-                            Button(
-                                onClick =
-                                    onInstallDefaultModel,
-                                enabled =
-                                    !installing,
+                        Text(
+                            text =
+                                when {
+                                    modelInfo == null &&
+                                        installing ->
+                                        "Yerel AI hazırlanıyor • %$installProgress"
+
+                                    modelInfo == null ->
+                                        "Yerel AI otomatik hazırlanıyor"
+
+                                    initializing ->
+                                        "Yerel AI başlatılıyor..."
+
+                                    initialized ->
+                                        "✓ Yerel AI hazır"
+
+                                    else ->
+                                        "Yerel AI hazırlanıyor..."
+                                },
+                            color =
+                                if (initialized) {
+                                    Color(0xFF65E3A1)
+                                } else {
+                                    TextSecondary
+                                },
+                            fontWeight =
+                                FontWeight.Bold,
+                            fontSize =
+                                13.sp
+                        )
+
+                        if (installing) {
+                            LinearProgressIndicator(
                                 modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                            ) {
-                                Text(
-                                    if (
-                                        installing
-                                    ) {
-                                        "YEREL AI İNDİRİLİYOR • %$installProgress"
-                                    } else {
-                                        "✨ YEREL AI'Yİ KUR • 586 MB"
-                                    }
-                                )
-                            }
-
-                            if (
-                                installing
-                            ) {
-                                LinearProgressIndicator(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                )
-
-                                Text(
-                                    "İndirme devam ediyor • %$installProgress",
-                                    color =
-                                        TextSecondary,
-                                    fontSize =
-                                        11.sp
-                                )
-                            }
-
-                            OutlinedButton(
-                                onClick =
-                                    onImportModel,
-                                enabled =
-                                    !installing,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                            ) {
-                                Text(
-                                    "KENDİ .litertlm MODELİMİ SEÇ"
-                                )
-                            }
-                        } else {
-                            Row(
-                                horizontalArrangement =
-                                    Arrangement
-                                        .spacedBy(
-                                            8.dp
-                                        )
-                            ) {
-                                FilterChip(
-                                    selected =
-                                        backend ==
-                                        LocalAiBackend.CPU,
-                                    onClick = {
-                                        backend =
-                                            LocalAiBackend.CPU
-
-                                        initialized =
-                                            false
-                                    },
-                                    label = {
-                                        Text(
-                                            "CPU"
-                                        )
-                                    }
-                                )
-
-                                FilterChip(
-                                    selected =
-                                        backend ==
-                                        LocalAiBackend.GPU,
-                                    onClick = {
-                                        backend =
-                                            LocalAiBackend.GPU
-
-                                        initialized =
-                                            false
-                                    },
-                                    label = {
-                                        Text(
-                                            "GPU (deneysel)"
-                                        )
-                                    }
-                                )
-                            }
-
-                            Row(
-                                horizontalArrangement =
-                                    Arrangement
-                                        .spacedBy(
-                                            8.dp
-                                        )
-                            ) {
-                                Button(
-                                    onClick = {
-                                        initializeModel()
-                                    },
-                                    enabled =
-                                        !initializing &&
-                                        !generating,
-                                    modifier =
-                                        Modifier
-                                            .weight(
-                                                1f
-                                            )
-                                ) {
-                                    Text(
-                                        if (
-                                            initializing
-                                        ) {
-                                            "Yükleniyor..."
-                                        } else if (
-                                            initialized
-                                        ) {
-                                            "Yeniden Başlat"
-                                        } else {
-                                            "Modeli Başlat"
-                                        }
-                                    )
-                                }
-
-                                OutlinedButton(
-                                    onClick = {
-                                        generationJob
-                                            ?.cancel()
-
-                                        scope.launch {
-                                            assistant.unload()
-
-                                            LocalAiModelStore
-                                                .remove(
-                                                    context
-                                                )
-
-                                            onModelChanged(
-                                                null
-                                            )
-
-                                            initialized =
-                                                false
-
-                                            status =
-                                                "Yerel model kaldırıldı."
-                                        }
-                                    },
-                                    enabled =
-                                        !generating,
-                                    modifier =
-                                        Modifier
-                                            .weight(
-                                                1f
-                                            )
-                                ) {
-                                    Text(
-                                        "Kaldır"
-                                    )
-                                }
-                            }
+                                    Modifier.fillMaxWidth()
+                            )
                         }
 
                         Row(
