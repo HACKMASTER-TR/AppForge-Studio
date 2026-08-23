@@ -264,6 +264,123 @@ private fun getAiDownloadNetwork(
 }
 
 
+private fun isTransientBuildNetworkError(
+    error: Throwable
+): Boolean {
+
+    var current: Throwable? =
+        error
+
+    while (
+        current != null
+    ) {
+
+        if (
+            current is java.net.UnknownHostException ||
+            current is java.net.SocketTimeoutException ||
+            current is java.net.ConnectException ||
+            current is java.net.NoRouteToHostException ||
+            current is java.net.SocketException
+        ) {
+            return true
+        }
+
+        val message =
+            current.message
+                .orEmpty()
+                .lowercase()
+
+        val transientMessage =
+            listOf(
+                "unable to resolve host",
+                "failed to connect",
+                "connection reset",
+                "connection refused",
+                "network is unreachable",
+                "no route to host",
+                "timed out",
+                "timeout"
+            ).any {
+                message.contains(
+                    it
+                )
+            }
+
+        if (
+            transientMessage
+        ) {
+            return true
+        }
+
+        current =
+            current.cause
+    }
+
+    return false
+}
+
+
+private suspend fun <T> retryInitialBuildRequest(
+    maxAttempts: Int = 5,
+    initialDelayMs: Long = 1_500L,
+    onRetry: (
+        attempt: Int,
+        maxAttempts: Int,
+        error: Throwable
+    ) -> Unit,
+    request: suspend () -> T
+): T {
+
+    var attempt =
+        1
+
+    var waitMs =
+        initialDelayMs
+
+    while (
+        true
+    ) {
+        try {
+            return request()
+        } catch (
+            t: Throwable
+        ) {
+
+            if (
+                !isTransientBuildNetworkError(
+                    t
+                ) ||
+                attempt >=
+                    maxAttempts
+            ) {
+                throw t
+            }
+
+            attempt +=
+                1
+
+            onRetry(
+                attempt,
+                maxAttempts,
+                t
+            )
+
+            delay(
+                waitMs
+            )
+
+            waitMs =
+                (
+                    waitMs *
+                        2
+                ).coerceAtMost(
+                    6_000L
+                )
+        }
+    }
+}
+
+
 private enum class AppScreen { HOME, MODE_SELECT, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 @Composable
@@ -894,6 +1011,7 @@ private fun AppForgeApp() {
             progress = 2
             logs = emptyList()
             preflight = emptyList()
+            buildId = null
             apkUrl = null
             aabUrl = null
 
@@ -938,16 +1056,40 @@ private fun AppForgeApp() {
                         apiKey = apiKey
                     )
 
+                /*
+                 * Aynı idempotency key bütün tekrar
+                 * denemelerinde korunur.
+                 *
+                 * Böylece sunucu isteği almış fakat
+                 * telefon cevabı alamamış olsa bile
+                 * ikinci bir build oluşturulmaz.
+                 */
+                val buildIdempotencyKey =
+                    "android-${effectiveBuildDraft.packageName}-${System.currentTimeMillis()}"
+
                 val created =
-                    withContext(
-                        Dispatchers.IO
+                    retryInitialBuildRequest(
+                        maxAttempts =
+                            5,
+                        onRetry = {
+                            attempt,
+                            maxAttempts,
+                            _ ->
+
+                            status =
+                                "Build Service bağlantısı kuruluyor • $attempt/$maxAttempts"
+                        }
                     ) {
-                        client.createBuild(
-                            effectiveBuildDraft,
-                            zip,
-                            idempotencyKey =
-                                "android-${effectiveBuildDraft.packageName}-${System.currentTimeMillis()}"
-                        )
+                        withContext(
+                            Dispatchers.IO
+                        ) {
+                            client.createBuild(
+                                effectiveBuildDraft,
+                                zip,
+                                idempotencyKey =
+                                    buildIdempotencyKey
+                            )
+                        }
                     }
 
                 buildId =
@@ -961,17 +1103,100 @@ private fun AppForgeApp() {
 
                 step = 9
 
+                /*
+                 * Build başladıktan sonra geçici ağ / DNS
+                 * problemi build'i başarısız saymamalı.
+                 *
+                 * Worker build'e devam eder.
+                 * Telefon aynı Build ID üzerinden yeniden
+                 * bağlanmayı sınırsız şekilde dener.
+                 */
+                var consecutiveNetworkErrors =
+                    0
+
                 while (true) {
-                    delay(1500)
+                    delay(
+                        1500
+                    )
 
                     val s =
-                        withContext(
-                            Dispatchers.IO
+                        try {
+                            withContext(
+                                Dispatchers.IO
+                            ) {
+                                client.getBuild(
+                                    created.buildId
+                                )
+                            }
+                        } catch (
+                            t: Throwable
                         ) {
-                            client.getBuild(
-                                created.buildId
+
+                            if (
+                                !isTransientBuildNetworkError(
+                                    t
+                                )
+                            ) {
+                                throw t
+                            }
+
+                            consecutiveNetworkErrors +=
+                                1
+
+                            status =
+                                "Bağlantı kesildi • yeniden bağlanılıyor..."
+
+                            /*
+                             * İlk kesintide ve daha sonra
+                             * her 5 denemede bir yerel bilgi
+                             * satırı göster.
+                             */
+                            if (
+                                consecutiveNetworkErrors ==
+                                    1 ||
+                                consecutiveNetworkErrors %
+                                    5 ==
+                                    0
+                            ) {
+                                logs =
+                                    (
+                                        logs +
+                                            "🌐 Build devam ediyor • sunucu bağlantısı yeniden kuruluyor (${consecutiveNetworkErrors}. deneme)"
+                                    ).takeLast(
+                                        120
+                                    )
+                            }
+
+                            val reconnectDelay =
+                                (
+                                    1_500L *
+                                        consecutiveNetworkErrors
+                                ).coerceAtMost(
+                                    10_000L
+                                )
+
+                            delay(
+                                reconnectDelay
                             )
+
+                            continue
                         }
+
+                    if (
+                        consecutiveNetworkErrors >
+                            0
+                    ) {
+                        logs =
+                            (
+                                logs +
+                                    "✅ Build Service bağlantısı yeniden kuruldu."
+                            ).takeLast(
+                                120
+                            )
+                    }
+
+                    consecutiveNetworkErrors =
+                        0
 
                     status =
                         s.status
