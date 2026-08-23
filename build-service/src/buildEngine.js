@@ -482,6 +482,32 @@ export async function executeBuild(job) {
         }
       );
 
+    /*
+     * BOTH için APK tarafını ayrıca kontrol et.
+     *
+     * Örnek:
+     * - APK normal FAST ile üretilebilir.
+     * - AAB Gradle bundleRelease ile üretilir.
+     *
+     * Böylece BOTH için gereksiz assembleRelease
+     * çalıştırılmaz.
+     */
+    const fastApkDecision =
+      getFastBuildDecision(
+        c,
+        {
+          outputType: "apk",
+          hasIcon:
+            Boolean(
+              uploadedIcon
+            )
+        }
+      );
+
+    const hybridBothMode =
+      outputType === "both" &&
+      fastApkDecision.eligible;
+
     const out = {};
 
     let buildMode =
@@ -610,6 +636,16 @@ export async function executeBuild(job) {
       }
     } else {
       if (
+        hybridBothMode
+      ) {
+        buildMode =
+          "HYBRID_FAST_APK_FULL_AAB";
+
+        await appendLog(
+          buildId,
+          "⚡ HYBRID BOTH seçildi • APK FAST BUILD + AAB bundleRelease."
+        );
+      } else if (
         fastExtendedMode
       ) {
         buildMode =
@@ -684,7 +720,10 @@ export async function executeBuild(job) {
 
       if (
         outputType === "apk" ||
-        outputType === "both"
+        (
+          outputType === "both" &&
+          !hybridBothMode
+        )
       ) {
         tasks.push(
           "assembleRelease"
@@ -774,8 +813,63 @@ export async function executeBuild(job) {
       );
 
       if (
-        outputType === "apk" ||
-        outputType === "both"
+        hybridBothMode
+      ) {
+        await throwIfCancelled(
+          buildId
+        );
+
+        await appendLog(
+          buildId,
+          "⚡ HYBRID BOTH • FAST APK oluşturuluyor..."
+        );
+
+        const hybridFastApk =
+          await buildFastApk(
+            {
+              workDir:
+                path.join(
+                  work,
+                  "fast-apk-both"
+                ),
+
+              siteDir:
+                c.sourceMode === "LOCAL"
+                  ? path.join(
+                      android,
+                      "app/src/main/assets/site"
+                    )
+                  : null,
+
+              config:
+                c,
+
+              localKeystore,
+
+              iconFile:
+                uploadedIcon
+            }
+          );
+
+        out.apk =
+          await putOutput(
+            buildId,
+            "app-release.apk",
+            hybridFastApk
+          );
+
+        await appendLog(
+          buildId,
+          "✅ HYBRID BOTH • FAST APK hazır."
+        );
+      }
+
+      if (
+        (
+          outputType === "apk" ||
+          outputType === "both"
+        ) &&
+        !hybridBothMode
       ) {
         const apk =
           await findFirst(
@@ -3680,8 +3774,8 @@ async function runGradle(
             env: {
               ...env,
               GRADLE_OPTS:
-                "-Xmx320m " +
-                "-XX:MaxMetaspaceSize=192m " +
+                "-Xmx384m " +
+                "-XX:MaxMetaspaceSize=256m " +
                 "-XX:+UseSerialGC " +
                 "-Dfile.encoding=UTF-8"
             }
