@@ -203,9 +203,112 @@ object ProjectLibrary {
         val saved = load(context).firstOrNull { it.id == id } ?: return null
         val obj = JSONObject(saved.json)
 
+        val restoredPackageName =
+            obj.optString(
+                "packageName",
+                "com.example.myapp"
+            )
+
+        /*
+         * Yeni kayıtlar importedFolder/startPage saklar.
+         *
+         * Eski AppForge Studio kayıtlarında bu alanlar yoktu.
+         * Bu nedenle eski projeler için filesDir/projects altında
+         * packageName'den üretilmiş klasörü otomatik olarak buluyoruz.
+         */
+        val storedFolder =
+            obj.optString(
+                "importedFolder"
+            )
+                .takeIf {
+                    it.isNotBlank() &&
+                    it != "null"
+                }
+                ?.let {
+                    File(it)
+                }
+                ?.takeIf {
+                    it.isDirectory
+                }
+
+        val legacyFolder =
+            File(
+                context.filesDir,
+                "projects/" +
+                    restoredPackageName
+                        .replace(
+                            ".",
+                            "_"
+                        )
+            )
+                .takeIf {
+                    it.isDirectory
+                }
+
+        val restoredFolder =
+            storedFolder
+                ?: legacyFolder
+
+        val storedStartPage =
+            obj.optString(
+                "startPage"
+            )
+                .takeIf {
+                    it.isNotBlank() &&
+                    it != "null"
+                }
+                ?.let {
+                    File(it)
+                }
+                ?.takeIf {
+                    it.isFile
+                }
+
+        val detectedStartPage =
+            restoredFolder
+                ?.let {
+                    folder ->
+
+                    File(
+                        folder,
+                        "index.html"
+                    )
+                        .takeIf {
+                            it.isFile
+                        }
+                        ?: folder
+                            .walkTopDown()
+                            .firstOrNull {
+                                file ->
+                                file.isFile &&
+                                file.name.equals(
+                                    "index.html",
+                                    true
+                                )
+                            }
+                }
+
+        val restoredStartPage =
+            storedStartPage
+                ?: detectedStartPage
+
         return ProjectDraft(
             appName = obj.optString("appName"),
-            packageName = obj.optString("packageName", "com.example.myapp"),
+            packageName = restoredPackageName,
+            sourceLabel =
+                obj.optString(
+                    "sourceLabel"
+                ).ifBlank {
+                    restoredStartPage
+                        ?.name
+                        ?: ""
+                },
+            importedFolder =
+                restoredFolder
+                    ?.absolutePath,
+            startPage =
+                restoredStartPage
+                    ?.absolutePath,
             sourceMode = runCatching {
                 SourceMode.valueOf(obj.optString("sourceMode", "LOCAL"))
             }.getOrDefault(SourceMode.LOCAL),
@@ -347,6 +450,13 @@ object ProjectLibrary {
             put("appName", d.appName)
             put("packageName", d.packageName)
             put("sourceMode", d.sourceMode.name)
+
+            // LOCAL kaynak uygulamanın özel depolamasına kopyalandığı için
+            // bu yollar uygulama yeniden açıldığında güvenle kullanılabilir.
+            put("sourceLabel", d.sourceLabel)
+            put("importedFolder", d.importedFolder)
+            put("startPage", d.startPage)
+
             put("webUrl", d.webUrl)
             put("versionName", d.versionName)
             put("versionCode", d.versionCode)
