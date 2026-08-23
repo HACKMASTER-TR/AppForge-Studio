@@ -854,14 +854,33 @@ private fun AppForgeApp() {
 
 
     val startBuildWithDraft: (ProjectDraft) -> Unit = { buildDraft ->
+        val storedVersionCode =
+            ProjectLibrary
+                .load(context)
+                .firstOrNull {
+                    it.packageName ==
+                        buildDraft.packageName
+                }
+                ?.let {
+                    ProjectLibrary
+                        .restore(
+                            context,
+                            it.id
+                        )
+                        ?.versionCode
+                }
+                ?: 0
+
         val effectiveBuildDraft =
             if (
                 buildDraft.autoVersionCode
             ) {
                 buildDraft.copy(
                     versionCode =
-                        buildDraft.versionCode +
-                        1
+                        maxOf(
+                            buildDraft.versionCode,
+                            storedVersionCode
+                        ) + 1
                 )
             } else {
                 buildDraft
@@ -992,6 +1011,43 @@ private fun AppForgeApp() {
                         s.status ==
                             "cancelled"
                     ) {
+                        if (
+                            s.status ==
+                                "success"
+                        ) {
+                            val canSaveProject =
+                                proStatus?.active ==
+                                    true ||
+                                ProjectLibrary
+                                    .claimFreeProjectSlot(
+                                        context,
+                                        effectiveBuildDraft
+                                            .packageName
+                                            .trim(),
+                                        5
+                                    )
+
+                            if (canSaveProject) {
+                                val existingProjectId =
+                                    currentProjectId
+                                        ?: ProjectLibrary
+                                            .load(context)
+                                            .firstOrNull {
+                                                it.packageName ==
+                                                    effectiveBuildDraft
+                                                        .packageName
+                                            }
+                                            ?.id
+
+                                currentProjectId =
+                                    ProjectLibrary.save(
+                                        context,
+                                        effectiveBuildDraft,
+                                        existingProjectId
+                                    )
+                            }
+                        }
+
                         ProjectLibrary.saveBuild(
                             context,
                             created.buildId,
@@ -1965,7 +2021,8 @@ private fun createQuickDraft(
             ),
         versionName =
             "1.0.0",
-        versionCode = 1,
+        versionCode =
+            base.versionCode.coerceAtLeast(1),
         autoVersionCode = true,
         buildOutput =
             "apk",
@@ -7355,17 +7412,15 @@ private fun installDownloadedApk(
             )
 
 
-        val primaryIntent =
+        val installIntent =
             Intent(
-                Intent.ACTION_INSTALL_PACKAGE,
-                installUri
+                Intent.ACTION_VIEW
             ).apply {
 
-                clipData =
-                    ClipData.newRawUri(
-                        "AppForge APK",
-                        installUri
-                    )
+                setDataAndType(
+                    installUri,
+                    "application/vnd.android.package-archive"
+                )
 
                 addFlags(
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -7377,50 +7432,9 @@ private fun installDownloadedApk(
             }
 
 
-        val primary =
-            runCatching {
-
-                context.startActivity(
-                    primaryIntent
-                )
-
-                true
-            }.getOrDefault(
-                false
-            )
-
-
-        if (!primary) {
-
-            val fallbackIntent =
-                Intent(
-                    Intent.ACTION_VIEW
-                ).apply {
-
-                    setDataAndType(
-                        installUri,
-                        "application/vnd.android.package-archive"
-                    )
-
-                    clipData =
-                        ClipData.newRawUri(
-                            "AppForge APK",
-                            installUri
-                        )
-
-                    addFlags(
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-
-                    addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK
-                    )
-                }
-
-            context.startActivity(
-                fallbackIntent
-            )
-        }
+        context.startActivity(
+            installIntent
+        )
 
 
         "Android APK yükleyici açıldı."
