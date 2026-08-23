@@ -52,10 +52,8 @@ const FAST_DEX =
   );
 
 const FAST_DEBUG_KEYSTORE =
-  path.join(
-    FAST_RUNTIME_ROOT,
-    "debug.keystore"
-  );
+  process.env.APPFORGE_FAST_DEBUG_KEYSTORE ||
+  "/data/gradle-cache/appforge-signing/debug.keystore";
 
 function xml(value) {
   return String(value ?? "")
