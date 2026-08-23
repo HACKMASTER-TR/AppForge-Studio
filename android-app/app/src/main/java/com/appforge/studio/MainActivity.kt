@@ -9793,36 +9793,374 @@ private fun MonetizationStep(
 }
 
 @Composable
-private fun DeepLinkStep(d: ProjectDraft, update: (ProjectDraft) -> Unit) {
-    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Section("6. Deep Link", "Web bağlantılarından uygulamayı aç.") }
-        item { Toggle("Deep Link aktif", d.deepLinkEnabled) { update(d.copy(deepLinkEnabled = it)) } }
+private fun DeepLinkStep(
+    d: ProjectDraft,
+    update: (ProjectDraft) -> Unit
+) {
+    val schemeRegex =
+        Regex(
+            """^[a-z][a-z0-9+.-]*$"""
+        )
 
-        if (d.deepLinkEnabled) {
-            item {
-                OutlinedTextField(
-                    value = d.deepLinkScheme,
-                    onValueChange = { update(d.copy(deepLinkScheme = it.trim())) },
-                    label = { Text("Scheme") },
-                    modifier = Modifier.fillMaxWidth()
+    val schemeValid =
+        d.deepLinkScheme.isNotBlank() &&
+        schemeRegex.matches(
+            d.deepLinkScheme
+        )
+
+    val hostValid =
+        d.deepLinkHost.isNotBlank() &&
+        !d.deepLinkHost.contains(
+            " "
+        )
+
+    val normalizedPath =
+        d.deepLinkPathPrefix
+            .trim()
+            .let {
+                when {
+                    it.isBlank() ->
+                        "/"
+
+                    it.startsWith("/") ->
+                        it
+
+                    else ->
+                        "/$it"
+                }
+            }
+
+    val deepLinkReady =
+        !d.deepLinkEnabled ||
+        (
+            schemeValid &&
+            hostValid
+        )
+
+    val exampleLink =
+        if (
+            schemeValid &&
+            hostValid
+        ) {
+            "${d.deepLinkScheme}://${d.deepLinkHost}$normalizedPath"
+        } else {
+            "myapp://example.com/"
+        }
+
+    LazyColumn(
+        contentPadding =
+            PaddingValues(
+                20.dp
+            ),
+        verticalArrangement =
+            Arrangement.spacedBy(
+                14.dp
+            )
+    ) {
+        item {
+            Section(
+                "6. Deep Link",
+                "Web bağlantılarından uygulamanın belirli ekranlarını aç."
+            )
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Deep Link aktif",
+                description =
+                    "Belirlediğin bağlantılar açıldığında Android uygulamasının çalışmasını sağlar.",
+                checked =
+                    d.deepLinkEnabled
+            ) {
+                update(
+                    d.copy(
+                        deepLinkEnabled =
+                            it
+                    )
                 )
             }
+        }
+
+        if (
+            d.deepLinkEnabled
+        ) {
             item {
-                OutlinedTextField(
-                    value = d.deepLinkHost,
-                    onValueChange = { update(d.copy(deepLinkHost = it.trim())) },
-                    label = { Text("Host") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                7.dp
+                            )
+                    ) {
+                        Text(
+                            "Deep Link durumu",
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            if (
+                                schemeValid
+                            ) {
+                                "✓ Scheme geçerli"
+                            } else {
+                                "○ Scheme gerekli"
+                            },
+                            fontSize =
+                                12.sp
+                        )
+
+                        Text(
+                            if (
+                                hostValid
+                            ) {
+                                "✓ Host geçerli"
+                            } else {
+                                "○ Host gerekli"
+                            },
+                            fontSize =
+                                12.sp
+                        )
+
+                        Text(
+                            if (
+                                deepLinkReady
+                            ) {
+                                "✅ Yapılandırma hazır"
+                            } else {
+                                "Eksik alanları tamamla."
+                            },
+                            color =
+                                if (
+                                    deepLinkReady
+                                ) {
+                                    Accent
+                                } else {
+                                    TextSecondary
+                                },
+                            fontWeight =
+                                FontWeight.Medium,
+                            fontSize =
+                                12.sp
+                        )
+                    }
+                }
             }
+
             item {
                 OutlinedTextField(
-                    value = d.deepLinkPathPrefix,
+                    value =
+                        d.deepLinkScheme,
                     onValueChange = {
-                        update(d.copy(deepLinkPathPrefix = it.trim().ifBlank { "/" }))
+                        update(
+                            d.copy(
+                                deepLinkScheme =
+                                    it
+                                        .trim()
+                                        .lowercase()
+                            )
+                        )
                     },
-                    label = { Text("Path prefix") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = {
+                        Text(
+                            "Scheme"
+                        )
+                    },
+                    placeholder = {
+                        Text(
+                            "myapp"
+                        )
+                    },
+                    supportingText = {
+                        if (
+                            d.deepLinkScheme.isBlank()
+                        ) {
+                            Text(
+                                "Örn: myapp"
+                            )
+                        } else if (
+                            schemeValid
+                        ) {
+                            Text(
+                                "✓ Scheme geçerli"
+                            )
+                        } else {
+                            Text(
+                                "Küçük harfle başlamalı; boşluk içeremez."
+                            )
+                        }
+                    },
+                    isError =
+                        d.deepLinkScheme
+                            .isNotBlank() &&
+                        !schemeValid,
+                    singleLine = true,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value =
+                        d.deepLinkHost,
+                    onValueChange = {
+                        update(
+                            d.copy(
+                                deepLinkHost =
+                                    it
+                                        .trim()
+                                        .lowercase()
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Host"
+                        )
+                    },
+                    placeholder = {
+                        Text(
+                            "example.com"
+                        )
+                    },
+                    supportingText = {
+                        if (
+                            d.deepLinkHost.isBlank()
+                        ) {
+                            Text(
+                                "Örn: example.com"
+                            )
+                        } else if (
+                            hostValid
+                        ) {
+                            Text(
+                                "✓ Host geçerli"
+                            )
+                        } else {
+                            Text(
+                                "Host boşluk içeremez."
+                            )
+                        }
+                    },
+                    isError =
+                        d.deepLinkHost
+                            .isNotBlank() &&
+                        !hostValid,
+                    singleLine = true,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value =
+                        d.deepLinkPathPrefix,
+                    onValueChange = {
+                        update(
+                            d.copy(
+                                deepLinkPathPrefix =
+                                    it
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Path prefix"
+                        )
+                    },
+                    placeholder = {
+                        Text(
+                            "/"
+                        )
+                    },
+                    supportingText = {
+                        Text(
+                            "Örn: /urun veya /profil"
+                        )
+                    },
+                    singleLine = true,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                7.dp
+                            )
+                    ) {
+                        Text(
+                            "Bağlantı önizlemesi",
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            exampleLink,
+                            color =
+                                Accent,
+                            fontSize =
+                                13.sp
+                        )
+
+                        Text(
+                            "Bu yapıya uyan bağlantılar uygulamayı açabilir.",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+                    }
+                }
+            }
+
+            item {
+                NoteCard(
+                    "Google doğrulanmış HTTPS App Links farklı bir yapılandırmadır. Bu bölüm özel scheme tabanlı Deep Link içindir."
+                )
+            }
+        } else {
+            item {
+                NoteCard(
+                    "Deep Link kapalı. Uygulama normal şekilde açılmaya devam eder."
                 )
             }
         }
