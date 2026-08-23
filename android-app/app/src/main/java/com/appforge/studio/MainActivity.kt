@@ -6659,8 +6659,17 @@ private fun BuildSettingsStep(
         item {
             OutlinedTextField(
                 value = serverUrl,
-                onValueChange = onServerUrl,
-                label = { Text("Build Service URL") },
+                onValueChange = {},
+                readOnly = true,
+                singleLine = true,
+                label = {
+                    Text("Build Service URL")
+                },
+                supportingText = {
+                    Text(
+                        "AppForge resmi Build Service • Değiştirilemez"
+                    )
+                },
                 modifier = Modifier.fillMaxWidth()
             )
         }
