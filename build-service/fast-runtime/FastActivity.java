@@ -1333,6 +1333,89 @@ public final class FastActivity extends Activity {
 
             return "OK";
         }
+
+
+        @JavascriptInterface
+        public String scanCode() {
+            if (
+                !isTrustedNativeBridgePage() ||
+                !config.optBoolean(
+                    "qrScanner",
+                    false
+                )
+            ) {
+                return "ERROR|QR tarayıcı kapalı";
+            }
+
+            try {
+                Class<?> runtime =
+                    Class.forName(
+                        "com.appforge.features.qr.FastQrRuntime"
+                    );
+
+                java.lang.reflect.Method start =
+                    runtime.getMethod(
+                        "start",
+                        Activity.class,
+                        WebView.class
+                    );
+
+                start.invoke(
+                    null,
+                    FastActivity.this,
+                    webView
+                );
+
+                return "OK";
+
+            } catch (
+                Throwable error
+            ) {
+                final String message =
+                    error.getMessage() != null
+                        ? error.getMessage()
+                        : error
+                            .getClass()
+                            .getSimpleName();
+
+                runOnUiThread(
+                    () -> {
+                        try {
+                            JSONObject detail =
+                                new JSONObject();
+
+                            detail.put(
+                                "message",
+                                message
+                            );
+
+                            String script =
+                                "window.dispatchEvent(" +
+                                "new CustomEvent(" +
+                                "'appforge-scan-error'," +
+                                "{detail:" +
+                                detail.toString() +
+                                "}" +
+                                ")" +
+                                ");";
+
+                            if (webView != null) {
+                                webView.evaluateJavascript(
+                                    script,
+                                    null
+                                );
+                            }
+
+                        } catch (
+                            Throwable ignored
+                        ) {
+                        }
+                    }
+                );
+
+                return "ERROR|QR başlatılamadı";
+            }
+        }
     }
 
 
@@ -1416,6 +1499,19 @@ public final class FastActivity extends Activity {
                         "if(!Number.isFinite(n))n=100;" +
                         "n=Math.max(1,Math.min(1000,Math.round(n)));" +
                         "return window.AppForgeFastNative.vibrate(n);" +
+                        "},"
+                    )
+                    : ""
+            ) +
+
+            (
+                config.optBoolean(
+                    "qrScanner",
+                    false
+                )
+                    ? (
+                        "scanCode:function(){" +
+                        "return window.AppForgeFastNative.scanCode();" +
                         "},"
                     )
                     : ""

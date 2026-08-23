@@ -51,6 +51,9 @@ const FAST_DEX =
     "classes.dex"
   );
 
+const FAST_QR_DEX =
+  "/opt/appforge-fast-features/qr/classes.dex";
+
 const FAST_DEBUG_KEYSTORE =
   process.env.APPFORGE_FAST_DEBUG_KEYSTORE ||
   "/data/gradle-cache/appforge-signing/debug.keystore";
@@ -187,14 +190,6 @@ export function getFastBuildDecision(
   }
 
   if (
-    c.nativeBridge?.qrScanner
-  ) {
-    reasons.push(
-      "QR tarayıcı"
-    );
-  }
-
-  if (
     c.admob?.enabled
   ) {
     reasons.push(
@@ -239,6 +234,10 @@ export async function buildFastApk({
       c.packageName
     );
 
+  const qrEnabled =
+    c.nativeBridge?.enabled === true &&
+    c.nativeBridge?.qrScanner === true;
+
   await fs.rm(
     workDir,
     {
@@ -254,14 +253,25 @@ export async function buildFastApk({
     }
   );
 
-  for (const required of [
+  const requiredFiles = [
     AAPT2,
     ZIPALIGN,
     APKSIGNER,
     ANDROID_JAR,
     FAST_DEX,
     FAST_DEBUG_KEYSTORE
-  ]) {
+  ];
+
+  if (qrEnabled) {
+    requiredFiles.push(
+      FAST_QR_DEX
+    );
+  }
+
+  for (
+    const required of
+    requiredFiles
+  ) {
     await fs.access(
       required
     );
@@ -453,6 +463,81 @@ export async function buildFastApk({
 `
       : "";
 
+  const qrNetworkPermission =
+    qrEnabled
+      ? `
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE" />
+`
+      : "";
+
+  const qrManifestComponents =
+    qrEnabled
+      ? `
+        <!-- Google Code Scanner -->
+
+        <activity
+            android:name="com.google.mlkit.vision.codescanner.internal.GmsBarcodeScanningDelegateActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- ML Kit initialization -->
+
+        <provider
+            android:name="com.google.mlkit.common.internal.MlKitInitProvider"
+            android:authorities="${xml(pkg)}.mlkitinitprovider"
+            android:exported="false"
+            android:initOrder="99" />
+
+        <service
+            android:name="com.google.mlkit.common.internal.MlKitComponentDiscoveryService"
+            android:directBootAware="true"
+            android:exported="false">
+
+            <meta-data
+                android:name="com.google.firebase.components:com.google.mlkit.common.internal.CommonComponentRegistrar"
+                android:value="com.google.firebase.components.ComponentRegistrar" />
+
+            <meta-data
+                android:name="com.google.firebase.components:com.google.mlkit.vision.common.internal.VisionCommonRegistrar"
+                android:value="com.google.firebase.components.ComponentRegistrar" />
+
+        </service>
+
+        <!-- Google Play Services -->
+
+        <activity
+            android:name="com.google.android.gms.common.api.GoogleApiActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="12451000" />
+
+        <!-- Data Transport -->
+
+        <service
+            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <receiver
+            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
+            android:exported="false" />
+
+        <service
+            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
+            android:exported="false">
+
+            <meta-data
+                android:name="backend:com.google.android.datatransport.cct.CctBackendFactory"
+                android:value="cct" />
+
+        </service>
+`
+      : "";
+
   const manifestXml =
 `<?xml version="1.0" encoding="utf-8"?>
 <manifest
@@ -467,7 +552,7 @@ export async function buildFastApk({
 
     <uses-permission
         android:name="android.permission.INTERNET" />
-${notificationPermission}${vibrationPermission}${cameraPermission}${locationPermission}
+${notificationPermission}${vibrationPermission}${cameraPermission}${locationPermission}${qrNetworkPermission}
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
@@ -490,7 +575,7 @@ ${notificationPermission}${vibrationPermission}${cameraPermission}${locationPerm
             </intent-filter>
 ${deepLinkIntentFilter}
         </activity>
-
+${qrManifestComponents}
     </application>
 
 </manifest>
@@ -598,6 +683,15 @@ ${deepLinkIntentFilter}
     )
   );
 
+  if (qrEnabled) {
+    zip.addFile(
+      "classes2.dex",
+      await fs.readFile(
+        FAST_QR_DEX
+      )
+    );
+  }
+
   const fastConfig = {
     sourceMode:
       c.sourceMode,
@@ -647,6 +741,9 @@ ${deepLinkIntentFilter}
 
     vibrationBridge:
       c.nativeBridge?.vibration === true,
+
+    qrScanner:
+      qrEnabled,
 
     versionName,
 

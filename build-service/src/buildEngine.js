@@ -341,7 +341,6 @@ function requiresFastExtended(
   }
 
   return Boolean(
-    c.nativeBridge?.qrScanner ||
     c.admob?.enabled ||
     c.billing?.enabled ||
     c.firebase?.analytics ||
