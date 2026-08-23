@@ -8073,41 +8073,497 @@ private fun AppearanceStep(
     update: (ProjectDraft) -> Unit,
     onPickIcon: () -> Unit
 ) {
-    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Section("3. Görünüm", "İkon, tema ve Splash.") }
+    val orientationLabel =
+        when (
+            d.orientation
+        ) {
+            "portrait" ->
+                "Dikey"
 
+            "landscape" ->
+                "Yatay"
+
+            else ->
+                "Otomatik"
+        }
+
+    LazyColumn(
+        contentPadding =
+            PaddingValues(
+                20.dp
+            ),
+        verticalArrangement =
+            Arrangement.spacedBy(
+                14.dp
+            )
+    ) {
         item {
-            Button(onClick = onPickIcon, modifier = Modifier.fillMaxWidth()) {
-                Text(if (d.iconName.isBlank()) "PNG Uygulama İkonu Seç" else "İkon: ${d.iconName}")
-            }
+            Section(
+                "3. Görünüm",
+                "İkon, ekran yönü, tema ve Splash ayarları."
+            )
         }
 
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                listOf("unspecified", "portrait", "landscape").forEach {
-                    FilterChip(
-                        selected = d.orientation == it,
-                        onClick = { update(d.copy(orientation = it)) },
-                        label = { Text(it) }
+            Card(
+                colors =
+                    CardDefaults
+                        .cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            10.dp
+                        )
+                ) {
+                    Text(
+                        "Uygulama ikonu",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Text(
+                        if (
+                            d.iconName.isBlank()
+                        ) {
+                            "Henüz özel ikon seçilmedi."
+                        } else {
+                            "✓ ${d.iconName}"
+                        },
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            13.sp
+                    )
+
+                    Button(
+                        onClick =
+                            onPickIcon,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            if (
+                                d.iconName.isBlank()
+                            ) {
+                                "PNG Uygulama İkonu Seç"
+                            } else {
+                                "İkonu değiştir"
+                            }
+                        )
+                    }
+
+                    Text(
+                        "Önerilen: kare PNG, en az 512 × 512 px.",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            11.sp
                     )
                 }
             }
         }
 
-        item { ColorField("Ana renk", d.primaryColor) { update(d.copy(primaryColor = it)) } }
-        item { ColorField("Arka plan", d.backgroundColor) { update(d.copy(backgroundColor = it)) } }
-        item { ColorField("Status bar", d.statusBarColor) { update(d.copy(statusBarColor = it)) } }
-        item { ColorField("Navigation bar", d.navigationBarColor) { update(d.copy(navigationBarColor = it)) } }
-        item { Toggle("Android 12+ Splash", d.splashEnabled) { update(d.copy(splashEnabled = it)) } }
+        item {
+            Text(
+                "Ekran yönü",
+                fontWeight =
+                    FontWeight.Bold,
+                fontSize =
+                    14.sp
+            )
+        }
 
-        if (d.splashEnabled) {
-            item {
-                OutlinedTextField(
-                    value = d.splashText,
-                    onValueChange = { update(d.copy(splashText = it)) },
-                    label = { Text("Splash alt yazısı") },
-                    modifier = Modifier.fillMaxWidth()
+        item {
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        7.dp
+                    )
+            ) {
+                FilterChip(
+                    selected =
+                        d.orientation ==
+                            "unspecified",
+                    onClick = {
+                        update(
+                            d.copy(
+                                orientation =
+                                    "unspecified"
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Otomatik"
+                        )
+                    }
                 )
+
+                FilterChip(
+                    selected =
+                        d.orientation ==
+                            "portrait",
+                    onClick = {
+                        update(
+                            d.copy(
+                                orientation =
+                                    "portrait"
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Dikey"
+                        )
+                    }
+                )
+
+                FilterChip(
+                    selected =
+                        d.orientation ==
+                            "landscape",
+                    onClick = {
+                        update(
+                            d.copy(
+                                orientation =
+                                    "landscape"
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Yatay"
+                        )
+                    }
+                )
+            }
+        }
+
+        item {
+            Text(
+                "Hazır temalar",
+                fontWeight =
+                    FontWeight.Bold,
+                fontSize =
+                    14.sp
+            )
+        }
+
+        item {
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        8.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Button(
+                    onClick = {
+                        update(
+                            d.copy(
+                                primaryColor =
+                                    "#6B7CFF",
+                                backgroundColor =
+                                    "#07101F",
+                                statusBarColor =
+                                    "#07101F",
+                                navigationBarColor =
+                                    "#07101F"
+                            )
+                        )
+                    },
+                    modifier =
+                        Modifier.weight(
+                            1f
+                        )
+                ) {
+                    Text(
+                        "Koyu"
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        update(
+                            d.copy(
+                                primaryColor =
+                                    "#3F51B5",
+                                backgroundColor =
+                                    "#FFFFFF",
+                                statusBarColor =
+                                    "#FFFFFF",
+                                navigationBarColor =
+                                    "#FFFFFF"
+                            )
+                        )
+                    },
+                    modifier =
+                        Modifier.weight(
+                            1f
+                        )
+                ) {
+                    Text(
+                        "Açık"
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        update(
+                            d.copy(
+                                primaryColor =
+                                    "#8CC9F6",
+                                backgroundColor =
+                                    "#000000",
+                                statusBarColor =
+                                    "#000000",
+                                navigationBarColor =
+                                    "#000000"
+                            )
+                        )
+                    },
+                    modifier =
+                        Modifier.weight(
+                            1f
+                        )
+                ) {
+                    Text(
+                        "OLED"
+                    )
+                }
+            }
+        }
+
+        item {
+            Text(
+                "Renkler",
+                fontWeight =
+                    FontWeight.Bold,
+                fontSize =
+                    14.sp
+            )
+        }
+
+        item {
+            ColorField(
+                "Ana renk",
+                d.primaryColor
+            ) {
+                update(
+                    d.copy(
+                        primaryColor =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            ColorField(
+                "Arka plan",
+                d.backgroundColor
+            ) {
+                update(
+                    d.copy(
+                        backgroundColor =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            ColorField(
+                "Status bar",
+                d.statusBarColor
+            ) {
+                update(
+                    d.copy(
+                        statusBarColor =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            ColorField(
+                "Navigation bar",
+                d.navigationBarColor
+            ) {
+                update(
+                    d.copy(
+                        navigationBarColor =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            Card(
+                colors =
+                    CardDefaults
+                        .cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            10.dp
+                        )
+                ) {
+                    Toggle(
+                        "Android 12+ Splash",
+                        d.splashEnabled
+                    ) {
+                        update(
+                            d.copy(
+                                splashEnabled =
+                                    it
+                            )
+                        )
+                    }
+
+                    if (
+                        d.splashEnabled
+                    ) {
+                        OutlinedTextField(
+                            value =
+                                d.splashText,
+                            onValueChange = {
+                                update(
+                                    d.copy(
+                                        splashText =
+                                            it
+                                    )
+                                )
+                            },
+                            label = {
+                                Text(
+                                    "Splash alt yazısı"
+                                )
+                            },
+                            placeholder = {
+                                Text(
+                                    d.appName.ifBlank {
+                                        "Uygulama açılıyor..."
+                                    }
+                                )
+                            },
+                            singleLine = true,
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            Card(
+                colors =
+                    CardDefaults
+                        .cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            7.dp
+                        )
+                ) {
+                    Text(
+                        "Görünüm özeti",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Text(
+                        if (
+                            d.iconName.isBlank()
+                        ) {
+                            "○ Varsayılan ikon"
+                        } else {
+                            "✓ Özel ikon"
+                        },
+                        fontSize =
+                            13.sp
+                    )
+
+                    Text(
+                        "✓ Ekran yönü: $orientationLabel",
+                        fontSize =
+                            13.sp
+                    )
+
+                    Text(
+                        if (
+                            d.splashEnabled
+                        ) {
+                            "✓ Android Splash açık"
+                        } else {
+                            "○ Android Splash kapalı"
+                        },
+                        fontSize =
+                            13.sp
+                    )
+
+                    Text(
+                        "Ana renk: ${d.primaryColor}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Arka plan: ${d.backgroundColor}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+                }
             }
         }
     }
