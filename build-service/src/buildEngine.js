@@ -639,7 +639,7 @@ include(":app")
 org.gradle.workers.max=1
 org.gradle.parallel=false
 org.gradle.vfs.watch=false
-org.gradle.daemon=true
+org.gradle.daemon=false
 org.gradle.caching=true
 kotlin.incremental=true
 android.useAndroidX=true
@@ -3337,7 +3337,7 @@ async function runGradle(
           config.gradleBin,
           [
             ...tasks,
-            "--daemon",
+            "--no-daemon",
             "--build-cache",
             "--stacktrace"
           ],
