@@ -11,6 +11,10 @@ import {
 } from "./storage.js";
 import { storeCache } from "./buildCache.js";
 import { appendBuildLog } from "./buildLogs.js";
+import {
+  buildFastApk,
+  getFastBuildDecision
+} from "./fastBuild.js";
 
 function esc(s) {
   return String(s ?? "").replaceAll("\\", "\\\\").replaceAll('"', '\\"');
@@ -422,84 +426,320 @@ export async function executeBuild(job) {
       }
     );
 
-    await appendLog(buildId, "Android proje şablonu oluşturuluyor...");
-
     const localKeystore =
       c.signing?.mode === "CUSTOM"
         ? path.join(work, "release.jks")
         : null;
 
     if (localKeystore) {
-      await fs.copyFile(uploadedKeystore, localKeystore);
-    }
-
-    await throwIfCancelled(buildId);
-
-    await generateAndroidProject(android, c, {
-      localKeystore,
-      iconFile: uploadedIcon,
-      firebaseConfig: uploadedFirebaseConfig
-    });
-
-    if (c.sourceMode === "LOCAL") {
-      await extractZipSafely(
-        uploadedProject,
-        path.join(android, "app/src/main/assets/site")
+      await fs.copyFile(
+        uploadedKeystore,
+        localKeystore
       );
     }
 
-    await updateBuild(buildId, { progress: 25 });
-    await appendLog(buildId, "Gradle derlemesi başlatılıyor...");
+    const outputType =
+      ["apk", "aab", "both"].includes(
+        c.buildOutput
+      )
+        ? c.buildOutput
+        : "both";
 
-    const outputType = ["apk", "aab", "both"].includes(c.buildOutput)
-      ? c.buildOutput
-      : "both";
-
-    const tasks = [];
-    if (outputType === "apk" || outputType === "both") tasks.push("assembleRelease");
-    if (outputType === "aab" || outputType === "both") tasks.push("bundleRelease");
-
-    await throwIfCancelled(buildId);
-
-    await runGradle(buildId, android, tasks, {
-      ...process.env,
-      APPFORGE_STORE_PASSWORD: c.signing?.storePassword || "",
-      APPFORGE_KEY_PASSWORD: c.signing?.keyPassword || "",
-      APPFORGE_KEY_ALIAS: c.signing?.alias || "",
-      GRADLE_USER_HOME: config.gradleCacheRoot
-    });
-
-    await throwIfCancelled(buildId);
-
-    await updateBuild(buildId, { progress: 90 });
+    const fastDecision =
+      getFastBuildDecision(
+        c,
+        {
+          outputType,
+          hasIcon:
+            Boolean(
+              uploadedIcon
+            )
+        }
+      );
 
     const out = {};
 
-    if (outputType === "apk" || outputType === "both") {
-      const apk = await findFirst(
-        android,
-        p => p.endsWith(".apk") && p.includes("/release/")
-      );
+    let buildMode =
+      "FULL";
 
-      if (apk) {
-        const outputRef = await putOutput(
+    let fastCompleted =
+      false;
+
+    if (
+      fastDecision.eligible
+    ) {
+      try {
+        buildMode =
+          "FAST";
+
+        await appendLog(
           buildId,
-          "app-release.apk",
-          apk
+          "⚡ FAST BUILD seçildi • Gradle/D8 runtime aşaması atlanıyor."
         );
-        out.apk = outputRef;
+
+        await updateBuild(
+          buildId,
+          {
+            progress: 20
+          }
+        );
+
+        let fastSiteDir =
+          null;
+
+        if (
+          c.sourceMode ===
+          "LOCAL"
+        ) {
+          fastSiteDir =
+            path.join(
+              work,
+              "fast-site"
+            );
+
+          await fs.mkdir(
+            fastSiteDir,
+            {
+              recursive: true
+            }
+          );
+
+          await extractZipSafely(
+            uploadedProject,
+            fastSiteDir
+          );
+        }
+
+        await throwIfCancelled(
+          buildId
+        );
+
+        await updateBuild(
+          buildId,
+          {
+            progress: 40
+          }
+        );
+
+        const fastApk =
+          await buildFastApk(
+            {
+              workDir:
+                path.join(
+                  work,
+                  "fast-apk"
+                ),
+
+              siteDir:
+                fastSiteDir,
+
+              config:
+                c,
+
+              localKeystore
+            }
+          );
+
+        await throwIfCancelled(
+          buildId
+        );
+
+        out.apk =
+          await putOutput(
+            buildId,
+            "app-release.apk",
+            fastApk
+          );
+
+        fastCompleted =
+          true;
+
+        await updateBuild(
+          buildId,
+          {
+            progress: 90
+          }
+        );
+
+        await appendLog(
+          buildId,
+          "⚡ FAST BUILD APK başarıyla oluşturuldu."
+        );
+      } catch (fastError) {
+        buildMode =
+          "FULL";
+
+        fastCompleted =
+          false;
+
+        await appendLog(
+          buildId,
+          `⚠️ FAST BUILD başarısız • FULL BUILD'e geçiliyor: ${String(
+            fastError?.message ||
+            fastError
+          )}`
+        );
       }
+    } else {
+      await appendLog(
+        buildId,
+        `🛠 FULL BUILD seçildi • ${fastDecision.reasons.join(", ")}`
+      );
     }
 
-    if (outputType === "aab" || outputType === "both") {
-      const aab = await findFirst(android, p => p.endsWith(".aab"));
-      if (aab) {
-        const outputRef = await putOutput(
-          buildId,
-          "app-release.aab",
-          aab
+    if (
+      !fastCompleted
+    ) {
+      await appendLog(
+        buildId,
+        "Android proje şablonu oluşturuluyor..."
+      );
+
+      await throwIfCancelled(
+        buildId
+      );
+
+      await generateAndroidProject(
+        android,
+        c,
+        {
+          localKeystore,
+          iconFile:
+            uploadedIcon,
+          firebaseConfig:
+            uploadedFirebaseConfig
+        }
+      );
+
+      if (
+        c.sourceMode ===
+        "LOCAL"
+      ) {
+        await extractZipSafely(
+          uploadedProject,
+          path.join(
+            android,
+            "app/src/main/assets/site"
+          )
         );
-        out.aab = outputRef;
+      }
+
+      await updateBuild(
+        buildId,
+        {
+          progress: 25
+        }
+      );
+
+      await appendLog(
+        buildId,
+        "Gradle derlemesi başlatılıyor..."
+      );
+
+      const tasks = [];
+
+      if (
+        outputType === "apk" ||
+        outputType === "both"
+      ) {
+        tasks.push(
+          "assembleRelease"
+        );
+      }
+
+      if (
+        outputType === "aab" ||
+        outputType === "both"
+      ) {
+        tasks.push(
+          "bundleRelease"
+        );
+      }
+
+      await throwIfCancelled(
+        buildId
+      );
+
+      await runGradle(
+        buildId,
+        android,
+        tasks,
+        {
+          ...process.env,
+
+          APPFORGE_STORE_PASSWORD:
+            c.signing?.storePassword ||
+            "",
+
+          APPFORGE_KEY_PASSWORD:
+            c.signing?.keyPassword ||
+            "",
+
+          APPFORGE_KEY_ALIAS:
+            c.signing?.alias ||
+            "",
+
+          GRADLE_USER_HOME:
+            config.gradleCacheRoot
+        }
+      );
+
+      await throwIfCancelled(
+        buildId
+      );
+
+      await updateBuild(
+        buildId,
+        {
+          progress: 90
+        }
+      );
+
+      if (
+        outputType === "apk" ||
+        outputType === "both"
+      ) {
+        const apk =
+          await findFirst(
+            android,
+            p =>
+              p.endsWith(".apk") &&
+              p.includes(
+                "/release/"
+              )
+          );
+
+        if (apk) {
+          out.apk =
+            await putOutput(
+              buildId,
+              "app-release.apk",
+              apk
+            );
+        }
+      }
+
+      if (
+        outputType === "aab" ||
+        outputType === "both"
+      ) {
+        const aab =
+          await findFirst(
+            android,
+            p =>
+              p.endsWith(
+                ".aab"
+              )
+          );
+
+        if (aab) {
+          out.aab =
+            await putOutput(
+              buildId,
+              "app-release.aab",
+              aab
+            );
+        }
       }
     }
 
@@ -519,7 +759,8 @@ export async function executeBuild(job) {
         c.versionName,
       versionCode:
         c.versionCode,
-      outputs: out
+      outputs: out,
+      buildMode
     };
 
     await updateBuild(
