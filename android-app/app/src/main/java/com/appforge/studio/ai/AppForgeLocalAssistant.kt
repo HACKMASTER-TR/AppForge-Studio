@@ -140,6 +140,267 @@ private fun cleanAssistantOutput(
         )
 }
 
+private fun extractFinalAssistantAnswer(
+    raw: String,
+    languageCode: String
+): String {
+
+    val cleaned =
+        cleanAssistantOutput(
+            raw
+        ).trim()
+
+    /*
+     * Tercih edilen yöntem:
+     * Model nihai cevabı özel etiket içine koyar.
+     */
+    val tagged =
+        Regex(
+            "(?is)<final_answer>\\s*(.*?)\\s*</final_answer>"
+        )
+            .findAll(
+                cleaned
+            )
+            .lastOrNull()
+            ?.groupValues
+            ?.getOrNull(
+                1
+            )
+            ?.trim()
+
+    if (
+        !tagged.isNullOrBlank()
+    ) {
+        return tagged
+    }
+
+    /*
+     * Kapanış etiketi unutulursa başlangıçtan sonrasını al.
+     */
+    val openTag =
+        cleaned.lastIndexOf(
+            "<final_answer>",
+            ignoreCase = true
+        )
+
+    if (
+        openTag >= 0
+    ) {
+        return cleaned
+            .substring(
+                openTag +
+                    "<final_answer>".length
+            )
+            .replace(
+                "</final_answer>",
+                "",
+                ignoreCase = true
+            )
+            .trim()
+    }
+
+    /*
+     * Bazı reasoning modelleri etikete uymayıp önce
+     * İngilizce çalışma notlarını yazabiliyor.
+     *
+     * Türkçe seçiliyse sondaki gerçek Türkçe cevap
+     * bölümünü cümle bazında buluyoruz.
+     */
+    if (
+        languageCode == "tr" ||
+        languageCode == "system"
+    ) {
+        val sentences =
+            cleaned
+                .split(
+                    Regex(
+                        "(?<=[.!?])\\s+|\\n+"
+                    )
+                )
+                .map {
+                    it.trim()
+                }
+                .filter {
+                    it.isNotBlank()
+                }
+
+        val englishMetaWords =
+            setOf(
+                "the",
+                "user",
+                "asking",
+                "need",
+                "answer",
+                "should",
+                "first",
+                "looking",
+                "following",
+                "guidelines",
+                "structure",
+                "ensure",
+                "clear",
+                "meets",
+                "requirements",
+                "let",
+                "think"
+            )
+
+        val turkishWords =
+            setOf(
+                "ve",
+                "ile",
+                "için",
+                "bir",
+                "bu",
+                "daha",
+                "olarak",
+                "fark",
+                "arasındaki",
+                "proje",
+                "projeler",
+                "özellik",
+                "özellikler",
+                "hesap",
+                "plan",
+                "planı",
+                "ücretsiz",
+                "kullanıcı",
+                "kullanabilir",
+                "sunar",
+                "oluşturma",
+                "derleme",
+                "uygulama"
+            )
+
+        fun words(
+            value: String
+        ): List<String> =
+            Regex(
+                "[\\p{L}]+"
+            )
+                .findAll(
+                    value.lowercase()
+                )
+                .map {
+                    it.value
+                }
+                .toList()
+
+        fun isTurkishSentence(
+            value: String
+        ): Boolean {
+            val lower =
+                value.lowercase()
+
+            val tokens =
+                words(
+                    value
+                )
+
+            val trScore =
+                tokens.count {
+                    it in turkishWords
+                } +
+                if (
+                    lower.any {
+                        it in
+                            "çğıöşü"
+                    }
+                ) {
+                    2
+                } else {
+                    0
+                }
+
+            val enScore =
+                tokens.count {
+                    it in englishMetaWords
+                }
+
+            return trScore >= 2 &&
+                trScore > enScore
+        }
+
+        /*
+         * Cevabın sonundan başlayarak kesintisiz Türkçe
+         * nihai cevap bölümünü bul.
+         */
+        var start =
+            sentences.size
+
+        for (
+            i in sentences.indices.reversed()
+        ) {
+            if (
+                isTurkishSentence(
+                    sentences[i]
+                )
+            ) {
+                start =
+                    i
+            } else if (
+                start <
+                    sentences.size
+            ) {
+                break
+            }
+        }
+
+        if (
+            start <
+                sentences.size
+        ) {
+            return sentences
+                .subList(
+                    start,
+                    sentences.size
+                )
+                .joinToString(
+                    " "
+                )
+                .trim()
+        }
+    }
+
+    /*
+     * Son güvenli fallback:
+     * reasoning başlangıçlarını satır bazında temizle.
+     */
+    return cleaned
+        .lineSequence()
+        .filterNot {
+            line ->
+            val l =
+                line
+                    .trim()
+                    .lowercase()
+
+            l.startsWith(
+                "okay,"
+            ) ||
+            l.startsWith(
+                "the user"
+            ) ||
+            l.startsWith(
+                "first, i need"
+            ) ||
+            l.startsWith(
+                "i need to"
+            ) ||
+            l.startsWith(
+                "looking at"
+            ) ||
+            l.startsWith(
+                "let me"
+            )
+        }
+        .joinToString(
+            "\n"
+        )
+        .trim()
+}
+
+
 data class LocalAiInitResult(
     val backend: LocalAiBackend,
     val modelName: String
@@ -328,7 +589,17 @@ class AppForgeLocalAssistant(
             KULLANICI SORUSU:
             $clean
 
-            Şimdi doğrudan nihai cevabı yaz.
+            ÇIKTI KURALI:
+            Kullanıcıya gösterilecek cevabı yalnızca aşağıdaki biçimde üret:
+
+            <final_answer>
+            Nihai cevap
+            </final_answer>
+
+            <final_answer> etiketinden önce veya sonra hiçbir açıklama,
+            düşünme metni, analiz, reasoning veya çalışma notu yazma.
+
+            Şimdi yalnız nihai cevabı üret.
             """.trimIndent()
 
         mutex.withLock {
@@ -341,24 +612,52 @@ class AppForgeLocalAssistant(
             withTimeout(
                 180_000L
             ) {
+                /*
+                 * Reasoning modellerinde ilk streaming parçaları
+                 * iç çalışma notları olabilir.
+                 *
+                 * Kullanıcıya bunları canlı göstermiyoruz.
+                 * Tam cevap cihaz RAM'inde toplanır ve yalnız
+                 * nihai cevap ayıklanıp UI'ye gönderilir.
+                 */
+                val rawResult =
+                    StringBuilder()
+
                 current
                     .sendMessageAsync(
                         prompt
                     )
                     .collect {
-                        val cleaned =
-                            cleanAssistantOutput(
-                                it.toString()
-                            )
-
-                        if (
-                            cleaned.isNotBlank()
-                        ) {
-                            onPartial(
-                                cleaned
-                            )
-                        }
+                        part ->
+                        rawResult.append(
+                            part.toString()
+                        )
                     }
+
+                val selectedLanguage =
+                    AppSettingsStore
+                        .load(
+                            appContext
+                        )
+                        .languageCode
+
+                val finalAnswer =
+                    extractFinalAssistantAnswer(
+                        rawResult.toString(),
+                        selectedLanguage
+                    )
+
+                if (
+                    finalAnswer.isNotBlank()
+                ) {
+                    onPartial(
+                        finalAnswer
+                    )
+                } else {
+                    error(
+                        "Yerel AI geçerli bir nihai cevap üretemedi."
+                    )
+                }
             }
         }
     }
@@ -461,6 +760,8 @@ class AppForgeLocalAssistant(
 
                     Kullanıcıya yalnızca nihai cevabı göster.
                     İç düşünme, reasoning, chain-of-thought veya <think> bölümü gösterme.
+                    Nihai cevabı <final_answer> ve </final_answer> etiketleri arasında üret.
+                    Bu etiketlerin dışında hiçbir kullanıcıya dönük metin üretme.
                     Uygulamanın seçili yanıt diline kesin olarak uy.
                     Türkçe istendiğinde ilk kelimeden itibaren yalnız Türkçe cevap ver.
                     İngilizce iç düşünme veya "Okay, let's see" gibi girişler gösterme.
