@@ -82,6 +82,16 @@ COPY . .
 RUN gradle     -p fast-sdk-bundle     --no-daemon     --stacktrace     prepareFastSdk prepareFastQrSdk
 
 # =========================================================
+# AppForge FAST QR feature pack
+#
+# QR SDK + bağımlılıkları Worker image oluşturulurken
+# DEX'e çevrilir. Kullanıcı build'inde D8 çalışmaz.
+# =========================================================
+
+RUN bash scripts/build-fast-qr-pack.sh
+
+
+# =========================================================
 # AppForge FAST EXTENDED template
 #
 # Native Bridge
