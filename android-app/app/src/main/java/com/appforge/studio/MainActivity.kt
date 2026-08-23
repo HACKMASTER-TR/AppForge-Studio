@@ -624,6 +624,71 @@ private fun AppForgeApp() {
     }
 
 
+    // AUTO_PRO_STATUS_REFRESH_V1
+    //
+    // Uygulama açıldığında veya hesap değiştiğinde
+    // Pro yetkisini sunucudan otomatik yenile.
+    LaunchedEffect(
+        session?.token,
+        serverUrl
+    ) {
+        val current =
+            session
+
+        if (current == null) {
+            proStatus =
+                null
+
+            proSecurityMessage =
+                ""
+
+            return@LaunchedEffect
+        }
+
+        proSecurityMessage =
+            "Pro yetkisi kontrol ediliyor..."
+
+        try {
+            val result =
+                withContext(
+                    Dispatchers.IO
+                ) {
+                    StudioSecurityClient(
+                        context =
+                            context,
+                        baseUrl =
+                            serverUrl,
+                        accessToken =
+                            current.token
+                    ).proStatus(
+                        current.userId
+                    )
+                }
+
+            proStatus =
+                result
+
+            proSecurityMessage =
+                if (
+                    result.active
+                ) {
+                    "Sunucu doğrulaması başarılı. Pro yetkisi aktif."
+                } else {
+                    "Hesapta aktif Pro yetkisi bulunamadı."
+                }
+
+        } catch (
+            t: Throwable
+        ) {
+            proStatus =
+                null
+
+            proSecurityMessage =
+                "Pro durumu otomatik doğrulanamadı: ${t.message}"
+        }
+    }
+
+
     val startBuildWithDraft: (ProjectDraft) -> Unit = { buildDraft ->
         val effectiveBuildDraft =
             if (
