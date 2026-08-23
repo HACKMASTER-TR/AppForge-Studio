@@ -213,6 +213,15 @@ dependencies {
             "play-services-code-scanner:" +
             "16.1.0"
     )
+
+    // Code Scanner OptionalModuleApi kullanıyor.
+    // Eski 18.1.0 yerine uyumlu yeni base'i zorla.
+    add(
+        "fastQrSdk",
+        "com.google.android.gms:" +
+            "play-services-base:" +
+            "18.5.0"
+    )
 }
 
 tasks.register<Sync>(

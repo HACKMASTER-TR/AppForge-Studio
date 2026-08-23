@@ -109,12 +109,24 @@ javac \
 
 echo "=== QR feature pack D8 ==="
 
+mapfile -d '' RUNTIME_CLASSES < <(
+    find "$TMP/classes" \
+      -type f \
+      -name '*.class' \
+      -print0
+)
+
+if [ "${#RUNTIME_CLASSES[@]}" -eq 0 ]; then
+    echo "ERROR: FastQrRuntime class dosyası oluşmadı."
+    exit 26
+fi
+
 "$D8" \
   --release \
   --min-api 26 \
   --lib "$ANDROID_JAR" \
   --output "$OUT" \
-  "$TMP/classes" \
+  "${RUNTIME_CLASSES[@]}" \
   "${D8_INPUTS[@]}"
 
 
