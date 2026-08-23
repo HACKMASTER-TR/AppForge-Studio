@@ -57,22 +57,23 @@ for aar in "$ROOT"/*.aar; do
 
     mkdir -p "$dir"
 
-    if unzip -l "$aar" 2>/dev/null |
-       awk '{print $4}' |
-       grep -qx 'classes.jar'
+    if unzip -p \
+      "$aar" \
+      classes.jar \
+      > "$dir/classes.jar" \
+      2>/dev/null
     then
-        unzip -p \
-          "$aar" \
-          classes.jar \
-          > "$dir/classes.jar"
-
         if [ -s "$dir/classes.jar" ]; then
             CLASSPATH="$CLASSPATH:$dir/classes.jar"
 
             D8_INPUTS+=(
                 "$dir/classes.jar"
             )
+        else
+            rm -f "$dir/classes.jar"
         fi
+    else
+        rm -f "$dir/classes.jar"
     fi
 done
 
