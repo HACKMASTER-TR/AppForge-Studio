@@ -3284,11 +3284,10 @@ async function runGradle(
             env: {
               ...env,
               GRADLE_OPTS:
-                "-Xmx128m " +
-                "-XX:MaxMetaspaceSize=96m " +
+                "-Xmx320m " +
+                "-XX:MaxMetaspaceSize=256m " +
                 "-XX:+UseSerialGC " +
-                "-Dfile.encoding=UTF-8 " +
-                "-Dorg.gradle.daemon=false"
+                "-Dfile.encoding=UTF-8"
             }
           }
         );
