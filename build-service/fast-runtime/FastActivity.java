@@ -18,6 +18,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.URLUtil;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -231,6 +232,33 @@ public final class FastActivity extends Activity {
 
                     hideSplash();
                 }
+
+                @Override
+                public boolean shouldOverrideUrlLoading(
+                    WebView view,
+                    WebResourceRequest request
+                ) {
+                    String url =
+                        request != null &&
+                        request.getUrl() != null
+                            ? request.getUrl().toString()
+                            : "";
+
+                    return handlePotentialDownload(
+                        url
+                    );
+                }
+
+                @SuppressWarnings("deprecation")
+                @Override
+                public boolean shouldOverrideUrlLoading(
+                    WebView view,
+                    String url
+                ) {
+                    return handlePotentialDownload(
+                        url
+                    );
+                }
             }
         );
 
@@ -307,6 +335,84 @@ public final class FastActivity extends Activity {
             );
         }
 
+    }
+
+    private boolean handlePotentialDownload(
+        String url
+    ) {
+        if (
+            !config.optBoolean(
+                "downloads",
+                false
+            )
+        ) {
+            return false;
+        }
+
+        if (
+            url == null ||
+            url.trim().isEmpty()
+        ) {
+            return false;
+        }
+
+        String path;
+
+        try {
+            path =
+                Uri.parse(url)
+                    .getPath();
+
+        } catch (Throwable ignored) {
+            path =
+                url;
+        }
+
+        if (path == null) {
+            path =
+                url;
+        }
+
+        String lower =
+            path
+                .toLowerCase()
+                .trim();
+
+        boolean downloadable =
+            lower.endsWith(".pdf") ||
+            lower.endsWith(".zip") ||
+            lower.endsWith(".apk") ||
+            lower.endsWith(".aab") ||
+            lower.endsWith(".rar") ||
+            lower.endsWith(".7z") ||
+            lower.endsWith(".doc") ||
+            lower.endsWith(".docx") ||
+            lower.endsWith(".xls") ||
+            lower.endsWith(".xlsx") ||
+            lower.endsWith(".ppt") ||
+            lower.endsWith(".pptx") ||
+            lower.endsWith(".csv") ||
+            lower.endsWith(".txt");
+
+        if (!downloadable) {
+            return false;
+        }
+
+        String userAgent =
+            webView != null
+                ? webView
+                    .getSettings()
+                    .getUserAgentString()
+                : "";
+
+        enqueueDownload(
+            url,
+            userAgent,
+            null,
+            null
+        );
+
+        return true;
     }
 
     private void enqueueDownload(
