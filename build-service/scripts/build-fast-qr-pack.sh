@@ -96,6 +96,32 @@ if [ "${#D8_INPUTS[@]}" -eq 0 ]; then
 fi
 
 
+echo "=== OptionalModuleApi doğrulanıyor ==="
+
+OPTIONAL_MODULE_JAR=""
+
+for jar in "$TMP"/aar/*/classes.jar; do
+    [ -f "$jar" ] || continue
+
+    if jar tf "$jar" 2>/dev/null | \
+       grep -Fqx \
+       "com/google/android/gms/common/api/OptionalModuleApi.class"
+    then
+        OPTIONAL_MODULE_JAR="$jar"
+        break
+    fi
+done
+
+if [ -z "$OPTIONAL_MODULE_JAR" ]; then
+    echo "ERROR: OptionalModuleApi QR classpath içinde bulunamadı."
+    echo "=== PLAY SERVICES DOSYALARI ==="
+    find "$ROOT" -maxdepth 1 -type f \
+      -name "play-services-*" -print | sort
+    exit 27
+fi
+
+echo "✅ OptionalModuleApi bulundu: $(basename "$(dirname "$OPTIONAL_MODULE_JAR")")"
+
 echo "=== FastQrRuntime javac ==="
 
 javac \
