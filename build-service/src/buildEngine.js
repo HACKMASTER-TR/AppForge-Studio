@@ -3658,6 +3658,18 @@ async function runGradle(
             ...tasks,
             "--no-daemon",
             "--build-cache",
+
+            /*
+             * Railway Worker düşük bellek profili:
+             * - Gradle aynı anda yalnızca 1 worker çalıştırır.
+             * - Kotlin ayrı daemon JVM açmaz.
+             * Bu özellikle D8 / mergeDex sırasında bellek
+             * tepesini ciddi şekilde düşürür.
+             */
+            "--max-workers=1",
+            "-Pkotlin.compiler.execution.strategy=in-process",
+            "-Dorg.gradle.parallel=false",
+
             "--stacktrace"
           ],
           {
