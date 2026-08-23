@@ -11081,9 +11081,17 @@ private fun BuildStep(
     apkUrl: String?,
     aabUrl: String?
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var downloadMessage by remember { mutableStateOf("") }
+    val context =
+        LocalContext.current
+
+    val scope =
+        rememberCoroutineScope()
+
+    var downloadMessage by
+        remember {
+            mutableStateOf("")
+        }
+
     var apkDownloadId by
         remember(buildId) {
             mutableStateOf<Long?>(
@@ -11091,41 +11099,384 @@ private fun BuildStep(
             )
         }
 
-    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Section("9. Derleme", "Güvenli Build Service + Play Store ön-kontrol.") }
-        item { Text("Durum: $status", color = TextSecondary) }
+    var showLogs by
+        remember(buildId) {
+            mutableStateOf(false)
+        }
 
+    val safeProgress =
+        progress.coerceIn(
+            0,
+            100
+        )
+
+    val normalizedStatus =
+        status
+            .trim()
+            .lowercase()
+
+    val statusLabel =
+        when (
+            normalizedStatus
+        ) {
+            "success" ->
+                "✅ Başarılı"
+
+            "failed" ->
+                "❌ Başarısız"
+
+            "cancelled",
+            "canceled" ->
+                "⛔ İptal edildi"
+
+            "queued" ->
+                "⏳ Sırada"
+
+            "running",
+            "building",
+            "processing" ->
+                "⚙️ Derleniyor"
+
+            else ->
+                status.ifBlank {
+                    "Hazırlanıyor"
+                }
+        }
+
+    val stageLabel =
+        when {
+            safeProgress >= 100 ->
+                "Tamamlandı"
+
+            safeProgress >= 90 ->
+                "Çıktılar hazırlanıyor"
+
+            safeProgress >= 70 ->
+                "Android paketleme"
+
+            safeProgress >= 40 ->
+                "Kaynaklar derleniyor"
+
+            safeProgress >= 15 ->
+                "Proje hazırlanıyor"
+
+            safeProgress > 0 ->
+                "Build başlatılıyor"
+
+            else ->
+                "Bekleniyor"
+        }
+
+    val buildSucceeded =
+        normalizedStatus ==
+            "success"
+
+    val buildFailed =
+        normalizedStatus ==
+            "failed"
+
+    val availableOutputs =
+        listOf(
+            apkUrl,
+            aabUrl
+        ).count {
+            it != null
+        }
+
+    val logsVisible =
+        showLogs ||
+        buildFailed
+
+    LazyColumn(
+        contentPadding =
+            PaddingValues(
+                20.dp
+            ),
+        verticalArrangement =
+            Arrangement.spacedBy(
+                14.dp
+            )
+    ) {
         item {
-            LinearProgressIndicator(
-                progress = { progress.coerceIn(0, 100) / 100f },
-                modifier = Modifier.fillMaxWidth()
+            Section(
+                "9. Derleme",
+                "Build durumunu takip et, çıktıları indir ve ön-kontrolleri incele."
             )
         }
 
-        if (buildId != null) item { InfoLine("Build ID", buildId) }
+        item {
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor =
+                            Card2
+                    ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            10.dp
+                        )
+                ) {
+                    Text(
+                        "Build durumu",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
 
-        if (preflight.isNotEmpty()) {
-            item { Text("Preflight", fontWeight = FontWeight.Bold) }
-            items(preflight) { NoteCard(it) }
+                    Text(
+                        statusLabel,
+                        color =
+                            if (
+                                buildSucceeded
+                            ) {
+                                Accent
+                            } else {
+                                TextSecondary
+                            },
+                        fontWeight =
+                            FontWeight.Bold,
+                        fontSize =
+                            16.sp
+                    )
+
+                    Text(
+                        "$stageLabel • %$safeProgress",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    LinearProgressIndicator(
+                        progress = {
+                            safeProgress /
+                                100f
+                        },
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    if (
+                        buildId != null
+                    ) {
+                        Text(
+                            "Build ID",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                11.sp
+                        )
+
+                        Text(
+                            buildId,
+                            fontSize =
+                                12.sp
+                        )
+                    }
+
+                    if (
+                        logs.isNotEmpty() &&
+                        !buildSucceeded
+                    ) {
+                        Text(
+                            "Son işlem: ${logs.last()}",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                11.sp,
+                            lineHeight =
+                                16.sp
+                        )
+                    }
+                }
+            }
         }
 
-        if (apkUrl != null) {
+        if (
+            preflight.isNotEmpty()
+        ) {
+            item {
+                Text(
+                    "Preflight",
+                    fontWeight =
+                        FontWeight.Bold,
+                    fontSize =
+                        14.sp
+                )
+            }
+
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                8.dp
+                            )
+                    ) {
+                        Text(
+                            "${preflight.size} kontrol tamamlandı",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+
+                        preflight.forEach {
+                            check ->
+                            Text(
+                                check,
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (
+            buildSucceeded
+        ) {
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                7.dp
+                            )
+                    ) {
+                        Text(
+                            "✅ Derleme tamamlandı",
+                            color =
+                                Accent,
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            "$availableOutputs çıktı indirilmeye hazır.",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+
+                        if (
+                            apkUrl != null
+                        ) {
+                            Text(
+                                "✓ APK hazır",
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+
+                        if (
+                            aabUrl != null
+                        ) {
+                            Text(
+                                "✓ AAB hazır",
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (
+            buildFailed
+        ) {
+            item {
+                NoteCard(
+                    "Derleme tamamlanamadı. Alttaki Gradle logunda hata ayrıntıları otomatik gösteriliyor."
+                )
+            }
+        }
+
+        if (
+            apkUrl != null
+        ) {
             item {
                 Button(
                     onClick = {
-                        val id = buildId ?: return@Button
+                        val id =
+                            buildId
+                                ?: return@Button
+
                         scope.launch {
                             try {
-                                val ticket = withContext(Dispatchers.IO) {
-                                    BuildApiClient(context, serverUrl, apiKey)
-                                        .createDownloadTicket(id, "apk")
-                                }
+                                val ticket =
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        BuildApiClient(
+                                            context,
+                                            serverUrl,
+                                            apiKey
+                                        )
+                                            .createDownloadTicket(
+                                                id,
+                                                "apk"
+                                            )
+                                    }
+
                                 val request =
                                     DownloadManager.Request(
-                                        Uri.parse(ticket.url)
+                                        Uri.parse(
+                                            ticket.url
+                                        )
                                     )
-                                        .setTitle("AppForge APK")
-                                        .setDescription("APK indiriliyor")
+                                        .setTitle(
+                                            "AppForge APK"
+                                        )
+                                        .setDescription(
+                                            "APK indiriliyor"
+                                        )
                                         .setMimeType(
                                             "application/vnd.android.package-archive"
                                         )
@@ -11133,11 +11484,19 @@ private fun BuildStep(
                                             DownloadManager.Request
                                                 .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
                                         )
-                                        .setAllowedOverMetered(true)
-                                        .setAllowedOverRoaming(true)
+                                        .setAllowedOverMetered(
+                                            true
+                                        )
+                                        .setAllowedOverRoaming(
+                                            true
+                                        )
                                         .setDestinationInExternalPublicDir(
                                             Environment.DIRECTORY_DOWNLOADS,
-                                            artifactDownloadName(appName, id, "apk")
+                                            artifactDownloadName(
+                                                appName,
+                                                id,
+                                                "apk"
+                                            )
                                         )
 
                                 val manager =
@@ -11146,24 +11505,36 @@ private fun BuildStep(
                                     ) as DownloadManager
 
                                 val queuedId =
-                                    manager.enqueue(request)
+                                    manager.enqueue(
+                                        request
+                                    )
 
                                 apkDownloadId =
                                     queuedId
 
                                 downloadMessage =
                                     "APK indiriliyor • İndirme tamamlanınca APK'YI KUR butonuna bas."
-                            } catch (t: Throwable) {
-                                downloadMessage = "İndirme hatası: ${t.message}"
+                            } catch (
+                                t: Throwable
+                            ) {
+                                downloadMessage =
+                                    "İndirme hatası: ${t.message}"
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("APK'YI İNDİR") }
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "APK'YI İNDİR"
+                    )
+                }
             }
         }
 
-        if (apkDownloadId != null) {
+        if (
+            apkDownloadId != null
+        ) {
             item {
                 Button(
                     onClick = {
@@ -11172,14 +11543,15 @@ private fun BuildStep(
                                 ?: return@Button
 
                         scope.launch {
-
                             downloadMessage =
                                 "APK hazırlanıyor • indirme kontrol ediliyor..."
 
                             val waitError =
                                 waitForApkDownload(
-                                    context = context,
-                                    downloadId = id
+                                    context =
+                                        context,
+                                    downloadId =
+                                        id
                                 )
 
                             if (
@@ -11193,36 +11565,62 @@ private fun BuildStep(
 
                             downloadMessage =
                                 installDownloadedApk(
-                                    context = context,
-                                    downloadId = id
+                                    context =
+                                        context,
+                                    downloadId =
+                                        id
                                 )
                         }
                     },
                     modifier =
                         Modifier.fillMaxWidth()
                 ) {
-                    Text("APK'YI KUR")
+                    Text(
+                        "APK'YI KUR"
+                    )
                 }
             }
         }
 
-        if (aabUrl != null) {
+        if (
+            aabUrl != null
+        ) {
             item {
                 Button(
                     onClick = {
-                        val id = buildId ?: return@Button
+                        val id =
+                            buildId
+                                ?: return@Button
+
                         scope.launch {
                             try {
-                                val ticket = withContext(Dispatchers.IO) {
-                                    BuildApiClient(context, serverUrl, apiKey)
-                                        .createDownloadTicket(id, "aab")
-                                }
+                                val ticket =
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        BuildApiClient(
+                                            context,
+                                            serverUrl,
+                                            apiKey
+                                        )
+                                            .createDownloadTicket(
+                                                id,
+                                                "aab"
+                                            )
+                                    }
+
                                 val request =
                                     DownloadManager.Request(
-                                        Uri.parse(ticket.url)
+                                        Uri.parse(
+                                            ticket.url
+                                        )
                                     )
-                                        .setTitle("AppForge AAB")
-                                        .setDescription("AAB indiriliyor")
+                                        .setTitle(
+                                            "AppForge AAB"
+                                        )
+                                        .setDescription(
+                                            "AAB indiriliyor"
+                                        )
                                         .setMimeType(
                                             "application/octet-stream"
                                         )
@@ -11230,11 +11628,19 @@ private fun BuildStep(
                                             DownloadManager.Request
                                                 .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
                                         )
-                                        .setAllowedOverMetered(true)
-                                        .setAllowedOverRoaming(true)
+                                        .setAllowedOverMetered(
+                                            true
+                                        )
+                                        .setAllowedOverRoaming(
+                                            true
+                                        )
                                         .setDestinationInExternalPublicDir(
                                             Environment.DIRECTORY_DOWNLOADS,
-                                            artifactDownloadName(appName, id, "aab")
+                                            artifactDownloadName(
+                                                appName,
+                                                id,
+                                                "aab"
+                                            )
                                         )
 
                                 val manager =
@@ -11242,27 +11648,143 @@ private fun BuildStep(
                                         Context.DOWNLOAD_SERVICE
                                     ) as DownloadManager
 
-                                manager.enqueue(request)
+                                manager.enqueue(
+                                    request
+                                )
 
                                 downloadMessage =
                                     "AAB indiriliyor • İndirilenler klasörüne kaydedilecek."
-                            } catch (t: Throwable) {
-                                downloadMessage = "İndirme hatası: ${t.message}"
+                            } catch (
+                                t: Throwable
+                            ) {
+                                downloadMessage =
+                                    "İndirme hatası: ${t.message}"
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("AAB'Yİ İNDİR") }
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "AAB'Yİ İNDİR"
+                    )
+                }
             }
         }
 
-        if (downloadMessage.isNotBlank()) {
-            item { NoteCard(downloadMessage) }
+        if (
+            downloadMessage.isNotBlank()
+        ) {
+            item {
+                NoteCard(
+                    downloadMessage
+                )
+            }
         }
 
-        item { Text("Canlı Gradle logu", fontWeight = FontWeight.Bold) }
-        items(logs.takeLast(100)) {
-            Text(it, color = TextSecondary, fontSize = 12.sp)
+        item {
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor =
+                            Card2
+                    ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            8.dp
+                        )
+                ) {
+                    Text(
+                        "Canlı Gradle logu",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Text(
+                        "${logs.size} log satırı",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    if (
+                        !buildFailed
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                showLogs =
+                                    !showLogs
+                            },
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                if (
+                                    showLogs
+                                ) {
+                                    "Logları gizle"
+                                } else {
+                                    "Logları göster"
+                                }
+                            )
+                        }
+                    } else {
+                        Text(
+                            "Hata nedeniyle loglar otomatik açıldı.",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                11.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        if (
+            logsVisible
+        ) {
+            items(
+                logs.takeLast(
+                    120
+                )
+            ) {
+                line ->
+                Text(
+                    line,
+                    color =
+                        TextSecondary,
+                    fontSize =
+                        11.sp,
+                    lineHeight =
+                        16.sp
+                )
+            }
+        } else if (
+            logs.isNotEmpty()
+        ) {
+            item {
+                Text(
+                    "Son log: ${logs.last()}",
+                    color =
+                        TextSecondary,
+                    fontSize =
+                        11.sp
+                )
+            }
         }
     }
 }
