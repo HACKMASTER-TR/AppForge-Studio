@@ -2240,7 +2240,11 @@ private fun QuickCreateScreen(
                                 onDraftChange(
                                     draft.copy(
                                         appName =
-                                            it
+                                            it,
+                                        packageName =
+                                            quickPackageName(
+                                                it
+                                            )
                                     )
                                 )
                             },
@@ -6376,7 +6380,14 @@ private fun SourceStep(
         item {
             OutlinedTextField(
                 value = d.appName,
-                onValueChange = { update(d.copy(appName = it)) },
+                onValueChange = { appName ->
+                    update(
+                        d.copy(
+                            appName = appName,
+                            packageName = quickPackageName(appName)
+                        )
+                    )
+                },
                 label = { Text("Uygulama adı") },
                 modifier = Modifier.fillMaxWidth()
             )
