@@ -490,6 +490,16 @@ private fun AppForgeApp() {
     var apkUrl by remember { mutableStateOf<String?>(null) }
     var aabUrl by remember { mutableStateOf<String?>(null) }
 
+    /*
+     * Aynı anda yalnızca tek build oluşturulabilir/takip edilir.
+     * Birden fazla polling coroutine'in aynı UI state'ini
+     * değiştirmesini engeller.
+     */
+    var buildBusy by
+        remember {
+            mutableStateOf(false)
+        }
+
     val sourcePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -970,7 +980,26 @@ private fun AppForgeApp() {
     }
 
 
-    val startBuildWithDraft: (ProjectDraft) -> Unit = { buildDraft ->
+    val startBuildWithDraft: (ProjectDraft) -> Unit =
+        buildStart@{ buildDraft ->
+
+        if (
+            buildBusy
+        ) {
+            status =
+                "Bir derleme zaten devam ediyor."
+
+            screen =
+                AppScreen.BUILDER
+
+            step =
+                9
+
+            return@buildStart
+        }
+
+        buildBusy =
+            true
         val storedVersionCode =
             ProjectLibrary
                 .load(context)
@@ -1307,6 +1336,10 @@ private fun AppForgeApp() {
                     AppScreen.BUILDER
 
                 step = 9
+
+            } finally {
+                buildBusy =
+                    false
             }
         }
     }
@@ -2195,6 +2228,11 @@ private fun AppForgeApp() {
                         }
 
                         Button(
+                            enabled =
+                                !(
+                                    step == 9 &&
+                                    buildBusy
+                                ),
                             onClick = {
                                 if (step < 9) {
                                     step++
@@ -2204,9 +2242,23 @@ private fun AppForgeApp() {
                                     )
                                 }
                             },
-                            modifier = Modifier.weight(1f).height(52.dp)
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .height(52.dp)
                         ) {
-                            Text(if (step == 9) "UYGULAMAYI DERLE" else "Devam")
+                            Text(
+                                when {
+                                    step < 9 ->
+                                        "Devam"
+
+                                    buildBusy ->
+                                        "DERLEME DEVAM EDİYOR"
+
+                                    else ->
+                                        "UYGULAMAYI DERLE"
+                                }
+                            )
                         }
                     }
                 }
@@ -11438,6 +11490,35 @@ private fun BuildStep(
         normalizedStatus !=
             "canceled"
 
+    LaunchedEffect(
+        normalizedStatus
+    ) {
+        when (
+            normalizedStatus
+        ) {
+            "cancelled",
+            "canceled" -> {
+                if (
+                    cancelMessage.isNotBlank()
+                ) {
+                    cancelMessage =
+                        "⛔ Derleme iptal edildi."
+                }
+            }
+
+            "success" -> {
+                if (
+                    cancelMessage.contains(
+                        "İptal isteği"
+                    )
+                ) {
+                    cancelMessage =
+                        "ℹ️ Derleme iptal edilmeden önce tamamlandı."
+                }
+            }
+        }
+    }
+
     if (
         showCancelConfirm
     ) {
@@ -11489,20 +11570,35 @@ private fun BuildStep(
 
                         scope.launch {
                             try {
-                                withContext(
-                                    Dispatchers.IO
-                                ) {
-                                    BuildApiClient(
-                                        context,
-                                        serverUrl,
-                                        apiKey
-                                    ).cancelBuild(
-                                        id
-                                    )
-                                }
+                                val cancelResult =
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        BuildApiClient(
+                                            context,
+                                            serverUrl,
+                                            apiKey
+                                        ).cancelBuild(
+                                            id
+                                        )
+                                    }
 
                                 cancelMessage =
-                                    "⛔ İptal isteği gönderildi • çalışan işlem durduruluyor."
+                                    when (
+                                        cancelResult.status
+                                    ) {
+                                        "cancelled" ->
+                                            "⛔ Derleme iptal edildi."
+
+                                        "success" ->
+                                            "ℹ️ Derleme iptal isteğinden önce tamamlanmış."
+
+                                        "failed" ->
+                                            "ℹ️ Derleme zaten başarısız olarak tamamlanmış."
+
+                                        else ->
+                                            "⛔ İptal isteği gönderildi • çalışan işlem durduruluyor."
+                                    }
                             } catch (
                                 t: Throwable
                             ) {

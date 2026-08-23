@@ -18,6 +18,11 @@ data class BuildCreateResult(
     val status: String
 )
 
+data class BuildCancelResult(
+    val status: String,
+    val immediate: Boolean
+)
+
 data class BuildStatusResult(
     val buildId: String,
     val status: String,
@@ -348,7 +353,7 @@ class BuildApiClient(
 
     fun cancelBuild(
         buildId: String
-    ) {
+    ): BuildCancelResult {
         val conn =
             connection(
                 "/api/builds/$buildId/cancel"
@@ -374,12 +379,24 @@ class BuildApiClient(
             )
         }
 
-        /*
-         * Hata varsa readResponse zaten exception üretir.
-         * Başarılı cevapta body içeriğine ihtiyaç yok.
-         */
-        readResponse(
-            conn
+        val json =
+            JSONObject(
+                readResponse(
+                    conn
+                )
+            )
+
+        return BuildCancelResult(
+            status =
+                json.optString(
+                    "status",
+                    "unknown"
+                ),
+            immediate =
+                json.optBoolean(
+                    "immediate",
+                    false
+                )
         )
     }
 
