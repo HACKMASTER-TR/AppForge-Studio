@@ -187,14 +187,6 @@ export function getFastBuildDecision(
   }
 
   if (
-    c.features?.camera
-  ) {
-    reasons.push(
-      "kamera"
-    );
-  }
-
-  if (
     c.features?.location
   ) {
     reasons.push(
@@ -385,6 +377,18 @@ export async function buildFastApk({
 `
       : "";
 
+  const cameraPermission =
+    c.features?.camera === true
+      ? `
+    <uses-permission
+        android:name="android.permission.CAMERA" />
+
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+`
+      : "";
+
   const manifestXml =
 `<?xml version="1.0" encoding="utf-8"?>
 <manifest
@@ -399,7 +403,7 @@ export async function buildFastApk({
 
     <uses-permission
         android:name="android.permission.INTERNET" />
-${notificationPermission}
+${notificationPermission}${cameraPermission}
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
@@ -557,6 +561,9 @@ ${notificationPermission}
 
     notifications:
       c.features?.notifications === true,
+
+    camera:
+      c.features?.camera === true,
 
     fullscreen:
       c.features?.fullscreen === true,

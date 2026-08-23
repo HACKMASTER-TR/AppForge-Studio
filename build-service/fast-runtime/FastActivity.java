@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.Context;
+import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.content.Intent;
 import android.graphics.Color;
@@ -11,11 +12,13 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -38,10 +41,11 @@ import java.nio.charset.StandardCharsets;
 public final class FastActivity extends Activity {
 
     private static final int FILE_CHOOSER_REQUEST = 7101;
-    private static final int NOTIFICATION_PERMISSION_REQUEST = 7102;
+    private static final int APP_PERMISSION_REQUEST = 7102;
 
     private WebView webView;
     private ValueCallback<Uri[]> fileChooserCallback;
+    private Uri cameraCaptureUri;
 
     private JSONObject config;
     private View splashView;
@@ -107,6 +111,9 @@ public final class FastActivity extends Activity {
     }
 
     private void requestConfiguredPermissions() {
+        java.util.ArrayList<String> permissions =
+            new java.util.ArrayList<>();
+
         if (
             Build.VERSION.SDK_INT >=
                 Build.VERSION_CODES.TIRAMISU &&
@@ -118,11 +125,33 @@ public final class FastActivity extends Activity {
                 Manifest.permission.POST_NOTIFICATIONS
             ) != PackageManager.PERMISSION_GRANTED
         ) {
+            permissions.add(
+                Manifest.permission.POST_NOTIFICATIONS
+            );
+        }
+
+        if (
+            config.optBoolean(
+                "camera",
+                false
+            ) &&
+            checkSelfPermission(
+                Manifest.permission.CAMERA
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissions.add(
+                Manifest.permission.CAMERA
+            );
+        }
+
+        if (
+            !permissions.isEmpty()
+        ) {
             requestPermissions(
-                new String[] {
-                    Manifest.permission.POST_NOTIFICATIONS
-                },
-                NOTIFICATION_PERMISSION_REQUEST
+                permissions.toArray(
+                    new String[0]
+                ),
+                APP_PERMISSION_REQUEST
             );
         }
     }
@@ -296,6 +325,60 @@ public final class FastActivity extends Activity {
             new WebChromeClient() {
 
                 @Override
+                public void onPermissionRequest(
+                    PermissionRequest request
+                ) {
+                    if (
+                        request == null
+                    ) {
+                        return;
+                    }
+
+                    runOnUiThread(
+                        () -> {
+                            java.util.ArrayList<String> granted =
+                                new java.util.ArrayList<>();
+
+                            for (
+                                String resource :
+                                request.getResources()
+                            ) {
+                                if (
+                                    PermissionRequest
+                                        .RESOURCE_VIDEO_CAPTURE
+                                        .equals(resource) &&
+                                    config.optBoolean(
+                                        "camera",
+                                        false
+                                    ) &&
+                                    checkSelfPermission(
+                                        Manifest.permission.CAMERA
+                                    ) ==
+                                        PackageManager
+                                            .PERMISSION_GRANTED
+                                ) {
+                                    granted.add(
+                                        resource
+                                    );
+                                }
+                            }
+
+                            if (
+                                granted.isEmpty()
+                            ) {
+                                request.deny();
+                            } else {
+                                request.grant(
+                                    granted.toArray(
+                                        new String[0]
+                                    )
+                                );
+                            }
+                        }
+                    );
+                }
+
+                @Override
                 public boolean onShowFileChooser(
                     WebView webView,
                     ValueCallback<Uri[]> filePathCallback,
@@ -322,12 +405,149 @@ public final class FastActivity extends Activity {
                         filePathCallback;
 
                     try {
-                        Intent intent =
+                        Intent fileIntent =
                             fileChooserParams
                                 .createIntent();
 
+                        boolean imageRequested =
+                            false;
+
+                        String[] acceptTypes =
+                            fileChooserParams
+                                .getAcceptTypes();
+
+                        if (
+                            acceptTypes != null
+                        ) {
+                            for (
+                                String type :
+                                acceptTypes
+                            ) {
+                                if (
+                                    type != null &&
+                                    (
+                                        type.startsWith(
+                                            "image/"
+                                        ) ||
+                                        "image/*".equals(
+                                            type
+                                        )
+                                    )
+                                ) {
+                                    imageRequested =
+                                        true;
+
+                                    break;
+                                }
+                            }
+                        }
+
+                        boolean cameraAvailable =
+                            Build.VERSION.SDK_INT >=
+                                Build.VERSION_CODES.Q &&
+                            imageRequested &&
+                            config.optBoolean(
+                                "camera",
+                                false
+                            ) &&
+                            checkSelfPermission(
+                                Manifest.permission.CAMERA
+                            ) ==
+                                PackageManager
+                                    .PERMISSION_GRANTED;
+
+                        if (
+                            cameraAvailable
+                        ) {
+                            ContentValues values =
+                                new ContentValues();
+
+                            values.put(
+                                MediaStore.Images.Media
+                                    .DISPLAY_NAME,
+                                "AppForge_" +
+                                    System.currentTimeMillis() +
+                                    ".jpg"
+                            );
+
+                            values.put(
+                                MediaStore.Images.Media
+                                    .MIME_TYPE,
+                                "image/jpeg"
+                            );
+
+                            values.put(
+                                MediaStore.Images.Media
+                                    .RELATIVE_PATH,
+                                Environment
+                                    .DIRECTORY_PICTURES +
+                                    "/AppForge"
+                            );
+
+                            cameraCaptureUri =
+                                getContentResolver()
+                                    .insert(
+                                        MediaStore.Images.Media
+                                            .EXTERNAL_CONTENT_URI,
+                                        values
+                                    );
+
+                            if (
+                                cameraCaptureUri != null
+                            ) {
+                                Intent cameraIntent =
+                                    new Intent(
+                                        MediaStore
+                                            .ACTION_IMAGE_CAPTURE
+                                    );
+
+                                cameraIntent.putExtra(
+                                    MediaStore.EXTRA_OUTPUT,
+                                    cameraCaptureUri
+                                );
+
+                                cameraIntent.addFlags(
+                                    Intent
+                                        .FLAG_GRANT_READ_URI_PERMISSION |
+                                    Intent
+                                        .FLAG_GRANT_WRITE_URI_PERMISSION
+                                );
+
+                                if (
+                                    fileChooserParams
+                                        .isCaptureEnabled()
+                                ) {
+                                    startActivityForResult(
+                                        cameraIntent,
+                                        FILE_CHOOSER_REQUEST
+                                    );
+                                } else {
+                                    Intent chooser =
+                                        Intent.createChooser(
+                                            fileIntent,
+                                            "Dosya seç"
+                                        );
+
+                                    chooser.putExtra(
+                                        Intent
+                                            .EXTRA_INITIAL_INTENTS,
+                                        new Intent[] {
+                                            cameraIntent
+                                        }
+                                    );
+
+                                    startActivityForResult(
+                                        chooser,
+                                        FILE_CHOOSER_REQUEST
+                                    );
+                                }
+
+                                return true;
+                            }
+                        }
+
                         startActivityForResult(
-                            intent,
+                            fileIntent,
                             FILE_CHOOSER_REQUEST
                         );
 
@@ -336,6 +556,8 @@ public final class FastActivity extends Activity {
                     } catch (Throwable error) {
                         fileChooserCallback =
                             null;
+
+                        cleanupCameraCapture();
 
                         return false;
                     }
@@ -1169,6 +1391,29 @@ public final class FastActivity extends Activity {
         );
     }
 
+    private void cleanupCameraCapture() {
+        if (
+            cameraCaptureUri == null
+        ) {
+            return;
+        }
+
+        try {
+            getContentResolver()
+                .delete(
+                    cameraCaptureUri,
+                    null,
+                    null
+                );
+        } catch (
+            Throwable ignored
+        ) {
+        }
+
+        cameraCaptureUri =
+            null;
+    }
+
     @Override
     protected void onActivityResult(
         int requestCode,
@@ -1200,13 +1445,39 @@ public final class FastActivity extends Activity {
             return;
         }
 
-        Uri[] result =
-            WebChromeClient
-                .FileChooserParams
-                .parseResult(
-                    resultCode,
-                    data
-                );
+        Uri[] result;
+
+        boolean cameraResult =
+            resultCode ==
+                RESULT_OK &&
+            cameraCaptureUri != null &&
+            (
+                data == null ||
+                data.getData() == null
+            );
+
+        if (
+            cameraResult
+        ) {
+            result =
+                new Uri[] {
+                    cameraCaptureUri
+                };
+
+            cameraCaptureUri =
+                null;
+
+        } else {
+            result =
+                WebChromeClient
+                    .FileChooserParams
+                    .parseResult(
+                        resultCode,
+                        data
+                    );
+
+            cleanupCameraCapture();
+        }
 
         callback.onReceiveValue(
             result
