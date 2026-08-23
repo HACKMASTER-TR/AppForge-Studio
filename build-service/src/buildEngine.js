@@ -778,26 +778,141 @@ export async function executeBuild(job) {
        * sürecinde çalıştır. Build cache ikinci task'ın
        * önceki çıktıları tekrar kullanmasını sağlar.
        */
+      /*
+       * Düşük bellekli Worker için Gradle task runner.
+       *
+       * AAB oluştururken Kotlin compiler + D8 + bundle packaging +
+       * signing aynı JVM içinde kaldığında bellek tepe noktası oluşuyor.
+       *
+       * Ağır aşamaları ayrı Gradle süreçlerinde çalıştırarak her
+       * aşamadan sonra JVM belleğinin tamamen serbest kalmasını sağlarız.
+       */
+      const runGradleTaskWithRetry =
+        async (
+          task,
+          label = task,
+          maxAttempts = 3
+        ) => {
+          for (
+            let attempt = 1;
+            attempt <= maxAttempts;
+            attempt += 1
+          ) {
+            await throwIfCancelled(
+              buildId
+            );
+
+            await appendLog(
+              buildId,
+              attempt === 1
+                ? `Gradle task başlatılıyor: ${label}`
+                : `♻️ Gradle tekrar deneniyor: ${label} (${attempt}/${maxAttempts})`
+            );
+
+            try {
+              await runGradle(
+                buildId,
+                android,
+                [task],
+                gradleEnv
+              );
+
+              await appendLog(
+                buildId,
+                `✅ Gradle task tamamlandı: ${label}`
+              );
+
+              return;
+            } catch (error) {
+              const message =
+                String(
+                  error?.message ||
+                  error ||
+                  ""
+                );
+
+              const memoryRetryable =
+                /daemon.*disappeared/i.test(
+                  message
+                ) ||
+                /DaemonDisappearedException/i.test(
+                  message
+                ) ||
+                /OutOfMemoryError:\s*Metaspace/i.test(
+                  message
+                ) ||
+                /Çıkış kodu:\s*null/i.test(
+                  message
+                );
+
+              if (
+                !memoryRetryable ||
+                attempt >= maxAttempts
+              ) {
+                throw error;
+              }
+
+              await appendLog(
+                buildId,
+                "⚠️ Gradle bellek baskısı nedeniyle kapandı. " +
+                "Önceki task çıktıları korunarak tekrar deneniyor..."
+              );
+
+              await new Promise(
+                resolve =>
+                  setTimeout(
+                    resolve,
+                    1500
+                  )
+              );
+            }
+          }
+        };
+
       for (const task of tasks) {
-        await throwIfCancelled(
-          buildId
-        );
+        /*
+         * AAB pipeline:
+         *
+         * 1. Kotlin derleme
+         * 2. External DEX birleştirme
+         * 3. Bundle paketleme
+         * 4. bundleRelease yalnızca son kontroller + signing
+         *
+         * Önceki aşamaların çıktıları aynı build klasöründe kaldığı
+         * için bundleRelease bunları UP-TO-DATE / FROM-CACHE görür.
+         */
+        if (
+          task === "bundleRelease"
+        ) {
+          await appendLog(
+            buildId,
+            "🧩 AAB düşük bellek pipeline başlatılıyor..."
+          );
 
-        await appendLog(
-          buildId,
-          `Gradle task başlatılıyor: ${task}`
-        );
+          await runGradleTaskWithRetry(
+            "compileReleaseKotlin",
+            "AAB 1/3 • Kotlin"
+          );
 
-        await runGradle(
-          buildId,
-          android,
-          [task],
-          gradleEnv
-        );
+          await runGradleTaskWithRetry(
+            "mergeExtDexRelease",
+            "AAB 2/3 • DEX"
+          );
 
-        await appendLog(
-          buildId,
-          `✅ Gradle task tamamlandı: ${task}`
+          await runGradleTaskWithRetry(
+            "packageReleaseBundle",
+            "AAB 3/3 • Bundle paketleme"
+          );
+
+          await appendLog(
+            buildId,
+            "🔐 AAB sonlandırılıyor ve imzalanıyor..."
+          );
+        }
+
+        await runGradleTaskWithRetry(
+          task,
+          task
         );
       }
 
