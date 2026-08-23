@@ -1,8 +1,10 @@
 package com.appforge.runtime;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
@@ -36,6 +38,7 @@ import java.nio.charset.StandardCharsets;
 public final class FastActivity extends Activity {
 
     private static final int FILE_CHOOSER_REQUEST = 7101;
+    private static final int NOTIFICATION_PERMISSION_REQUEST = 7102;
 
     private WebView webView;
     private ValueCallback<Uri[]> fileChooserCallback;
@@ -91,6 +94,8 @@ public final class FastActivity extends Activity {
 
         setContentView(root);
 
+        requestConfiguredPermissions();
+
         if (splashView != null) {
             splashView.postDelayed(
                 this::hideSplash,
@@ -99,6 +104,27 @@ public final class FastActivity extends Activity {
         }
 
         loadStartPage();
+    }
+
+    private void requestConfiguredPermissions() {
+        if (
+            Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.TIRAMISU &&
+            config.optBoolean(
+                "notifications",
+                false
+            ) &&
+            checkSelfPermission(
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                new String[] {
+                    Manifest.permission.POST_NOTIFICATIONS
+                },
+                NOTIFICATION_PERMISSION_REQUEST
+            );
+        }
     }
 
     private JSONObject loadConfig() {

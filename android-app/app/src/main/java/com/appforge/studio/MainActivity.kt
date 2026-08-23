@@ -2054,7 +2054,7 @@ private fun createQuickDraft(
         fullscreen =
             false,
         notifications =
-            false,
+            true,
         camera =
             false,
         location =

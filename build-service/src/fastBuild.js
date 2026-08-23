@@ -203,14 +203,6 @@ export function getFastBuildDecision(
   }
 
   if (
-    c.features?.notifications
-  ) {
-    reasons.push(
-      "bildirim"
-    );
-  }
-
-  if (
     c.deepLink?.enabled
   ) {
     reasons.push(
@@ -385,6 +377,14 @@ export async function buildFastApk({
         android:roundIcon="@mipmap/ic_launcher"`
       : "";
 
+  const notificationPermission =
+    c.features?.notifications === true
+      ? `
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS" />
+`
+      : "";
+
   const manifestXml =
 `<?xml version="1.0" encoding="utf-8"?>
 <manifest
@@ -399,7 +399,7 @@ export async function buildFastApk({
 
     <uses-permission
         android:name="android.permission.INTERNET" />
-
+${notificationPermission}
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
@@ -554,6 +554,9 @@ export async function buildFastApk({
 
     downloads:
       c.features?.downloads === true,
+
+    notifications:
+      c.features?.notifications === true,
 
     fullscreen:
       c.features?.fullscreen === true,
