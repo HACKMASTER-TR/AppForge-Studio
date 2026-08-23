@@ -46,6 +46,7 @@ public final class FastActivity extends Activity {
     private WebView webView;
     private ValueCallback<Uri[]> fileChooserCallback;
     private Uri cameraCaptureUri;
+    private volatile boolean cameraCaptureRequestedByPage = false;
 
     private JSONObject config;
     private View splashView;
@@ -287,7 +288,12 @@ public final class FastActivity extends Activity {
                     );
 
                     hideSplash();
+
                     installDownloadInterceptor(
+                        view
+                    );
+
+                    installCaptureDetector(
                         view
                     );
                 }
@@ -513,9 +519,16 @@ public final class FastActivity extends Activity {
                                         .FLAG_GRANT_WRITE_URI_PERMISSION
                                 );
 
-                                if (
+                                boolean captureRequested =
                                     fileChooserParams
-                                        .isCaptureEnabled()
+                                        .isCaptureEnabled() ||
+                                    cameraCaptureRequestedByPage;
+
+                                cameraCaptureRequestedByPage =
+                                    false;
+
+                                if (
+                                    captureRequested
                                 ) {
                                     startActivityForResult(
                                         cameraIntent,
@@ -569,6 +582,11 @@ public final class FastActivity extends Activity {
             "AppForgeDownloads"
         );
 
+        webView.addJavascriptInterface(
+            new CaptureHintBridge(),
+            "AppForgeCaptureHint"
+        );
+
         if (
             config.optBoolean(
                 "downloads",
@@ -592,6 +610,65 @@ public final class FastActivity extends Activity {
             );
         }
 
+    }
+
+    public final class CaptureHintBridge {
+
+        @JavascriptInterface
+        public void markCapture() {
+            cameraCaptureRequestedByPage =
+                true;
+        }
+
+        @JavascriptInterface
+        public void clearCapture() {
+            cameraCaptureRequestedByPage =
+                false;
+        }
+    }
+
+    private void installCaptureDetector(
+        WebView view
+    ) {
+        if (
+            view == null ||
+            !config.optBoolean(
+                "camera",
+                false
+            )
+        ) {
+            return;
+        }
+
+        String javascript =
+            "(function(){" +
+            "if(window.__appforgeCaptureDetector)return;" +
+            "window.__appforgeCaptureDetector=true;" +
+
+            "document.addEventListener('click',function(e){" +
+            "var n=e.target;" +
+
+            "while(n&&n.tagName!=='INPUT'){" +
+            "n=n.parentElement;" +
+            "}" +
+
+            "if(!n||String(n.type).toLowerCase()!=='file')return;" +
+
+            "if(!window.AppForgeCaptureHint)return;" +
+
+            "if(n.hasAttribute('capture')){" +
+            "window.AppForgeCaptureHint.markCapture();" +
+            "}else{" +
+            "window.AppForgeCaptureHint.clearCapture();" +
+            "}" +
+
+            "},true);" +
+            "})();";
+
+        view.evaluateJavascript(
+            javascript,
+            null
+        );
     }
 
     public final class DownloadBridge {
