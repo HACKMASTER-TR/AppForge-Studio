@@ -11329,6 +11329,21 @@ private fun BuildStep(
             mutableStateOf(false)
         }
 
+    var showCancelConfirm by
+        remember(buildId) {
+            mutableStateOf(false)
+        }
+
+    var cancelInProgress by
+        remember(buildId) {
+            mutableStateOf(false)
+        }
+
+    var cancelMessage by
+        remember(buildId) {
+            mutableStateOf("")
+        }
+
     val safeProgress =
         progress.coerceIn(
             0,
@@ -11411,6 +11426,130 @@ private fun BuildStep(
     val logsVisible =
         showLogs ||
         buildFailed
+
+    val buildActive =
+        buildId != null &&
+        normalizedStatus !=
+            "success" &&
+        normalizedStatus !=
+            "failed" &&
+        normalizedStatus !=
+            "cancelled" &&
+        normalizedStatus !=
+            "canceled"
+
+    if (
+        showCancelConfirm
+    ) {
+        AlertDialog(
+            onDismissRequest = {
+                if (
+                    !cancelInProgress
+                ) {
+                    showCancelConfirm =
+                        false
+                }
+            },
+            title = {
+                Text(
+                    "Derlemeyi iptal et?"
+                )
+            },
+            text = {
+                Text(
+                    "Çalışan build durdurulacak. " +
+                    "Tamamlanmamış APK veya AAB çıktıları kullanılamaz."
+                )
+            },
+            confirmButton = {
+                Button(
+                    enabled =
+                        !cancelInProgress,
+                    onClick = {
+                        val id =
+                            buildId
+
+                        if (
+                            id == null
+                        ) {
+                            showCancelConfirm =
+                                false
+
+                            return@Button
+                        }
+
+                        showCancelConfirm =
+                            false
+
+                        cancelInProgress =
+                            true
+
+                        cancelMessage =
+                            "İptal isteği gönderiliyor..."
+
+                        scope.launch {
+                            try {
+                                withContext(
+                                    Dispatchers.IO
+                                ) {
+                                    BuildApiClient(
+                                        context,
+                                        serverUrl,
+                                        apiKey
+                                    ).cancelBuild(
+                                        id
+                                    )
+                                }
+
+                                cancelMessage =
+                                    "⛔ İptal isteği gönderildi • çalışan işlem durduruluyor."
+                            } catch (
+                                t: Throwable
+                            ) {
+                                cancelMessage =
+                                    if (
+                                        isTransientBuildNetworkError(
+                                            t
+                                        )
+                                    ) {
+                                        "İptal isteği gönderilemedi • bağlantıyı kontrol edip tekrar dene."
+                                    } else {
+                                        "İptal hatası: ${t.message}"
+                                    }
+                            } finally {
+                                cancelInProgress =
+                                    false
+                            }
+                        }
+                    }
+                ) {
+                    Text(
+                        if (
+                            cancelInProgress
+                        ) {
+                            "İPTAL EDİLİYOR..."
+                        } else {
+                            "EVET, İPTAL ET"
+                        }
+                    )
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    enabled =
+                        !cancelInProgress,
+                    onClick = {
+                        showCancelConfirm =
+                            false
+                    }
+                ) {
+                    Text(
+                        "VAZGEÇ"
+                    )
+                }
+            }
+        )
+    }
 
     LazyColumn(
         contentPadding =
@@ -11525,6 +11664,51 @@ private fun BuildStep(
                         )
                     }
                 }
+            }
+        }
+
+        if (
+            buildActive
+        ) {
+            item {
+                OutlinedButton(
+                    enabled =
+                        !cancelInProgress,
+                    onClick = {
+                        showCancelConfirm =
+                            true
+                    },
+                    colors =
+                        ButtonDefaults
+                            .outlinedButtonColors(
+                                contentColor =
+                                    MaterialTheme
+                                        .colorScheme
+                                        .error
+                            ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (
+                            cancelInProgress
+                        ) {
+                            "İPTAL EDİLİYOR..."
+                        } else {
+                            "DERLEMEYİ İPTAL ET"
+                        }
+                    )
+                }
+            }
+        }
+
+        if (
+            cancelMessage.isNotBlank()
+        ) {
+            item {
+                NoteCard(
+                    cancelMessage
+                )
             }
         }
 

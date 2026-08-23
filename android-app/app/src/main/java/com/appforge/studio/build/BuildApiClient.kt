@@ -346,6 +346,44 @@ class BuildApiClient(
         )
     }
 
+    fun cancelBuild(
+        buildId: String
+    ) {
+        val conn =
+            connection(
+                "/api/builds/$buildId/cancel"
+            ).apply {
+                requestMethod =
+                    "POST"
+
+                doOutput =
+                    true
+
+                readTimeout =
+                    20_000
+
+                setRequestProperty(
+                    "Content-Type",
+                    "application/json; charset=utf-8"
+                )
+            }
+
+        conn.outputStream.use {
+            it.write(
+                "{}".toByteArray()
+            )
+        }
+
+        /*
+         * Hata varsa readResponse zaten exception üretir.
+         * Başarılı cevapta body içeriğine ihtiyaç yok.
+         */
+        readResponse(
+            conn
+        )
+    }
+
+
     fun createDownloadTicket(
         buildId: String,
         kind: String
