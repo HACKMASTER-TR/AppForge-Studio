@@ -27,44 +27,85 @@ android {
 
 dependencies {
 
+    // ======================================================
+    // AppForge temel runtime
+    // ======================================================
+
+    implementation(
+        "androidx.core:core-ktx:1.19.0"
+    )
+
+    implementation(
+        "androidx.appcompat:appcompat:1.7.1"
+    )
+
+    implementation(
+        "androidx.core:core-splashscreen:1.2.0"
+    )
+
+    implementation(
+        "androidx.webkit:webkit:1.16.0"
+    )
+
+    // ======================================================
     // QR / Barcode
+    // ======================================================
+
     implementation(
         "com.google.android.gms:" +
             "play-services-code-scanner:" +
             "16.1.0"
     )
 
+    // ======================================================
     // AdMob
+    // ======================================================
+
     implementation(
         "com.google.android.gms:" +
             "play-services-ads:" +
             "25.4.0"
     )
 
-    // UMP
+    // ======================================================
+    // UMP Consent
+    // ======================================================
+
     implementation(
         "com.google.android.ump:" +
             "user-messaging-platform:" +
             "4.0.0"
     )
 
-    // Billing
+    // ======================================================
+    // Google Play Billing
+    // ======================================================
+
     implementation(
         "com.android.billingclient:" +
-            "billing:" +
+            "billing-ktx:" +
             "9.1.0"
     )
 
+    // ======================================================
     // Firebase
+    // ======================================================
+
     implementation(
-        "com.google.firebase:" +
-            "firebase-analytics:" +
-            "23.2.0"
+        platform(
+            "com.google.firebase:" +
+                "firebase-bom:" +
+                "34.17.0"
+        )
     )
 
     implementation(
         "com.google.firebase:" +
-            "firebase-crashlytics:" +
-            "20.1.0"
+            "firebase-analytics"
+    )
+
+    implementation(
+        "com.google.firebase:" +
+            "firebase-crashlytics"
     )
 }

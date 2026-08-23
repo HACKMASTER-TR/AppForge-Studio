@@ -330,6 +330,27 @@ async function validateFirebaseConfig(
   }
 }
 
+function requiresFastExtended(
+  c,
+  outputType
+) {
+  if (
+    outputType !== "apk"
+  ) {
+    return false;
+  }
+
+  return Boolean(
+    c.nativeBridge?.enabled ||
+    c.nativeBridge?.qrScanner ||
+    c.admob?.enabled ||
+    c.billing?.enabled ||
+    c.firebase?.analytics ||
+    c.firebase?.crashlytics
+  );
+}
+
+
 export async function executeBuild(job) {
   const {
     buildId,
@@ -444,6 +465,12 @@ export async function executeBuild(job) {
       )
         ? c.buildOutput
         : "both";
+
+    const fastExtendedMode =
+      requiresFastExtended(
+        c,
+        outputType
+      );
 
     const fastDecision =
       getFastBuildDecision(
@@ -584,10 +611,22 @@ export async function executeBuild(job) {
         );
       }
     } else {
-      await appendLog(
-        buildId,
-        `🛠 FULL BUILD seçildi • ${fastDecision.reasons.join(", ")}`
-      );
+      if (
+        fastExtendedMode
+      ) {
+        buildMode =
+          "FAST_EXTENDED";
+
+        await appendLog(
+          buildId,
+          "🚀 FAST EXTENDED seçildi • Native Bridge / QR / AdMob / Billing / Firebase SDK cache hazır."
+        );
+      } else {
+        await appendLog(
+          buildId,
+          `🛠 FULL BUILD seçildi • ${fastDecision.reasons.join(", ")}`
+        );
+      }
     }
 
     if (
@@ -595,7 +634,9 @@ export async function executeBuild(job) {
     ) {
       await appendLog(
         buildId,
-        "Android proje şablonu oluşturuluyor..."
+        fastExtendedMode
+          ? "🚀 FAST EXTENDED Android projesi hazırlanıyor..."
+          : "Android proje şablonu oluşturuluyor..."
       );
 
       await throwIfCancelled(
@@ -636,7 +677,9 @@ export async function executeBuild(job) {
 
       await appendLog(
         buildId,
-        "Gradle derlemesi başlatılıyor..."
+        fastExtendedMode
+          ? "⚡ FAST EXTENDED cached Gradle derlemesi başlatılıyor..."
+          : "Gradle derlemesi başlatılıyor..."
       );
 
       const tasks = [];
@@ -682,8 +725,15 @@ export async function executeBuild(job) {
             c.signing?.alias ||
             "",
 
+          APPFORGE_FAST_EXTENDED:
+            fastExtendedMode
+              ? "1"
+              : "0",
+
           GRADLE_USER_HOME:
-            config.gradleCacheRoot
+            fastExtendedMode
+              ? "/root/.gradle"
+              : config.gradleCacheRoot
         }
       );
 
