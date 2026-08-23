@@ -2719,6 +2719,64 @@ private fun QuickCreateScreen(
             }
         }
 
+        Card(
+            modifier =
+                Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                verticalAlignment =
+                    Alignment.CenterVertically,
+                horizontalArrangement =
+                    Arrangement.SpaceBetween
+            ) {
+                Column(
+                    modifier =
+                        Modifier.weight(1f)
+                ) {
+                    Text(
+                        "📷 Kamera ile fotoğraf",
+                        fontWeight =
+                            FontWeight.SemiBold
+                    )
+
+                    Spacer(
+                        Modifier.height(4.dp)
+                    )
+
+                    Text(
+                        "HTML kamera/capture alanlarının telefon kamerasını açmasına izin verir.",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+                }
+
+                Spacer(
+                    Modifier.width(12.dp)
+                )
+
+                Switch(
+                    checked =
+                        draft.camera,
+                    onCheckedChange = {
+                        enabled ->
+
+                        onDraftChange(
+                            draft.copy(
+                                camera =
+                                    enabled
+                            )
+                        )
+                    }
+                )
+            }
+        }
+
         Button(
             onClick =
                 onBuild,
