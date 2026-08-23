@@ -10173,54 +10173,413 @@ private fun SigningStep(
     update: (ProjectDraft) -> Unit,
     onPickKeystore: () -> Unit
 ) {
-    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Section("7. İmzalama", "Debug veya kendi release keystore'un.") }
+    val customSigning =
+        d.signingMode ==
+            SigningMode.CUSTOM
+
+    val keystoreReady =
+        d.keystoreName.isNotBlank()
+
+    val aliasReady =
+        d.keyAlias.isNotBlank()
+
+    val storePasswordReady =
+        d.storePassword.isNotBlank()
+
+    val keyPasswordReady =
+        d.keyPassword.isNotBlank()
+
+    val releaseReady =
+        customSigning &&
+        keystoreReady &&
+        aliasReady &&
+        storePasswordReady &&
+        keyPasswordReady
+
+    LazyColumn(
+        contentPadding =
+            PaddingValues(
+                20.dp
+            ),
+        verticalArrangement =
+            Arrangement.spacedBy(
+                14.dp
+            )
+    ) {
+        item {
+            Section(
+                "7. İmzalama",
+                "Debug test imzası veya kendi release keystore'un."
+            )
+        }
 
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor =
+                            Card2
+                    ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            7.dp
+                        )
+                ) {
+                    Text(
+                        "İmzalama durumu",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    if (
+                        customSigning
+                    ) {
+                        Text(
+                            if (
+                                releaseReady
+                            ) {
+                                "✅ Release imzası hazır"
+                            } else {
+                                "⚠ Release bilgileri eksik"
+                            },
+                            color =
+                                if (
+                                    releaseReady
+                                ) {
+                                    Accent
+                                } else {
+                                    TextSecondary
+                                },
+                            fontWeight =
+                                FontWeight.Medium,
+                            fontSize =
+                                13.sp
+                        )
+
+                        Text(
+                            "Google Play için kendi keystore'un kullanılacak.",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+                    } else {
+                        Text(
+                            "⚠ Debug signing seçili",
+                            fontWeight =
+                                FontWeight.Medium,
+                            fontSize =
+                                13.sp
+                        )
+
+                        Text(
+                            "Debug imzası test içindir. Play Store production yayını için release keystore kullan.",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp,
+                            lineHeight =
+                                17.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            Text(
+                "İmzalama türü",
+                fontWeight =
+                    FontWeight.Bold,
+                fontSize =
+                    14.sp
+            )
+        }
+
+        item {
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        8.dp
+                    )
+            ) {
                 FilterChip(
-                    selected = d.signingMode == SigningMode.DEBUG,
-                    onClick = { update(d.copy(signingMode = SigningMode.DEBUG)) },
-                    label = { Text("Debug") }
+                    selected =
+                        d.signingMode ==
+                            SigningMode.DEBUG,
+                    onClick = {
+                        update(
+                            d.copy(
+                                signingMode =
+                                    SigningMode.DEBUG
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Debug"
+                        )
+                    }
                 )
+
                 FilterChip(
-                    selected = d.signingMode == SigningMode.CUSTOM,
-                    onClick = { update(d.copy(signingMode = SigningMode.CUSTOM)) },
-                    label = { Text("Kendi Keystore'um") }
+                    selected =
+                        d.signingMode ==
+                            SigningMode.CUSTOM,
+                    onClick = {
+                        update(
+                            d.copy(
+                                signingMode =
+                                    SigningMode.CUSTOM
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Release Keystore"
+                        )
+                    }
                 )
             }
         }
 
-        if (d.signingMode == SigningMode.CUSTOM) {
+        if (
+            customSigning
+        ) {
             item {
-                Button(onClick = onPickKeystore, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (d.keystoreName.isBlank()) "JKS / Keystore seç" else d.keystoreName)
+                Button(
+                    onClick =
+                        onPickKeystore,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (
+                            d.keystoreName.isBlank()
+                        ) {
+                            "JKS / KEYSTORE SEÇ"
+                        } else {
+                            "✓ Keystore seçildi"
+                        }
+                    )
                 }
             }
+
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                6.dp
+                            )
+                    ) {
+                        Text(
+                            "Release kontrolü",
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            if (
+                                keystoreReady
+                            ) {
+                                "✓ Keystore hazır"
+                            } else {
+                                "○ Keystore gerekli"
+                            },
+                            fontSize =
+                                12.sp
+                        )
+
+                        Text(
+                            if (
+                                aliasReady
+                            ) {
+                                "✓ Key alias hazır"
+                            } else {
+                                "○ Key alias gerekli"
+                            },
+                            fontSize =
+                                12.sp
+                        )
+
+                        Text(
+                            if (
+                                storePasswordReady
+                            ) {
+                                "✓ Store password hazır"
+                            } else {
+                                "○ Store password gerekli"
+                            },
+                            fontSize =
+                                12.sp
+                        )
+
+                        Text(
+                            if (
+                                keyPasswordReady
+                            ) {
+                                "✓ Key password hazır"
+                            } else {
+                                "○ Key password gerekli"
+                            },
+                            fontSize =
+                                12.sp
+                        )
+                    }
+                }
+            }
+
             item {
                 OutlinedTextField(
-                    value = d.keyAlias,
-                    onValueChange = { update(d.copy(keyAlias = it)) },
-                    label = { Text("Key alias") },
-                    modifier = Modifier.fillMaxWidth()
+                    value =
+                        d.keyAlias,
+                    onValueChange = {
+                        update(
+                            d.copy(
+                                keyAlias =
+                                    it.trim()
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Key alias"
+                        )
+                    },
+                    placeholder = {
+                        Text(
+                            "Örn: upload"
+                        )
+                    },
+                    supportingText = {
+                        if (
+                            aliasReady
+                        ) {
+                            Text(
+                                "✓ Alias girildi"
+                            )
+                        } else {
+                            Text(
+                                "Keystore oluştururken verdiğin alias."
+                            )
+                        }
+                    },
+                    singleLine = true,
+                    modifier =
+                        Modifier.fillMaxWidth()
                 )
             }
+
             item {
                 OutlinedTextField(
-                    value = d.storePassword,
-                    onValueChange = { update(d.copy(storePassword = it)) },
-                    label = { Text("Store password") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth()
+                    value =
+                        d.storePassword,
+                    onValueChange = {
+                        update(
+                            d.copy(
+                                storePassword =
+                                    it
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Store password"
+                        )
+                    },
+                    supportingText = {
+                        Text(
+                            if (
+                                storePasswordReady
+                            ) {
+                                "✓ Girildi"
+                            } else {
+                                "Keystore parolası gerekli."
+                            }
+                        )
+                    },
+                    visualTransformation =
+                        PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier =
+                        Modifier.fillMaxWidth()
                 )
             }
+
             item {
                 OutlinedTextField(
-                    value = d.keyPassword,
-                    onValueChange = { update(d.copy(keyPassword = it)) },
-                    label = { Text("Key password") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth()
+                    value =
+                        d.keyPassword,
+                    onValueChange = {
+                        update(
+                            d.copy(
+                                keyPassword =
+                                    it
+                            )
+                        )
+                    },
+                    label = {
+                        Text(
+                            "Key password"
+                        )
+                    },
+                    supportingText = {
+                        Text(
+                            if (
+                                keyPasswordReady
+                            ) {
+                                "✓ Girildi"
+                            } else {
+                                "Alias anahtar parolası gerekli."
+                            }
+                        )
+                    },
+                    visualTransformation =
+                        PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier =
+                        Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                NoteCard(
+                    "Keystore dosyanı ve parolalarını güvenli bir yerde yedekle. Aynı Play Store uygulamasını gelecekte güncellemek için aynı imzalama anahtarına ihtiyaç duyarsın."
+                )
+            }
+        } else {
+            item {
+                NoteCard(
+                    "Debug signing ile APK ve AAB test derlemeleri oluşturabilirsin; production Play Store yayını için Release Keystore seç."
                 )
             }
         }
