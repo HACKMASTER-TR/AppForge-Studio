@@ -62,23 +62,16 @@ dependencies {
 
     add(
         "fastSdk",
-        platform(
-            "com.google.firebase:" +
-                "firebase-bom:" +
-                "34.17.0"
-        )
+        "com.google.firebase:" +
+            "firebase-analytics:" +
+            "23.2.0"
     )
 
     add(
         "fastSdk",
         "com.google.firebase:" +
-            "firebase-analytics"
-    )
-
-    add(
-        "fastSdk",
-        "com.google.firebase:" +
-            "firebase-crashlytics"
+            "firebase-crashlytics:" +
+            "20.1.0"
     )
 }
 
