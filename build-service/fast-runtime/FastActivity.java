@@ -448,10 +448,21 @@ public final class FastActivity extends Activity {
                             }
                         }
 
+                        boolean captureRequested =
+                            fileChooserParams
+                                .isCaptureEnabled() ||
+                            cameraCaptureRequestedByPage;
+
+                        cameraCaptureRequestedByPage =
+                            false;
+
                         boolean cameraAvailable =
                             Build.VERSION.SDK_INT >=
                                 Build.VERSION_CODES.Q &&
-                            imageRequested &&
+                            (
+                                imageRequested ||
+                                captureRequested
+                            ) &&
                             config.optBoolean(
                                 "camera",
                                 false
@@ -518,14 +529,6 @@ public final class FastActivity extends Activity {
                                     Intent
                                         .FLAG_GRANT_WRITE_URI_PERMISSION
                                 );
-
-                                boolean captureRequested =
-                                    fileChooserParams
-                                        .isCaptureEnabled() ||
-                                    cameraCaptureRequestedByPage;
-
-                                cameraCaptureRequestedByPage =
-                                    false;
 
                                 if (
                                     captureRequested
