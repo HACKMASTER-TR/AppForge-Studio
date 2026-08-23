@@ -7648,16 +7648,422 @@ private fun SourceStep(
 }
 
 @Composable
-private fun FeaturesStep(d: ProjectDraft, update: (ProjectDraft) -> Unit) {
-    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { Section("2. WebView Pro", "Android özelliklerini seç.") }
-        item { Toggle("Dosya yükleme", d.fileUpload) { update(d.copy(fileUpload = it)) } }
-        item { Toggle("DownloadManager", d.downloads) { update(d.copy(downloads = it)) } }
-        item { Toggle("Kamera ile fotoğraf", d.camera) { update(d.copy(camera = it)) } }
-        item { Toggle("Konum / Geolocation", d.location) { update(d.copy(location = it)) } }
-        item { Toggle("Bildirim izni", d.notifications) { update(d.copy(notifications = it)) } }
-        item { Toggle("Offline cache", d.offlineCache) { update(d.copy(offlineCache = it)) } }
-        item { Toggle("Tam ekran", d.fullscreen) { update(d.copy(fullscreen = it)) } }
+private fun FeaturesStep(
+    d: ProjectDraft,
+    update: (ProjectDraft) -> Unit
+) {
+    val enabledCount =
+        listOf(
+            d.fileUpload,
+            d.downloads,
+            d.camera,
+            d.location,
+            d.notifications,
+            d.offlineCache,
+            d.fullscreen
+        ).count {
+            it
+        }
+
+    LazyColumn(
+        contentPadding =
+            PaddingValues(
+                20.dp
+            ),
+        verticalArrangement =
+            Arrangement.spacedBy(
+                12.dp
+            )
+    ) {
+        item {
+            Section(
+                "2. WebView Pro",
+                "Android ve WebView özelliklerini yapılandır."
+            )
+        }
+
+        item {
+            Card(
+                colors =
+                    CardDefaults
+                        .cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            10.dp
+                        )
+                ) {
+                    Text(
+                        "WebView yapılandırması",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Text(
+                        "$enabledCount / 7 özellik açık",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            13.sp
+                    )
+
+                    Text(
+                        "İhtiyacın olmayan özellikleri kapalı tutmak uygulamayı daha sade ve izinleri daha kontrollü hale getirir.",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp,
+                        lineHeight =
+                            17.sp
+                    )
+
+                    Row(
+                        horizontalArrangement =
+                            Arrangement.spacedBy(
+                                8.dp
+                            ),
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Button(
+                            onClick = {
+                                update(
+                                    d.copy(
+                                        fileUpload = true,
+                                        downloads = true,
+                                        camera = false,
+                                        location = false,
+                                        notifications = false,
+                                        offlineCache = true,
+                                        fullscreen = false
+                                    )
+                                )
+                            },
+                            modifier =
+                                Modifier.weight(
+                                    1f
+                                )
+                        ) {
+                            Text(
+                                "Önerilen"
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                update(
+                                    d.copy(
+                                        fileUpload = false,
+                                        downloads = false,
+                                        camera = false,
+                                        location = false,
+                                        notifications = false,
+                                        offlineCache = false,
+                                        fullscreen = false
+                                    )
+                                )
+                            },
+                            modifier =
+                                Modifier.weight(
+                                    1f
+                                )
+                        ) {
+                            Text(
+                                "Tümünü kapat"
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Text(
+                "Dosya ve içerik",
+                fontWeight =
+                    FontWeight.Bold,
+                fontSize =
+                    14.sp
+            )
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Dosya yükleme",
+                description =
+                    "Web sayfasındaki dosya seçme alanlarının telefondan dosya yüklemesine izin verir.",
+                checked =
+                    d.fileUpload,
+                recommended =
+                    true
+            ) {
+                update(
+                    d.copy(
+                        fileUpload =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "DownloadManager",
+                description =
+                    "Web sayfasından indirilen dosyaları Android indirme yöneticisine gönderir.",
+                checked =
+                    d.downloads,
+                recommended =
+                    true
+            ) {
+                update(
+                    d.copy(
+                        downloads =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Offline cache",
+                description =
+                    "Daha önce açılan web içeriğinin önbellekten kullanılmasına yardımcı olur.",
+                checked =
+                    d.offlineCache,
+                recommended =
+                    true
+            ) {
+                update(
+                    d.copy(
+                        offlineCache =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            Text(
+                "Cihaz özellikleri",
+                fontWeight =
+                    FontWeight.Bold,
+                fontSize =
+                    14.sp
+            )
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Kamera ile fotoğraf",
+                description =
+                    "Web uygulamasının kamerayı kullanarak fotoğraf çekebilmesini sağlar.",
+                checked =
+                    d.camera,
+                permission =
+                    "Kamera"
+            ) {
+                update(
+                    d.copy(
+                        camera =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Konum / Geolocation",
+                description =
+                    "Web sitesinin Android cihazın konum bilgisini istemesine izin verir.",
+                checked =
+                    d.location,
+                permission =
+                    "Konum"
+            ) {
+                update(
+                    d.copy(
+                        location =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Bildirim izni",
+                description =
+                    "Android 13 ve üzerindeki cihazlarda uygulamanın bildirim izni istemesini sağlar.",
+                checked =
+                    d.notifications,
+                permission =
+                    "Bildirim"
+            ) {
+                update(
+                    d.copy(
+                        notifications =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            Text(
+                "Ekran",
+                fontWeight =
+                    FontWeight.Bold,
+                fontSize =
+                    14.sp
+            )
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Tam ekran",
+                description =
+                    "Uygulamayı daha geniş görüntülemek için sistem çubuklarını gizler.",
+                checked =
+                    d.fullscreen
+            ) {
+                update(
+                    d.copy(
+                        fullscreen =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            NoteCard(
+                "Kamera, konum ve bildirim seçenekleri yalnızca açıldığında ilgili Android izinleri uygulamaya eklenir."
+            )
+        }
+    }
+}
+
+@Composable
+private fun FeatureToggleCard(
+    title: String,
+    description: String,
+    checked: Boolean,
+    permission: String? = null,
+    recommended: Boolean = false,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Card(
+        colors =
+            CardDefaults
+                .cardColors(
+                    containerColor =
+                        Card2
+                ),
+        shape =
+            RoundedCornerShape(
+                18.dp
+            ),
+        modifier =
+            Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        16.dp
+                    ),
+            verticalAlignment =
+                Alignment.CenterVertically,
+            horizontalArrangement =
+                Arrangement.spacedBy(
+                    14.dp
+                )
+        ) {
+            Column(
+                modifier =
+                    Modifier.weight(
+                        1f
+                    ),
+                verticalArrangement =
+                    Arrangement.spacedBy(
+                        5.dp
+                    )
+            ) {
+                Text(
+                    title,
+                    fontWeight =
+                        FontWeight.Medium
+                )
+
+                Text(
+                    description,
+                    color =
+                        TextSecondary,
+                    fontSize =
+                        12.sp,
+                    lineHeight =
+                        17.sp
+                )
+
+                if (
+                    permission != null
+                ) {
+                    Text(
+                        "Android izni: $permission",
+                        color =
+                            Accent,
+                        fontSize =
+                            11.sp,
+                        fontWeight =
+                            FontWeight.Medium
+                    )
+                } else if (
+                    recommended
+                ) {
+                    Text(
+                        "Önerilen",
+                        color =
+                            Accent,
+                        fontSize =
+                            11.sp,
+                        fontWeight =
+                            FontWeight.Medium
+                    )
+                }
+            }
+
+            Switch(
+                checked =
+                    checked,
+                onCheckedChange =
+                    onCheckedChange
+            )
+        }
     }
 }
 
