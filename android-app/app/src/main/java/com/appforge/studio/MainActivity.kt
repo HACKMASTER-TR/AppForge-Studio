@@ -1966,6 +1966,7 @@ private fun createQuickDraft(
         versionName =
             "1.0.0",
         versionCode = 1,
+        autoVersionCode = true,
         buildOutput =
             "apk",
         orientation =
