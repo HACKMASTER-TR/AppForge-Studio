@@ -1,6 +1,7 @@
 package com.appforge.studio.ai
 
 import android.content.Context
+import com.appforge.studio.io.AppSettingsStore
 import com.appforge.studio.model.ProjectDraft
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Contents
@@ -110,6 +111,22 @@ private fun cleanAssistantOutput(
             ""
         )
 
+    /*
+     * ÖNEMLİ:
+     *
+     * sendMessageAsync() cevabı streaming parçalar halinde verir.
+     * Birçok parça başında gerçek bir boşluk taşır:
+     *
+     * "Merhaba"
+     * " kullanıcı"
+     * ", nasılsın?"
+     *
+     * Burada trimStart() kullanılırsa sonuç:
+     * "Merhabakullanıcı,nasılsın?"
+     *
+     * olur. Bu nedenle streaming parçasının başındaki boşluğu
+     * kesinlikle silmiyoruz.
+     */
     return text
         .replace(
             "\r\n",
@@ -121,7 +138,6 @@ private fun cleanAssistantOutput(
             ),
             "\n\n"
         )
-        .trimStart()
 }
 
 data class LocalAiInitResult(
@@ -207,6 +223,68 @@ class AppForgeLocalAssistant(
             )
         }
 
+    private fun answerLanguageInstruction(): String {
+        val selected =
+            AppSettingsStore
+                .load(
+                    appContext
+                )
+                .languageCode
+
+        /*
+         * StudioI18n şu anda "system" seçimini Türkçe arayüz
+         * olarak kullanıyor. Yerel AI de aynı davranışı izler.
+         */
+        return when (
+            selected
+        ) {
+            "en" ->
+                """
+                RESPONSE LANGUAGE: ENGLISH.
+                Answer entirely in English from the very first word.
+                Do not output internal reasoning or a thinking preamble.
+                Do not start with phrases such as "Okay, let's see",
+                "The user is asking", "I need to", or "We need to".
+                Show only the final answer.
+                """.trimIndent()
+
+            "de" ->
+                """
+                ANTWORTSPRACHE: DEUTSCH.
+                Antworte vom ersten Wort an ausschließlich auf Deutsch.
+                Zeige keine internen Überlegungen oder Denkprozesse.
+                Zeige nur die endgültige Antwort.
+                """.trimIndent()
+
+            "ar" ->
+                """
+                لغة الإجابة: العربية.
+                أجب باللغة العربية فقط من أول كلمة.
+                لا تعرض التفكير الداخلي أو خطوات الاستدلال.
+                اعرض الإجابة النهائية فقط.
+                """.trimIndent()
+
+            else ->
+                """
+                YANIT DİLİ: TÜRKÇE.
+
+                İlk kelimeden son kelimeye kadar yalnızca düzgün Türkçe kullan.
+                İngilizce düşünme metni, giriş cümlesi veya açıklama yazma.
+                "Okay, let's see", "The user is asking", "I need to",
+                "We need to" gibi iç düşünme cümlelerini kesinlikle gösterme.
+
+                Kullanıcıya doğrudan nihai cevabı ver.
+                İç düşünme, reasoning veya çalışma notlarını yazma.
+                Türkçe karakterleri doğru UTF-8 olarak kullan:
+                ç, ğ, ı, İ, ö, ş, ü.
+
+                Kelimeler arasında normal boşluk bırak.
+                Noktalama işaretlerinden sonra gerektiğinde boşluk kullan.
+                """.trimIndent()
+        }
+    }
+
+
     suspend fun ask(
         question: String,
         draft: ProjectDraft,
@@ -230,17 +308,27 @@ class AppForgeLocalAssistant(
                     includeProjectContext
                 )
 
+        val languageInstruction =
+            answerLanguageInstruction()
+
         val prompt =
             """
-            Aşağıdaki yerel AppForge bilgisini soruyla ilgiliyse kullan.
+            $languageInstruction
+
+            Aşağıdaki yerel AppForge bilgisini yalnızca soruyla ilgiliyse kullan.
             AppForge hakkında bağlamda olmayan bir özelliği uydurma.
             Proje özeti editördeki mevcut durumu gösterir.
-            Yanıtı kullanıcının dilinde, açık ve uygulanabilir ver.
+
+            ÖNEMLİ:
+            Yukarıdaki YANIT DİLİ talimatına bu mesajda mutlaka uy.
+            Kullanıcıya yalnızca nihai cevabı göster.
 
             $grounding
 
             KULLANICI SORUSU:
             $clean
+
+            Şimdi doğrudan nihai cevabı yaz.
             """.trimIndent()
 
         mutex.withLock {
@@ -373,7 +461,11 @@ class AppForgeLocalAssistant(
 
                     Kullanıcıya yalnızca nihai cevabı göster.
                     İç düşünme, reasoning, chain-of-thought veya <think> bölümü gösterme.
-                    Türkçe soruya düzgün UTF-8 Türkçe ile cevap ver.
+                    Uygulamanın seçili yanıt diline kesin olarak uy.
+                    Türkçe istendiğinde ilk kelimeden itibaren yalnız Türkçe cevap ver.
+                    İngilizce iç düşünme veya "Okay, let's see" gibi girişler gösterme.
+                    Düzgün UTF-8 Türkçe karakterleri kullan.
+                    Kelimeler arasında doğal boşlukları koru.
                     Gereksiz Markdown işaretleri kullanma.
                     Kısa paragraflar ve okunabilir maddeler kullan.
                     """.trimIndent()
@@ -385,7 +477,7 @@ class AppForgeLocalAssistant(
                     topP =
                         0.9,
                     temperature =
-                        0.35
+                        0.20
                 )
         )
 
