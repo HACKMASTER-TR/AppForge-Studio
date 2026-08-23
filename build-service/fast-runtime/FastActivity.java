@@ -899,25 +899,24 @@ public final class FastActivity extends Activity {
         splashView =
             null;
 
-        current
-            .animate()
-            .alpha(0f)
-            .setDuration(180L)
-            .withEndAction(
-                () -> {
-                    if (
-                        current.getParent()
-                        instanceof android.view.ViewGroup
-                    ) {
-                        ((android.view.ViewGroup)
-                            current.getParent())
-                            .removeView(
-                                current
-                            );
-                    }
-                }
-            )
-            .start();
+        current.setClickable(
+            false
+        );
+
+        current.setFocusable(
+            false
+        );
+
+        if (
+            current.getParent()
+            instanceof android.view.ViewGroup
+        ) {
+            ((android.view.ViewGroup)
+                current.getParent())
+                .removeView(
+                    current
+                );
+        }
     }
 
     private int dp(
