@@ -642,27 +642,89 @@ public final class FastActivity extends Activity {
 
         String javascript =
             "(function(){" +
-            "if(window.__appforgeCaptureDetector)return;" +
-            "window.__appforgeCaptureDetector=true;" +
 
-            "document.addEventListener('click',function(e){" +
-            "var n=e.target;" +
+            "if(window.__appforgeCaptureDetectorV2)return;" +
+            "window.__appforgeCaptureDetectorV2=true;" +
 
-            "while(n&&n.tagName!=='INPUT'){" +
-            "n=n.parentElement;" +
+            "function findFileInput(target){" +
+
+            "if(!target)return null;" +
+
+            "if(" +
+            "target.tagName==='INPUT'&&" +
+            "String(target.type).toLowerCase()==='file'" +
+            "){" +
+            "return target;" +
             "}" +
 
-            "if(!n||String(n.type).toLowerCase()!=='file')return;" +
+            "var label=null;" +
+
+            "try{" +
+            "label=target.closest?target.closest('label'):null;" +
+            "}catch(e){}" +
+
+            "if(label){" +
+            "var inside=label.querySelector(" +
+            "'input[type=file]'" +
+            ");" +
+
+            "if(inside)return inside;" +
+
+            "var forId=label.getAttribute('for');" +
+
+            "if(forId){" +
+            "var byId=document.getElementById(forId);" +
+
+            "if(" +
+            "byId&&" +
+            "byId.tagName==='INPUT'&&" +
+            "String(byId.type).toLowerCase()==='file'" +
+            "){" +
+            "return byId;" +
+            "}" +
+            "}" +
+            "}" +
+
+            "return null;" +
+            "}" +
+
+            "function inspect(target){" +
 
             "if(!window.AppForgeCaptureHint)return;" +
 
-            "if(n.hasAttribute('capture')){" +
+            "var input=findFileInput(target);" +
+
+            "if(!input)return;" +
+
+            "var accept=String(" +
+            "input.getAttribute('accept')||''" +
+            ").toLowerCase();" +
+
+            "var capture=" +
+            "input.hasAttribute('capture');" +
+
+            "var image=" +
+            "accept.indexOf('image')!==-1;" +
+
+            "if(capture&&image){" +
             "window.AppForgeCaptureHint.markCapture();" +
             "}else{" +
             "window.AppForgeCaptureHint.clearCapture();" +
             "}" +
+            "}" +
 
-            "},true);" +
+            "document.addEventListener(" +
+            "'pointerdown'," +
+            "function(e){inspect(e.target);}," +
+            "true" +
+            ");" +
+
+            "document.addEventListener(" +
+            "'click'," +
+            "function(e){inspect(e.target);}," +
+            "true" +
+            ");" +
+
             "})();";
 
         view.evaluateJavascript(
