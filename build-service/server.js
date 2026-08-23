@@ -3541,8 +3541,11 @@ app.get(
   authRequired,
   async (req, res) => {
     try {
+      // Yönetici hesapları manuel/admin Pro yetkisini
+      // Play Integrity gerektirmeden doğrulayabilir.
       if (
-        config.proRequireIntegrity
+        config.proRequireIntegrity &&
+        req.user.role !== "admin"
       ) {
         requireIntegrityHeader(
           req
