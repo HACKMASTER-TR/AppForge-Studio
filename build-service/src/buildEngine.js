@@ -635,9 +635,11 @@ include(":app")
 
   await fs.writeFile(
     path.join(projectDir, "gradle.properties"),
-`org.gradle.workers.max=1
+`org.gradle.jvmargs=-Xmx384m -XX:MaxMetaspaceSize=192m -XX:+UseSerialGC -Dfile.encoding=UTF-8
+org.gradle.workers.max=1
 org.gradle.parallel=false
 org.gradle.vfs.watch=false
+org.gradle.daemon=false
 android.useAndroidX=true
 kotlin.code.style=official
 kotlin.compiler.execution.strategy=in-process
@@ -3282,8 +3284,8 @@ async function runGradle(
             env: {
               ...env,
               GRADLE_OPTS:
-                "-Xmx384m " +
-                "-XX:MaxMetaspaceSize=128m " +
+                "-Xmx128m " +
+                "-XX:MaxMetaspaceSize=96m " +
                 "-XX:+UseSerialGC " +
                 "-Dfile.encoding=UTF-8 " +
                 "-Dorg.gradle.daemon=false"
