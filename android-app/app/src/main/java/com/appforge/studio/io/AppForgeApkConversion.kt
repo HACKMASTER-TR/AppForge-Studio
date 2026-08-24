@@ -15,6 +15,7 @@ data class ApkConversionProject(
     val versionCode: Int,
     val sourceMode: SourceMode,
     val webUrl: String,
+    val mediaPlayerBridge: Boolean,
     val projectDir: File?
 )
 
@@ -397,6 +398,23 @@ object AppForgeApkConversion {
                 }
             }
 
+            val mediaPlayerBridge =
+                manifest
+                    .optJSONObject(
+                        "nativeBridge"
+                    )
+                    ?.optBoolean(
+                        "mediaPlayer",
+                        false
+                    ) == true ||
+                (
+                    sourceMode ==
+                        SourceMode.LOCAL &&
+                    containsAppForgeMedia(
+                        siteDir
+                    )
+                )
+
             return ApkConversionProject(
                 appName =
                     appName,
@@ -410,6 +428,8 @@ object AppForgeApkConversion {
                     sourceMode,
                 webUrl =
                     webUrl,
+                mediaPlayerBridge =
+                    mediaPlayerBridge,
                 projectDir =
                     if (
                         sourceMode ==
@@ -430,6 +450,86 @@ object AppForgeApkConversion {
             throw t
         }
     }
+
+
+    private fun containsAppForgeMedia(
+        root: File
+    ): Boolean {
+
+        val allowedExtensions =
+            setOf(
+                "html",
+                "htm",
+                "js",
+                "mjs",
+                "cjs",
+                "ts",
+                "tsx",
+                "jsx"
+            )
+
+        val maxSingleFile =
+            2L * 1024L * 1024L
+
+        val maxScannedBytes =
+            8L * 1024L * 1024L
+
+        var scannedBytes =
+            0L
+
+        for (
+            file in root.walkTopDown()
+        ) {
+            if (
+                !file.isFile ||
+                file.extension
+                    .lowercase() !in
+                    allowedExtensions
+            ) {
+                continue
+            }
+
+            val length =
+                file.length()
+
+            if (
+                length <= 0L ||
+                length >
+                    maxSingleFile
+            ) {
+                continue
+            }
+
+            if (
+                scannedBytes +
+                    length >
+                    maxScannedBytes
+            ) {
+                break
+            }
+
+            scannedBytes +=
+                length
+
+            val usesMedia =
+                runCatching {
+                    file.readText(
+                        Charsets.UTF_8
+                    ).contains(
+                        "AppForgeMedia"
+                    )
+                }.getOrDefault(
+                    false
+                )
+
+            if (usesMedia) {
+                return true
+            }
+        }
+
+        return false
+    }
+
 
     private fun safeRelativePath(
         raw: String

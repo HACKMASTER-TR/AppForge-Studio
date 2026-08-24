@@ -866,6 +866,14 @@ ${qrManifestComponents}
         ? "assets/site"
         : null,
 
+    nativeBridge: {
+      mediaPlayer:
+        Boolean(
+          c.nativeBridge?.enabled &&
+          c.nativeBridge?.mediaPlayer
+        )
+    },
+
     conversion: {
       apkToExe:
         true,

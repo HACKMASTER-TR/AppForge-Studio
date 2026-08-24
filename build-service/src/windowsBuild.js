@@ -1060,6 +1060,14 @@ export async function executeWindowsBuild(
       startPage:
         startPage || "",
 
+      nativeBridge: {
+        mediaPlayer:
+          Boolean(
+            c.nativeBridge?.enabled &&
+            c.nativeBridge?.mediaPlayer
+          )
+      },
+
       conversion: {
         apkToExe:
           true,

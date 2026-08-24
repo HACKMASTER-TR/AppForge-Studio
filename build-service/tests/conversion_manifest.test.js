@@ -343,3 +343,76 @@ test(
     );
   }
 );
+
+
+test(
+  "Conversion preserves AppForgeMedia bridge",
+  async () => {
+    const files = [
+      fullEngine,
+      fastEngine,
+      new URL(
+        "../src/windowsBuild.js",
+        import.meta.url
+      ),
+      new URL(
+        "../../android-app/app/src/main/java/com/appforge/studio/io/AppForgeApkConversion.kt",
+        import.meta.url
+      ),
+      new URL(
+        "../../android-app/app/src/main/java/com/appforge/studio/io/AppForgeExeConversion.kt",
+        import.meta.url
+      ),
+      new URL(
+        "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        import.meta.url
+      )
+    ];
+
+    const texts =
+      await Promise.all(
+        files.map(
+          file =>
+            readFile(
+              file,
+              "utf8"
+            )
+        )
+      );
+
+    assert.equal(
+      texts[0].includes(
+        "mediaPlayer:"
+      ),
+      true
+    );
+
+    assert.equal(
+      texts[2].includes(
+        "mediaPlayer:"
+      ),
+      true
+    );
+
+    assert.equal(
+      texts[3].includes(
+        "containsAppForgeMedia"
+      ),
+      true
+    );
+
+    assert.equal(
+      texts[4].includes(
+        "containsAppForgeMedia"
+      ),
+      true
+    );
+
+    assert.equal(
+      texts[5].includes(
+        "converted.mediaPlayerBridge"
+      ),
+      true
+    );
+  }
+);

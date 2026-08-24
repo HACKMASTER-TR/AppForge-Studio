@@ -1520,6 +1520,9 @@ private fun AppForgeApp() {
                     versionCode =
                         converted.versionCode,
 
+                    mediaPlayerBridge =
+                        converted.mediaPlayerBridge,
+
                     buildOutput =
                         "exe",
 
@@ -1617,6 +1620,9 @@ private fun AppForgeApp() {
 
                     versionCode =
                         converted.versionCode,
+
+                    mediaPlayerBridge =
+                        converted.mediaPlayerBridge,
 
                     buildOutput =
                         "apk",

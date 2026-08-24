@@ -192,7 +192,7 @@ test(
         "conversionApkPicker",
         "conversionExePicker",
         "application/vnd.android.package-archive",
-        "application/x-msdownload",
+        'arrayOf("*/*")',
         '"Seçilen APK: $selectedApkName"',
         '"Seçilen EXE: $selectedExeName"'
       ]
