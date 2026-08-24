@@ -316,3 +316,34 @@ test(
     }
   }
 );
+
+
+test(
+  "Windows EXE embeds reversible AppForge conversion payload",
+  async () => {
+    const text =
+      await readFile(
+        engine,
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        "APPFORGE-EXE-V1!",
+        "AFEXEP01",
+        "appendAppForgeConversionPayload",
+        "writeBigUInt64BE",
+        "EXE_MAX_PAYLOAD_BYTES",
+        "projectRoot:",
+        "exeToApk:",
+        "EXE → APK dönüşüm paketi eklendi"
+      ]
+    ) {
+      assert.equal(
+        text.includes(marker),
+        true,
+        `Missing Windows conversion payload marker: ${marker}`
+      );
+    }
+  }
+);

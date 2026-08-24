@@ -638,6 +638,235 @@ async function findExe(
   );
 }
 
+const EXE_CONVERSION_MAGIC =
+  Buffer.from(
+    "APPFORGE-EXE-V1!",
+    "ascii"
+  );
+
+const EXE_PAYLOAD_MAGIC =
+  Buffer.from(
+    "AFEXEP01",
+    "ascii"
+  );
+
+const EXE_MAX_PAYLOAD_BYTES =
+  536_870_912;
+
+const EXE_MAX_MANIFEST_BYTES =
+  262_144;
+
+
+async function appendFileToFile(
+  sourcePath,
+  targetPath
+) {
+  const source =
+    await fs.open(
+      sourcePath,
+      "r"
+    );
+
+  const target =
+    await fs.open(
+      targetPath,
+      "a"
+    );
+
+  const buffer =
+    Buffer.allocUnsafe(
+      256 * 1024
+    );
+
+  try {
+    let position =
+      0;
+
+    while (true) {
+      const {
+        bytesRead
+      } =
+        await source.read(
+          buffer,
+          0,
+          buffer.length,
+          position
+        );
+
+      if (
+        bytesRead === 0
+      ) {
+        break;
+      }
+
+      let written =
+        0;
+
+      while (
+        written <
+        bytesRead
+      ) {
+        const result =
+          await target.write(
+            buffer,
+            written,
+            bytesRead - written,
+            null
+          );
+
+        if (
+          result.bytesWritten <= 0
+        ) {
+          throw new Error(
+            "EXE dönüşüm paketi yazılamadı."
+          );
+        }
+
+        written +=
+          result.bytesWritten;
+      }
+
+      position +=
+        bytesRead;
+    }
+
+  } finally {
+    await source.close();
+
+    await target.close();
+  }
+}
+
+
+async function appendAppForgeConversionPayload(
+  exePath,
+  manifest,
+  projectZip
+) {
+  const manifestBytes =
+    Buffer.from(
+      JSON.stringify(
+        manifest
+      ),
+      "utf8"
+    );
+
+  if (
+    manifestBytes.length >
+    EXE_MAX_MANIFEST_BYTES
+  ) {
+    throw new Error(
+      "EXE dönüşüm manifesti çok büyük."
+    );
+  }
+
+  if (
+    manifest.sourceMode ===
+      "LOCAL" &&
+    !projectZip
+  ) {
+    throw new Error(
+      "Yerel EXE dönüşüm projesi eksik."
+    );
+  }
+
+  const projectBytes =
+    projectZip
+      ? (
+          await fs.stat(
+            projectZip
+          )
+        ).size
+      : 0;
+
+  /*
+   * Payload yapısı:
+   *
+   * AFEXEP01        8 byte
+   * manifestLength  4 byte uint32 BE
+   * manifest JSON
+   * project.zip     LOCAL ise
+   *
+   * Ardından footer:
+   *
+   * payloadLength   8 byte uint64 BE
+   * APPFORGE-EXE-V1! 16 byte
+   */
+  const payloadLength =
+    12 +
+    manifestBytes.length +
+    projectBytes;
+
+  if (
+    payloadLength >
+    EXE_MAX_PAYLOAD_BYTES
+  ) {
+    throw new Error(
+      "EXE dönüşüm paketi 512 MB sınırını aşıyor."
+    );
+  }
+
+  const payloadHeader =
+    Buffer.alloc(
+      12
+    );
+
+  EXE_PAYLOAD_MAGIC.copy(
+    payloadHeader,
+    0
+  );
+
+  payloadHeader.writeUInt32BE(
+    manifestBytes.length,
+    8
+  );
+
+  await fs.appendFile(
+    exePath,
+    payloadHeader
+  );
+
+  await fs.appendFile(
+    exePath,
+    manifestBytes
+  );
+
+  if (
+    projectZip
+  ) {
+    await appendFileToFile(
+      projectZip,
+      exePath
+    );
+  }
+
+  const footer =
+    Buffer.alloc(
+      8 +
+      EXE_CONVERSION_MAGIC.length
+    );
+
+  footer.writeBigUInt64BE(
+    BigInt(
+      payloadLength
+    ),
+    0
+  );
+
+  EXE_CONVERSION_MAGIC.copy(
+    footer,
+    8
+  );
+
+  await fs.appendFile(
+    exePath,
+    footer
+  );
+
+  return payloadLength;
+}
+
+
 export async function executeWindowsBuild(
   job
 ) {
@@ -775,6 +1004,12 @@ export async function executeWindowsBuild(
       formatVersion:
         1,
 
+      producer:
+        "AppForge Studio",
+
+      platform:
+        "windows",
+
       appName:
         c.appName,
 
@@ -784,8 +1019,20 @@ export async function executeWindowsBuild(
       versionName:
         c.versionName,
 
+      versionCode:
+        Math.max(
+          1,
+          Number(
+            c.versionCode ||
+            1
+          )
+        ),
+
       sourceMode:
-        c.sourceMode,
+        c.sourceMode ===
+          "URL"
+          ? "URL"
+          : "LOCAL",
 
       webUrl:
         c.sourceMode ===
@@ -793,8 +1040,22 @@ export async function executeWindowsBuild(
           ? c.webUrl
           : "",
 
+      projectRoot:
+        c.sourceMode ===
+          "LOCAL"
+          ? "project.zip"
+          : null,
+
       startPage:
         startPage || "",
+
+      conversion: {
+        apkToExe:
+          true,
+
+        exeToApk:
+          true
+      },
 
       createdBy:
         "AppForge Studio",
@@ -1992,6 +2253,21 @@ app.on(
           "dist"
         )
       );
+
+    const conversionPayloadBytes =
+      await appendAppForgeConversionPayload(
+        exe,
+        manifest,
+        uploadedProject
+      );
+
+    await log(
+      buildId,
+      `🔁 EXE → APK dönüşüm paketi eklendi (${Math.ceil(
+        conversionPayloadBytes /
+        1024
+      )} KB).`
+    );
 
     const outputName =
       `${safeFileName(
