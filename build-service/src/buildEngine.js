@@ -1703,11 +1703,60 @@ class AppForgeMediaService :
         mediaSession
 
 
+    private fun validCommandToken(
+        intent: Intent?
+    ): Boolean {
+
+        val expected =
+            getSharedPreferences(
+                "appforge_media_security",
+                MODE_PRIVATE
+            )
+                .getString(
+                    "command_token",
+                    ""
+                )
+                .orEmpty()
+
+        val provided =
+            intent
+                ?.getStringExtra(
+                    "appforgeToken"
+                )
+                .orEmpty()
+
+        return (
+            expected.isNotBlank() &&
+            provided == expected
+        )
+    }
+
+
     override fun onStartCommand(
         intent: Intent?,
         flags: Int,
         startId: Int
     ): Int {
+
+        val action =
+            intent
+                ?.action
+                .orEmpty()
+
+        val isAppForgeCommand =
+            action.startsWith(
+                "${pkg}.appforge.media."
+            )
+
+        if (
+            isAppForgeCommand &&
+            !validCommandToken(
+                intent
+            )
+        ) {
+            return START_NOT_STICKY
+        }
+
 
         val result =
             super.onStartCommand(
@@ -1718,7 +1767,7 @@ class AppForgeMediaService :
 
 
         when (
-            intent?.action
+            action
         ) {
 
             ACTION_PLAY_ITEM -> {
@@ -2750,6 +2799,186 @@ function generatedMainActivity(c, pkg) {
 ` : "";
 
 
+  const mediaFunctions =
+    c.nativeBridge?.enabled &&
+    c.nativeBridge?.mediaPlayer
+      ? `
+    private fun mediaCommandToken(): String {
+
+        val prefs =
+            getSharedPreferences(
+                "appforge_media_security",
+                MODE_PRIVATE
+            )
+
+        val existing =
+            prefs
+                .getString(
+                    "command_token",
+                    null
+                )
+
+        if (
+            !existing.isNullOrBlank()
+        ) {
+            return existing
+        }
+
+        val created =
+            java.util.UUID
+                .randomUUID()
+                .toString()
+
+        prefs
+            .edit()
+            .putString(
+                "command_token",
+                created
+            )
+            .apply()
+
+        return created
+    }
+
+
+    private fun supportedMediaUrl(
+        value: String
+    ): Boolean {
+
+        val uri =
+            runCatching {
+                Uri.parse(
+                    value
+                )
+            }.getOrNull()
+                ?: return false
+
+        val scheme =
+            uri
+                .scheme
+                ?.lowercase()
+                .orEmpty()
+
+        return (
+            scheme == "https" ||
+            scheme == "asset"
+        )
+    }
+
+
+    private fun mediaIntent(
+        action: String
+    ): Intent =
+        Intent(
+            this,
+            AppForgeMediaService::class.java
+        ).apply {
+
+            this.action =
+                action
+
+            putExtra(
+                "appforgeToken",
+                mediaCommandToken()
+            )
+        }
+
+
+    private fun startMediaCommand(
+        intent: Intent,
+        foreground: Boolean
+    ) {
+
+        runCatching {
+
+            if (
+                foreground
+            ) {
+                ContextCompat
+                    .startForegroundService(
+                        this,
+                        intent
+                    )
+            } else {
+                startService(
+                    intent
+                )
+            }
+
+        }.onFailure {
+            error ->
+
+            dispatchEvent(
+                "appforge-media-error",
+                JSONObject()
+                    .put(
+                        "message",
+                        error.message
+                            ?: "Medya komutu çalıştırılamadı."
+                    )
+                    .toString()
+            )
+        }
+    }
+
+
+    private fun mediaStateJson(): String {
+
+        val prefs =
+            getSharedPreferences(
+                "appforge_media_state",
+                MODE_PRIVATE
+            )
+
+        return JSONObject()
+            .put(
+                "playing",
+                prefs.getBoolean(
+                    "playing",
+                    false
+                )
+            )
+            .put(
+                "index",
+                prefs.getInt(
+                    "index",
+                    0
+                )
+            )
+            .put(
+                "count",
+                prefs.getInt(
+                    "count",
+                    0
+                )
+            )
+            .put(
+                "position",
+                prefs.getLong(
+                    "position",
+                    0L
+                )
+            )
+            .put(
+                "title",
+                prefs.getString(
+                    "title",
+                    ""
+                ).orEmpty()
+            )
+            .put(
+                "artist",
+                prefs.getString(
+                    "artist",
+                    ""
+                ).orEmpty()
+            )
+            .toString()
+    }
+`
+      : "";
+
+
   const bridgeClass =
     bridgeEnabled
       ? `
@@ -2948,6 +3177,299 @@ function generatedMainActivity(c, pkg) {
                         duration
                     )
                 }
+            }
+            ` : ""}
+
+            ${c.nativeBridge?.mediaPlayer ? `
+            "mediaPlay" -> {
+
+                val url =
+                    bridgeString(
+                        args,
+                        "url",
+                        8192
+                    )
+
+                if (
+                    !supportedMediaUrl(
+                        url
+                    )
+                ) {
+                    bridgeError(
+                        "Medya URL'si geçersiz. HTTPS gerekli."
+                    )
+
+                    return
+                }
+
+                var artwork =
+                    bridgeString(
+                        args,
+                        "artwork",
+                        8192
+                    )
+
+                if (
+                    artwork.isNotBlank() &&
+                    !supportedMediaUrl(
+                        artwork
+                    )
+                ) {
+                    artwork =
+                        ""
+                }
+
+                val intent =
+                    mediaIntent(
+                        AppForgeMediaService
+                            .ACTION_PLAY_ITEM
+                    )
+                        .putExtra(
+                            "url",
+                            url
+                        )
+                        .putExtra(
+                            "title",
+                            bridgeString(
+                                args,
+                                "title",
+                                500
+                            )
+                        )
+                        .putExtra(
+                            "artist",
+                            bridgeString(
+                                args,
+                                "artist",
+                                500
+                            )
+                        )
+                        .putExtra(
+                            "artwork",
+                            artwork
+                        )
+
+                startMediaCommand(
+                    intent,
+                    true
+                )
+            }
+
+
+            "mediaSetPlaylist" -> {
+
+                val source =
+                    args.optJSONArray(
+                        "items"
+                    )
+
+                if (
+                    source == null ||
+                    source.length() == 0
+                ) {
+                    bridgeError(
+                        "Medya listesi boş."
+                    )
+
+                    return
+                }
+
+                val cleaned =
+                    org.json.JSONArray()
+
+                val limit =
+                    minOf(
+                        source.length(),
+                        250
+                    )
+
+                for (
+                    index in
+                    0 until limit
+                ) {
+
+                    val item =
+                        source
+                            .optJSONObject(
+                                index
+                            )
+                            ?: continue
+
+                    val url =
+                        bridgeString(
+                            item,
+                            "url",
+                            8192
+                        )
+
+                    if (
+                        !supportedMediaUrl(
+                            url
+                        )
+                    ) {
+                        continue
+                    }
+
+                    var artwork =
+                        bridgeString(
+                            item,
+                            "artwork",
+                            8192
+                        )
+
+                    if (
+                        artwork.isNotBlank() &&
+                        !supportedMediaUrl(
+                            artwork
+                        )
+                    ) {
+                        artwork =
+                            ""
+                    }
+
+                    cleaned.put(
+                        JSONObject()
+                            .put(
+                                "url",
+                                url
+                            )
+                            .put(
+                                "title",
+                                bridgeString(
+                                    item,
+                                    "title",
+                                    500
+                                )
+                            )
+                            .put(
+                                "artist",
+                                bridgeString(
+                                    item,
+                                    "artist",
+                                    500
+                                )
+                            )
+                            .put(
+                                "artwork",
+                                artwork
+                            )
+                    )
+                }
+
+                if (
+                    cleaned.length() == 0
+                ) {
+                    bridgeError(
+                        "Geçerli medya bulunamadı."
+                    )
+
+                    return
+                }
+
+                val requestedIndex =
+                    args.optInt(
+                        "startIndex",
+                        0
+                    )
+
+                val safeIndex =
+                    requestedIndex
+                        .coerceIn(
+                            0,
+                            cleaned.length() - 1
+                        )
+
+                val autoplay =
+                    args.optBoolean(
+                        "autoplay",
+                        true
+                    )
+
+                val intent =
+                    mediaIntent(
+                        AppForgeMediaService
+                            .ACTION_SET_PLAYLIST
+                    )
+                        .putExtra(
+                            "playlist",
+                            cleaned.toString()
+                        )
+                        .putExtra(
+                            "startIndex",
+                            safeIndex
+                        )
+                        .putExtra(
+                            "autoplay",
+                            autoplay
+                        )
+
+                startMediaCommand(
+                    intent,
+                    autoplay
+                )
+            }
+
+
+            "mediaPause" -> {
+                startMediaCommand(
+                    mediaIntent(
+                        AppForgeMediaService
+                            .ACTION_PAUSE
+                    ),
+                    false
+                )
+            }
+
+
+            "mediaResume" -> {
+                startMediaCommand(
+                    mediaIntent(
+                        AppForgeMediaService
+                            .ACTION_PLAY
+                    ),
+                    true
+                )
+            }
+
+
+            "mediaNext" -> {
+                startMediaCommand(
+                    mediaIntent(
+                        AppForgeMediaService
+                            .ACTION_NEXT
+                    ),
+                    false
+                )
+            }
+
+
+            "mediaPrevious" -> {
+                startMediaCommand(
+                    mediaIntent(
+                        AppForgeMediaService
+                            .ACTION_PREVIOUS
+                    ),
+                    false
+                )
+            }
+
+
+            "mediaStop" -> {
+                startMediaCommand(
+                    mediaIntent(
+                        AppForgeMediaService
+                            .ACTION_STOP
+                    ),
+                    false
+                )
+            }
+
+
+            "mediaState" -> {
+                dispatchEvent(
+                    "appforge-media-state",
+                    mediaStateJson()
+                )
             }
             ` : ""}
 
@@ -3204,7 +3726,235 @@ function generatedMainActivity(c, pkg) {
     window.AppForgeNative.postMessage(payload);
   }
 
+  ${c.nativeBridge?.mediaPlayer ? `
+  function mediaUrl(value, allowBlank = false) {
+    const text =
+      safeText(
+        value,
+        8192
+      ).trim();
+
+    if (
+      !text &&
+      allowBlank
+    ) {
+      return "";
+    }
+
+    if (!text) {
+      throw new Error(
+        "Medya URL'si boş."
+      );
+    }
+
+    const resolved =
+      new URL(
+        text,
+        document.baseURI
+      );
+
+    if (
+      resolved.protocol !==
+      "https:"
+    ) {
+      throw new Error(
+        "Medya URL'si HTTPS olmalı."
+      );
+    }
+
+    return resolved.href;
+  }
+
+
+  const mediaBridge =
+    Object.freeze({
+
+      play(
+        url,
+        title = "",
+        artist = "",
+        artwork = ""
+      ) {
+        send(
+          "mediaPlay",
+          {
+            url:
+              mediaUrl(url),
+
+            title:
+              safeText(
+                title,
+                500
+              ),
+
+            artist:
+              safeText(
+                artist,
+                500
+              ),
+
+            artwork:
+              artwork
+                ? mediaUrl(
+                    artwork
+                  )
+                : ""
+          }
+        );
+      },
+
+
+      setPlaylist(
+        items,
+        startIndex = 0,
+        autoplay = true
+      ) {
+
+        if (
+          !Array.isArray(
+            items
+          )
+        ) {
+          throw new Error(
+            "Playlist bir dizi olmalı."
+          );
+        }
+
+        const cleaned = [];
+
+        for (
+          const item of
+          items.slice(
+            0,
+            250
+          )
+        ) {
+
+          if (
+            !item ||
+            typeof item !==
+              "object"
+          ) {
+            continue;
+          }
+
+          try {
+            cleaned.push({
+              url:
+                mediaUrl(
+                  item.url
+                ),
+
+              title:
+                safeText(
+                  item.title,
+                  500
+                ),
+
+              artist:
+                safeText(
+                  item.artist,
+                  500
+                ),
+
+              artwork:
+                item.artwork
+                  ? mediaUrl(
+                      item.artwork
+                    )
+                  : ""
+            });
+          } catch {}
+        }
+
+        if (
+          cleaned.length ===
+          0
+        ) {
+          throw new Error(
+            "Playlist içinde geçerli medya yok."
+          );
+        }
+
+        const index =
+          Math.max(
+            0,
+            Math.min(
+              cleaned.length - 1,
+              Math.trunc(
+                Number(
+                  startIndex
+                ) || 0
+              )
+            )
+          );
+
+        send(
+          "mediaSetPlaylist",
+          {
+            items:
+              cleaned,
+
+            startIndex:
+              index,
+
+            autoplay:
+              autoplay !== false
+          }
+        );
+      },
+
+
+      pause() {
+        send(
+          "mediaPause"
+        );
+      },
+
+
+      resume() {
+        send(
+          "mediaResume"
+        );
+      },
+
+
+      next() {
+        send(
+          "mediaNext"
+        );
+      },
+
+
+      previous() {
+        send(
+          "mediaPrevious"
+        );
+      },
+
+
+      stop() {
+        send(
+          "mediaStop"
+        );
+      },
+
+
+      state() {
+        send(
+          "mediaState"
+        );
+      }
+    });
+  ` : ""}
+
+
   const bridge = {
+    ${c.nativeBridge?.mediaPlayer ? `
+    media:
+      mediaBridge,
+    ` : ""}
+
     ${c.nativeBridge?.share ? `share(title, text) {
       send("share", {
         title: safeText(title, 400),
@@ -3287,6 +4037,21 @@ function generatedMainActivity(c, pkg) {
       writable: false
     }
   );
+
+  ${c.nativeBridge?.mediaPlayer ? `
+  Object.defineProperty(
+    window,
+    "AppForgeMedia",
+    {
+      value:
+        mediaBridge,
+      configurable:
+        false,
+      writable:
+        false
+    }
+  );
+  ` : ""}
 
   window.addEventListener(
     "appforge-ads-removed",
@@ -4031,6 +4796,7 @@ ${fileChooserLauncher}
 ${geoLauncher}
 ${notificationLauncher}
 ${bridgeClass}
+${mediaFunctions}
 ${qrFunctions}
 ${adFunctions}
 ${adsSetupFunction}
