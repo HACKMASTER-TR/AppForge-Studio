@@ -815,6 +815,836 @@ export async function executeWindowsBuild(
       )
     );
 
+    const preloadSource =
+`"use strict";
+
+const {
+  contextBridge
+} = require("electron");
+
+const APP_VERSION =
+  ${JSON.stringify(
+    String(
+      c.versionName ||
+      "1.0.0"
+    )
+  )};
+
+let audio =
+  null;
+
+let playlist =
+  [];
+
+let currentIndex =
+  -1;
+
+
+function safeText(
+  value,
+  maxLength
+) {
+  return String(
+    value == null
+      ? ""
+      : value
+  ).slice(
+    0,
+    maxLength
+  );
+}
+
+
+function mediaUrl(
+  value
+) {
+  const text =
+    safeText(
+      value,
+      8192
+    ).trim();
+
+  if (!text) {
+    throw new Error(
+      "Medya URL'si boş."
+    );
+  }
+
+  const resolved =
+    new URL(
+      text,
+      document.baseURI
+    );
+
+  if (
+    resolved.protocol !==
+    "https:"
+  ) {
+    throw new Error(
+      "Medya URL'si HTTPS olmalı."
+    );
+  }
+
+  return resolved.href;
+}
+
+
+function dispatch(
+  name,
+  detail
+) {
+  try {
+    window.dispatchEvent(
+      new CustomEvent(
+        name,
+        {
+          detail
+        }
+      )
+    );
+  } catch {}
+}
+
+
+function currentItem() {
+  if (
+    currentIndex < 0 ||
+    currentIndex >=
+      playlist.length
+  ) {
+    return null;
+  }
+
+  return playlist[
+    currentIndex
+  ];
+}
+
+
+function stateObject() {
+  const item =
+    currentItem();
+
+  const position =
+    audio &&
+    Number.isFinite(
+      audio.currentTime
+    )
+      ? Math.max(
+          0,
+          Math.round(
+            audio.currentTime *
+            1000
+          )
+        )
+      : 0;
+
+  return {
+    playing:
+      Boolean(
+        audio &&
+        !audio.paused &&
+        !audio.ended
+      ),
+
+    index:
+      currentIndex < 0
+        ? 0
+        : currentIndex,
+
+    count:
+      playlist.length,
+
+    position,
+
+    title:
+      item
+        ? item.title
+        : "",
+
+    artist:
+      item
+        ? item.artist
+        : ""
+  };
+}
+
+
+function emitState() {
+  dispatch(
+    "appforge-media-state",
+    stateObject()
+  );
+}
+
+
+function emitError(
+  error
+) {
+  dispatch(
+    "appforge-media-error",
+    {
+      message:
+        safeText(
+          error &&
+          error.message
+            ? error.message
+            : error,
+          600
+        )
+    }
+  );
+}
+
+
+function updateMediaSessionState() {
+  if (
+    !audio ||
+    !navigator.mediaSession
+  ) {
+    return;
+  }
+
+  try {
+    navigator.mediaSession
+      .playbackState =
+        audio.paused
+          ? "paused"
+          : "playing";
+  } catch {}
+
+  try {
+    if (
+      typeof navigator
+        .mediaSession
+        .setPositionState ===
+        "function" &&
+      Number.isFinite(
+        audio.duration
+      ) &&
+      audio.duration > 0 &&
+      Number.isFinite(
+        audio.currentTime
+      )
+    ) {
+      navigator.mediaSession
+        .setPositionState({
+          duration:
+            audio.duration,
+
+          playbackRate:
+            Number.isFinite(
+              audio.playbackRate
+            )
+              ? audio.playbackRate
+              : 1,
+
+          position:
+            Math.min(
+              audio.duration,
+              Math.max(
+                0,
+                audio.currentTime
+              )
+            )
+        });
+    }
+  } catch {}
+}
+
+
+function applyMetadata(
+  item
+) {
+  if (
+    !navigator.mediaSession ||
+    typeof MediaMetadata !==
+      "function"
+  ) {
+    return;
+  }
+
+  try {
+    navigator.mediaSession
+      .metadata =
+        new MediaMetadata({
+          title:
+            item.title ||
+            "",
+
+          artist:
+            item.artist ||
+            "",
+
+          album:
+            "",
+
+          artwork:
+            item.artwork
+              ? [
+                  {
+                    src:
+                      item.artwork
+                  }
+                ]
+              : []
+        });
+  } catch {}
+}
+
+
+function ensureAudio() {
+  if (audio) {
+    return audio;
+  }
+
+  audio =
+    new Audio();
+
+  audio.preload =
+    "metadata";
+
+  audio.addEventListener(
+    "play",
+    () => {
+      updateMediaSessionState();
+      emitState();
+    }
+  );
+
+  audio.addEventListener(
+    "pause",
+    () => {
+      updateMediaSessionState();
+      emitState();
+    }
+  );
+
+  audio.addEventListener(
+    "loadedmetadata",
+    () => {
+      updateMediaSessionState();
+      emitState();
+    }
+  );
+
+  audio.addEventListener(
+    "timeupdate",
+    () => {
+      updateMediaSessionState();
+    }
+  );
+
+  audio.addEventListener(
+    "error",
+    () => {
+      emitError(
+        "Windows medya oynatıcısı dosyayı açamadı."
+      );
+    }
+  );
+
+  audio.addEventListener(
+    "ended",
+    () => {
+      if (
+        currentIndex + 1 <
+        playlist.length
+      ) {
+        playIndex(
+          currentIndex + 1,
+          true
+        );
+      } else {
+        updateMediaSessionState();
+        emitState();
+      }
+    }
+  );
+
+  return audio;
+}
+
+
+function playIndex(
+  index,
+  autoplay = true
+) {
+  if (
+    index < 0 ||
+    index >=
+      playlist.length
+  ) {
+    return;
+  }
+
+  currentIndex =
+    index;
+
+  const item =
+    playlist[
+      currentIndex
+    ];
+
+  const player =
+    ensureAudio();
+
+  player.src =
+    item.url;
+
+  player.load();
+
+  applyMetadata(
+    item
+  );
+
+  if (
+    autoplay !== false
+  ) {
+    player
+      .play()
+      .catch(
+        emitError
+      );
+  } else {
+    player.pause();
+    emitState();
+  }
+}
+
+
+const mediaBridge = {
+
+  play(
+    url,
+    title = "",
+    artist = "",
+    artwork = ""
+  ) {
+    const item = {
+      url:
+        mediaUrl(
+          url
+        ),
+
+      title:
+        safeText(
+          title,
+          500
+        ),
+
+      artist:
+        safeText(
+          artist,
+          500
+        ),
+
+      artwork:
+        artwork
+          ? mediaUrl(
+              artwork
+            )
+          : ""
+    };
+
+    playlist =
+      [
+        item
+      ];
+
+    playIndex(
+      0,
+      true
+    );
+  },
+
+
+  setPlaylist(
+    items,
+    startIndex = 0,
+    autoplay = true
+  ) {
+    if (
+      !Array.isArray(
+        items
+      )
+    ) {
+      throw new Error(
+        "Playlist bir dizi olmalı."
+      );
+    }
+
+    const cleaned =
+      [];
+
+    for (
+      const item of
+      items.slice(
+        0,
+        250
+      )
+    ) {
+      if (
+        !item ||
+        typeof item !==
+          "object"
+      ) {
+        continue;
+      }
+
+      try {
+        cleaned.push({
+          url:
+            mediaUrl(
+              item.url
+            ),
+
+          title:
+            safeText(
+              item.title,
+              500
+            ),
+
+          artist:
+            safeText(
+              item.artist,
+              500
+            ),
+
+          artwork:
+            item.artwork
+              ? mediaUrl(
+                  item.artwork
+                )
+              : ""
+        });
+      } catch {}
+    }
+
+    if (
+      cleaned.length ===
+      0
+    ) {
+      throw new Error(
+        "Playlist içinde geçerli medya yok."
+      );
+    }
+
+    playlist =
+      cleaned;
+
+    const index =
+      Math.max(
+        0,
+        Math.min(
+          playlist.length - 1,
+          Math.trunc(
+            Number(
+              startIndex
+            ) || 0
+          )
+        )
+      );
+
+    playIndex(
+      index,
+      autoplay !== false
+    );
+  },
+
+
+  pause() {
+    const player =
+      ensureAudio();
+
+    player.pause();
+  },
+
+
+  resume() {
+    const player =
+      ensureAudio();
+
+    if (
+      !player.src &&
+      playlist.length > 0
+    ) {
+      playIndex(
+        Math.max(
+          0,
+          currentIndex
+        ),
+        true
+      );
+
+      return;
+    }
+
+    player
+      .play()
+      .catch(
+        emitError
+      );
+  },
+
+
+  next() {
+    if (
+      currentIndex + 1 <
+      playlist.length
+    ) {
+      playIndex(
+        currentIndex + 1,
+        true
+      );
+    }
+  },
+
+
+  previous() {
+    if (
+      currentIndex > 0
+    ) {
+      playIndex(
+        currentIndex - 1,
+        true
+      );
+    }
+  },
+
+
+  stop() {
+    if (audio) {
+      audio.pause();
+
+      try {
+        audio.currentTime =
+          0;
+      } catch {}
+
+      audio.removeAttribute(
+        "src"
+      );
+
+      audio.load();
+    }
+
+    playlist =
+      [];
+
+    currentIndex =
+      -1;
+
+    try {
+      if (
+        navigator.mediaSession
+      ) {
+        navigator.mediaSession
+          .metadata =
+            null;
+
+        navigator.mediaSession
+          .playbackState =
+            "none";
+      }
+    } catch {}
+
+    emitState();
+  },
+
+
+  state() {
+    const state =
+      stateObject();
+
+    dispatch(
+      "appforge-media-state",
+      state
+    );
+
+    return state;
+  }
+};
+
+
+function mediaAction(
+  name,
+  handler
+) {
+  if (
+    !navigator.mediaSession
+  ) {
+    return;
+  }
+
+  try {
+    navigator.mediaSession
+      .setActionHandler(
+        name,
+        handler
+      );
+  } catch {}
+}
+
+
+mediaAction(
+  "play",
+  () =>
+    mediaBridge.resume()
+);
+
+mediaAction(
+  "pause",
+  () =>
+    mediaBridge.pause()
+);
+
+mediaAction(
+  "nexttrack",
+  () =>
+    mediaBridge.next()
+);
+
+mediaAction(
+  "previoustrack",
+  () =>
+    mediaBridge.previous()
+);
+
+mediaAction(
+  "stop",
+  () =>
+    mediaBridge.stop()
+);
+
+mediaAction(
+  "seekbackward",
+  details => {
+    const player =
+      ensureAudio();
+
+    const offset =
+      Number(
+        details &&
+        details.seekOffset
+      ) || 10;
+
+    try {
+      player.currentTime =
+        Math.max(
+          0,
+          player.currentTime -
+          offset
+        );
+    } catch {}
+  }
+);
+
+mediaAction(
+  "seekforward",
+  details => {
+    const player =
+      ensureAudio();
+
+    const offset =
+      Number(
+        details &&
+        details.seekOffset
+      ) || 10;
+
+    try {
+      const target =
+        player.currentTime +
+        offset;
+
+      player.currentTime =
+        Number.isFinite(
+          player.duration
+        )
+          ? Math.min(
+              player.duration,
+              target
+            )
+          : target;
+    } catch {}
+  }
+);
+
+mediaAction(
+  "seekto",
+  details => {
+    const player =
+      ensureAudio();
+
+    const target =
+      Number(
+        details &&
+        details.seekTime
+      );
+
+    if (
+      Number.isFinite(
+        target
+      )
+    ) {
+      try {
+        player.currentTime =
+          Math.max(
+            0,
+            target
+          );
+      } catch {}
+    }
+  }
+);
+
+
+const frozenMedia =
+  Object.freeze(
+    mediaBridge
+  );
+
+
+contextBridge
+  .exposeInMainWorld(
+    "AppForgeMedia",
+    frozenMedia
+  );
+
+
+try {
+  contextBridge
+    .exposeInMainWorld(
+      "AppForge",
+      Object.freeze({
+        media:
+          frozenMedia,
+
+        platform() {
+          return "windows";
+        },
+
+        appVersion() {
+          return APP_VERSION;
+        },
+
+        adsRemoved() {
+          return false;
+        }
+      })
+    );
+} catch {}
+
+
+dispatch(
+  "appforge-media-ready",
+  {
+    platform:
+      "windows"
+  }
+);
+`;
+
     const mainSource =
 `const {
   app,
@@ -850,10 +1680,16 @@ function createWindow() {
         )},
       autoHideMenuBar: true,
       webPreferences: {
+        preload:
+          path.join(
+            __dirname,
+            "preload.cjs"
+          ),
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: true,
-        webSecurity: true
+        webSecurity: true,
+        backgroundThrottling: false
       }
     });
 
@@ -935,6 +1771,19 @@ app.on(
     await fs.writeFile(
       path.join(
         appDir,
+        "preload.cjs"
+      ),
+      preloadSource
+    );
+
+    await log(
+      buildId,
+      "🎵 Windows AppForgeMedia + MediaSession bridge hazır."
+    );
+
+    await fs.writeFile(
+      path.join(
+        appDir,
         "before-build.cjs"
       ),
       `exports.default = async function () {
@@ -968,6 +1817,7 @@ app.on(
 
         files: [
           "main.cjs",
+          "preload.cjs",
           "site/**/*",
           "appforge-project.json"
         ],
@@ -999,6 +1849,7 @@ app.on(
 
         files: [
           "main.cjs",
+          "preload.cjs",
           "appforge-project.json",
           "site/**/*"
         ],

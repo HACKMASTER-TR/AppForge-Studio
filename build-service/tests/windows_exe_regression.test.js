@@ -250,3 +250,35 @@ test(
     );
   }
 );
+
+
+test(
+  "Windows EXE exposes AppForgeMedia and MediaSession bridge",
+  async () => {
+    const text =
+      await readFile(
+        engine,
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        '"preload.cjs"',
+        'contextBridge',
+        '"AppForgeMedia"',
+        '"appforge-media-state"',
+        'navigator.mediaSession',
+        '"nexttrack"',
+        '"previoustrack"',
+        'backgroundThrottling: false',
+        'Windows AppForgeMedia + MediaSession bridge hazır'
+      ]
+    ) {
+      assert.equal(
+        text.includes(marker),
+        true,
+        `Missing Windows media marker: ${marker}`
+      );
+    }
+  }
+);
