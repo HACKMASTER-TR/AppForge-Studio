@@ -236,7 +236,7 @@ test(
 );
 
 test(
-  "Windows portable EXE uses balanced compression",
+  "Windows portable EXE uses low-memory compression",
   async () => {
     const text =
       await readFile(
@@ -246,7 +246,7 @@ test(
 
     assert.match(
       text,
-      /compression:\s*\n\s*"normal"/
+      /compression:\s*\n\s*"store"/
     );
   }
 );
