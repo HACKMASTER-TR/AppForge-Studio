@@ -2482,7 +2482,7 @@ private fun AppForgeApp() {
                     )
 
                     LinearProgressIndicator(
-                        progress = { step / 9f },
+                        progress = { step / 10f },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -2560,15 +2560,17 @@ private fun AppForgeApp() {
                                 sourcePicker.launch(arrayOf("text/html", "application/zip", "application/octet-stream"))
                             }
 
-                            2 -> FeaturesStep(draft) { draft = it }
+                            2 -> PermissionsStep(draft) { draft = it }
 
-                            3 -> AppearanceStep(draft, { draft = it }) {
+                            3 -> FeaturesStep(draft) { draft = it }
+
+                            4 -> AppearanceStep(draft, { draft = it }) {
                                 iconPicker.launch(arrayOf("image/png"))
                             }
 
-                            4 -> NativeBridgeStep(draft) { draft = it }
+                            5 -> NativeBridgeStep(draft) { draft = it }
 
-                            5 -> MonetizationStep(
+                            6 -> MonetizationStep(
                                 draft = draft,
                                 update = { draft = it },
                                 onPickFirebase = {
@@ -2576,16 +2578,16 @@ private fun AppForgeApp() {
                                 }
                             )
 
-                            6 -> DeepLinkStep(draft) { draft = it }
+                            7 -> DeepLinkStep(draft) { draft = it }
 
-                            7 -> SigningStep(draft, { draft = it }) {
+                            8 -> SigningStep(draft, { draft = it }) {
                                 keystorePicker.launch(arrayOf(
                                     "application/octet-stream",
                                     "application/x-java-keystore"
                                 ))
                             }
 
-                            8 -> BuildSettingsStep(
+                            9 -> BuildSettingsStep(
                                 draft = draft,
                                 update = { draft = it },
                                 serverUrl = serverUrl,
@@ -2677,11 +2679,11 @@ private fun AppForgeApp() {
                         Button(
                             enabled =
                                 !(
-                                    step == 9 &&
+                                    step == 10 &&
                                     buildBusy
                                 ),
                             onClick = {
-                                if (step < 9) {
+                                if (step < 10) {
                                     step++
                                 } else {
                                     startBuildWithDraft(
@@ -2696,7 +2698,7 @@ private fun AppForgeApp() {
                         ) {
                             Text(
                                 when {
-                                    step < 9 ->
+                                    step < 10 ->
                                         "Devam"
 
                                     buildBusy ->
@@ -8617,6 +8619,140 @@ private fun SourceStep(
 }
 
 @Composable
+private fun PermissionsStep(
+    d: ProjectDraft,
+    update: (ProjectDraft) -> Unit
+) {
+    val permissionCount =
+        listOf(
+            d.camera,
+            d.location,
+            d.notifications
+        ).count { it }
+
+    LazyColumn(
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement =
+            Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Section(
+                "2. İzinler",
+                "Uygulamanın ihtiyaç duyduğu Android izinlerini seç."
+            )
+        }
+
+        item {
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = Card2
+                    ),
+                shape =
+                    RoundedCornerShape(18.dp),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(16.dp),
+                    verticalArrangement =
+                        Arrangement.spacedBy(7.dp)
+                ) {
+                    Text(
+                        "İzin özeti",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Text(
+                        "$permissionCount isteğe bağlı izin seçili",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            13.sp
+                    )
+
+                    Text(
+                        "✓ INTERNET • Otomatik",
+                        color =
+                            Accent,
+                        fontSize =
+                            12.sp,
+                        fontWeight =
+                            FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title = "Kamera",
+                description =
+                    "Web uygulamasının kameradan fotoğraf çekmesini sağlar.",
+                checked = d.camera,
+                permission = "CAMERA"
+            ) {
+                update(
+                    d.copy(
+                        camera = it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title = "Konum",
+                description =
+                    "Web uygulamasının cihaz konumunu istemesini sağlar.",
+                checked = d.location,
+                permission =
+                    "ACCESS_FINE_LOCATION"
+            ) {
+                update(
+                    d.copy(
+                        location = it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title = "Bildirimler",
+                description =
+                    "Android 13+ cihazlarda bildirim iznini etkinleştirir.",
+                checked =
+                    d.notifications,
+                permission =
+                    "POST_NOTIFICATIONS"
+            ) {
+                update(
+                    d.copy(
+                        notifications = it
+                    )
+                )
+            }
+        }
+
+        item {
+            NoteCard(
+                "AppForge geniş depolama izni istemez. Dosya işlemleri modern Android dosya seçicileriyle yapılır."
+            )
+        }
+
+        item {
+            NoteCard(
+                "Media3 etkinse gerekli medya ve arka plan servis izinleri build sırasında otomatik eklenir."
+            )
+        }
+    }
+}
+
+
+@Composable
 private fun FeaturesStep(
     d: ProjectDraft,
     update: (ProjectDraft) -> Unit
@@ -8646,7 +8782,7 @@ private fun FeaturesStep(
     ) {
         item {
             Section(
-                "2. WebView Pro",
+                "3. WebView Pro",
                 "Android ve WebView özelliklerini yapılandır."
             )
         }
@@ -9098,7 +9234,7 @@ private fun AppearanceStep(
     ) {
         item {
             Section(
-                "3. Görünüm",
+                "4. Görünüm",
                 "İkon, ekran yönü, tema ve Splash ayarları."
             )
         }
@@ -9615,7 +9751,7 @@ private fun NativeBridgeStep(
     ) {
         item {
             Section(
-                "4. Native Bridge",
+                "5. Native Bridge",
                 "Web içeriğine güvenli Android özellikleri ekle."
             )
         }
@@ -10169,7 +10305,7 @@ private fun MonetizationStep(
     ) {
         item {
             Section(
-                "5. Para Kazanma + Firebase",
+                "6. Para Kazanma + Firebase",
                 "AdMob, Google Play Billing, Analytics ve Crashlytics."
             )
         }
@@ -10922,7 +11058,7 @@ private fun DeepLinkStep(
     ) {
         item {
             Section(
-                "6. Deep Link",
+                "7. Deep Link",
                 "Web bağlantılarından uygulamanın belirli ekranlarını aç."
             )
         }
@@ -11271,7 +11407,7 @@ private fun SigningStep(
     ) {
         item {
             Section(
-                "7. İmzalama",
+                "8. İmzalama",
                 "Debug test imzası veya kendi release keystore'un."
             )
         }
@@ -11724,7 +11860,7 @@ private fun BuildSettingsStep(
     ) {
         item {
             Section(
-                "8. Build Service",
+                "9. Özet & Build",
                 "Derleme sunucusu, API anahtarı ve çıktı türü."
             )
         }
@@ -12561,7 +12697,7 @@ private fun BuildStep(
     ) {
         item {
             Section(
-                "9. Derleme",
+                "10. Derleme",
                 "Build durumunu takip et, çıktıları indir ve ön-kontrolleri incele."
             )
         }
