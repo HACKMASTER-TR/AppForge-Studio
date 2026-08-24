@@ -1748,6 +1748,22 @@ private fun AppForgeApp() {
                                             .ifBlank {
                                                 template.name
                                             },
+                                    packageName =
+                                        if (
+                                            configuredDraft
+                                                .packageName
+                                                .isBlank() ||
+                                            configuredDraft
+                                                .packageName ==
+                                                "com.example.myapp"
+                                        ) {
+                                            quickPackageName(
+                                                template.name
+                                            )
+                                        } else {
+                                            configuredDraft
+                                                .packageName
+                                        },
                                     sourceMode =
                                         SourceMode.LOCAL,
                                     sourceUri =
@@ -7604,38 +7620,16 @@ private fun SourceStep(
                     appName ->
 
                     /*
-                     * Paket adı hâlâ otomatik değerdeyse
-                     * uygulama adıyla birlikte güncelle.
+                     * Uygulama adı Play Store / cihazda görünen addır.
+                     * Package name uygulamanın teknik kimliğidir.
                      *
-                     * Kullanıcı paket adını elle değiştirmişse
-                     * artık üzerine yazma.
+                     * Uygulama adı değiştirildiğinde package name
+                     * kesinlikle değiştirilmez.
                      */
-                    val oldAutoPackage =
-                        quickPackageName(
-                            d.appName
-                        )
-
-                    val shouldUpdatePackage =
-                        d.packageName.isBlank() ||
-                        d.packageName ==
-                            "com.example.myapp" ||
-                        d.packageName ==
-                            oldAutoPackage
-
                     update(
                         d.copy(
                             appName =
-                                appName,
-                            packageName =
-                                if (
-                                    shouldUpdatePackage
-                                ) {
-                                    quickPackageName(
-                                        appName
-                                    )
-                                } else {
-                                    d.packageName
-                                }
+                                appName
                         )
                     )
                 },
