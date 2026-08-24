@@ -56,6 +56,7 @@ import com.appforge.studio.io.KeystoreVault
 import com.appforge.studio.io.ManagedKeystore
 import com.appforge.studio.io.ProjectBackupManager
 import com.appforge.studio.io.ProjectImporter
+import com.appforge.studio.io.TemplateProjectFactory
 import com.appforge.studio.io.ProjectLibrary
 import com.appforge.studio.io.PwaInspector
 import com.appforge.studio.io.SavedBuild
@@ -1720,8 +1721,58 @@ private fun AppForgeApp() {
                     serverUrl = serverUrl,
                     session = session,
                     onApply = { template ->
-                        draft = applyTemplate(draft, template)
-                        status = "Şablon uygulandı: ${template.name}"
+                        val configuredDraft =
+                            applyTemplate(
+                                draft,
+                                template
+                            )
+
+                        val generated =
+                            runCatching {
+                                TemplateProjectFactory
+                                    .materialize(
+                                        context,
+                                        template
+                                    )
+                            }
+                                .getOrNull()
+
+                        draft =
+                            if (
+                                generated != null
+                            ) {
+                                configuredDraft.copy(
+                                    sourceMode =
+                                        SourceMode.LOCAL,
+                                    sourceUri =
+                                        null,
+                                    sourceLabel =
+                                        "${template.name} • Hazır şablon",
+                                    importedFolder =
+                                        generated
+                                            .projectDir
+                                            .absolutePath,
+                                    startPage =
+                                        generated
+                                            .startPage
+                                            .absolutePath
+                                )
+                            } else {
+                                configuredDraft
+                            }
+
+                        currentProjectId =
+                            null
+
+                        status =
+                            if (
+                                generated != null
+                            ) {
+                                "Hazır proje oluşturuldu: ${template.name}"
+                            } else {
+                                "Şablon uygulandı: ${template.name}"
+                            }
+
                         step = 1
                         screen = AppScreen.BUILDER
                     },
@@ -15214,7 +15265,39 @@ private fun applyTemplate(current: ProjectDraft, template: RemoteTemplate): Proj
             downloads = features?.optBoolean("downloads", current.downloads) ?: current.downloads,
             fullscreen = features?.optBoolean("fullscreen", current.fullscreen) ?: current.fullscreen,
             camera = features?.optBoolean("camera", current.camera) ?: current.camera,
-            offlineCache = features?.optBoolean("offlineCache", current.offlineCache) ?: current.offlineCache
+            location = features?.optBoolean("location", current.location) ?: current.location,
+            notifications = features?.optBoolean("notifications", current.notifications) ?: current.notifications,
+            offlineCache = features?.optBoolean("offlineCache", current.offlineCache) ?: current.offlineCache,
+
+            javascriptBridge =
+                features?.optBoolean(
+                    "javascriptBridge",
+                    current.javascriptBridge
+                ) ?: current.javascriptBridge,
+
+            shareBridge =
+                features?.optBoolean(
+                    "shareBridge",
+                    current.shareBridge
+                ) ?: current.shareBridge,
+
+            clipboardBridge =
+                features?.optBoolean(
+                    "clipboardBridge",
+                    current.clipboardBridge
+                ) ?: current.clipboardBridge,
+
+            vibrationBridge =
+                features?.optBoolean(
+                    "vibrationBridge",
+                    current.vibrationBridge
+                ) ?: current.vibrationBridge,
+
+            qrScanner =
+                features?.optBoolean(
+                    "qrScanner",
+                    current.qrScanner
+                ) ?: current.qrScanner
         )
     }.getOrDefault(current)
 }
