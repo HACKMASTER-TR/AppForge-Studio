@@ -1936,12 +1936,15 @@ private fun AppForgeApp() {
                             )
                         },
                         onExeToApk = {
+                            /*
+                             * Android üreticileri .exe dosyalarını
+                             * farklı MIME türleriyle tanıyabiliyor.
+                             * Tüm dosyaları seçilebilir göster;
+                             * AppForgeExeConversion zaten MZ +
+                             * AppForge footer/manifest doğrulaması yapıyor.
+                             */
                             conversionExePicker.launch(
-                                arrayOf(
-                                    "application/vnd.microsoft.portable-executable",
-                                    "application/x-msdownload",
-                                    "application/octet-stream"
-                                )
+                                arrayOf("*/*")
                             )
                         }
                     )
