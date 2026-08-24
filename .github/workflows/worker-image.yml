@@ -29,6 +29,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Worker dependencies
+        working-directory: ./build-service
+        run: npm install
+
+      - name: Run full regression suite
+        working-directory: ./build-service
+        run: npm test
+
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
