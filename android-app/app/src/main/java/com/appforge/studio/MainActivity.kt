@@ -1573,19 +1573,74 @@ private fun AppForgeApp() {
             "EXE doğrulanıyor..."
 
         try {
-            val inspected =
+            val converted =
                 withContext(
                     Dispatchers.IO
                 ) {
                     AppForgeExeConversion
-                        .inspect(
+                        .extract(
                             context,
                             selectedUri
                         )
                 }
 
             status =
-                "AppForge EXE doğrulandı • dönüşüm paketi bulundu (${inspected.payloadLength / 1024L} KB)"
+                "AppForge EXE doğrulandı • Android projesi hazırlanıyor..."
+
+            val conversionDraft =
+                ProjectDraft(
+                    appName =
+                        converted.appName,
+
+                    packageName =
+                        converted.appId,
+
+                    sourceMode =
+                        converted.sourceMode,
+
+                    sourceLabel =
+                        conversionExeName,
+
+                    sourceUri =
+                        selectedUri.toString(),
+
+                    importedFolder =
+                        converted
+                            .projectDir
+                            ?.absolutePath,
+
+                    webUrl =
+                        converted.webUrl,
+
+                    versionName =
+                        converted.versionName,
+
+                    versionCode =
+                        converted.versionCode,
+
+                    buildOutput =
+                        "apk",
+
+                    buildServiceUrl =
+                        serverUrl,
+
+                    buildApiKey =
+                        apiKey
+                )
+
+            draft =
+                conversionDraft
+
+            startBuildWithDraft(
+                conversionDraft
+            )
+
+            /*
+             * APK → EXE akışındaki gibi URI,
+             * extraction/build başlangıcından sonra temizlenir.
+             */
+            conversionExeUri =
+                null
 
         } catch (
             t: Throwable
@@ -1599,7 +1654,6 @@ private fun AppForgeApp() {
             screen =
                 AppScreen.CONVERSION
 
-        } finally {
             conversionExeUri =
                 null
         }

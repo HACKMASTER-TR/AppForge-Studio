@@ -168,7 +168,7 @@ test(
 
     const end =
       text.indexOf(
-        "\n\n\n    MaterialTheme(",
+        "    MaterialTheme(",
         start
       );
 
@@ -275,5 +275,71 @@ test(
         `Missing EXE picker conversion marker: ${marker}`
       );
     }
+  }
+);
+
+
+test(
+  "Studio safely extracts AppForge project from Windows EXE",
+  async () => {
+    const file =
+      new URL(
+        "../../android-app/app/src/main/java/com/appforge/studio/io/AppForgeExeConversion.kt",
+        import.meta.url
+      );
+
+    const text =
+      await readFile(
+        file,
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        '"AFEXEP01"',
+        '"APPFORGE-EXE-V1!"',
+        '"exeToApk"',
+        "JSONObject",
+        "ZipInputStream",
+        "MAX_SITE_BYTES",
+        "MAX_SITE_FILES",
+        "extractProjectZip(",
+        '"project.zip"'
+      ]
+    ) {
+      assert.equal(
+        text.includes(marker),
+        true,
+        `Missing EXE extraction marker: ${marker}`
+      );
+    }
+  }
+);
+
+
+test(
+  "Studio starts Android APK build from converted EXE",
+  async () => {
+    const file =
+      new URL(
+        "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        import.meta.url
+      );
+
+    const text =
+      await readFile(
+        file,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /LaunchedEffect\(\s*conversionExeUri\s*\)[\s\S]{0,12000}AppForgeExeConversion[\s\S]{0,12000}\.extract\([\s\S]{0,12000}buildOutput\s*=\s*"apk"[\s\S]{0,12000}startBuildWithDraft\(/
+    );
+
+    assert.match(
+      text,
+      /startBuildWithDraft\([\s\S]{0,3000}conversionExeUri\s*=\s*null/
+    );
   }
 );
