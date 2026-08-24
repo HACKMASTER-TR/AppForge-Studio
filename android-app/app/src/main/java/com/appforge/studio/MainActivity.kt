@@ -158,6 +158,37 @@ class MainActivity : ComponentActivity() {
                 Context.MODE_PRIVATE
             )
 
+        val pendingApkPath =
+            installerPrefs.getString(
+                "pending_apk_path",
+                null
+            )
+
+        if (
+            !pendingApkPath.isNullOrBlank() &&
+            (
+                Build.VERSION.SDK_INT <
+                    Build.VERSION_CODES.O ||
+                packageManager
+                    .canRequestPackageInstalls()
+            )
+        ) {
+            installerPrefs
+                .edit()
+                .remove(
+                    "pending_apk_path"
+                )
+                .apply()
+
+            installCachedApk(
+                context = this,
+                apkFile =
+                    File(
+                        pendingApkPath
+                    )
+            )
+        }
+
         val pendingDownloadId =
             installerPrefs.getLong(
                 "pending_download_id",
@@ -11423,10 +11454,17 @@ private fun BuildStep(
             mutableStateOf("")
         }
 
-    var apkDownloadId by
+    var apkCachedPath by
         remember(buildId) {
-            mutableStateOf<Long?>(
+            mutableStateOf<String?>(
                 null
+            )
+        }
+
+    var apkDownloading by
+        remember(buildId) {
+            mutableStateOf(
+                false
             )
         }
 
@@ -12002,82 +12040,128 @@ private fun BuildStep(
         ) {
             item {
                 Button(
+                    enabled =
+                        !apkDownloading,
                     onClick = {
                         val id =
                             buildId
                                 ?: return@Button
 
+                        if (
+                            apkDownloading
+                        ) {
+                            return@Button
+                        }
+
                         scope.launch {
+                            apkDownloading =
+                                true
+
+                            apkCachedPath =
+                                null
+
+                            downloadMessage =
+                                "APK indiriliyor • bağlantı kuruluyor..."
+
                             try {
-                                val ticket =
+                                val result =
                                     withContext(
                                         Dispatchers.IO
                                     ) {
-                                        BuildApiClient(
-                                            context,
-                                            serverUrl,
-                                            apiKey
-                                        )
-                                            .createDownloadTicket(
-                                                id,
-                                                "apk"
+                                        val ticket =
+                                            BuildApiClient(
+                                                context,
+                                                serverUrl,
+                                                apiKey
                                             )
-                                    }
+                                                .createDownloadTicket(
+                                                    id,
+                                                    "apk"
+                                                )
 
-                                val request =
-                                    DownloadManager.Request(
-                                        Uri.parse(
-                                            ticket.url
-                                        )
-                                    )
-                                        .setTitle(
-                                            "AppForge APK"
-                                        )
-                                        .setDescription(
-                                            "APK indiriliyor"
-                                        )
-                                        .setMimeType(
-                                            "application/vnd.android.package-archive"
-                                        )
-                                        .setNotificationVisibility(
-                                            DownloadManager.Request
-                                                .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-                                        )
-                                        .setAllowedOverMetered(
-                                            true
-                                        )
-                                        .setAllowedOverRoaming(
-                                            true
-                                        )
-                                        .setDestinationInExternalPublicDir(
-                                            Environment.DIRECTORY_DOWNLOADS,
+                                        val fileName =
                                             artifactDownloadName(
                                                 appName,
                                                 id,
                                                 "apk"
                                             )
+
+                                        val apkFile =
+                                            downloadApkToInstallerCache(
+                                                context =
+                                                    context,
+                                                url =
+                                                    ticket.url,
+                                                fileName =
+                                                    fileName
+                                            )
+
+                                        val published =
+                                            runCatching {
+                                                publishApkToDownloads(
+                                                    context =
+                                                        context,
+                                                    sourceFile =
+                                                        apkFile,
+                                                    fileName =
+                                                        fileName
+                                                )
+                                            }
+                                                .getOrDefault(
+                                                    false
+                                                )
+
+                                        Pair(
+                                            apkFile,
+                                            published
                                         )
+                                    }
 
-                                val manager =
-                                    context.getSystemService(
-                                        Context.DOWNLOAD_SERVICE
-                                    ) as DownloadManager
+                                val apkFile =
+                                    result.first
 
-                                val queuedId =
-                                    manager.enqueue(
-                                        request
+                                apkCachedPath =
+                                    apkFile.absolutePath
+
+                                val sizeMb =
+                                    apkFile.length()
+                                        .toDouble() /
+                                    (
+                                        1024.0 *
+                                        1024.0
                                     )
 
-                                apkDownloadId =
-                                    queuedId
-
                                 downloadMessage =
-                                    "APK indiriliyor • İndirme tamamlanınca APK'YI KUR butonuna bas."
+                                    if (
+                                        result.second
+                                    ) {
+                                        "✅ APK indirildi • " +
+                                        String.format(
+                                            "%.1f MB",
+                                            sizeMb
+                                        ) +
+                                        " • Downloads klasörüne kaydedildi."
+                                    } else {
+                                        "✅ APK indirildi • " +
+                                        String.format(
+                                            "%.1f MB",
+                                            sizeMb
+                                        ) +
+                                        " • Kuruluma hazır."
+                                    }
+
                             } catch (
                                 t: Throwable
                             ) {
                                 downloadMessage =
-                                    "İndirme hatası: ${t.message}"
+                                    "❌ APK indirme hatası: " +
+                                    (
+                                        t.message
+                                            ?: t.javaClass.simpleName
+                                    )
+                            } finally {
+                                apkDownloading =
+                                    false
                             }
                         }
                     },
@@ -12085,51 +12169,41 @@ private fun BuildStep(
                         Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        "APK'YI İNDİR"
+                        if (
+                            apkDownloading
+                        ) {
+                            "APK İNDİRİLİYOR..."
+                        } else if (
+                            apkCachedPath != null
+                        ) {
+                            "APK'YI TEKRAR İNDİR"
+                        } else {
+                            "APK'YI İNDİR"
+                        }
                     )
                 }
             }
         }
 
         if (
-            apkDownloadId != null
+            apkCachedPath != null
         ) {
             item {
                 Button(
                     onClick = {
-                        val id =
-                            apkDownloadId
+                        val path =
+                            apkCachedPath
                                 ?: return@Button
 
-                        scope.launch {
-                            downloadMessage =
-                                "APK hazırlanıyor • indirme kontrol ediliyor..."
-
-                            val waitError =
-                                waitForApkDownload(
-                                    context =
-                                        context,
-                                    downloadId =
-                                        id
-                                )
-
-                            if (
-                                waitError != null
-                            ) {
-                                downloadMessage =
-                                    waitError
-
-                                return@launch
-                            }
-
-                            downloadMessage =
-                                installDownloadedApk(
-                                    context =
-                                        context,
-                                    downloadId =
-                                        id
-                                )
-                        }
+                        downloadMessage =
+                            installCachedApk(
+                                context =
+                                    context,
+                                apkFile =
+                                    File(
+                                        path
+                                    )
+                            )
                     },
                     modifier =
                         Modifier.fillMaxWidth()
@@ -12345,6 +12419,420 @@ private fun BuildStep(
                 )
             }
         }
+    }
+}
+
+
+
+private fun downloadApkToInstallerCache(
+    context: Context,
+    url: String,
+    fileName: String
+): File {
+
+    require(
+        url.startsWith(
+            "https://",
+            ignoreCase = true
+        )
+    ) {
+        "APK indirme adresi HTTPS değil."
+    }
+
+    val installerDir =
+        File(
+            context.cacheDir,
+            "apk-installer"
+        ).apply {
+            mkdirs()
+        }
+
+    val safeName =
+        fileName
+            .ifBlank {
+                "AppForge-generated.apk"
+            }
+            .let {
+                if (
+                    it.endsWith(
+                        ".apk",
+                        ignoreCase = true
+                    )
+                ) {
+                    it
+                } else {
+                    "$it.apk"
+                }
+            }
+
+    val target =
+        File(
+            installerDir,
+            safeName
+        )
+
+    val temporary =
+        File(
+            installerDir,
+            "$safeName.download"
+        )
+
+    target.delete()
+    temporary.delete()
+
+    val connection =
+        java.net.URL(
+            url
+        )
+            .openConnection()
+            as java.net.HttpURLConnection
+
+    try {
+        connection.instanceFollowRedirects =
+            true
+
+        connection.connectTimeout =
+            20_000
+
+        connection.readTimeout =
+            180_000
+
+        connection.requestMethod =
+            "GET"
+
+        connection.setRequestProperty(
+            "Accept",
+            "application/vnd.android.package-archive,application/octet-stream,*/*"
+        )
+
+        connection.setRequestProperty(
+            "User-Agent",
+            "AppForge-Studio-Android"
+        )
+
+        connection.connect()
+
+        val code =
+            connection.responseCode
+
+        if (
+            code !in 200..299
+        ) {
+            val detail =
+                runCatching {
+                    connection
+                        .errorStream
+                        ?.bufferedReader()
+                        ?.use {
+                            it.readText()
+                                .take(
+                                    300
+                                )
+                        }
+                }
+                    .getOrNull()
+                    .orEmpty()
+
+            error(
+                "Sunucu HTTP $code" +
+                if (
+                    detail.isBlank()
+                ) {
+                    ""
+                } else {
+                    " • $detail"
+                }
+            )
+        }
+
+        connection
+            .inputStream
+            .buffered()
+            .use { input ->
+
+                temporary
+                    .outputStream()
+                    .buffered()
+                    .use { output ->
+
+                        input.copyTo(
+                            output,
+                            1024 * 1024
+                        )
+
+                        output.flush()
+                    }
+            }
+
+        if (
+            !temporary.exists() ||
+            temporary.length() <
+                1024L
+        ) {
+            error(
+                "İndirilen APK boş veya eksik."
+            )
+        }
+
+        val zipValid =
+            temporary
+                .inputStream()
+                .use { input ->
+                    val first =
+                        input.read()
+
+                    val second =
+                        input.read()
+
+                    first ==
+                        0x50 &&
+                    second ==
+                        0x4B
+                }
+
+        if (
+            !zipValid
+        ) {
+            error(
+                "Sunucudan geçerli APK yerine farklı bir dosya geldi."
+            )
+        }
+
+        if (
+            !temporary.renameTo(
+                target
+            )
+        ) {
+            temporary
+                .copyTo(
+                    target,
+                    overwrite = true
+                )
+
+            temporary.delete()
+        }
+
+        return target
+
+    } finally {
+        connection.disconnect()
+    }
+}
+
+
+private fun publishApkToDownloads(
+    context: Context,
+    sourceFile: File,
+    fileName: String
+): Boolean {
+
+    if (
+        Build.VERSION.SDK_INT <
+        Build.VERSION_CODES.Q
+    ) {
+        return false
+    }
+
+    val resolver =
+        context.contentResolver
+
+    val values =
+        android.content.ContentValues()
+            .apply {
+                put(
+                    android.provider.MediaStore
+                        .MediaColumns
+                        .DISPLAY_NAME,
+                    fileName
+                )
+
+                put(
+                    android.provider.MediaStore
+                        .MediaColumns
+                        .MIME_TYPE,
+                    "application/vnd.android.package-archive"
+                )
+
+                put(
+                    android.provider.MediaStore
+                        .MediaColumns
+                        .RELATIVE_PATH,
+                    Environment
+                        .DIRECTORY_DOWNLOADS
+                )
+
+                put(
+                    android.provider.MediaStore
+                        .MediaColumns
+                        .IS_PENDING,
+                    1
+                )
+            }
+
+    val uri =
+        resolver.insert(
+            android.provider.MediaStore
+                .Downloads
+                .EXTERNAL_CONTENT_URI,
+            values
+        )
+            ?: return false
+
+    try {
+        resolver
+            .openOutputStream(
+                uri,
+                "w"
+            )
+            ?.use { output ->
+
+                sourceFile
+                    .inputStream()
+                    .buffered()
+                    .use { input ->
+
+                        input.copyTo(
+                            output,
+                            1024 * 1024
+                        )
+                    }
+            }
+            ?: error(
+                "Downloads dosyası açılamadı."
+            )
+
+        val ready =
+            android.content.ContentValues()
+                .apply {
+                    put(
+                        android.provider.MediaStore
+                            .MediaColumns
+                            .IS_PENDING,
+                        0
+                    )
+                }
+
+        resolver.update(
+            uri,
+            ready,
+            null,
+            null
+        )
+
+        return true
+
+    } catch (
+        t: Throwable
+    ) {
+        runCatching {
+            resolver.delete(
+                uri,
+                null,
+                null
+            )
+        }
+
+        throw t
+    }
+}
+
+
+private fun installCachedApk(
+    context: Context,
+    apkFile: File
+): String {
+
+    if (
+        !apkFile.exists() ||
+        apkFile.length() <=
+            0L
+    ) {
+        return (
+            "APK bulunamadı. " +
+            "APK'YI İNDİR butonuna tekrar bas."
+        )
+    }
+
+    if (
+        Build.VERSION.SDK_INT >=
+            Build.VERSION_CODES.O &&
+        !context.packageManager
+            .canRequestPackageInstalls()
+    ) {
+        return runCatching {
+
+            context
+                .getSharedPreferences(
+                    "appforge_installer",
+                    Context.MODE_PRIVATE
+                )
+                .edit()
+                .putString(
+                    "pending_apk_path",
+                    apkFile.absolutePath
+                )
+                .apply()
+
+            val permissionIntent =
+                Intent(
+                    Settings
+                        .ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse(
+                        "package:${context.packageName}"
+                    )
+                ).apply {
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK
+                    )
+                }
+
+            context.startActivity(
+                permissionIntent
+            )
+
+            "Bu kaynaktan izin ver seçeneğini aç. AppForge Studio'ya dönünce kurulum otomatik devam edecek."
+
+        }.getOrElse {
+            "APK yükleme izni açılamadı: ${it.message}"
+        }
+    }
+
+    return runCatching {
+
+        val installUri =
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                apkFile
+            )
+
+        val intent =
+            Intent(
+                Intent.ACTION_VIEW
+            ).apply {
+
+                setDataAndType(
+                    installUri,
+                    "application/vnd.android.package-archive"
+                )
+
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK
+                )
+            }
+
+        context.startActivity(
+            intent
+        )
+
+        "✅ Android APK yükleyici açıldı."
+
+    }.getOrElse {
+        "APK yükleyici açılamadı: ${it.message}"
     }
 }
 
