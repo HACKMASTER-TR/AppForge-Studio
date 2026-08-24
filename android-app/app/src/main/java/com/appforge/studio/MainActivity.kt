@@ -525,6 +525,26 @@ private fun AppForgeApp() {
     var aabUrl by remember { mutableStateOf<String?>(null) }
     var exeUrl by remember { mutableStateOf<String?>(null) }
 
+    var conversionApkUri by
+        remember {
+            mutableStateOf<Uri?>(null)
+        }
+
+    var conversionApkName by
+        remember {
+            mutableStateOf("")
+        }
+
+    var conversionExeUri by
+        remember {
+            mutableStateOf<Uri?>(null)
+        }
+
+    var conversionExeName by
+        remember {
+            mutableStateOf("")
+        }
+
     /*
      * Aynı anda yalnızca tek build oluşturulabilir/takip edilir.
      * Birden fazla polling coroutine'in aynı UI state'ini
@@ -534,6 +554,47 @@ private fun AppForgeApp() {
         remember {
             mutableStateOf(false)
         }
+
+    val conversionApkPicker =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts.OpenDocument()
+        ) {
+            uri: Uri? ->
+
+            if (uri != null) {
+                conversionApkUri =
+                    uri
+
+                conversionApkName =
+                    uri.lastPathSegment
+                        ?: "selected.apk"
+
+                status =
+                    "APK seçildi: $conversionApkName"
+            }
+        }
+
+    val conversionExePicker =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts.OpenDocument()
+        ) {
+            uri: Uri? ->
+
+            if (uri != null) {
+                conversionExeUri =
+                    uri
+
+                conversionExeName =
+                    uri.lastPathSegment
+                        ?: "selected.exe"
+
+                status =
+                    "EXE seçildi: $conversionExeName"
+            }
+        }
+
 
     val sourcePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -1645,16 +1706,29 @@ private fun AppForgeApp() {
 
                 AppScreen.CONVERSION ->
                     ConversionScreen(
+                        selectedApkName =
+                            conversionApkName,
+                        selectedExeName =
+                            conversionExeName,
                         onBack = {
                             returnFromWorkspace()
                         },
                         onApkToExe = {
-                            status =
-                                "APK → EXE dönüşümü seçildi."
+                            conversionApkPicker.launch(
+                                arrayOf(
+                                    "application/vnd.android.package-archive",
+                                    "application/octet-stream"
+                                )
+                            )
                         },
                         onExeToApk = {
-                            status =
-                                "EXE → APK dönüşümü seçildi."
+                            conversionExePicker.launch(
+                                arrayOf(
+                                    "application/vnd.microsoft.portable-executable",
+                                    "application/x-msdownload",
+                                    "application/octet-stream"
+                                )
+                            )
                         }
                     )
 
@@ -2626,6 +2700,8 @@ private fun CreateModeSelectionScreen(
 
 @Composable
 private fun ConversionScreen(
+    selectedApkName: String,
+    selectedExeName: String,
     onBack: () -> Unit,
     onApkToExe: () -> Unit,
     onExeToApk: () -> Unit
@@ -2699,6 +2775,18 @@ private fun ConversionScreen(
                     onApkToExe
             )
 
+            if (
+                selectedApkName.isNotBlank()
+            ) {
+                Text(
+                    "Seçilen APK: $selectedApkName",
+                    color =
+                        Accent,
+                    fontSize =
+                        13.sp
+                )
+            }
+
             CreateModeCard(
                 icon = "🖥️",
                 title =
@@ -2708,6 +2796,18 @@ private fun ConversionScreen(
                 onClick =
                     onExeToApk
             )
+
+            if (
+                selectedExeName.isNotBlank()
+            ) {
+                Text(
+                    "Seçilen EXE: $selectedExeName",
+                    color =
+                        Accent,
+                    fontSize =
+                        13.sp
+                )
+            }
 
             NoteCard(
                 "İlk sürüm AppForge proje manifesti bulunan çıktıları destekleyecek."

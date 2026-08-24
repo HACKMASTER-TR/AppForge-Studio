@@ -177,3 +177,31 @@ test(
     }
   }
 );
+
+test(
+  "Studio conversion screen has APK and EXE file pickers",
+  async () => {
+    const text =
+      await readFile(
+        main,
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        "conversionApkPicker",
+        "conversionExePicker",
+        "application/vnd.android.package-archive",
+        "application/x-msdownload",
+        '"Seçilen APK: $selectedApkName"',
+        '"Seçilen EXE: $selectedExeName"'
+      ]
+    ) {
+      assert.equal(
+        text.includes(marker),
+        true,
+        `Missing conversion picker marker: ${marker}`
+      );
+    }
+  }
+);
