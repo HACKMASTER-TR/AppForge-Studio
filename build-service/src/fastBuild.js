@@ -805,6 +805,88 @@ ${qrManifestComponents}
     );
   }
 
+  const appForgeProjectManifest = {
+    format:
+      "appforge-project",
+
+    formatVersion:
+      1,
+
+    producer:
+      "AppForge Studio",
+
+    platform:
+      "android",
+
+    appName:
+      String(
+        c.appName ||
+        "AppForge App"
+      ),
+
+    appId:
+      String(
+        c.packageName ||
+        ""
+      ),
+
+    versionName:
+      String(
+        c.versionName ||
+        "1.0.0"
+      ),
+
+    versionCode:
+      Math.max(
+        1,
+        Number(
+          c.versionCode ||
+          1
+        )
+      ),
+
+    sourceMode:
+      c.sourceMode ===
+        "URL"
+        ? "URL"
+        : "LOCAL",
+
+    webUrl:
+      c.sourceMode ===
+        "URL"
+        ? String(
+            c.webUrl ||
+            ""
+          )
+        : null,
+
+    projectRoot:
+      c.sourceMode ===
+        "LOCAL"
+        ? "assets/site"
+        : null,
+
+    conversion: {
+      apkToExe:
+        true,
+
+      exeToApk:
+        true
+    }
+  };
+
+  zip.addFile(
+    "assets/appforge-project.json",
+    Buffer.from(
+      JSON.stringify(
+        appForgeProjectManifest,
+        null,
+        2
+      ),
+      "utf8"
+    )
+  );
+
   zip.writeZip(
     payloadApk
   );
