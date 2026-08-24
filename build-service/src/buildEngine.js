@@ -1723,6 +1723,21 @@ class AppForgeMediaService :
             sessionBuilder
                 .build()
 
+        /*
+         * AppForge medya komutları servisi doğrudan
+         * startForegroundService ile başlatabildiği için
+         * session'ı MediaSessionService'e açıkça kaydet.
+         *
+         * Böylece Android notification / lock screen
+         * controller doğrudan bu session'a bağlanır.
+         */
+        mediaSession
+            ?.let {
+                addSession(
+                    it
+                )
+            }
+
         persistState()
     }
 
