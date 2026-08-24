@@ -205,3 +205,36 @@ test(
     }
   }
 );
+
+
+test(
+  "Home create dialog exposes conversion option",
+  async () => {
+    const home =
+      new URL(
+        "../../android-app/app/src/main/java/com/appforge/studio/StudioHomeScreen.kt",
+        import.meta.url
+      );
+
+    const text =
+      await readFile(
+        home,
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        "onCreateConversion",
+        "onConversion",
+        '"Dönüşüm"',
+        '"APK → Windows EXE veya EXE → Android APK dönüşüm araçları."'
+      ]
+    ) {
+      assert.equal(
+        text.includes(marker),
+        true,
+        `Missing home conversion marker: ${marker}`
+      );
+    }
+  }
+);

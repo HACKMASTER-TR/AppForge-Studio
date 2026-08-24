@@ -1694,6 +1694,15 @@ private fun AppForgeApp() {
                                 AppScreen.BUILDER
                         },
 
+                        onCreateConversion = {
+                            status =
+                                "Dönüşüm araçları hazır."
+
+                            openWorkspaceScreen(
+                                AppScreen.CONVERSION
+                            )
+                        },
+
                         onOpenProject = {
                             saved ->
 

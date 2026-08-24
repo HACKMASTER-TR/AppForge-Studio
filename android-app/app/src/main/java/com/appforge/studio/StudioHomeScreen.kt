@@ -88,6 +88,7 @@ internal fun StudioHomeScreen(
     proUnlocked: Boolean,
     onCreateQuick: () -> Unit,
     onCreateAdvanced: () -> Unit,
+    onCreateConversion: () -> Unit,
     onOpenProject: (SavedProject) -> Unit,
     onOpenAi: () -> Unit,
     onOpenTemplates: () -> Unit,
@@ -401,6 +402,12 @@ internal fun StudioHomeScreen(
                     false
 
                 onCreateAdvanced()
+            },
+            onConversion = {
+                showCreateDialog =
+                    false
+
+                onCreateConversion()
             }
         )
     }
@@ -1050,7 +1057,8 @@ private fun BottomNavigationItem(
 private fun CreateProjectDialog(
     onDismiss: () -> Unit,
     onQuick: () -> Unit,
-    onAdvanced: () -> Unit
+    onAdvanced: () -> Unit,
+    onConversion: () -> Unit
 ) {
     Dialog(
         onDismissRequest =
@@ -1110,6 +1118,16 @@ private fun CreateProjectDialog(
                         "Paket adı, SDK, tema, izinler, imzalama ve gelişmiş ayarlar.",
                     onClick =
                         onAdvanced
+                )
+
+                ModeCard(
+                    icon = "↔",
+                    title =
+                        "Dönüşüm",
+                    description =
+                        "APK → Windows EXE veya EXE → Android APK dönüşüm araçları.",
+                    onClick =
+                        onConversion
                 )
             }
         }
