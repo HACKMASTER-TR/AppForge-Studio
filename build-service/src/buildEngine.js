@@ -1758,14 +1758,11 @@ class AppForgeMediaService :
         }
 
 
-        val result =
-            super.onStartCommand(
-                intent,
-                flags,
-                startId
-            )
-
-
+        /*
+         * AppForge medya komutunu önce Player'a uygular.
+         * Böylece MediaSessionService notification lifecycle
+         * çalıştığında playlist ve playback state hazırdır.
+         */
         when (
             action
         ) {
@@ -1836,7 +1833,11 @@ class AppForgeMediaService :
 
         persistState()
 
-        return result
+        return super.onStartCommand(
+            intent,
+            flags,
+            startId
+        )
     }
 
 
@@ -2731,7 +2732,11 @@ function generatedMainActivity(c, pkg) {
     (
       c.features?.camera ||
       c.features?.location ||
-      c.features?.notifications
+      c.features?.notifications ||
+      (
+        c.nativeBridge?.enabled &&
+        c.nativeBridge?.mediaPlayer
+      )
     )
       ? `
         val startupPermissions =
@@ -2763,7 +2768,15 @@ function generatedMainActivity(c, pkg) {
         }
         ` : ""}
 
-        ${c.features?.notifications ? `
+        ${
+          (
+            c.features?.notifications ||
+            (
+              c.nativeBridge?.enabled &&
+              c.nativeBridge?.mediaPlayer
+            )
+          )
+            ? `
         if (
             android.os.Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(
@@ -2775,7 +2788,9 @@ function generatedMainActivity(c, pkg) {
                 android.Manifest.permission.POST_NOTIFICATIONS
             )
         }
-        ` : ""}
+        `
+            : ""
+        }
 
         if (startupPermissions.isNotEmpty()) {
             requestPermissions(
