@@ -144,3 +144,67 @@ test(
     }
   }
 );
+
+
+test(
+  "APK conversion effect does not cancel itself before extraction",
+  async () => {
+    const file =
+      new URL(
+        "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        import.meta.url
+      );
+
+    const text =
+      await readFile(
+        file,
+        "utf8"
+      );
+
+    const start =
+      text.indexOf(
+        "LaunchedEffect(\n        conversionApkUri"
+      );
+
+    const end =
+      text.indexOf(
+        "\n\n\n    MaterialTheme(",
+        start
+      );
+
+    assert.notEqual(start, -1);
+    assert.notEqual(end, -1);
+
+    const block =
+      text.slice(
+        start,
+        end
+      );
+
+    const extractPos =
+      block.indexOf(
+        "AppForgeApkConversion"
+      );
+
+    const clearPos =
+      block.indexOf(
+        "conversionApkUri =\n                null"
+      );
+
+    assert.ok(
+      extractPos >= 0
+    );
+
+    assert.ok(
+      clearPos > extractPos,
+      "conversionApkUri must only be cleared after APK extraction starts"
+    );
+
+    assert.equal(
+      text.includes(
+        "status: String"
+      ),
+      true
+    );
+  }
+);

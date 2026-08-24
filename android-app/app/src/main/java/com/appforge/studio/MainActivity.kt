@@ -1465,13 +1465,6 @@ private fun AppForgeApp() {
             conversionApkUri
                 ?: return@LaunchedEffect
 
-        /*
-         * Aynı URI'nin recomposition sırasında
-         * tekrar işlenmesini engelle.
-         */
-        conversionApkUri =
-            null
-
         status =
             "APK doğrulanıyor..."
 
@@ -1538,6 +1531,13 @@ private fun AppForgeApp() {
                 conversionDraft
             )
 
+            /*
+             * İşleme tamamlandıktan sonra temizle.
+             * Böylece LaunchedEffect kendisini iptal etmez.
+             */
+            conversionApkUri =
+                null
+
         } catch (
             t: Throwable
         ) {
@@ -1549,6 +1549,9 @@ private fun AppForgeApp() {
 
             screen =
                 AppScreen.CONVERSION
+
+            conversionApkUri =
+                null
         }
     }
 
@@ -1815,6 +1818,8 @@ private fun AppForgeApp() {
                             conversionApkName,
                         selectedExeName =
                             conversionExeName,
+                        status =
+                            status,
                         onBack = {
                             returnFromWorkspace()
                         },
@@ -2809,6 +2814,7 @@ private fun CreateModeSelectionScreen(
 private fun ConversionScreen(
     selectedApkName: String,
     selectedExeName: String,
+    status: String,
     onBack: () -> Unit,
     onApkToExe: () -> Unit,
     onExeToApk: () -> Unit
@@ -2871,6 +2877,14 @@ private fun ConversionScreen(
                 color =
                     TextSecondary
             )
+
+            if (
+                status.isNotBlank()
+            ) {
+                NoteCard(
+                    status
+                )
+            }
 
             CreateModeCard(
                 icon = "📱",
