@@ -7569,6 +7569,68 @@ private fun SourceStep(
     update: (ProjectDraft) -> Unit,
     onPick: () -> Unit
 ) {
+    fun autoPackageName(
+        appName: String
+    ): String {
+
+        val normalized =
+            appName
+                .trim()
+                .lowercase(
+                    java.util.Locale.ROOT
+                )
+                .replace(
+                    'ç',
+                    'c'
+                )
+                .replace(
+                    'ğ',
+                    'g'
+                )
+                .replace(
+                    'ı',
+                    'i'
+                )
+                .replace(
+                    'ö',
+                    'o'
+                )
+                .replace(
+                    'ş',
+                    's'
+                )
+                .replace(
+                    'ü',
+                    'u'
+                )
+
+        var segment =
+            normalized
+                .replace(
+                    Regex(
+                        "[^a-z0-9]"
+                    ),
+                    ""
+                )
+
+        if (
+            segment.isBlank()
+        ) {
+            segment =
+                "myapp"
+        }
+
+        if (
+            segment.first()
+                .isDigit()
+        ) {
+            segment =
+                "app$segment"
+        }
+
+        return "com.example.$segment"
+    }
+
     val packageRegex =
         Regex(
             """^[A-Za-z_]\w*(\.[A-Za-z_]\w*)+$"""
@@ -7684,16 +7746,46 @@ private fun SourceStep(
                     appName ->
 
                     /*
-                     * Uygulama adı Play Store / cihazda görünen addır.
-                     * Package name uygulamanın teknik kimliğidir.
+                     * Package name hâlâ otomatik moddaysa
+                     * uygulama adına göre güncelle.
                      *
-                     * Uygulama adı değiştirildiğinde package name
-                     * kesinlikle değiştirilmez.
+                     * Kullanıcı daha önce özel bir package name
+                     * yazdıysa ona dokunma.
                      */
+                    val currentPackage =
+                        d.packageName
+                            .trim()
+
+                    val oldAutoPackage =
+                        autoPackageName(
+                            d.appName
+                        )
+
+                    val autoMode =
+                        currentPackage.isBlank() ||
+                        currentPackage ==
+                            "com.example.myapp" ||
+                        currentPackage ==
+                            oldAutoPackage
+
+                    val nextPackage =
+                        if (
+                            autoMode
+                        ) {
+                            autoPackageName(
+                                appName
+                            )
+                        } else {
+                            d.packageName
+                        }
+
                     update(
                         d.copy(
                             appName =
-                                appName
+                                appName,
+
+                            packageName =
+                                nextPackage
                         )
                     )
                 },

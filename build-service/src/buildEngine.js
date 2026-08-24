@@ -1549,8 +1549,11 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.annotation.OptIn
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 
@@ -1558,6 +1561,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 
+@OptIn(
+    UnstableApi::class
+)
 class AppForgeMediaService :
     MediaSessionService() {
 
@@ -1596,6 +1602,31 @@ class AppForgeMediaService :
 
     override fun onCreate() {
         super.onCreate()
+
+        /*
+         * Media3 notification provider açıkça atanır.
+         *
+         * Android notification paneli / lock screen:
+         * - Previous
+         * - Play / Pause
+         * - Next
+         */
+        val notificationProvider =
+            DefaultMediaNotificationProvider
+                .Builder(
+                    this
+                )
+                .setChannelId(
+                    "appforge_media_playback"
+                )
+                .setNotificationId(
+                    6202
+                )
+                .build()
+
+        setMediaNotificationProvider(
+            notificationProvider
+        )
 
         val audioAttributes =
             AudioAttributes
