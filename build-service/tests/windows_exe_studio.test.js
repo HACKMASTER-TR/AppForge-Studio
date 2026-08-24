@@ -238,3 +238,31 @@ test(
     }
   }
 );
+
+
+test(
+  "Studio saves Windows EXE through Storage Access Framework",
+  async () => {
+    const text =
+      await readFile(
+        main,
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        "val exeSaveLauncher",
+        "ActivityResultContracts.CreateDocument(",
+        "downloadArtifactToUri(",
+        '"Windows EXE indiriliyor..."',
+        '"✅ Windows EXE başarıyla kaydedildi."'
+      ]
+    ) {
+      assert.equal(
+        text.includes(marker),
+        true,
+        `Missing EXE save marker: ${marker}`
+      );
+    }
+  }
+);

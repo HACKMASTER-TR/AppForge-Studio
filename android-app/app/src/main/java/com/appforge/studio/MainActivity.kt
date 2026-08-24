@@ -12084,6 +12084,72 @@ private fun BuildStep(
             mutableStateOf("")
         }
 
+    /*
+     * Android DownloadManager bazı cihazlarda büyük .exe
+     * dosyalarını sessizce reddedebiliyor.
+     *
+     * EXE için Storage Access Framework kullan:
+     * kullanıcı hedef dosyayı seçer ve AppForge çıktıyı
+     * doğrudan o URI'ye stream eder.
+     */
+    val exeSaveLauncher =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts.CreateDocument(
+                    "application/octet-stream"
+                )
+        ) {
+            destination: Uri? ->
+
+            val id =
+                buildId
+
+            if (
+                destination != null &&
+                id != null
+            ) {
+                scope.launch {
+                    try {
+                        downloadMessage =
+                            "Windows EXE indiriliyor..."
+
+                        val ticket =
+                            withContext(
+                                Dispatchers.IO
+                            ) {
+                                BuildApiClient(
+                                    context,
+                                    serverUrl,
+                                    apiKey
+                                ).createDownloadTicket(
+                                    id,
+                                    "exe"
+                                )
+                            }
+
+                        withContext(
+                            Dispatchers.IO
+                        ) {
+                            downloadArtifactToUri(
+                                context,
+                                ticket.url,
+                                destination
+                            )
+                        }
+
+                        downloadMessage =
+                            "✅ Windows EXE başarıyla kaydedildi."
+
+                    } catch (
+                        t: Throwable
+                    ) {
+                        downloadMessage =
+                            "EXE indirme hatası: ${t.message}"
+                    }
+                }
+            }
+        }
+
     var apkCachedPath by
         remember(buildId) {
             mutableStateOf<String?>(
@@ -12956,75 +13022,13 @@ private fun BuildStep(
                             buildId
                                 ?: return@Button
 
-                        scope.launch {
-                            try {
-                                val ticket =
-                                    withContext(
-                                        Dispatchers.IO
-                                    ) {
-                                        BuildApiClient(
-                                            context,
-                                            serverUrl,
-                                            apiKey
-                                        )
-                                            .createDownloadTicket(
-                                                id,
-                                                "exe"
-                                            )
-                                    }
-
-                                val request =
-                                    DownloadManager.Request(
-                                        Uri.parse(
-                                            ticket.url
-                                        )
-                                    )
-                                        .setTitle(
-                                            "AppForge Windows EXE"
-                                        )
-                                        .setDescription(
-                                            "Windows EXE indiriliyor"
-                                        )
-                                        .setMimeType(
-                                            "application/octet-stream"
-                                        )
-                                        .setNotificationVisibility(
-                                            DownloadManager.Request
-                                                .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-                                        )
-                                        .setAllowedOverMetered(
-                                            true
-                                        )
-                                        .setAllowedOverRoaming(
-                                            true
-                                        )
-                                        .setDestinationInExternalPublicDir(
-                                            Environment.DIRECTORY_DOWNLOADS,
-                                            artifactDownloadName(
-                                                appName,
-                                                id,
-                                                "exe"
-                                            )
-                                        )
-
-                                val manager =
-                                    context.getSystemService(
-                                        Context.DOWNLOAD_SERVICE
-                                    ) as DownloadManager
-
-                                manager.enqueue(
-                                    request
-                                )
-
-                                downloadMessage =
-                                    "Windows EXE indiriliyor • İndirilenler klasörüne kaydedilecek."
-                            } catch (
-                                t: Throwable
-                            ) {
-                                downloadMessage =
-                                    "EXE indirme hatası: ${t.message}"
-                            }
-                        }
+                        exeSaveLauncher.launch(
+                            artifactDownloadName(
+                                appName,
+                                id,
+                                "exe"
+                            )
+                        )
                     },
                     modifier =
                         Modifier.fillMaxWidth()
@@ -13160,6 +13164,139 @@ private fun BuildStep(
     }
 }
 
+
+
+private fun downloadArtifactToUri(
+    context: Context,
+    url: String,
+    destination: Uri
+) {
+    require(
+        url.startsWith(
+            "https://",
+            ignoreCase = true
+        )
+    ) {
+        "İndirme adresi HTTPS değil."
+    }
+
+    val connection =
+        java.net.URL(
+            url
+        ).openConnection()
+            as java.net.HttpURLConnection
+
+    try {
+        connection.instanceFollowRedirects =
+            true
+
+        connection.connectTimeout =
+            20_000
+
+        /*
+         * Windows portable EXE yüzlerce MB olabilir.
+         * Büyük dosyalar için geniş read timeout.
+         */
+        connection.readTimeout =
+            900_000
+
+        connection.requestMethod =
+            "GET"
+
+        connection.setRequestProperty(
+            "Accept",
+            "application/octet-stream,*/*"
+        )
+
+        connection.setRequestProperty(
+            "User-Agent",
+            "AppForge-Studio-Android"
+        )
+
+        connection.connect()
+
+        val code =
+            connection.responseCode
+
+        if (
+            code !in 200..299
+        ) {
+            val detail =
+                runCatching {
+                    connection
+                        .errorStream
+                        ?.bufferedReader()
+                        ?.use {
+                            it.readText()
+                                .take(
+                                    300
+                                )
+                        }
+                }
+                    .getOrNull()
+                    .orEmpty()
+
+            error(
+                "Sunucu HTTP $code" +
+                    if (
+                        detail.isBlank()
+                    ) {
+                        ""
+                    } else {
+                        " • $detail"
+                    }
+            )
+        }
+
+        require(
+            connection.url.protocol
+                .equals(
+                    "https",
+                    ignoreCase = true
+                )
+        ) {
+            "İndirme yönlendirmesi HTTPS değil."
+        }
+
+        val output =
+            context
+                .contentResolver
+                .openOutputStream(
+                    destination,
+                    "w"
+                )
+                ?: error(
+                    "Hedef dosya açılamadı."
+                )
+
+        connection
+            .inputStream
+            .buffered(
+                1024 * 1024
+            )
+            .use {
+                input ->
+
+                output
+                    .buffered(
+                        1024 * 1024
+                    )
+                    .use {
+                        out ->
+
+                        input.copyTo(
+                            out,
+                            1024 * 1024
+                        )
+
+                        out.flush()
+                    }
+            }
+
+    } finally {
+        connection.disconnect()
+    }
+}
 
 
 private fun downloadApkToInstallerCache(
