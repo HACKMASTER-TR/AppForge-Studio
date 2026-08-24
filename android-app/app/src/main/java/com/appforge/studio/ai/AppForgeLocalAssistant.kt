@@ -565,6 +565,40 @@ class AppForgeLocalAssistant(
             "Soru boş olamaz."
         }
 
+        val selectedLanguage =
+            AppSettingsStore
+                .load(
+                    appContext
+                )
+                .languageCode
+
+        /*
+         * Türkçe AppForge FAQ sorularında LLM çalıştırılmaz.
+         * Bilgi tabanındaki doğrulanmış cevap doğrudan gösterilir.
+         *
+         * Bu yol milisaniyeler içinde cevap verir.
+         */
+        if (
+            selectedLanguage == "tr" ||
+            selectedLanguage == "system"
+        ) {
+            val directAnswer =
+                AppForgeKnowledgeBase
+                    .directTurkishAnswer(
+                        clean
+                    )
+
+            if (
+                !directAnswer.isNullOrBlank()
+            ) {
+                onPartial(
+                    directAnswer
+                )
+
+                return
+            }
+        }
+
         val grounding =
             AppForgeKnowledgeBase
                 .promptContext(
