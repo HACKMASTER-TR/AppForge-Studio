@@ -214,6 +214,15 @@ export function getFastBuildDecision(
     );
   }
 
+  if (
+    c.nativeBridge?.enabled === true &&
+    c.nativeBridge?.mediaPlayer === true
+  ) {
+    reasons.push(
+      "Media3 arka plan medya"
+    );
+  }
+
   return {
     eligible:
       reasons.length === 0,

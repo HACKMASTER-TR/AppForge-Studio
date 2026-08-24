@@ -154,6 +154,13 @@ export function preflight(c, files = {}) {
 
   if (
     c.nativeBridge?.enabled &&
+    c.nativeBridge?.mediaPlayer
+  ) {
+    ok("Media3 arka plan medya oynatıcı etkin.");
+  }
+
+  if (
+    c.nativeBridge?.enabled &&
     c.sourceMode === "URL" &&
     c.nativeBridge?.allowRemote !== true
   ) {
@@ -336,6 +343,18 @@ function requiresFastExtended(
 ) {
   if (
     outputType !== "apk"
+  ) {
+    return false;
+  }
+
+  /*
+   * Media3 ilk sürümde FULL BUILD kullanır.
+   * MediaSessionService AAR resource/manifest bileşenlerini
+   * Gradle güvenli biçimde birleştirir.
+   */
+  if (
+    c.nativeBridge?.enabled &&
+    c.nativeBridge?.mediaPlayer
   ) {
     return false;
   }
@@ -1211,6 +1230,12 @@ kotlin.compiler.execution.strategy=in-process
     c.nativeBridge?.qrScanner
       ? 'implementation("com.google.android.gms:play-services-code-scanner:16.1.0")'
       : "",
+    c.nativeBridge?.enabled && c.nativeBridge?.mediaPlayer
+      ? 'implementation("androidx.media3:media3-exoplayer:1.11.0")'
+      : "",
+    c.nativeBridge?.enabled && c.nativeBridge?.mediaPlayer
+      ? 'implementation("androidx.media3:media3-session:1.11.0")'
+      : "",
     c.firebase?.analytics || c.firebase?.crashlytics
       ? 'implementation(platform("com.google.firebase:firebase-bom:34.17.0"))'
       : "",
@@ -1275,11 +1300,23 @@ dependencies {
     c.features?.location
       ? '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />'
       : "",
-    c.features?.notifications
+    (
+      c.features?.notifications ||
+      (
+        c.nativeBridge?.enabled &&
+        c.nativeBridge?.mediaPlayer
+      )
+    )
       ? '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />'
       : "",
     c.nativeBridge?.vibration
       ? '<uses-permission android:name="android.permission.VIBRATE" />'
+      : "",
+    c.nativeBridge?.enabled && c.nativeBridge?.mediaPlayer
+      ? '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />'
+      : "",
+    c.nativeBridge?.enabled && c.nativeBridge?.mediaPlayer
+      ? '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />'
       : ""
   ].filter(Boolean).join("\n    ");
 
@@ -1323,6 +1360,22 @@ dependencies {
             android:value="barcode_ui" />`
     : "";
 
+  const mediaServiceManifest =
+    c.nativeBridge?.enabled &&
+    c.nativeBridge?.mediaPlayer
+      ? `
+        <service
+            android:name=".AppForgeMediaService"
+            android:foregroundServiceType="mediaPlayback"
+            android:stopWithTask="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>`
+      : "";
+
   const orientation = ["portrait", "landscape", "unspecified"].includes(c.orientation)
     ? c.orientation
     : "unspecified";
@@ -1353,6 +1406,7 @@ dependencies {
         ${provider}
         ${admobMeta}
         ${scannerMeta}
+        ${mediaServiceManifest}
     </application>
 </manifest>
 `
@@ -1467,7 +1521,651 @@ dependencies {
     path.join(javaDir, "MainActivity.kt"),
     generatedMainActivity(c, pkg)
   );
+
+  if (
+    c.nativeBridge?.enabled &&
+    c.nativeBridge?.mediaPlayer
+  ) {
+    await fs.writeFile(
+      path.join(
+        javaDir,
+        "AppForgeMediaService.kt"
+      ),
+      generatedMediaService(pkg)
+    );
+  }
 }
+
+
+function generatedMediaService(pkg) {
+  return `
+package ${pkg}
+
+import android.app.PendingIntent
+import android.content.Intent
+import android.net.Uri
+
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaSessionService
+
+import org.json.JSONArray
+import org.json.JSONObject
+
+
+class AppForgeMediaService :
+    MediaSessionService() {
+
+    companion object {
+
+        const val ACTION_PLAY_ITEM =
+            "${pkg}.appforge.media.PLAY_ITEM"
+
+        const val ACTION_SET_PLAYLIST =
+            "${pkg}.appforge.media.SET_PLAYLIST"
+
+        const val ACTION_PLAY =
+            "${pkg}.appforge.media.PLAY"
+
+        const val ACTION_PAUSE =
+            "${pkg}.appforge.media.PAUSE"
+
+        const val ACTION_NEXT =
+            "${pkg}.appforge.media.NEXT"
+
+        const val ACTION_PREVIOUS =
+            "${pkg}.appforge.media.PREVIOUS"
+
+        const val ACTION_STOP =
+            "${pkg}.appforge.media.STOP"
+    }
+
+
+    private lateinit var player:
+        ExoPlayer
+
+    private var mediaSession:
+        MediaSession? =
+            null
+
+
+    override fun onCreate() {
+        super.onCreate()
+
+        val audioAttributes =
+            AudioAttributes
+                .Builder()
+                .setUsage(
+                    C.USAGE_MEDIA
+                )
+                .setContentType(
+                    C.AUDIO_CONTENT_TYPE_MUSIC
+                )
+                .build()
+
+        player =
+            ExoPlayer
+                .Builder(
+                    this
+                )
+                .build()
+                .apply {
+
+                    setAudioAttributes(
+                        audioAttributes,
+                        true
+                    )
+
+                    setHandleAudioBecomingNoisy(
+                        true
+                    )
+
+                    addListener(
+                        object :
+                            Player.Listener {
+
+                            override fun onIsPlayingChanged(
+                                isPlaying: Boolean
+                            ) {
+                                persistState()
+                            }
+
+                            override fun onMediaItemTransition(
+                                mediaItem: MediaItem?,
+                                reason: Int
+                            ) {
+                                persistState()
+                            }
+
+                            override fun onPlaybackStateChanged(
+                                playbackState: Int
+                            ) {
+                                persistState()
+                            }
+                        }
+                    )
+                }
+
+
+        val sessionBuilder =
+            MediaSession
+                .Builder(
+                    this,
+                    player
+                )
+
+
+        packageManager
+            .getLaunchIntentForPackage(
+                packageName
+            )
+            ?.let {
+                launchIntent ->
+
+                launchIntent.addFlags(
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+                )
+
+                val sessionIntent =
+                    PendingIntent
+                        .getActivity(
+                            this,
+                            6201,
+                            launchIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or
+                                PendingIntent.FLAG_IMMUTABLE
+                        )
+
+                sessionBuilder
+                    .setSessionActivity(
+                        sessionIntent
+                    )
+            }
+
+
+        mediaSession =
+            sessionBuilder
+                .build()
+
+        persistState()
+    }
+
+
+    override fun onGetSession(
+        controllerInfo:
+            MediaSession.ControllerInfo
+    ): MediaSession? =
+        mediaSession
+
+
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int
+    ): Int {
+
+        val result =
+            super.onStartCommand(
+                intent,
+                flags,
+                startId
+            )
+
+
+        when (
+            intent?.action
+        ) {
+
+            ACTION_PLAY_ITEM -> {
+                playSingleItem(
+                    intent
+                )
+            }
+
+            ACTION_SET_PLAYLIST -> {
+                loadPlaylist(
+                    intent
+                )
+            }
+
+            ACTION_PLAY -> {
+                if (
+                    player.mediaItemCount >
+                    0
+                ) {
+                    player.prepare()
+                    player.play()
+                }
+            }
+
+            ACTION_PAUSE -> {
+                player.pause()
+            }
+
+            ACTION_NEXT -> {
+                if (
+                    player.hasNextMediaItem()
+                ) {
+                    player.seekToNextMediaItem()
+                    player.play()
+                }
+            }
+
+            ACTION_PREVIOUS -> {
+                if (
+                    player.hasPreviousMediaItem()
+                ) {
+                    player.seekToPreviousMediaItem()
+                    player.play()
+                } else {
+                    player.seekTo(
+                        0L
+                    )
+                }
+            }
+
+            ACTION_STOP -> {
+                player.pause()
+                player.stop()
+                player.clearMediaItems()
+
+                persistState()
+
+                stopSelf()
+            }
+        }
+
+
+        persistState()
+
+        return result
+    }
+
+
+    private fun playSingleItem(
+        intent: Intent
+    ) {
+
+        val url =
+            intent
+                .getStringExtra(
+                    "url"
+                )
+                .orEmpty()
+                .take(
+                    8192
+                )
+
+        if (
+            url.isBlank()
+        ) {
+            return
+        }
+
+
+        val item =
+            createMediaItem(
+                url =
+                    url,
+                title =
+                    intent
+                        .getStringExtra(
+                            "title"
+                        )
+                        .orEmpty()
+                        .take(
+                            500
+                        ),
+                artist =
+                    intent
+                        .getStringExtra(
+                            "artist"
+                        )
+                        .orEmpty()
+                        .take(
+                            500
+                        ),
+                artwork =
+                    intent
+                        .getStringExtra(
+                            "artwork"
+                        )
+                        .orEmpty()
+                        .take(
+                            8192
+                        )
+            )
+
+
+        player.setMediaItem(
+            item
+        )
+
+        player.prepare()
+        player.play()
+    }
+
+
+    private fun loadPlaylist(
+        intent: Intent
+    ) {
+
+        val raw =
+            intent
+                .getStringExtra(
+                    "playlist"
+                )
+                .orEmpty()
+                .take(
+                    60000
+                )
+
+        if (
+            raw.isBlank()
+        ) {
+            return
+        }
+
+
+        val array =
+            runCatching {
+                JSONArray(
+                    raw
+                )
+            }.getOrNull()
+                ?: return
+
+
+        val items =
+            mutableListOf<
+                MediaItem
+            >()
+
+
+        val limit =
+            minOf(
+                array.length(),
+                250
+            )
+
+
+        for (
+            index in
+            0 until limit
+        ) {
+
+            val item =
+                array
+                    .optJSONObject(
+                        index
+                    )
+                    ?: continue
+
+            val url =
+                item
+                    .optString(
+                        "url",
+                        ""
+                    )
+                    .take(
+                        8192
+                    )
+
+            if (
+                url.isBlank()
+            ) {
+                continue
+            }
+
+
+            items.add(
+                createMediaItem(
+                    url =
+                        url,
+                    title =
+                        item
+                            .optString(
+                                "title",
+                                ""
+                            )
+                            .take(
+                                500
+                            ),
+                    artist =
+                        item
+                            .optString(
+                                "artist",
+                                ""
+                            )
+                            .take(
+                                500
+                            ),
+                    artwork =
+                        item
+                            .optString(
+                                "artwork",
+                                ""
+                            )
+                            .take(
+                                8192
+                            )
+                )
+            )
+        }
+
+
+        if (
+            items.isEmpty()
+        ) {
+            return
+        }
+
+
+        val requestedIndex =
+            intent.getIntExtra(
+                "startIndex",
+                0
+            )
+
+        val safeIndex =
+            requestedIndex
+                .coerceIn(
+                    0,
+                    items.lastIndex
+                )
+
+
+        player.setMediaItems(
+            items,
+            safeIndex,
+            0L
+        )
+
+        player.prepare()
+
+
+        if (
+            intent.getBooleanExtra(
+                "autoplay",
+                true
+            )
+        ) {
+            player.play()
+        }
+    }
+
+
+    private fun createMediaItem(
+        url: String,
+        title: String,
+        artist: String,
+        artwork: String
+    ): MediaItem {
+
+        val mediaUri =
+            normalizeUri(
+                url
+            )
+
+
+        val metadataBuilder =
+            MediaMetadata
+                .Builder()
+                .setTitle(
+                    title.ifBlank {
+                        mediaUri
+                            .lastPathSegment
+                            ?: "Medya"
+                    }
+                )
+                .setArtist(
+                    artist
+                )
+
+
+        if (
+            artwork.isNotBlank()
+        ) {
+            runCatching {
+                metadataBuilder
+                    .setArtworkUri(
+                        normalizeUri(
+                            artwork
+                        )
+                    )
+            }
+        }
+
+
+        return MediaItem
+            .Builder()
+            .setMediaId(
+                url.take(
+                    2048
+                )
+            )
+            .setUri(
+                mediaUri
+            )
+            .setMediaMetadata(
+                metadataBuilder
+                    .build()
+            )
+            .build()
+    }
+
+
+    /*
+     * AppForge yerel projeleri WebView içinde
+     * appassets sanal HTTPS origin'i üzerinden açılır.
+     * ExoPlayer aynı dosyayı Android asset olarak okur.
+     */
+    private fun normalizeUri(
+        raw: String
+    ): Uri {
+
+        val value =
+            raw
+                .trim()
+                .take(
+                    8192
+                )
+
+        val appAssetsPrefix =
+            "https://appassets.androidplatform.net/assets/site/"
+
+
+        return if (
+            value.startsWith(
+                appAssetsPrefix
+            )
+        ) {
+            Uri.parse(
+                "asset:///site/" +
+                    value.removePrefix(
+                        appAssetsPrefix
+                    )
+            )
+        } else {
+            Uri.parse(
+                value
+            )
+        }
+    }
+
+
+    private fun persistState() {
+
+        val metadata =
+            player
+                .currentMediaItem
+                ?.mediaMetadata
+
+
+        getSharedPreferences(
+            "appforge_media_state",
+            MODE_PRIVATE
+        )
+            .edit()
+            .putBoolean(
+                "playing",
+                player.isPlaying
+            )
+            .putInt(
+                "index",
+                player.currentMediaItemIndex
+            )
+            .putInt(
+                "count",
+                player.mediaItemCount
+            )
+            .putLong(
+                "position",
+                player.currentPosition
+            )
+            .putString(
+                "title",
+                metadata
+                    ?.title
+                    ?.toString()
+                    .orEmpty()
+            )
+            .putString(
+                "artist",
+                metadata
+                    ?.artist
+                    ?.toString()
+                    .orEmpty()
+            )
+            .apply()
+    }
+
+
+    override fun onDestroy() {
+
+        mediaSession
+            ?.release()
+
+        mediaSession =
+            null
+
+        if (
+            ::player.isInitialized
+        ) {
+            player.release()
+        }
+
+        super.onDestroy()
+    }
+}
+`;
+}
+
 
 function generatedMainActivity(c, pkg) {
   const isLocalSource =
