@@ -266,3 +266,33 @@ test(
     }
   }
 );
+
+
+test(
+  "Studio stores build artifacts in AppForge Studio Downloads folder",
+  async () => {
+    const text =
+      await readFile(
+        main,
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        'APPFORGE_DOWNLOAD_FOLDER',
+        '"AppForge Studio"',
+        'downloadArtifactToDownloads(',
+        'MediaStore.Downloads.EXTERNAL_CONTENT_URI',
+        'MediaStore.MediaColumns.RELATIVE_PATH',
+        'Environment.DIRECTORY_DOWNLOADS',
+        '"✅ Windows EXE Downloads/AppForge Studio klasörüne kaydedildi."'
+      ]
+    ) {
+      assert.equal(
+        text.includes(marker),
+        true,
+        `Missing AppForge Downloads marker: ${marker}`
+      );
+    }
+  }
+);

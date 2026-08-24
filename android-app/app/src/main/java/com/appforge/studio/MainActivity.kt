@@ -6,6 +6,7 @@ import android.app.DownloadManager
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.ContentValues
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.webkit.ConsoleMessage
@@ -21,6 +22,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Build
 import android.provider.Settings
+import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -224,6 +226,9 @@ private val Bg = Color(0xFF08070D)
 private val Card2 = Color(0xFF111820)
 private val Accent = Color(0xFF8CC9F6)
 private val TextSecondary = Color(0xFFA5ADB7)
+
+private const val APPFORGE_DOWNLOAD_FOLDER =
+    "AppForge Studio"
 
 private enum class AiDownloadNetwork {
     WIFI,
@@ -12976,11 +12981,11 @@ private fun BuildStep(
                                         )
                                         .setDestinationInExternalPublicDir(
                                             Environment.DIRECTORY_DOWNLOADS,
-                                            artifactDownloadName(
+                                            "$APPFORGE_DOWNLOAD_FOLDER/${artifactDownloadName(
                                                 appName,
                                                 id,
                                                 "aab"
-                                            )
+                                            )}"
                                         )
 
                                 val manager =
@@ -12993,7 +12998,7 @@ private fun BuildStep(
                                 )
 
                                 downloadMessage =
-                                    "AAB indiriliyor • İndirilenler klasörüne kaydedilecek."
+                                    "AAB indiriliyor • Downloads/AppForge Studio klasörüne kaydedilecek."
                             } catch (
                                 t: Throwable
                             ) {
@@ -13022,13 +13027,61 @@ private fun BuildStep(
                             buildId
                                 ?: return@Button
 
-                        exeSaveLauncher.launch(
+                        val fileName =
                             artifactDownloadName(
                                 appName,
                                 id,
                                 "exe"
                             )
-                        )
+
+                        if (
+                            Build.VERSION.SDK_INT >=
+                                Build.VERSION_CODES.Q
+                        ) {
+                            scope.launch {
+                                try {
+                                    downloadMessage =
+                                        "Windows EXE indiriliyor..."
+
+                                    val ticket =
+                                        withContext(
+                                            Dispatchers.IO
+                                        ) {
+                                            BuildApiClient(
+                                                context,
+                                                serverUrl,
+                                                apiKey
+                                            ).createDownloadTicket(
+                                                id,
+                                                "exe"
+                                            )
+                                        }
+
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        downloadArtifactToDownloads(
+                                            context,
+                                            ticket.url,
+                                            fileName
+                                        )
+                                    }
+
+                                    downloadMessage =
+                                        "✅ Windows EXE Downloads/AppForge Studio klasörüne kaydedildi."
+
+                                } catch (
+                                    t: Throwable
+                                ) {
+                                    downloadMessage =
+                                        "EXE indirme hatası: ${t.message}"
+                                }
+                            }
+                        } else {
+                            exeSaveLauncher.launch(
+                                fileName
+                            )
+                        }
                     },
                     modifier =
                         Modifier.fillMaxWidth()
@@ -13164,6 +13217,97 @@ private fun BuildStep(
     }
 }
 
+
+
+private fun downloadArtifactToDownloads(
+    context: Context,
+    url: String,
+    fileName: String
+): Uri {
+
+    require(
+        Build.VERSION.SDK_INT >=
+            Build.VERSION_CODES.Q
+    ) {
+        "Otomatik Downloads kaydı Android 10+ gerektirir."
+    }
+
+    val resolver =
+        context.contentResolver
+
+    val values =
+        ContentValues().apply {
+            put(
+                MediaStore.MediaColumns.DISPLAY_NAME,
+                fileName
+            )
+
+            put(
+                MediaStore.MediaColumns.MIME_TYPE,
+                "application/octet-stream"
+            )
+
+            put(
+                MediaStore.MediaColumns.RELATIVE_PATH,
+                "${Environment.DIRECTORY_DOWNLOADS}/$APPFORGE_DOWNLOAD_FOLDER"
+            )
+
+            put(
+                MediaStore.MediaColumns.IS_PENDING,
+                1
+            )
+        }
+
+    val destination =
+        resolver.insert(
+            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+            values
+        )
+            ?: error(
+                "AppForge Studio download dosyası oluşturulamadı."
+            )
+
+    try {
+        downloadArtifactToUri(
+            context,
+            url,
+            destination
+        )
+
+        val completed =
+            ContentValues().apply {
+                put(
+                    MediaStore.MediaColumns.IS_PENDING,
+                    0
+                )
+            }
+
+        resolver.update(
+            destination,
+            completed,
+            null,
+            null
+        )
+
+        return destination
+
+    } catch (
+        t: Throwable
+    ) {
+        /*
+         * Yarım kalan dosyayı kullanıcıya gösterme.
+         */
+        runCatching {
+            resolver.delete(
+                destination,
+                null,
+                null
+            )
+        }
+
+        throw t
+    }
+}
 
 
 private fun downloadArtifactToUri(
