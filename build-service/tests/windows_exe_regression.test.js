@@ -202,3 +202,35 @@ test(
     );
   }
 );
+
+test(
+  "Windows build skips unused npm dependency scan",
+  async () => {
+    const text =
+      await readFile(
+        engine,
+        "utf8"
+      );
+
+    assert.equal(
+      text.includes(
+        '"before-build.cjs"'
+      ),
+      true
+    );
+
+    assert.equal(
+      text.includes(
+        'beforeBuild:'
+      ),
+      true
+    );
+
+    assert.equal(
+      text.includes(
+        '"site/**/*"'
+      ),
+      true
+    );
+  }
+);

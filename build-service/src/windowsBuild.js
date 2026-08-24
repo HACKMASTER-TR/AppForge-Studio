@@ -932,6 +932,17 @@ app.on(
       mainSource
     );
 
+    await fs.writeFile(
+      path.join(
+        appDir,
+        "before-build.cjs"
+      ),
+      `exports.default = async function () {
+  return false;
+};
+`
+    );
+
     const packageJson = {
       name:
         safeNpmName(
@@ -952,6 +963,14 @@ app.on(
       },
 
       build: {
+        beforeBuild:
+          "./before-build.cjs",
+
+        files: [
+          "main.cjs",
+          "site/**/*",
+          "appforge-project.json"
+        ],
         appId:
           c.packageName,
 
