@@ -208,3 +208,72 @@ test(
     );
   }
 );
+
+
+test(
+  "Studio validates EXE before EXE to APK conversion",
+  async () => {
+    const file =
+      new URL(
+        "../../android-app/app/src/main/java/com/appforge/studio/io/AppForgeExeConversion.kt",
+        import.meta.url
+      );
+
+    const text =
+      await readFile(
+        file,
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        '"APPFORGE-EXE-V1!"',
+        '"Geçerli bir Windows EXE dosyası değil."',
+        '"Bu EXE AppForge projesi değil. Otomatik EXE → APK dönüşümü desteklenmiyor."',
+        "MAX_EXE_BYTES",
+        "MAX_PAYLOAD_BYTES",
+        "payloadOffset",
+        "payloadLength"
+      ]
+    ) {
+      assert.equal(
+        text.includes(marker),
+        true,
+        `Missing EXE conversion marker: ${marker}`
+      );
+    }
+  }
+);
+
+
+test(
+  "Studio EXE picker starts AppForge EXE validation",
+  async () => {
+    const file =
+      new URL(
+        "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        import.meta.url
+      );
+
+    const text =
+      await readFile(
+        file,
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        "AppForgeExeConversion",
+        "conversionExeUri",
+        '"EXE doğrulanıyor..."',
+        "AppForge EXE doğrulandı"
+      ]
+    ) {
+      assert.equal(
+        text.includes(marker),
+        true,
+        `Missing EXE picker conversion marker: ${marker}`
+      );
+    }
+  }
+);

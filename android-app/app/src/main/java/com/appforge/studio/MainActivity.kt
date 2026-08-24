@@ -55,6 +55,7 @@ import com.appforge.studio.ai.LocalAiModelDownloader
 import com.appforge.studio.i18n.StudioI18n
 import com.appforge.studio.io.AppSettingsStore
 import com.appforge.studio.io.AppForgeApkConversion
+import com.appforge.studio.io.AppForgeExeConversion
 import com.appforge.studio.io.KeystoreVault
 import com.appforge.studio.io.ManagedKeystore
 import com.appforge.studio.io.ProjectBackupManager
@@ -1556,6 +1557,50 @@ private fun AppForgeApp() {
                 AppScreen.CONVERSION
 
             conversionApkUri =
+                null
+        }
+    }
+
+
+    LaunchedEffect(
+        conversionExeUri
+    ) {
+        val selectedUri =
+            conversionExeUri
+                ?: return@LaunchedEffect
+
+        status =
+            "EXE doğrulanıyor..."
+
+        try {
+            val inspected =
+                withContext(
+                    Dispatchers.IO
+                ) {
+                    AppForgeExeConversion
+                        .inspect(
+                            context,
+                            selectedUri
+                        )
+                }
+
+            status =
+                "AppForge EXE doğrulandı • dönüşüm paketi bulundu (${inspected.payloadLength / 1024L} KB)"
+
+        } catch (
+            t: Throwable
+        ) {
+            status =
+                "Dönüşüm hatası: ${t.message}"
+
+            progress =
+                0
+
+            screen =
+                AppScreen.CONVERSION
+
+        } finally {
+            conversionExeUri =
                 null
         }
     }
