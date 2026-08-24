@@ -347,3 +347,40 @@ test(
     }
   }
 );
+
+test(
+  "Windows portable build stays within low memory budget",
+  async () => {
+    const text =
+      await readFile(
+        engine,
+        "utf8"
+      );
+
+    assert.equal(
+      text.includes(
+        'NODE_OPTIONS:'
+      ),
+      true
+    );
+
+    assert.equal(
+      text.includes(
+        '"--max-old-space-size=256"'
+      ),
+      true
+    );
+
+    assert.equal(
+      text.includes(
+        'UV_THREADPOOL_SIZE:'
+      ),
+      true
+    );
+
+    assert.match(
+      text,
+      /asar:\s*false/
+    );
+  }
+);

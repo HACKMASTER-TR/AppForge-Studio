@@ -525,6 +525,17 @@ async function runBuilder(
             env: {
               ...process.env,
 
+              /*
+               * Railway Windows Worker düşük bellekli.
+               * electron-builder'ın Node heap'inin
+               * bütün cgroup belleğini tüketmesini engelle.
+               */
+              NODE_OPTIONS:
+                "--max-old-space-size=256",
+
+              UV_THREADPOOL_SIZE:
+                "2",
+
               CSC_IDENTITY_AUTO_DISCOVERY:
                 "false"
             },
@@ -2158,8 +2169,13 @@ app.on(
         electronVersion:
           ELECTRON_VERSION,
 
+        /*
+         * Büyük LOCAL projelerde ASAR oluşturmak
+         * electron-builder RAM kullanımını yükseltiyor.
+         * Portable paket zaten tek EXE çıktısı veriyor.
+         */
         asar:
-          true,
+          false,
 
         npmRebuild:
           false,
