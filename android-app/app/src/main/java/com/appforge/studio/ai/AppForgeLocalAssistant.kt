@@ -527,20 +527,24 @@ class AppForgeLocalAssistant(
 
             else ->
                 """
-                YANIT DİLİ: TÜRKÇE.
+                YANIT DİLİ KESİNLİKLE TÜRKÇEDİR.
 
-                İlk kelimeden son kelimeye kadar yalnızca düzgün Türkçe kullan.
-                İngilizce düşünme metni, giriş cümlesi veya açıklama yazma.
-                "Okay, let's see", "The user is asking", "I need to",
-                "We need to" gibi iç düşünme cümlelerini kesinlikle gösterme.
+                Yalnızca Türkçe yaz.
+                Başka hiçbir dilde kelime veya cümle kurma.
+                İlk kelimeden son kelimeye kadar Türkçe kal.
 
-                Kullanıcıya doğrudan nihai cevabı ver.
-                İç düşünme, reasoning veya çalışma notlarını yazma.
-                Türkçe karakterleri doğru UTF-8 olarak kullan:
+                Kullanıcıya yalnız nihai cevabı ver.
+                Düşünme sürecini, analizini veya çalışma notlarını yazma.
+
+                Türkçe karakterleri doğru kullan:
                 ç, ğ, ı, İ, ö, ş, ü.
 
-                Kelimeler arasında normal boşluk bırak.
-                Noktalama işaretlerinden sonra gerektiğinde boşluk kullan.
+                Kısa, açık ve doğal cümleler kullan.
+                Kelimeler arasındaki boşlukları koru.
+
+                AppForge hakkında yalnız verilen yerel bilgi tabanındaki
+                gerçekleri kullan. Bilgi tabanında bulunmayan özellik,
+                avantaj veya kısıtlama uydurma.
                 """.trimIndent()
         }
     }
@@ -574,11 +578,17 @@ class AppForgeLocalAssistant(
 
         val prompt =
             """
+            /no_think
+
             $languageInstruction
 
             Aşağıdaki yerel AppForge bilgisini yalnızca soruyla ilgiliyse kullan.
-            AppForge hakkında bağlamda olmayan bir özelliği uydurma.
+            AppForge hakkında bağlamda olmayan hiçbir özellik uydurma.
+            Bilgi tabanında yazmayan bir özelliği varmış veya yokmuş gibi söyleme.
             Proje özeti editördeki mevcut durumu gösterir.
+
+            Cevabı gereksiz uzatma.
+            Normal sorularda 2-6 kısa cümle yeterlidir.
 
             ÖNEMLİ:
             Yukarıdaki YANIT DİLİ talimatına bu mesajda mutlaka uy.
@@ -880,8 +890,13 @@ class AppForgeLocalAssistant(
                         LocalAiBackend.GPU ->
                             Backend.GPU()
                     },
+                /*
+                 * Yerel yardım asistanı için 4096 token gereksizdi.
+                 * Daha kısa sınır Qwen3'ün gereksiz uzun üretimini
+                 * azaltır ve yanıt süresini iyileştirir.
+                 */
                 maxNumTokens =
-                    4096,
+                    1536,
                 cacheDir =
                     File(
                         appContext.cacheDir,
@@ -953,11 +968,11 @@ class AppForgeLocalAssistant(
             samplerConfig =
                 SamplerConfig(
                     topK =
-                        40,
+                        20,
                     topP =
-                        0.9,
+                        0.80,
                     temperature =
-                        0.20
+                        0.10
                 )
         )
 
