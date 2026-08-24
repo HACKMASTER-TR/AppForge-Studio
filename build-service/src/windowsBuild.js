@@ -472,7 +472,10 @@ async function runBuilder(
 
       child.once(
         "close",
-        code => {
+        (
+          code,
+          signal
+        ) => {
           if (
             code === 0
           ) {
@@ -480,7 +483,9 @@ async function runBuilder(
           } else {
             reject(
               new Error(
-                `electron-builder çıkış kodu: ${code}`
+                signal
+                  ? `electron-builder sinyal ile kapandı: ${signal}`
+                  : `electron-builder çıkış kodu: ${code}`
               )
             );
           }
@@ -869,6 +874,9 @@ app.on(
         ],
 
         win: {
+          signAndEditExecutable:
+            false,
+
           target: [
             {
               target:
