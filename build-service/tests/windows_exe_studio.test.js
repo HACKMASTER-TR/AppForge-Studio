@@ -146,7 +146,7 @@ test(
 
     assert.match(
       text,
-      /draft\.buildOutput\s*==\s*"exe"/
+      /buildOutput\s*==\s*"exe"/
     );
   }
 );

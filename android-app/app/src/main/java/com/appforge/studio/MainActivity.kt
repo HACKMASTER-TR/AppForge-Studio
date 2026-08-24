@@ -2527,7 +2527,9 @@ private fun AppForgeApp() {
                                 apiKey = apiKey,
                                 apkUrl = apkUrl,
                                 aabUrl = aabUrl,
-                                exeUrl = exeUrl
+                                exeUrl = exeUrl,
+                                buildOutput =
+                                    draft.buildOutput
                             )
                         }
                     }
@@ -12045,7 +12047,8 @@ private fun BuildStep(
     apiKey: String,
     apkUrl: String?,
     aabUrl: String?,
-    exeUrl: String?
+    exeUrl: String?,
+    buildOutput: String
 ) {
     val context =
         LocalContext.current
@@ -13046,7 +13049,7 @@ private fun BuildStep(
                 ) {
                     Text(
                         if (
-                            draft.buildOutput ==
+                            buildOutput ==
                             "exe"
                         ) {
                             "Canlı Windows logu"
