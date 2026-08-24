@@ -1,0 +1,66 @@
+name: AppForge Conversion Smoke
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+
+    paths:
+      - "build-service/**"
+      - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+      - "android-app/app/src/main/java/com/appforge/studio/io/AppForgeApkConversion.kt"
+      - "android-app/app/src/main/java/com/appforge/studio/io/AppForgeExeConversion.kt"
+      - ".github/workflows/conversion-smoke.yml"
+
+  pull_request:
+    branches:
+      - main
+
+    paths:
+      - "build-service/**"
+      - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+      - "android-app/app/src/main/java/com/appforge/studio/io/AppForgeApkConversion.kt"
+      - "android-app/app/src/main/java/com/appforge/studio/io/AppForgeExeConversion.kt"
+      - ".github/workflows/conversion-smoke.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: conversion-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conversion-smoke:
+    name: APK EXE APK smoke
+
+    runs-on:
+      ubuntu-latest
+
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: build-service
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: build-service/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Round-trip smoke
+        run: node --test tests/conversion_roundtrip_smoke.test.js
+
+      - name: Full regression suite
+        run: npm test
