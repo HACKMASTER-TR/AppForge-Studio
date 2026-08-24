@@ -1060,6 +1060,35 @@ export async function executeWindowsBuild(
       startPage:
         startPage || "",
 
+      /*
+       * Bunlar Android WebView ayarlarıdır.
+       * Windows Electron runtime bunları kullanmaz;
+       * APK -> EXE -> APK dönüşümünde kaybolmamaları
+       * için EXE manifestinde saklanırlar.
+       */
+      webView: {
+        javaScriptEnabled:
+          c.webView?.javaScriptEnabled !== false,
+
+        domStorageEnabled:
+          c.webView?.domStorageEnabled !== false,
+
+        zoomEnabled:
+          c.webView?.zoomEnabled !== false,
+
+        wideViewPortEnabled:
+          c.webView?.wideViewPortEnabled !== false,
+
+        overviewModeEnabled:
+          c.webView?.overviewModeEnabled !== false,
+
+        mediaAutoplayEnabled:
+          c.webView?.mediaAutoplayEnabled !== false,
+
+        mixedContentAllowed:
+          c.webView?.mixedContentAllowed === true
+      },
+
       nativeBridge: {
         mediaPlayer:
           Boolean(

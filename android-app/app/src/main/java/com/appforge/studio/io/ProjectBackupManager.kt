@@ -499,6 +499,36 @@ object ProjectBackupManager {
                 "offlineCache",
                 d.offlineCache
             )
+
+            put(
+                "webJavaScriptEnabled",
+                d.webJavaScriptEnabled
+            )
+            put(
+                "webDomStorageEnabled",
+                d.webDomStorageEnabled
+            )
+            put(
+                "webZoomEnabled",
+                d.webZoomEnabled
+            )
+            put(
+                "webWideViewPortEnabled",
+                d.webWideViewPortEnabled
+            )
+            put(
+                "webOverviewModeEnabled",
+                d.webOverviewModeEnabled
+            )
+            put(
+                "webMediaAutoplayEnabled",
+                d.webMediaAutoplayEnabled
+            )
+            put(
+                "webMixedContentAllowed",
+                d.webMixedContentAllowed
+            )
+
             put(
                 "deepLinkEnabled",
                 d.deepLinkEnabled
@@ -534,6 +564,10 @@ object ProjectBackupManager {
             put(
                 "vibrationBridge",
                 d.vibrationBridge
+            )
+            put(
+                "mediaPlayerBridge",
+                d.mediaPlayerBridge
             )
             put(
                 "qrScanner",
@@ -788,6 +822,43 @@ object ProjectBackupManager {
                     "offlineCache",
                     true
                 ),
+
+            webJavaScriptEnabled =
+                o.optBoolean(
+                    "webJavaScriptEnabled",
+                    true
+                ),
+            webDomStorageEnabled =
+                o.optBoolean(
+                    "webDomStorageEnabled",
+                    true
+                ),
+            webZoomEnabled =
+                o.optBoolean(
+                    "webZoomEnabled",
+                    true
+                ),
+            webWideViewPortEnabled =
+                o.optBoolean(
+                    "webWideViewPortEnabled",
+                    true
+                ),
+            webOverviewModeEnabled =
+                o.optBoolean(
+                    "webOverviewModeEnabled",
+                    true
+                ),
+            webMediaAutoplayEnabled =
+                o.optBoolean(
+                    "webMediaAutoplayEnabled",
+                    true
+                ),
+            webMixedContentAllowed =
+                o.optBoolean(
+                    "webMixedContentAllowed",
+                    false
+                ),
+
             deepLinkEnabled =
                 o.optBoolean(
                     "deepLinkEnabled",
@@ -831,6 +902,11 @@ object ProjectBackupManager {
                 o.optBoolean(
                     "vibrationBridge",
                     true
+                ),
+            mediaPlayerBridge =
+                o.optBoolean(
+                    "mediaPlayerBridge",
+                    false
                 ),
             qrScanner =
                 o.optBoolean(

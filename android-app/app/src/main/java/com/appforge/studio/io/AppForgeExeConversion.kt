@@ -23,6 +23,15 @@ data class ExeConversionProject(
     val versionCode: Int,
     val sourceMode: SourceMode,
     val webUrl: String,
+
+    val webJavaScriptEnabled: Boolean,
+    val webDomStorageEnabled: Boolean,
+    val webZoomEnabled: Boolean,
+    val webWideViewPortEnabled: Boolean,
+    val webOverviewModeEnabled: Boolean,
+    val webMediaAutoplayEnabled: Boolean,
+    val webMixedContentAllowed: Boolean,
+
     val mediaPlayerBridge: Boolean,
     val projectDir: File?
 )
@@ -585,6 +594,57 @@ object AppForgeExeConversion {
                     siteDir
             }
 
+            val webView =
+                manifest.optJSONObject(
+                    "webView"
+                )
+
+            /*
+             * Eski AppForge EXE'lerinde bu alan yoksa
+             * bugüne kadarki WebView varsayılanlarını kullan.
+             */
+            val webJavaScriptEnabled =
+                webView?.optBoolean(
+                    "javaScriptEnabled",
+                    true
+                ) ?: true
+
+            val webDomStorageEnabled =
+                webView?.optBoolean(
+                    "domStorageEnabled",
+                    true
+                ) ?: true
+
+            val webZoomEnabled =
+                webView?.optBoolean(
+                    "zoomEnabled",
+                    true
+                ) ?: true
+
+            val webWideViewPortEnabled =
+                webView?.optBoolean(
+                    "wideViewPortEnabled",
+                    true
+                ) ?: true
+
+            val webOverviewModeEnabled =
+                webView?.optBoolean(
+                    "overviewModeEnabled",
+                    true
+                ) ?: true
+
+            val webMediaAutoplayEnabled =
+                webView?.optBoolean(
+                    "mediaAutoplayEnabled",
+                    true
+                ) ?: true
+
+            val webMixedContentAllowed =
+                webView?.optBoolean(
+                    "mixedContentAllowed",
+                    false
+                ) ?: false
+
             val mediaPlayerBridge =
                 manifest
                     .optJSONObject(
@@ -614,8 +674,31 @@ object AppForgeExeConversion {
                     sourceMode,
                 webUrl =
                     webUrl,
+
+                webJavaScriptEnabled =
+                    webJavaScriptEnabled,
+
+                webDomStorageEnabled =
+                    webDomStorageEnabled,
+
+                webZoomEnabled =
+                    webZoomEnabled,
+
+                webWideViewPortEnabled =
+                    webWideViewPortEnabled,
+
+                webOverviewModeEnabled =
+                    webOverviewModeEnabled,
+
+                webMediaAutoplayEnabled =
+                    webMediaAutoplayEnabled,
+
+                webMixedContentAllowed =
+                    webMixedContentAllowed,
+
                 mediaPlayerBridge =
                     mediaPlayerBridge,
+
                 projectDir =
                     projectDir
             )

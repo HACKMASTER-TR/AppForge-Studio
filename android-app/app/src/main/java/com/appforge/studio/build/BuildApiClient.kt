@@ -159,8 +159,43 @@ class BuildApiClient(
                 put("pathPrefix", draft.deepLinkPathPrefix)
             })
 
+            put("webView", JSONObject().apply {
+                put(
+                    "javaScriptEnabled",
+                    draft.webJavaScriptEnabled
+                )
+                put(
+                    "domStorageEnabled",
+                    draft.webDomStorageEnabled
+                )
+                put(
+                    "zoomEnabled",
+                    draft.webZoomEnabled
+                )
+                put(
+                    "wideViewPortEnabled",
+                    draft.webWideViewPortEnabled
+                )
+                put(
+                    "overviewModeEnabled",
+                    draft.webOverviewModeEnabled
+                )
+                put(
+                    "mediaAutoplayEnabled",
+                    draft.webMediaAutoplayEnabled
+                )
+                put(
+                    "mixedContentAllowed",
+                    draft.webMixedContentAllowed
+                )
+            })
+
             put("nativeBridge", JSONObject().apply {
-                put("enabled", draft.javascriptBridge)
+                put(
+                    "enabled",
+                    draft.javascriptBridge &&
+                        draft.webJavaScriptEnabled
+                )
                 put("allowRemote", draft.remoteBridgeAllowed)
                 put("share", draft.shareBridge)
                 put("clipboard", draft.clipboardBridge)

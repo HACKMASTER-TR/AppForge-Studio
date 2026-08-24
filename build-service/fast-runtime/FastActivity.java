@@ -571,12 +571,92 @@ public final class FastActivity extends Activity {
         WebSettings settings =
             webView.getSettings();
 
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setDatabaseEnabled(true);
+        boolean javaScriptEnabled =
+            config.optBoolean(
+                "webJavaScriptEnabled",
+                true
+            );
+
+        boolean domStorageEnabled =
+            config.optBoolean(
+                "webDomStorageEnabled",
+                true
+            );
+
+        boolean zoomEnabled =
+            config.optBoolean(
+                "webZoomEnabled",
+                true
+            );
+
+        boolean wideViewPortEnabled =
+            config.optBoolean(
+                "webWideViewPortEnabled",
+                true
+            );
+
+        boolean overviewModeEnabled =
+            config.optBoolean(
+                "webOverviewModeEnabled",
+                true
+            );
+
+        boolean mediaAutoplayEnabled =
+            config.optBoolean(
+                "webMediaAutoplayEnabled",
+                true
+            );
+
+        boolean mixedContentAllowed =
+            config.optBoolean(
+                "webMixedContentAllowed",
+                false
+            );
+
+        settings.setJavaScriptEnabled(
+            javaScriptEnabled
+        );
+
+        settings.setDomStorageEnabled(
+            domStorageEnabled
+        );
+
+        settings.setDatabaseEnabled(
+            domStorageEnabled
+        );
 
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
+
+        settings.setSupportZoom(
+            zoomEnabled
+        );
+
+        settings.setBuiltInZoomControls(
+            zoomEnabled
+        );
+
+        settings.setDisplayZoomControls(
+            false
+        );
+
+        settings.setUseWideViewPort(
+            wideViewPortEnabled
+        );
+
+        settings.setLoadWithOverviewMode(
+            overviewModeEnabled
+        );
+
+        settings.setMediaPlaybackRequiresUserGesture(
+            !mediaAutoplayEnabled
+        );
+
+        settings.setMixedContentMode(
+            mixedContentAllowed
+                ? WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                : WebSettings.MIXED_CONTENT_NEVER_ALLOW
+        );
 
         settings.setGeolocationEnabled(
             config.optBoolean(

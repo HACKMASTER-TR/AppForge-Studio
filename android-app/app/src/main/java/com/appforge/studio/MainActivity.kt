@@ -1520,6 +1520,27 @@ private fun AppForgeApp() {
                     versionCode =
                         converted.versionCode,
 
+                    webJavaScriptEnabled =
+                        converted.webJavaScriptEnabled,
+
+                    webDomStorageEnabled =
+                        converted.webDomStorageEnabled,
+
+                    webZoomEnabled =
+                        converted.webZoomEnabled,
+
+                    webWideViewPortEnabled =
+                        converted.webWideViewPortEnabled,
+
+                    webOverviewModeEnabled =
+                        converted.webOverviewModeEnabled,
+
+                    webMediaAutoplayEnabled =
+                        converted.webMediaAutoplayEnabled,
+
+                    webMixedContentAllowed =
+                        converted.webMixedContentAllowed,
+
                     mediaPlayerBridge =
                         converted.mediaPlayerBridge,
 
@@ -1620,6 +1641,27 @@ private fun AppForgeApp() {
 
                     versionCode =
                         converted.versionCode,
+
+                    webJavaScriptEnabled =
+                        converted.webJavaScriptEnabled,
+
+                    webDomStorageEnabled =
+                        converted.webDomStorageEnabled,
+
+                    webZoomEnabled =
+                        converted.webZoomEnabled,
+
+                    webWideViewPortEnabled =
+                        converted.webWideViewPortEnabled,
+
+                    webOverviewModeEnabled =
+                        converted.webOverviewModeEnabled,
+
+                    webMediaAutoplayEnabled =
+                        converted.webMediaAutoplayEnabled,
+
+                    webMixedContentAllowed =
+                        converted.webMixedContentAllowed,
 
                     mediaPlayerBridge =
                         converted.mediaPlayerBridge,
@@ -2480,6 +2522,44 @@ private fun AppForgeApp() {
                             )
                         }
                     )
+
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    horizontal =
+                                        20.dp,
+                                    vertical =
+                                        7.dp
+                                ),
+                        verticalAlignment =
+                            Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Adım $step / 10",
+                            color =
+                                Accent,
+                            fontSize =
+                                12.sp,
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Spacer(
+                            Modifier.weight(
+                                1f
+                            )
+                        )
+
+                        Text(
+                            "${step * 10}%",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+                    }
 
                     LinearProgressIndicator(
                         progress = { step / 10f },
@@ -8759,11 +8839,15 @@ private fun FeaturesStep(
 ) {
     val enabledCount =
         listOf(
+            d.webJavaScriptEnabled,
+            d.webDomStorageEnabled,
+            d.webZoomEnabled,
+            d.webWideViewPortEnabled,
+            d.webOverviewModeEnabled,
+            d.webMediaAutoplayEnabled,
+            d.webMixedContentAllowed,
             d.fileUpload,
             d.downloads,
-            d.camera,
-            d.location,
-            d.notifications,
             d.offlineCache,
             d.fullscreen
         ).count {
@@ -8783,18 +8867,17 @@ private fun FeaturesStep(
         item {
             Section(
                 "3. WebView Pro",
-                "Android ve WebView özelliklerini yapılandır."
+                "Web motorunun davranışını ayrıntılı olarak yapılandır."
             )
         }
 
         item {
             Card(
                 colors =
-                    CardDefaults
-                        .cardColors(
-                            containerColor =
-                                Card2
-                        ),
+                    CardDefaults.cardColors(
+                        containerColor =
+                            Card2
+                    ),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -8809,7 +8892,7 @@ private fun FeaturesStep(
                         ),
                     verticalArrangement =
                         Arrangement.spacedBy(
-                            10.dp
+                            8.dp
                         )
                 ) {
                     Text(
@@ -8819,7 +8902,7 @@ private fun FeaturesStep(
                     )
 
                     Text(
-                        "$enabledCount / 7 özellik açık",
+                        "$enabledCount / 11 özellik açık",
                         color =
                             TextSecondary,
                         fontSize =
@@ -8827,7 +8910,7 @@ private fun FeaturesStep(
                     )
 
                     Text(
-                        "İhtiyacın olmayan özellikleri kapalı tutmak uygulamayı daha sade ve izinleri daha kontrollü hale getirir.",
+                        "Güvenli ve modern varsayılanlarla başla. İhtiyacın olmayan özellikleri kapatabilirsin.",
                         color =
                             TextSecondary,
                         fontSize =
@@ -8836,61 +8919,41 @@ private fun FeaturesStep(
                             17.sp
                     )
 
-                    Row(
-                        horizontalArrangement =
-                            Arrangement.spacedBy(
-                                8.dp
-                            ),
+                    Button(
+                        onClick = {
+                            update(
+                                d.copy(
+                                    webJavaScriptEnabled =
+                                        true,
+                                    webDomStorageEnabled =
+                                        true,
+                                    webZoomEnabled =
+                                        true,
+                                    webWideViewPortEnabled =
+                                        true,
+                                    webOverviewModeEnabled =
+                                        true,
+                                    webMediaAutoplayEnabled =
+                                        true,
+                                    webMixedContentAllowed =
+                                        false,
+                                    fileUpload =
+                                        true,
+                                    downloads =
+                                        true,
+                                    offlineCache =
+                                        true,
+                                    fullscreen =
+                                        false
+                                )
+                            )
+                        },
                         modifier =
                             Modifier.fillMaxWidth()
                     ) {
-                        Button(
-                            onClick = {
-                                update(
-                                    d.copy(
-                                        fileUpload = true,
-                                        downloads = true,
-                                        camera = false,
-                                        location = false,
-                                        notifications = false,
-                                        offlineCache = true,
-                                        fullscreen = false
-                                    )
-                                )
-                            },
-                            modifier =
-                                Modifier.weight(
-                                    1f
-                                )
-                        ) {
-                            Text(
-                                "Önerilen"
-                            )
-                        }
-
-                        OutlinedButton(
-                            onClick = {
-                                update(
-                                    d.copy(
-                                        fileUpload = false,
-                                        downloads = false,
-                                        camera = false,
-                                        location = false,
-                                        notifications = false,
-                                        offlineCache = false,
-                                        fullscreen = false
-                                    )
-                                )
-                            },
-                            modifier =
-                                Modifier.weight(
-                                    1f
-                                )
-                        ) {
-                            Text(
-                                "Tümünü kapat"
-                            )
-                        }
+                        Text(
+                            "ÖNERİLEN AYARLAR"
+                        )
                     }
                 }
             }
@@ -8898,7 +8961,177 @@ private fun FeaturesStep(
 
         item {
             Text(
-                "Dosya ve içerik",
+                "Web motoru",
+                fontWeight =
+                    FontWeight.Bold,
+                fontSize =
+                    14.sp
+            )
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "JavaScript",
+                description =
+                    "Modern web uygulamalarının JavaScript kodlarını çalıştırmasını sağlar.",
+                checked =
+                    d.webJavaScriptEnabled,
+                recommended =
+                    true
+            ) {
+                enabled ->
+
+                update(
+                    d.copy(
+                        webJavaScriptEnabled =
+                            enabled,
+
+                        // Native Bridge JavaScript olmadan
+                        // çalışamayacağı için güvenli şekilde kapat.
+                        javascriptBridge =
+                            d.javascriptBridge &&
+                                enabled,
+
+                        remoteBridgeAllowed =
+                            d.remoteBridgeAllowed &&
+                                enabled
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "DOM Storage",
+                description =
+                    "localStorage ve sessionStorage kullanan web uygulamalarını destekler.",
+                checked =
+                    d.webDomStorageEnabled,
+                recommended =
+                    true
+            ) {
+                update(
+                    d.copy(
+                        webDomStorageEnabled =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Yakınlaştırma / Pinch Zoom",
+                description =
+                    "İki parmakla sayfa yakınlaştırma ve uzaklaştırmayı etkinleştirir.",
+                checked =
+                    d.webZoomEnabled,
+                recommended =
+                    true
+            ) {
+                update(
+                    d.copy(
+                        webZoomEnabled =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Geniş Viewport",
+                description =
+                    "Masaüstü ve responsive web sayfalarının ekran genişliğine daha doğru uyarlanmasını sağlar.",
+                checked =
+                    d.webWideViewPortEnabled,
+                recommended =
+                    true
+            ) {
+                update(
+                    d.copy(
+                        webWideViewPortEnabled =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Overview Mode",
+                description =
+                    "Sayfanın ilk açılışta ekran genişliğine sığdırılmasına yardımcı olur.",
+                checked =
+                    d.webOverviewModeEnabled,
+                recommended =
+                    true
+            ) {
+                update(
+                    d.copy(
+                        webOverviewModeEnabled =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Medya Autoplay",
+                description =
+                    "HTML5 ses ve videoların ek kullanıcı dokunuşu gerektirmeden oynatılabilmesini sağlar.",
+                checked =
+                    d.webMediaAutoplayEnabled,
+                recommended =
+                    true
+            ) {
+                update(
+                    d.copy(
+                        webMediaAutoplayEnabled =
+                            it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title =
+                    "Mixed Content Uyumluluğu",
+                description =
+                    "HTTPS sayfanın bazı HTTP alt kaynaklarını compatibility modunda yüklemesine izin verir. Yalnız gerektiğinde aç.",
+                checked =
+                    d.webMixedContentAllowed
+            ) {
+                update(
+                    d.copy(
+                        webMixedContentAllowed =
+                            it
+                    )
+                )
+            }
+        }
+
+        if (
+            d.webMixedContentAllowed
+        ) {
+            item {
+                NoteCard(
+                    "⚠ Mixed Content güvenliği azaltabilir. AppForge MIXED_CONTENT_ALWAYS_ALLOW yerine daha sınırlı COMPATIBILITY_MODE kullanır."
+                )
+            }
+        }
+
+        item {
+            Text(
+                "Dosya, önbellek ve ekran",
                 fontWeight =
                     FontWeight.Bold,
                 fontSize =
@@ -8911,7 +9144,7 @@ private fun FeaturesStep(
                 title =
                     "Dosya yükleme",
                 description =
-                    "Web sayfasındaki dosya seçme alanlarının telefondan dosya yüklemesine izin verir.",
+                    "HTML dosya seçme alanlarının Android dosya seçicisini kullanmasını sağlar.",
                 checked =
                     d.fileUpload,
                 recommended =
@@ -8931,7 +9164,7 @@ private fun FeaturesStep(
                 title =
                     "DownloadManager",
                 description =
-                    "Web sayfasından indirilen dosyaları Android indirme yöneticisine gönderir.",
+                    "Web içeriğinden indirilen dosyaları Android indirme yöneticisine gönderir.",
                 checked =
                     d.downloads,
                 recommended =
@@ -8949,9 +9182,9 @@ private fun FeaturesStep(
         item {
             FeatureToggleCard(
                 title =
-                    "Offline cache",
+                    "Offline Cache",
                 description =
-                    "Daha önce açılan web içeriğinin önbellekten kullanılmasına yardımcı olur.",
+                    "Web içeriğinin önbellekten tekrar kullanılmasına yardımcı olur.",
                 checked =
                     d.offlineCache,
                 recommended =
@@ -8967,91 +9200,11 @@ private fun FeaturesStep(
         }
 
         item {
-            Text(
-                "Cihaz özellikleri",
-                fontWeight =
-                    FontWeight.Bold,
-                fontSize =
-                    14.sp
-            )
-        }
-
-        item {
-            FeatureToggleCard(
-                title =
-                    "Kamera ile fotoğraf",
-                description =
-                    "Web uygulamasının kamerayı kullanarak fotoğraf çekebilmesini sağlar.",
-                checked =
-                    d.camera,
-                permission =
-                    "Kamera"
-            ) {
-                update(
-                    d.copy(
-                        camera =
-                            it
-                    )
-                )
-            }
-        }
-
-        item {
-            FeatureToggleCard(
-                title =
-                    "Konum / Geolocation",
-                description =
-                    "Web sitesinin Android cihazın konum bilgisini istemesine izin verir.",
-                checked =
-                    d.location,
-                permission =
-                    "Konum"
-            ) {
-                update(
-                    d.copy(
-                        location =
-                            it
-                    )
-                )
-            }
-        }
-
-        item {
-            FeatureToggleCard(
-                title =
-                    "Bildirim izni",
-                description =
-                    "Android 13 ve üzerindeki cihazlarda uygulamanın bildirim izni istemesini sağlar.",
-                checked =
-                    d.notifications,
-                permission =
-                    "Bildirim"
-            ) {
-                update(
-                    d.copy(
-                        notifications =
-                            it
-                    )
-                )
-            }
-        }
-
-        item {
-            Text(
-                "Ekran",
-                fontWeight =
-                    FontWeight.Bold,
-                fontSize =
-                    14.sp
-            )
-        }
-
-        item {
             FeatureToggleCard(
                 title =
                     "Tam ekran",
                 description =
-                    "Uygulamayı daha geniş görüntülemek için sistem çubuklarını gizler.",
+                    "Sistem çubuklarını gizleyerek uygulamaya daha geniş ekran alanı verir.",
                 checked =
                     d.fullscreen
             ) {
@@ -9066,11 +9219,12 @@ private fun FeaturesStep(
 
         item {
             NoteCard(
-                "Kamera, konum ve bildirim seçenekleri yalnızca açıldığında ilgili Android izinleri uygulamaya eklenir."
+                "Dosya sistemi erişimi AppForge tarafından güvenli şekilde yönetilir; WebView'e genel depolama erişimi verilmez."
             )
         }
     }
 }
+
 
 @Composable
 private fun FeatureToggleCard(
@@ -11861,8 +12015,158 @@ private fun BuildSettingsStep(
         item {
             Section(
                 "9. Özet & Build",
-                "Derleme sunucusu, API anahtarı ve çıktı türü."
+                "Son ayarlarını kontrol et ve çıktı türünü seç."
             )
+        }
+
+        item {
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor =
+                            Card2
+                    ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            6.dp
+                        )
+                ) {
+                    Text(
+                        "Proje özeti",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Text(
+                        "Uygulama: ${draft.appName.ifBlank { "—" }}",
+                        fontSize =
+                            13.sp
+                    )
+
+                    Text(
+                        "Paket: ${draft.packageName}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Sürüm: ${draft.versionName} (${draft.versionCode})",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Kaynak: ${
+                            if (
+                                draft.sourceMode ==
+                                    SourceMode.LOCAL
+                            ) {
+                                "HTML / ZIP"
+                            } else {
+                                "Web URL"
+                            }
+                        }",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "İzinler: ${
+                            listOf(
+                                draft.camera,
+                                draft.location,
+                                draft.notifications
+                            ).count {
+                                it
+                            }
+                        } isteğe bağlı",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "JavaScript: ${onOff(draft.webJavaScriptEnabled)}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "DOM Storage: ${onOff(draft.webDomStorageEnabled)}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Zoom: ${onOff(draft.webZoomEnabled)}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Autoplay: ${onOff(draft.webMediaAutoplayEnabled)}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Mixed Content: ${onOff(draft.webMixedContentAllowed)}",
+                        color =
+                            if (
+                                draft.webMixedContentAllowed
+                            ) {
+                                Accent
+                            } else {
+                                TextSecondary
+                            },
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Native Bridge: ${onOff(draft.javascriptBridge)}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Media3: ${onOff(draft.mediaPlayerBridge)}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+                }
+            }
         }
 
         item {

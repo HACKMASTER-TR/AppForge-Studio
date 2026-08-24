@@ -28,6 +28,30 @@ const FOOTER_BYTES =
   24;
 
 
+const EXPECTED_WEBVIEW = {
+  javaScriptEnabled:
+    true,
+
+  domStorageEnabled:
+    true,
+
+  zoomEnabled:
+    false,
+
+  wideViewPortEnabled:
+    true,
+
+  overviewModeEnabled:
+    false,
+
+  mediaAutoplayEnabled:
+    false,
+
+  mixedContentAllowed:
+    true
+};
+
+
 function uint32be(
   value
 ) {
@@ -150,6 +174,10 @@ async function createSyntheticAppForgeExe(
 
     startPage:
       "index.html",
+
+    webView: {
+      ...EXPECTED_WEBVIEW
+    },
 
     nativeBridge: {
       mediaPlayer:
@@ -365,7 +393,7 @@ async function parseAppForgeExe(
 
 
 test(
-  "APK -> EXE -> APK round trip preserves AppForgeMedia",
+  "APK -> EXE -> APK round trip preserves AppForgeMedia and WebView Pro",
   async () => {
 
     const root =
@@ -440,6 +468,12 @@ test(
         "Media3 flag lost in Windows manifest"
       );
 
+      assert.deepEqual(
+        windowsManifest.webView,
+        EXPECTED_WEBVIEW,
+        "WebView Pro settings lost in Windows manifest"
+      );
+
       const embeddedProject =
         new AdmZip(
           extracted.projectZip
@@ -505,6 +539,10 @@ test(
 
         projectRoot:
           "assets/site",
+
+        webView: {
+          ...windowsManifest.webView
+        },
 
         nativeBridge: {
           mediaPlayer:
@@ -609,6 +647,12 @@ test(
         "Media3 flag lost after round trip"
       );
 
+      assert.deepEqual(
+        finalManifest.webView,
+        EXPECTED_WEBVIEW,
+        "WebView Pro settings lost after round trip"
+      );
+
       assert.match(
         siteEntry
           .getData()
@@ -663,7 +707,9 @@ test(
         const marker of [
           "APPFORGE-EXE-V1!",
           "AFEXEP01",
-          "mediaPlayer"
+          "mediaPlayer",
+          "webView",
+          "mixedContentAllowed"
         ]
       ) {
         assert.equal(
@@ -690,10 +736,34 @@ test(
       );
 
       assert.equal(
+        exeExtractor.includes(
+          "webMixedContentAllowed"
+        ),
+        true,
+        "EXE extractor missing WebView Pro conversion"
+      );
+
+      assert.equal(
+        apkExtractor.includes(
+          "webMixedContentAllowed"
+        ),
+        true,
+        "APK extractor missing WebView Pro conversion"
+      );
+
+      assert.equal(
         mainActivity.includes(
           "converted.mediaPlayerBridge"
         ),
         true
+      );
+
+      assert.equal(
+        mainActivity.includes(
+          "converted.webMixedContentAllowed"
+        ),
+        true,
+        "MainActivity does not preserve WebView Pro during conversion"
       );
 
     } finally {

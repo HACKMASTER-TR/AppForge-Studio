@@ -770,6 +770,27 @@ ${qrManifestComponents}
     offlineCache:
       c.features?.offlineCache !== false,
 
+    webJavaScriptEnabled:
+      c.webView?.javaScriptEnabled !== false,
+
+    webDomStorageEnabled:
+      c.webView?.domStorageEnabled !== false,
+
+    webZoomEnabled:
+      c.webView?.zoomEnabled !== false,
+
+    webWideViewPortEnabled:
+      c.webView?.wideViewPortEnabled !== false,
+
+    webOverviewModeEnabled:
+      c.webView?.overviewModeEnabled !== false,
+
+    webMediaAutoplayEnabled:
+      c.webView?.mediaAutoplayEnabled !== false,
+
+    webMixedContentAllowed:
+      c.webView?.mixedContentAllowed === true,
+
     watermark:
       c.branding?.showWatermark === true,
 
@@ -865,6 +886,29 @@ ${qrManifestComponents}
         "LOCAL"
         ? "assets/site"
         : null,
+
+    webView: {
+      javaScriptEnabled:
+        c.webView?.javaScriptEnabled !== false,
+
+      domStorageEnabled:
+        c.webView?.domStorageEnabled !== false,
+
+      zoomEnabled:
+        c.webView?.zoomEnabled !== false,
+
+      wideViewPortEnabled:
+        c.webView?.wideViewPortEnabled !== false,
+
+      overviewModeEnabled:
+        c.webView?.overviewModeEnabled !== false,
+
+      mediaAutoplayEnabled:
+        c.webView?.mediaAutoplayEnabled !== false,
+
+      mixedContentAllowed:
+        c.webView?.mixedContentAllowed === true
+    },
 
     nativeBridge: {
       mediaPlayer:

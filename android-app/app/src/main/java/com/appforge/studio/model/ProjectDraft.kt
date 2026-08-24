@@ -42,6 +42,15 @@ data class ProjectDraft(
     var location: Boolean = false,
     var offlineCache: Boolean = true,
 
+    // WebView Pro
+    var webJavaScriptEnabled: Boolean = true,
+    var webDomStorageEnabled: Boolean = true,
+    var webZoomEnabled: Boolean = true,
+    var webWideViewPortEnabled: Boolean = true,
+    var webOverviewModeEnabled: Boolean = true,
+    var webMediaAutoplayEnabled: Boolean = true,
+    var webMixedContentAllowed: Boolean = false,
+
     var deepLinkEnabled: Boolean = false,
     var deepLinkScheme: String = "https",
     var deepLinkHost: String = "",

@@ -332,6 +332,43 @@ object ProjectLibrary {
             camera = obj.optBoolean("camera", false),
             location = obj.optBoolean("location", false),
             offlineCache = obj.optBoolean("offlineCache", true),
+
+            webJavaScriptEnabled =
+                obj.optBoolean(
+                    "webJavaScriptEnabled",
+                    true
+                ),
+            webDomStorageEnabled =
+                obj.optBoolean(
+                    "webDomStorageEnabled",
+                    true
+                ),
+            webZoomEnabled =
+                obj.optBoolean(
+                    "webZoomEnabled",
+                    true
+                ),
+            webWideViewPortEnabled =
+                obj.optBoolean(
+                    "webWideViewPortEnabled",
+                    true
+                ),
+            webOverviewModeEnabled =
+                obj.optBoolean(
+                    "webOverviewModeEnabled",
+                    true
+                ),
+            webMediaAutoplayEnabled =
+                obj.optBoolean(
+                    "webMediaAutoplayEnabled",
+                    true
+                ),
+            webMixedContentAllowed =
+                obj.optBoolean(
+                    "webMixedContentAllowed",
+                    false
+                ),
+
             deepLinkEnabled = obj.optBoolean("deepLinkEnabled", false),
             deepLinkScheme = obj.optString("deepLinkScheme", "https"),
             deepLinkHost = obj.optString("deepLinkHost"),
@@ -341,6 +378,11 @@ object ProjectLibrary {
             shareBridge = obj.optBoolean("shareBridge", true),
             clipboardBridge = obj.optBoolean("clipboardBridge", true),
             vibrationBridge = obj.optBoolean("vibrationBridge", true),
+            mediaPlayerBridge =
+                obj.optBoolean(
+                    "mediaPlayerBridge",
+                    false
+                ),
             qrScanner = obj.optBoolean("qrScanner", false),
             admobEnabled = obj.optBoolean("admobEnabled", false),
             admobAppId = obj.optString("admobAppId"),
@@ -484,6 +526,35 @@ object ProjectLibrary {
             put("location", d.location)
             put("offlineCache", d.offlineCache)
 
+            put(
+                "webJavaScriptEnabled",
+                d.webJavaScriptEnabled
+            )
+            put(
+                "webDomStorageEnabled",
+                d.webDomStorageEnabled
+            )
+            put(
+                "webZoomEnabled",
+                d.webZoomEnabled
+            )
+            put(
+                "webWideViewPortEnabled",
+                d.webWideViewPortEnabled
+            )
+            put(
+                "webOverviewModeEnabled",
+                d.webOverviewModeEnabled
+            )
+            put(
+                "webMediaAutoplayEnabled",
+                d.webMediaAutoplayEnabled
+            )
+            put(
+                "webMixedContentAllowed",
+                d.webMixedContentAllowed
+            )
+
             put("deepLinkEnabled", d.deepLinkEnabled)
             put("deepLinkScheme", d.deepLinkScheme)
             put("deepLinkHost", d.deepLinkHost)
@@ -494,6 +565,10 @@ object ProjectLibrary {
             put("shareBridge", d.shareBridge)
             put("clipboardBridge", d.clipboardBridge)
             put("vibrationBridge", d.vibrationBridge)
+            put(
+                "mediaPlayerBridge",
+                d.mediaPlayerBridge
+            )
             put("qrScanner", d.qrScanner)
 
             put("admobEnabled", d.admobEnabled)

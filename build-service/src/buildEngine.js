@@ -169,6 +169,24 @@ export function preflight(c, files = {}) {
     );
   }
 
+  if (
+    c.webView?.mixedContentAllowed ===
+    true
+  ) {
+    warn(
+      "Mixed Content compatibility etkin."
+    );
+  }
+
+  if (
+    c.webView?.javaScriptEnabled ===
+    false
+  ) {
+    warn(
+      "JavaScript kapalı."
+    );
+  }
+
   ok("Secure WebMessage Native Bridge v2.");
 
   if (
@@ -1210,6 +1228,29 @@ async function generateAndroidProject(projectDir, c, files) {
         "LOCAL"
         ? "assets/site"
         : null,
+
+    webView: {
+      javaScriptEnabled:
+        c.webView?.javaScriptEnabled !== false,
+
+      domStorageEnabled:
+        c.webView?.domStorageEnabled !== false,
+
+      zoomEnabled:
+        c.webView?.zoomEnabled !== false,
+
+      wideViewPortEnabled:
+        c.webView?.wideViewPortEnabled !== false,
+
+      overviewModeEnabled:
+        c.webView?.overviewModeEnabled !== false,
+
+      mediaAutoplayEnabled:
+        c.webView?.mediaAutoplayEnabled !== false,
+
+      mixedContentAllowed:
+        c.webView?.mixedContentAllowed === true
+    },
 
     nativeBridge: {
       mediaPlayer:
@@ -2368,8 +2409,33 @@ function generatedMainActivity(c, pkg) {
   const isLocalSource =
     c.sourceMode === "LOCAL";
 
+  const webViewConfig =
+    c.webView || {};
+
+  const webJavaScriptEnabled =
+    webViewConfig.javaScriptEnabled !== false;
+
+  const webDomStorageEnabled =
+    webViewConfig.domStorageEnabled !== false;
+
+  const webZoomEnabled =
+    webViewConfig.zoomEnabled !== false;
+
+  const webWideViewPortEnabled =
+    webViewConfig.wideViewPortEnabled !== false;
+
+  const webOverviewModeEnabled =
+    webViewConfig.overviewModeEnabled !== false;
+
+  const webMediaAutoplayEnabled =
+    webViewConfig.mediaAutoplayEnabled !== false;
+
+  const webMixedContentAllowed =
+    webViewConfig.mixedContentAllowed === true;
+
   const bridgeEnabled =
     Boolean(
+      webJavaScriptEnabled &&
       c.nativeBridge?.enabled &&
       (
         isLocalSource ||
@@ -2595,18 +2661,45 @@ function generatedMainActivity(c, pkg) {
 
   const settings = `
         web.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
+            javaScriptEnabled =
+                ${webJavaScriptEnabled ? "true" : "false"}
+
+            domStorageEnabled =
+                ${webDomStorageEnabled ? "true" : "false"}
+
+            databaseEnabled =
+                ${webDomStorageEnabled ? "true" : "false"}
+
             allowFileAccess = false
             allowContentAccess = false
-            mediaPlaybackRequiresUserGesture = false
+
+            mediaPlaybackRequiresUserGesture =
+                ${webMediaAutoplayEnabled ? "false" : "true"}
+
             cacheMode =
                 ${c.features?.offlineCache
                   ? "android.webkit.WebSettings.LOAD_CACHE_ELSE_NETWORK"
-                  : "android.webkit.WebSettings.LOAD_DEFAULT"}
-            setSupportZoom(true)
-            builtInZoomControls = false
+                  : "android.webkit.WebSettings.LOAD_NO_CACHE"}
+
+            setSupportZoom(
+                ${webZoomEnabled ? "true" : "false"}
+            )
+
+            builtInZoomControls =
+                ${webZoomEnabled ? "true" : "false"}
+
             displayZoomControls = false
+
+            useWideViewPort =
+                ${webWideViewPortEnabled ? "true" : "false"}
+
+            loadWithOverviewMode =
+                ${webOverviewModeEnabled ? "true" : "false"}
+
+            mixedContentMode =
+                ${webMixedContentAllowed
+                  ? "android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE"
+                  : "android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW"}
         }
 `;
 
