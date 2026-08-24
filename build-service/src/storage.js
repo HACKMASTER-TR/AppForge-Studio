@@ -507,9 +507,9 @@ export async function putOutput(
         ContentLength:
           metadata.sizeBytes,
         ContentType:
-          name.endsWith(".aab")
-            ? "application/octet-stream"
-            : "application/vnd.android.package-archive",
+          name.endsWith(".apk")
+            ? "application/vnd.android.package-archive"
+            : "application/octet-stream",
         Metadata: {
           sha256:
             metadata.sha256

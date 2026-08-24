@@ -30,7 +30,8 @@ data class BuildStatusResult(
     val logs: List<String>,
     val preflight: List<String>,
     val apkAvailable: Boolean,
-    val aabAvailable: Boolean
+    val aabAvailable: Boolean,
+    val exeAvailable: Boolean
 )
 
 data class DownloadTicketResult(
@@ -348,7 +349,8 @@ class BuildApiClient(
             logs = array("logs"),
             preflight = array("preflight"),
             apkAvailable = outputs?.has("apk") == true,
-            aabAvailable = outputs?.has("aab") == true
+            aabAvailable = outputs?.has("aab") == true,
+            exeAvailable = outputs?.has("exe") == true
         )
     }
 
@@ -406,7 +408,14 @@ class BuildApiClient(
         buildId: String,
         kind: String
     ): DownloadTicketResult {
-        val safeKind = if (kind == "aab") "aab" else "apk"
+        val safeKind =
+            when (
+                kind.lowercase()
+            ) {
+                "aab" -> "aab"
+                "exe" -> "exe"
+                else -> "apk"
+            }
 
         val conn = connection(
             "/api/builds/$buildId/download-ticket"

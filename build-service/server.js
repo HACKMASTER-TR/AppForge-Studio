@@ -2413,11 +2413,16 @@ app.post(
           c.workerRequirements
         )
           ? c.workerRequirements
-          : [
-              "android-api-37",
-              "java-17",
-              "gradle"
-            ];
+          : c.buildOutput ===
+              "exe"
+            ? [
+                "windows-exe"
+              ]
+            : [
+                "android-api-37",
+                "java-17",
+                "gradle"
+              ];
 
       mark("13 enqueue-start");
 
@@ -3301,10 +3306,21 @@ app.post(
         });
     }
 
+    const requestedKind =
+      String(
+        req.body?.kind ||
+        ""
+      ).toLowerCase();
+
     const kind =
-      req.body?.kind ===
-      "aab"
-        ? "aab"
+      [
+        "apk",
+        "aab",
+        "exe"
+      ].includes(
+        requestedKind
+      )
+        ? requestedKind
         : "apk";
 
     const outputRef =

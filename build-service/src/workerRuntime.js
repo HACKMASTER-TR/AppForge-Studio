@@ -10,6 +10,7 @@ import {
   requeueStaleJobs
 } from "./jobQueue.js";
 import { executeBuild } from "./buildEngine.js";
+import { executeWindowsBuild } from "./windowsBuild.js";
 
 let stopping = false;
 
@@ -121,7 +122,17 @@ async function workerLoop(workerSlotId, capabilities) {
           `Worker ${workerSlotId} claimed job ${job.id} build ${job.build_id}`
         );
 
-        await executeBuild({
+        const buildConfig =
+          job.payload?.config ||
+          {};
+
+        const executor =
+          buildConfig.buildOutput ===
+          "exe"
+            ? executeWindowsBuild
+            : executeBuild;
+
+        await executor({
           jobId: job.id,
           buildId: job.build_id,
           userId: job.user_id,

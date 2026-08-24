@@ -521,6 +521,7 @@ private fun AppForgeApp() {
     var buildId by remember { mutableStateOf<String?>(null) }
     var apkUrl by remember { mutableStateOf<String?>(null) }
     var aabUrl by remember { mutableStateOf<String?>(null) }
+    var exeUrl by remember { mutableStateOf<String?>(null) }
 
     /*
      * Aynı anda yalnızca tek build oluşturulabilir/takip edilir.
@@ -1075,6 +1076,7 @@ private fun AppForgeApp() {
             buildId = null
             apkUrl = null
             aabUrl = null
+            exeUrl = null
 
             try {
                 validateDraft(
@@ -1289,6 +1291,15 @@ private fun AppForgeApp() {
                             null
                         }
 
+                    exeUrl =
+                        if (
+                            s.exeAvailable
+                        ) {
+                            "available"
+                        } else {
+                            null
+                        }
+
                     if (
                         s.status ==
                             "success" ||
@@ -1348,6 +1359,13 @@ private fun AppForgeApp() {
                             },
                             if (
                                 s.aabAvailable
+                            ) {
+                                "available"
+                            } else {
+                                null
+                            },
+                            if (
+                                s.exeAvailable
                             ) {
                                 "available"
                             } else {
@@ -2313,7 +2331,8 @@ private fun AppForgeApp() {
                                 serverUrl = serverUrl,
                                 apiKey = apiKey,
                                 apkUrl = apkUrl,
-                                aabUrl = aabUrl
+                                aabUrl = aabUrl,
+                                exeUrl = exeUrl
                             )
                         }
                     }
@@ -11188,6 +11207,9 @@ private fun BuildSettingsStep(
         when (
             draft.buildOutput
         ) {
+            "exe" ->
+                "Windows EXE"
+
             "aab" ->
                 "AAB"
 
@@ -11202,6 +11224,9 @@ private fun BuildSettingsStep(
         when (
             draft.buildOutput
         ) {
+            "exe" ->
+                "EXE • Windows x64 • Electron Portable"
+
             "aab" ->
                 "AAB • Gradle bundleRelease"
 
@@ -11392,7 +11417,8 @@ private fun BuildSettingsStep(
                 listOf(
                     "apk",
                     "aab",
-                    "both"
+                    "both",
+                    "exe"
                 ).forEach {
                     output ->
                     FilterChip(
@@ -11454,6 +11480,30 @@ private fun BuildSettingsStep(
                     when (
                         draft.buildOutput
                     ) {
+                        "exe" -> {
+                            Text(
+                                "Windows EXE",
+                                fontWeight =
+                                    FontWeight.Medium
+                            )
+
+                            Text(
+                                "Windows 10/11 x64 için kurulum gerektirmeyen portable EXE oluşturur.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "🪟 Electron tabanlı ayrı Windows Worker kullanılır.",
+                                color =
+                                    Accent,
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+
                         "aab" -> {
                             Text(
                                 "AAB",
@@ -11669,7 +11719,8 @@ private fun BuildStep(
     serverUrl: String,
     apiKey: String,
     apkUrl: String?,
-    aabUrl: String?
+    aabUrl: String?,
+    exeUrl: String?
 ) {
     val context =
         LocalContext.current
@@ -11764,7 +11815,7 @@ private fun BuildStep(
                 "Çıktılar hazırlanıyor"
 
             safeProgress >= 70 ->
-                "Android paketleme"
+                "Uygulama paketleniyor"
 
             safeProgress >= 40 ->
                 "Kaynaklar derleniyor"
@@ -11790,7 +11841,8 @@ private fun BuildStep(
     val availableOutputs =
         listOf(
             apkUrl,
-            aabUrl
+            aabUrl,
+            exeUrl
         ).count {
             it != null
         }
@@ -11859,7 +11911,7 @@ private fun BuildStep(
             text = {
                 Text(
                     "Çalışan build durdurulacak. " +
-                    "Tamamlanmamış APK veya AAB çıktıları kullanılamaz."
+                    "Tamamlanmamış APK, AAB veya EXE çıktıları kullanılamaz."
                 )
             },
             confirmButton = {
@@ -12248,6 +12300,16 @@ private fun BuildStep(
                                     12.sp
                             )
                         }
+
+                        if (
+                            exeUrl != null
+                        ) {
+                            Text(
+                                "✓ Windows EXE hazır",
+                                fontSize =
+                                    12.sp
+                            )
+                        }
                     }
                 }
             }
@@ -12528,6 +12590,96 @@ private fun BuildStep(
                 ) {
                     Text(
                         "AAB'Yİ İNDİR"
+                    )
+                }
+            }
+        }
+
+        if (
+            exeUrl != null
+        ) {
+            item {
+                Button(
+                    onClick = {
+                        val id =
+                            buildId
+                                ?: return@Button
+
+                        scope.launch {
+                            try {
+                                val ticket =
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        BuildApiClient(
+                                            context,
+                                            serverUrl,
+                                            apiKey
+                                        )
+                                            .createDownloadTicket(
+                                                id,
+                                                "exe"
+                                            )
+                                    }
+
+                                val request =
+                                    DownloadManager.Request(
+                                        Uri.parse(
+                                            ticket.url
+                                        )
+                                    )
+                                        .setTitle(
+                                            "AppForge Windows EXE"
+                                        )
+                                        .setDescription(
+                                            "Windows EXE indiriliyor"
+                                        )
+                                        .setMimeType(
+                                            "application/octet-stream"
+                                        )
+                                        .setNotificationVisibility(
+                                            DownloadManager.Request
+                                                .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                                        )
+                                        .setAllowedOverMetered(
+                                            true
+                                        )
+                                        .setAllowedOverRoaming(
+                                            true
+                                        )
+                                        .setDestinationInExternalPublicDir(
+                                            Environment.DIRECTORY_DOWNLOADS,
+                                            artifactDownloadName(
+                                                appName,
+                                                id,
+                                                "exe"
+                                            )
+                                        )
+
+                                val manager =
+                                    context.getSystemService(
+                                        Context.DOWNLOAD_SERVICE
+                                    ) as DownloadManager
+
+                                manager.enqueue(
+                                    request
+                                )
+
+                                downloadMessage =
+                                    "Windows EXE indiriliyor • İndirilenler klasörüne kaydedilecek."
+                            } catch (
+                                t: Throwable
+                            ) {
+                                downloadMessage =
+                                    "EXE indirme hatası: ${t.message}"
+                            }
+                        }
+                    },
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "WINDOWS EXE'Yİ İNDİR"
                     )
                 }
             }
