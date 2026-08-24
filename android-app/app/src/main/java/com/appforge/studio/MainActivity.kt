@@ -1742,6 +1742,12 @@ private fun AppForgeApp() {
                                 generated != null
                             ) {
                                 configuredDraft.copy(
+                                    appName =
+                                        configuredDraft
+                                            .appName
+                                            .ifBlank {
+                                                template.name
+                                            },
                                     sourceMode =
                                         SourceMode.LOCAL,
                                     sourceUri =
@@ -7497,8 +7503,11 @@ private fun SourceStep(
         )
 
     val localSourceValid =
-        !d.sourceUri.isNullOrBlank() &&
-        !d.startPage.isNullOrBlank()
+        !d.startPage.isNullOrBlank() &&
+        (
+            !d.sourceUri.isNullOrBlank() ||
+            !d.importedFolder.isNullOrBlank()
+        )
 
     val webUrlValid =
         d.webUrl.trim()
