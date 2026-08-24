@@ -910,10 +910,6 @@ function mediaUrl(
         START_PAGE ||
         ""
       )
-        .replaceAll(
-          "\\",
-          "/"
-        )
         .split("/")
         .filter(Boolean);
 
