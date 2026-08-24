@@ -2464,6 +2464,8 @@ private fun createQuickDraft(
             false,
         vibrationBridge =
             false,
+        mediaPlayerBridge =
+            false,
         qrScanner =
             false,
         admobEnabled =
@@ -3365,6 +3367,13 @@ private fun QuickCreateScreen(
                                     vibrationBridge =
                                         enabled,
 
+                                    /*
+                                     * Medya oynatıcı ağır/native bir özelliktir.
+                                     * Ana Bridge açıldığında otomatik açılmaz.
+                                     */
+                                    mediaPlayerBridge =
+                                        draft.mediaPlayerBridge,
+
                                     qrScanner =
                                         enabled
                                 )
@@ -3406,6 +3415,18 @@ private fun QuickCreateScreen(
                                 onDraftChange(
                                     draft.copy(
                                         vibrationBridge =
+                                            it
+                                    )
+                                )
+                            }
+
+                            Toggle(
+                                "🎵 Medya Oynatıcı / Arka Plan Ses",
+                                draft.mediaPlayerBridge
+                            ) {
+                                onDraftChange(
+                                    draft.copy(
+                                        mediaPlayerBridge =
                                             it
                                     )
                                 )
@@ -5382,6 +5403,18 @@ private fun ProductionCenterScreen(
                             onDraftChange(
                                 draft.copy(
                                     vibrationBridge =
+                                        it
+                                )
+                            )
+                        }
+
+                        CompactModuleToggle(
+                            "Medya / Arka Plan Ses",
+                            draft.mediaPlayerBridge
+                        ) {
+                            onDraftChange(
+                                draft.copy(
+                                    mediaPlayerBridge =
                                         it
                                 )
                             )
@@ -8971,6 +9004,7 @@ private fun NativeBridgeStep(
                 d.shareBridge,
                 d.clipboardBridge,
                 d.vibrationBridge,
+                d.mediaPlayerBridge,
                 d.qrScanner
             ).count {
                 it
@@ -9064,7 +9098,7 @@ private fun NativeBridgeStep(
                     )
 
                     Text(
-                        "$featureCount / 4 Android özelliği açık",
+                        "$featureCount / 5 Android özelliği açık",
                         color =
                             TextSecondary,
                         fontSize =
@@ -9199,6 +9233,8 @@ private fun NativeBridgeStep(
                                         true,
                                     vibrationBridge =
                                         true,
+                                    mediaPlayerBridge =
+                                        true,
                                     qrScanner =
                                         true
                                 )
@@ -9223,6 +9259,8 @@ private fun NativeBridgeStep(
                                     clipboardBridge =
                                         false,
                                     vibrationBridge =
+                                        false,
+                                    mediaPlayerBridge =
                                         false,
                                     qrScanner =
                                         false
@@ -9308,6 +9346,95 @@ private fun NativeBridgeStep(
                                 it
                         )
                     )
+                }
+            }
+
+            item {
+                FeatureToggleCard(
+                    title =
+                        "🎵 Medya Oynatıcı / Arka Plan Ses",
+                    description =
+                        "Müzik, radyo ve podcast uygulamaları için Android medya oturumu ve arka plan oynatma altyapısını etkinleştirir.",
+                    checked =
+                        d.mediaPlayerBridge,
+                    permission =
+                        "Medya bildirimi"
+                ) {
+                    update(
+                        d.copy(
+                            mediaPlayerBridge =
+                                it
+                        )
+                    )
+                }
+            }
+
+            if (
+                d.mediaPlayerBridge
+            ) {
+                item {
+                    Card(
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor =
+                                    Card2
+                            ),
+                        shape =
+                            RoundedCornerShape(
+                                18.dp
+                            ),
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier.padding(
+                                    16.dp
+                                ),
+                            verticalArrangement =
+                                Arrangement.spacedBy(
+                                    6.dp
+                                )
+                        ) {
+                            Text(
+                                "Android Media Session",
+                                fontWeight =
+                                    FontWeight.Bold
+                            )
+
+                            Text(
+                                "• Arka planda ses",
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "• Bildirim paneli medya kontrolleri",
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "• Kilit ekranı kontrolleri",
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "• Bluetooth / araç medya tuşları",
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "Sonraki aşamada Media3 runtime bağlanacak.",
+                                color =
+                                    Accent,
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+                    }
                 }
             }
 
@@ -10999,6 +11126,7 @@ private fun BuildSettingsStep(
             draft.billingEnabled,
             draft.firebaseAnalyticsEnabled,
             draft.firebaseCrashlyticsEnabled,
+            draft.mediaPlayerBridge,
             draft.qrScanner
         ).count {
             it
@@ -11376,6 +11504,14 @@ private fun BuildSettingsStep(
 
                     Text(
                         "Crashlytics: ${onOff(draft.firebaseCrashlyticsEnabled)}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Medya oynatıcı: ${onOff(draft.mediaPlayerBridge)}",
                         color =
                             TextSecondary,
                         fontSize =
@@ -15783,6 +15919,12 @@ private fun applyTemplate(current: ProjectDraft, template: RemoteTemplate): Proj
                     "vibrationBridge",
                     current.vibrationBridge
                 ) ?: current.vibrationBridge,
+
+            mediaPlayerBridge =
+                features?.optBoolean(
+                    "mediaPlayerBridge",
+                    current.mediaPlayerBridge
+                ) ?: current.mediaPlayerBridge,
 
             qrScanner =
                 features?.optBoolean(

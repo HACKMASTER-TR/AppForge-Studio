@@ -164,6 +164,7 @@ class BuildApiClient(
                 put("share", draft.shareBridge)
                 put("clipboard", draft.clipboardBridge)
                 put("vibration", draft.vibrationBridge)
+                put("mediaPlayer", draft.mediaPlayerBridge)
                 put("qrScanner", draft.qrScanner)
             })
 

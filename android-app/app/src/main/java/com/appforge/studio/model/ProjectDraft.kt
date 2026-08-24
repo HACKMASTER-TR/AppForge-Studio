@@ -52,6 +52,7 @@ data class ProjectDraft(
     var shareBridge: Boolean = true,
     var clipboardBridge: Boolean = true,
     var vibrationBridge: Boolean = true,
+    var mediaPlayerBridge: Boolean = false,
     var qrScanner: Boolean = false,
 
     var admobEnabled: Boolean = false,
