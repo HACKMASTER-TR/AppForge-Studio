@@ -64,6 +64,11 @@ RUN npm install --omit=dev
 
 COPY . .
 
+# Worker image'e geçmeden önce regression testleri çalıştır.
+# Media3 / Native Bridge gibi kritik generated-code kontratları
+# bozulursa pahalı Android/Gradle aşamalarına geçmeden fail olur.
+RUN npm test
+
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle
 #
