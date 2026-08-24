@@ -69,18 +69,14 @@ test("Android uses Google Play Billing 9 plan manager", async () => {
     true
   );
 
-  assert.equal(
-    text.includes(
-      "ProductType.INAPP"
-    ),
-    true
+  assert.match(
+    text,
+    /ProductType\s*\.\s*INAPP/
   );
 
-  assert.equal(
-    text.includes(
-      "ProductType.SUBS"
-    ),
-    true
+  assert.match(
+    text,
+    /ProductType\s*\.\s*SUBS/
   );
 });
 

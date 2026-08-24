@@ -61,7 +61,7 @@ test("settings persistence and keystore vault exist", async () => {
 
   assert.equal(settingsText.includes("StudioPreferences"), true);
   assert.equal(settingsText.includes("updateLanguage"), true);
-  assert.equal(settingsText.includes("updatePro"), true);
+  // Pro entitlement artık yerel preferences içinde tutulmaz.
 
   assert.equal(keystoreText.includes("ManagedKeystore"), true);
   assert.equal(keystoreText.includes("importFromUri"), true);

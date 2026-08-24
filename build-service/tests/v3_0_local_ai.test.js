@@ -33,9 +33,28 @@ const knowledge =
   );
 
 test("LiteRT-LM runtime is integrated", async () => {
-  const text = await readFile(gradle, "utf8");
-  assert.equal(text.includes("litertlm-android:0.11.0"), true);
-  assert.equal(text.includes("jvmToolchain(21)"), true);
+  const text =
+    await readFile(
+      gradle,
+      "utf8"
+    );
+
+  assert.equal(
+    text.includes(
+      "com.google.ai.edge.litertlm:litertlm-android:0.11.0"
+    ),
+    true
+  );
+
+  assert.match(
+    text,
+    /sourceCompatibility\s*=\s*JavaVersion\.VERSION_17/
+  );
+
+  assert.match(
+    text,
+    /targetCompatibility\s*=\s*JavaVersion\.VERSION_17/
+  );
 });
 
 test("assistant uses local Engine and streaming conversation", async () => {

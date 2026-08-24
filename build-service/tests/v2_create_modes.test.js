@@ -59,17 +59,17 @@ test("Quick remote URL mode keeps native bridge disabled", async () => {
       "utf8"
     );
 
-  assert.equal(
-    text.includes(
-      "remoteBridgeAllowed ="
-    ),
-    true
-  );
+  const compact =
+    text.replace(
+      /\s+/g,
+      " "
+    );
 
   assert.equal(
-    text.includes(
-      "javascriptBridge =\n            base.sourceMode ==\n            SourceMode.LOCAL"
+    compact.includes(
+      "sourceMode = SourceMode.URL, javascriptBridge = false, remoteBridgeAllowed = false"
     ),
     true
   );
 });
+

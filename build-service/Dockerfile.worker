@@ -67,7 +67,7 @@ COPY . .
 # Worker image'e geçmeden önce regression testleri çalıştır.
 # Media3 / Native Bridge gibi kritik generated-code kontratları
 # bozulursa pahalı Android/Gradle aşamalarına geçmeden fail olur.
-RUN node --test tests/media3_regression.test.js
+RUN npm test
 
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle
