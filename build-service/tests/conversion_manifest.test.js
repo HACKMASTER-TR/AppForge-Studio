@@ -77,3 +77,70 @@ test(
     );
   }
 );
+
+
+test(
+  "Studio safely extracts AppForge project from APK",
+  async () => {
+    const file =
+      new URL(
+        "../../android-app/app/src/main/java/com/appforge/studio/io/AppForgeApkConversion.kt",
+        import.meta.url
+      );
+
+    const text =
+      await readFile(
+        file,
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        '"assets/appforge-project.json"',
+        '"assets/site/"',
+        '"appforge-project"',
+        '"apkToExe"',
+        "MAX_SITE_BYTES",
+        "safeRelativePath("
+      ]
+    ) {
+      assert.equal(
+        text.includes(marker),
+        true,
+        `Missing APK conversion marker: ${marker}`
+      );
+    }
+  }
+);
+
+test(
+  "Studio starts Windows build from converted APK",
+  async () => {
+    const file =
+      new URL(
+        "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        import.meta.url
+      );
+
+    const text =
+      await readFile(
+        file,
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        "AppForgeApkConversion",
+        "conversionApkUri",
+        'buildOutput =\n                        "exe"',
+        "startBuildWithDraft("
+      ]
+    ) {
+      assert.equal(
+        text.includes(marker),
+        true,
+        `Missing APK to EXE build marker: ${marker}`
+      );
+    }
+  }
+);

@@ -52,6 +52,7 @@ import com.appforge.studio.ai.LocalAiModelStore
 import com.appforge.studio.ai.LocalAiModelDownloader
 import com.appforge.studio.i18n.StudioI18n
 import com.appforge.studio.io.AppSettingsStore
+import com.appforge.studio.io.AppForgeApkConversion
 import com.appforge.studio.io.KeystoreVault
 import com.appforge.studio.io.ManagedKeystore
 import com.appforge.studio.io.ProjectBackupManager
@@ -1456,6 +1457,101 @@ private fun AppForgeApp() {
             }
         }
     }
+
+    LaunchedEffect(
+        conversionApkUri
+    ) {
+        val selectedUri =
+            conversionApkUri
+                ?: return@LaunchedEffect
+
+        /*
+         * Aynı URI'nin recomposition sırasında
+         * tekrar işlenmesini engelle.
+         */
+        conversionApkUri =
+            null
+
+        status =
+            "APK doğrulanıyor..."
+
+        try {
+            val converted =
+                withContext(
+                    Dispatchers.IO
+                ) {
+                    AppForgeApkConversion
+                        .extract(
+                            context,
+                            selectedUri
+                        )
+                }
+
+            status =
+                "AppForge APK doğrulandı • Windows projesi hazırlanıyor..."
+
+            val conversionDraft =
+                ProjectDraft(
+                    appName =
+                        converted.appName,
+
+                    packageName =
+                        converted.appId,
+
+                    sourceMode =
+                        converted.sourceMode,
+
+                    sourceLabel =
+                        conversionApkName,
+
+                    sourceUri =
+                        selectedUri.toString(),
+
+                    importedFolder =
+                        converted
+                            .projectDir
+                            ?.absolutePath,
+
+                    webUrl =
+                        converted.webUrl,
+
+                    versionName =
+                        converted.versionName,
+
+                    versionCode =
+                        converted.versionCode,
+
+                    buildOutput =
+                        "exe",
+
+                    buildServiceUrl =
+                        serverUrl,
+
+                    buildApiKey =
+                        apiKey
+                )
+
+            draft =
+                conversionDraft
+
+            startBuildWithDraft(
+                conversionDraft
+            )
+
+        } catch (
+            t: Throwable
+        ) {
+            status =
+                "Dönüşüm hatası: ${t.message}"
+
+            progress =
+                0
+
+            screen =
+                AppScreen.CONVERSION
+        }
+    }
+
 
     MaterialTheme(
         colorScheme = darkColorScheme(
