@@ -282,3 +282,37 @@ test(
     }
   }
 );
+
+
+test(
+  "Windows media bridge supports packaged local media safely",
+  async () => {
+    const text =
+      await readFile(
+        engine,
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        "const START_PAGE",
+        /resolved\.protocol\s*===\s*"file:"/,
+        "document.location.protocol",
+        "siteRoot.href",
+        "resolved.href.startsWith(",
+        '"Yerel medya site klasörünün dışında."'
+      ]
+    ) {
+      const found =
+        marker instanceof RegExp
+          ? marker.test(text)
+          : text.includes(marker);
+
+      assert.equal(
+        found,
+        true,
+        `Missing Windows local media marker: ${marker}`
+      );
+    }
+  }
+);

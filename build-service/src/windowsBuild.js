@@ -830,6 +830,11 @@ const APP_VERSION =
     )
   )};
 
+const START_PAGE =
+  ${JSON.stringify(
+    startPage || ""
+  )};
+
 let audio =
   null;
 
@@ -876,16 +881,81 @@ function mediaUrl(
       document.baseURI
     );
 
+  /*
+   * İnternet medyası yalnız HTTPS.
+   */
   if (
-    resolved.protocol !==
+    resolved.protocol ===
     "https:"
   ) {
+    return resolved.href;
+  }
+
+  /*
+   * LOCAL AppForge projelerinde relative medya
+   * file:// URL'sine dönüşür.
+   *
+   * Sadece paketlenmiş site/ ağacının altında kalan
+   * dosyalara izin ver. Böylece proje Windows'un
+   * diğer yerel dosyalarını okuyamaz.
+   */
+  if (
+    resolved.protocol ===
+      "file:" &&
+    document.location.protocol ===
+      "file:"
+  ) {
+    const startParts =
+      String(
+        START_PAGE ||
+        ""
+      )
+        .replaceAll(
+          "\\",
+          "/"
+        )
+        .split("/")
+        .filter(Boolean);
+
+    /*
+     * index.html dosyasını çıkar.
+     * Örn:
+     *   pages/player/index.html
+     * site köküne çıkmak için 2 seviye gerekir.
+     */
+    const depth =
+      Math.max(
+        0,
+        startParts.length - 1
+      );
+
+    const upward =
+      "../".repeat(
+        depth
+      );
+
+    const siteRoot =
+      new URL(
+        "./" + upward,
+        document.baseURI
+      );
+
+    if (
+      resolved.href.startsWith(
+        siteRoot.href
+      )
+    ) {
+      return resolved.href;
+    }
+
     throw new Error(
-      "Medya URL'si HTTPS olmalı."
+      "Yerel medya site klasörünün dışında."
     );
   }
 
-  return resolved.href;
+  throw new Error(
+    "Medya yalnız HTTPS veya paketlenmiş yerel dosya olabilir."
+  );
 }
 
 
