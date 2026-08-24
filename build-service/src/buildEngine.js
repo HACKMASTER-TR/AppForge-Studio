@@ -1771,15 +1771,19 @@ class AppForgeMediaService :
         ) {
 
             ACTION_PLAY_ITEM -> {
-                playSingleItem(
-                    intent
-                )
+                intent?.let {
+                    playSingleItem(
+                        it
+                    )
+                }
             }
 
             ACTION_SET_PLAYLIST -> {
-                loadPlaylist(
-                    intent
-                )
+                intent?.let {
+                    loadPlaylist(
+                        it
+                    )
+                }
             }
 
             ACTION_PLAY -> {
