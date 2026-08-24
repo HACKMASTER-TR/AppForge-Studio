@@ -1188,17 +1188,59 @@ object TemplateProjectFactory {
                         """.trimIndent(),
                     script =
                         """
-                        var bridge =
-                            window.AppForge;
+                        function refreshBridgeStatus() {
+                            var status =
+                                document.getElementById(
+                                    "bridgeStatus"
+                                );
 
-                        document
-                            .getElementById(
-                                "bridgeStatus"
-                            )
-                            .textContent =
-                                bridge
-                                    ? "AppForge Native Bridge hazır"
-                                    : "Web modu / Bridge bulunamadı";
+                            if (
+                                window.AppForge
+                            ) {
+                                status.textContent =
+                                    "AppForge Native Bridge hazır";
+
+                                return true;
+                            }
+
+                            status.textContent =
+                                "Web modu / Bridge bekleniyor";
+
+                            return false;
+                        }
+
+                        refreshBridgeStatus();
+
+                        var bridgeCheckCount =
+                            0;
+
+                        var bridgeCheckTimer =
+                            setInterval(
+                                function() {
+                                    bridgeCheckCount++;
+
+                                    if (
+                                        refreshBridgeStatus() ||
+                                        bridgeCheckCount >= 20
+                                    ) {
+                                        clearInterval(
+                                            bridgeCheckTimer
+                                        );
+
+                                        if (
+                                            !window.AppForge
+                                        ) {
+                                            document
+                                                .getElementById(
+                                                    "bridgeStatus"
+                                                )
+                                                .textContent =
+                                                    "Web modu / Bridge bulunamadı";
+                                        }
+                                    }
+                                },
+                                150
+                            );
 
                         function scanQr() {
                             if (
@@ -1245,21 +1287,70 @@ object TemplateProjectFactory {
                         );
 
                         async function panelShare() {
+
+                            /*
+                             * Derlenmiş AppForge APK içinde
+                             * öncelik Native Bridge'dedir.
+                             */
+                            if (
+                                window.AppForge &&
+                                typeof window.AppForge.share ===
+                                    "function"
+                            ) {
+                                try {
+                                    var result =
+                                        window.AppForge.share(
+                                            "AppForge",
+                                            "Native API Paneli"
+                                        );
+
+                                    if (
+                                        typeof result ===
+                                            "string" &&
+                                        result.indexOf(
+                                            "ERROR|"
+                                        ) === 0
+                                    ) {
+                                        showToast(
+                                            result.substring(6)
+                                        );
+                                    }
+
+                                    return;
+
+                                } catch (error) {
+                                    console.error(
+                                        "AppForge share:",
+                                        error
+                                    );
+                                }
+                            }
+
+                            /*
+                             * Normal tarayıcı / PWA fallback.
+                             */
                             if (
                                 navigator.share
                             ) {
-                                await navigator.share({
-                                    title:
-                                        "AppForge",
-                                    text:
-                                        "Native API Paneli"
-                                });
+                                try {
+                                    await navigator.share({
+                                        title:
+                                            "AppForge",
+                                        text:
+                                            "Native API Paneli"
+                                    });
 
-                                return;
+                                    return;
+                                } catch (error) {
+                                    console.error(
+                                        "Web Share:",
+                                        error
+                                    );
+                                }
                             }
 
                             showToast(
-                                "Paylaşım API desteklenmiyor"
+                                "Paylaşım özelliği kullanılamıyor"
                             );
                         }
 
