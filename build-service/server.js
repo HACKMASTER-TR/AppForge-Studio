@@ -41,6 +41,9 @@ import {
   assertToolchain
 } from "./src/toolchain.js";
 import { preflight } from "./src/buildEngine.js";
+import {
+  preflightWindows
+} from "./src/windowsBuild.js";
 import { verifyPlayPurchase } from "./src/playVerifier.js";
 import {
   verifyStudioIntegrity
@@ -2114,29 +2117,37 @@ app.post(
 
       mark("06 project-upsert-done");
 
+      const preflightFiles = {
+        hasProject:
+          Boolean(
+            incomingProject ||
+            directProjectRef
+          ),
+        hasKeystore:
+          Boolean(
+            incomingKeystore
+          ),
+        hasIcon:
+          Boolean(
+            incomingIcon
+          ),
+        hasFirebaseConfig:
+          Boolean(
+            incomingFirebase
+          )
+      };
+
       const report =
-        preflight(
-          c,
-          {
-            hasProject:
-              Boolean(
-                incomingProject ||
-                directProjectRef
-              ),
-            hasKeystore:
-              Boolean(
-                incomingKeystore
-              ),
-            hasIcon:
-              Boolean(
-                incomingIcon
-              ),
-            hasFirebaseConfig:
-              Boolean(
-                incomingFirebase
-              )
-          }
-        );
+        c.buildOutput ===
+          "exe"
+          ? preflightWindows(
+              c,
+              preflightFiles
+            )
+          : preflight(
+              c,
+              preflightFiles
+            );
 
       mark("07 preflight-done");
 
@@ -2409,15 +2420,15 @@ app.post(
       mark("12 build-insert-done");
 
       const requiredCapabilities =
-        Array.isArray(
-          c.workerRequirements
-        )
-          ? c.workerRequirements
-          : c.buildOutput ===
-              "exe"
-            ? [
-                "windows-exe"
-              ]
+        c.buildOutput ===
+          "exe"
+          ? [
+              "windows-exe"
+            ]
+          : Array.isArray(
+              c.workerRequirements
+            )
+            ? c.workerRequirements
             : [
                 "android-api-37",
                 "java-17",

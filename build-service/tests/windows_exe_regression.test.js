@@ -150,3 +150,55 @@ test(
     );
   }
 );
+
+test(
+  "EXE builds use Windows-specific preflight",
+  async () => {
+    const serverText =
+      await readFile(
+        server,
+        "utf8"
+      );
+
+    const engineText =
+      await readFile(
+        engine,
+        "utf8"
+      );
+
+    assert.equal(
+      engineText.includes(
+        "export function preflightWindows"
+      ),
+      true
+    );
+
+    assert.equal(
+      serverText.includes(
+        "preflightWindows("
+      ),
+      true
+    );
+
+    assert.match(
+      serverText,
+      /c\.buildOutput\s*===\s*"exe"/
+    );
+  }
+);
+
+test(
+  "EXE builds cannot be routed to Android worker",
+  async () => {
+    const text =
+      await readFile(
+        server,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /c\.buildOutput\s*===\s*"exe"[\s\S]{0,150}"windows-exe"/
+    );
+  }
+);

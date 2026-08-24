@@ -48,6 +48,112 @@ function safeVersion(value) {
     : "1.0.0";
 }
 
+export function preflightWindows(
+  c,
+  files = {}
+) {
+  const out = [];
+  const ok =
+    text =>
+      out.push(`✅ ${text}`);
+  const warn =
+    text =>
+      out.push(`⚠️ ${text}`);
+
+  const appName =
+    String(
+      c.appName || ""
+    ).trim();
+
+  if (!appName) {
+    throw new Error(
+      "Windows uygulama adı gerekli."
+    );
+  }
+
+  ok(
+    "Windows uygulama adı geçerli."
+  );
+
+  const appId =
+    String(
+      c.packageName || ""
+    ).trim();
+
+  if (
+    !/^[A-Za-z_]\w*(\.[A-Za-z_]\w*)+$/
+      .test(appId)
+  ) {
+    throw new Error(
+      "Geçersiz Windows app ID."
+    );
+  }
+
+  ok(
+    "Windows app ID geçerli."
+  );
+
+  if (
+    !String(
+      c.versionName || ""
+    ).trim()
+  ) {
+    throw new Error(
+      "Windows versionName gerekli."
+    );
+  }
+
+  ok(
+    "versionName dolu."
+  );
+
+  if (
+    c.sourceMode ===
+    "URL"
+  ) {
+    if (
+      !/^https:\/\//i.test(
+        c.webUrl || ""
+      )
+    ) {
+      throw new Error(
+        "Windows URL modu HTTPS gerektirir."
+      );
+    }
+
+    ok(
+      "HTTPS web kaynağı mevcut."
+    );
+  } else {
+    if (
+      !files.hasProject
+    ) {
+      throw new Error(
+        "Windows için yerel proje ZIP'i eksik."
+      );
+    }
+
+    ok(
+      "Yerel proje kaynağı mevcut."
+    );
+  }
+
+  ok(
+    "Windows x64 hedefi."
+  );
+
+  ok(
+    "Electron portable paketleme."
+  );
+
+  warn(
+    "Windows kod imzası yok; SmartScreen uyarısı görülebilir."
+  );
+
+  return out;
+}
+
+
 async function log(
   buildId,
   line

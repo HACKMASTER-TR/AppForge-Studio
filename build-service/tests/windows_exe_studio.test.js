@@ -95,3 +95,35 @@ test(
     );
   }
 );
+
+test(
+  "Studio preserves EXE download extension",
+  async () => {
+    const text =
+      await readFile(
+        main,
+        "utf8"
+      );
+
+    const start =
+      text.indexOf(
+        "private fun artifactDownloadName("
+      );
+
+    assert.notEqual(
+      start,
+      -1
+    );
+
+    const block =
+      text.slice(
+        start,
+        start + 1800
+      );
+
+    assert.match(
+      block,
+      /"exe"\s*->\s*"exe"/
+    );
+  }
+);

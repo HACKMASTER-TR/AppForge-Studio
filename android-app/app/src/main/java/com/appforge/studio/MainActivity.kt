@@ -16254,13 +16254,19 @@ private fun artifactDownloadName(
             }
 
     val safeExtension =
-        if (
-            extension.lowercase() ==
-            "aab"
+        when (
+            extension
+                .trim()
+                .lowercase()
         ) {
-            "aab"
-        } else {
-            "apk"
+            "aab" ->
+                "aab"
+
+            "exe" ->
+                "exe"
+
+            else ->
+                "apk"
         }
 
     return "$safeName.$safeExtension"
