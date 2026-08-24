@@ -1095,8 +1095,7 @@ private fun AppForgeApp() {
             screen =
                 AppScreen.BUILDER
 
-            step =
-                9
+            step = 10
 
             return@buildStart
         }
@@ -1234,7 +1233,7 @@ private fun AppForgeApp() {
                 screen =
                     AppScreen.BUILDER
 
-                step = 9
+                step = 10
 
                 /*
                  * Build başladıktan sonra geçici ağ / DNS
@@ -1455,7 +1454,7 @@ private fun AppForgeApp() {
                 screen =
                     AppScreen.BUILDER
 
-                step = 9
+                step = 10
 
             } finally {
                 buildBusy =

@@ -150,5 +150,33 @@ test(
         "setUseWideViewPort"
       )
     );
+
+    const buildFlow =
+      mainActivity.slice(
+        mainActivity.indexOf(
+          "val startBuildWithDraft"
+        ),
+        mainActivity.indexOf(
+          "LaunchedEffect(\n        conversionApkUri"
+        )
+      );
+
+    assert.equal(
+      /\bstep\s*=\s*9\b/.test(
+        buildFlow
+      ),
+      false,
+      "Build flow must not return to step 9"
+    );
+
+    assert.equal(
+      (
+        buildFlow.match(
+          /\bstep\s*=\s*10\b/g
+        ) || []
+      ).length,
+      3,
+      "Build flow must route all states to step 10"
+    );
   }
 );
