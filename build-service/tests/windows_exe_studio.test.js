@@ -150,3 +150,30 @@ test(
     );
   }
 );
+
+test(
+  "Studio exposes APK EXE conversion entry",
+  async () => {
+    const text =
+      await readFile(
+        main,
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        "AppScreen.CONVERSION",
+        '"Dönüşüm"',
+        '"APK → Windows EXE"',
+        '"EXE → Android APK"',
+        "ConversionScreen("
+      ]
+    ) {
+      assert.equal(
+        text.includes(marker),
+        true,
+        `Missing conversion UI marker: ${marker}`
+      );
+    }
+  }
+);

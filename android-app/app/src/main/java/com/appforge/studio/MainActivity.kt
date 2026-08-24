@@ -413,7 +413,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { HOME, MODE_SELECT, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 @Composable
 private fun AppForgeApp() {
@@ -474,6 +474,8 @@ private fun AppForgeApp() {
 
     BackHandler(
         enabled =
+            screen ==
+                AppScreen.CONVERSION ||
             screen ==
                 AppScreen.PREVIEW ||
             screen ==
@@ -1630,6 +1632,29 @@ private fun AppForgeApp() {
 
                             screen =
                                 AppScreen.BUILDER
+                        },
+                        onConversion = {
+                            status =
+                                "Dönüşüm araçları hazır."
+
+                            openWorkspaceScreen(
+                                AppScreen.CONVERSION
+                            )
+                        }
+                    )
+
+                AppScreen.CONVERSION ->
+                    ConversionScreen(
+                        onBack = {
+                            returnFromWorkspace()
+                        },
+                        onApkToExe = {
+                            status =
+                                "APK → EXE dönüşümü seçildi."
+                        },
+                        onExeToApk = {
+                            status =
+                                "EXE → APK dönüşümü seçildi."
                         }
                     )
 
@@ -2500,7 +2525,8 @@ private fun createQuickDraft(
 @Composable
 private fun CreateModeSelectionScreen(
     onQuick: () -> Unit,
-    onAdvanced: () -> Unit
+    onAdvanced: () -> Unit,
+    onConversion: () -> Unit
 ) {
     Box(
         modifier =
@@ -2575,6 +2601,16 @@ private fun CreateModeSelectionScreen(
                         onAdvanced
                 )
 
+                CreateModeCard(
+                    icon = "🔄",
+                    title =
+                        "Dönüşüm",
+                    description =
+                        "APK → Windows EXE veya EXE → Android APK dönüşüm araçları.",
+                    onClick =
+                        onConversion
+                )
+
                 Text(
                     text =
                         "v2.0 • Hızlı modda güvenli varsayılanlar kullanılır.",
@@ -2587,6 +2623,99 @@ private fun CreateModeSelectionScreen(
         }
     }
 }
+
+@Composable
+private fun ConversionScreen(
+    onBack: () -> Unit,
+    onApkToExe: () -> Unit,
+    onExeToApk: () -> Unit
+) {
+    Scaffold(
+        containerColor = Bg,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            "Dönüşüm",
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            "APK ↔ EXE araçları",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+                    }
+                },
+                navigationIcon = {
+                    TextButton(
+                        onClick =
+                            onBack
+                    ) {
+                        Text(
+                            "← Geri"
+                        )
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(20.dp),
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    16.dp
+                )
+        ) {
+            Text(
+                "Ne dönüştürmek istersin?",
+                fontSize =
+                    26.sp,
+                fontWeight =
+                    FontWeight.Bold
+            )
+
+            Text(
+                "AppForge tarafından oluşturulan veya dönüştürme yetkiniz bulunan uygulamalar için.",
+                color =
+                    TextSecondary
+            )
+
+            CreateModeCard(
+                icon = "📱",
+                title =
+                    "APK → Windows EXE",
+                description =
+                    "Android APK içindeki AppForge proje verisini kullanarak Windows portable EXE oluştur.",
+                onClick =
+                    onApkToExe
+            )
+
+            CreateModeCard(
+                icon = "🖥️",
+                title =
+                    "EXE → Android APK",
+                description =
+                    "AppForge Windows EXE içindeki proje verisini kullanarak Android APK oluştur.",
+                onClick =
+                    onExeToApk
+            )
+
+            NoteCard(
+                "İlk sürüm AppForge proje manifesti bulunan çıktıları destekleyecek."
+            )
+        }
+    }
+}
+
 
 @Composable
 private fun CreateModeCard(
