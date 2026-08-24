@@ -13090,6 +13090,44 @@ private fun templateCategoryCatalog() = listOf(
 )
 
 private fun normalizeTemplateCategory(template: RemoteTemplate): String {
+    /*
+     * Sunucudan gelen kategori AppForge'un mevcut
+     * kategori anahtarlarından biriyse doğrudan onu kullan.
+     *
+     * Böylece:
+     * "AdMob Başlangıç" -> ads
+     * "Bootstrap Başlangıç" -> libraries
+     * gibi şablonlar açıklamadaki "başlangıç"
+     * kelimesi yüzünden yanlış kategoriye düşmez.
+     */
+    val explicitCategory =
+        template.category
+            .trim()
+            .lowercase()
+
+    val supportedCategories =
+        setOf(
+            "interaction",
+            "starters",
+            "libraries",
+            "ads",
+            "device",
+            "sensors",
+            "system",
+            "panels"
+        )
+
+    if (
+        explicitCategory in
+            supportedCategories
+    ) {
+        return explicitCategory
+    }
+
+    /*
+     * Eski / genel kategori isimlerinde geriye dönük
+     * uyumluluk için metin tabanlı sınıflandırma.
+     */
     val haystack = (
         template.category + " " +
         template.name + " " +
