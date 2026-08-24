@@ -987,10 +987,10 @@ app.on(
         npmRebuild:
           false,
 
-        // Railway Windows Worker has a limited memory budget.
-        // Store mode avoids memory-heavy 7-Zip maximum compression.
+        // Balanced compression keeps the portable EXE smaller
+        // while avoiding electron-builder's maximum compression mode.
         compression:
-          "store",
+          "normal",
 
         directories: {
           output:

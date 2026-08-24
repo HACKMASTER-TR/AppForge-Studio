@@ -12720,7 +12720,14 @@ private fun BuildStep(
                         )
                 ) {
                     Text(
-                        "Canlı Gradle logu",
+                        if (
+                            draft.buildOutput ==
+                            "exe"
+                        ) {
+                            "Canlı Windows logu"
+                        } else {
+                            "Canlı Gradle logu"
+                        },
                         fontWeight =
                             FontWeight.Bold
                     )

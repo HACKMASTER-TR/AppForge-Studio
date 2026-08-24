@@ -127,3 +127,26 @@ test(
     );
   }
 );
+
+test(
+  "Studio labels EXE logs as Windows logs",
+  async () => {
+    const text =
+      await readFile(
+        main,
+        "utf8"
+      );
+
+    assert.equal(
+      text.includes(
+        '"Canlı Windows logu"'
+      ),
+      true
+    );
+
+    assert.match(
+      text,
+      /draft\.buildOutput\s*==\s*"exe"/
+    );
+  }
+);

@@ -234,3 +234,19 @@ test(
     );
   }
 );
+
+test(
+  "Windows portable EXE uses balanced compression",
+  async () => {
+    const text =
+      await readFile(
+        engine,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /compression:\s*\n\s*"normal"/
+    );
+  }
+);
