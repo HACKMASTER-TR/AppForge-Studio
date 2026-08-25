@@ -50,6 +50,9 @@ import com.appforge.studio.build.TestLabResult
 import com.appforge.studio.ai.AppForgeKnowledgeBase
 import com.appforge.studio.ai.AppForgeProjectAdvisor
 import com.appforge.studio.ai.AppForgeBuildErrorAdvisor
+import com.appforge.studio.ai.AppForgeSmartSuggestions
+import com.appforge.studio.ai.LocalAiChatStore
+import com.appforge.studio.ai.StoredAiMessage
 import com.appforge.studio.ai.AppForgeLocalAssistant
 import com.appforge.studio.ai.LocalAiBackend
 import com.appforge.studio.ai.LocalAiModelInfo
@@ -7394,6 +7397,76 @@ private fun LocalAiAssistantScreen(
             >()
         }
 
+    var historyLoaded by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+    LaunchedEffect(
+        Unit
+    ) {
+        if (
+            messages.isEmpty()
+        ) {
+            LocalAiChatStore
+                .load(
+                    context
+                )
+                .forEach {
+                    stored ->
+                    messages.add(
+                        LocalAiChatMessage(
+                            id =
+                                nextId++,
+                            role =
+                                stored.role,
+                            text =
+                                stored.text
+                        )
+                    )
+                }
+        }
+
+        historyLoaded =
+            true
+    }
+
+    /*
+     * Cevap model tarafından token token üretilirken
+     * her token için diske yazma. 700 ms sessizlikten sonra
+     * son 20 mesajı yalnız cihazda sakla.
+     */
+    val historySnapshot =
+        messages.map {
+            StoredAiMessage(
+                role =
+                    it.role,
+                text =
+                    it.text
+            )
+        }
+
+    LaunchedEffect(
+        historyLoaded,
+        historySnapshot
+    ) {
+        if (
+            historyLoaded
+        ) {
+            delay(
+                700L
+            )
+
+            LocalAiChatStore
+                .save(
+                    context,
+                    historySnapshot
+                )
+        }
+    }
+
     fun addMessage(
         role: String,
         text: String
@@ -7710,6 +7783,11 @@ private fun LocalAiAssistantScreen(
                                 ?.cancel()
 
                             messages.clear()
+
+                            LocalAiChatStore
+                                .clear(
+                                    context
+                                )
 
                             scope.launch {
                                 runCatching {
@@ -8098,6 +8176,93 @@ private fun LocalAiAssistantScreen(
                                 }
                             }
                         }
+
+                        Text(
+                            "Bu projeye göre",
+                            fontWeight =
+                                FontWeight.Bold,
+                            fontSize =
+                                16.sp
+                        )
+
+                        Text(
+                            "AppForge açık proje ayarlarına göre en yararlı soruları otomatik seçer.",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                11.sp
+                        )
+
+                        AppForgeSmartSuggestions
+                            .forProject(
+                                draft
+                            )
+                            .forEach {
+                                prompt ->
+                                OutlinedButton(
+                                    onClick = {
+                                        when (
+                                            prompt
+                                        ) {
+                                            "Projeyi analiz et" -> {
+                                                addMessage(
+                                                    "user",
+                                                    prompt
+                                                )
+
+                                                addMessage(
+                                                    "assistant",
+                                                    AppForgeProjectAdvisor
+                                                        .projectAnalysisText(
+                                                            draft
+                                                        )
+                                                )
+
+                                                status =
+                                                    "Proje analizi tamamlandı."
+                                            }
+
+                                            "Bu proje Play Store'a hazır mı?" -> {
+                                                addMessage(
+                                                    "user",
+                                                    prompt
+                                                )
+
+                                                addMessage(
+                                                    "assistant",
+                                                    AppForgeProjectAdvisor
+                                                        .playStoreText(
+                                                            draft
+                                                        )
+                                                )
+
+                                                status =
+                                                    "Play Store hazırlık denetimi tamamlandı."
+                                            }
+
+                                            else -> {
+                                                sendQuestion(
+                                                    prompt
+                                                )
+                                            }
+                                        }
+                                    },
+                                    modifier =
+                                        Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        prompt
+                                    )
+                                }
+                            }
+
+                        Text(
+                            "Konuşma geçmişi yalnız bu cihazda tutulur • son 20 mesaj",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                10.sp
+                        )
 
                         Text(
                             "Sık Sorulanlar",
