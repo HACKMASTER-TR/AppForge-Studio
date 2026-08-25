@@ -11,7 +11,7 @@ android {
         applicationId = "com.appforge.studio"
         minSdk = 26
         targetSdk = 37
-        versionCode = 300
+        versionCode = 301
         versionName = "3.0.0"
     }
 
