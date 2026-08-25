@@ -17,6 +17,8 @@ RUN apt-get update \
        ca-certificates \
        curl \
        unzip \
+       python3 \
+       python3-pip \
        openjdk-17-jdk-headless \
     && rm -rf /var/lib/apt/lists/*
 
@@ -69,6 +71,7 @@ COPY . .
 # bozulursa pahalı Android/Gradle aşamalarına geçmeden fail olur.
 RUN node --test tests/media3_regression.test.js
 RUN node --test tests/node_web_build_engine.test.js
+RUN node --test tests/python_android_template.test.js
 
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle
@@ -150,6 +153,21 @@ RUN rm -rf /tmp/appforge-fast-classes \
        -dname "CN=Android Debug,O=Android,C=US" \
        -noprompt \
     && rm -rf /tmp/appforge-fast-classes
+
+# =========================================================
+# AppForge Python / Chaquopy runtime template
+#
+# Worker image oluşturulurken gerçek bir debug APK derlenir.
+# Böylece Chaquopy + AGP + Python uyumluluğu deploy sırasında
+# doğrulanır ve Maven/Chaquopy bağımlılıkları önceden ısınır.
+# =========================================================
+RUN python3 --version \
+    && gradle \
+       -p python-android-template \
+       --no-daemon \
+       --stacktrace \
+       :app:assembleDebug \
+    && test -s python-android-template/app/build/outputs/apk/debug/app-debug.apk
 
 RUN node scripts/toolchain-doctor.js --json --strict
 
