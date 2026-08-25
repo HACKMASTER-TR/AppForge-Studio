@@ -4,6 +4,12 @@ import java.io.File
 
 
 data class SourceCapabilityAnalysis(
+    val technologyId: String = "unknown",
+    val technologyLabel: String = "Bilinmeyen proje",
+    val buildEngine: String = "unknown",
+    val buildReady: Boolean = false,
+    val technologyReason: String? = null,
+
     val camera: Boolean = false,
     val location: Boolean = false,
     val notifications: Boolean = false,
@@ -25,6 +31,14 @@ data class SourceCapabilityAnalysis(
 
     fun detectedLabels(): List<String> =
         buildList {
+            if (
+                technologyId !=
+                    "unknown"
+            ) {
+                add(
+                    technologyLabel
+                )
+            }
             if (camera) add("Kamera")
             if (location) add("Konum")
             if (notifications) add("Bildirim")
@@ -37,6 +51,17 @@ data class SourceCapabilityAnalysis(
 
     fun detectedDetails(): List<String> =
         buildList {
+
+            add(
+                "Proje türü • $technologyLabel • Motor: $buildEngine" +
+                    (
+                        technologyReason
+                            ?.let {
+                                " • $it"
+                            }
+                            ?: ""
+                    )
+            )
 
             if (camera) {
                 add(
@@ -175,11 +200,28 @@ object SourceCapabilityAnalyzer {
         root: File
     ): SourceCapabilityAnalysis {
 
+        val technology =
+            ProjectTechnologyDetector
+                .detect(
+                    root
+                )
+
         if (
             !root.exists() ||
             !root.isDirectory
         ) {
-            return SourceCapabilityAnalysis()
+            return SourceCapabilityAnalysis(
+                technologyId =
+                    technology.id,
+                technologyLabel =
+                    technology.label,
+                buildEngine =
+                    technology.buildEngine,
+                buildReady =
+                    technology.buildReady,
+                technologyReason =
+                    technology.reason
+            )
         }
 
 
@@ -543,6 +585,21 @@ object SourceCapabilityAnalyzer {
 
 
         return SourceCapabilityAnalysis(
+            technologyId =
+                technology.id,
+
+            technologyLabel =
+                technology.label,
+
+            buildEngine =
+                technology.buildEngine,
+
+            buildReady =
+                technology.buildReady,
+
+            technologyReason =
+                technology.reason,
+
             camera =
                 camera,
 

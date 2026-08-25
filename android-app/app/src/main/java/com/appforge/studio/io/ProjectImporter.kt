@@ -9,7 +9,8 @@ import java.util.zip.ZipInputStream
 
 data class ImportResult(
     val projectDir: File,
-    val startPage: File
+    val startPage: File,
+    val hasWebStartPage: Boolean = true
 )
 
 object ProjectImporter {
@@ -75,10 +76,16 @@ object ProjectImporter {
             }
 
             val start =
-                findStartPage(tempDir)
-                    ?: error(
-                        "Kaynak içinde index.html bulunamadı."
+                findStartPage(
+                    tempDir
+                )
+
+            val relativeStart =
+                start
+                    ?.relativeTo(
+                        tempDir
                     )
+                    ?.path
 
             finalDir.parentFile?.mkdirs()
             finalDir.deleteRecursively()
@@ -91,16 +98,24 @@ object ProjectImporter {
                 tempDir.deleteRecursively()
             }
 
-            val relative =
-                start.relativeTo(tempDir).path
-
             return ImportResult(
-                projectDir = finalDir,
+                projectDir =
+                    finalDir,
                 startPage =
-                    File(
-                        finalDir,
-                        relative
-                    )
+                    if (
+                        relativeStart !=
+                            null
+                    ) {
+                        File(
+                            finalDir,
+                            relativeStart
+                        )
+                    } else {
+                        finalDir
+                    },
+                hasWebStartPage =
+                    relativeStart !=
+                        null
             )
         } catch (t: Throwable) {
             tempDir.deleteRecursively()

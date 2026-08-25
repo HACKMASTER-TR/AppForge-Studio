@@ -659,6 +659,18 @@ private fun AppForgeApp() {
                             result.startPage
                                 .absolutePath,
 
+                        sourceTechnology =
+                            analysis.technologyId,
+
+                        sourceTechnologyLabel =
+                            analysis.technologyLabel,
+
+                        sourceBuildEngine =
+                            analysis.buildEngine,
+
+                        sourceBuildReady =
+                            analysis.buildReady,
+
                         camera =
                             analysis.camera,
 
@@ -691,14 +703,23 @@ private fun AppForgeApp() {
 
                 status =
                     if (
-                        detected.isEmpty()
+                        analysis.buildReady
                     ) {
-                        "Kaynak hazır: ${result.startPage.name} • " +
-                            "${analysis.scannedFiles} dosya tarandı • " +
-                            "özel izin bulunmadı"
+                        "Proje algılandı: ${analysis.technologyLabel} • " +
+                            "Motor: ${analysis.buildEngine} • " +
+                            (
+                                if (
+                                    detected.isEmpty()
+                                ) {
+                                    "${analysis.scannedFiles} dosya tarandı"
+                                } else {
+                                    "Otomatik: ${detected.joinToString(", ")}"
+                                }
+                            )
                     } else {
-                        "Kaynak hazır: ${result.startPage.name} • " +
-                            "Otomatik: ${detected.joinToString(", ")}"
+                        "Proje algılandı: ${analysis.technologyLabel} • " +
+                            "Motor: ${analysis.buildEngine} • " +
+                            "çoklu dil build altyapısına hazır"
                     }
             } catch (t: Throwable) {
                 status = "Hata: ${t.message}"
