@@ -250,7 +250,7 @@ object ProjectTechnologyDetector {
                 id = "angular",
                 label = "Angular / TypeScript",
                 buildEngine = "node-web",
-                buildReady = false,
+                buildReady = true,
                 reason = "package.json içinde Angular bulundu."
             )
         }
@@ -260,7 +260,7 @@ object ProjectTechnologyDetector {
                 id = "svelte",
                 label = "Svelte / TypeScript",
                 buildEngine = "node-web",
-                buildReady = false,
+                buildReady = true,
                 reason = "package.json içinde Svelte bulundu."
             )
         }
@@ -270,7 +270,7 @@ object ProjectTechnologyDetector {
                 id = "vue",
                 label = "Vue / TypeScript-JavaScript",
                 buildEngine = "node-web",
-                buildReady = false,
+                buildReady = true,
                 reason = "package.json içinde Vue bulundu."
             )
         }
@@ -280,7 +280,7 @@ object ProjectTechnologyDetector {
                 id = "react",
                 label = "React / TypeScript-JavaScript",
                 buildEngine = "node-web",
-                buildReady = false,
+                buildReady = true,
                 reason = "package.json içinde React bulundu."
             )
         }
@@ -294,7 +294,7 @@ object ProjectTechnologyDetector {
                 id = "vite",
                 label = "Vite / Web",
                 buildEngine = "node-web",
-                buildReady = false,
+                buildReady = true,
                 reason = "Vite yapılandırması bulundu."
             )
         }
@@ -325,13 +325,46 @@ object ProjectTechnologyDetector {
             )
         }
 
+        if (
+            has("package.json") &&
+            has("index.html")
+        ) {
+            val hasTypeScript =
+                hasExt(
+                    "ts",
+                    "tsx"
+                )
+
+            return ProjectTechnologyInfo(
+                id =
+                    if (
+                        hasTypeScript
+                    ) {
+                        "typescript-web"
+                    } else {
+                        "npm-web"
+                    },
+                label =
+                    if (
+                        hasTypeScript
+                    ) {
+                        "TypeScript / JavaScript Web"
+                    } else {
+                        "JavaScript / npm Web"
+                    },
+                buildEngine = "node-web",
+                buildReady = true,
+                reason = "package.json ve index.html bulundu."
+            )
+        }
+
         if (has("package.json")) {
             return ProjectTechnologyInfo(
                 id = "nodejs",
                 label = "Node.js / JavaScript-TypeScript",
                 buildEngine = "node-web",
                 buildReady = false,
-                reason = "package.json bulundu."
+                reason = "package.json bulundu; bunun web mi backend mi olduğu kesin değil."
             )
         }
 

@@ -15,6 +15,9 @@ import {
   buildFastApk,
   getFastBuildDecision
 } from "./fastBuild.js";
+import {
+  buildNodeWebSource
+} from "./sourceBuildEngines.js";
 
 function esc(s) {
   return String(s ?? "").replaceAll("\\", "\\\\").replaceAll('"', '\\"');
@@ -553,7 +556,7 @@ export async function executeBuild(job) {
     const inputDir = path.join(work, "_inputs");
     await fs.mkdir(inputDir, { recursive: true });
 
-    const uploadedProject = projectRef
+    let uploadedProject = projectRef
       ? await materializeInput(
           projectRef,
           path.join(inputDir, "project.zip")
@@ -625,11 +628,68 @@ export async function executeBuild(job) {
         c
       );
 
+    let nodeWebPrepared =
+      false;
+
+    if (
+      c.sourceMode ===
+        "LOCAL" &&
+      source.engine ===
+        "node-web"
+    ) {
+      await appendLog(
+        buildId,
+        `🌐 ${source.label} algılandı • Node/Web kaynak build başlıyor.`
+      );
+
+      const prepared =
+        await buildNodeWebSource(
+          {
+            projectZip:
+              uploadedProject,
+            workDir:
+              path.join(
+                work,
+                "node-web"
+              ),
+            technology:
+              source.technology,
+            onLog:
+              line =>
+                appendLog(
+                  buildId,
+                  line
+                ),
+            cancelled:
+              () =>
+                throwIfCancelled(
+                  buildId
+                )
+          }
+        );
+
+      uploadedProject =
+        prepared.projectZip;
+
+      nodeWebPrepared =
+        true;
+
+      await appendLog(
+        buildId,
+        "✅ Node/Web kaynak derlendi • Android paketleme aşamasına geçiliyor."
+      );
+    }
+
     if (
       c.sourceMode ===
         "LOCAL" &&
       source.engine !==
-        "webview-static"
+        "webview-static" &&
+      !(
+        source.engine ===
+          "node-web" &&
+        nodeWebPrepared
+      )
     ) {
       throw new Error(
         `Build router: ${source.engine} motoru ` +
