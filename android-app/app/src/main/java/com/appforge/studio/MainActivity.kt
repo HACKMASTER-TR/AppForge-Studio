@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import com.appforge.studio.build.BuildApiClient
 import com.appforge.studio.build.BuildCompareResult
 import com.appforge.studio.build.TestLabResult
+import com.appforge.studio.ai.AppForgeKnowledgeBase
 import com.appforge.studio.ai.AppForgeLocalAssistant
 import com.appforge.studio.ai.LocalAiBackend
 import com.appforge.studio.ai.LocalAiModelInfo
@@ -7478,14 +7479,58 @@ private fun LocalAiAssistantScreen(
         }
     }
 
-    fun sendQuestion() {
+    fun sendQuestion(
+        prefilledQuestion: String? = null
+    ) {
         val question =
-            input.trim()
+            (
+                prefilledQuestion
+                    ?: input
+            ).trim()
 
         if (
             question.isBlank() ||
             generating
         ) {
+            return
+        }
+
+        /*
+         * AppForge sık soruları modelden bağımsızdır.
+         * Model henüz yüklenirken bile bilgi tabanından anında cevap ver.
+         */
+        val instantAnswer =
+            if (
+                languageCode == "tr" ||
+                languageCode == "system"
+            ) {
+                AppForgeKnowledgeBase
+                    .directTurkishAnswer(
+                        question
+                    )
+            } else {
+                null
+            }
+
+        if (
+            !instantAnswer.isNullOrBlank()
+        ) {
+            input =
+                ""
+
+            addMessage(
+                "user",
+                question
+            )
+
+            addMessage(
+                "assistant",
+                instantAnswer
+            )
+
+            status =
+                "Yanıt tamamlandı • hızlı bilgi tabanı"
+
             return
         }
 
@@ -7890,18 +7935,15 @@ private fun LocalAiAssistantScreen(
                                     7.dp
                                 )
                     ) {
-                        listOf(
-                            "Proje neden build olmuyor?",
-                            "Free ve Pro arasındaki fark ne?",
-                            "APK boyutunu nasıl küçültürüm?",
-                            "Play Store için hangi ayarlar eksik?",
-                            "Bu projede hangi izinler açık?"
-                        ).forEach {
+                        AppForgeKnowledgeBase
+                            .quickQuestions()
+                            .forEach {
                             prompt ->
                             OutlinedButton(
                                 onClick = {
-                                    input =
+                                    sendQuestion(
                                         prompt
+                                    )
                                 },
                                 modifier =
                                     Modifier
