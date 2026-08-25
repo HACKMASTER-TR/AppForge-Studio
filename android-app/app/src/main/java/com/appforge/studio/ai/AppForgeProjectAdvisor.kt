@@ -116,6 +116,19 @@ object AppForgeProjectAdvisor {
             )
         }
 
+        if (
+            draft.sourceMode ==
+                SourceMode.LOCAL &&
+            !draft.sourceBuildReady
+        ) {
+            error(
+                "Build motoru henüz hazır değil",
+                "${draft.sourceTechnologyLabel} projesi algılandı. " +
+                    "Gerekli motor: ${draft.sourceBuildEngine}. " +
+                    "Bu motor etkinleştirilmeden mevcut WebView build akışına gönderilmez."
+            )
+        }
+
         when (
             draft.sourceMode
         ) {

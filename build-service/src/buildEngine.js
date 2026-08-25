@@ -46,6 +46,97 @@ function safeHex(value, fallback) {
   return /^#[0-9A-Fa-f]{6}$/.test(v) ? v : fallback;
 }
 
+
+const SOURCE_BUILD_ENGINES =
+  new Set([
+    "webview-static",
+    "node-web",
+    "python-android",
+    "android-gradle",
+    "flutter",
+    "react-native-android",
+    "expo-android",
+    "android-ndk",
+    "dotnet-maui-android",
+    "unity-android",
+    "remote-backend",
+    "unknown"
+  ]);
+
+export function resolveSourceBuildEngine(
+  c
+) {
+  if (
+    c?.sourceMode ===
+    "URL"
+  ) {
+    return {
+      technology:
+        "remote-url",
+      label:
+        "Web URL",
+      engine:
+        "webview-static",
+      ready:
+        true
+    };
+  }
+
+  const rawEngine =
+    String(
+      c?.sourceBuildEngine ||
+      "webview-static"
+    )
+      .trim()
+      .toLowerCase();
+
+  const engine =
+    SOURCE_BUILD_ENGINES
+      .has(
+        rawEngine
+      )
+      ? rawEngine
+      : "unknown";
+
+  const technology =
+    String(
+      c?.sourceTechnology ||
+      (
+        engine ===
+        "webview-static"
+          ? "web-static"
+          : "unknown"
+      )
+    )
+      .trim()
+      .toLowerCase();
+
+  const label =
+    String(
+      c?.sourceTechnologyLabel ||
+      (
+        technology ===
+        "web-static"
+          ? "HTML / CSS / JavaScript"
+          : technology
+      )
+    )
+      .trim();
+
+  const ready =
+    c?.sourceBuildReady ===
+      true ||
+    engine ===
+      "webview-static";
+
+  return {
+    technology,
+    label,
+    engine,
+    ready
+  };
+}
+
 async function appendLog(
   buildId,
   line
@@ -122,14 +213,49 @@ export function preflight(c, files = {}) {
   if (Number(c.versionCode || 0) > 0) ok("versionCode pozitif.");
   if (String(c.versionName || "").trim()) ok("versionName dolu.");
 
+  const source =
+    resolveSourceBuildEngine(
+      c
+    );
+
   if (c.sourceMode === "URL") {
     if (!/^https:\/\//i.test(c.webUrl || "")) {
       throw new Error("URL modu HTTPS gerektirir.");
     }
     ok("HTTPS URL.");
+    ok(
+      `Kaynak motoru: ${source.engine}.`
+    );
   } else {
     if (!files.hasProject) throw new Error("Yerel proje ZIP'i eksik.");
     ok("Yerel proje kaynağı mevcut.");
+    ok(
+      `Proje türü: ${source.label}.`
+    );
+    ok(
+      `Kaynak motoru: ${source.engine}.`
+    );
+
+    if (
+      source.engine !==
+        "webview-static" &&
+      !source.ready
+    ) {
+      throw new Error(
+        `${source.label} algılandı ancak ` +
+        `${source.engine} build motoru henüz etkin değil. ` +
+        `Bu proje mevcut WebView build motoruna yanlışlıkla gönderilmedi.`
+      );
+    }
+
+    if (
+      source.engine ===
+        "unknown"
+    ) {
+      throw new Error(
+        "Proje türü algılandı fakat güvenli bir build motoru seçilemedi."
+      );
+    }
   }
 
   if (c.signing?.mode === "CUSTOM") {
@@ -491,6 +617,23 @@ export async function executeBuild(job) {
       await fs.copyFile(
         uploadedKeystore,
         localKeystore
+      );
+    }
+
+    const source =
+      resolveSourceBuildEngine(
+        c
+      );
+
+    if (
+      c.sourceMode ===
+        "LOCAL" &&
+      source.engine !==
+        "webview-static"
+    ) {
+      throw new Error(
+        `Build router: ${source.engine} motoru ` +
+        `executeBuild içinde henüz etkin değil.`
       );
     }
 
