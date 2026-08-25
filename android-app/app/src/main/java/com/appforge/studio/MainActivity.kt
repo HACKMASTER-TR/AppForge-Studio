@@ -49,6 +49,7 @@ import com.appforge.studio.build.BuildCompareResult
 import com.appforge.studio.build.TestLabResult
 import com.appforge.studio.ai.AppForgeKnowledgeBase
 import com.appforge.studio.ai.AppForgeProjectAdvisor
+import com.appforge.studio.ai.AppForgeBuildErrorAdvisor
 import com.appforge.studio.ai.AppForgeLocalAssistant
 import com.appforge.studio.ai.LocalAiBackend
 import com.appforge.studio.ai.LocalAiModelInfo
@@ -2814,6 +2815,18 @@ private fun AppForgeApp() {
                             )
 
                             else -> BuildStep(
+                                draft = draft,
+                                onDraftChange = {
+                                    updated ->
+                                    draft =
+                                        updated
+                                },
+                                onRetryBuild = {
+                                    retryDraft ->
+                                    startBuildWithDraft(
+                                        retryDraft
+                                    )
+                                },
                                 status = status,
                                 progress = progress,
                                 logs = logs,
@@ -12996,6 +13009,9 @@ private fun BuildSettingsStep(
 
 @Composable
 private fun BuildStep(
+    draft: ProjectDraft,
+    onDraftChange: (ProjectDraft) -> Unit,
+    onRetryBuild: (ProjectDraft) -> Unit,
     status: String,
     progress: Int,
     logs: List<String>,
@@ -13189,7 +13205,11 @@ private fun BuildStep(
 
     val buildFailed =
         normalizedStatus ==
-            "failed"
+            "failed" ||
+        normalizedStatus
+            .startsWith(
+                "hata:"
+            )
 
     val availableOutputs =
         listOf(
@@ -13213,7 +13233,41 @@ private fun BuildStep(
         normalizedStatus !=
             "cancelled" &&
         normalizedStatus !=
-            "canceled"
+            "canceled" &&
+        !buildFailed
+
+
+
+    val buildDiagnosis =
+        remember(
+            buildFailed,
+            logs,
+            preflight,
+            status
+        ) {
+            if (
+                buildFailed
+            ) {
+                AppForgeBuildErrorAdvisor
+                    .diagnose(
+                        logs = logs,
+                        preflight = preflight,
+                        status = status
+                    )
+            } else {
+                null
+            }
+        }
+
+    val safeFixPreview =
+        remember(
+            draft
+        ) {
+            AppForgeProjectAdvisor
+                .applySafeFixes(
+                    draft
+                )
+        }
 
     LaunchedEffect(
         normalizedStatus
@@ -13672,9 +13726,209 @@ private fun BuildStep(
             buildFailed
         ) {
             item {
-                NoteCard(
-                    "Derleme tamamlanamadı. Alttaki Gradle logunda hata ayrıntıları otomatik gösteriliyor."
-                )
+                val diagnosis =
+                    buildDiagnosis
+
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Color(0xFF28171B)
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            20.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    16.dp
+                                ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                10.dp
+                            )
+                    ) {
+                        Text(
+                            "🧠 Build Hatası Asistanı",
+                            fontWeight =
+                                FontWeight.Bold,
+                            fontSize =
+                                18.sp
+                        )
+
+                        if (
+                            diagnosis !=
+                                null
+                        ) {
+                            Text(
+                                diagnosis.title,
+                                fontWeight =
+                                    FontWeight.Bold,
+                                color =
+                                    Color(0xFFFFB4AB)
+                            )
+
+                            Text(
+                                "Kategori: ${diagnosis.category} • Güven: %${diagnosis.confidence}",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "Neden?",
+                                fontWeight =
+                                    FontWeight.Bold,
+                                fontSize =
+                                    13.sp
+                            )
+
+                            Text(
+                                diagnosis.reason,
+                                color =
+                                    TextSecondary,
+                                lineHeight =
+                                    19.sp
+                            )
+
+                            Text(
+                                "Ne yapmalısın?",
+                                fontWeight =
+                                    FontWeight.Bold,
+                                fontSize =
+                                    13.sp
+                            )
+
+                            Text(
+                                diagnosis.solution,
+                                color =
+                                    TextSecondary,
+                                lineHeight =
+                                    19.sp
+                            )
+
+                            if (
+                                !diagnosis
+                                    .evidence
+                                    .isNullOrBlank()
+                            ) {
+                                Card(
+                                    colors =
+                                        CardDefaults.cardColors(
+                                            containerColor =
+                                                Color(0xFF171A21)
+                                        ),
+                                    shape =
+                                        RoundedCornerShape(
+                                            14.dp
+                                        )
+                                ) {
+                                    Column(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(
+                                                    12.dp
+                                                )
+                                    ) {
+                                        Text(
+                                            "Log ipucu",
+                                            fontWeight =
+                                                FontWeight.Bold,
+                                            fontSize =
+                                                12.sp
+                                        )
+
+                                        Text(
+                                            diagnosis.evidence,
+                                            color =
+                                                TextSecondary,
+                                            fontSize =
+                                                11.sp,
+                                            lineHeight =
+                                                16.sp
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Text(
+                                "Derleme tamamlanamadı. Canlı log ayrıntıları aşağıda gösteriliyor.",
+                                color =
+                                    TextSecondary
+                            )
+                        }
+
+                        if (
+                            safeFixPreview
+                                .changes
+                                .isNotEmpty()
+                        ) {
+                            Button(
+                                onClick = {
+                                    val fixed =
+                                        AppForgeProjectAdvisor
+                                            .applySafeFixes(
+                                                draft
+                                            )
+
+                                    onDraftChange(
+                                        fixed.draft
+                                    )
+
+                                    onRetryBuild(
+                                        fixed.draft
+                                    )
+                                },
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    "⚡ GÜVENLİ DÜZELT VE TEKRAR DENE"
+                                )
+                            }
+
+                            Text(
+                                "Otomatik düzeltilecek: ${safeFixPreview.changes.joinToString(" • ")}",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    11.sp,
+                                lineHeight =
+                                    16.sp
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                onRetryBuild(
+                                    draft
+                                )
+                            },
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                "↻ AYNI AYARLARLA TEKRAR DENE"
+                            )
+                        }
+
+                        Text(
+                            "Keystore parolaları ve API anahtarları tanı kartına taşınmaz.",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                10.sp
+                        )
+                    }
+                }
             }
         }
 
