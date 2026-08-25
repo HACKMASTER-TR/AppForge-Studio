@@ -48,6 +48,7 @@ import com.appforge.studio.build.BuildApiClient
 import com.appforge.studio.build.BuildCompareResult
 import com.appforge.studio.build.TestLabResult
 import com.appforge.studio.ai.AppForgeKnowledgeBase
+import com.appforge.studio.ai.AppForgeProjectAdvisor
 import com.appforge.studio.ai.AppForgeLocalAssistant
 import com.appforge.studio.ai.LocalAiBackend
 import com.appforge.studio.ai.LocalAiModelInfo
@@ -2460,6 +2461,14 @@ private fun AppForgeApp() {
                 AppScreen.AI_ASSISTANT -> LocalAiAssistantScreen(
                     draft =
                         draft,
+                    onDraftChange = {
+                        updated ->
+                        draft =
+                            updated
+
+                        status =
+                            "AI proje düzeltmeleri uygulandı."
+                    },
                     languageCode =
                         prefs.languageCode,
                     modelInfo =
@@ -7272,6 +7281,7 @@ private data class LocalAiChatMessage(
 @Composable
 private fun LocalAiAssistantScreen(
     draft: ProjectDraft,
+    onDraftChange: (ProjectDraft) -> Unit,
     languageCode: String,
     modelInfo: LocalAiModelInfo?,
     importMessage: String,
@@ -7935,6 +7945,155 @@ private fun LocalAiAssistantScreen(
                                     7.dp
                                 )
                     ) {
+                        Card(
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor =
+                                        Color(0xFF102037)
+                                ),
+                            shape =
+                                RoundedCornerShape(
+                                    20.dp
+                                ),
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(
+                                            16.dp
+                                        ),
+                                verticalArrangement =
+                                    Arrangement.spacedBy(
+                                        10.dp
+                                    )
+                            ) {
+                                Text(
+                                    "🧠 AI Proje Asistanı",
+                                    fontWeight =
+                                        FontWeight.Bold,
+                                    fontSize =
+                                        18.sp
+                                )
+
+                                Text(
+                                    "Mevcut projeyi model çalıştırmadan anında denetle. Parolalar ve API anahtarları rapora eklenmez.",
+                                    color =
+                                        TextSecondary,
+                                    fontSize =
+                                        12.sp,
+                                    lineHeight =
+                                        18.sp
+                                )
+
+                                Button(
+                                    onClick = {
+                                        addMessage(
+                                            "user",
+                                            "Projeyi analiz et"
+                                        )
+
+                                        addMessage(
+                                            "assistant",
+                                            AppForgeProjectAdvisor
+                                                .projectAnalysisText(
+                                                    draft
+                                                )
+                                        )
+
+                                        status =
+                                            "Proje analizi tamamlandı."
+                                    },
+                                    modifier =
+                                        Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        "🔍 PROJEYİ ANALİZ ET"
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        addMessage(
+                                            "user",
+                                            "Bu proje Play Store'a hazır mı?"
+                                        )
+
+                                        addMessage(
+                                            "assistant",
+                                            AppForgeProjectAdvisor
+                                                .playStoreText(
+                                                    draft
+                                                )
+                                        )
+
+                                        status =
+                                            "Play Store hazırlık denetimi tamamlandı."
+                                    },
+                                    modifier =
+                                        Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        "🚀 PLAY STORE'A HAZIRLA"
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        val fixResult =
+                                            AppForgeProjectAdvisor
+                                                .applySafeFixes(
+                                                    draft
+                                                )
+
+                                        onDraftChange(
+                                            fixResult.draft
+                                        )
+
+                                        addMessage(
+                                            "user",
+                                            "Güvenli düzeltmeleri uygula"
+                                        )
+
+                                        addMessage(
+                                            "assistant",
+                                            AppForgeProjectAdvisor
+                                                .fixesText(
+                                                    fixResult
+                                                )
+                                        )
+
+                                        status =
+                                            if (
+                                                fixResult
+                                                    .changes
+                                                    .isEmpty()
+                                            ) {
+                                                "Otomatik güvenli düzeltme gerekmiyor."
+                                            } else {
+                                                "${fixResult.changes.size} güvenli düzeltme uygulandı."
+                                            }
+                                    },
+                                    modifier =
+                                        Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        "⚡ GÜVENLİ DÜZELT"
+                                    )
+                                }
+                            }
+                        }
+
+                        Text(
+                            "Sık Sorulanlar",
+                            fontWeight =
+                                FontWeight.Bold,
+                            fontSize =
+                                16.sp
+                        )
+
                         AppForgeKnowledgeBase
                             .quickQuestions()
                             .forEach {
