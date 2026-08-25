@@ -10,6 +10,14 @@ data class KnowledgeChunk(
     val keywords: Set<String>
 )
 
+
+data class HelpArticle(
+    val category: String,
+    val title: String,
+    val text: String,
+    val keywords: Set<String>
+)
+
 private data class FastFaq(
     val question: String,
     val answer: String,
@@ -650,6 +658,34 @@ object AppForgeKnowledgeBase {
             return null
         }
 
+
+        if (
+            normalizedQuestion.contains(
+                "python"
+            ) ||
+            normalizedQuestion.contains(
+                "programlama dili"
+            ) ||
+            normalizedQuestion.contains(
+                "yazılım dili"
+            ) ||
+            normalizedQuestion.contains(
+                "hangi dilleri"
+            ) ||
+            normalizedQuestion.contains(
+                "dil deste"
+            )
+        ) {
+            return (
+                "Şu an AppForge kullanıcı projelerinde temel çalışma modeli HTML/WebView'dir. " +
+                "HTML5, CSS3 ve JavaScript doğrudan desteklenir. React, Vue, Bootstrap ve Vite benzeri " +
+                "web projeleri build edilmiş/static çıktı olarak kullanılabilir. TypeScript önce JavaScript'e " +
+                "derlenmelidir. Kotlin/Java AppForge Android build altyapısında kullanılır; ancak genel kaynak-proje " +
+                "import motoru henüz yoktur. Python, Flutter/Dart, C/C++, C#, React Native, Node.js ve PHP için " +
+                "doğrudan kaynak-proje build desteği henüz eklenmemiştir."
+            )
+        }
+
         fastFaqs
             .firstOrNull {
                 faq ->
@@ -902,4 +938,366 @@ object AppForgeKnowledgeBase {
                     2
             }
             .toSet()
+
+    fun helpArticles(): List<HelpArticle> {
+        val chunkArticles =
+            chunks.map {
+                chunk ->
+                HelpArticle(
+                    category =
+                        helpCategory(
+                            chunk.title,
+                            chunk.text,
+                            chunk.keywords
+                        ),
+                    title =
+                        chunk.title,
+                    text =
+                        chunk.text,
+                    keywords =
+                        chunk.keywords
+                )
+            }
+
+        val faqArticles =
+            fastFaqs.map {
+                faq ->
+                HelpArticle(
+                    category =
+                        helpCategory(
+                            faq.question,
+                            faq.answer,
+                            faq.keywords
+                        ),
+                    title =
+                        faq.question,
+                    text =
+                        faq.answer,
+                    keywords =
+                        faq.keywords +
+                            faq.aliases
+                )
+            }
+
+        val languageSupport =
+            HelpArticle(
+                category =
+                    "Kaynak & Diller",
+                title =
+                    "Hangi yazılım dilleri ve teknolojiler destekleniyor?",
+                text =
+                    "Şu an kullanıcı projelerinde temel çalışma modeli HTML/WebView'dir. HTML5, CSS3 ve JavaScript doğrudan desteklenir. React, Vue, Bootstrap, Vite benzeri web projeleri build edilmiş/static çıktı olarak kullanılabilir. TypeScript önce JavaScript'e derlenmelidir. Kotlin ve Java AppForge'un Android build altyapısında kullanılır ancak kullanıcıdan alınan Kotlin/Java kaynak projesini henüz doğrudan APK'ya çeviren genel bir import motoru yoktur. Python, Flutter/Dart, C/C++, C#, React Native, Node.js ve PHP için doğrudan kaynak-proje build desteği henüz eklenmemiştir.",
+                keywords =
+                    setOf(
+                        "html",
+                        "css",
+                        "javascript",
+                        "typescript",
+                        "react",
+                        "vue",
+                        "vite",
+                        "bootstrap",
+                        "kotlin",
+                        "java",
+                        "python",
+                        "flutter",
+                        "dart",
+                        "c++",
+                        "csharp",
+                        "react native",
+                        "node",
+                        "php",
+                        "dil",
+                        "teknoloji"
+                    )
+            )
+
+        return (
+            listOf(
+                languageSupport
+            ) +
+                faqArticles +
+                chunkArticles
+            )
+            .distinctBy {
+                normalize(
+                    it.title
+                )
+            }
+            .sortedWith(
+                compareBy<HelpArticle> {
+                    it.category
+                }
+                    .thenBy {
+                        it.title
+                    }
+            )
+    }
+
+    fun helpCategories(): List<String> =
+        helpArticles()
+            .map {
+                it.category
+            }
+            .distinct()
+            .sorted()
+
+    fun searchHelp(
+        query: String,
+        maxResults: Int = 60
+    ): List<HelpArticle> {
+        val normalizedQuery =
+            normalize(
+                query
+            )
+
+        if (
+            normalizedQuery.isBlank()
+        ) {
+            return helpArticles()
+                .take(
+                    maxResults
+                )
+        }
+
+        val queryTokens =
+            tokenize(
+                normalizedQuery
+            )
+
+        return helpArticles()
+            .map {
+                article ->
+                val title =
+                    normalize(
+                        article.title
+                    )
+
+                val category =
+                    normalize(
+                        article.category
+                    )
+
+                val body =
+                    normalize(
+                        article.text
+                    )
+
+                val keywords =
+                    article.keywords
+                        .joinToString(
+                            " "
+                        ) {
+                            normalize(
+                                it
+                            )
+                        }
+
+                var score =
+                    0
+
+                if (
+                    title ==
+                        normalizedQuery
+                ) {
+                    score +=
+                        100
+                }
+
+                if (
+                    title.contains(
+                        normalizedQuery
+                    )
+                ) {
+                    score +=
+                        45
+                }
+
+                if (
+                    category.contains(
+                        normalizedQuery
+                    )
+                ) {
+                    score +=
+                        18
+                }
+
+                if (
+                    body.contains(
+                        normalizedQuery
+                    )
+                ) {
+                    score +=
+                        15
+                }
+
+                queryTokens
+                    .forEach {
+                        token ->
+                        if (
+                            title.contains(
+                                token
+                            )
+                        ) {
+                            score +=
+                                12
+                        }
+
+                        if (
+                            keywords.contains(
+                                token
+                            )
+                        ) {
+                            score +=
+                                9
+                        }
+
+                        if (
+                            body.contains(
+                                token
+                            )
+                        ) {
+                            score +=
+                                3
+                        }
+                    }
+
+                article to
+                    score
+            }
+            .filter {
+                it.second >
+                    0
+            }
+            .sortedByDescending {
+                it.second
+            }
+            .take(
+                maxResults
+            )
+            .map {
+                it.first
+            }
+    }
+
+    private fun helpCategory(
+        title: String,
+        text: String,
+        keywords: Set<String>
+    ): String {
+        val haystack =
+            normalize(
+                title +
+                    " " +
+                    text +
+                    " " +
+                    keywords.joinToString(
+                        " "
+                    )
+            )
+
+        return when {
+            listOf(
+                "yerel ai",
+                "litertlm",
+                "yapay zeka",
+                "model"
+            ).any {
+                haystack.contains(
+                    it
+                )
+            } ->
+                "Yerel AI"
+
+            listOf(
+                "admob",
+                "billing",
+                "firebase",
+                "abonelik",
+                "satın"
+            ).any {
+                haystack.contains(
+                    it
+                )
+            } ->
+                "Para Kazanma"
+
+            listOf(
+                "play store",
+                "google play",
+                "aab",
+                "upload key",
+                "play integrity"
+            ).any {
+                haystack.contains(
+                    it
+                )
+            } ->
+                "Google Play"
+
+            listOf(
+                "native bridge",
+                "media3",
+                "qr",
+                "barkod",
+                "clipboard",
+                "pano",
+                "haptic"
+            ).any {
+                haystack.contains(
+                    it
+                )
+            } ->
+                "Native Özellikler"
+
+            listOf(
+                "keystore",
+                "imza",
+                "signing",
+                "gizlilik",
+                "hesap",
+                "güvenlik"
+            ).any {
+                haystack.contains(
+                    it
+                )
+            } ->
+                "Güvenlik & Hesap"
+
+            listOf(
+                "build",
+                "gradle",
+                "preflight",
+                "cache",
+                "apk",
+                "exe",
+                "versioncode",
+                "versionname"
+            ).any {
+                haystack.contains(
+                    it
+                )
+            } ->
+                "Build & Çıktı"
+
+            listOf(
+                "html",
+                "zip",
+                "webview",
+                "url",
+                "pwa",
+                "şablon",
+                "template",
+                "deep link"
+            ).any {
+                haystack.contains(
+                    it
+                )
+            } ->
+                "Kaynak & Web"
+
+            else ->
+                "Başlangıç"
+        }
+    }
 }
