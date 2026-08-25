@@ -56,6 +56,22 @@ jobs:
 
           echo "✅ Release keystore doğrulandı."
 
+      - name: Prepare Play Store manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MANIFEST="android-app/app/src/main/AndroidManifest.xml"
+
+          sed -i             '/android.permission.REQUEST_INSTALL_PACKAGES/d'             "$MANIFEST"
+
+          if grep -q             'android.permission.REQUEST_INSTALL_PACKAGES'             "$MANIFEST"; then
+            echo "❌ REQUEST_INSTALL_PACKAGES kaldırılamadı."
+            exit 1
+          fi
+
+          echo "✅ Play Store manifesti hazır."
+
       - name: Build signed Play AAB
         env:
           APPFORGE_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/appforge-release.jks
@@ -69,6 +85,23 @@ jobs:
             -p android-app \
             :app:bundleRelease \
             --stacktrace
+
+      - name: Verify Play Store permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          FOUND="$(
+            grep -R -l               --include='AndroidManifest.xml'               'android.permission.REQUEST_INSTALL_PACKAGES'               android-app/app/build/intermediates               2>/dev/null || true
+          )"
+
+          if [ -n "$FOUND" ]; then
+            echo "❌ Play build içinde yasaklanan izin bulundu:"
+            echo "$FOUND"
+            exit 1
+          fi
+
+          echo "✅ REQUEST_INSTALL_PACKAGES Play AAB'den çıkarıldı."
 
       - name: Verify AAB
         shell: bash
