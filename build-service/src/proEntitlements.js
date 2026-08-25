@@ -57,10 +57,6 @@ function isReviewerEmail(
 async function getReviewerEntitlement(
   userId
 ) {
-  if (!reviewerAccessActive()) {
-    return null;
-  }
-
   const result =
     await query(
       `SELECT email
@@ -72,24 +68,39 @@ async function getReviewerEntitlement(
       ]
     );
 
-  if (
-    !isReviewerEmail(
-      result.rows[0]?.email
+  const email =
+    String(
+      result.rows[0]?.email ||
+      ""
     )
+      .trim()
+      .toLowerCase();
+
+  if (
+    !reviewerEmail ||
+    email !== reviewerEmail
   ) {
     return null;
   }
 
+  const expiresMs =
+    reviewerExpiryMs();
+
+  const expiresAt =
+    Number.isFinite(expiresMs)
+      ? new Date(
+          expiresMs
+        ).toISOString()
+      : null;
+
   return {
-    active: true,
+    active:
+      reviewerAccessActive(),
     source:
       "google_play_review",
     productId:
       "google_review_30d",
-    expiresAt:
-      new Date(
-        reviewerExpiryMs()
-      ).toISOString()
+    expiresAt
   };
 }
 
@@ -105,6 +116,18 @@ function purchaseTokenHash(
 export async function getProEntitlement(
   userId
 ) {
+  // Google Play review account is resolved first.
+  // This prevents an old admin grant from turning the temporary
+  // reviewer entitlement into permanent Pro access.
+  const reviewer =
+    await getReviewerEntitlement(
+      userId
+    );
+
+  if (reviewer) {
+    return reviewer;
+  }
+
   const result =
     await query(
       `SELECT
@@ -124,40 +147,6 @@ export async function getProEntitlement(
   const row =
     result.rows[0];
 
-  if (row) {
-    const notExpired =
-      !row.expires_at ||
-      new Date(
-        row.expires_at
-      ).getTime() >
-        Date.now();
-
-    if (
-      row.status ===
-        "active" &&
-      notExpired
-    ) {
-      return {
-        active: true,
-        source:
-          row.source,
-        productId:
-          row.product_id,
-        expiresAt:
-          row.expires_at
-      };
-    }
-  }
-
-  const reviewer =
-    await getReviewerEntitlement(
-      userId
-    );
-
-  if (reviewer) {
-    return reviewer;
-  }
-
   if (!row) {
     return {
       active: false,
@@ -167,8 +156,18 @@ export async function getProEntitlement(
     };
   }
 
+  const notExpired =
+    !row.expires_at ||
+    new Date(
+      row.expires_at
+    ).getTime() >
+      Date.now();
+
   return {
-    active: false,
+    active:
+      row.status ===
+        "active" &&
+      notExpired,
     source:
       row.source,
     productId:

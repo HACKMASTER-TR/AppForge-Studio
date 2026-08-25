@@ -106,144 +106,177 @@ class StudioBillingManager(
     fun queryPlans(
         onResult: (StudioPlanPrice) -> Unit
     ) {
-        val products =
-            buildList {
-                if (
-                    lifetimeProductId
-                        .isNotBlank()
-                ) {
-                    add(
-                        QueryProductDetailsParams
-                            .Product
-                            .newBuilder()
-                            .setProductId(
-                                lifetimeProductId
-                            )
-                            .setProductType(
-                                BillingClient
-                                    .ProductType
-                                    .INAPP
-                            )
-                            .build()
-                    )
-                }
+        lifetimeDetails =
+            null
 
-                if (
-                    monthlyProductId
-                        .isNotBlank()
-                ) {
-                    add(
-                        QueryProductDetailsParams
-                            .Product
-                            .newBuilder()
-                            .setProductId(
-                                monthlyProductId
-                            )
-                            .setProductType(
-                                BillingClient
-                                    .ProductType
-                                    .SUBS
-                            )
-                            .build()
-                    )
-                }
+        monthlyDetails =
+            null
+
+        fun finish() {
+            val lifetimePrice =
+                lifetimeDetails
+                    ?.oneTimePurchaseOfferDetailsList
+                    ?.firstOrNull()
+                    ?.formattedPrice
+                    ?: lifetimeDetails
+                        ?.oneTimePurchaseOfferDetails
+                        ?.formattedPrice
+
+            val monthlyPrice =
+                monthlyDetails
+                    ?.subscriptionOfferDetails
+                    ?.firstOrNull()
+                    ?.pricingPhases
+                    ?.pricingPhaseList
+                    ?.firstOrNull()
+                    ?.formattedPrice
+
+            onResult(
+                StudioPlanPrice(
+                    lifetimePrice =
+                        lifetimePrice,
+                    monthlyPrice =
+                        monthlyPrice,
+                    lifetimeAvailable =
+                        lifetimeDetails !=
+                        null,
+                    monthlyAvailable =
+                        monthlyDetails !=
+                        null
+                )
+            )
+        }
+
+        fun queryMonthly() {
+            if (
+                monthlyProductId
+                    .isBlank()
+            ) {
+                finish()
+                return
             }
 
+            val product =
+                QueryProductDetailsParams
+                    .Product
+                    .newBuilder()
+                    .setProductId(
+                        monthlyProductId
+                    )
+                    .setProductType(
+                        BillingClient
+                            .ProductType
+                            .SUBS
+                    )
+                    .build()
+
+            val params =
+                QueryProductDetailsParams
+                    .newBuilder()
+                    .setProductList(
+                        listOf(
+                            product
+                        )
+                    )
+                    .build()
+
+            billingClient
+                .queryProductDetailsAsync(
+                    params
+                ) {
+                    result,
+                    detailsResult ->
+
+                    if (
+                        result.responseCode ==
+                        BillingClient
+                            .BillingResponseCode
+                            .OK
+                    ) {
+                        monthlyDetails =
+                            detailsResult
+                                .productDetailsList
+                                .firstOrNull {
+                                    it.productId ==
+                                        monthlyProductId
+                                }
+                    } else {
+                        onMessage(
+                            result
+                                .debugMessage
+                                .ifBlank {
+                                    "Pro Aylık fiyatı alınamadı."
+                                }
+                        )
+                    }
+
+                    finish()
+                }
+        }
+
         if (
-            products.isEmpty()
+            lifetimeProductId
+                .isBlank()
         ) {
-            onResult(
-                StudioPlanPrice()
-            )
+            queryMonthly()
             return
         }
 
-        val params =
+        val lifetimeProduct =
+            QueryProductDetailsParams
+                .Product
+                .newBuilder()
+                .setProductId(
+                    lifetimeProductId
+                )
+                .setProductType(
+                    BillingClient
+                        .ProductType
+                        .INAPP
+                )
+                .build()
+
+        val lifetimeParams =
             QueryProductDetailsParams
                 .newBuilder()
                 .setProductList(
-                    products
+                    listOf(
+                        lifetimeProduct
+                    )
                 )
                 .build()
 
         billingClient
             .queryProductDetailsAsync(
-                params
+                lifetimeParams
             ) {
                 result,
                 detailsResult ->
 
                 if (
-                    result.responseCode !=
+                    result.responseCode ==
                     BillingClient
                         .BillingResponseCode
                         .OK
                 ) {
+                    lifetimeDetails =
+                        detailsResult
+                            .productDetailsList
+                            .firstOrNull {
+                                it.productId ==
+                                    lifetimeProductId
+                            }
+                } else {
                     onMessage(
                         result
                             .debugMessage
                             .ifBlank {
-                                "Pro plan fiyatları alınamadı."
+                                "Tek seferlik Pro fiyatı alınamadı."
                             }
                     )
-
-                    onResult(
-                        StudioPlanPrice()
-                    )
-
-                    return@queryProductDetailsAsync
                 }
 
-                for (
-                    details in
-                    detailsResult
-                        .productDetailsList
-                ) {
-                    when (
-                        details.productId
-                    ) {
-                        lifetimeProductId ->
-                            lifetimeDetails =
-                                details
-
-                        monthlyProductId ->
-                            monthlyDetails =
-                                details
-                    }
-                }
-
-                val lifetimePrice =
-                    lifetimeDetails
-                        ?.oneTimePurchaseOfferDetailsList
-                        ?.firstOrNull()
-                        ?.formattedPrice
-                        ?: lifetimeDetails
-                            ?.oneTimePurchaseOfferDetails
-                            ?.formattedPrice
-
-                val monthlyPrice =
-                    monthlyDetails
-                        ?.subscriptionOfferDetails
-                        ?.firstOrNull()
-                        ?.pricingPhases
-                        ?.pricingPhaseList
-                        ?.firstOrNull()
-                        ?.formattedPrice
-
-                onResult(
-                    StudioPlanPrice(
-                        lifetimePrice =
-                            lifetimePrice,
-                        monthlyPrice =
-                            monthlyPrice,
-                        lifetimeAvailable =
-                            lifetimeDetails !=
-                            null,
-                        monthlyAvailable =
-                            monthlyDetails !=
-                            null
-                    )
-                )
+                queryMonthly()
             }
     }
 
