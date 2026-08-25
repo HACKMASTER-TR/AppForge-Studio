@@ -15169,6 +15169,26 @@ private fun AccountScreen(
     var message by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
 
+    var showDeleteAccount by
+        remember {
+            mutableStateOf(false)
+        }
+
+    var deletePassword by
+        remember {
+            mutableStateOf("")
+        }
+
+    var deleteTwoFactorCode by
+        remember {
+            mutableStateOf("")
+        }
+
+    var deleteConfirmation by
+        remember {
+            mutableStateOf("")
+        }
+
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text("AppForge Hesabı") },
@@ -15211,9 +15231,213 @@ private fun AccountScreen(
                 }
                 item {
                     OutlinedButton(
-                        onClick = { onSession(null) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Çıkış Yap") }
+                        onClick = {
+                            onSession(
+                                null
+                            )
+                        },
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Çıkış Yap"
+                        )
+                    }
+                }
+
+                item {
+                    HorizontalDivider()
+                }
+
+                item {
+                    OutlinedButton(
+                        onClick = {
+                            showDeleteAccount =
+                                !showDeleteAccount
+
+                            deletePassword =
+                                ""
+
+                            deleteTwoFactorCode =
+                                ""
+
+                            deleteConfirmation =
+                                ""
+                        },
+                        enabled =
+                            !busy,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            if (
+                                showDeleteAccount
+                            ) {
+                                "Hesap Silmeyi İptal Et"
+                            } else {
+                                "Hesabımı Sil"
+                            }
+                        )
+                    }
+                }
+
+                if (
+                    showDeleteAccount
+                ) {
+                    item {
+                        NoteCard(
+                            "Bu işlem kalıcıdır. Hesabın, projelerin, build kayıtların, API tokenların ve AppForge Pro hesabına bağlı erişimin silinir. Aktif bir build varsa önce tamamlanması veya iptal edilmesi gerekir."
+                        )
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value =
+                                deletePassword,
+                            onValueChange = {
+                                deletePassword =
+                                    it
+                            },
+                            label = {
+                                Text(
+                                    "Hesap parolası"
+                                )
+                            },
+                            visualTransformation =
+                                PasswordVisualTransformation(),
+                            singleLine =
+                                true,
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    if (
+                        session
+                            .twoFactorEnabled
+                    ) {
+                        item {
+                            OutlinedTextField(
+                                value =
+                                    deleteTwoFactorCode,
+                                onValueChange = {
+                                    deleteTwoFactorCode =
+                                        it
+                                            .filter {
+                                                ch ->
+                                                ch.isDigit()
+                                            }
+                                            .take(
+                                                6
+                                            )
+                                },
+                                label = {
+                                    Text(
+                                        "2FA kodu"
+                                    )
+                                },
+                                singleLine =
+                                    true,
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value =
+                                deleteConfirmation,
+                            onValueChange = {
+                                deleteConfirmation =
+                                    it
+                            },
+                            label = {
+                                Text(
+                                    "Onaylamak için SİL yaz"
+                                )
+                            },
+                            singleLine =
+                                true,
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    item {
+                        Button(
+                            onClick = {
+                                busy =
+                                    true
+
+                                scope.launch {
+                                    try {
+                                        withContext(
+                                            Dispatchers.IO
+                                        ) {
+                                            AppForgeAccountClient(
+                                                serverUrl
+                                            ).deleteAccount(
+                                                email =
+                                                    session.email,
+                                                password =
+                                                    deletePassword,
+                                                twoFactorCode =
+                                                    deleteTwoFactorCode
+                                            )
+                                        }
+
+                                        deletePassword =
+                                            ""
+
+                                        deleteTwoFactorCode =
+                                            ""
+
+                                        deleteConfirmation =
+                                            ""
+
+                                        showDeleteAccount =
+                                            false
+
+                                        onSession(
+                                            null
+                                        )
+
+                                        message =
+                                            "Hesabın ve hesabına bağlı AppForge verileri kalıcı olarak silindi."
+                                    } catch (
+                                        t: Throwable
+                                    ) {
+                                        message =
+                                            "Hesap silinemedi: ${t.message}"
+                                    } finally {
+                                        busy =
+                                            false
+                                    }
+                                }
+                            },
+                            enabled =
+                                !busy &&
+                                deletePassword.length >=
+                                    8 &&
+                                deleteConfirmation
+                                    .trim() ==
+                                    "SİL" &&
+                                (
+                                    !session
+                                        .twoFactorEnabled ||
+                                    deleteTwoFactorCode
+                                        .length ==
+                                        6
+                                ),
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                "HESABI KALICI OLARAK SİL"
+                            )
+                        }
+                    }
                 }
             } else {
                 item {

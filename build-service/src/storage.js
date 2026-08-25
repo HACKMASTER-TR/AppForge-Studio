@@ -645,3 +645,45 @@ export function localOutputFile(
     outputRef.key
   );
 }
+
+
+export async function deleteOutput(
+  outputRef
+) {
+  if (
+    !outputRef ||
+    !outputRef.key
+  ) {
+    return;
+  }
+
+  if (
+    outputRef.driver ===
+    "s3"
+  ) {
+    await s3.send(
+      new DeleteObjectCommand({
+        Bucket:
+          config.s3Bucket,
+        Key:
+          outputRef.key
+      })
+    );
+
+    return;
+  }
+
+  if (
+    outputRef.driver ===
+    "local"
+  ) {
+    await fs.rm(
+      outputLocalPath(
+        outputRef.key
+      ),
+      {
+        force: true
+      }
+    );
+  }
+}

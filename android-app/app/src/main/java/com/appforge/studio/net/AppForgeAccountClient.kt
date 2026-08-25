@@ -158,6 +158,37 @@ class AppForgeAccountClient(
             )
     }
 
+    fun deleteAccount(
+        email: String,
+        password: String,
+        twoFactorCode: String = ""
+    ): JSONObject {
+        return request(
+            "/api/auth/delete-account",
+            JSONObject().apply {
+                put(
+                    "email",
+                    email
+                )
+                put(
+                    "password",
+                    password
+                )
+
+                if (
+                    twoFactorCode
+                        .isNotBlank()
+                ) {
+                    put(
+                        "twoFactorCode",
+                        twoFactorCode
+                    )
+                }
+            }
+        )
+    }
+
+
     private fun session(json: JSONObject): Session {
         val user = json.getJSONObject("user")
 

@@ -9,6 +9,9 @@ import { google } from "googleapis";
 import { config, assertCriticalConfig } from "./src/config.js";
 import { migrate, query } from "./src/db.js";
 import {
+  deleteAccountData
+} from "./src/accountDeletion.js";
+import {
   createUser,
   findUserByEmail,
   loginUser,
@@ -425,6 +428,133 @@ app.post(
     }
   }
 );
+
+
+function accountDeletionCors(
+  res
+) {
+  res.set(
+    "Access-Control-Allow-Origin",
+    "https://hackmaster-tr.github.io"
+  );
+
+  res.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type"
+  );
+
+  res.set(
+    "Access-Control-Allow-Methods",
+    "POST, OPTIONS"
+  );
+
+  res.set(
+    "Vary",
+    "Origin"
+  );
+}
+
+app.options(
+  "/api/auth/delete-account",
+  (_req, res) => {
+    accountDeletionCors(
+      res
+    );
+
+    res
+      .status(204)
+      .end();
+  }
+);
+
+app.post(
+  "/api/auth/delete-account",
+  async (req, res) => {
+    accountDeletionCors(
+      res
+    );
+
+    try {
+      /*
+       * Web sayfası veya uygulama üzerinden
+       * hesap sahibinin kimliğini doğrula.
+       */
+      const user =
+        await loginUser({
+          email:
+            req.body?.email,
+          password:
+            req.body?.password
+        });
+
+      if (
+        user.twoFactorEnabled
+      ) {
+        const code =
+          String(
+            req.body
+              ?.twoFactorCode ||
+            ""
+          ).trim();
+
+        if (!code) {
+          return res
+            .status(401)
+            .json({
+              ok: false,
+              requiresTwoFactor:
+                true,
+              error:
+                "2FA kodu gerekli."
+            });
+        }
+
+        const valid =
+          await verifyUserTotp(
+            user.id,
+            code
+          );
+
+        if (!valid) {
+          return res
+            .status(401)
+            .json({
+              ok: false,
+              requiresTwoFactor:
+                true,
+              error:
+                "2FA kodu geçersiz."
+            });
+        }
+      }
+
+      const result =
+        await deleteAccountData(
+          user.id
+        );
+
+      res.json({
+        ok: true,
+        ...result
+      });
+    } catch (error) {
+      res
+        .status(
+          error.statusCode ||
+          401
+        )
+        .json({
+          ok: false,
+          error:
+            String(
+              error.message ||
+              "Hesap silinemedi."
+            )
+        });
+    }
+  }
+);
+
 
 app.post(
   "/api/auth/verify-email",
