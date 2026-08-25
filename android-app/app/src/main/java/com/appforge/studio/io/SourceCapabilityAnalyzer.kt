@@ -11,8 +11,18 @@ data class SourceCapabilityAnalysis(
     val downloads: Boolean = false,
     val mediaPlayer: Boolean = false,
     val qrScanner: Boolean = false,
+
+    val cameraReason: String? = null,
+    val locationReason: String? = null,
+    val notificationsReason: String? = null,
+    val fileUploadReason: String? = null,
+    val downloadsReason: String? = null,
+    val mediaPlayerReason: String? = null,
+    val qrScannerReason: String? = null,
+
     val scannedFiles: Int = 0
 ) {
+
     fun detectedLabels(): List<String> =
         buildList {
             if (camera) add("Kamera")
@@ -22,6 +32,81 @@ data class SourceCapabilityAnalysis(
             if (downloads) add("DownloadManager")
             if (mediaPlayer) add("Media3")
             if (qrScanner) add("QR")
+        }
+
+
+    fun detectedDetails(): List<String> =
+        buildList {
+
+            if (camera) {
+                add(
+                    "Kamera • " +
+                        (
+                            cameraReason
+                                ?: "Kamera kullanımı bulundu"
+                        )
+                )
+            }
+
+            if (location) {
+                add(
+                    "Konum • " +
+                        (
+                            locationReason
+                                ?: "Konum kullanımı bulundu"
+                        )
+                )
+            }
+
+            if (notifications) {
+                add(
+                    "Bildirim • " +
+                        (
+                            notificationsReason
+                                ?: "Bildirim kullanımı bulundu"
+                        )
+                )
+            }
+
+            if (fileUpload) {
+                add(
+                    "Dosya yükleme • " +
+                        (
+                            fileUploadReason
+                                ?: "Dosya seçici bulundu"
+                        )
+                )
+            }
+
+            if (downloads) {
+                add(
+                    "DownloadManager • " +
+                        (
+                            downloadsReason
+                                ?: "İndirme bağlantısı bulundu"
+                        )
+                )
+            }
+
+            if (mediaPlayer) {
+                add(
+                    "Media3 • " +
+                        (
+                            mediaPlayerReason
+                                ?: "AppForge medya kullanımı bulundu"
+                        )
+                )
+            }
+
+            if (qrScanner) {
+                add(
+                    "QR • " +
+                        (
+                            qrScannerReason
+                                ?: "QR tarayıcı kullanımı bulundu"
+                        )
+                )
+            }
         }
 }
 
@@ -36,6 +121,7 @@ object SourceCapabilityAnalyzer {
 
     private const val MAX_TOTAL_BYTES =
         20L * 1024L * 1024L
+
 
     private val textExtensions =
         setOf(
@@ -53,17 +139,20 @@ object SourceCapabilityAnalyzer {
             "svelte"
         )
 
+
     private val fileInputRegex =
         Regex(
             """<input\b[^>]*\btype\s*=\s*["']?file["']?[^>]*>""",
             RegexOption.IGNORE_CASE
         )
 
+
     private val cameraInputRegex =
         Regex(
             """<input\b(?=[^>]*\btype\s*=\s*["']?file["']?)(?=[^>]*\bcapture\b)[^>]*>""",
             RegexOption.IGNORE_CASE
         )
+
 
     private val getUserMediaVideoRegex =
         Regex(
@@ -73,6 +162,7 @@ object SourceCapabilityAnalyzer {
                 RegexOption.DOT_MATCHES_ALL
             )
         )
+
 
     private val downloadAttributeRegex =
         Regex(
@@ -91,6 +181,7 @@ object SourceCapabilityAnalyzer {
         ) {
             return SourceCapabilityAnalysis()
         }
+
 
         var camera =
             false
@@ -113,6 +204,29 @@ object SourceCapabilityAnalyzer {
         var qrScanner =
             false
 
+
+        var cameraReason: String? =
+            null
+
+        var locationReason: String? =
+            null
+
+        var notificationsReason: String? =
+            null
+
+        var fileUploadReason: String? =
+            null
+
+        var downloadsReason: String? =
+            null
+
+        var mediaPlayerReason: String? =
+            null
+
+        var qrScannerReason: String? =
+            null
+
+
         var scannedFiles =
             0
 
@@ -134,6 +248,7 @@ object SourceCapabilityAnalyzer {
                 break
             }
 
+
             if (
                 !file.isFile ||
                 file.extension
@@ -143,12 +258,14 @@ object SourceCapabilityAnalyzer {
                 continue
             }
 
+
             val size =
                 runCatching {
                     file.length()
                 }.getOrDefault(
                     0L
                 )
+
 
             if (
                 size <= 0L ||
@@ -161,6 +278,7 @@ object SourceCapabilityAnalyzer {
                 continue
             }
 
+
             val text =
                 runCatching {
                     file.readText(
@@ -169,11 +287,13 @@ object SourceCapabilityAnalyzer {
                 }.getOrNull()
                     ?: continue
 
+
             scannedFiles +=
                 1
 
             totalBytes +=
                 size
+
 
             val lower =
                 text.lowercase()
@@ -188,98 +308,198 @@ object SourceCapabilityAnalyzer {
             ) {
                 fileUpload =
                     true
+
+                fileUploadReason =
+                    "<input type=\"file\">"
             }
 
 
-            if (
-                !camera &&
-                (
+            if (!camera) {
+
+                when {
+
                     cameraInputRegex
                         .containsMatchIn(
                             text
-                        ) ||
+                        ) -> {
+
+                        camera =
+                            true
+
+                        cameraReason =
+                            "<input type=\"file\" capture>"
+                    }
+
+
                     getUserMediaVideoRegex
                         .containsMatchIn(
                             text
-                        ) ||
+                        ) -> {
+
+                        camera =
+                            true
+
+                        cameraReason =
+                            "getUserMedia({ video: ... })"
+                    }
+
+
                     lower.contains(
                         "facingmode"
-                    )
-                )
-            ) {
-                camera =
-                    true
+                    ) -> {
+
+                        camera =
+                            true
+
+                        cameraReason =
+                            "facingMode kamera seçimi"
+                    }
+                }
             }
 
 
-            if (
-                !location &&
-                (
+            if (!location) {
+
+                when {
+
                     lower.contains(
                         "navigator.geolocation"
-                    ) ||
+                    ) -> {
+
+                        location =
+                            true
+
+                        locationReason =
+                            "navigator.geolocation"
+                    }
+
+
                     lower.contains(
                         "geolocation.getcurrentposition"
-                    ) ||
+                    ) -> {
+
+                        location =
+                            true
+
+                        locationReason =
+                            "getCurrentPosition()"
+                    }
+
+
                     lower.contains(
                         "geolocation.watchposition"
-                    )
-                )
-            ) {
-                location =
-                    true
+                    ) -> {
+
+                        location =
+                            true
+
+                        locationReason =
+                            "watchPosition()"
+                    }
+                }
             }
 
 
-            if (
-                !notifications &&
-                (
+            if (!notifications) {
+
+                when {
+
                     lower.contains(
                         "notification.requestpermission"
-                    ) ||
+                    ) -> {
+
+                        notifications =
+                            true
+
+                        notificationsReason =
+                            "Notification.requestPermission()"
+                    }
+
+
                     lower.contains(
                         "new notification("
-                    ) ||
+                    ) -> {
+
+                        notifications =
+                            true
+
+                        notificationsReason =
+                            "new Notification()"
+                    }
+
+
                     lower.contains(
                         ".shownotification("
-                    )
-                )
-            ) {
-                notifications =
-                    true
+                    ) -> {
+
+                        notifications =
+                            true
+
+                        notificationsReason =
+                            "showNotification()"
+                    }
+                }
             }
 
 
-            if (
-                !downloads &&
-                (
+            if (!downloads) {
+
+                when {
+
                     downloadAttributeRegex
                         .containsMatchIn(
                             text
-                        ) ||
+                        ) -> {
+
+                        downloads =
+                            true
+
+                        downloadsReason =
+                            "<a download>"
+                    }
+
+
                     lower.contains(
                         "appforgedownloads"
-                    )
-                )
-            ) {
-                downloads =
-                    true
+                    ) -> {
+
+                        downloads =
+                            true
+
+                        downloadsReason =
+                            "AppForgeDownloads"
+                    }
+                }
             }
 
 
-            if (
-                !mediaPlayer &&
-                (
+            if (!mediaPlayer) {
+
+                when {
+
                     lower.contains(
                         "appforgemedia"
-                    ) ||
+                    ) -> {
+
+                        mediaPlayer =
+                            true
+
+                        mediaPlayerReason =
+                            "AppForgeMedia"
+                    }
+
+
                     lower.contains(
                         "appforge.media"
-                    )
-                )
-            ) {
-                mediaPlayer =
-                    true
+                    ) -> {
+
+                        mediaPlayer =
+                            true
+
+                        mediaPlayerReason =
+                            "AppForge.media"
+                    }
+                }
             }
 
 
@@ -289,16 +509,22 @@ object SourceCapabilityAnalyzer {
                     lower.contains(
                         "appforge.scancode"
                     ) ||
-                    lower.contains(
-                        "\"scancode\""
-                    ) &&
-                    lower.contains(
-                        "appforge"
+                    (
+                        lower.contains(
+                            "\"scancode\""
+                        ) &&
+                        lower.contains(
+                            "appforge"
+                        )
                     )
                 )
             ) {
+
                 qrScanner =
                     true
+
+                qrScannerReason =
+                    "AppForge.scanCode()"
             }
 
 
@@ -319,18 +545,46 @@ object SourceCapabilityAnalyzer {
         return SourceCapabilityAnalysis(
             camera =
                 camera,
+
             location =
                 location,
+
             notifications =
                 notifications,
+
             fileUpload =
                 fileUpload,
+
             downloads =
                 downloads,
+
             mediaPlayer =
                 mediaPlayer,
+
             qrScanner =
                 qrScanner,
+
+            cameraReason =
+                cameraReason,
+
+            locationReason =
+                locationReason,
+
+            notificationsReason =
+                notificationsReason,
+
+            fileUploadReason =
+                fileUploadReason,
+
+            downloadsReason =
+                downloadsReason,
+
+            mediaPlayerReason =
+                mediaPlayerReason,
+
+            qrScannerReason =
+                qrScannerReason,
+
             scannedFiles =
                 scannedFiles
         )

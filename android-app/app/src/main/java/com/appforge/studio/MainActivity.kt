@@ -60,6 +60,7 @@ import com.appforge.studio.io.KeystoreVault
 import com.appforge.studio.io.ManagedKeystore
 import com.appforge.studio.io.ProjectBackupManager
 import com.appforge.studio.io.ProjectImporter
+import com.appforge.studio.io.SourceCapabilityAnalysis
 import com.appforge.studio.io.SourceCapabilityAnalyzer
 import com.appforge.studio.io.TemplateProjectFactory
 import com.appforge.studio.io.ProjectLibrary
@@ -429,6 +430,14 @@ private fun AppForgeApp() {
     val scope = rememberCoroutineScope()
 
     var draft by remember { mutableStateOf(ProjectDraft()) }
+
+    var sourceAnalysis by
+        remember {
+            mutableStateOf<SourceCapabilityAnalysis?>(
+                null
+            )
+        }
+
     var currentProjectId by remember { mutableStateOf<String?>(null) }
     var screen by remember { mutableStateOf(AppScreen.HOME) }
     var step by remember { mutableIntStateOf(1) }
@@ -622,6 +631,9 @@ private fun AppForgeApp() {
                         .analyze(
                             result.projectDir
                         )
+
+                sourceAnalysis =
+                    analysis
 
                 draft =
                     draft.copy(
@@ -2703,7 +2715,10 @@ private fun AppForgeApp() {
                                 sourcePicker.launch(arrayOf("text/html", "application/zip", "application/octet-stream"))
                             }
 
-                            2 -> PermissionsStep(draft) { draft = it }
+                            2 -> PermissionsStep(
+                                draft,
+                                sourceAnalysis
+                            ) { draft = it }
 
                             3 -> FeaturesStep(draft) { draft = it }
 
@@ -8764,6 +8779,7 @@ private fun SourceStep(
 @Composable
 private fun PermissionsStep(
     d: ProjectDraft,
+    analysis: SourceCapabilityAnalysis?,
     update: (ProjectDraft) -> Unit
 ) {
     val permissionCount =
@@ -8829,11 +8845,84 @@ private fun PermissionsStep(
             }
         }
 
+        if (
+            analysis != null &&
+            analysis.detectedLabels()
+                .isNotEmpty()
+        ) {
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                6.dp
+                            )
+                    ) {
+                        Text(
+                            "🔍 Otomatik algılandı",
+                            color =
+                                Accent,
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            "${analysis.scannedFiles} kaynak dosyası tarandı",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+
+                        analysis
+                            .detectedDetails()
+                            .forEach {
+                                detail ->
+
+                                Text(
+                                    "✓ $detail",
+                                    fontSize =
+                                        12.sp
+                                )
+                            }
+                    }
+                }
+            }
+        }
+
         item {
             FeatureToggleCard(
                 title = "Kamera",
                 description =
-                    "Web uygulamasının kameradan fotoğraf çekmesini sağlar.",
+                    if (
+                        analysis?.camera ==
+                        true
+                    ) {
+                        "Web uygulamasının kameradan fotoğraf çekmesini sağlar.\n" +
+                            "✓ Otomatik algılandı • " +
+                            (
+                                analysis.cameraReason
+                                    ?: "Kamera kullanımı"
+                            )
+                    } else {
+                        "Web uygulamasının kameradan fotoğraf çekmesini sağlar."
+                    },
                 checked = d.camera,
                 permission = "CAMERA"
             ) {
@@ -8849,7 +8938,19 @@ private fun PermissionsStep(
             FeatureToggleCard(
                 title = "Konum",
                 description =
-                    "Web uygulamasının cihaz konumunu istemesini sağlar.",
+                    if (
+                        analysis?.location ==
+                        true
+                    ) {
+                        "Web uygulamasının cihaz konumunu istemesini sağlar.\n" +
+                            "✓ Otomatik algılandı • " +
+                            (
+                                analysis.locationReason
+                                    ?: "navigator.geolocation"
+                            )
+                    } else {
+                        "Web uygulamasının cihaz konumunu istemesini sağlar."
+                    },
                 checked = d.location,
                 permission =
                     "ACCESS_FINE_LOCATION"
@@ -8866,7 +8967,19 @@ private fun PermissionsStep(
             FeatureToggleCard(
                 title = "Bildirimler",
                 description =
-                    "Android 13+ cihazlarda bildirim iznini etkinleştirir.",
+                    if (
+                        analysis?.notifications ==
+                        true
+                    ) {
+                        "Android 13+ cihazlarda bildirim iznini etkinleştirir.\n" +
+                            "✓ Otomatik algılandı • " +
+                            (
+                                analysis.notificationsReason
+                                    ?: "Bildirim API kullanımı"
+                            )
+                    } else {
+                        "Android 13+ cihazlarda bildirim iznini etkinleştirir."
+                    },
                 checked =
                     d.notifications,
                 permission =
@@ -14293,8 +14406,7 @@ private fun publishApkToDownloads(
                     android.provider.MediaStore
                         .MediaColumns
                         .RELATIVE_PATH,
-                    Environment
-                        .DIRECTORY_DOWNLOADS
+                    "${Environment.DIRECTORY_DOWNLOADS}/$APPFORGE_DOWNLOAD_FOLDER"
                 )
 
                 put(
