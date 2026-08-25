@@ -2703,6 +2703,55 @@ function generatedMainActivity(c, pkg) {
         }
 `;
 
+  const zoomLockOnPageFinished =
+    !webZoomEnabled
+      ? `
+                override fun onPageFinished(
+                    view: WebView?,
+                    url: String?
+                ) {
+                    super.onPageFinished(
+                        view,
+                        url
+                    )
+
+                    view?.settings
+                        ?.setSupportZoom(
+                            false
+                        )
+
+                    view?.settings
+                        ?.builtInZoomControls =
+                            false
+
+                    view?.setInitialScale(
+                        100
+                    )
+
+                    view?.evaluateJavascript(
+                        "(function(){" +
+                        "var m=document.querySelector(" +
+                        "'meta[name=\\\"viewport\\\"]'" +
+                        ");" +
+                        "if(!m){" +
+                        "m=document.createElement('meta');" +
+                        "m.name='viewport';" +
+                        "(document.head||document.documentElement)" +
+                        ".appendChild(m);" +
+                        "}" +
+                        "m.setAttribute(" +
+                        "'content'," +
+                        "'width=device-width, initial-scale=1.0, " +
+                        "minimum-scale=1.0, maximum-scale=1.0, " +
+                        "user-scalable=no'" +
+                        ");" +
+                        "})();",
+                        null
+                    )
+                }
+`
+      : "";
+
   const webChrome = `
         web.webChromeClient =
             object : WebChromeClient() {
@@ -5187,6 +5236,7 @@ ${startupRuntimePermissions}
 
         web.webViewClient =
             object : WebViewClient() {
+${zoomLockOnPageFinished}
                 ${isLocalSource ? `
                 override fun shouldInterceptRequest(
                     view: WebView?,

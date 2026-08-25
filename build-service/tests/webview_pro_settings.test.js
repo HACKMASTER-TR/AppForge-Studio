@@ -151,6 +151,30 @@ test(
       )
     );
 
+    assert.ok(
+      fastRuntime.includes(
+        "applyZoomPolicy"
+      )
+    );
+
+    assert.ok(
+      fastRuntime.includes(
+        "user-scalable=no"
+      )
+    );
+
+    assert.ok(
+      buildEngine.includes(
+        "zoomLockOnPageFinished"
+      )
+    );
+
+    assert.ok(
+      buildEngine.includes(
+        "user-scalable=no"
+      )
+    );
+
     const buildFlow =
       mainActivity.slice(
         mainActivity.indexOf(
