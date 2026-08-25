@@ -50,6 +50,50 @@ android {
             null
         }
 
+
+    val releaseKeystorePath =
+        System.getenv("APPFORGE_RELEASE_KEYSTORE_PATH")
+
+    val releaseStorePassword =
+        System.getenv("APPFORGE_RELEASE_STORE_PASSWORD")
+
+    val releaseKeyAlias =
+        System.getenv("APPFORGE_RELEASE_KEY_ALIAS")
+            ?: "appforge-release"
+
+    val releaseKeyPassword =
+        System.getenv("APPFORGE_RELEASE_KEY_PASSWORD")
+            ?: releaseStorePassword.orEmpty()
+
+    val ciReleaseSigning =
+        if (
+            !releaseKeystorePath.isNullOrBlank() &&
+            !releaseStorePassword.isNullOrBlank()
+        ) {
+            signingConfigs.create("ciRelease") {
+                storeFile =
+                    file(
+                        requireNotNull(
+                            releaseKeystorePath
+                        )
+                    )
+
+                storePassword =
+                    releaseStorePassword
+
+                keyAlias =
+                    releaseKeyAlias
+
+                keyPassword =
+                    releaseKeyPassword
+
+                storeType =
+                    "JKS"
+            }
+        } else {
+            null
+        }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -71,6 +115,10 @@ android {
         }
 
         getByName("release") {
+            ciReleaseSigning?.let {
+                signingConfig = it
+            }
+
             isMinifyEnabled = true
             isShrinkResources = true
 
