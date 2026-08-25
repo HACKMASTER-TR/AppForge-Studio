@@ -8,6 +8,91 @@ import {
   verifyPlayPurchase
 } from "./playVerifier.js";
 
+// Temporary Google Play reviewer access.
+// This review-only exception automatically expires at the fixed timestamp.
+// Railway environment values may override the defaults without another build.
+const reviewerEmail =
+  String(
+    process.env.APPFORGE_REVIEWER_EMAIL ||
+    "googletest@gmail.com"
+  )
+    .trim()
+    .toLowerCase();
+
+const reviewerProExpiresAt =
+  String(
+    process.env.APPFORGE_REVIEWER_PRO_EXPIRES_AT ||
+    "2026-09-24T21:00:00.000Z"
+  ).trim();
+
+function reviewerExpiryMs() {
+  return Date.parse(
+    reviewerProExpiresAt
+  );
+}
+
+function reviewerAccessActive() {
+  const expiresMs =
+    reviewerExpiryMs();
+
+  return (
+    Boolean(reviewerEmail) &&
+    Number.isFinite(expiresMs) &&
+    expiresMs > Date.now()
+  );
+}
+
+function isReviewerEmail(
+  email
+) {
+  return (
+    reviewerAccessActive() &&
+    String(email || "")
+      .trim()
+      .toLowerCase() ===
+      reviewerEmail
+  );
+}
+
+async function getReviewerEntitlement(
+  userId
+) {
+  if (!reviewerAccessActive()) {
+    return null;
+  }
+
+  const result =
+    await query(
+      `SELECT email
+       FROM appforge_users
+       WHERE id = $1
+         AND is_active = TRUE`,
+      [
+        userId
+      ]
+    );
+
+  if (
+    !isReviewerEmail(
+      result.rows[0]?.email
+    )
+  ) {
+    return null;
+  }
+
+  return {
+    active: true,
+    source:
+      "google_play_review",
+    productId:
+      "google_review_30d",
+    expiresAt:
+      new Date(
+        reviewerExpiryMs()
+      ).toISOString()
+  };
+}
+
 function purchaseTokenHash(
   token
 ) {
@@ -39,6 +124,40 @@ export async function getProEntitlement(
   const row =
     result.rows[0];
 
+  if (row) {
+    const notExpired =
+      !row.expires_at ||
+      new Date(
+        row.expires_at
+      ).getTime() >
+        Date.now();
+
+    if (
+      row.status ===
+        "active" &&
+      notExpired
+    ) {
+      return {
+        active: true,
+        source:
+          row.source,
+        productId:
+          row.product_id,
+        expiresAt:
+          row.expires_at
+      };
+    }
+  }
+
+  const reviewer =
+    await getReviewerEntitlement(
+      userId
+    );
+
+  if (reviewer) {
+    return reviewer;
+  }
+
   if (!row) {
     return {
       active: false,
@@ -48,18 +167,8 @@ export async function getProEntitlement(
     };
   }
 
-  const notExpired =
-    !row.expires_at ||
-    new Date(
-      row.expires_at
-    ).getTime() >
-      Date.now();
-
   return {
-    active:
-      row.status ===
-        "active" &&
-      notExpired,
+    active: false,
     source:
       row.source,
     productId:
@@ -328,6 +437,23 @@ export async function enforceProForConfig(
 export function requireIntegrityHeader(
   req
 ) {
+  // Google Play reviewer account has a temporary, review-only bypass.
+  // It disables itself automatically after reviewerProExpiresAt.
+  if (
+    isReviewerEmail(
+      req?.user?.email
+    )
+  ) {
+    return {
+      ok: true,
+      reviewerBypass: true,
+      expiresAt:
+        new Date(
+          reviewerExpiryMs()
+        ).toISOString()
+    };
+  }
+
   return verifyIntegritySession(
     String(
       req.get(
