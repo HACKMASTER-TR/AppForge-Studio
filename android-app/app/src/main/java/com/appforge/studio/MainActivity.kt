@@ -60,6 +60,7 @@ import com.appforge.studio.io.KeystoreVault
 import com.appforge.studio.io.ManagedKeystore
 import com.appforge.studio.io.ProjectBackupManager
 import com.appforge.studio.io.ProjectImporter
+import com.appforge.studio.io.SourceCapabilityAnalyzer
 import com.appforge.studio.io.TemplateProjectFactory
 import com.appforge.studio.io.ProjectLibrary
 import com.appforge.studio.io.PwaInspector
@@ -609,14 +610,77 @@ private fun AppForgeApp() {
         if (uri != null) {
             try {
                 val key = draft.packageName.replace(".", "_").ifBlank { "project" }
-                val result = ProjectImporter.importLocalSource(context, uri, key)
-                draft = draft.copy(
-                    sourceUri = uri.toString(),
-                    sourceLabel = uri.lastPathSegment ?: "Seçili dosya",
-                    importedFolder = result.projectDir.absolutePath,
-                    startPage = result.startPage.absolutePath
-                )
-                status = "Kaynak hazır: ${result.startPage.name}"
+                val result =
+                    ProjectImporter.importLocalSource(
+                        context,
+                        uri,
+                        key
+                    )
+
+                val analysis =
+                    SourceCapabilityAnalyzer
+                        .analyze(
+                            result.projectDir
+                        )
+
+                draft =
+                    draft.copy(
+                        sourceUri =
+                            uri.toString(),
+
+                        sourceLabel =
+                            uri.lastPathSegment
+                                ?: "Seçili dosya",
+
+                        importedFolder =
+                            result.projectDir
+                                .absolutePath,
+
+                        startPage =
+                            result.startPage
+                                .absolutePath,
+
+                        camera =
+                            analysis.camera,
+
+                        location =
+                            analysis.location,
+
+                        notifications =
+                            analysis.notifications,
+
+                        fileUpload =
+                            analysis.fileUpload,
+
+                        downloads =
+                            analysis.downloads,
+
+                        mediaPlayerBridge =
+                            analysis.mediaPlayer,
+
+                        qrScanner =
+                            analysis.qrScanner,
+
+                        javascriptBridge =
+                            draft.javascriptBridge ||
+                                analysis.mediaPlayer ||
+                                analysis.qrScanner
+                    )
+
+                val detected =
+                    analysis.detectedLabels()
+
+                status =
+                    if (
+                        detected.isEmpty()
+                    ) {
+                        "Kaynak hazır: ${result.startPage.name} • " +
+                            "${analysis.scannedFiles} dosya tarandı • " +
+                            "özel izin bulunmadı"
+                    } else {
+                        "Kaynak hazır: ${result.startPage.name} • " +
+                            "Otomatik: ${detected.joinToString(", ")}"
+                    }
             } catch (t: Throwable) {
                 status = "Hata: ${t.message}"
             }
@@ -8717,7 +8781,7 @@ private fun PermissionsStep(
         item {
             Section(
                 "2. İzinler",
-                "Uygulamanın ihtiyaç duyduğu Android izinlerini seç."
+                "HTML/ZIP içeriği otomatik analiz edilir. İstersen seçimleri değiştirebilirsin."
             )
         }
 
@@ -8814,6 +8878,12 @@ private fun PermissionsStep(
                     )
                 )
             }
+        }
+
+        item {
+            NoteCard(
+                "🔍 HTML/ZIP seçildiğinde Kamera, Konum, Bildirim ve ilgili WebView özellikleri kaynak koduna göre otomatik işaretlenir."
+            )
         }
 
         item {
