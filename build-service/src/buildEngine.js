@@ -29,6 +29,9 @@ import {
   buildReactNativeArtifacts
 } from "./reactNativeBuildEngine.js";
 import {
+  prepareCppAndroidProject
+} from "./cppAndroidBuildEngine.js";
+import {
   createSourceBuildEnv
 } from "./sourceBuildEnv.js";
 
@@ -474,6 +477,47 @@ export function preflight(c, files = {}) {
     );
   }
 
+  if (
+    source.engine ===
+      "android-ndk"
+  ) {
+    const unsupportedCppFeatures =
+      [
+        c.nativeBridge?.enabled
+          ? "Native Bridge"
+          : null,
+        c.admob?.enabled
+          ? "AdMob otomatik enjeksiyon"
+          : null,
+        c.billing?.enabled
+          ? "Billing otomatik enjeksiyon"
+          : null,
+        (
+          c.firebase?.analytics ||
+          c.firebase?.crashlytics
+        )
+          ? "Firebase otomatik enjeksiyon"
+          : null
+      ]
+        .filter(
+          Boolean
+        );
+
+    if (
+      unsupportedCppFeatures.length
+    ) {
+      throw new Error(
+        "C/C++ Android NDK motorunda şu AppForge otomatik eklentileri henüz bağlı değil: " +
+        unsupportedCppFeatures.join(", ") +
+        ". C/C++ build için AppForge otomatik seçeneklerini kapat."
+      );
+    }
+
+    ok(
+      "C/C++ Android NDK + JNI kaynak motoru."
+    );
+  }
+
   if (c.signing?.mode === "CUSTOM") {
     if (!files.hasKeystore) throw new Error("Custom signing için keystore eksik.");
     ok("Custom signing.");
@@ -841,6 +885,56 @@ export async function executeBuild(job) {
         c
       );
 
+    let cppAndroidPrepared =
+      false;
+
+    if (
+      c.sourceMode ===
+        "LOCAL" &&
+      source.engine ===
+        "android-ndk"
+    ) {
+      await appendLog(
+        buildId,
+        `🧩 ${source.label} algılandı • C/C++ JNI Android wrapper hazırlanıyor.`
+      );
+
+      await prepareCppAndroidProject(
+        {
+          projectZip:
+            uploadedProject,
+          workDir:
+            path.join(
+              work,
+              "cpp-source"
+            ),
+          androidProjectDir:
+            android,
+          config:
+            c,
+          onLog:
+            line =>
+              appendLog(
+                buildId,
+                line
+              ),
+          cancelled:
+            () =>
+              throwIfCancelled(
+                buildId
+              )
+        }
+      );
+
+      cppAndroidPrepared =
+        true;
+
+      await appendLog(
+        buildId,
+        "✅ C/C++ kaynakları güvenli AppForge JNI Android wrapper'a aktarıldı."
+      );
+    }
+
     let reactNativePrepared =
       null;
 
@@ -1110,6 +1204,11 @@ export async function executeBuild(job) {
             "expo-android"
         ) &&
         reactNativePrepared
+      ) &&
+      !(
+        source.engine ===
+          "android-ndk" &&
+        cppAndroidPrepared
       )
     ) {
       throw new Error(
@@ -1141,7 +1240,9 @@ export async function executeBuild(job) {
       source.engine ===
         "react-native-android" ||
       source.engine ===
-        "expo-android";
+        "expo-android" ||
+      source.engine ===
+        "android-ndk";
 
     const fastDecision =
       getFastBuildDecision(
@@ -1523,7 +1624,8 @@ export async function executeBuild(job) {
 
       if (
         !pythonAndroidPrepared &&
-        !androidGradlePrepared
+        !androidGradlePrepared &&
+        !cppAndroidPrepared
       ) {
         await generateAndroidProject(
           android,
@@ -1543,16 +1645,26 @@ export async function executeBuild(job) {
           buildId,
           "🐍 Python Android projesi hazır • standart Gradle release pipeline kullanılacak."
         );
-      } else {
+      } else if (
+        androidGradlePrepared
+      ) {
         await appendLog(
           buildId,
           "🤖 Native Android kaynak proje hazır • standart Gradle release pipeline kullanılacak."
+        );
+      } else {
+        await appendLog(
+          buildId,
+          "🧩 C/C++ JNI Android wrapper hazır • standart Gradle release pipeline kullanılacak."
         );
       }
 
       if (
         c.sourceMode ===
-        "LOCAL"
+          "LOCAL" &&
+        !pythonAndroidPrepared &&
+        !androidGradlePrepared &&
+        !cppAndroidPrepared
       ) {
         await extractZipSafely(
           uploadedProject,
@@ -1607,7 +1719,8 @@ export async function executeBuild(job) {
       const sourceExecutesProjectCode =
         [
           "python-android",
-          "android-gradle"
+          "android-gradle",
+          "android-ndk"
         ]
           .includes(
             source.engine
@@ -1766,8 +1879,12 @@ export async function executeBuild(job) {
          */
         if (
           task === "bundleRelease" &&
-          source.engine !==
-            "android-gradle"
+          ![
+            "android-gradle",
+            "android-ndk"
+          ].includes(
+            source.engine
+          )
         ) {
           await appendLog(
             buildId,

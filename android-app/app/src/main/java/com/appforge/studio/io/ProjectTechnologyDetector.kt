@@ -335,12 +335,27 @@ object ProjectTechnologyDetector {
             has("cmakelists.txt") ||
             hasExt("c", "cc", "cpp", "cxx", "h", "hpp")
         ) {
+            val hasAppForgeNativeEntry =
+                all.any {
+                    it.name.lowercase() in setOf(
+                        "appforge_main.c",
+                        "appforge_main.cc",
+                        "appforge_main.cpp",
+                        "appforge_main.cxx"
+                    )
+                }
+
             return ProjectTechnologyInfo(
                 id = "cpp",
                 label = "C / C++",
                 buildEngine = "android-ndk",
-                buildReady = false,
-                reason = "C/C++ kaynak veya CMakeLists.txt bulundu."
+                buildReady = hasAppForgeNativeEntry,
+                reason =
+                    if (hasAppForgeNativeEntry) {
+                        "C/C++ kaynakları ve appforge_main giriş dosyası bulundu."
+                    } else {
+                        "C/C++ projesi bulundu. Android build için appforge_main.c/cpp giriş kontratı gerekli."
+                    }
             )
         }
 

@@ -57,7 +57,8 @@ RUN if [ "${ANDROID_SDK_LICENSE_ACCEPTED}" != "true" ]; then \
        "platform-tools" \
        "platforms;android-37.0" \
        "build-tools;36.0.0" \
-       "ndk;28.2.13676358"
+       "ndk;28.2.13676358" \
+       "cmake;3.22.1"
 
 # AGP 9.1 requires Gradle 9.3.1 minimum. Verify Gradle's published checksum.
 RUN curl -fL --retry 4 \
@@ -129,6 +130,8 @@ RUN node --test tests/react_native_build_engine.test.js
 RUN node --test tests/source_build_env.test.js
 RUN node --test tests/react_native_live_build_engine.test.js
 RUN node --test tests/cpp_android_build_engine.test.js
+RUN node --test tests/cpp_android_live_build_engine.test.js
+RUN node tests/cpp_android_template_build_smoke.js
 
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle
