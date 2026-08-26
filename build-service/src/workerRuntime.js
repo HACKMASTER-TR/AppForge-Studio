@@ -11,6 +11,7 @@ import {
 } from "./jobQueue.js";
 import { executeBuild } from "./buildEngine.js";
 import { executeWindowsBuild } from "./windowsBuild.js";
+import { executeUnityBuild } from "./unityLicensedBuild.js";
 
 let stopping = false;
 
@@ -126,11 +127,24 @@ async function workerLoop(workerSlotId, capabilities) {
           job.payload?.config ||
           {};
 
+        const sourceEngine =
+          String(
+            buildConfig.sourceBuildEngine ||
+            ""
+          )
+            .trim()
+            .toLowerCase();
+
         const executor =
-          buildConfig.buildOutput ===
-          "exe"
-            ? executeWindowsBuild
-            : executeBuild;
+          sourceEngine ===
+            "unity-android"
+            ? executeUnityBuild
+            : (
+                buildConfig.buildOutput ===
+                  "exe"
+                  ? executeWindowsBuild
+                  : executeBuild
+              );
 
         await executor({
           jobId: job.id,

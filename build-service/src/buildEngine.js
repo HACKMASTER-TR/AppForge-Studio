@@ -150,7 +150,19 @@ export function resolveSourceBuildEngine(
     c?.sourceBuildReady ===
       true ||
     engine ===
-      "webview-static";
+      "webview-static" ||
+    (
+      engine ===
+        "unity-android" &&
+      config.unityBuildEnabled &&
+      Boolean(
+        String(
+          c?.unityEditorVersion ||
+          ""
+        )
+          .trim()
+      )
+    );
 
   return {
     technology,
@@ -290,7 +302,10 @@ export function preflight(c, files = {}) {
       "android-gradle",
       "flutter",
       "react-native-android",
-      "expo-android"
+      "expo-android",
+      "android-ndk",
+      "dotnet-maui-android",
+      "unity-android"
     ]
       .includes(
         source.engine
@@ -560,6 +575,67 @@ export function preflight(c, files = {}) {
 
     ok(
       ".NET MAUI / C# Android kaynak motoru."
+    );
+  }
+
+  if (
+    source.engine ===
+      "unity-android"
+  ) {
+    if (
+      !config.unityBuildEnabled
+    ) {
+      throw new Error(
+        "Unity Android build server tarafında kapalı. Dedicated lisanslı Unity Worker kurulmadan UNITY_BUILD_ENABLED açılmamalı."
+      );
+    }
+
+    if (
+      !String(
+        c.unityEditorVersion ||
+        ""
+      )
+        .trim()
+    ) {
+      throw new Error(
+        "Unity Editor sürümü job üzerinde yok. Unity proje ZIP'i server tarafından route edilmelidir."
+      );
+    }
+
+    const unsupportedUnityFeatures =
+      [
+        c.nativeBridge?.enabled
+          ? "Native Bridge"
+          : null,
+        c.admob?.enabled
+          ? "AdMob otomatik enjeksiyon"
+          : null,
+        c.billing?.enabled
+          ? "Billing otomatik enjeksiyon"
+          : null,
+        (
+          c.firebase?.analytics ||
+          c.firebase?.crashlytics
+        )
+          ? "Firebase otomatik enjeksiyon"
+          : null
+      ]
+        .filter(
+          Boolean
+        );
+
+    if (
+      unsupportedUnityFeatures.length
+    ) {
+      throw new Error(
+        "Unity kaynak motorunda şu AppForge otomatik eklentileri henüz kaynak projeye enjekte edilmiyor: " +
+        unsupportedUnityFeatures.join(", ") +
+        ". Unity projesi kendi paketlerini kullanabilir; AppForge otomatik seçeneklerini kapat."
+      );
+    }
+
+    ok(
+      `Unity Android dedicated worker • ${c.unityEditorVersion}.`
     );
   }
 

@@ -72,6 +72,37 @@ export const config = {
   expectedJdkMajor: Number(
     process.env.EXPECTED_JDK_MAJOR || 17
   ),
+  unityBuildEnabled: boolEnv(
+    "UNITY_BUILD_ENABLED",
+    false
+  ),
+  unityEditorPath:
+    String(
+      process.env.UNITY_EDITOR_PATH ||
+      ""
+    ).trim(),
+  unityEditorVersion:
+    String(
+      process.env.UNITY_EDITOR_VERSION ||
+      ""
+    ).trim(),
+  unityAndroidModulePath:
+    String(
+      process.env.UNITY_ANDROID_MODULE_PATH ||
+      ""
+    ).trim(),
+  unityWorkerHome:
+    path.resolve(
+      process.env.UNITY_WORKER_HOME ||
+      "./unity-worker-home"
+    ),
+  unityBuildTimeoutMs: Math.max(
+    60_000,
+    Number(
+      process.env.UNITY_BUILD_TIMEOUT_MS ||
+      3_600_000
+    )
+  ),
   buildConcurrency: Math.max(
     1,
     Number(process.env.BUILD_CONCURRENCY || 2)
