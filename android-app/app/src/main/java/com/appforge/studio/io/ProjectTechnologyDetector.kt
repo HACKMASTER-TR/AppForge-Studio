@@ -160,12 +160,20 @@ object ProjectTechnologyDetector {
                 csprojText.contains("microsoft.maui")
             )
         ) {
+            val hasNet10AndroidTarget =
+                csprojText.contains("net10.0-android")
+
             return ProjectTechnologyInfo(
                 id = "dotnet-maui",
                 label = ".NET MAUI / C#",
                 buildEngine = "dotnet-maui-android",
-                buildReady = false,
-                reason = ".csproj içinde .NET MAUI yapılandırması bulundu."
+                buildReady = hasNet10AndroidTarget,
+                reason =
+                    if (hasNet10AndroidTarget) {
+                        ".NET MAUI ve net10.0-android hedefi bulundu."
+                    } else {
+                        ".NET MAUI bulundu. İlk canlı Android motoru net10.0-android hedefini destekliyor."
+                    }
             )
         }
 

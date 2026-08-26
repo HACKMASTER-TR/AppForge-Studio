@@ -32,6 +32,10 @@ import {
   prepareCppAndroidProject
 } from "./cppAndroidBuildEngine.js";
 import {
+  prepareDotnetMauiSource,
+  buildDotnetMauiArtifacts
+} from "./dotnetMauiBuildEngine.js";
+import {
   createSourceBuildEnv
 } from "./sourceBuildEnv.js";
 
@@ -518,6 +522,47 @@ export function preflight(c, files = {}) {
     );
   }
 
+  if (
+    source.engine ===
+      "dotnet-maui-android"
+  ) {
+    const unsupportedMauiFeatures =
+      [
+        c.nativeBridge?.enabled
+          ? "Native Bridge"
+          : null,
+        c.admob?.enabled
+          ? "AdMob otomatik enjeksiyon"
+          : null,
+        c.billing?.enabled
+          ? "Billing otomatik enjeksiyon"
+          : null,
+        (
+          c.firebase?.analytics ||
+          c.firebase?.crashlytics
+        )
+          ? "Firebase otomatik enjeksiyon"
+          : null
+      ]
+        .filter(
+          Boolean
+        );
+
+    if (
+      unsupportedMauiFeatures.length
+    ) {
+      throw new Error(
+        ".NET MAUI Android motorunda şu AppForge otomatik eklentileri henüz kaynak projeye enjekte edilmiyor: " +
+        unsupportedMauiFeatures.join(", ") +
+        ". MAUI build için AppForge otomatik seçeneklerini kapat."
+      );
+    }
+
+    ok(
+      ".NET MAUI / C# Android kaynak motoru."
+    );
+  }
+
   if (c.signing?.mode === "CUSTOM") {
     if (!files.hasKeystore) throw new Error("Custom signing için keystore eksik.");
     ok("Custom signing.");
@@ -885,6 +930,58 @@ export async function executeBuild(job) {
         c
       );
 
+    let dotnetMauiPrepared =
+      null;
+
+    if (
+      c.sourceMode ===
+        "LOCAL" &&
+      source.engine ===
+        "dotnet-maui-android"
+    ) {
+      await appendLog(
+        buildId,
+        `🔷 ${source.label} algılandı • .NET MAUI kaynak hazırlanıyor.`
+      );
+
+      dotnetMauiPrepared =
+        await prepareDotnetMauiSource(
+          {
+            projectZip:
+              uploadedProject,
+            workDir:
+              path.join(
+                work,
+                "dotnet-maui"
+              ),
+            onLog:
+              line =>
+                appendLog(
+                  buildId,
+                  line
+                ),
+            cancelled:
+              () =>
+                throwIfCancelled(
+                  buildId
+                )
+          }
+        );
+
+      if (
+        !dotnetMauiPrepared.androidReady
+      ) {
+        throw new Error(
+          ".NET MAUI projesinde Android target bulunamadı."
+        );
+      }
+
+      await appendLog(
+        buildId,
+        `✅ .NET MAUI kaynak doğrulandı • ${dotnetMauiPrepared.androidTargets.join(", ")}.`
+      );
+    }
+
     let cppAndroidPrepared =
       false;
 
@@ -1209,6 +1306,11 @@ export async function executeBuild(job) {
         source.engine ===
           "android-ndk" &&
         cppAndroidPrepared
+      ) &&
+      !(
+        source.engine ===
+          "dotnet-maui-android" &&
+        dotnetMauiPrepared
       )
     ) {
       throw new Error(
@@ -1242,7 +1344,9 @@ export async function executeBuild(job) {
       source.engine ===
         "expo-android" ||
       source.engine ===
-        "android-ndk";
+        "android-ndk" ||
+      source.engine ===
+        "dotnet-maui-android";
 
     const fastDecision =
       getFastBuildDecision(
@@ -1292,6 +1396,88 @@ export async function executeBuild(job) {
       false;
 
     if (
+      dotnetMauiPrepared
+    ) {
+      buildMode =
+        "DOTNET_MAUI_ANDROID";
+
+      await appendLog(
+        buildId,
+        "🔷 .NET MAUI Android release build seçildi."
+      );
+
+      await updateBuild(
+        buildId,
+        {
+          progress: 20
+        }
+      );
+
+      const mauiArtifacts =
+        await buildDotnetMauiArtifacts(
+          {
+            prepared:
+              dotnetMauiPrepared,
+            outputType,
+            packageName:
+              c.packageName,
+            versionCode:
+              c.versionCode,
+            versionName:
+              c.versionName,
+            appName:
+              c.appName,
+            onLog:
+              line =>
+                appendLog(
+                  buildId,
+                  line
+                ),
+            cancelled:
+              () =>
+                throwIfCancelled(
+                  buildId
+                )
+          }
+        );
+
+      if (
+        mauiArtifacts.apk
+      ) {
+        out.apk =
+          await putOutput(
+            buildId,
+            "app-release.apk",
+            mauiArtifacts.apk
+          );
+      }
+
+      if (
+        mauiArtifacts.aab
+      ) {
+        out.aab =
+          await putOutput(
+            buildId,
+            "app-release.aab",
+            mauiArtifacts.aab
+          );
+      }
+
+      fastCompleted =
+        true;
+
+      await updateBuild(
+        buildId,
+        {
+          progress: 90
+        }
+      );
+
+      await appendLog(
+        buildId,
+        "✅ .NET MAUI Android build tamamlandı."
+      );
+    } else if (
       reactNativePrepared
     ) {
       buildMode =

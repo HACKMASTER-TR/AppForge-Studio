@@ -102,6 +102,23 @@ RUN npm install -g yarn@1.22.22 pnpm@10.17.1 \
     && yarn --version \
     && pnpm --version
 
+
+# Fixed AppForge source-build DEBUG signing key.
+# This key contains no production secret and is used only for test/installable builds.
+RUN keytool -genkeypair \
+      -keystore /opt/appforge-source-debug.keystore \
+      -storepass android \
+      -alias androiddebugkey \
+      -keypass android \
+      -dname "CN=Android Debug,O=Android,C=US" \
+      -keyalg RSA \
+      -keysize 2048 \
+      -validity 10000 \
+    && keytool -list \
+      -keystore /opt/appforge-source-debug.keystore \
+      -storepass android \
+      -alias androiddebugkey >/dev/null
+
 # =========================================================
 # .NET MAUI Android toolchain
 #
@@ -155,6 +172,8 @@ RUN node --test tests/cpp_android_build_engine.test.js
 RUN node --test tests/cpp_android_live_build_engine.test.js
 RUN node tests/cpp_android_template_build_smoke.js
 RUN node --test tests/dotnet_maui_build_engine.test.js
+RUN node --test tests/dotnet_maui_live_build_engine.test.js
+RUN node tests/dotnet_maui_android_smoke.js
 
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle
