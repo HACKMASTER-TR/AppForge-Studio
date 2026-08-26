@@ -38,6 +38,9 @@ import {
 import {
   createSourceBuildEnv
 } from "./sourceBuildEnv.js";
+import {
+  preparePythonWebAndroidProject
+} from "./pythonWebFrameworkEngine.js";
 
 function esc(s) {
   return String(s ?? "").replaceAll("\\", "\\\\").replaceAll('"', '\\"');
@@ -1260,35 +1263,77 @@ export async function executeBuild(job) {
         `🐍 ${source.label} algılandı • Python Android hazırlığı başlıyor.`
       );
 
-      await preparePythonAndroidProject(
-        {
-          projectZip:
-            uploadedProject,
-          androidProjectDir:
-            android,
-          config:
-            c,
-          localKeystore,
-          onLog:
-            line =>
-              appendLog(
-                buildId,
-                line
+      const pythonWebFramework =
+        [
+          "python-flask",
+          "python-django"
+        ]
+          .includes(
+            source.technology
+          );
+
+      if (
+        pythonWebFramework
+      ) {
+        await preparePythonWebAndroidProject(
+          {
+            projectZip:
+              uploadedProject,
+            workDir:
+              path.join(
+                work,
+                "python-web"
               ),
-          cancelled:
-            () =>
-              throwIfCancelled(
-                buildId
-              )
-        }
-      );
+            androidProjectDir:
+              android,
+            config:
+              c,
+            onLog:
+              line =>
+                appendLog(
+                  buildId,
+                  line
+                ),
+            cancelled:
+              () =>
+                throwIfCancelled(
+                  buildId
+                )
+          }
+        );
+      } else {
+        await preparePythonAndroidProject(
+          {
+            projectZip:
+              uploadedProject,
+            androidProjectDir:
+              android,
+            config:
+              c,
+            localKeystore,
+            onLog:
+              line =>
+                appendLog(
+                  buildId,
+                  line
+                ),
+            cancelled:
+              () =>
+                throwIfCancelled(
+                  buildId
+                )
+          }
+        );
+      }
 
       pythonAndroidPrepared =
         true;
 
       await appendLog(
         buildId,
-        "✅ Python kaynakları Chaquopy Android projesine aktarıldı."
+        pythonWebFramework
+          ? "✅ Flask/Django kaynakları Chaquopy loopback WebView Android projesine aktarıldı."
+          : "✅ Python kaynakları Chaquopy Android projesine aktarıldı."
       );
     }
 

@@ -180,6 +180,8 @@ RUN node --test tests/unity_licensed_build_engine.test.js
 RUN node --test tests/framework_static_build_engine.test.js
 RUN node --test tests/framework_static_live_build_engine.test.js
 RUN node --test tests/python_web_framework_engine.test.js
+RUN node --test tests/python_web_framework_live_build_engine.test.js
+RUN node tests/python_web_android_smoke.js
 
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle

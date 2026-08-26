@@ -207,8 +207,8 @@ object ProjectTechnologyDetector {
                 id = "python-django",
                 label = "Python / Django",
                 buildEngine = "python-android",
-                buildReady = false,
-                reason = "Django projesi bulundu. Android loopback WebView runtime temeli hazır; canlı runtime henüz kapalı."
+                buildReady = true,
+                reason = "Django projesi bulundu. Chaquopy loopback WSGI + WebView Android runtime destekleniyor."
             )
         }
 
@@ -238,8 +238,8 @@ object ProjectTechnologyDetector {
                 id = "python-flask",
                 label = "Python / Flask",
                 buildEngine = "python-android",
-                buildReady = false,
-                reason = "Flask projesi bulundu. Android loopback WebView runtime temeli hazır; canlı runtime henüz kapalı."
+                buildReady = true,
+                reason = "Flask projesi bulundu. Chaquopy loopback WSGI + WebView Android runtime destekleniyor."
             )
         }
 

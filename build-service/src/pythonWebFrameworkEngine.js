@@ -3,6 +3,20 @@ import {
   promises as fs
 } from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const PYWEB_ENGINE_DIR =
+  path.dirname(
+    fileURLToPath(
+      import.meta.url
+    )
+  );
+
+const PYWEB_SERVICE_ROOT =
+  path.resolve(
+    PYWEB_ENGINE_DIR,
+    ".."
+  );
 
 const MAX_ZIP_ENTRIES =
   12_000;
@@ -1019,5 +1033,1030 @@ export async function preparePythonWebFrameworkSource({
       extracted.entries,
     extractedBytes:
       extracted.bytes
+  };
+}
+
+const PYWEB_ALLOWED_RESOURCE_EXTENSIONS =
+  new Set([
+    ".py", ".html", ".htm", ".css", ".js", ".mjs",
+    ".json", ".txt", ".csv", ".xml", ".yaml", ".yml",
+    ".toml", ".ini", ".cfg", ".md", ".svg", ".png",
+    ".jpg", ".jpeg", ".webp", ".gif", ".ico",
+    ".woff", ".woff2", ".ttf", ".otf"
+  ]);
+
+const PYWEB_MAX_FILE_BYTES =
+  24 * 1024 * 1024;
+
+const PYWEB_MAX_COPY_BYTES =
+  220 * 1024 * 1024;
+
+function pywebKotlinLiteral(
+  value
+) {
+  return JSON.stringify(
+    String(
+      value ?? ""
+    )
+  );
+}
+
+function pywebXmlEscape(
+  value
+) {
+  return String(
+    value ?? ""
+  )
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+function safeRequirementSpec(
+  raw
+) {
+  const value =
+    String(
+      raw ||
+      ""
+    )
+      .trim();
+
+  if (
+    !value ||
+    value.startsWith("#") ||
+    value.startsWith("-") ||
+    value.startsWith(".") ||
+    value.startsWith("/") ||
+    value.includes("://") ||
+    value.includes("@") ||
+    value.includes(";") ||
+    value.includes("\\")
+  ) {
+    return null;
+  }
+
+  const compact =
+    value.replace(
+      /\s+/g,
+      ""
+    );
+
+  const pattern =
+    new RegExp(
+      "^[A-Za-z0-9_.-]+(?:\\\\[[A-Za-z0-9_,.-]+\\\\])?" +
+      "(?:(?:==|!=|~=|>=|<=|>|<)[A-Za-z0-9_.+*!-]+" +
+      "(?:,(?:==|!=|~=|>=|<=|>|<)[A-Za-z0-9_.+*!-]+)*)?$"
+    );
+
+  return pattern.test(compact)
+    ? compact
+    : null;
+}
+
+export function parseSafePythonRequirementSpecs(
+  content
+) {
+  const specs =
+    [];
+
+  const rejected =
+    [];
+
+  for (
+    const rawLine of
+    String(
+      content ||
+      ""
+    )
+      .split(
+        /\r?\n/
+      )
+  ) {
+    const line =
+      rawLine.trim();
+
+    if (
+      !line ||
+      line.startsWith("#")
+    ) {
+      continue;
+    }
+
+    const spec =
+      safeRequirementSpec(
+        line
+      );
+
+    if (
+      !spec
+    ) {
+      rejected.push(
+        line
+      );
+
+      continue;
+    }
+
+    if (
+      !specs.includes(
+        spec
+      )
+    ) {
+      specs.push(
+        spec
+      );
+    }
+  }
+
+  return {
+    specs,
+    rejected
+  };
+}
+
+function requirementName(
+  spec
+) {
+  return String(
+    spec ||
+    ""
+  )
+    .split(
+      /[<>=!~\[\]]/
+    )[0]
+    .trim()
+    .toLowerCase()
+    .replaceAll(
+      "_",
+      "-"
+    );
+}
+
+function withFrameworkRequirement(
+  framework,
+  specs
+) {
+  const names =
+    new Set(
+      specs.map(
+        requirementName
+      )
+    );
+
+  const result =
+    [
+      ...specs
+    ];
+
+  if (
+    framework === "flask" &&
+    !names.has("flask")
+  ) {
+    result.push(
+      "Flask>=3,<4"
+    );
+  }
+
+  if (
+    framework === "django" &&
+    !names.has("django")
+  ) {
+    result.push(
+      "Django>=5,<6"
+    );
+  }
+
+  return result;
+}
+
+async function copyPythonWebProject(
+  projectRoot,
+  pythonDest
+) {
+  const files =
+    await walk(
+      projectRoot,
+      {
+        maxDepth: 12,
+        maxFiles: 12_000
+      }
+    );
+
+  let copied =
+    0;
+
+  let bytes =
+    0;
+
+  for (
+    const file of
+    files
+  ) {
+    const relative =
+      path.relative(
+        projectRoot,
+        file
+      );
+
+    const segments =
+      relative
+        .replaceAll("\\", "/")
+        .split("/")
+        .filter(Boolean);
+
+    if (
+      ignoredPath(
+        segments
+      )
+    ) {
+      continue;
+    }
+
+    const ext =
+      path.extname(
+        file
+      )
+        .toLowerCase();
+
+    if (
+      !PYWEB_ALLOWED_RESOURCE_EXTENSIONS.has(
+        ext
+      )
+    ) {
+      continue;
+    }
+
+    if (
+      path.basename(file) ===
+      "appforge_web_runtime.py"
+    ) {
+      continue;
+    }
+
+    const stat =
+      await fs.stat(
+        file
+      );
+
+    if (
+      stat.size >
+      PYWEB_MAX_FILE_BYTES
+    ) {
+      throw new Error(
+        `Python web kaynak dosyası çok büyük: ${relative}`
+      );
+    }
+
+    bytes +=
+      stat.size;
+
+    if (
+      bytes >
+      PYWEB_MAX_COPY_BYTES
+    ) {
+      throw new Error(
+        "Python web kaynakları toplam boyut sınırını aşıyor."
+      );
+    }
+
+    const target =
+      path.join(
+        pythonDest,
+        relative
+      );
+
+    if (
+      !safeInside(
+        pythonDest,
+        target
+      )
+    ) {
+      throw new Error(
+        "Python web kaynak kopyalama yolu güvenli değil."
+      );
+    }
+
+    await fs.mkdir(
+      path.dirname(target),
+      {
+        recursive: true
+      }
+    );
+
+    await fs.copyFile(
+      file,
+      target
+    );
+
+    copied +=
+      1;
+  }
+
+  if (
+    copied ===
+    0
+  ) {
+    throw new Error(
+      "Android runtime'a aktarılacak Python web kaynağı bulunamadı."
+    );
+  }
+
+  return {
+    copied,
+    bytes
+  };
+}
+
+function flaskRuntimeSource(
+  prepared
+) {
+  const moduleName =
+    JSON.stringify(
+      prepared.contract.moduleName
+    );
+
+  const appObject =
+    prepared.contract.appObject
+      ? JSON.stringify(
+          prepared.contract.appObject
+        )
+      : null;
+
+  const factory =
+    prepared.contract.factory
+      ? JSON.stringify(
+          prepared.contract.factory
+        )
+      : null;
+
+  const appLookup =
+    appObject
+      ? `app = getattr(module, ${appObject}, None)`
+      : "app = None";
+
+  const factoryLookup =
+    factory
+      ? `factory = getattr(module, ${factory}, None)
+        if callable(factory):
+            app = factory()`
+      : "pass";
+
+  return `import importlib
+import threading
+import traceback
+from wsgiref.simple_server import make_server, WSGIRequestHandler
+
+HOST = "127.0.0.1"
+PORT = 8765
+_server = None
+_thread = None
+
+
+class QuietHandler(WSGIRequestHandler):
+    def log_message(self, format, *args):
+        return
+
+
+def _application():
+    module = importlib.import_module(${moduleName})
+    ${appLookup}
+
+    if app is None:
+        ${factoryLookup}
+
+    if app is None:
+        raise RuntimeError("Flask app object/factory bulunamadı.")
+
+    return app
+
+
+def start():
+    global _server, _thread
+
+    if _thread is not None and _thread.is_alive():
+        return f"http://{HOST}:{PORT}/"
+
+    try:
+        _server = make_server(
+            HOST,
+            PORT,
+            _application(),
+            handler_class=QuietHandler,
+        )
+
+        _thread = threading.Thread(
+            target=_server.serve_forever,
+            name="AppForgeFlask",
+            daemon=True,
+        )
+
+        _thread.start()
+        return f"http://{HOST}:{PORT}/"
+    except Exception:
+        raise RuntimeError(traceback.format_exc())
+`;
+}
+
+function djangoRuntimeSource(
+  prepared
+) {
+  return `import importlib
+import os
+import threading
+import traceback
+from wsgiref.simple_server import make_server, WSGIRequestHandler
+
+HOST = "127.0.0.1"
+PORT = 8765
+_server = None
+_thread = None
+
+
+class QuietHandler(WSGIRequestHandler):
+    def log_message(self, format, *args):
+        return
+
+
+def _application():
+    os.environ.setdefault(
+        "DJANGO_SETTINGS_MODULE",
+        ${JSON.stringify(prepared.contract.settingsModule)},
+    )
+
+    import django
+    django.setup()
+
+    module = importlib.import_module(
+        ${JSON.stringify(prepared.contract.wsgiModule)}
+    )
+
+    application = getattr(
+        module,
+        "application",
+        None,
+    )
+
+    if application is None:
+        raise RuntimeError("Django WSGI application bulunamadı.")
+
+    return application
+
+
+def start():
+    global _server, _thread
+
+    if _thread is not None and _thread.is_alive():
+        return f"http://{HOST}:{PORT}/"
+
+    try:
+        _server = make_server(
+            HOST,
+            PORT,
+            _application(),
+            handler_class=QuietHandler,
+        )
+
+        _thread = threading.Thread(
+            target=_server.serve_forever,
+            name="AppForgeDjango",
+            daemon=True,
+        )
+
+        _thread.start()
+        return f"http://{HOST}:{PORT}/"
+    except Exception:
+        raise RuntimeError(traceback.format_exc())
+`;
+}
+
+function webMainActivitySource() {
+  return `package com.appforge.pythonruntime
+
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.widget.TextView
+import com.chaquo.python.Python
+import com.chaquo.python.android.AndroidPlatform
+import java.net.HttpURLConnection
+import java.net.URL
+
+class MainActivity : Activity() {
+
+    private lateinit var webView: WebView
+
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
+        super.onCreate(savedInstanceState)
+
+        val loading =
+            TextView(this).apply {
+                text = "Python web uygulaması başlatılıyor..."
+                textSize = 16f
+                setPadding(32, 32, 32, 32)
+            }
+
+        setContentView(loading)
+
+        Thread {
+            val result =
+                runCatching {
+                    if (!Python.isStarted()) {
+                        Python.start(
+                            AndroidPlatform(this)
+                        )
+                    }
+
+                    val url =
+                        Python
+                            .getInstance()
+                            .getModule(
+                                "appforge_web_runtime"
+                            )
+                            .callAttr(
+                                "start"
+                            )
+                            .toString()
+
+                    waitForServer(url)
+                    url
+                }
+
+            runOnUiThread {
+                result
+                    .onSuccess {
+                        showWebView(it)
+                    }
+                    .onFailure {
+                        loading.text =
+                            "Python web çalışma hatası:\\n" +
+                            (
+                                it.message
+                                    ?: it.javaClass.simpleName
+                            )
+                    }
+            }
+        }.start()
+    }
+
+    private fun waitForServer(
+        url: String
+    ) {
+        var lastError:
+            Throwable? =
+            null
+
+        repeat(60) {
+            try {
+                val connection =
+                    (
+                        URL(url)
+                            .openConnection() as
+                            HttpURLConnection
+                    ).apply {
+                        connectTimeout = 500
+                        readTimeout = 500
+                        instanceFollowRedirects = false
+                    }
+
+                try {
+                    if (
+                        connection.responseCode >=
+                        100
+                    ) {
+                        return
+                    }
+                } finally {
+                    connection.disconnect()
+                }
+            } catch (
+                error: Throwable
+            ) {
+                lastError = error
+            }
+
+            Thread.sleep(250)
+        }
+
+        throw IllegalStateException(
+            "Local Python server başlatılamadı.",
+            lastError
+        )
+    }
+
+    private fun showWebView(
+        startUrl: String
+    ) {
+        webView = WebView(this)
+
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            allowFileAccess = false
+            allowContentAccess = false
+        }
+
+        webView.webViewClient =
+            object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(
+                    view: WebView?,
+                    request: WebResourceRequest?
+                ): Boolean {
+                    val uri =
+                        request?.url
+                            ?: return false
+
+                    if (
+                        uri.host == "127.0.0.1" &&
+                        uri.port == 8765
+                    ) {
+                        return false
+                    }
+
+                    if (
+                        uri.scheme == "http" ||
+                        uri.scheme == "https"
+                    ) {
+                        runCatching {
+                            startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    uri
+                                )
+                            )
+                        }
+
+                        return true
+                    }
+
+                    return true
+                }
+            }
+
+        setContentView(webView)
+        webView.loadUrl(startUrl)
+    }
+
+    override fun onBackPressed() {
+        if (
+            ::webView.isInitialized &&
+            webView.canGoBack()
+        ) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
+        }
+    }
+
+    override fun onDestroy() {
+        if (::webView.isInitialized) {
+            webView.destroy()
+        }
+
+        super.onDestroy()
+    }
+}
+`;
+}
+
+function webManifestSource(
+  appName
+) {
+  return `<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="false"
+        android:label="${pywebXmlEscape(appName || "Python Web App")}"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+`;
+}
+
+function pythonWebGradleSource({
+  packageName,
+  versionCode,
+  versionName,
+  requirementSpecs
+}) {
+  const installs =
+    requirementSpecs
+      .map(
+        spec =>
+          `            install(${pywebKotlinLiteral(spec)})`
+      )
+      .join(
+        "\n"
+      );
+
+  return `plugins {
+    id("com.android.application")
+    id("com.chaquo.python")
+}
+
+android {
+    namespace = "com.appforge.pythonruntime"
+    compileSdk = 37
+
+    defaultConfig {
+        applicationId = ${pywebKotlinLiteral(packageName)}
+        minSdk = 26
+        targetSdk = 37
+        versionCode = ${Number(versionCode) || 1}
+        versionName = ${pywebKotlinLiteral(versionName || "1.0.0")}
+
+        ndk {
+            abiFilters += listOf(
+                "arm64-v8a",
+                "x86_64"
+            )
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            signingConfig =
+                signingConfigs.getByName("debug")
+        }
+    }
+}
+
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+
+        buildPython(
+            "/usr/bin/python3"
+        )
+
+        extractPackages(
+            "*"
+        )
+
+        pip {
+${installs}
+        }
+    }
+}
+`;
+}
+
+export async function preparePythonWebAndroidProject({
+  projectZip,
+  workDir,
+  androidProjectDir,
+  config,
+  onLog = null,
+  cancelled = null
+}) {
+  const prepared =
+    await preparePythonWebFrameworkSource(
+      {
+        projectZip,
+        workDir,
+        technology:
+          config?.sourceTechnology,
+        onLog,
+        cancelled
+      }
+    );
+
+  if (
+    !prepared.contract.ready
+  ) {
+    throw new Error(
+      prepared.contract.reason
+    );
+  }
+
+  if (
+    prepared.ignoredRequirements.length
+  ) {
+    throw new Error(
+      "Python web requirements.txt içinde güvenli otomatik Android paketlemede desteklenmeyen satırlar var: " +
+      prepared.ignoredRequirements
+        .slice(0, 6)
+        .join(", ")
+    );
+  }
+
+  const requirementsText =
+    prepared.requirementsFile
+      ? await readSmallText(
+          prepared.requirementsFile
+        )
+      : "";
+
+  const safe =
+    parseSafePythonRequirementSpecs(
+      requirementsText
+    );
+
+  if (
+    safe.rejected.length
+  ) {
+    throw new Error(
+      "requirements.txt yalnız standart PyPI requirement specifier satırları içermeli. Desteklenmeyen: " +
+      safe.rejected
+        .slice(0, 6)
+        .join(", ")
+    );
+  }
+
+  const requirementSpecs =
+    withFrameworkRequirement(
+      prepared.framework,
+      safe.specs
+    );
+
+  const templateRoot =
+    path.join(
+      PYWEB_SERVICE_ROOT,
+      "python-android-template"
+    );
+
+  try {
+    if (
+      !(
+        await fs.stat(
+          templateRoot
+        )
+      ).isDirectory()
+    ) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error(
+      "Python Android runtime template bulunamadı."
+    );
+  }
+
+  await fs.rm(
+    androidProjectDir,
+    {
+      recursive: true,
+      force: true
+    }
+  );
+
+  await fs.cp(
+    templateRoot,
+    androidProjectDir,
+    {
+      recursive: true,
+      force: true
+    }
+  );
+
+  const appDir =
+    path.join(
+      androidProjectDir,
+      "app"
+    );
+
+  const pythonDest =
+    path.join(
+      appDir,
+      "src",
+      "main",
+      "python"
+    );
+
+  await fs.rm(
+    pythonDest,
+    {
+      recursive: true,
+      force: true
+    }
+  );
+
+  await fs.mkdir(
+    pythonDest,
+    {
+      recursive: true
+    }
+  );
+
+  const copied =
+    await copyPythonWebProject(
+      prepared.projectRoot,
+      pythonDest
+    );
+
+  await fs.writeFile(
+    path.join(
+      pythonDest,
+      "appforge_web_runtime.py"
+    ),
+    prepared.framework === "flask"
+      ? flaskRuntimeSource(prepared)
+      : djangoRuntimeSource(prepared),
+    "utf8"
+  );
+
+  await fs.writeFile(
+    path.join(
+      appDir,
+      "build.gradle.kts"
+    ),
+    pythonWebGradleSource(
+      {
+        packageName:
+          config?.packageName,
+        versionCode:
+          config?.versionCode,
+        versionName:
+          config?.versionName,
+        requirementSpecs
+      }
+    ),
+    "utf8"
+  );
+
+  await fs.writeFile(
+    path.join(
+      appDir,
+      "src",
+      "main",
+      "AndroidManifest.xml"
+    ),
+    webManifestSource(
+      config?.appName
+    ),
+    "utf8"
+  );
+
+  const activity =
+    path.join(
+      appDir,
+      "src",
+      "main",
+      "java",
+      "com",
+      "appforge",
+      "pythonruntime",
+      "MainActivity.kt"
+    );
+
+  await fs.mkdir(
+    path.dirname(activity),
+    {
+      recursive: true
+    }
+  );
+
+  await fs.writeFile(
+    activity,
+    webMainActivitySource(),
+    "utf8"
+  );
+
+  if (cancelled) {
+    await cancelled();
+  }
+
+  if (onLog) {
+    await onLog(
+      `✅ ${prepared.framework} -> Chaquopy loopback WebView Android proje hazır • ${copied.copied} dosya • ${requirementSpecs.length} dependency`
+    );
+  }
+
+  return {
+    androidProjectDir,
+    framework:
+      prepared.framework,
+    contract:
+      prepared.contract,
+    sourceFiles:
+      copied.copied,
+    sourceBytes:
+      copied.bytes,
+    requirementSpecs,
+    localServer:
+      "http://127.0.0.1:8765/",
+    runtimeMode:
+      "chaquopy-loopback-webview"
   };
 }
