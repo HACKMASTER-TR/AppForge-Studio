@@ -4,6 +4,9 @@ import path from "path";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import { createSourceBuildEnv } from "./sourceBuildEnv.js";
+import {
+  buildFrameworkStaticSource
+} from "./frameworkStaticBuildEngine.js";
 
 const SOURCE_ENGINE_DIR =
   path.dirname(
@@ -880,6 +883,32 @@ export async function buildNodeWebSource({
   onLog = null,
   cancelled = null
 }) {
+  const normalizedTechnology =
+    String(
+      technology ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    normalizedTechnology ===
+      "nextjs" ||
+    normalizedTechnology ===
+      "nuxt"
+  ) {
+    return buildFrameworkStaticSource(
+      {
+        projectZip,
+        workDir,
+        technology:
+          normalizedTechnology,
+        onLog,
+        cancelled
+      }
+    );
+  }
+
   if (
     !projectZip
   ) {
