@@ -179,6 +179,7 @@ RUN node --test tests/unity_worker_contract.test.js
 RUN node --test tests/unity_licensed_build_engine.test.js
 RUN node --test tests/framework_static_build_engine.test.js
 RUN node --test tests/framework_static_live_build_engine.test.js
+RUN node --test tests/python_web_framework_engine.test.js
 
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle

@@ -208,7 +208,7 @@ object ProjectTechnologyDetector {
                 label = "Python / Django",
                 buildEngine = "python-android",
                 buildReady = false,
-                reason = "manage.py bulundu."
+                reason = "Django projesi bulundu. Android loopback WebView runtime temeli hazır; canlı runtime henüz kapalı."
             )
         }
 
@@ -239,7 +239,7 @@ object ProjectTechnologyDetector {
                 label = "Python / Flask",
                 buildEngine = "python-android",
                 buildReady = false,
-                reason = "Python proje dosyaları ve Flask kullanımı bulundu."
+                reason = "Flask projesi bulundu. Android loopback WebView runtime temeli hazır; canlı runtime henüz kapalı."
             )
         }
 
