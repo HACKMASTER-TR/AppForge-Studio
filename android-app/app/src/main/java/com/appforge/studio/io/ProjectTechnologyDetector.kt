@@ -74,6 +74,31 @@ object ProjectTechnologyDetector {
         val pyproject =
             text(first("pyproject.toml")).lowercase()
 
+        val packageJsonCompact =
+            packageJson.replace(
+                Regex("\\s+"),
+                ""
+            )
+
+        val nextConfig =
+            listOf(
+                "next.config.js",
+                "next.config.mjs",
+                "next.config.cjs",
+                "next.config.ts"
+            )
+                .asSequence()
+                .mapNotNull { first(it) }
+                .map { text(it).lowercase() }
+                .firstOrNull()
+                .orEmpty()
+
+        val nextConfigCompact =
+            nextConfig.replace(
+                Regex("\\s+"),
+                ""
+            )
+
         val csproj =
             all.firstOrNull {
                 it.extension.equals("csproj", true)
@@ -253,22 +278,57 @@ object ProjectTechnologyDetector {
         }
 
         if (packageJson.contains("\"next\"")) {
+            val hasStaticExport =
+                nextConfigCompact.contains(
+                    "output:\"export\""
+                ) ||
+                    nextConfigCompact.contains(
+                        "output:'export'"
+                    ) ||
+                    packageJsonCompact.contains(
+                        "\"staticexport\":true"
+                    )
+
             return ProjectTechnologyInfo(
                 id = "nextjs",
                 label = "Next.js / React",
                 buildEngine = "node-web",
-                buildReady = false,
-                reason = "package.json içinde Next.js bulundu."
+                buildReady = hasStaticExport,
+                reason =
+                    if (hasStaticExport) {
+                        "Next.js static export yapılandırması bulundu."
+                    } else {
+                        "Next.js SSR olabilir. Android WebView build için output: 'export' gerekli."
+                    }
             )
         }
 
         if (packageJson.contains("\"nuxt\"")) {
+            val hasGenerateScript =
+                packageJsonCompact.contains(
+                    "\"generate\":\"nuxtgenerate"
+                ) ||
+                    packageJsonCompact.contains(
+                        "\"generate\":\"nuxigenerate"
+                    ) ||
+                    packageJsonCompact.contains(
+                        "\"build:static\":\"nuxtgenerate"
+                    ) ||
+                    packageJsonCompact.contains(
+                        "\"build:static\":\"nuxigenerate"
+                    )
+
             return ProjectTechnologyInfo(
                 id = "nuxt",
                 label = "Nuxt / Vue",
                 buildEngine = "node-web",
-                buildReady = false,
-                reason = "package.json içinde Nuxt bulundu."
+                buildReady = hasGenerateScript,
+                reason =
+                    if (hasGenerateScript) {
+                        "Nuxt static generate scripti bulundu."
+                    } else {
+                        "Nuxt SSR olabilir. Android WebView build için nuxt/nuxi generate scripti gerekli."
+                    }
             )
         }
 
