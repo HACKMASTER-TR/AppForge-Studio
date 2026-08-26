@@ -128,7 +128,7 @@ object ProjectTechnologyDetector {
                 id = if (kotlin) "android-kotlin" else "android-java",
                 label = if (kotlin) "Android / Kotlin" else "Android / Java",
                 buildEngine = "android-gradle",
-                buildReady = false,
+                buildReady = true,
                 reason = "Android Gradle projesi ve AndroidManifest.xml bulundu."
             )
         }

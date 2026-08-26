@@ -17,7 +17,8 @@ import {
 } from "./fastBuild.js";
 import {
   buildNodeWebSource,
-  preparePythonAndroidProject
+  preparePythonAndroidProject,
+  prepareAndroidGradleProject
 } from "./sourceBuildEngines.js";
 
 function esc(s) {
@@ -306,6 +307,47 @@ export function preflight(c, files = {}) {
 
     ok(
       "Python 3.11 / Chaquopy Android motoru."
+    );
+  }
+
+  if (
+    source.engine ===
+      "android-gradle"
+  ) {
+    const generatedOnlyFeatures =
+      [
+        c.nativeBridge?.enabled
+          ? "Native Bridge"
+          : null,
+        c.admob?.enabled
+          ? "AdMob otomatik enjeksiyon"
+          : null,
+        c.billing?.enabled
+          ? "Billing otomatik enjeksiyon"
+          : null,
+        (
+          c.firebase?.analytics ||
+          c.firebase?.crashlytics
+        )
+          ? "Firebase otomatik enjeksiyon"
+          : null
+      ]
+        .filter(
+          Boolean
+        );
+
+    if (
+      generatedOnlyFeatures.length
+    ) {
+      throw new Error(
+        "Native Android kaynak motorunda şu AppForge otomatik eklentileri henüz kaynak projeye enjekte edilmiyor: " +
+        generatedOnlyFeatures.join(", ") +
+        ". Proje kendi Android kodunda bu özellikleri kullanabilir; AppForge otomatik seçeneklerini kapat."
+      );
+    }
+
+    ok(
+      "Native Android Gradle kaynak motoru."
     );
   }
 
@@ -676,6 +718,52 @@ export async function executeBuild(job) {
         c
       );
 
+    let androidGradlePrepared =
+      false;
+
+    if (
+      c.sourceMode ===
+        "LOCAL" &&
+      source.engine ===
+        "android-gradle"
+    ) {
+      await appendLog(
+        buildId,
+        `🤖 ${source.label} algılandı • Native Android Gradle hazırlığı başlıyor.`
+      );
+
+      await prepareAndroidGradleProject(
+        {
+          projectZip:
+            uploadedProject,
+          androidProjectDir:
+            android,
+          config:
+            c,
+          localKeystore,
+          onLog:
+            line =>
+              appendLog(
+                buildId,
+                line
+              ),
+          cancelled:
+            () =>
+              throwIfCancelled(
+                buildId
+              )
+        }
+      );
+
+      androidGradlePrepared =
+        true;
+
+      await appendLog(
+        buildId,
+        "✅ Native Android kaynak proje Gradle release pipeline'a hazır."
+      );
+    }
+
     let pythonAndroidPrepared =
       false;
 
@@ -788,6 +876,11 @@ export async function executeBuild(job) {
         source.engine ===
           "python-android" &&
         pythonAndroidPrepared
+      ) &&
+      !(
+        source.engine ===
+          "android-gradle" &&
+        androidGradlePrepared
       )
     ) {
       throw new Error(
@@ -811,7 +904,9 @@ export async function executeBuild(job) {
 
     const forceFullSourceBuild =
       source.engine ===
-        "python-android";
+        "python-android" ||
+      source.engine ===
+        "android-gradle";
 
     const fastDecision =
       getFastBuildDecision(
@@ -1023,7 +1118,8 @@ export async function executeBuild(job) {
       );
 
       if (
-        !pythonAndroidPrepared
+        !pythonAndroidPrepared &&
+        !androidGradlePrepared
       ) {
         await generateAndroidProject(
           android,
@@ -1036,10 +1132,17 @@ export async function executeBuild(job) {
               uploadedFirebaseConfig
           }
         );
-      } else {
+      } else if (
+        pythonAndroidPrepared
+      ) {
         await appendLog(
           buildId,
           "🐍 Python Android projesi hazır • standart Gradle release pipeline kullanılacak."
+        );
+      } else {
+        await appendLog(
+          buildId,
+          "🤖 Native Android kaynak proje hazır • standart Gradle release pipeline kullanılacak."
         );
       }
 
@@ -1236,7 +1339,9 @@ export async function executeBuild(job) {
          * için bundleRelease bunları UP-TO-DATE / FROM-CACHE görür.
          */
         if (
-          task === "bundleRelease"
+          task === "bundleRelease" &&
+          source.engine !==
+            "android-gradle"
         ) {
           await appendLog(
             buildId,

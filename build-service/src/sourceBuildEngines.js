@@ -1940,3 +1940,497 @@ export async function preparePythonAndroidProject({
     hasRequirements
   };
 }
+
+function groovySingleQuoted(
+  value
+) {
+  return String(
+    value ?? ""
+  )
+    .replaceAll(
+      "\\",
+      "\\\\"
+    )
+    .replaceAll(
+      "'",
+      "\\'"
+    );
+}
+
+async function findAndroidGradleProjectRoot(
+  extractedRoot
+) {
+  const files =
+    await walk(
+      extractedRoot,
+      {
+        maxDepth: 7,
+        maxFiles: 8_000
+      }
+    );
+
+  const settings =
+    files
+      .filter(
+        file => {
+          const name =
+            path.basename(
+              file
+            )
+              .toLowerCase();
+
+          return (
+            name ===
+              "settings.gradle" ||
+            name ===
+              "settings.gradle.kts"
+          );
+        }
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          a.split(
+            path.sep
+          ).length -
+          b.split(
+            path.sep
+          ).length
+      );
+
+  for (
+    const settingsFile of
+    settings
+  ) {
+    const root =
+      path.dirname(
+        settingsFile
+      );
+
+    const manifest =
+      path.join(
+        root,
+        "app",
+        "src",
+        "main",
+        "AndroidManifest.xml"
+      );
+
+    try {
+      const stat =
+        await fs.stat(
+          manifest
+        );
+
+      if (
+        stat.isFile()
+      ) {
+        return root;
+      }
+    } catch {
+    }
+  }
+
+  throw new Error(
+    "Android Gradle projesinde settings.gradle(.kts) ve app/src/main/AndroidManifest.xml birlikte bulunamadı."
+  );
+}
+
+async function cleanupImportedAndroidProject(
+  androidProjectDir
+) {
+  const targets =
+    [
+      path.join(
+        androidProjectDir,
+        ".gradle"
+      ),
+      path.join(
+        androidProjectDir,
+        "build"
+      ),
+      path.join(
+        androidProjectDir,
+        "app",
+        "build"
+      ),
+      path.join(
+        androidProjectDir,
+        "local.properties"
+      )
+    ];
+
+  for (
+    const target of
+    targets
+  ) {
+    await fs.rm(
+      target,
+      {
+        recursive: true,
+        force: true
+      }
+    );
+  }
+
+  const sdk =
+    process.env.ANDROID_SDK_ROOT ||
+    process.env.ANDROID_HOME ||
+    "";
+
+  if (
+    sdk
+  ) {
+    const escaped =
+      String(
+        sdk
+      )
+        .replaceAll(
+          "\\",
+          "\\\\"
+        );
+
+    await fs.writeFile(
+      path.join(
+        androidProjectDir,
+        "local.properties"
+      ),
+      `sdk.dir=${escaped}\n`,
+      "utf8"
+    );
+  }
+}
+
+async function writeAndroidSourceOverrides(
+  androidProjectDir,
+  config,
+  localKeystore
+) {
+  const appDir =
+    path.join(
+      androidProjectDir,
+      "app"
+    );
+
+  const kts =
+    path.join(
+      appDir,
+      "build.gradle.kts"
+    );
+
+  const groovy =
+    path.join(
+      appDir,
+      "build.gradle"
+    );
+
+  let appBuildFile =
+    null;
+
+  let kotlinDsl =
+    false;
+
+  try {
+    const stat =
+      await fs.stat(
+        kts
+      );
+
+    if (
+      stat.isFile()
+    ) {
+      appBuildFile =
+        kts;
+      kotlinDsl =
+        true;
+    }
+  } catch {
+  }
+
+  if (
+    !appBuildFile
+  ) {
+    try {
+      const stat =
+        await fs.stat(
+          groovy
+        );
+
+      if (
+        stat.isFile()
+      ) {
+        appBuildFile =
+          groovy;
+      }
+    } catch {
+    }
+  }
+
+  if (
+    !appBuildFile
+  ) {
+    throw new Error(
+      "Android app modülünde build.gradle veya build.gradle.kts bulunamadı."
+    );
+  }
+
+  const signing =
+    config?.signing ||
+    {};
+
+  const customSigning =
+    signing.mode ===
+      "CUSTOM";
+
+  if (
+    customSigning &&
+    !localKeystore
+  ) {
+    throw new Error(
+      "Android source CUSTOM signing için keystore bulunamadı."
+    );
+  }
+
+  const packageName =
+    groovySingleQuoted(
+      config?.packageName
+    );
+
+  const versionName =
+    groovySingleQuoted(
+      config?.versionName ||
+      "1.0.0"
+    );
+
+  const versionCode =
+    Number(
+      config?.versionCode
+    ) ||
+    1;
+
+  let signingBlock;
+
+  if (
+    customSigning
+  ) {
+    signingBlock =
+`
+    signingConfigs {
+        appforgeRelease {
+            storeFile file('${groovySingleQuoted(localKeystore)}')
+            storePassword '${groovySingleQuoted(signing.storePassword)}'
+            keyAlias '${groovySingleQuoted(signing.alias)}'
+            keyPassword '${groovySingleQuoted(signing.keyPassword)}'
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.appforgeRelease
+        }
+    }
+`;
+  } else {
+    signingBlock =
+`
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+        }
+    }
+`;
+  }
+
+  const overrideScript =
+`android {
+    defaultConfig {
+        applicationId '${packageName}'
+        versionCode ${versionCode}
+        versionName '${versionName}'
+    }
+${signingBlock}
+}
+`;
+
+  const overrideFile =
+    path.join(
+      androidProjectDir,
+      "appforge-source-overrides.gradle"
+    );
+
+  await fs.writeFile(
+    overrideFile,
+    overrideScript,
+    "utf8"
+  );
+
+  let appBuild =
+    await fs.readFile(
+      appBuildFile,
+      "utf8"
+    );
+
+  const marker =
+    "appforge-source-overrides.gradle";
+
+  if (
+    !appBuild.includes(
+      marker
+    )
+  ) {
+    appBuild =
+      appBuild;
+  }
+
+  if (
+    !appBuild.includes(
+      marker
+    )
+  ) {
+    const applyLine =
+      kotlinDsl
+        ? '\napply(from = rootProject.file("appforge-source-overrides.gradle"))\n'
+        : '\napply from: rootProject.file("appforge-source-overrides.gradle")\n';
+
+    appBuild =
+      appBuild.trimEnd() +
+      applyLine;
+  }
+
+  await fs.writeFile(
+    appBuildFile,
+    appBuild,
+    "utf8"
+  );
+
+  return {
+    appBuildFile,
+    kotlinDsl,
+    customSigning
+  };
+}
+
+export async function prepareAndroidGradleProject({
+  projectZip,
+  androidProjectDir,
+  config,
+  localKeystore = null,
+  onLog = null,
+  cancelled = null
+}) {
+  if (
+    !projectZip
+  ) {
+    throw new Error(
+      "Android kaynak ZIP'i eksik."
+    );
+  }
+
+  const workRoot =
+    path.join(
+      path.dirname(
+        androidProjectDir
+      ),
+      "android-source"
+    );
+
+  const extractedRoot =
+    path.join(
+      workRoot,
+      "source"
+    );
+
+  await fs.rm(
+    workRoot,
+    {
+      recursive: true,
+      force: true
+    }
+  );
+
+  await fs.mkdir(
+    extractedRoot,
+    {
+      recursive: true
+    }
+  );
+
+  if (
+    cancelled
+  ) {
+    await cancelled();
+  }
+
+  await extractProjectZip(
+    projectZip,
+    extractedRoot
+  );
+
+  const projectRoot =
+    await findAndroidGradleProjectRoot(
+      extractedRoot
+    );
+
+  if (
+    onLog
+  ) {
+    await onLog(
+      "🤖 Android Gradle proje kökü bulundu."
+    );
+  }
+
+  await fs.rm(
+    androidProjectDir,
+    {
+      recursive: true,
+      force: true
+    }
+  );
+
+  await fs.cp(
+    projectRoot,
+    androidProjectDir,
+    {
+      recursive: true,
+      force: true
+    }
+  );
+
+  await cleanupImportedAndroidProject(
+    androidProjectDir
+  );
+
+  const override =
+    await writeAndroidSourceOverrides(
+      androidProjectDir,
+      config,
+      localKeystore
+    );
+
+  if (
+    cancelled
+  ) {
+    await cancelled();
+  }
+
+  if (
+    onLog
+  ) {
+    await onLog(
+      `✅ Android source hazır • ${override.kotlinDsl ? "Kotlin DSL" : "Groovy"} • ` +
+        `${override.customSigning ? "CUSTOM signing" : "DEBUG signing"}`
+    );
+  }
+
+  return {
+    androidProjectDir,
+    module:
+      "app",
+    kotlinDsl:
+      override.kotlinDsl,
+    customSigning:
+      override.customSigning
+  };
+}
