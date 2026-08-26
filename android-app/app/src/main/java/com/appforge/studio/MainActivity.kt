@@ -29,6 +29,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
 import androidx.core.content.FileProvider
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -8777,6 +8779,10 @@ private fun SourceStep(
     update: (ProjectDraft) -> Unit,
     onPick: () -> Unit
 ) {
+    val formCompact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     fun autoPackageName(
         appName: String
     ): String {
@@ -8884,13 +8890,9 @@ private fun SourceStep(
 
     LazyColumn(
         contentPadding =
-            PaddingValues(
-                20.dp
-            ),
+            PaddingValues(if (formCompact) 12.dp else 20.dp),
         verticalArrangement =
-            Arrangement.spacedBy(
-                14.dp
-            )
+            Arrangement.spacedBy(if (formCompact) 10.dp else 14.dp)
     ) {
         item {
             Section(
@@ -8901,10 +8903,11 @@ private fun SourceStep(
 
         item {
             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement =
-                    Arrangement.spacedBy(
-                        8.dp
-                    )
+                    Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
             ) {
                 FilterChip(
                     selected =
@@ -9128,9 +9131,7 @@ private fun SourceStep(
                     ) {
                         Column(
                             modifier =
-                                Modifier.padding(
-                                    16.dp
-                                ),
+                                Modifier.padding(if (formCompact) 12.dp else 16.dp),
                             verticalArrangement =
                                 Arrangement
                                     .spacedBy(
@@ -9250,13 +9251,9 @@ private fun SourceStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
-                        Arrangement.spacedBy(
-                            7.dp
-                        )
+                        Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
                 ) {
                     Text(
                         "Proje özeti",
@@ -9348,6 +9345,10 @@ private fun PermissionsStep(
     analysis: SourceCapabilityAnalysis?,
     update: (ProjectDraft) -> Unit
 ) {
+    val formCompact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     val permissionCount =
         listOf(
             d.camera,
@@ -9356,9 +9357,9 @@ private fun PermissionsStep(
         ).count { it }
 
     LazyColumn(
-        contentPadding = PaddingValues(20.dp),
+        contentPadding = PaddingValues(if (formCompact) 12.dp else 20.dp),
         verticalArrangement =
-            Arrangement.spacedBy(12.dp)
+            Arrangement.spacedBy(if (formCompact) 8.dp else 12.dp)
     ) {
         item {
             Section(
@@ -9380,9 +9381,9 @@ private fun PermissionsStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(16.dp),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
-                        Arrangement.spacedBy(7.dp)
+                        Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
                 ) {
                     Text(
                         "İzin özeti",
@@ -9432,9 +9433,7 @@ private fun PermissionsStep(
                 ) {
                     Column(
                         modifier =
-                            Modifier.padding(
-                                16.dp
-                            ),
+                            Modifier.padding(if (formCompact) 12.dp else 16.dp),
                         verticalArrangement =
                             Arrangement.spacedBy(
                                 6.dp
@@ -9585,6 +9584,10 @@ private fun FeaturesStep(
     d: ProjectDraft,
     update: (ProjectDraft) -> Unit
 ) {
+    val formCompact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     val enabledCount =
         listOf(
             d.webJavaScriptEnabled,
@@ -9604,13 +9607,9 @@ private fun FeaturesStep(
 
     LazyColumn(
         contentPadding =
-            PaddingValues(
-                20.dp
-            ),
+            PaddingValues(if (formCompact) 12.dp else 20.dp),
         verticalArrangement =
-            Arrangement.spacedBy(
-                12.dp
-            )
+            Arrangement.spacedBy(if (formCompact) 8.dp else 12.dp)
     ) {
         item {
             Section(
@@ -9635,13 +9634,9 @@ private fun FeaturesStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
-                        Arrangement.spacedBy(
-                            8.dp
-                        )
+                        Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
                 ) {
                     Text(
                         "WebView yapılandırması",
@@ -9983,6 +9978,10 @@ private fun FeatureToggleCard(
     recommended: Boolean = false,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val formCompact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     Card(
         colors =
             CardDefaults
@@ -10001,15 +10000,11 @@ private fun FeatureToggleCard(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(
-                        16.dp
-                    ),
+                    .padding(if (formCompact) 12.dp else 16.dp),
             verticalAlignment =
                 Alignment.CenterVertically,
             horizontalArrangement =
-                Arrangement.spacedBy(
-                    14.dp
-                )
+                Arrangement.spacedBy(if (formCompact) 10.dp else 14.dp)
         ) {
             Column(
                 modifier =
@@ -10080,6 +10075,10 @@ private fun AppearanceStep(
     update: (ProjectDraft) -> Unit,
     onPickIcon: () -> Unit
 ) {
+    val formCompact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     val orientationLabel =
         when (
             d.orientation
@@ -10126,13 +10125,9 @@ private fun AppearanceStep(
 
     LazyColumn(
         contentPadding =
-            PaddingValues(
-                20.dp
-            ),
+            PaddingValues(if (formCompact) 12.dp else 20.dp),
         verticalArrangement =
-            Arrangement.spacedBy(
-                14.dp
-            )
+            Arrangement.spacedBy(if (formCompact) 10.dp else 14.dp)
     ) {
         item {
             Section(
@@ -10158,13 +10153,9 @@ private fun AppearanceStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
-                        Arrangement.spacedBy(
-                            10.dp
-                        )
+                        Arrangement.spacedBy(if (formCompact) 7.dp else 10.dp)
                 ) {
                     Text(
                         "Uygulama ikonu",
@@ -10226,10 +10217,11 @@ private fun AppearanceStep(
 
         item {
             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement =
-                    Arrangement.spacedBy(
-                        7.dp
-                    )
+                    Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
             ) {
                 FilterChip(
                     selected =
@@ -10303,11 +10295,9 @@ private fun AppearanceStep(
         item {
             Row(
                 horizontalArrangement =
-                    Arrangement.spacedBy(
-                        8.dp
-                    ),
+                    Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp),
                 modifier =
-                    Modifier.fillMaxWidth()
+                    Modifier.horizontalScroll(rememberScrollState()).fillMaxWidth()
             ) {
                 FilterChip(
                     selected =
@@ -10466,13 +10456,9 @@ private fun AppearanceStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
-                        Arrangement.spacedBy(
-                            10.dp
-                        )
+                        Arrangement.spacedBy(if (formCompact) 7.dp else 10.dp)
                 ) {
                     Toggle(
                         "Android 12+ Splash",
@@ -10538,13 +10524,9 @@ private fun AppearanceStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
-                        Arrangement.spacedBy(
-                            7.dp
-                        )
+                        Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
                 ) {
                     Text(
                         "Görünüm özeti",
@@ -10608,6 +10590,10 @@ private fun NativeBridgeStep(
     d: ProjectDraft,
     update: (ProjectDraft) -> Unit
 ) {
+    val formCompact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     val featureCount =
         if (
             d.javascriptBridge
@@ -10643,13 +10629,9 @@ private fun NativeBridgeStep(
 
     LazyColumn(
         contentPadding =
-            PaddingValues(
-                20.dp
-            ),
+            PaddingValues(if (formCompact) 12.dp else 20.dp),
         verticalArrangement =
-            Arrangement.spacedBy(
-                14.dp
-            )
+            Arrangement.spacedBy(if (formCompact) 10.dp else 14.dp)
     ) {
         item {
             Section(
@@ -10675,13 +10657,9 @@ private fun NativeBridgeStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
-                        Arrangement.spacedBy(
-                            10.dp
-                        )
+                        Arrangement.spacedBy(if (formCompact) 7.dp else 10.dp)
                 ) {
                     Text(
                         "Native Bridge durumu",
@@ -10785,13 +10763,9 @@ private fun NativeBridgeStep(
                         ) {
                             Column(
                                 modifier =
-                                    Modifier.padding(
-                                        16.dp
-                                    ),
+                                    Modifier.padding(if (formCompact) 12.dp else 16.dp),
                                 verticalArrangement =
-                                    Arrangement.spacedBy(
-                                        7.dp
-                                    )
+                                    Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
                             ) {
                                 Text(
                                     "⚠ Güvenlik",
@@ -10829,9 +10803,7 @@ private fun NativeBridgeStep(
             item {
                 Row(
                     horizontalArrangement =
-                        Arrangement.spacedBy(
-                            8.dp
-                        ),
+                        Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp),
                     modifier =
                         Modifier.fillMaxWidth()
                 ) {
@@ -11000,9 +10972,7 @@ private fun NativeBridgeStep(
                     ) {
                         Column(
                             modifier =
-                                Modifier.padding(
-                                    16.dp
-                                ),
+                                Modifier.padding(if (formCompact) 12.dp else 16.dp),
                             verticalArrangement =
                                 Arrangement.spacedBy(
                                     6.dp
@@ -11069,15 +11039,11 @@ private fun NativeBridgeStep(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    16.dp
-                                ),
+                                .padding(if (formCompact) 12.dp else 16.dp),
                         verticalAlignment =
                             Alignment.CenterVertically,
                         horizontalArrangement =
-                            Arrangement.spacedBy(
-                                14.dp
-                            )
+                            Arrangement.spacedBy(if (formCompact) 10.dp else 14.dp)
                     ) {
                         Column(
                             modifier =
@@ -11153,6 +11119,10 @@ private fun MonetizationStep(
     update: (ProjectDraft) -> Unit,
     onPickFirebase: () -> Unit
 ) {
+    val formCompact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     val admobConfigured =
         !draft.admobEnabled ||
         draft.admobAppId
@@ -11197,13 +11167,9 @@ private fun MonetizationStep(
 
     LazyColumn(
         contentPadding =
-            PaddingValues(
-                20.dp
-            ),
+            PaddingValues(if (formCompact) 12.dp else 20.dp),
         verticalArrangement =
-            Arrangement.spacedBy(
-                14.dp
-            )
+            Arrangement.spacedBy(if (formCompact) 10.dp else 14.dp)
     ) {
         item {
             Section(
@@ -11228,13 +11194,9 @@ private fun MonetizationStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
-                        Arrangement.spacedBy(
-                            8.dp
-                        )
+                        Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
                 ) {
                     Text(
                         "Production servisleri",
@@ -11531,9 +11493,7 @@ private fun MonetizationStep(
                 ) {
                     Column(
                         modifier =
-                            Modifier.padding(
-                                16.dp
-                            ),
+                            Modifier.padding(if (formCompact) 12.dp else 16.dp),
                         verticalArrangement =
                             Arrangement.spacedBy(
                                 5.dp
@@ -11819,9 +11779,7 @@ private fun MonetizationStep(
                 ) {
                     Column(
                         modifier =
-                            Modifier.padding(
-                                16.dp
-                            ),
+                            Modifier.padding(if (formCompact) 12.dp else 16.dp),
                         verticalArrangement =
                             Arrangement.spacedBy(
                                 6.dp
@@ -11898,6 +11856,10 @@ private fun DeepLinkStep(
     d: ProjectDraft,
     update: (ProjectDraft) -> Unit
 ) {
+    val formCompact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     val schemeRegex =
         Regex(
             """^[a-z][a-z0-9+.-]*$"""
@@ -11950,13 +11912,9 @@ private fun DeepLinkStep(
 
     LazyColumn(
         contentPadding =
-            PaddingValues(
-                20.dp
-            ),
+            PaddingValues(if (formCompact) 12.dp else 20.dp),
         verticalArrangement =
-            Arrangement.spacedBy(
-                14.dp
-            )
+            Arrangement.spacedBy(if (formCompact) 10.dp else 14.dp)
     ) {
         item {
             Section(
@@ -12002,13 +11960,9 @@ private fun DeepLinkStep(
                 ) {
                     Column(
                         modifier =
-                            Modifier.padding(
-                                16.dp
-                            ),
+                            Modifier.padding(if (formCompact) 12.dp else 16.dp),
                         verticalArrangement =
-                            Arrangement.spacedBy(
-                                7.dp
-                            )
+                            Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
                     ) {
                         Text(
                             "Deep Link durumu",
@@ -12220,13 +12174,9 @@ private fun DeepLinkStep(
                 ) {
                     Column(
                         modifier =
-                            Modifier.padding(
-                                16.dp
-                            ),
+                            Modifier.padding(if (formCompact) 12.dp else 16.dp),
                         verticalArrangement =
-                            Arrangement.spacedBy(
-                                7.dp
-                            )
+                            Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
                     ) {
                         Text(
                             "Bağlantı önizlemesi",
@@ -12274,6 +12224,10 @@ private fun SigningStep(
     update: (ProjectDraft) -> Unit,
     onPickKeystore: () -> Unit
 ) {
+    val formCompact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     val customSigning =
         d.signingMode ==
             SigningMode.CUSTOM
@@ -12299,13 +12253,9 @@ private fun SigningStep(
 
     LazyColumn(
         contentPadding =
-            PaddingValues(
-                20.dp
-            ),
+            PaddingValues(if (formCompact) 12.dp else 20.dp),
         verticalArrangement =
-            Arrangement.spacedBy(
-                14.dp
-            )
+            Arrangement.spacedBy(if (formCompact) 10.dp else 14.dp)
     ) {
         item {
             Section(
@@ -12330,13 +12280,9 @@ private fun SigningStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
-                        Arrangement.spacedBy(
-                            7.dp
-                        )
+                        Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
                 ) {
                     Text(
                         "İmzalama durumu",
@@ -12411,10 +12357,11 @@ private fun SigningStep(
 
         item {
             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement =
-                    Arrangement.spacedBy(
-                        8.dp
-                    )
+                    Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
             ) {
                 FilterChip(
                     selected =
@@ -12494,9 +12441,7 @@ private fun SigningStep(
                 ) {
                     Column(
                         modifier =
-                            Modifier.padding(
-                                16.dp
-                            ),
+                            Modifier.padding(if (formCompact) 12.dp else 16.dp),
                         verticalArrangement =
                             Arrangement.spacedBy(
                                 6.dp
@@ -12697,6 +12642,10 @@ private fun BuildSettingsStep(
     onApiKey: (String) -> Unit,
     onSave: () -> Unit
 ) {
+    val formCompact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     val apiKeyReady =
         apiKey.isNotBlank()
 
@@ -12752,13 +12701,9 @@ private fun BuildSettingsStep(
 
     LazyColumn(
         contentPadding =
-            PaddingValues(
-                20.dp
-            ),
+            PaddingValues(if (formCompact) 12.dp else 20.dp),
         verticalArrangement =
-            Arrangement.spacedBy(
-                14.dp
-            )
+            Arrangement.spacedBy(if (formCompact) 10.dp else 14.dp)
     ) {
         item {
             Section(
@@ -12783,9 +12728,7 @@ private fun BuildSettingsStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
                         Arrangement.spacedBy(
                             6.dp
@@ -12933,13 +12876,9 @@ private fun BuildSettingsStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
-                        Arrangement.spacedBy(
-                            7.dp
-                        )
+                        Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
                 ) {
                     Text(
                         "Build Service durumu",
@@ -13059,9 +12998,7 @@ private fun BuildSettingsStep(
         item {
             Row(
                 horizontalArrangement =
-                    Arrangement.spacedBy(
-                        8.dp
-                    ),
+                    Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp),
                 modifier =
                     Modifier.fillMaxWidth()
             ) {
@@ -13114,13 +13051,9 @@ private fun BuildSettingsStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
-                        Arrangement.spacedBy(
-                            8.dp
-                        )
+                        Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
                 ) {
                     Text(
                         "Çıktı bilgisi",
@@ -13239,9 +13172,7 @@ private fun BuildSettingsStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
                         Arrangement.spacedBy(
                             6.dp
@@ -13377,6 +13308,10 @@ private fun BuildStep(
     exeUrl: String?,
     buildOutput: String
 ) {
+    val formCompact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     val context =
         LocalContext.current
 
@@ -13780,13 +13715,9 @@ private fun BuildStep(
 
     LazyColumn(
         contentPadding =
-            PaddingValues(
-                20.dp
-            ),
+            PaddingValues(if (formCompact) 12.dp else 20.dp),
         verticalArrangement =
-            Arrangement.spacedBy(
-                14.dp
-            )
+            Arrangement.spacedBy(if (formCompact) 10.dp else 14.dp)
     ) {
         item {
             Section(
@@ -13811,13 +13742,9 @@ private fun BuildStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
-                        Arrangement.spacedBy(
-                            10.dp
-                        )
+                        Arrangement.spacedBy(if (formCompact) 7.dp else 10.dp)
                 ) {
                     Text(
                         "Build durumu",
@@ -13968,13 +13895,9 @@ private fun BuildStep(
                 ) {
                     Column(
                         modifier =
-                            Modifier.padding(
-                                16.dp
-                            ),
+                            Modifier.padding(if (formCompact) 12.dp else 16.dp),
                         verticalArrangement =
-                            Arrangement.spacedBy(
-                                8.dp
-                            )
+                            Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
                     ) {
                         Text(
                             "${preflight.size} kontrol tamamlandı",
@@ -14016,13 +13939,9 @@ private fun BuildStep(
                 ) {
                     Column(
                         modifier =
-                            Modifier.padding(
-                                16.dp
-                            ),
+                            Modifier.padding(if (formCompact) 12.dp else 16.dp),
                         verticalArrangement =
-                            Arrangement.spacedBy(
-                                7.dp
-                            )
+                            Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
                     ) {
                         Text(
                             "✅ Derleme tamamlandı",
@@ -14098,13 +14017,9 @@ private fun BuildStep(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    16.dp
-                                ),
+                                .padding(if (formCompact) 12.dp else 16.dp),
                         verticalArrangement =
-                            Arrangement.spacedBy(
-                                10.dp
-                            )
+                            Arrangement.spacedBy(if (formCompact) 7.dp else 10.dp)
                     ) {
                         Text(
                             "🧠 Build Hatası Asistanı",
@@ -14656,13 +14571,9 @@ private fun BuildStep(
             ) {
                 Column(
                     modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
                     verticalArrangement =
-                        Arrangement.spacedBy(
-                            8.dp
-                        )
+                        Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
                 ) {
                     Text(
                         if (
@@ -18981,22 +18892,126 @@ private fun applyTemplate(current: ProjectDraft, template: RemoteTemplate): Proj
 private fun onOff(v: Boolean) = if (v) "Açık" else "Kapalı"
 
 @Composable
-private fun Section(title: String, subtitle: String) {
-    Column {
-        Text(title, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = TextSecondary)
+private fun Section(
+    title: String,
+    subtitle: String
+) {
+    val compact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
+    Column(
+        verticalArrangement =
+            Arrangement.spacedBy(
+                if (compact) {
+                    3.dp
+                } else {
+                    4.dp
+                }
+            )
+    ) {
+        Text(
+            text = title,
+            fontSize =
+                if (compact) {
+                    20.sp
+                } else {
+                    22.sp
+                },
+            fontWeight =
+                FontWeight.Bold
+        )
+
+        Text(
+            text = subtitle,
+            color =
+                TextSecondary,
+            fontSize =
+                if (compact) {
+                    12.sp
+                } else {
+                    14.sp
+                },
+            lineHeight =
+                if (compact) {
+                    16.sp
+                } else {
+                    19.sp
+                }
+        )
     }
 }
 
 @Composable
-private fun Toggle(label: String, value: Boolean, onChange: (Boolean) -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = Card2), shape = RoundedCornerShape(16.dp)) {
+private fun Toggle(
+    label: String,
+    value: Boolean,
+    onChange: (Boolean) -> Unit
+) {
+    val compact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
+    Card(
+        colors =
+            CardDefaults.cardColors(
+                containerColor = Card2
+            ),
+        shape =
+            RoundedCornerShape(
+                if (compact) {
+                    14.dp
+                } else {
+                    16.dp
+                }
+            )
+    ) {
         Row(
-            Modifier.fillMaxWidth().padding(15.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        if (compact) {
+                            12.dp
+                        } else {
+                            15.dp
+                        }
+                    ),
+            verticalAlignment =
+                Alignment.CenterVertically
         ) {
-            Text(label, modifier = Modifier.weight(1f))
-            Switch(checked = value, onCheckedChange = onChange)
+            Text(
+                text = label,
+                modifier =
+                    Modifier.weight(1f),
+                fontSize =
+                    if (compact) {
+                        13.sp
+                    } else {
+                        14.sp
+                    },
+                lineHeight =
+                    if (compact) {
+                        17.sp
+                    } else {
+                        19.sp
+                    }
+            )
+
+            Spacer(
+                Modifier.width(
+                    if (compact) {
+                        8.dp
+                    } else {
+                        12.dp
+                    }
+                )
+            )
+
+            Switch(
+                checked = value,
+                onCheckedChange = onChange
+            )
         }
     }
 }
