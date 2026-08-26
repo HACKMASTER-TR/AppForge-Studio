@@ -39,6 +39,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.text.font.FontWeight
@@ -435,6 +436,41 @@ private enum class AppScreen { HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PR
 private fun AppForgeApp() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val appConfiguration =
+        LocalConfiguration.current
+
+    val appScreenWidthDp =
+        appConfiguration.screenWidthDp
+
+    val appScreenHeightDp =
+        appConfiguration.screenHeightDp
+
+    val builderCompact =
+        appScreenWidthDp < 380
+
+    val builderTablet =
+        minOf(
+            appScreenWidthDp,
+            appScreenHeightDp
+        ) >= 600
+
+    val builderWide =
+        appScreenWidthDp >= 600
+
+    val builderContentMaxWidth =
+        if (builderWide) {
+            980.dp
+        } else {
+            10000.dp
+        }
+
+    val builderHorizontalPadding =
+        when {
+            builderCompact -> 10.dp
+            builderTablet -> 28.dp
+            else -> 20.dp
+        }
 
     var draft by remember { mutableStateOf(ProjectDraft()) }
 
@@ -2637,12 +2673,23 @@ private fun AppForgeApp() {
                     Row(
                         modifier =
                             Modifier
+                                .align(
+                                    Alignment.CenterHorizontally
+                                )
+                                .widthIn(
+                                    max =
+                                        builderContentMaxWidth
+                                )
                                 .fillMaxWidth()
                                 .padding(
                                     horizontal =
-                                        20.dp,
+                                        builderHorizontalPadding,
                                     vertical =
-                                        7.dp
+                                        if (builderCompact) {
+                                            5.dp
+                                        } else {
+                                            7.dp
+                                        }
                                 ),
                         verticalAlignment =
                             Alignment.CenterVertically
@@ -2674,23 +2721,47 @@ private fun AppForgeApp() {
 
                     LinearProgressIndicator(
                         progress = { step / 10f },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier =
+                            Modifier
+                                .align(
+                                    Alignment.CenterHorizontally
+                                )
+                                .widthIn(
+                                    max =
+                                        builderContentMaxWidth
+                                )
+                                .fillMaxWidth()
                     )
 
                     Row(
                         modifier =
                             Modifier
+                                .align(
+                                    Alignment.CenterHorizontally
+                                )
+                                .widthIn(
+                                    max =
+                                        builderContentMaxWidth
+                                )
                                 .fillMaxWidth()
                                 .padding(
                                     horizontal =
-                                        10.dp,
+                                        if (builderCompact) {
+                                            6.dp
+                                        } else {
+                                            10.dp
+                                        },
                                     vertical =
                                         4.dp
                                 ),
                         horizontalArrangement =
                             Arrangement
                                 .spacedBy(
-                                    8.dp
+                                    if (builderCompact) {
+                                        4.dp
+                                    } else {
+                                        8.dp
+                                    }
                                 )
                     ) {
                         OutlinedButton(
@@ -2706,7 +2777,18 @@ private fun AppForgeApp() {
                                     )
                         ) {
                             Text(
-                                "👁 Önizleme"
+                                if (builderCompact) {
+                                    "Önizle"
+                                } else {
+                                    "👁 Önizleme"
+                                },
+                                fontSize =
+                                    if (builderCompact) {
+                                        12.sp
+                                    } else {
+                                        14.sp
+                                    },
+                                maxLines = 1
                             )
                         }
 
@@ -2723,7 +2805,18 @@ private fun AppForgeApp() {
                                     )
                         ) {
                             Text(
-                                "🚀 Production"
+                                if (builderCompact) {
+                                    "Üretim"
+                                } else {
+                                    "🚀 Production"
+                                },
+                                fontSize =
+                                    if (builderCompact) {
+                                        12.sp
+                                    } else {
+                                        14.sp
+                                    },
+                                maxLines = 1
                             )
                         }
 
@@ -2740,12 +2833,35 @@ private fun AppForgeApp() {
                                     )
                         ) {
                             Text(
-                                "✨ AI"
+                                if (builderCompact) {
+                                    "AI"
+                                } else {
+                                    "✨ AI"
+                                },
+                                fontSize =
+                                    if (builderCompact) {
+                                        12.sp
+                                    } else {
+                                        14.sp
+                                    },
+                                maxLines = 1
                             )
                         }
                     }
 
-                    Box(Modifier.weight(1f)) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .align(
+                                    Alignment.CenterHorizontally
+                                )
+                                .widthIn(
+                                    max =
+                                        builderContentMaxWidth
+                                )
+                                .fillMaxWidth()
+                    ) {
                         when (step) {
                             1 -> SourceStep(draft, status, { draft = it }) {
                                 sourcePicker.launch(arrayOf("text/html", "application/zip", "application/octet-stream"))
@@ -2870,13 +2986,48 @@ private fun AppForgeApp() {
                     }
 
                     Row(
-                        Modifier.padding(20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier =
+                            Modifier
+                                .align(
+                                    Alignment.CenterHorizontally
+                                )
+                                .widthIn(
+                                    max =
+                                        builderContentMaxWidth
+                                )
+                                .fillMaxWidth()
+                                .padding(
+                                    horizontal =
+                                        builderHorizontalPadding,
+                                    vertical =
+                                        if (builderCompact) {
+                                            10.dp
+                                        } else {
+                                            20.dp
+                                        }
+                                ),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(
+                                if (builderCompact) {
+                                    6.dp
+                                } else {
+                                    10.dp
+                                }
+                            )
                     ) {
                         if (step > 1) {
                             OutlinedButton(
                                 onClick = { step-- },
-                                modifier = Modifier.weight(1f).height(52.dp)
+                                modifier =
+                                    Modifier
+                                        .weight(1f)
+                                        .height(
+                                            if (builderCompact) {
+                                                48.dp
+                                            } else {
+                                                52.dp
+                                            }
+                                        )
                             ) {
                                 Text("Geri")
                             }
@@ -2900,7 +3051,13 @@ private fun AppForgeApp() {
                             modifier =
                                 Modifier
                                     .weight(1f)
-                                    .height(52.dp)
+                                    .height(
+                                        if (builderCompact) {
+                                            48.dp
+                                        } else {
+                                            52.dp
+                                        }
+                                    )
                         ) {
                             Text(
                                 when {
@@ -2908,10 +3065,18 @@ private fun AppForgeApp() {
                                         "Devam"
 
                                     buildBusy ->
-                                        "DERLEME DEVAM EDİYOR"
+                                        if (builderCompact) {
+                                            "DERLENİYOR"
+                                        } else {
+                                            "DERLEME DEVAM EDİYOR"
+                                        }
 
                                     else ->
-                                        "UYGULAMAYI DERLE"
+                                        if (builderCompact) {
+                                            "DERLE"
+                                        } else {
+                                            "UYGULAMAYI DERLE"
+                                        }
                                 }
                             )
                         }
