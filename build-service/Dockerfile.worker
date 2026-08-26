@@ -4,6 +4,7 @@ ARG ANDROID_CMDLINE_TOOLS_VERSION=15859902
 ARG ANDROID_CMDLINE_TOOLS_SHA256=4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583
 ARG ANDROID_SDK_LICENSE_ACCEPTED=false
 ARG GRADLE_VERSION=9.3.1
+ARG REACT_NATIVE_GRADLE_VERSION=8.14.3
 ARG FLUTTER_VERSION=3.44.9
 ARG FLUTTER_SHA256=a9120fa4a01048bdef438ddc3a2d4b7389662ea98a95db86eeaf10382bc4efcb
 
@@ -11,6 +12,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
 ENV ANDROID_HOME=/opt/android-sdk
 ENV GRADLE_HOME=/opt/gradle/gradle-9.3.1
+ENV REACT_NATIVE_GRADLE_HOME=/opt/gradle/gradle-8.14.3
 ENV FLUTTER_HOME=/opt/flutter
 ENV PATH=/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:/opt/gradle/gradle-9.3.1/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/cmdline-tools/latest/bin:$PATH
 ENV NODE_ENV=production
@@ -65,6 +67,24 @@ RUN curl -fL --retry 4 \
     && rm /tmp/gradle.zip /tmp/gradle.zip.sha256
 
 
+
+# React Native / Expo current Android projects commonly use Gradle 8.x.
+# Install a trusted system Gradle instead of executing uploaded gradle-wrapper.jar.
+RUN curl -fL --retry 4 \
+      "https://services.gradle.org/distributions/gradle-${REACT_NATIVE_GRADLE_VERSION}-bin.zip" \
+      -o /tmp/react-native-gradle.zip \
+    && curl -fL --retry 4 \
+      "https://services.gradle.org/distributions/gradle-${REACT_NATIVE_GRADLE_VERSION}-bin.zip.sha256" \
+      -o /tmp/react-native-gradle.zip.sha256 \
+    && printf "%s  %s\n" "$(cat /tmp/react-native-gradle.zip.sha256)" "/tmp/react-native-gradle.zip" | sha256sum -c - \
+    && unzip -q /tmp/react-native-gradle.zip -d /opt/gradle \
+    && rm /tmp/react-native-gradle.zip /tmp/react-native-gradle.zip.sha256
+
+# npm is already bundled with Node. Add pinned Yarn classic and pnpm for source imports.
+RUN npm install -g yarn@1.22.22 pnpm@10.17.1 \
+    && yarn --version \
+    && pnpm --version
+
 # =========================================================
 # Flutter Android toolchain
 #
@@ -102,6 +122,7 @@ RUN node --test tests/flutter_build_engine.test.js
 RUN node --test tests/flutter_live_build_engine.test.js
 RUN node --test tests/react_native_build_engine.test.js
 RUN node --test tests/source_build_env.test.js
+RUN node --test tests/react_native_live_build_engine.test.js
 
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle

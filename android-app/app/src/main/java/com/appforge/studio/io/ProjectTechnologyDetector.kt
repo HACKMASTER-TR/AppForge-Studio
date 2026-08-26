@@ -138,7 +138,7 @@ object ProjectTechnologyDetector {
                 id = "expo",
                 label = "Expo / React Native",
                 buildEngine = "expo-android",
-                buildReady = false,
+                buildReady = true,
                 reason = "package.json içinde Expo bağımlılığı bulundu."
             )
         }
@@ -148,7 +148,7 @@ object ProjectTechnologyDetector {
                 id = "react-native",
                 label = "React Native",
                 buildEngine = "react-native-android",
-                buildReady = false,
+                buildReady = true,
                 reason = "package.json içinde react-native bulundu."
             )
         }

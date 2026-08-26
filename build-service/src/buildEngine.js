@@ -25,6 +25,10 @@ import {
   buildFlutterArtifacts
 } from "./flutterBuildEngine.js";
 import {
+  prepareReactNativeSource,
+  buildReactNativeArtifacts
+} from "./reactNativeBuildEngine.js";
+import {
   createSourceBuildEnv
 } from "./sourceBuildEnv.js";
 
@@ -270,6 +274,31 @@ export function preflight(c, files = {}) {
     }
   }
 
+  const untrustedSourceBuild =
+    c.sourceMode ===
+      "LOCAL" &&
+    [
+      "node-web",
+      "python-android",
+      "android-gradle",
+      "flutter",
+      "react-native-android",
+      "expo-android"
+    ]
+      .includes(
+        source.engine
+      );
+
+  if (
+    untrustedSourceBuild &&
+    c.signing?.mode ===
+      "CUSTOM"
+  ) {
+    throw new Error(
+      "Kaynak kod çalıştıran build motorlarında CUSTOM signing, izole imzalama servisi tamamlanana kadar güvenlik nedeniyle kapalı. DEBUG signing kullan."
+    );
+  }
+
   if (
     source.engine ===
       "python-android"
@@ -396,6 +425,52 @@ export function preflight(c, files = {}) {
 
     ok(
       "Flutter / Dart Android kaynak motoru."
+    );
+  }
+
+  if (
+    source.engine ===
+      "react-native-android" ||
+    source.engine ===
+      "expo-android"
+  ) {
+    const unsupportedSourceFeatures =
+      [
+        c.nativeBridge?.enabled
+          ? "Native Bridge"
+          : null,
+        c.admob?.enabled
+          ? "AdMob otomatik enjeksiyon"
+          : null,
+        c.billing?.enabled
+          ? "Billing otomatik enjeksiyon"
+          : null,
+        (
+          c.firebase?.analytics ||
+          c.firebase?.crashlytics
+        )
+          ? "Firebase otomatik enjeksiyon"
+          : null
+      ]
+        .filter(
+          Boolean
+        );
+
+    if (
+      unsupportedSourceFeatures.length
+    ) {
+      throw new Error(
+        "React Native / Expo kaynak motorunda şu AppForge otomatik eklentileri henüz kaynak projeye enjekte edilmiyor: " +
+        unsupportedSourceFeatures.join(", ") +
+        ". Proje kendi native paketlerini kullanabilir; AppForge otomatik seçeneklerini kapat."
+      );
+    }
+
+    ok(
+      source.engine ===
+        "expo-android"
+        ? "Expo / React Native Android kaynak motoru."
+        : "React Native Android kaynak motoru."
     );
   }
 
@@ -766,6 +841,54 @@ export async function executeBuild(job) {
         c
       );
 
+    let reactNativePrepared =
+      null;
+
+    if (
+      c.sourceMode ===
+        "LOCAL" &&
+      (
+        source.engine ===
+          "react-native-android" ||
+        source.engine ===
+          "expo-android"
+      )
+    ) {
+      await appendLog(
+        buildId,
+        `⚛️ ${source.label} algılandı • React Native / Expo kaynak hazırlanıyor.`
+      );
+
+      reactNativePrepared =
+        await prepareReactNativeSource(
+          {
+            projectZip:
+              uploadedProject,
+            workDir:
+              path.join(
+                work,
+                "react-native"
+              ),
+            onLog:
+              line =>
+                appendLog(
+                  buildId,
+                  line
+                ),
+            cancelled:
+              () =>
+                throwIfCancelled(
+                  buildId
+                )
+          }
+        );
+
+      await appendLog(
+        buildId,
+        `✅ React Native / Expo kaynak doğrulandı • ${reactNativePrepared.projectType}.`
+      );
+    }
+
     let flutterPrepared =
       null;
 
@@ -978,6 +1101,15 @@ export async function executeBuild(job) {
         source.engine ===
           "flutter" &&
         flutterPrepared
+      ) &&
+      !(
+        (
+          source.engine ===
+            "react-native-android" ||
+          source.engine ===
+            "expo-android"
+        ) &&
+        reactNativePrepared
       )
     ) {
       throw new Error(
@@ -1005,7 +1137,11 @@ export async function executeBuild(job) {
       source.engine ===
         "android-gradle" ||
       source.engine ===
-        "flutter";
+        "flutter" ||
+      source.engine ===
+        "react-native-android" ||
+      source.engine ===
+        "expo-android";
 
     const fastDecision =
       getFastBuildDecision(
@@ -1055,6 +1191,92 @@ export async function executeBuild(job) {
       false;
 
     if (
+      reactNativePrepared
+    ) {
+      buildMode =
+        source.engine ===
+          "expo-android"
+          ? "EXPO_ANDROID"
+          : "REACT_NATIVE_ANDROID";
+
+      await appendLog(
+        buildId,
+        source.engine ===
+          "expo-android"
+          ? "⚛️ Expo Android release build seçildi."
+          : "⚛️ React Native Android release build seçildi."
+      );
+
+      await updateBuild(
+        buildId,
+        {
+          progress: 20
+        }
+      );
+
+      const rnArtifacts =
+        await buildReactNativeArtifacts(
+          {
+            prepared:
+              reactNativePrepared,
+            outputType,
+            packageName:
+              c.packageName,
+            versionCode:
+              c.versionCode,
+            versionName:
+              c.versionName,
+            onLog:
+              line =>
+                appendLog(
+                  buildId,
+                  line
+                ),
+            cancelled:
+              () =>
+                throwIfCancelled(
+                  buildId
+                )
+          }
+        );
+
+      if (
+        rnArtifacts.apk
+      ) {
+        out.apk =
+          await putOutput(
+            buildId,
+            "app-release.apk",
+            rnArtifacts.apk
+          );
+      }
+
+      if (
+        rnArtifacts.aab
+      ) {
+        out.aab =
+          await putOutput(
+            buildId,
+            "app-release.aab",
+            rnArtifacts.aab
+          );
+      }
+
+      fastCompleted =
+        true;
+
+      await updateBuild(
+        buildId,
+        {
+          progress: 90
+        }
+      );
+
+      await appendLog(
+        buildId,
+        "✅ React Native / Expo Android build tamamlandı."
+      );
+    } else if (
       flutterPrepared
     ) {
       buildMode =
