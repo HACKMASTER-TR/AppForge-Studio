@@ -24,6 +24,9 @@ import {
   prepareFlutterSource,
   buildFlutterArtifacts
 } from "./flutterBuildEngine.js";
+import {
+  createSourceBuildEnv
+} from "./sourceBuildEnv.js";
 
 function esc(s) {
   return String(s ?? "").replaceAll("\\", "\\\\").replaceAll('"', '\\"');
@@ -1379,20 +1382,42 @@ export async function executeBuild(job) {
         buildId
       );
 
+      const sourceExecutesProjectCode =
+        [
+          "python-android",
+          "android-gradle"
+        ]
+          .includes(
+            source.engine
+          );
+
+      const gradleBaseEnv =
+        sourceExecutesProjectCode
+          ? createSourceBuildEnv()
+          : {
+              ...process.env
+            };
+
       const gradleEnv = {
-        ...process.env,
+        ...gradleBaseEnv,
 
-        APPFORGE_STORE_PASSWORD:
-          c.signing?.storePassword ||
-          "",
+        ...(
+          sourceExecutesProjectCode
+            ? {}
+            : {
+                APPFORGE_STORE_PASSWORD:
+                  c.signing?.storePassword ||
+                  "",
 
-        APPFORGE_KEY_PASSWORD:
-          c.signing?.keyPassword ||
-          "",
+                APPFORGE_KEY_PASSWORD:
+                  c.signing?.keyPassword ||
+                  "",
 
-        APPFORGE_KEY_ALIAS:
-          c.signing?.alias ||
-          "",
+                APPFORGE_KEY_ALIAS:
+                  c.signing?.alias ||
+                  ""
+              }
+        ),
 
         APPFORGE_FAST_EXTENDED:
           fastExtendedMode

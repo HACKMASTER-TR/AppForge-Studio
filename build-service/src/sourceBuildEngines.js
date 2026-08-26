@@ -3,6 +3,7 @@ import { promises as fs, existsSync } from "fs";
 import path from "path";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
+import { createSourceBuildEnv } from "./sourceBuildEnv.js";
 
 const SOURCE_ENGINE_DIR =
   path.dirname(
@@ -384,47 +385,45 @@ function commandEnv(
         path.delimiter
       );
 
-  return {
-    /*
-     * Termux'ta LD_PRELOAD/PREFIX gibi değişkenler,
-     * alt süreçlerin paket yöneticisi ve Node binary'lerini
-     * çalıştırabilmesi için gereklidir.
-     *
-     * Worker/Docker ortamında da mevcut process environment
-     * korunur; yalnız build'e özel değerleri override ederiz.
-     */
-    ...process.env,
-    PATH:
-      allowedPath,
-    HOME:
-      path.join(
-        root,
-        ".home"
-      ),
-    TMPDIR:
-      path.join(
-        root,
-        ".tmp"
-      ),
-    CI:
-      "true",
-    NODE_ENV:
-      "development",
-    NPM_CONFIG_AUDIT:
-      "false",
-    NPM_CONFIG_FUND:
-      "false",
-    NPM_CONFIG_UPDATE_NOTIFIER:
-      "false",
-    NPM_CONFIG_PROGRESS:
-      "false",
-    NPM_CONFIG_PRODUCTION:
-      "false",
-    PUBLIC_URL:
-      ".",
-    NEXT_TELEMETRY_DISABLED:
-      "1"
-  };
+  return createSourceBuildEnv(
+    {
+      /*
+       * Termux için PREFIX / LD_PRELOAD helper tarafından
+       * allowlist ile korunur. Worker servis secret'ları
+       * kullanıcı package build scriptlerine aktarılmaz.
+       */
+      PATH:
+        allowedPath,
+      HOME:
+        path.join(
+          root,
+          ".home"
+        ),
+      TMPDIR:
+        path.join(
+          root,
+          ".tmp"
+        ),
+      CI:
+        "true",
+      NODE_ENV:
+        "development",
+      NPM_CONFIG_AUDIT:
+        "false",
+      NPM_CONFIG_FUND:
+        "false",
+      NPM_CONFIG_UPDATE_NOTIFIER:
+        "false",
+      NPM_CONFIG_PROGRESS:
+        "false",
+      NPM_CONFIG_PRODUCTION:
+        "false",
+      PUBLIC_URL:
+        ".",
+      NEXT_TELEMETRY_DISABLED:
+        "1"
+    }
+  );
 }
 
 function npmInvocation(

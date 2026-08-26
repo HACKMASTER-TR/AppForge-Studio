@@ -4,6 +4,7 @@ import {
 } from "fs";
 import path from "path";
 import { spawn } from "child_process";
+import { createSourceBuildEnv } from "./sourceBuildEnv.js";
 
 const MAX_ZIP_ENTRIES =
   10_000;
@@ -519,15 +520,16 @@ async function runFlutterCommand({
   }
 
   const env =
-    {
-      ...process.env,
-      CI:
-        "true",
-      FLUTTER_SUPPRESS_ANALYTICS:
-        "true",
-      PUB_ENVIRONMENT:
-        "appforge"
-    };
+    createSourceBuildEnv(
+      {
+        CI:
+          "true",
+        FLUTTER_SUPPRESS_ANALYTICS:
+          "true",
+        PUB_ENVIRONMENT:
+          "appforge"
+      }
+    );
 
   return new Promise(
     (
