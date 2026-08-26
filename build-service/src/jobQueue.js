@@ -1,6 +1,9 @@
 import os from "os";
 import { query, tx } from "./db.js";
 import { config } from "./config.js";
+import {
+  requiredSourceWorkerCapabilities
+} from "./sourceBuildIsolation.js";
 
 export async function queuedCount() {
   const result = await query(
@@ -19,6 +22,18 @@ export async function enqueueJob({
   priority = 100,
   requiredCapabilities = []
 }) {
+  const effectiveRequiredCapabilities =
+    requiredSourceWorkerCapabilities(
+      {
+        payload,
+        requiredCapabilities,
+        requireIsolation:
+          config.sourceBuildRequireIsolation,
+        isolationCapability:
+          config.sourceBuildIsolationCapability
+      }
+    );
+
   const count = await queuedCount();
 
   if (count >= config.maxQueueSize) {
@@ -45,13 +60,13 @@ export async function enqueueJob({
       JSON.stringify(payload),
       priority,
       config.maxJobAttempts,
-      JSON.stringify(requiredCapabilities)
+      JSON.stringify(effectiveRequiredCapabilities)
     ]
   );
 
   await event(buildId, userId, teamId, "queued", {
     priority,
-    requiredCapabilities
+    requiredCapabilities: effectiveRequiredCapabilities
   });
 }
 

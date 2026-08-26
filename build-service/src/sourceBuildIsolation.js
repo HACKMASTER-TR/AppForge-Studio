@@ -103,3 +103,80 @@ export function assertSourceBuildIsolation(options) {
 export function untrustedSourceEngines() {
   return [...UNTRUSTED_SOURCE_ENGINES].sort();
 }
+
+export function requiredSourceWorkerCapabilities({
+  payload,
+  requiredCapabilities = [],
+  requireIsolation = false,
+  isolationCapability = "source-isolation-dedicated"
+}) {
+  const base =
+    Array.isArray(
+      requiredCapabilities
+    )
+      ? requiredCapabilities
+      : [];
+
+  const config =
+    payload
+      ?.config ||
+    {};
+
+  const sourceMode =
+    String(
+      config.sourceMode ||
+      "LOCAL"
+    )
+      .trim()
+      .toUpperCase();
+
+  const engine =
+    String(
+      config.sourceBuildEngine ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  const capability =
+    String(
+      isolationCapability ||
+      ""
+    )
+      .trim();
+
+  const needsIsolation =
+    Boolean(
+      requireIsolation
+    ) &&
+    sourceMode ===
+      "LOCAL" &&
+    isUntrustedSourceEngine(
+      engine
+    );
+
+  return [
+    ...new Set([
+      ...base
+        .map(
+          value =>
+            String(
+              value ||
+              ""
+            )
+              .trim()
+        )
+        .filter(
+          Boolean
+        ),
+      ...(
+        needsIsolation &&
+        capability
+          ? [
+              capability
+            ]
+          : []
+      )
+    ])
+  ];
+}
