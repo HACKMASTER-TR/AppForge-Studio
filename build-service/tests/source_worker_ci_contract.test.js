@@ -156,3 +156,39 @@ test(
     );
   }
 );
+
+test(
+  "worker images keep Android API 36 for .NET Android and API 37 for AppForge builds",
+  async () => {
+    for (
+      const dockerName of [
+        "Dockerfile.worker",
+        "Dockerfile.source-worker"
+      ]
+    ) {
+      const docker =
+        await fs.readFile(
+          path.join(
+            repoRoot,
+            "build-service",
+            dockerName
+          ),
+          "utf8"
+        );
+
+      assert.ok(
+        docker.includes(
+          '"platforms;android-36"'
+        ),
+        `${dockerName}: Android API 36 eksik`
+      );
+
+      assert.ok(
+        docker.includes(
+          '"platforms;android-37.0"'
+        ),
+        `${dockerName}: Android API 37.0 eksik`
+      );
+    }
+  }
+);
