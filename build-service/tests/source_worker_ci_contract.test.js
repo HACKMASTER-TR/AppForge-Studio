@@ -192,3 +192,54 @@ test(
     }
   }
 );
+
+test(
+  "technology matrix stays in repository CI and outside build-service-only Docker context",
+  async () => {
+    const workflow =
+      await fs.readFile(
+        path.join(
+          repoRoot,
+          ".github",
+          "workflows",
+          "source-worker-image.yml"
+        ),
+        "utf8"
+      );
+
+    const matrixCommand =
+      "node --test tests/technology_support_matrix.test.js";
+
+    assert.ok(
+      workflow.includes(
+        matrixCommand
+      ),
+      "Technology matrix GitHub Actions regression aşamasında kalmalı."
+    );
+
+    for (
+      const dockerName of [
+        "Dockerfile.worker",
+        "Dockerfile.source-worker"
+      ]
+    ) {
+      const docker =
+        await fs.readFile(
+          path.join(
+            repoRoot,
+            "build-service",
+            dockerName
+          ),
+          "utf8"
+        );
+
+      assert.equal(
+        docker.includes(
+          `RUN ${matrixCommand}`
+        ),
+        false,
+        `${dockerName}: build-service-only Docker context cross-repo matrix testini çalıştırmamalı.`
+      );
+    }
+  }
+);

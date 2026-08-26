@@ -193,7 +193,7 @@ RUN node --test tests/dotnet_android_live_build_engine.test.js
 RUN node tests/dotnet_android_smoke.js
 RUN node --test tests/node_remote_backend_engine.test.js
 RUN node --test tests/node_remote_backend_live_engine.test.js
-RUN node --test tests/technology_support_matrix.test.js
+# Cross-repo technology matrix runs in GitHub Actions before Docker build.
 RUN node --test tests/source_build_isolation.test.js
 RUN node --test tests/source_worker_contract.test.js
 
