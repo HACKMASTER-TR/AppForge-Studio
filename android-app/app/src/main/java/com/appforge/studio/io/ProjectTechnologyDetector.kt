@@ -525,10 +525,10 @@ object ProjectTechnologyDetector {
                     } else {
                         "node-web"
                     },
-                buildReady = false,
+                buildReady = hasRemoteContract,
                 reason =
                     if (hasRemoteContract) {
-                        "Node.js remote backend kontratı bulundu. Public HTTPS backend doğrulamasından sonra WebView Android router sonraki aşamada bağlanacak."
+                        "Node.js remote backend kontratı bulundu. Server public HTTPS backendUrl doğrulamasından sonra WebView Android build yapılabilir."
                     } else {
                         "package.json bulundu; bunun web mi backend mi olduğu kesin değil. Backend için appforge.remote.json gerekli."
                     }
