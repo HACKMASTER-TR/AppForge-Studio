@@ -20,6 +20,12 @@ import {
   exportProjectZip,
   getProjectForWorkspace
 } from "./workspace.js";
+import {
+  inspectUnityProjectArchive
+} from "./unityAndroidBuildEngine.js";
+import {
+  unityWorkerRequirements
+} from "./unityWorkerContract.js";
 
 export async function submitWorkspaceBuild(
   projectId,
@@ -124,6 +130,29 @@ export async function submitWorkspaceBuild(
     userId,
     c
   );
+
+  if (
+    String(
+      c.sourceBuildEngine ||
+      ""
+    )
+      .trim()
+      .toLowerCase() ===
+      "unity-android"
+  ) {
+    const unityProject =
+      inspectUnityProjectArchive(
+        tempZip
+      );
+
+    c.unityEditorVersion =
+      unityProject.editorVersion;
+
+    c.workerRequirements =
+      unityWorkerRequirements(
+        unityProject.editorVersion
+      );
+  }
 
   const report =
     preflight(

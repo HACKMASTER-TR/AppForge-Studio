@@ -768,3 +768,110 @@ export async function prepareUnityAndroidSource({
       extracted.bytes
   };
 }
+
+export function inspectUnityProjectArchive(
+  projectZip
+) {
+  if (
+    !projectZip
+  ) {
+    throw new Error(
+      "Unity kaynak ZIP'i eksik."
+    );
+  }
+
+  const zip =
+    new AdmZip(
+      projectZip
+    );
+
+  const candidates =
+    zip
+      .getEntries()
+      .filter(
+        entry => {
+          const normalized =
+            String(
+              entry.entryName ||
+              ""
+            )
+              .replaceAll(
+                "\\",
+                "/"
+              )
+              .toLowerCase();
+
+          return (
+            !entry.isDirectory &&
+            normalized.endsWith(
+              "projectsettings/projectversion.txt"
+            )
+          );
+        }
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          String(
+            a.entryName
+          )
+            .split(
+              "/"
+            ).length -
+          String(
+            b.entryName
+          )
+            .split(
+              "/"
+            ).length
+      );
+
+  if (
+    !candidates.length
+  ) {
+    throw new Error(
+      "Unity ZIP içinde ProjectSettings/ProjectVersion.txt bulunamadı."
+    );
+  }
+
+  const entry =
+    candidates[0];
+
+  const data =
+    entry.getData();
+
+  if (
+    data.length >
+      64 * 1024
+  ) {
+    throw new Error(
+      "Unity ProjectVersion.txt beklenenden büyük."
+    );
+  }
+
+  const parsed =
+    parseProjectVersion(
+      data.toString(
+        "utf8"
+      )
+    );
+
+  if (
+    !parsed.editorVersion
+  ) {
+    throw new Error(
+      "Unity ProjectVersion.txt içinde m_EditorVersion bulunamadı."
+    );
+  }
+
+  return {
+    editorVersion:
+      parsed.editorVersion,
+    editorRevision:
+      parsed.revision,
+    entryName:
+      entry.entryName
+  };
+}
