@@ -399,10 +399,10 @@ object ProjectTechnologyDetector {
                 id = "php",
                 label = "PHP",
                 buildEngine = "remote-backend",
-                buildReady = false,
+                buildReady = hasRemoteContract,
                 reason =
                     if (hasRemoteContract) {
-                        "PHP remote backend kontratı bulundu. HTTPS WebView router bağlantısı sonraki aşamada etkinleştirilecek."
+                        "PHP remote backend kontratı bulundu. Server public HTTPS backendUrl doğrulamasından sonra WebView Android build yapılabilir."
                     } else {
                         "PHP Android içinde doğrudan çalıştırılmaz. appforge.remote.json ile önceden deploy edilmiş HTTPS backend URL'i gerekli."
                     }

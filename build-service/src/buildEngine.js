@@ -41,6 +41,10 @@ import {
 import {
   preparePythonWebAndroidProject
 } from "./pythonWebFrameworkEngine.js";
+import {
+  preparePhpRemoteBackendSource,
+  applyPhpRemoteBackendConfig
+} from "./phpRemoteBackendEngine.js";
 
 function esc(s) {
   return String(s ?? "").replaceAll("\\", "\\\\").replaceAll('"', '\\"');
@@ -292,6 +296,25 @@ export function preflight(c, files = {}) {
     ) {
       throw new Error(
         "Proje türü algılandı fakat güvenli bir build motoru seçilemedi."
+      );
+    }
+  }
+
+  if (
+    source.engine ===
+      "remote-backend"
+  ) {
+    ok(
+      "PHP remote backend modu: Android içinde PHP çalıştırılmaz; public HTTPS WebView wrapper kullanılır."
+    );
+
+    if (
+      c.nativeBridge?.enabled &&
+      c.nativeBridge?.allowRemote !==
+        true
+    ) {
+      warn(
+        "PHP remote backend uygulamasında Native Bridge varsayılan olarak kapalı kalacak. Remote Bridge gerekiyorsa allowRemote açıkça etkinleştirilmeli."
       );
     }
   }
@@ -1008,6 +1031,68 @@ export async function executeBuild(job) {
       resolveSourceBuildEngine(
         c
       );
+
+    let phpRemotePrepared =
+      null;
+
+    if (
+      c.sourceMode ===
+        "LOCAL" &&
+      source.engine ===
+        "remote-backend"
+    ) {
+      await appendLog(
+        buildId,
+        `🐘 ${source.label} algılandı • PHP HTTPS remote backend kontratı doğrulanıyor.`
+      );
+
+      phpRemotePrepared =
+        await preparePhpRemoteBackendSource(
+          {
+            projectZip:
+              uploadedProject,
+            workDir:
+              path.join(
+                work,
+                "php-remote"
+              ),
+            onLog:
+              line =>
+                appendLog(
+                  buildId,
+                  line
+                ),
+            cancelled:
+              () =>
+                throwIfCancelled(
+                  buildId
+                )
+          }
+        );
+
+      if (
+        !phpRemotePrepared.contract
+      ) {
+        throw new Error(
+          "PHP Android build için appforge.remote.json içinde önceden deploy edilmiş public HTTPS backendUrl gerekli."
+        );
+      }
+
+      applyPhpRemoteBackendConfig(
+        c,
+        phpRemotePrepared
+      );
+
+      await appendLog(
+        buildId,
+        `✅ PHP remote backend doğrulandı • ${phpRemotePrepared.framework} • ${phpRemotePrepared.contract.backendUrl}`
+      );
+
+      await appendLog(
+        buildId,
+        "🌐 PHP kaynak kodu Worker üzerinde çalıştırılmayacak • mevcut güvenli URL WebView Android pipeline kullanılacak."
+      );
+    }
 
     let dotnetMauiPrepared =
       null;

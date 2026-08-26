@@ -920,3 +920,46 @@ export async function preparePhpRemoteBackendSource({
       extracted.bytes
   };
 }
+
+export function applyPhpRemoteBackendConfig(
+  buildConfig,
+  prepared
+) {
+  const backendUrl =
+    prepared
+      ?.contract
+      ?.backendUrl;
+
+  if (
+    !backendUrl
+  ) {
+    throw new Error(
+      "PHP remote backend kontratı hazır değil."
+    );
+  }
+
+  const normalizedUrl =
+    normalizePhpBackendUrl(
+      backendUrl
+    );
+
+  buildConfig.sourceMode =
+    "URL";
+
+  buildConfig.webUrl =
+    normalizedUrl;
+
+  buildConfig.phpRemoteBackend =
+    {
+      framework:
+        prepared.framework,
+      backendUrl:
+        normalizedUrl,
+      healthPath:
+        prepared.contract.healthPath,
+      openExternalLinks:
+        prepared.contract.openExternalLinks
+    };
+
+  return buildConfig;
+}
