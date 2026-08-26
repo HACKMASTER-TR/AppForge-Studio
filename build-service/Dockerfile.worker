@@ -1,3 +1,5 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0.400-bookworm-slim AS dotnet-sdk
+
 FROM node:22-bookworm-slim
 
 ARG ANDROID_CMDLINE_TOOLS_VERSION=15859902
@@ -9,6 +11,10 @@ ARG FLUTTER_VERSION=3.44.9
 ARG FLUTTER_SHA256=a9120fa4a01048bdef438ddc3a2d4b7389662ea98a95db86eeaf10382bc4efcb
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV DOTNET_ROOT=/usr/share/dotnet
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV DOTNET_NOLOGO=1
+ENV NUGET_XMLDOC_MODE=skip
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
 ENV ANDROID_HOME=/opt/android-sdk
 ENV ANDROID_NDK_HOME=/opt/android-sdk/ndk/28.2.13676358
@@ -16,8 +22,10 @@ ENV ANDROID_NDK_ROOT=/opt/android-sdk/ndk/28.2.13676358
 ENV GRADLE_HOME=/opt/gradle/gradle-9.3.1
 ENV REACT_NATIVE_GRADLE_HOME=/opt/gradle/gradle-8.14.3
 ENV FLUTTER_HOME=/opt/flutter
-ENV PATH=/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:/opt/gradle/gradle-9.3.1/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/cmdline-tools/latest/bin:$PATH
+ENV PATH=/usr/share/dotnet:/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:/opt/gradle/gradle-9.3.1/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/cmdline-tools/latest/bin:$PATH
 ENV NODE_ENV=production
+
+COPY --from=dotnet-sdk /usr/share/dotnet /usr/share/dotnet
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -28,6 +36,9 @@ RUN apt-get update \
        xz-utils \
        cmake \
        ninja-build \
+       libicu72 \
+       libssl3 \
+       zlib1g \
        python3 \
        python3-pip \
        openjdk-17-jdk-headless \
@@ -92,6 +103,17 @@ RUN npm install -g yarn@1.22.22 pnpm@10.17.1 \
     && pnpm --version
 
 # =========================================================
+# .NET MAUI Android toolchain
+#
+# .NET 10 SDK is copied from Microsoft's pinned SDK image.
+# Linux MAUI Android support is installed through the official
+# maui-android workload.
+# =========================================================
+RUN dotnet --info \
+    && dotnet workload install maui-android \
+    && dotnet workload list | grep -F "maui-android"
+
+# =========================================================
 # Flutter Android toolchain
 #
 # Pinned official stable Linux archive + SHA-256 verification.
@@ -132,6 +154,7 @@ RUN node --test tests/react_native_live_build_engine.test.js
 RUN node --test tests/cpp_android_build_engine.test.js
 RUN node --test tests/cpp_android_live_build_engine.test.js
 RUN node tests/cpp_android_template_build_smoke.js
+RUN node --test tests/dotnet_maui_build_engine.test.js
 
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle
