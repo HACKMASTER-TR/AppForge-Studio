@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,6 +50,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -100,6 +102,37 @@ internal fun StudioHomeScreen(
     val context =
         androidx.compose.ui.platform.LocalContext.current
 
+    val configuration =
+        LocalConfiguration.current
+
+    val screenWidthDp =
+        configuration.screenWidthDp
+
+    val screenHeightDp =
+        configuration.screenHeightDp
+
+    val compact =
+        screenWidthDp < 380
+
+    val tablet =
+        minOf(
+            screenWidthDp,
+            screenHeightDp
+        ) >= 600
+
+    val wide =
+        screenWidthDp >= 600
+
+    val contentMaxWidth =
+        if (wide) 840.dp else 10000.dp
+
+    val contentHorizontalPadding =
+        when {
+            compact -> 14.dp
+            tablet -> 32.dp
+            else -> 24.dp
+        }
+
     var projects by remember {
         mutableStateOf(
             ProjectLibrary.load(context)
@@ -142,10 +175,12 @@ internal fun StudioHomeScreen(
             Row(
                 modifier =
                     Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .widthIn(max = contentMaxWidth)
                         .fillMaxWidth()
                         .padding(
-                            start = 20.dp,
-                            end = 12.dp,
+                            start = contentHorizontalPadding,
+                            end = if (compact) 8.dp else contentHorizontalPadding,
                             top = 10.dp,
                             bottom = 10.dp
                         ),
@@ -158,7 +193,12 @@ internal fun StudioHomeScreen(
                 ) {
                     Text(
                         text = "Projelerim",
-                        fontSize = 24.sp,
+                        fontSize =
+                            when {
+                                compact -> 21.sp
+                                tablet -> 28.sp
+                                else -> 24.sp
+                            },
                         fontWeight =
                             FontWeight.ExtraBold,
                         color = Color.White
@@ -182,11 +222,13 @@ internal fun StudioHomeScreen(
                     onClick = onOpenAi
                 )
 
-                LabeledActionButton(
-                    icon = "★",
-                    label = "Pro",
-                    onClick = onOpenPro
-                )
+                if (!compact) {
+                    LabeledActionButton(
+                        icon = "★",
+                        label = "Pro",
+                        onClick = onOpenPro
+                    )
+                }
 
                 Box {
                     LabeledActionButton(
@@ -240,15 +282,23 @@ internal fun StudioHomeScreen(
             Box(
                 modifier =
                     Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .widthIn(max = contentMaxWidth)
                         .padding(
-                            horizontal = 24.dp,
+                            horizontal = contentHorizontalPadding,
                             vertical = 8.dp
                         )
                         .fillMaxWidth()
-                        .height(68.dp)
+                        .height(
+                            when {
+                                compact -> 60.dp
+                                tablet -> 72.dp
+                                else -> 68.dp
+                            }
+                        )
                         .clip(
                             RoundedCornerShape(
-                                20.dp
+                                if (compact) 18.dp else 20.dp
                             )
                         )
                         .background(
@@ -277,7 +327,7 @@ internal fun StudioHomeScreen(
                 ) {
                     Text(
                         text = "+",
-                        fontSize = 32.sp,
+                        fontSize = if (compact) 28.sp else 32.sp,
                         fontWeight =
                             FontWeight.Light,
                         color =
@@ -286,7 +336,12 @@ internal fun StudioHomeScreen(
 
                     Text(
                         text = "Proje Oluştur",
-                        fontSize = 17.sp,
+                        fontSize =
+                            when {
+                                compact -> 15.sp
+                                tablet -> 18.sp
+                                else -> 17.sp
+                            },
                         fontWeight =
                             FontWeight.Bold,
                         color =
@@ -303,11 +358,14 @@ internal fun StudioHomeScreen(
             ) {
                 LazyColumn(
                     modifier =
-                        Modifier.fillMaxSize(),
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .widthIn(max = contentMaxWidth)
+                            .fillMaxSize(),
                     contentPadding =
                         PaddingValues(
-                            start = 24.dp,
-                            end = 24.dp,
+                            start = contentHorizontalPadding,
+                            end = contentHorizontalPadding,
                             top = 12.dp,
                             bottom = 24.dp
                         ),
@@ -907,68 +965,49 @@ private fun StudioBottomNavigation(
     onTemplates: () -> Unit,
     onSettings: () -> Unit
 ) {
-    Surface(
-        modifier =
-            Modifier
-                .padding(
-                    horizontal = 38.dp,
-                    vertical = 10.dp
-                )
-                .navigationBarsPadding()
-                .fillMaxWidth(),
-        shape =
-            RoundedCornerShape(
-                34.dp
+    val configuration = LocalConfiguration.current
+    val screenWidthDp = configuration.screenWidthDp
+    val screenHeightDp = configuration.screenHeightDp
+    val compact = screenWidthDp < 380
+    val tablet = minOf(screenWidthDp, screenHeightDp) >= 600
+    val navMaxWidth = if (screenWidthDp >= 600) 760.dp else 10000.dp
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(
+                horizontal = when {
+                    compact -> 8.dp
+                    tablet -> 24.dp
+                    else -> 16.dp
+                },
+                vertical = 10.dp
             ),
-        color =
-            Color(
-                0xF20C1216
-            ),
-        tonalElevation =
-            6.dp
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier =
-                Modifier
+        Surface(
+            modifier = Modifier
+                .widthIn(max = navMaxWidth)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(if (compact) 28.dp else 34.dp),
+            color = Color(0xF20C1216),
+            tonalElevation = 6.dp
+        ) {
+            Row(
+                modifier = Modifier
                     .fillMaxWidth()
                     .padding(
-                        vertical = 9.dp,
-                        horizontal = 8.dp
+                        vertical = if (compact) 7.dp else 9.dp,
+                        horizontal = if (compact) 2.dp else 8.dp
                     ),
-            horizontalArrangement =
-                Arrangement.SpaceEvenly
-        ) {
-            BottomNavigationItem(
-                icon = "⌂",
-                label = "Projelerim",
-                selected = true,
-                onClick =
-                    onProjects
-            )
-
-            BottomNavigationItem(
-                icon = "✨",
-                label = "Yerel AI",
-                selected = false,
-                onClick =
-                    onAi
-            )
-
-            BottomNavigationItem(
-                icon = "◇",
-                label = "Şablonlar",
-                selected = false,
-                onClick =
-                    onTemplates
-            )
-
-            BottomNavigationItem(
-                icon = "⚙",
-                label = "Ayarlar",
-                selected = false,
-                onClick =
-                    onSettings
-            )
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                BottomNavigationItem("⌂", "Projelerim", true, compact, onProjects)
+                BottomNavigationItem("✨", "Yerel AI", false, compact, onAi)
+                BottomNavigationItem("◇", "Şablonlar", false, compact, onTemplates)
+                BottomNavigationItem("⚙", "Ayarlar", false, compact, onSettings)
+            }
         }
     }
 }
@@ -978,77 +1017,45 @@ private fun BottomNavigationItem(
     icon: String,
     label: String,
     selected: Boolean,
+    compact: Boolean,
     onClick: () -> Unit
 ) {
     Column(
-        modifier =
-            Modifier
-                .clip(
-                    RoundedCornerShape(
-                        22.dp
-                    )
-                )
-                .clickable(
-                    onClick = onClick
-                )
-                .padding(
-                    horizontal = 19.dp,
-                    vertical = 7.dp
-                ),
-        horizontalAlignment =
-            Alignment.CenterHorizontally
+        modifier = Modifier
+            .clip(RoundedCornerShape(22.dp))
+            .clickable(onClick = onClick)
+            .padding(
+                horizontal = if (compact) 4.dp else 10.dp,
+                vertical = if (compact) 5.dp else 7.dp
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
-            modifier =
-                Modifier
-                    .clip(
-                        RoundedCornerShape(
-                            20.dp
-                        )
-                    )
-                    .background(
-                        if (selected) {
-                            Color(
-                                0xFF213341
-                            )
-                        } else {
-                            Color.Transparent
-                        }
-                    )
-                    .padding(
-                        horizontal = 16.dp,
-                        vertical = 4.dp
-                    ),
-            contentAlignment =
-                Alignment.Center
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    if (selected) Color(0xFF213341) else Color.Transparent
+                )
+                .padding(
+                    horizontal = if (compact) 8.dp else 13.dp,
+                    vertical = if (compact) 3.dp else 4.dp
+                ),
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = icon,
-                color =
-                    if (selected) {
-                        HomeBlue
-                    } else {
-                        HomeTextSecondary
-                    },
-                fontSize = 26.sp
+                color = if (selected) HomeBlue else HomeTextSecondary,
+                fontSize = if (compact) 22.sp else 26.sp
             )
         }
 
         Text(
             text = label,
-            fontSize = 11.sp,
-            color =
-                if (selected) {
-                    HomeBlue
-                } else {
-                    HomeTextSecondary
-                },
-            fontWeight =
-                if (selected) {
-                    FontWeight.Bold
-                } else {
-                    FontWeight.Normal
-                }
+            fontSize = if (compact) 9.sp else 11.sp,
+            color = if (selected) HomeBlue else HomeTextSecondary,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -1060,75 +1067,31 @@ private fun CreateProjectDialog(
     onAdvanced: () -> Unit,
     onConversion: () -> Unit
 ) {
-    Dialog(
-        onDismissRequest =
-            onDismiss
-    ) {
+    val compact = LocalConfiguration.current.screenWidthDp < 380
+
+    Dialog(onDismissRequest = onDismiss) {
         Card(
-            modifier =
-                Modifier.fillMaxWidth(),
-            shape =
-                RoundedCornerShape(
-                    28.dp
-                ),
-            colors =
-                CardDefaults.cardColors(
-                    containerColor =
-                        Color(
-                            0xFF101617
-                        )
-                )
+            modifier = Modifier
+                .widthIn(max = 620.dp)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(if (compact) 24.dp else 28.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF101617))
         ) {
             Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            24.dp
-                        ),
-                verticalArrangement =
-                    Arrangement.spacedBy(
-                        14.dp
-                    )
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(if (compact) 18.dp else 24.dp),
+                verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp)
             ) {
                 Text(
-                    text =
-                        "Nasıl oluşturmak istersin?",
+                    text = "Nasıl oluşturmak istersin?",
                     color = Color.White,
-                    fontSize = 23.sp,
-                    fontWeight =
-                        FontWeight.ExtraBold
+                    fontSize = if (compact) 20.sp else 23.sp,
+                    fontWeight = FontWeight.ExtraBold
                 )
-
-                ModeCard(
-                    icon = "ϟ",
-                    title =
-                        "Hızlı Oluştur",
-                    description =
-                        "Sadece isim, içerik ve ikon. Gerisini AppForge otomatik ayarlar.",
-                    onClick =
-                        onQuick
-                )
-
-                ModeCard(
-                    icon = "☷",
-                    title =
-                        "Gelişmiş Oluştur",
-                    description =
-                        "Paket adı, SDK, tema, izinler, imzalama ve gelişmiş ayarlar.",
-                    onClick =
-                        onAdvanced
-                )
-
-                ModeCard(
-                    icon = "↔",
-                    title =
-                        "Dönüşüm",
-                    description =
-                        "APK → Windows EXE veya EXE → Android APK dönüşüm araçları.",
-                    onClick =
-                        onConversion
-                )
+                ModeCard("ϟ", "Hızlı Oluştur", "Sadece isim, içerik ve ikon. Gerisini AppForge otomatik ayarlar.", onQuick)
+                ModeCard("☷", "Gelişmiş Oluştur", "Paket adı, SDK, tema, izinler, imzalama ve gelişmiş ayarlar.", onAdvanced)
+                ModeCard("↔", "Dönüşüm", "APK → Windows EXE veya EXE → Android APK dönüşüm araçları.", onConversion)
             }
         }
     }
@@ -1141,96 +1104,59 @@ private fun ModeCard(
     description: String,
     onClick: () -> Unit
 ) {
+    val compact = LocalConfiguration.current.screenWidthDp < 380
+
     Card(
         onClick = onClick,
-        modifier =
-            Modifier.fillMaxWidth(),
-        shape =
-            RoundedCornerShape(
-                22.dp
-            ),
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    HomeCardStrong
-            )
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(if (compact) 18.dp else 22.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeCardStrong)
     ) {
         Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = 18.dp,
-                        vertical = 18.dp
-                    ),
-            verticalAlignment =
-                Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = if (compact) 14.dp else 18.dp,
+                    vertical = if (compact) 14.dp else 18.dp
+                ),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier =
-                    Modifier
-                        .size(48.dp)
-                        .clip(
-                            RoundedCornerShape(
-                                14.dp
-                            )
-                        )
-                        .background(
-                            Color(
-                                0xFF172A34
-                            )
-                        ),
-                contentAlignment =
-                    Alignment.Center
+                modifier = Modifier
+                    .size(if (compact) 42.dp else 48.dp)
+                    .clip(RoundedCornerShape(if (compact) 12.dp else 14.dp))
+                    .background(Color(0xFF172A34)),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = icon,
-                    fontSize = 29.sp,
+                    fontSize = if (compact) 25.sp else 29.sp,
                     color = HomeBlue
                 )
             }
 
-            Spacer(
-                Modifier.size(
-                    16.dp
-                )
-            )
+            Spacer(Modifier.size(if (compact) 12.dp else 16.dp))
 
-            Column(
-                modifier =
-                    Modifier.weight(
-                        1f
-                    )
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     color = Color.White,
-                    fontSize = 17.sp,
-                    fontWeight =
-                        FontWeight.Bold
+                    fontSize = if (compact) 15.sp else 17.sp,
+                    fontWeight = FontWeight.Bold
                 )
-
-                Spacer(
-                    Modifier.height(
-                        3.dp
-                    )
-                )
-
+                Spacer(Modifier.height(3.dp))
                 Text(
-                    text =
-                        description,
-                    color =
-                        HomeTextSecondary,
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp
+                    text = description,
+                    color = HomeTextSecondary,
+                    fontSize = if (compact) 11.sp else 12.sp,
+                    lineHeight = if (compact) 15.sp else 16.sp
                 )
             }
 
             Text(
                 text = "›",
-                fontSize = 28.sp,
-                color =
-                    HomeTextSecondary
+                fontSize = if (compact) 24.sp else 28.sp,
+                color = HomeTextSecondary
             )
         }
     }

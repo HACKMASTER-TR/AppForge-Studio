@@ -5,6 +5,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +30,43 @@ internal fun LabeledActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val screenWidthDp =
+        LocalConfiguration.current.screenWidthDp
+
+    val compact =
+        screenWidthDp < 380
+
+    val expanded =
+        screenWidthDp >= 600
+
+    val horizontalPadding =
+        when {
+            compact -> 4.dp
+            expanded -> 10.dp
+            else -> 7.dp
+        }
+
+    val verticalPadding =
+        if (compact) {
+            3.dp
+        } else {
+            4.dp
+        }
+
+    val iconSize =
+        when {
+            compact -> 19.sp
+            expanded -> 23.sp
+            else -> 21.sp
+        }
+
+    val labelSize =
+        when {
+            compact -> 8.sp
+            expanded -> 10.sp
+            else -> 9.sp
+        }
+
     Column(
         modifier =
             modifier
@@ -38,21 +77,21 @@ internal fun LabeledActionButton(
                     onClick = onClick
                 )
                 .padding(
-                    horizontal = 7.dp,
-                    vertical = 4.dp
+                    horizontal = horizontalPadding,
+                    vertical = verticalPadding
                 ),
         horizontalAlignment =
             Alignment.CenterHorizontally
     ) {
         Text(
             text = icon,
-            fontSize = 21.sp,
+            fontSize = iconSize,
             maxLines = 1
         )
 
         Text(
             text = label,
-            fontSize = 9.sp,
+            fontSize = labelSize,
             fontWeight =
                 FontWeight.Medium,
             color =
@@ -76,33 +115,80 @@ internal fun BuilderShortcutBar(
     val scroll =
         rememberScrollState()
 
+    val screenWidthDp =
+        LocalConfiguration.current.screenWidthDp
+
+    val compact =
+        screenWidthDp < 380
+
+    val expanded =
+        screenWidthDp >= 600
+
+    val outerHorizontalPadding =
+        when {
+            compact -> 6.dp
+            expanded -> 18.dp
+            else -> 10.dp
+        }
+
+    val innerHorizontalPadding =
+        if (compact) {
+            2.dp
+        } else {
+            5.dp
+        }
+
+    val itemSpacing =
+        if (compact) {
+            1.dp
+        } else {
+            3.dp
+        }
+
     Surface(
         color =
             Color(0xFF0C1118),
         shape =
             RoundedCornerShape(
-                18.dp
+                if (compact) {
+                    16.dp
+                } else {
+                    18.dp
+                }
             ),
         modifier =
-            Modifier.padding(
-                horizontal = 10.dp,
-                vertical = 4.dp
-            )
+            Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = outerHorizontalPadding,
+                    vertical = 4.dp
+                )
     ) {
         Row(
             modifier =
                 Modifier
-                    .horizontalScroll(
-                        scroll
+                    .fillMaxWidth()
+                    .then(
+                        if (expanded) {
+                            Modifier
+                        } else {
+                            Modifier.horizontalScroll(
+                                scroll
+                            )
+                        }
                     )
                     .padding(
-                        horizontal = 5.dp,
+                        horizontal = innerHorizontalPadding,
                         vertical = 3.dp
                     ),
             horizontalArrangement =
-                Arrangement.spacedBy(
-                    3.dp
-                ),
+                if (expanded) {
+                    Arrangement.SpaceEvenly
+                } else {
+                    Arrangement.spacedBy(
+                        itemSpacing
+                    )
+                },
             verticalAlignment =
                 Alignment.CenterVertically
         ) {
