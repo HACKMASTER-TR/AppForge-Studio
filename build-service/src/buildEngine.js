@@ -36,6 +36,10 @@ import {
   buildDotnetMauiArtifacts
 } from "./dotnetMauiBuildEngine.js";
 import {
+  prepareDotnetAndroidSource,
+  buildDotnetAndroidArtifacts
+} from "./dotnetAndroidBuildEngine.js";
+import {
   createSourceBuildEnv
 } from "./sourceBuildEnv.js";
 import {
@@ -608,6 +612,47 @@ export function preflight(c, files = {}) {
 
   if (
     source.engine ===
+      "dotnet-android"
+  ) {
+    const unsupportedDotnetFeatures =
+      [
+        c.nativeBridge?.enabled
+          ? "Native Bridge"
+          : null,
+        c.admob?.enabled
+          ? "AdMob otomatik enjeksiyon"
+          : null,
+        c.billing?.enabled
+          ? "Billing otomatik enjeksiyon"
+          : null,
+        (
+          c.firebase?.analytics ||
+          c.firebase?.crashlytics
+        )
+          ? "Firebase otomatik enjeksiyon"
+          : null
+      ]
+        .filter(
+          Boolean
+        );
+
+    if (
+      unsupportedDotnetFeatures.length
+    ) {
+      throw new Error(
+        "Generic .NET Android motorunda şu AppForge otomatik eklentileri henüz kaynak projeye enjekte edilmiyor: " +
+        unsupportedDotnetFeatures.join(", ") +
+        ". .NET Android build için AppForge otomatik seçeneklerini kapat."
+      );
+    }
+
+    ok(
+      "Generic .NET / C# net10.0-android kaynak motoru."
+    );
+  }
+
+  if (
+    source.engine ===
       "unity-android"
   ) {
     if (
@@ -1148,6 +1193,58 @@ export async function executeBuild(job) {
       );
     }
 
+    let dotnetAndroidPrepared =
+      null;
+
+    if (
+      c.sourceMode ===
+        "LOCAL" &&
+      source.engine ===
+        "dotnet-android"
+    ) {
+      await appendLog(
+        buildId,
+        `🔷 ${source.label} algılandı • Generic .NET Android kaynak hazırlanıyor.`
+      );
+
+      dotnetAndroidPrepared =
+        await prepareDotnetAndroidSource(
+          {
+            projectZip:
+              uploadedProject,
+            workDir:
+              path.join(
+                work,
+                "dotnet-android"
+              ),
+            onLog:
+              line =>
+                appendLog(
+                  buildId,
+                  line
+                ),
+            cancelled:
+              () =>
+                throwIfCancelled(
+                  buildId
+                )
+          }
+        );
+
+      if (
+        !dotnetAndroidPrepared.androidReady
+      ) {
+        throw new Error(
+          "Generic .NET Android projesinde net10.0-android target bulunamadı."
+        );
+      }
+
+      await appendLog(
+        buildId,
+        `✅ Generic .NET Android kaynak doğrulandı • ${dotnetAndroidPrepared.net10AndroidTargets.join(", ")}.`
+      );
+    }
+
     let cppAndroidPrepared =
       false;
 
@@ -1519,6 +1616,11 @@ export async function executeBuild(job) {
         source.engine ===
           "dotnet-maui-android" &&
         dotnetMauiPrepared
+      ) &&
+      !(
+        source.engine ===
+          "dotnet-android" &&
+        dotnetAndroidPrepared
       )
     ) {
       throw new Error(
@@ -1554,7 +1656,9 @@ export async function executeBuild(job) {
       source.engine ===
         "android-ndk" ||
       source.engine ===
-        "dotnet-maui-android";
+        "dotnet-maui-android" ||
+      source.engine ===
+        "dotnet-android";
 
     const fastDecision =
       getFastBuildDecision(
@@ -1604,6 +1708,88 @@ export async function executeBuild(job) {
       false;
 
     if (
+      dotnetAndroidPrepared
+    ) {
+      buildMode =
+        "DOTNET_ANDROID";
+
+      await appendLog(
+        buildId,
+        "🔷 Generic .NET Android release build seçildi."
+      );
+
+      await updateBuild(
+        buildId,
+        {
+          progress: 20
+        }
+      );
+
+      const dotnetArtifacts =
+        await buildDotnetAndroidArtifacts(
+          {
+            prepared:
+              dotnetAndroidPrepared,
+            outputType,
+            packageName:
+              c.packageName,
+            versionCode:
+              c.versionCode,
+            versionName:
+              c.versionName,
+            appName:
+              c.appName,
+            onLog:
+              line =>
+                appendLog(
+                  buildId,
+                  line
+                ),
+            cancelled:
+              () =>
+                throwIfCancelled(
+                  buildId
+                )
+          }
+        );
+
+      if (
+        dotnetArtifacts.apk
+      ) {
+        out.apk =
+          await putOutput(
+            buildId,
+            "app-release.apk",
+            dotnetArtifacts.apk
+          );
+      }
+
+      if (
+        dotnetArtifacts.aab
+      ) {
+        out.aab =
+          await putOutput(
+            buildId,
+            "app-release.aab",
+            dotnetArtifacts.aab
+          );
+      }
+
+      fastCompleted =
+        true;
+
+      await updateBuild(
+        buildId,
+        {
+          progress: 90
+        }
+      );
+
+      await appendLog(
+        buildId,
+        "✅ Generic .NET Android build tamamlandı."
+      );
+    } else if (
       dotnetMauiPrepared
     ) {
       buildMode =

@@ -210,8 +210,8 @@ object ProjectTechnologyDetector {
                 id = "dotnet-android",
                 label = ".NET Android / C#",
                 buildEngine = "dotnet-android",
-                buildReady = false,
-                reason = "MAUI olmayan net10.0-android projesi bulundu. Canlı dotnet publish hattı sonraki aşamada bağlanacak."
+                buildReady = true,
+                reason = "MAUI olmayan net10.0-android projesi bulundu. dotnet restore + publish Android motoru destekleniyor."
             )
         }
 
