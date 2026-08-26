@@ -53,6 +53,9 @@ import {
   prepareNodeRemoteBackendSource,
   applyNodeRemoteBackendConfig
 } from "./nodeRemoteBackendEngine.js";
+import {
+  assertSourceBuildIsolation
+} from "./sourceBuildIsolation.js";
 
 function esc(s) {
   return String(s ?? "").replaceAll("\\", "\\\\").replaceAll('"', '\\"');
@@ -268,6 +271,38 @@ export function preflight(c, files = {}) {
     resolveSourceBuildEngine(
       c
     );
+
+  const sourceIsolation =
+    assertSourceBuildIsolation(
+      {
+        engine:
+          source.engine,
+        mode:
+          config.sourceBuildIsolationMode,
+        requireIsolation:
+          config.sourceBuildRequireIsolation,
+        workerCapabilities:
+          config.workerCapabilities,
+        requiredCapability:
+          config.sourceBuildIsolationCapability
+      }
+    );
+
+  if (
+    sourceIsolation.untrusted
+  ) {
+    if (
+      sourceIsolation.attestedIsolation
+    ) {
+      ok(
+        `Source Worker isolation attested • ${sourceIsolation.mode} • ${sourceIsolation.requiredCapability}.`
+      );
+    } else {
+      warn(
+        "Kaynak kod çalıştıran motor shared Worker üzerinde çalışabilir. Bu env izolasyonu OS/container sandbox değildir."
+      );
+    }
+  }
 
   if (c.sourceMode === "URL") {
     if (!/^https:\/\//i.test(c.webUrl || "")) {

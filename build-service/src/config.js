@@ -107,6 +107,23 @@ export const config = {
     1,
     Number(process.env.BUILD_CONCURRENCY || 2)
   ),
+  sourceBuildIsolationMode:
+    String(
+      process.env.SOURCE_BUILD_ISOLATION_MODE ||
+      "shared"
+    )
+      .trim()
+      .toLowerCase(),
+  sourceBuildRequireIsolation: boolEnv(
+    "SOURCE_BUILD_REQUIRE_ISOLATION",
+    false
+  ),
+  sourceBuildIsolationCapability:
+    String(
+      process.env.SOURCE_BUILD_ISOLATION_CAPABILITY ||
+      "source-isolation-dedicated"
+    )
+      .trim(),
   maxQueueSize: Math.max(
     1,
     Number(process.env.MAX_QUEUE_SIZE || 100)
@@ -232,6 +249,30 @@ export const config = {
 };
 
 export function assertCriticalConfig() {
+  if (
+    ![
+      "shared",
+      "dedicated",
+      "container",
+      "vm"
+    ].includes(
+      config.sourceBuildIsolationMode
+    )
+  ) {
+    throw new Error(
+      "SOURCE_BUILD_ISOLATION_MODE shared/dedicated/container/vm olmalı."
+    );
+  }
+
+  if (
+    config.sourceBuildRequireIsolation &&
+    !config.sourceBuildIsolationCapability
+  ) {
+    throw new Error(
+      "SOURCE_BUILD_ISOLATION_CAPABILITY gerekli."
+    );
+  }
+
   if (!config.databaseUrl) {
     throw new Error("DATABASE_URL gerekli.");
   }
