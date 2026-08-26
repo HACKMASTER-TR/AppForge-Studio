@@ -95,11 +95,11 @@ jobs:
             --network none \
             --read-only \
             --tmpfs /tmp:rw,nosuid,nodev,noexec,size=128m \
-            --tmpfs /home/appforge:rw,nosuid,nodev,size=256m \
-            --tmpfs /app/work:rw,nosuid,nodev,size=512m \
-            --tmpfs /app/outputs:rw,nosuid,nodev,size=512m \
-            --tmpfs /app/shared-inputs:rw,nosuid,nodev,size=128m \
-            --tmpfs /app/gradle-cache:rw,nosuid,nodev,size=512m \
+            --tmpfs /home/appforge:rw,nosuid,nodev,uid=10001,gid=10001,mode=0700,size=256m \
+            --tmpfs /app/work:rw,nosuid,nodev,uid=10001,gid=10001,mode=0750,size=512m \
+            --tmpfs /app/outputs:rw,nosuid,nodev,uid=10001,gid=10001,mode=0750,size=512m \
+            --tmpfs /app/shared-inputs:rw,nosuid,nodev,uid=10001,gid=10001,mode=0750,size=128m \
+            --tmpfs /app/gradle-cache:rw,nosuid,nodev,uid=10001,gid=10001,mode=0750,size=512m \
             --cap-drop ALL \
             --security-opt no-new-privileges:true \
             --pids-limit 256 \

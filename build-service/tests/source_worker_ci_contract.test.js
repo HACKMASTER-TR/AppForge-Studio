@@ -44,6 +44,8 @@ test(
         "10001:10001",
         "--network none",
         "--read-only",
+        "uid=10001,gid=10001,mode=0700",
+        "uid=10001,gid=10001,mode=0750",
         "--cap-drop ALL",
         "no-new-privileges:true",
         "--pids-limit 256",
@@ -84,6 +86,7 @@ test(
         "SOURCE_BUILD_REQUIRE_ISOLATION",
         "source-isolation-dedicated",
         "assertSourceBuildIsolation",
+        "SOURCE_WORKER_RUNTIME_SMOKE_FAIL",
         "SOURCE_WORKER_RUNTIME_SMOKE_OK"
       ]
     ) {
