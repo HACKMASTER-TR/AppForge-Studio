@@ -2,6 +2,20 @@ import AdmZip from "adm-zip";
 import { promises as fs, existsSync } from "fs";
 import path from "path";
 import { spawn } from "child_process";
+import { fileURLToPath } from "url";
+
+const SOURCE_ENGINE_DIR =
+  path.dirname(
+    fileURLToPath(
+      import.meta.url
+    )
+  );
+
+const BUILD_SERVICE_ROOT =
+  path.resolve(
+    SOURCE_ENGINE_DIR,
+    ".."
+  );
 
 const MAX_ZIP_ENTRIES =
   10_000;
@@ -1113,5 +1127,816 @@ export async function buildNodeWebSource({
     technology,
     packageManager:
       "npm"
+  };
+}
+
+function kotlinString(
+  value
+) {
+  return JSON.stringify(
+    String(
+      value ?? ""
+    )
+  );
+}
+
+function xmlText(
+  value
+) {
+  return String(
+    value ?? ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      "\"",
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&apos;"
+    );
+}
+
+function pythonPathIgnored(
+  relativePath
+) {
+  const segments =
+    relativePath
+      .replaceAll(
+        "\\",
+        "/"
+      )
+      .split(
+        "/"
+      )
+      .filter(
+        Boolean
+      );
+
+  const ignored =
+    new Set([
+      ".git",
+      ".idea",
+      ".gradle",
+      ".venv",
+      "venv",
+      "__pycache__",
+      "node_modules",
+      "build",
+      "dist"
+    ]);
+
+  return segments.some(
+    segment =>
+      ignored.has(
+        segment
+      )
+  );
+}
+
+function pythonResourceAllowed(
+  file
+) {
+  const ext =
+    path.extname(
+      file
+    )
+      .toLowerCase();
+
+  return new Set([
+    ".py",
+    ".json",
+    ".txt",
+    ".csv",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".ini",
+    ".cfg",
+    ".md"
+  ])
+    .has(
+      ext
+    );
+}
+
+async function findPythonProjectRoot(
+  extractedRoot
+) {
+  const files =
+    await walk(
+      extractedRoot,
+      {
+        maxDepth: 7,
+        maxFiles: 6_000
+      }
+    );
+
+  const entries =
+    files
+      .filter(
+        file => {
+          const name =
+            path.basename(
+              file
+            )
+              .toLowerCase();
+
+          return (
+            name ===
+              "main.py" ||
+            name ===
+              "app.py"
+          );
+        }
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          a.split(
+            path.sep
+          ).length -
+          b.split(
+            path.sep
+          ).length
+      );
+
+  if (
+    !entries.length
+  ) {
+    throw new Error(
+      "Python projesinde main.py veya app.py bulunamadı."
+    );
+  }
+
+  const entryFile =
+    entries[0];
+
+  return {
+    projectRoot:
+      path.dirname(
+        entryFile
+      ),
+    entryFile
+  };
+}
+
+async function copyPythonSources(
+  projectRoot,
+  pythonDest
+) {
+  const files =
+    await walk(
+      projectRoot,
+      {
+        maxDepth: 10,
+        maxFiles: 8_000
+      }
+    );
+
+  let copied =
+    0;
+
+  let copiedBytes =
+    0;
+
+  const maxFileBytes =
+    20 * 1024 * 1024;
+
+  const maxTotalBytes =
+    120 * 1024 * 1024;
+
+  for (
+    const file of
+    files
+  ) {
+    const relative =
+      path.relative(
+        projectRoot,
+        file
+      );
+
+    if (
+      pythonPathIgnored(
+        relative
+      ) ||
+      !pythonResourceAllowed(
+        file
+      )
+    ) {
+      continue;
+    }
+
+    if (
+      path.basename(
+        file
+      ) ===
+        "appforge_entry.py"
+    ) {
+      continue;
+    }
+
+    const stat =
+      await fs.stat(
+        file
+      );
+
+    if (
+      stat.size >
+        maxFileBytes
+    ) {
+      throw new Error(
+        `Python kaynak dosyası çok büyük: ${relative}`
+      );
+    }
+
+    copiedBytes +=
+      stat.size;
+
+    if (
+      copiedBytes >
+        maxTotalBytes
+    ) {
+      throw new Error(
+        "Python kaynakları toplam boyut sınırını aşıyor."
+      );
+    }
+
+    const target =
+      path.join(
+        pythonDest,
+        relative
+      );
+
+    if (
+      !safeInside(
+        pythonDest,
+        target
+      )
+    ) {
+      throw new Error(
+        "Python kaynak yolu güvenli değil."
+      );
+    }
+
+    await fs.mkdir(
+      path.dirname(
+        target
+      ),
+      {
+        recursive: true
+      }
+    );
+
+    await fs.copyFile(
+      file,
+      target
+    );
+
+    copied +=
+      1;
+  }
+
+  if (
+    copied ===
+      0
+  ) {
+    throw new Error(
+      "Paketlenecek Python kaynağı bulunamadı."
+    );
+  }
+
+  return {
+    copied,
+    copiedBytes
+  };
+}
+
+function pythonEntryModule(
+  projectRoot,
+  entryFile
+) {
+  const relative =
+    path.relative(
+      projectRoot,
+      entryFile
+    )
+      .replaceAll(
+        "\\",
+        "/"
+      )
+      .replace(
+        /\.py$/i,
+        ""
+      );
+
+  return relative
+    .split(
+      "/"
+    )
+    .filter(
+      Boolean
+    )
+    .join(
+      "."
+    );
+}
+
+async function writePythonEntryBridge(
+  pythonDest,
+  moduleName
+) {
+  const code =
+`import importlib
+import traceback
+
+
+def run():
+    try:
+        module = importlib.import_module(${JSON.stringify(moduleName)})
+
+        entry = getattr(
+            module,
+            "main",
+            None,
+        )
+
+        if callable(entry):
+            result = entry()
+            return "" if result is None else str(result)
+
+        value = getattr(
+            module,
+            "APPFORGE_OUTPUT",
+            None,
+        )
+
+        if value is not None:
+            return str(value)
+
+        return (
+            "Python projesi yüklendi.\\n"
+            "Giriş modülünde main() fonksiyonu veya "
+            "APPFORGE_OUTPUT değeri tanımlayabilirsin."
+        )
+
+    except Exception:
+        return traceback.format_exc()
+`;
+
+  await fs.writeFile(
+    path.join(
+      pythonDest,
+      "appforge_entry.py"
+    ),
+    code,
+    "utf8"
+  );
+}
+
+async function preparePythonRequirements(
+  projectRoot,
+  appDir
+) {
+  const candidates =
+    [
+      path.join(
+        projectRoot,
+        "requirements.txt"
+      ),
+      path.join(
+        path.dirname(
+          projectRoot
+        ),
+        "requirements.txt"
+      )
+    ];
+
+  let sourceFile =
+    null;
+
+  for (
+    const candidate of
+    candidates
+  ) {
+    try {
+      const stat =
+        await fs.stat(
+          candidate
+        );
+
+      if (
+        stat.isFile()
+      ) {
+        sourceFile =
+          candidate;
+        break;
+      }
+    } catch {
+    }
+  }
+
+  const target =
+    path.join(
+      appDir,
+      "requirements.txt"
+    );
+
+  if (
+    sourceFile
+  ) {
+    const stat =
+      await fs.stat(
+        sourceFile
+      );
+
+    if (
+      stat.size >
+        512 * 1024
+    ) {
+      throw new Error(
+        "requirements.txt beklenenden büyük."
+      );
+    }
+
+    await fs.copyFile(
+      sourceFile,
+      target
+    );
+
+    return true;
+  }
+
+  await fs.writeFile(
+    target,
+    "# AppForge Python Runtime\\n",
+    "utf8"
+  );
+
+  return false;
+}
+
+async function writePythonAndroidGradle(
+  appDir,
+  {
+    packageName,
+    versionCode,
+    versionName,
+    signing,
+    localKeystore
+  }
+) {
+  const customSigning =
+    signing?.mode ===
+      "CUSTOM";
+
+  if (
+    customSigning &&
+    !localKeystore
+  ) {
+    throw new Error(
+      "Python Android custom signing için keystore bulunamadı."
+    );
+  }
+
+  const signingConfig =
+    customSigning
+      ? `
+    signingConfigs {
+        create("release") {
+            storeFile = file(${kotlinString(localKeystore)})
+            storePassword = ${kotlinString(signing?.storePassword)}
+            keyAlias = ${kotlinString(signing?.alias)}
+            keyPassword = ${kotlinString(signing?.keyPassword)}
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            signingConfig =
+                signingConfigs.getByName("release")
+        }
+    }
+`
+      : `
+    buildTypes {
+        getByName("release") {
+            signingConfig =
+                signingConfigs.getByName("debug")
+        }
+    }
+`;
+
+  const gradle =
+`plugins {
+    id("com.android.application")
+    id("com.chaquo.python")
+}
+
+android {
+    namespace = "com.appforge.pythonruntime"
+    compileSdk = 37
+
+    defaultConfig {
+        applicationId = ${kotlinString(packageName)}
+        minSdk = 26
+        targetSdk = 37
+        versionCode = ${Number(versionCode) || 1}
+        versionName = ${kotlinString(versionName || "1.0.0")}
+
+        ndk {
+            abiFilters += listOf(
+                "arm64-v8a",
+                "x86_64"
+            )
+        }
+    }
+${signingConfig}
+}
+
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+
+        buildPython(
+            "/usr/bin/python3"
+        )
+
+        pip {
+            install(
+                "-r",
+                "requirements.txt"
+            )
+        }
+    }
+}
+`;
+
+  await fs.writeFile(
+    path.join(
+      appDir,
+      "build.gradle.kts"
+    ),
+    gradle,
+    "utf8"
+  );
+}
+
+async function patchPythonManifest(
+  appDir,
+  appName
+) {
+  const manifestFile =
+    path.join(
+      appDir,
+      "src",
+      "main",
+      "AndroidManifest.xml"
+    );
+
+  let manifest =
+    await fs.readFile(
+      manifestFile,
+      "utf8"
+    );
+
+  manifest =
+    manifest.replace(
+      'android:label="AppForge Python"',
+      `android:label="${xmlText(appName || "Python App")}"`
+    );
+
+  await fs.writeFile(
+    manifestFile,
+    manifest,
+    "utf8"
+  );
+}
+
+export async function preparePythonAndroidProject({
+  projectZip,
+  androidProjectDir,
+  config,
+  localKeystore = null,
+  onLog = null,
+  cancelled = null
+}) {
+  if (
+    !projectZip
+  ) {
+    throw new Error(
+      "Python kaynak ZIP'i eksik."
+    );
+  }
+
+  const templateRoot =
+    path.join(
+      BUILD_SERVICE_ROOT,
+      "python-android-template"
+    );
+
+  try {
+    const stat =
+      await fs.stat(
+        templateRoot
+      );
+
+    if (
+      !stat.isDirectory()
+    ) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error(
+      "Python Android runtime template bulunamadı."
+    );
+  }
+
+  const workRoot =
+    path.join(
+      path.dirname(
+        androidProjectDir
+      ),
+      "python-source"
+    );
+
+  const extractedRoot =
+    path.join(
+      workRoot,
+      "source"
+    );
+
+  await fs.rm(
+    workRoot,
+    {
+      recursive: true,
+      force: true
+    }
+  );
+
+  await fs.mkdir(
+    extractedRoot,
+    {
+      recursive: true
+    }
+  );
+
+  if (
+    cancelled
+  ) {
+    await cancelled();
+  }
+
+  await extractProjectZip(
+    projectZip,
+    extractedRoot
+  );
+
+  const {
+    projectRoot,
+    entryFile
+  } =
+    await findPythonProjectRoot(
+      extractedRoot
+    );
+
+  const moduleName =
+    pythonEntryModule(
+      projectRoot,
+      entryFile
+    );
+
+  if (
+    onLog
+  ) {
+    await onLog(
+      `🐍 Python giriş modülü: ${moduleName}`
+    );
+  }
+
+  await fs.rm(
+    androidProjectDir,
+    {
+      recursive: true,
+      force: true
+    }
+  );
+
+  await fs.cp(
+    templateRoot,
+    androidProjectDir,
+    {
+      recursive: true,
+      force: true
+    }
+  );
+
+  const appDir =
+    path.join(
+      androidProjectDir,
+      "app"
+    );
+
+  const pythonDest =
+    path.join(
+      appDir,
+      "src",
+      "main",
+      "python"
+    );
+
+  await fs.rm(
+    pythonDest,
+    {
+      recursive: true,
+      force: true
+    }
+  );
+
+  await fs.mkdir(
+    pythonDest,
+    {
+      recursive: true
+    }
+  );
+
+  const copied =
+    await copyPythonSources(
+      projectRoot,
+      pythonDest
+    );
+
+  await writePythonEntryBridge(
+    pythonDest,
+    moduleName
+  );
+
+  const hasRequirements =
+    await preparePythonRequirements(
+      projectRoot,
+      appDir
+    );
+
+  await writePythonAndroidGradle(
+    appDir,
+    {
+      packageName:
+        config?.packageName,
+      versionCode:
+        config?.versionCode,
+      versionName:
+        config?.versionName,
+      signing:
+        config?.signing,
+      localKeystore
+    }
+  );
+
+  await patchPythonManifest(
+    appDir,
+    config?.appName
+  );
+
+  if (
+    cancelled
+  ) {
+    await cancelled();
+  }
+
+  if (
+    onLog
+  ) {
+    await onLog(
+      `✅ Python proje hazır • ${copied.copied} dosya` +
+        (
+          hasRequirements
+            ? " • requirements.txt"
+            : ""
+        )
+    );
+  }
+
+  return {
+    androidProjectDir,
+    entryModule:
+      moduleName,
+    sourceFiles:
+      copied.copied,
+    sourceBytes:
+      copied.copiedBytes,
+    hasRequirements
   };
 }

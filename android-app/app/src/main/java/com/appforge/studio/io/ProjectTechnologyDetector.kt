@@ -216,12 +216,31 @@ object ProjectTechnologyDetector {
             has("setup.py") ||
             hasExt("py")
         ) {
+            val hasPythonEntry =
+                all.any {
+                    it.name.equals(
+                        "main.py",
+                        true
+                    ) ||
+                    it.name.equals(
+                        "app.py",
+                        true
+                    )
+                }
+
             return ProjectTechnologyInfo(
                 id = "python",
                 label = "Python",
                 buildEngine = "python-android",
-                buildReady = false,
-                reason = "Python kaynak/proje dosyaları bulundu."
+                buildReady = hasPythonEntry,
+                reason =
+                    if (
+                        hasPythonEntry
+                    ) {
+                        "Python kaynakları ve main.py/app.py giriş dosyası bulundu."
+                    } else {
+                        "Python projesi bulundu ancak main.py veya app.py giriş dosyası yok."
+                    }
             )
         }
 

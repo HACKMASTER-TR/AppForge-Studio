@@ -16,7 +16,8 @@ import {
   getFastBuildDecision
 } from "./fastBuild.js";
 import {
-  buildNodeWebSource
+  buildNodeWebSource,
+  preparePythonAndroidProject
 } from "./sourceBuildEngines.js";
 
 function esc(s) {
@@ -259,6 +260,53 @@ export function preflight(c, files = {}) {
         "Proje türü algılandı fakat güvenli bir build motoru seçilemedi."
       );
     }
+  }
+
+  if (
+    source.engine ===
+      "python-android"
+  ) {
+    const unsupportedPythonFeatures =
+      [
+        c.nativeBridge?.enabled
+          ? "Native Bridge"
+          : null,
+        c.admob?.enabled
+          ? "AdMob"
+          : null,
+        c.billing?.enabled
+          ? "Google Play Billing"
+          : null,
+        (
+          c.firebase?.analytics ||
+          c.firebase?.crashlytics
+        )
+          ? "Firebase"
+          : null,
+        c.features?.camera
+          ? "AppForge Kamera köprüsü"
+          : null,
+        c.features?.location
+          ? "AppForge Konum köprüsü"
+          : null
+      ]
+        .filter(
+          Boolean
+        );
+
+    if (
+      unsupportedPythonFeatures.length
+    ) {
+      throw new Error(
+        "Python Android motorunun ilk sürümünde şu AppForge eklentileri henüz bağlı değil: " +
+        unsupportedPythonFeatures.join(", ") +
+        ". Python build için bunları kapat."
+      );
+    }
+
+    ok(
+      "Python 3.11 / Chaquopy Android motoru."
+    );
   }
 
   if (c.signing?.mode === "CUSTOM") {
@@ -628,6 +676,52 @@ export async function executeBuild(job) {
         c
       );
 
+    let pythonAndroidPrepared =
+      false;
+
+    if (
+      c.sourceMode ===
+        "LOCAL" &&
+      source.engine ===
+        "python-android"
+    ) {
+      await appendLog(
+        buildId,
+        `🐍 ${source.label} algılandı • Python Android hazırlığı başlıyor.`
+      );
+
+      await preparePythonAndroidProject(
+        {
+          projectZip:
+            uploadedProject,
+          androidProjectDir:
+            android,
+          config:
+            c,
+          localKeystore,
+          onLog:
+            line =>
+              appendLog(
+                buildId,
+                line
+              ),
+          cancelled:
+            () =>
+              throwIfCancelled(
+                buildId
+              )
+        }
+      );
+
+      pythonAndroidPrepared =
+        true;
+
+      await appendLog(
+        buildId,
+        "✅ Python kaynakları Chaquopy Android projesine aktarıldı."
+      );
+    }
+
     let nodeWebPrepared =
       false;
 
@@ -689,6 +783,11 @@ export async function executeBuild(job) {
         source.engine ===
           "node-web" &&
         nodeWebPrepared
+      ) &&
+      !(
+        source.engine ===
+          "python-android" &&
+        pythonAndroidPrepared
       )
     ) {
       throw new Error(
@@ -709,6 +808,10 @@ export async function executeBuild(job) {
         c,
         outputType
       );
+
+    const forceFullSourceBuild =
+      source.engine ===
+        "python-android";
 
     const fastDecision =
       getFastBuildDecision(
@@ -745,6 +848,7 @@ export async function executeBuild(job) {
       );
 
     const hybridBothMode =
+      !forceFullSourceBuild &&
       outputType === "both" &&
       fastApkDecision.eligible;
 
@@ -757,6 +861,7 @@ export async function executeBuild(job) {
       false;
 
     if (
+      !forceFullSourceBuild &&
       fastDecision.eligible
     ) {
       try {
@@ -917,17 +1022,26 @@ export async function executeBuild(job) {
         buildId
       );
 
-      await generateAndroidProject(
-        android,
-        c,
-        {
-          localKeystore,
-          iconFile:
-            uploadedIcon,
-          firebaseConfig:
-            uploadedFirebaseConfig
-        }
-      );
+      if (
+        !pythonAndroidPrepared
+      ) {
+        await generateAndroidProject(
+          android,
+          c,
+          {
+            localKeystore,
+            iconFile:
+              uploadedIcon,
+            firebaseConfig:
+              uploadedFirebaseConfig
+          }
+        );
+      } else {
+        await appendLog(
+          buildId,
+          "🐍 Python Android projesi hazır • standart Gradle release pipeline kullanılacak."
+        );
+      }
 
       if (
         c.sourceMode ===
