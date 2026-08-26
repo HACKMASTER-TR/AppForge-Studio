@@ -49,6 +49,10 @@ import {
   preparePhpRemoteBackendSource,
   applyPhpRemoteBackendConfig
 } from "./phpRemoteBackendEngine.js";
+import {
+  prepareNodeRemoteBackendSource,
+  applyNodeRemoteBackendConfig
+} from "./nodeRemoteBackendEngine.js";
 
 function esc(s) {
   return String(s ?? "").replaceAll("\\", "\\\\").replaceAll('"', '\\"');
@@ -310,7 +314,7 @@ export function preflight(c, files = {}) {
       "remote-backend"
   ) {
     ok(
-      "PHP remote backend modu: Android içinde PHP çalıştırılmaz; public HTTPS WebView wrapper kullanılır."
+      "Remote backend modu: backend runtime Android içinde çalıştırılmaz; public HTTPS WebView wrapper kullanılır."
     );
 
     if (
@@ -319,7 +323,7 @@ export function preflight(c, files = {}) {
         true
     ) {
       warn(
-        "PHP remote backend uygulamasında Native Bridge varsayılan olarak kapalı kalacak. Remote Bridge gerekiyorsa allowRemote açıkça etkinleştirilmeli."
+        "Remote backend uygulamasında Native Bridge varsayılan olarak kapalı kalacak. Remote Bridge gerekiyorsa allowRemote açıkça etkinleştirilmeli."
       );
     }
   }
@@ -1079,7 +1083,7 @@ export async function executeBuild(job) {
         c
       );
 
-    let phpRemotePrepared =
+    let remoteBackendPrepared =
       null;
 
     if (
@@ -1088,56 +1092,117 @@ export async function executeBuild(job) {
       source.engine ===
         "remote-backend"
     ) {
-      await appendLog(
-        buildId,
-        `🐘 ${source.label} algılandı • PHP HTTPS remote backend kontratı doğrulanıyor.`
-      );
+      const remoteTechnology =
+        String(
+          source.technology ||
+          ""
+        )
+          .trim()
+          .toLowerCase();
 
-      phpRemotePrepared =
-        await preparePhpRemoteBackendSource(
-          {
-            projectZip:
-              uploadedProject,
-            workDir:
-              path.join(
-                work,
-                "php-remote"
-              ),
-            onLog:
-              line =>
-                appendLog(
-                  buildId,
-                  line
-                ),
-            cancelled:
-              () =>
-                throwIfCancelled(
-                  buildId
-                )
-          }
-        );
+      const isPhpRemote =
+        remoteTechnology ===
+          "php";
+
+      const isNodeRemote =
+        remoteTechnology ===
+          "nodejs";
 
       if (
-        !phpRemotePrepared.contract
+        !isPhpRemote &&
+        !isNodeRemote
       ) {
         throw new Error(
-          "PHP Android build için appforge.remote.json içinde önceden deploy edilmiş public HTTPS backendUrl gerekli."
+          `Remote backend router: desteklenmeyen teknoloji ${remoteTechnology || "unknown"}.`
         );
       }
 
-      applyPhpRemoteBackendConfig(
-        c,
-        phpRemotePrepared
+      await appendLog(
+        buildId,
+        isPhpRemote
+          ? `🐘 ${source.label} algılandı • PHP HTTPS remote backend kontratı doğrulanıyor.`
+          : `🟢 ${source.label} algılandı • Node.js HTTPS remote backend kontratı doğrulanıyor.`
+      );
+
+      remoteBackendPrepared =
+        isPhpRemote
+          ? await preparePhpRemoteBackendSource(
+              {
+                projectZip:
+                  uploadedProject,
+                workDir:
+                  path.join(
+                    work,
+                    "php-remote"
+                  ),
+                onLog:
+                  line =>
+                    appendLog(
+                      buildId,
+                      line
+                    ),
+                cancelled:
+                  () =>
+                    throwIfCancelled(
+                      buildId
+                    )
+              }
+            )
+          : await prepareNodeRemoteBackendSource(
+              {
+                projectZip:
+                  uploadedProject,
+                workDir:
+                  path.join(
+                    work,
+                    "node-remote"
+                  ),
+                onLog:
+                  line =>
+                    appendLog(
+                      buildId,
+                      line
+                    ),
+                cancelled:
+                  () =>
+                    throwIfCancelled(
+                      buildId
+                    )
+              }
+            );
+
+      if (
+        !remoteBackendPrepared.contract
+      ) {
+        throw new Error(
+          isPhpRemote
+            ? "PHP Android build için appforge.remote.json içinde önceden deploy edilmiş public HTTPS backendUrl gerekli."
+            : "Node.js Android build için appforge.remote.json içinde önceden deploy edilmiş public HTTPS backendUrl gerekli."
+        );
+      }
+
+      if (
+        isPhpRemote
+      ) {
+        applyPhpRemoteBackendConfig(
+          c,
+          remoteBackendPrepared
+        );
+      } else {
+        applyNodeRemoteBackendConfig(
+          c,
+          remoteBackendPrepared
+        );
+      }
+
+      await appendLog(
+        buildId,
+        `✅ ${isPhpRemote ? "PHP" : "Node.js"} remote backend doğrulandı • ${remoteBackendPrepared.framework} • ${remoteBackendPrepared.contract.backendUrl}`
       );
 
       await appendLog(
         buildId,
-        `✅ PHP remote backend doğrulandı • ${phpRemotePrepared.framework} • ${phpRemotePrepared.contract.backendUrl}`
-      );
-
-      await appendLog(
-        buildId,
-        "🌐 PHP kaynak kodu Worker üzerinde çalıştırılmayacak • mevcut güvenli URL WebView Android pipeline kullanılacak."
+        `🌐 ${isPhpRemote ? "PHP" : "Node.js"} backend kaynak kodu Worker üzerinde çalıştırılmayacak • mevcut güvenli URL WebView Android pipeline kullanılacak.`
       );
     }
 

@@ -870,3 +870,46 @@ export async function prepareNodeRemoteBackendSource({
       extracted.bytes
   };
 }
+
+export function applyNodeRemoteBackendConfig(
+  buildConfig,
+  prepared
+) {
+  const backendUrl =
+    prepared
+      ?.contract
+      ?.backendUrl;
+
+  if (
+    !backendUrl
+  ) {
+    throw new Error(
+      "Node.js remote backend kontratı hazır değil."
+    );
+  }
+
+  const normalizedUrl =
+    normalizeNodeBackendUrl(
+      backendUrl
+    );
+
+  buildConfig.sourceMode =
+    "URL";
+
+  buildConfig.webUrl =
+    normalizedUrl;
+
+  buildConfig.nodeRemoteBackend =
+    {
+      framework:
+        prepared.framework,
+      backendUrl:
+        normalizedUrl,
+      healthPath:
+        prepared.contract.healthPath,
+      openExternalLinks:
+        prepared.contract.openExternalLinks
+    };
+
+  return buildConfig;
+}
