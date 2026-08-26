@@ -511,12 +511,27 @@ object ProjectTechnologyDetector {
         }
 
         if (has("package.json")) {
+            val hasRemoteContract =
+                has(
+                    "appforge.remote.json"
+                )
+
             return ProjectTechnologyInfo(
                 id = "nodejs",
                 label = "Node.js / JavaScript-TypeScript",
-                buildEngine = "node-web",
+                buildEngine =
+                    if (hasRemoteContract) {
+                        "remote-backend"
+                    } else {
+                        "node-web"
+                    },
                 buildReady = false,
-                reason = "package.json bulundu; bunun web mi backend mi olduğu kesin değil."
+                reason =
+                    if (hasRemoteContract) {
+                        "Node.js remote backend kontratı bulundu. Public HTTPS backend doğrulamasından sonra WebView Android router sonraki aşamada bağlanacak."
+                    } else {
+                        "package.json bulundu; bunun web mi backend mi olduğu kesin değil. Backend için appforge.remote.json gerekli."
+                    }
             )
         }
 

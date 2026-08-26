@@ -187,6 +187,7 @@ RUN node --test tests/php_remote_backend_live_engine.test.js
 RUN node --test tests/dotnet_android_build_engine.test.js
 RUN node --test tests/dotnet_android_live_build_engine.test.js
 RUN node tests/dotnet_android_smoke.js
+RUN node --test tests/node_remote_backend_engine.test.js
 
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle
