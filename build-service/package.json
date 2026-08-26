@@ -9,7 +9,8 @@
     "test": "node --test tests/*.test.js",
     "doctor": "node scripts/toolchain-doctor.js",
     "doctor:strict": "node scripts/toolchain-doctor.js --strict",
-    "worker:unity": "node unity-worker.js"
+    "worker:unity": "node unity-worker.js",
+    "worker:source": "node source-worker.js"
   },
   "dependencies": {
     "adm-zip": "^0.5.16",

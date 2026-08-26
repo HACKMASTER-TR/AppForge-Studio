@@ -295,3 +295,52 @@ HEALTHCHECK --interval=30s --timeout=15s --start-period=20s --retries=3 \
   CMD node scripts/toolchain-doctor.js --strict
 
 CMD ["npm", "run", "worker"]
+
+# =========================================================
+# Dedicated AppForge source-build Worker hardening layer
+# =========================================================
+
+USER root
+
+RUN groupadd --gid 10001 appforge \
+    && useradd \
+       --uid 10001 \
+       --gid 10001 \
+       --create-home \
+       --home-dir /home/appforge \
+       --shell /usr/sbin/nologin \
+       appforge \
+    && mkdir -p \
+       /app/work \
+       /app/outputs \
+       /app/shared-inputs \
+       /app/gradle-cache \
+       /home/appforge/.cache \
+    && chown -R \
+       10001:10001 \
+       /app/work \
+       /app/outputs \
+       /app/shared-inputs \
+       /app/gradle-cache \
+       /home/appforge \
+    && chmod 0750 \
+       /app/work \
+       /app/outputs \
+       /app/shared-inputs \
+       /app/gradle-cache \
+    && git config --system --add safe.directory /opt/flutter
+
+ENV HOME=/home/appforge
+ENV GRADLE_USER_HOME=/app/gradle-cache
+
+ENV SOURCE_BUILD_ISOLATION_MODE=dedicated
+ENV SOURCE_BUILD_REQUIRE_ISOLATION=true
+ENV SOURCE_BUILD_ISOLATION_CAPABILITY=source-isolation-dedicated
+
+# Keep the default toolchain capabilities and explicitly attest that
+# this deployment is intended to be the isolated source-build worker.
+ENV WORKER_CAPABILITIES=android-api-37,build-tools-36.0.0,java-17,gradle,source-isolation-dedicated
+
+USER 10001:10001
+
+CMD ["npm", "run", "worker:source"]
