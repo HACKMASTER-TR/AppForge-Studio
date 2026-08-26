@@ -390,12 +390,22 @@ object ProjectTechnologyDetector {
             has("composer.json") ||
             hasExt("php")
         ) {
+            val hasRemoteContract =
+                has(
+                    "appforge.remote.json"
+                )
+
             return ProjectTechnologyInfo(
                 id = "php",
                 label = "PHP",
                 buildEngine = "remote-backend",
                 buildReady = false,
-                reason = "PHP kaynak veya composer.json bulundu."
+                reason =
+                    if (hasRemoteContract) {
+                        "PHP remote backend kontratı bulundu. HTTPS WebView router bağlantısı sonraki aşamada etkinleştirilecek."
+                    } else {
+                        "PHP Android içinde doğrudan çalıştırılmaz. appforge.remote.json ile önceden deploy edilmiş HTTPS backend URL'i gerekli."
+                    }
             )
         }
 
