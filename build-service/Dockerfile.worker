@@ -100,6 +100,7 @@ RUN node --test tests/python_source_build_engine.test.js
 RUN node --test tests/android_gradle_source_engine.test.js
 RUN node --test tests/flutter_build_engine.test.js
 RUN node --test tests/flutter_live_build_engine.test.js
+RUN node --test tests/react_native_build_engine.test.js
 
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle
