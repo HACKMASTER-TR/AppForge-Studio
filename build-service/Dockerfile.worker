@@ -97,10 +97,13 @@ RUN curl -fL --retry 4 \
     && unzip -q /tmp/react-native-gradle.zip -d /opt/gradle \
     && rm /tmp/react-native-gradle.zip /tmp/react-native-gradle.zip.sha256
 
-# npm is already bundled with Node. Add pinned Yarn classic and pnpm for source imports.
-RUN npm install -g yarn@1.22.22 pnpm@10.17.1 \
-    && yarn --version \
-    && pnpm --version
+# Node 22 image already ships Corepack shims.
+# Activate pinned Yarn classic and pnpm without overwriting existing /usr/local/bin shims.
+RUN corepack enable \
+    && corepack prepare yarn@1.22.22 --activate \
+    && corepack prepare pnpm@10.17.1 --activate \
+    && test "$(yarn --version)" = "1.22.22" \
+    && test "$(pnpm --version)" = "10.17.1"
 
 
 # Fixed AppForge source-build DEBUG signing key.

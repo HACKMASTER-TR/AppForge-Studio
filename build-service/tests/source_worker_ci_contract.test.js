@@ -96,3 +96,63 @@ test(
     }
   }
 );
+
+test(
+  "dedicated source worker Dockerfile uses Corepack and a single source command",
+  async () => {
+    const docker =
+      await fs.readFile(
+        path.join(
+          repoRoot,
+          "build-service",
+          "Dockerfile.source-worker"
+        ),
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        "corepack prepare yarn@1.22.22 --activate",
+        "corepack prepare pnpm@10.17.1 --activate",
+        'CMD ["npm", "run", "worker:source"]'
+      ]
+    ) {
+      assert.ok(
+        docker.includes(
+          marker
+        ),
+        marker
+      );
+    }
+
+    assert.equal(
+      docker.includes(
+        "npm install -g yarn@1.22.22"
+      ),
+      false,
+      "Node 22 image içinde mevcut Yarn shim'i npm -g ile ezilmemeli."
+    );
+
+    assert.equal(
+      docker.includes(
+        'CMD ["npm", "run", "worker"]'
+      ),
+      false,
+      "Dedicated source image içinde normal Worker CMD kalmamalı."
+    );
+
+    const sourceCmdCount =
+      docker
+        .split(
+          'CMD ["npm", "run", "worker:source"]'
+        )
+        .length -
+      1;
+
+    assert.equal(
+      sourceCmdCount,
+      1,
+      "Dedicated source image tam bir worker:source CMD içermeli."
+    );
+  }
+);
