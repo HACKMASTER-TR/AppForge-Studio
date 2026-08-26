@@ -20,6 +20,10 @@ import {
   preparePythonAndroidProject,
   prepareAndroidGradleProject
 } from "./sourceBuildEngines.js";
+import {
+  prepareFlutterSource,
+  buildFlutterArtifacts
+} from "./flutterBuildEngine.js";
 
 function esc(s) {
   return String(s ?? "").replaceAll("\\", "\\\\").replaceAll('"', '\\"');
@@ -348,6 +352,47 @@ export function preflight(c, files = {}) {
 
     ok(
       "Native Android Gradle kaynak motoru."
+    );
+  }
+
+  if (
+    source.engine ===
+      "flutter"
+  ) {
+    const unsupportedFlutterFeatures =
+      [
+        c.nativeBridge?.enabled
+          ? "Native Bridge"
+          : null,
+        c.admob?.enabled
+          ? "AdMob otomatik enjeksiyon"
+          : null,
+        c.billing?.enabled
+          ? "Billing otomatik enjeksiyon"
+          : null,
+        (
+          c.firebase?.analytics ||
+          c.firebase?.crashlytics
+        )
+          ? "Firebase otomatik enjeksiyon"
+          : null
+      ]
+        .filter(
+          Boolean
+        );
+
+    if (
+      unsupportedFlutterFeatures.length
+    ) {
+      throw new Error(
+        "Flutter kaynak motorunda şu AppForge otomatik eklentileri henüz kaynak projeye enjekte edilmiyor: " +
+        unsupportedFlutterFeatures.join(", ") +
+        ". Flutter projesi kendi paketlerini kullanabilir; AppForge otomatik seçeneklerini kapat."
+      );
+    }
+
+    ok(
+      "Flutter / Dart Android kaynak motoru."
     );
   }
 
@@ -718,6 +763,50 @@ export async function executeBuild(job) {
         c
       );
 
+    let flutterPrepared =
+      null;
+
+    if (
+      c.sourceMode ===
+        "LOCAL" &&
+      source.engine ===
+        "flutter"
+    ) {
+      await appendLog(
+        buildId,
+        `🦋 ${source.label} algılandı • Flutter kaynak hazırlanıyor.`
+      );
+
+      flutterPrepared =
+        await prepareFlutterSource(
+          {
+            projectZip:
+              uploadedProject,
+            workDir:
+              path.join(
+                work,
+                "flutter"
+              ),
+            onLog:
+              line =>
+                appendLog(
+                  buildId,
+                  line
+                ),
+            cancelled:
+              () =>
+                throwIfCancelled(
+                  buildId
+                )
+          }
+        );
+
+      await appendLog(
+        buildId,
+        "✅ Flutter kaynak doğrulandı • Android artifact build'e hazır."
+      );
+    }
+
     let androidGradlePrepared =
       false;
 
@@ -881,6 +970,11 @@ export async function executeBuild(job) {
         source.engine ===
           "android-gradle" &&
         androidGradlePrepared
+      ) &&
+      !(
+        source.engine ===
+          "flutter" &&
+        flutterPrepared
       )
     ) {
       throw new Error(
@@ -906,7 +1000,9 @@ export async function executeBuild(job) {
       source.engine ===
         "python-android" ||
       source.engine ===
-        "android-gradle";
+        "android-gradle" ||
+      source.engine ===
+        "flutter";
 
     const fastDecision =
       getFastBuildDecision(
@@ -956,6 +1052,89 @@ export async function executeBuild(job) {
       false;
 
     if (
+      flutterPrepared
+    ) {
+      buildMode =
+        "FLUTTER";
+
+      await appendLog(
+        buildId,
+        "🦋 Flutter/Dart release build seçildi."
+      );
+
+      await updateBuild(
+        buildId,
+        {
+          progress: 20
+        }
+      );
+
+      const flutterArtifacts =
+        await buildFlutterArtifacts(
+          {
+            prepared:
+              flutterPrepared,
+            outputType,
+            packageName:
+              c.packageName,
+            versionCode:
+              c.versionCode,
+            versionName:
+              c.versionName,
+            signing:
+              c.signing,
+            localKeystore,
+            onLog:
+              line =>
+                appendLog(
+                  buildId,
+                  line
+                ),
+            cancelled:
+              () =>
+                throwIfCancelled(
+                  buildId
+                )
+          }
+        );
+
+      if (
+        flutterArtifacts.apk
+      ) {
+        out.apk =
+          await putOutput(
+            buildId,
+            "app-release.apk",
+            flutterArtifacts.apk
+          );
+      }
+
+      if (
+        flutterArtifacts.aab
+      ) {
+        out.aab =
+          await putOutput(
+            buildId,
+            "app-release.aab",
+            flutterArtifacts.aab
+          );
+      }
+
+      fastCompleted =
+        true;
+
+      await updateBuild(
+        buildId,
+        {
+          progress: 90
+        }
+      );
+
+      await appendLog(
+        buildId,
+        "✅ Flutter/Dart Android build tamamlandı."
+      );
+    } else if (
       !forceFullSourceBuild &&
       fastDecision.eligible
     ) {

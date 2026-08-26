@@ -110,7 +110,7 @@ object ProjectTechnologyDetector {
                 id = "flutter",
                 label = "Flutter / Dart",
                 buildEngine = "flutter",
-                buildReady = false,
+                buildReady = true,
                 reason = "pubspec.yaml ve Flutter proje yapısı bulundu."
             )
         }

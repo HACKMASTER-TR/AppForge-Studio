@@ -3,6 +3,7 @@ import {
   promises as fs
 } from "fs";
 import path from "path";
+import { spawn } from "child_process";
 
 const MAX_ZIP_ENTRIES =
   10_000;
@@ -480,4 +481,602 @@ export async function prepareFlutterSource({
     extractedBytes:
       extracted.bytes
   };
+}
+
+const FLUTTER_COMMAND_TIMEOUT_MS =
+  15 * 60 * 1000;
+
+const FLUTTER_LOG_LIMIT =
+  250_000;
+
+function groovyQuote(
+  value
+) {
+  return String(
+    value ?? ""
+  )
+    .replaceAll(
+      "\\",
+      "\\\\"
+    )
+    .replaceAll(
+      "'",
+      "\\'"
+    );
+}
+
+async function runFlutterCommand({
+  projectRoot,
+  args,
+  onLog = null,
+  cancelled = null,
+  timeoutMs = FLUTTER_COMMAND_TIMEOUT_MS
+}) {
+  if (
+    cancelled
+  ) {
+    await cancelled();
+  }
+
+  const env =
+    {
+      ...process.env,
+      CI:
+        "true",
+      FLUTTER_SUPPRESS_ANALYTICS:
+        "true",
+      PUB_ENVIRONMENT:
+        "appforge"
+    };
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+      const child =
+        spawn(
+          "flutter",
+          args,
+          {
+            cwd:
+              projectRoot,
+            env,
+            shell:
+              false,
+            stdio: [
+              "ignore",
+              "pipe",
+              "pipe"
+            ]
+          }
+        );
+
+      let output =
+        "";
+
+      const consume =
+        chunk => {
+          const text =
+            String(
+              chunk
+            );
+
+          if (
+            output.length <
+              FLUTTER_LOG_LIMIT
+          ) {
+            output +=
+              text.slice(
+                0,
+                FLUTTER_LOG_LIMIT -
+                  output.length
+              );
+          }
+
+          if (
+            onLog
+          ) {
+            const lines =
+              text
+                .split(
+                  /\r?\n/
+                )
+                .map(
+                  line =>
+                    line.trim()
+                )
+                .filter(
+                  Boolean
+                )
+                .slice(
+                  0,
+                  16
+                );
+
+            for (
+              const line of
+              lines
+            ) {
+              Promise.resolve(
+                onLog(
+                  line.slice(
+                    0,
+                    800
+                  )
+                )
+              )
+                .catch(
+                  () => {}
+                );
+            }
+          }
+        };
+
+      child.stdout.on(
+        "data",
+        consume
+      );
+
+      child.stderr.on(
+        "data",
+        consume
+      );
+
+      const timer =
+        setTimeout(
+          () => {
+            child.kill(
+              "SIGKILL"
+            );
+          },
+          timeoutMs
+        );
+
+      child.on(
+        "error",
+        error => {
+          clearTimeout(
+            timer
+          );
+          reject(
+            error
+          );
+        }
+      );
+
+      child.on(
+        "close",
+        code => {
+          clearTimeout(
+            timer
+          );
+
+          if (
+            code ===
+              0
+          ) {
+            resolve(
+              output
+            );
+          } else {
+            reject(
+              new Error(
+                `flutter ${args.join(" ")} başarısız (exit=${code}).\n` +
+                output.slice(
+                  -14_000
+                )
+              )
+            );
+          }
+        }
+      );
+    }
+  );
+}
+
+async function configureFlutterAndroidSigning(
+  projectRoot,
+  {
+    packageName,
+    signing,
+    localKeystore
+  }
+) {
+  const androidDir =
+    path.join(
+      projectRoot,
+      "android"
+    );
+
+  const appDir =
+    path.join(
+      androidDir,
+      "app"
+    );
+
+  const kts =
+    path.join(
+      appDir,
+      "build.gradle.kts"
+    );
+
+  const groovy =
+    path.join(
+      appDir,
+      "build.gradle"
+    );
+
+  let appBuildFile =
+    null;
+
+  let kotlinDsl =
+    false;
+
+  try {
+    if (
+      (
+        await fs.stat(
+          kts
+        )
+      ).isFile()
+    ) {
+      appBuildFile =
+        kts;
+      kotlinDsl =
+        true;
+    }
+  } catch {
+  }
+
+  if (
+    !appBuildFile
+  ) {
+    try {
+      if (
+        (
+          await fs.stat(
+            groovy
+          )
+        ).isFile()
+      ) {
+        appBuildFile =
+          groovy;
+      }
+    } catch {
+    }
+  }
+
+  if (
+    !appBuildFile
+  ) {
+    throw new Error(
+      "Flutter Android app/build.gradle(.kts) bulunamadı."
+    );
+  }
+
+  const customSigning =
+    signing?.mode ===
+      "CUSTOM";
+
+  if (
+    customSigning &&
+    !localKeystore
+  ) {
+    throw new Error(
+      "Flutter CUSTOM signing için keystore bulunamadı."
+    );
+  }
+
+  const packageId =
+    groovyQuote(
+      packageName
+    );
+
+  let signingBlock;
+
+  if (
+    customSigning
+  ) {
+    signingBlock =
+`
+    signingConfigs {
+        appforgeRelease {
+            storeFile file('${groovyQuote(localKeystore)}')
+            storePassword '${groovyQuote(signing?.storePassword)}'
+            keyAlias '${groovyQuote(signing?.alias)}'
+            keyPassword '${groovyQuote(signing?.keyPassword)}'
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.appforgeRelease
+        }
+    }
+`;
+  } else {
+    signingBlock =
+`
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+        }
+    }
+`;
+  }
+
+  const override =
+`android {
+    defaultConfig {
+        applicationId '${packageId}'
+    }
+${signingBlock}
+}
+`;
+
+  const overrideFile =
+    path.join(
+      androidDir,
+      "appforge-flutter-overrides.gradle"
+    );
+
+  await fs.writeFile(
+    overrideFile,
+    override,
+    "utf8"
+  );
+
+  let appBuild =
+    await fs.readFile(
+      appBuildFile,
+      "utf8"
+    );
+
+  if (
+    !appBuild.includes(
+      "appforge-flutter-overrides.gradle"
+    )
+  ) {
+    const apply =
+      kotlinDsl
+        ? '\napply(from = rootProject.file("appforge-flutter-overrides.gradle"))\n'
+        : '\napply from: rootProject.file("appforge-flutter-overrides.gradle")\n';
+
+    appBuild =
+      appBuild.trimEnd() +
+      apply;
+
+    await fs.writeFile(
+      appBuildFile,
+      appBuild,
+      "utf8"
+    );
+  }
+
+  return {
+    appBuildFile,
+    overrideFile,
+    kotlinDsl,
+    customSigning
+  };
+}
+
+export function flutterBuildTargets(
+  outputType
+) {
+  if (
+    outputType ===
+      "apk"
+  ) {
+    return [
+      "apk"
+    ];
+  }
+
+  if (
+    outputType ===
+      "aab"
+  ) {
+    return [
+      "appbundle"
+    ];
+  }
+
+  return [
+    "apk",
+    "appbundle"
+  ];
+}
+
+async function findBuiltFlutterArtifact(
+  projectRoot,
+  target
+) {
+  const candidates =
+    target ===
+      "apk"
+      ? [
+          path.join(
+            projectRoot,
+            "build",
+            "app",
+            "outputs",
+            "flutter-apk",
+            "app-release.apk"
+          )
+        ]
+      : [
+          path.join(
+            projectRoot,
+            "build",
+            "app",
+            "outputs",
+            "bundle",
+            "release",
+            "app-release.aab"
+          )
+        ];
+
+  for (
+    const candidate of
+    candidates
+  ) {
+    try {
+      const stat =
+        await fs.stat(
+          candidate
+        );
+
+      if (
+        stat.isFile() &&
+        stat.size >
+          0
+      ) {
+        return candidate;
+      }
+    } catch {
+    }
+  }
+
+  throw new Error(
+    target ===
+      "apk"
+      ? "Flutter release APK çıktısı bulunamadı."
+      : "Flutter release AAB çıktısı bulunamadı."
+  );
+}
+
+export async function buildFlutterArtifacts({
+  prepared,
+  outputType,
+  packageName,
+  versionCode,
+  versionName,
+  signing,
+  localKeystore = null,
+  onLog = null,
+  cancelled = null
+}) {
+  if (
+    !prepared?.projectRoot
+  ) {
+    throw new Error(
+      "Flutter proje hazırlığı eksik."
+    );
+  }
+
+  await configureFlutterAndroidSigning(
+    prepared.projectRoot,
+    {
+      packageName,
+      signing,
+      localKeystore
+    }
+  );
+
+  if (
+    onLog
+  ) {
+    await onLog(
+      "📦 flutter pub get başlatılıyor..."
+    );
+  }
+
+  await runFlutterCommand(
+    {
+      projectRoot:
+        prepared.projectRoot,
+      args: [
+        "pub",
+        "get"
+      ],
+      onLog,
+      cancelled
+    }
+  );
+
+  const targets =
+    flutterBuildTargets(
+      outputType
+    );
+
+  const result =
+    {};
+
+  for (
+    const target of
+    targets
+  ) {
+    if (
+      cancelled
+    ) {
+      await cancelled();
+    }
+
+    if (
+      onLog
+    ) {
+      await onLog(
+        target ===
+          "apk"
+          ? "🦋 Flutter release APK build başlıyor..."
+          : "🦋 Flutter release AAB build başlıyor..."
+      );
+    }
+
+    await runFlutterCommand(
+      {
+        projectRoot:
+          prepared.projectRoot,
+        args: [
+          "build",
+          target,
+          "--release",
+          "--no-pub",
+          "--build-number",
+          String(
+            Number(
+              versionCode
+            ) ||
+            1
+          ),
+          "--build-name",
+          String(
+            versionName ||
+            "1.0.0"
+          )
+        ],
+        onLog,
+        cancelled
+      }
+    );
+
+    const artifact =
+      await findBuiltFlutterArtifact(
+        prepared.projectRoot,
+        target
+      );
+
+    if (
+      target ===
+        "apk"
+    ) {
+      result.apk =
+        artifact;
+    } else {
+      result.aab =
+        artifact;
+    }
+  }
+
+  if (
+    onLog
+  ) {
+    await onLog(
+      "✅ Flutter Android artifactları hazır."
+    );
+  }
+
+  return result;
 }
