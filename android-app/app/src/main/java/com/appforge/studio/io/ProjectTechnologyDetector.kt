@@ -202,6 +202,46 @@ object ProjectTechnologyDetector {
             )
         }
 
+        if (
+            csproj != null &&
+            csprojText.contains("net10.0-android")
+        ) {
+            return ProjectTechnologyInfo(
+                id = "dotnet-android",
+                label = ".NET Android / C#",
+                buildEngine = "dotnet-android",
+                buildReady = false,
+                reason = "MAUI olmayan net10.0-android projesi bulundu. Canlı dotnet publish hattı sonraki aşamada bağlanacak."
+            )
+        }
+
+        if (
+            csproj != null &&
+            (
+                csprojText.contains("<usewpf>true</usewpf>") ||
+                csprojText.contains("<usewindowsforms>true</usewindowsforms>") ||
+                csprojText.contains("-windows")
+            )
+        ) {
+            return ProjectTechnologyInfo(
+                id = "dotnet-windows",
+                label = ".NET Windows / C#",
+                buildEngine = "unknown",
+                buildReady = false,
+                reason = "WPF/WinForms/Windows hedefli .NET proje doğrudan Android uygulamasına dönüştürülemez."
+            )
+        }
+
+        if (csproj != null) {
+            return ProjectTechnologyInfo(
+                id = "dotnet-csharp",
+                label = ".NET / C#",
+                buildEngine = "unknown",
+                buildReady = false,
+                reason = ".NET proje bulundu ancak Android uyumlu net10.0-android hedefi yok."
+            )
+        }
+
         if (has("manage.py")) {
             return ProjectTechnologyInfo(
                 id = "python-django",

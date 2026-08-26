@@ -88,6 +88,7 @@ const SOURCE_BUILD_ENGINES =
     "expo-android",
     "android-ndk",
     "dotnet-maui-android",
+    "dotnet-android",
     "unity-android",
     "remote-backend",
     "unknown"
@@ -331,6 +332,7 @@ export function preflight(c, files = {}) {
       "expo-android",
       "android-ndk",
       "dotnet-maui-android",
+      "dotnet-android",
       "unity-android"
     ]
       .includes(
