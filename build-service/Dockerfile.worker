@@ -11,6 +11,8 @@ ARG FLUTTER_SHA256=a9120fa4a01048bdef438ddc3a2d4b7389662ea98a95db86eeaf10382bc4e
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
 ENV ANDROID_HOME=/opt/android-sdk
+ENV ANDROID_NDK_HOME=/opt/android-sdk/ndk/28.2.13676358
+ENV ANDROID_NDK_ROOT=/opt/android-sdk/ndk/28.2.13676358
 ENV GRADLE_HOME=/opt/gradle/gradle-9.3.1
 ENV REACT_NATIVE_GRADLE_HOME=/opt/gradle/gradle-8.14.3
 ENV FLUTTER_HOME=/opt/flutter
@@ -24,6 +26,8 @@ RUN apt-get update \
        unzip \
        git \
        xz-utils \
+       cmake \
+       ninja-build \
        python3 \
        python3-pip \
        openjdk-17-jdk-headless \
@@ -52,7 +56,8 @@ RUN if [ "${ANDROID_SDK_LICENSE_ACCEPTED}" != "true" ]; then \
     && sdkmanager --channel=3 \
        "platform-tools" \
        "platforms;android-37.0" \
-       "build-tools;36.0.0"
+       "build-tools;36.0.0" \
+       "ndk;28.2.13676358"
 
 # AGP 9.1 requires Gradle 9.3.1 minimum. Verify Gradle's published checksum.
 RUN curl -fL --retry 4 \
@@ -123,6 +128,7 @@ RUN node --test tests/flutter_live_build_engine.test.js
 RUN node --test tests/react_native_build_engine.test.js
 RUN node --test tests/source_build_env.test.js
 RUN node --test tests/react_native_live_build_engine.test.js
+RUN node --test tests/cpp_android_build_engine.test.js
 
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle
