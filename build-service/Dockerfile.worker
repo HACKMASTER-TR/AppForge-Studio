@@ -193,6 +193,7 @@ RUN node --test tests/technology_support_matrix.test.js
 RUN node --test tests/source_build_isolation.test.js
 RUN node --test tests/source_worker_contract.test.js
 RUN node --test tests/source_worker_queue_routing.test.js
+RUN node --test tests/source_worker_ci_contract.test.js
 
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle
