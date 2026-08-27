@@ -17260,6 +17260,37 @@ private fun AppForgeHelpCenterScreen(
     languageCode: String,
     onBack: () -> Unit
 ) {
+    val helpConfiguration =
+        LocalConfiguration.current
+
+    val helpScreenWidthDp =
+        helpConfiguration.screenWidthDp
+
+    val helpScreenHeightDp =
+        helpConfiguration.screenHeightDp
+
+    val helpCompact =
+        helpScreenWidthDp < 380
+
+    val helpTablet =
+        minOf(
+            helpScreenWidthDp,
+            helpScreenHeightDp
+        ) >= 600
+
+    val helpWide =
+        helpScreenWidthDp >= 600
+
+    val helpContentMaxWidth =
+        if (helpWide) 900.dp else 10000.dp
+
+    val helpHorizontalPadding =
+        when {
+            helpCompact -> 10.dp
+            helpTablet -> 28.dp
+            else -> 16.dp
+        }
+
     var query by
         remember {
             mutableStateOf(
@@ -17335,13 +17366,13 @@ private fun AppForgeHelpCenterScreen(
                             FontWeight.Bold
                     )
 
-                    Text(
-                        "${allArticles.size} AppForge yardım konusu • cihaz içinde arama",
-                        fontSize =
-                            12.sp,
-                        color =
-                            TextSecondary
-                    )
+                    if (!helpCompact) {
+                        Text(
+                            "${allArticles.size} AppForge yardım konusu • cihaz içinde arama",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
                 }
             },
             navigationIcon = {
@@ -17364,15 +17395,17 @@ private fun AppForgeHelpCenterScreen(
 
         LazyColumn(
             modifier =
-                Modifier.fillMaxSize(),
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(max = helpContentMaxWidth)
+                    .fillMaxWidth().fillMaxSize(),
             contentPadding =
                 PaddingValues(
-                    16.dp
+                    horizontal = helpHorizontalPadding,
+                    vertical =
+                        if (helpCompact) 10.dp else 16.dp
                 ),
-            verticalArrangement =
-                Arrangement.spacedBy(
-                    12.dp
-                )
+            verticalArrangement = Arrangement.spacedBy(if (helpCompact) 9.dp else 14.dp)
         ) {
             item {
                 Card(
@@ -17382,17 +17415,13 @@ private fun AppForgeHelpCenterScreen(
                                 Card2
                         ),
                     shape =
-                        RoundedCornerShape(
-                            22.dp
-                        )
+                        RoundedCornerShape(if (helpCompact) 18.dp else 22.dp)
                 ) {
                     Column(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    16.dp
-                                ),
+                                .padding(if (helpCompact) 12.dp else 16.dp),
                         verticalArrangement =
                             Arrangement.spacedBy(
                                 12.dp
@@ -17403,7 +17432,7 @@ private fun AppForgeHelpCenterScreen(
                             fontWeight =
                                 FontWeight.Bold,
                             fontSize =
-                                20.sp
+                                if (helpCompact) 18.sp else 20.sp
                         )
 
                         Text(
@@ -17515,17 +17544,13 @@ private fun AppForgeHelpCenterScreen(
                                     Card2
                             ),
                         shape =
-                            RoundedCornerShape(
-                                18.dp
-                            )
+                            RoundedCornerShape(if (helpCompact) 15.dp else 18.dp)
                     ) {
                         Column(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(
-                                        16.dp
-                                    ),
+                                    .padding(if (helpCompact) 12.dp else 16.dp),
                             verticalArrangement =
                                 Arrangement.spacedBy(
                                     8.dp
@@ -17560,9 +17585,7 @@ private fun AppForgeHelpCenterScreen(
                                     Card2
                             ),
                         shape =
-                            RoundedCornerShape(
-                                20.dp
-                            ),
+                            RoundedCornerShape(if (helpCompact) 17.dp else 20.dp),
                         modifier =
                             Modifier.fillMaxWidth()
                     ) {
@@ -17570,9 +17593,7 @@ private fun AppForgeHelpCenterScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(
-                                        16.dp
-                                    ),
+                                    .padding(if (helpCompact) 12.dp else 16.dp),
                             verticalArrangement =
                                 Arrangement.spacedBy(
                                     8.dp
@@ -17595,7 +17616,7 @@ private fun AppForgeHelpCenterScreen(
                                 fontWeight =
                                     FontWeight.Bold,
                                 fontSize =
-                                    18.sp
+                                    if (helpCompact) 16.sp else 18.sp
                             )
 
                             Text(
@@ -17618,17 +17639,13 @@ private fun AppForgeHelpCenterScreen(
                                 Color(0xFF102037)
                         ),
                     shape =
-                        RoundedCornerShape(
-                            20.dp
-                        )
+                        RoundedCornerShape(if (helpCompact) 17.dp else 20.dp)
                 ) {
                     Column(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    16.dp
-                                ),
+                                .padding(if (helpCompact) 12.dp else 16.dp),
                         verticalArrangement =
                             Arrangement.spacedBy(
                                 7.dp
@@ -17947,6 +17964,37 @@ private fun LegalCenterScreen(
     languageCode: String,
     onBack: () -> Unit
 ) {
+    val legalConfiguration =
+        LocalConfiguration.current
+
+    val legalScreenWidthDp =
+        legalConfiguration.screenWidthDp
+
+    val legalScreenHeightDp =
+        legalConfiguration.screenHeightDp
+
+    val legalCompact =
+        legalScreenWidthDp < 380
+
+    val legalTablet =
+        minOf(
+            legalScreenWidthDp,
+            legalScreenHeightDp
+        ) >= 600
+
+    val legalWide =
+        legalScreenWidthDp >= 600
+
+    val legalContentMaxWidth =
+        if (legalWide) 860.dp else 10000.dp
+
+    val legalHorizontalPadding =
+        when {
+            legalCompact -> 10.dp
+            legalTablet -> 28.dp
+            else -> 16.dp
+        }
+
     val context = LocalContext.current
 
     Column(Modifier.fillMaxSize()) {
@@ -17957,8 +18005,18 @@ private fun LegalCenterScreen(
         )
 
         LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(max = legalContentMaxWidth)
+                    .fillMaxWidth(),
+            contentPadding =
+                PaddingValues(
+                    horizontal = legalHorizontalPadding,
+                    vertical =
+                        if (legalCompact) 10.dp else 16.dp
+                ),
+            verticalArrangement = Arrangement.spacedBy(if (legalCompact) 9.dp else 14.dp)
         ) {
             item {
                 LegalInfoCard(
@@ -17986,7 +18044,7 @@ private fun LegalCenterScreen(
                             )
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                    modifier = Modifier.fillMaxWidth().height(if (legalCompact) 48.dp else 52.dp)
                 ) {
                     Text("Gizlilik politikasını tarayıcıda aç")
                 }
@@ -18001,16 +18059,28 @@ private fun LegalInfoCard(
     title: String,
     body: String
 ) {
+    val legalCardCompact =
+        LocalConfiguration.current.screenWidthDp < 380
+
     Card(
         colors = CardDefaults.cardColors(containerColor = Card2),
-        shape = RoundedCornerShape(24.dp)
+        shape = RoundedCornerShape(if (legalCardCompact) 19.dp else 24.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(18.dp),
+            modifier = Modifier.fillMaxWidth().padding(if (legalCardCompact) 13.dp else 18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("$icon  $title", fontWeight = FontWeight.Bold, fontSize = 22.sp)
-            Text(body, color = TextSecondary, lineHeight = 21.sp)
+            Text(
+                "$icon  $title",
+                fontWeight = FontWeight.Bold,
+                fontSize = if (legalCardCompact) 18.sp else 22.sp
+            )
+            Text(
+                body,
+                color = TextSecondary,
+                lineHeight = if (legalCardCompact) 19.sp else 21.sp,
+                fontSize = if (legalCardCompact) 13.sp else 14.sp
+            )
         }
     }
 }
@@ -18080,6 +18150,37 @@ private fun PlayPublishingGuideScreen(
     languageCode: String,
     onBack: () -> Unit
 ) {
+    val playGuideConfiguration =
+        LocalConfiguration.current
+
+    val playGuideScreenWidthDp =
+        playGuideConfiguration.screenWidthDp
+
+    val playGuideScreenHeightDp =
+        playGuideConfiguration.screenHeightDp
+
+    val playGuideCompact =
+        playGuideScreenWidthDp < 380
+
+    val playGuideTablet =
+        minOf(
+            playGuideScreenWidthDp,
+            playGuideScreenHeightDp
+        ) >= 600
+
+    val playGuideWide =
+        playGuideScreenWidthDp >= 600
+
+    val playGuideContentMaxWidth =
+        if (playGuideWide) 860.dp else 10000.dp
+
+    val playGuideHorizontalPadding =
+        when {
+            playGuideCompact -> 10.dp
+            playGuideTablet -> 28.dp
+            else -> 16.dp
+        }
+
     val steps = listOf(
         "1. Google Play Console Hesabı Oluşturun" to "Google Play Console web sitesini ziyaret edin ve tek seferlik kayıt ücretini ödeyin.",
         "2. APK'nızı / AAB'nizi Oluşturun" to "Bu uygulamada HTML içeriğinizle proje oluşturun, paket adını ayarlayın ve üretim imzası için keystore hazırlayın.",
@@ -18100,8 +18201,18 @@ private fun PlayPublishingGuideScreen(
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
         )
         LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(max = playGuideContentMaxWidth)
+                    .fillMaxWidth(),
+            contentPadding =
+                PaddingValues(
+                    horizontal = playGuideHorizontalPadding,
+                    vertical =
+                        if (playGuideCompact) 10.dp else 16.dp
+                ),
+            verticalArrangement = Arrangement.spacedBy(if (playGuideCompact) 9.dp else 14.dp)
         ) {
             items(steps) { step ->
                 GuideStepCard(step.first, step.second)
@@ -18115,16 +18226,28 @@ private fun GuideStepCard(
     title: String,
     body: String
 ) {
+    val guideCardCompact =
+        LocalConfiguration.current.screenWidthDp < 380
+
     Card(
         colors = CardDefaults.cardColors(containerColor = Card2),
-        shape = RoundedCornerShape(22.dp)
+        shape = RoundedCornerShape(if (guideCardCompact) 18.dp else 22.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(18.dp),
+            modifier = Modifier.fillMaxWidth().padding(if (guideCardCompact) 13.dp else 18.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(title, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Text(body, color = TextSecondary, lineHeight = 21.sp)
+            Text(
+                title,
+                fontWeight = FontWeight.Bold,
+                fontSize = if (guideCardCompact) 17.sp else 20.sp
+            )
+            Text(
+                body,
+                color = TextSecondary,
+                lineHeight = if (guideCardCompact) 18.sp else 21.sp,
+                fontSize = if (guideCardCompact) 13.sp else 14.sp
+            )
         }
     }
 }
@@ -18140,6 +18263,37 @@ private fun ProUpgradeScreen(
     onVerified: (ProStatus) -> Unit,
     onSecurityMessage: (String) -> Unit
 ) {
+    val proConfiguration =
+        LocalConfiguration.current
+
+    val proScreenWidthDp =
+        proConfiguration.screenWidthDp
+
+    val proScreenHeightDp =
+        proConfiguration.screenHeightDp
+
+    val proCompact =
+        proScreenWidthDp < 380
+
+    val proTablet =
+        minOf(
+            proScreenWidthDp,
+            proScreenHeightDp
+        ) >= 600
+
+    val proWide =
+        proScreenWidthDp >= 600
+
+    val proContentMaxWidth =
+        if (proWide) 900.dp else 10000.dp
+
+    val proHorizontalPadding =
+        when {
+            proCompact -> 10.dp
+            proTablet -> 28.dp
+            else -> 16.dp
+        }
+
     val context =
         LocalContext.current
 
@@ -18453,14 +18607,18 @@ private fun ProUpgradeScreen(
         )
 
         LazyColumn(
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(max = proContentMaxWidth)
+                    .fillMaxWidth(),
             contentPadding =
                 PaddingValues(
-                    20.dp
+                    horizontal = proHorizontalPadding,
+                    vertical =
+                        if (proCompact) 10.dp else 20.dp
                 ),
-            verticalArrangement =
-                Arrangement.spacedBy(
-                    16.dp
-                )
+            verticalArrangement = Arrangement.spacedBy(if (proCompact) 9.dp else 14.dp)
         ) {
             item {
                 Card(
@@ -18471,17 +18629,13 @@ private fun ProUpgradeScreen(
                                     Card2
                             ),
                     shape =
-                        RoundedCornerShape(
-                            30.dp
-                        )
+                        RoundedCornerShape(if (proCompact) 22.dp else 30.dp)
                 ) {
                     Column(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    24.dp
-                                ),
+                                .padding(if (proCompact) 16.dp else 24.dp),
                         horizontalAlignment =
                             Alignment
                                 .CenterHorizontally,
@@ -18502,7 +18656,7 @@ private fun ProUpgradeScreen(
                                 "✦"
                             },
                             fontSize =
-                                66.sp,
+                                if (proCompact) 50.sp else 66.sp,
                             color =
                                 Color(
                                     0xFFFFD400
@@ -18525,7 +18679,7 @@ private fun ProUpgradeScreen(
                             fontWeight =
                                 FontWeight.Bold,
                             fontSize =
-                                27.sp
+                                if (proCompact) 22.sp else 27.sp
                         )
 
                         Text(
@@ -18797,9 +18951,7 @@ private fun ProUpgradeScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(
-                                54.dp
-                            )
+                            .height(if (proCompact) 49.dp else 54.dp)
                 ) {
                     Text(
                         if (
@@ -18837,6 +18989,9 @@ private fun ProPlanCard(
     enabled: Boolean,
     onClick: () -> Unit
 ) {
+    val proCardCompact =
+        LocalConfiguration.current.screenWidthDp < 380
+
     Card(
         colors =
             CardDefaults
@@ -18846,7 +19001,7 @@ private fun ProPlanCard(
                 ),
         shape =
             RoundedCornerShape(
-                26.dp
+                if (proCardCompact) 20.dp else 26.dp
             ),
         border =
             androidx.compose.foundation.BorderStroke(
@@ -18862,7 +19017,7 @@ private fun ProPlanCard(
                 Modifier
                     .fillMaxWidth()
                     .padding(
-                        20.dp
+                        if (proCardCompact) 14.dp else 20.dp
                     ),
             verticalArrangement =
                 Arrangement
@@ -18887,14 +19042,14 @@ private fun ProPlanCard(
                             ),
                     shape =
                         RoundedCornerShape(
-                            18.dp
+                            if (proCardCompact) 15.dp else 18.dp
                         )
                 ) {
                     Box(
                         modifier =
                             Modifier
                                 .size(
-                                    58.dp
+                                    if (proCardCompact) 48.dp else 58.dp
                                 ),
                         contentAlignment =
                             Alignment
@@ -18905,7 +19060,7 @@ private fun ProPlanCard(
                             color =
                                 accent,
                             fontSize =
-                                28.sp,
+                                if (proCardCompact) 23.sp else 28.sp,
                             fontWeight =
                                 FontWeight.Bold
                         )
@@ -18914,7 +19069,7 @@ private fun ProPlanCard(
 
                 Spacer(
                     Modifier.width(
-                        14.dp
+                        if (proCardCompact) 10.dp else 14.dp
                     )
                 )
 
@@ -18938,7 +19093,7 @@ private fun ProPlanCard(
                         fontWeight =
                             FontWeight.Bold,
                         fontSize =
-                            23.sp
+                            if (proCardCompact) 19.sp else 23.sp
                     )
 
                     Text(
@@ -18952,7 +19107,7 @@ private fun ProPlanCard(
             Text(
                 price,
                 fontSize =
-                    25.sp,
+                    if (proCardCompact) 21.sp else 25.sp,
                 fontWeight =
                     FontWeight.Bold,
                 color =
@@ -18979,7 +19134,7 @@ private fun ProPlanCard(
                     Modifier
                         .fillMaxWidth()
                         .height(
-                            54.dp
+                            if (proCardCompact) 49.dp else 54.dp
                         ),
                 colors =
                     ButtonDefaults
@@ -19010,6 +19165,37 @@ private fun KeystoreManagerScreen(
     onImport: () -> Unit,
     onMessage: (String) -> Unit
 ) {
+    val keystoreConfiguration =
+        LocalConfiguration.current
+
+    val keystoreScreenWidthDp =
+        keystoreConfiguration.screenWidthDp
+
+    val keystoreScreenHeightDp =
+        keystoreConfiguration.screenHeightDp
+
+    val keystoreCompact =
+        keystoreScreenWidthDp < 380
+
+    val keystoreTablet =
+        minOf(
+            keystoreScreenWidthDp,
+            keystoreScreenHeightDp
+        ) >= 600
+
+    val keystoreWide =
+        keystoreScreenWidthDp >= 600
+
+    val keystoreContentMaxWidth =
+        if (keystoreWide) 900.dp else 10000.dp
+
+    val keystoreHorizontalPadding =
+        when {
+            keystoreCompact -> 10.dp
+            keystoreTablet -> 28.dp
+            else -> 16.dp
+        }
+
     val context = LocalContext.current
     var keys by remember(refreshKey) { mutableStateOf(KeystoreVault.load(context)) }
 
@@ -19029,9 +19215,18 @@ private fun KeystoreManagerScreen(
         )
 
         LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(max = keystoreContentMaxWidth)
+                    .fillMaxWidth().weight(1f),
+            contentPadding =
+                PaddingValues(
+                    horizontal = keystoreHorizontalPadding,
+                    vertical =
+                        if (keystoreCompact) 10.dp else 16.dp
+                ),
+            verticalArrangement = Arrangement.spacedBy(if (keystoreCompact) 9.dp else 14.dp)
         ) {
             item {
                 LegalInfoCard(
@@ -19059,7 +19254,11 @@ private fun KeystoreManagerScreen(
             }
 
             item {
-                Text("Keystore'larınız", fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                Text(
+                    "Keystore'larınız",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (keystoreCompact) 18.sp else 22.sp
+                )
             }
 
             if (keys.isEmpty()) {
@@ -19087,13 +19286,23 @@ private fun KeystoreManagerScreen(
             }
         }
 
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
+        Column(
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(max = keystoreContentMaxWidth)
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = keystoreHorizontalPadding,
+                        vertical = if (keystoreCompact) 10.dp else 14.dp
+                    )
+        ) {
             Button(
                 onClick = {
                     reload()
                     onMessage("${KeystoreVault.count(context)} keystore bulundu.")
                 },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier.fillMaxWidth().height(if (keystoreCompact) 48.dp else 52.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9ACEFF), contentColor = Color(0xFF0D213D))
             ) {
                 Text(t(languageCode, "find_backups"), fontWeight = FontWeight.Bold)
@@ -19103,7 +19312,7 @@ private fun KeystoreManagerScreen(
 
             Button(
                 onClick = onImport,
-                modifier = Modifier.fillMaxWidth().height(52.dp)
+                modifier = Modifier.fillMaxWidth().height(if (keystoreCompact) 48.dp else 52.dp)
             ) {
                 Text(t(languageCode, "import_keystore"), fontWeight = FontWeight.Bold)
             }
@@ -19118,31 +19327,38 @@ private fun ManagedKeystoreCard(
     onCopy: (String, String) -> Unit,
     onDelete: () -> Unit
 ) {
+    val managedKeyCompact =
+        LocalConfiguration.current.screenWidthDp < 380
+
     Card(
         colors = CardDefaults.cardColors(containerColor = Card2),
-        shape = RoundedCornerShape(22.dp)
+        shape = RoundedCornerShape(if (managedKeyCompact) 18.dp else 22.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(if (managedKeyCompact) 12.dp else 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF23344E)),
-                    shape = RoundedCornerShape(16.dp)
+                    shape = RoundedCornerShape(if (managedKeyCompact) 13.dp else 16.dp)
                 ) {
                     Box(
-                        modifier = Modifier.size(50.dp),
+                        modifier = Modifier.size(if (managedKeyCompact) 42.dp else 50.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("🔒", fontSize = 24.sp)
+                        Text("🔒", fontSize = if (managedKeyCompact) 20.sp else 24.sp)
                     }
                 }
 
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(if (managedKeyCompact) 9.dp else 12.dp))
 
                 Column(Modifier.weight(1f)) {
-                    Text(item.name, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text(
+                    item.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (managedKeyCompact) 17.sp else 20.sp
+                )
                     Text(item.algorithm, color = TextSecondary, fontSize = 12.sp)
                     Text(item.savedPath, color = TextSecondary, fontSize = 12.sp)
                 }
@@ -19179,11 +19395,14 @@ private fun FingerprintBox(
     label: String,
     value: String
 ) {
+    val fingerprintCompact =
+        LocalConfiguration.current.screenWidthDp < 380
+
     Card(
         colors = CardDefaults.cardColors(containerColor = Color(0xFF253246)),
-        shape = RoundedCornerShape(14.dp)
+        shape = RoundedCornerShape(if (fingerprintCompact) 12.dp else 14.dp)
     ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+        Column(Modifier.fillMaxWidth().padding(if (fingerprintCompact) 10.dp else 14.dp)) {
             Text(label, color = TextSecondary, fontSize = 12.sp)
             Text(value, fontSize = 12.sp)
         }
