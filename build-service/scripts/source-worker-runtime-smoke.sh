@@ -20,9 +20,12 @@ run_tool() {
     fail "${label}: ${first} PATH içinde bulunamadı"
 
   output_file="/tmp/appforge-tool-${label}-$$.log"
+  code=0
 
-  if ! timeout 60 "$@" >"$output_file" 2>&1; then
+  timeout 60 "$@" >"$output_file" 2>&1 ||
     code="$?"
+
+  if [ "$code" -ne 0 ]; then
     echo "--- ${label} output ---" >&2
     cat "$output_file" >&2 || true
     rm -f "$output_file" || true
@@ -34,6 +37,41 @@ run_tool() {
     fail "${label} geçici logu silinemedi"
 
   echo "TOOL_OK: ${label}"
+}
+
+ensure_cache_dir() {
+  label="$1"
+  path="$2"
+
+  test -n "$path" ||
+    fail "${label} boş"
+
+  case "$path" in
+    "${APPFORGE_USER_CACHE_ROOT}"/*)
+      ;;
+    *)
+      fail "${label} kullanıcı cache kökü dışında: ${path}"
+      ;;
+  esac
+
+  mkdir -p "$path" ||
+    fail "${label} oluşturulamadı: ${path}"
+
+  test -d "$path" ||
+    fail "${label} dizin değil: ${path}"
+
+  test -w "$path" ||
+    fail "${label} UID 10001 için yazılabilir değil: ${path}"
+
+  probe="${path}/.appforge-cache-smoke-$$"
+
+  : > "$probe" ||
+    fail "${label} probe oluşturulamadı"
+
+  rm -f "$probe" ||
+    fail "${label} probe silinemedi"
+
+  echo "CACHE_OK: ${label}=${path}"
 }
 
 echo "Source Worker runtime smoke..."
@@ -55,6 +93,7 @@ echo "isolation capability=${SOURCE_BUILD_ISOLATION_CAPABILITY:-<empty>}"
 echo "worker capabilities=${WORKER_CAPABILITIES:-<empty>}"
 
 echo "HOME=${HOME:-<empty>}"
+echo "APPFORGE_USER_CACHE_ROOT=${APPFORGE_USER_CACHE_ROOT:-<empty>}"
 echo "GRADLE_USER_HOME=${GRADLE_USER_HOME:-<empty>}"
 echo "NPM_CONFIG_CACHE=${NPM_CONFIG_CACHE:-<empty>}"
 echo "PIP_CACHE_DIR=${PIP_CACHE_DIR:-<empty>}"
@@ -62,7 +101,11 @@ echo "PUB_CACHE=${PUB_CACHE:-<empty>}"
 echo "DOTNET_CLI_HOME=${DOTNET_CLI_HOME:-<empty>}"
 echo "NUGET_PACKAGES=${NUGET_PACKAGES:-<empty>}"
 echo "XDG_CACHE_HOME=${XDG_CACHE_HOME:-<empty>}"
+echo "XDG_DATA_HOME=${XDG_DATA_HOME:-<empty>}"
+echo "XDG_STATE_HOME=${XDG_STATE_HOME:-<empty>}"
+echo "YARN_CACHE_FOLDER=${YARN_CACHE_FOLDER:-<empty>}"
 echo "COREPACK_HOME=${COREPACK_HOME:-<empty>}"
+echo "COREPACK_ENABLE_NETWORK=${COREPACK_ENABLE_NETWORK:-<empty>}"
 echo "FLUTTER_ALREADY_LOCKED=${FLUTTER_ALREADY_LOCKED:-<empty>}"
 
 test "${SOURCE_BUILD_ISOLATION_MODE:-}" = "dedicated" ||
@@ -82,11 +125,19 @@ case ",${WORKER_CAPABILITIES:-}," in
     ;;
 esac
 
+test "${HOME:-}" = "/home/appforge" ||
+  fail "HOME beklenmeyen değer: ${HOME:-<empty>}"
+
+test -d "$HOME" ||
+  fail "HOME dizini yok"
+
+test -w "$HOME" ||
+  fail "HOME UID 10001 için yazılabilir değil"
+
 for dir in \
   /app/work \
   /app/outputs \
-  /app/shared-inputs \
-  /app/gradle-cache
+  /app/shared-inputs
 do
   test -d "$dir" ||
     fail "${dir} dizini yok"
@@ -98,13 +149,59 @@ do
 
   probe="$dir/.appforge-source-worker-smoke-$$"
 
-  if ! : > "$probe"; then
+  : > "$probe" ||
     fail "${dir} içinde probe dosyası oluşturulamadı"
-  fi
 
   rm -f "$probe" ||
     fail "${dir} içindeki probe dosyası silinemedi"
 done
+
+test "${APPFORGE_USER_CACHE_ROOT:-}" = "/app/user-cache/10001" ||
+  fail "APPFORGE_USER_CACHE_ROOT beklenmeyen değer"
+
+test -d "$APPFORGE_USER_CACHE_ROOT" ||
+  fail "kullanıcı cache kökü yok"
+
+test -w "$APPFORGE_USER_CACHE_ROOT" ||
+  fail "kullanıcı cache kökü yazılabilir değil"
+
+cache_owner="$(stat -c '%u:%g' "$APPFORGE_USER_CACHE_ROOT")"
+test "$cache_owner" = "10001:10001" ||
+  fail "cache sahibi beklenen=10001:10001 gerçek=${cache_owner}"
+
+cache_mode="$(stat -c '%a' "$APPFORGE_USER_CACHE_ROOT")"
+test "$cache_mode" = "700" ||
+  fail "cache modu beklenen=700 gerçek=${cache_mode}"
+
+ensure_cache_dir "GRADLE_USER_HOME" "${GRADLE_USER_HOME:-}"
+ensure_cache_dir "NPM_CONFIG_CACHE" "${NPM_CONFIG_CACHE:-}"
+ensure_cache_dir "PIP_CACHE_DIR" "${PIP_CACHE_DIR:-}"
+ensure_cache_dir "PUB_CACHE" "${PUB_CACHE:-}"
+ensure_cache_dir "DOTNET_CLI_HOME" "${DOTNET_CLI_HOME:-}"
+ensure_cache_dir "NUGET_PACKAGES" "${NUGET_PACKAGES:-}"
+ensure_cache_dir "XDG_CACHE_HOME" "${XDG_CACHE_HOME:-}"
+ensure_cache_dir "XDG_DATA_HOME" "${XDG_DATA_HOME:-}"
+ensure_cache_dir "XDG_STATE_HOME" "${XDG_STATE_HOME:-}"
+ensure_cache_dir "YARN_CACHE_FOLDER" "${YARN_CACHE_FOLDER:-}"
+
+test "${COREPACK_HOME:-}" = "/opt/appforge-corepack" ||
+  fail "COREPACK_HOME immutable toolchain yolunda değil"
+
+test -d "$COREPACK_HOME" ||
+  fail "Corepack toolchain cache yok"
+
+if test -w "$COREPACK_HOME"; then
+  fail "Corepack toolchain payloadı runtime user tarafından yazılabilir olmamalı"
+fi
+
+test "${COREPACK_ENABLE_NETWORK:-}" = "0" ||
+  fail "Corepack runtime network kapalı değil"
+
+test "${DOTNET_SKIP_FIRST_TIME_EXPERIENCE:-}" = "1" ||
+  fail "DOTNET_SKIP_FIRST_TIME_EXPERIENCE aktif değil"
+
+test "${FLUTTER_ALREADY_LOCKED:-}" = "true" ||
+  fail "Flutter read-only SDK lock koruması aktif değil"
 
 test -f /app/package.json ||
   fail "/app/package.json bulunamadı"
@@ -182,5 +279,6 @@ then
 fi
 
 echo
+echo "SOURCE_WORKER_CACHE_HARDENING_OK"
 echo "SOURCE_WORKER_TOOLCHAIN_SMOKE_OK"
 echo "SOURCE_WORKER_RUNTIME_SMOKE_OK"

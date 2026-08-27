@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  createSourceBuildEnv
+  createSourceBuildEnv,
+  sourceBuildEnvKeys
 } from "../src/sourceBuildEnv.js";
 
 test(
@@ -90,6 +91,64 @@ test(
         env[key],
         undefined,
         `${key} source build'e sızmamalı`
+      );
+    }
+  }
+);
+
+test(
+  "source build environment forwards trusted runtime cache variables",
+  () => {
+    const inherited = {
+      HOME: "/home/appforge",
+      APPFORGE_USER_CACHE_ROOT: "/app/user-cache/10001",
+      GRADLE_USER_HOME: "/app/user-cache/10001/gradle",
+      NPM_CONFIG_CACHE: "/app/user-cache/10001/npm",
+      PIP_CACHE_DIR: "/app/user-cache/10001/pip",
+      PUB_CACHE: "/app/user-cache/10001/pub",
+      DOTNET_CLI_HOME: "/app/user-cache/10001/dotnet",
+      NUGET_PACKAGES: "/app/user-cache/10001/nuget",
+      XDG_CACHE_HOME: "/app/user-cache/10001/xdg-cache",
+      XDG_DATA_HOME: "/app/user-cache/10001/xdg-data",
+      XDG_STATE_HOME: "/app/user-cache/10001/xdg-state",
+      YARN_CACHE_FOLDER: "/app/user-cache/10001/yarn",
+      COREPACK_HOME: "/opt/appforge-corepack",
+      COREPACK_ENABLE_NETWORK: "0",
+      COREPACK_DEFAULT_TO_LATEST: "0",
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0",
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1",
+      FLUTTER_SUPPRESS_ANALYTICS: "true",
+      DART_SUPPRESS_ANALYTICS: "true",
+      FLUTTER_ALREADY_LOCKED: "true"
+    };
+
+    const env =
+      createSourceBuildEnv(
+        {},
+        inherited
+      );
+
+    for (
+      const [key, value] of
+      Object.entries(inherited)
+    ) {
+      assert.equal(
+        env[key],
+        value,
+        `${key} source build ortamına aktarılmalı`
+      );
+    }
+
+    const keys =
+      sourceBuildEnvKeys();
+
+    for (
+      const key of
+      Object.keys(inherited)
+    ) {
+      assert.ok(
+        keys.includes(key),
+        `${key} SAFE_SOURCE_ENV_KEYS içinde olmalı`
       );
     }
   }

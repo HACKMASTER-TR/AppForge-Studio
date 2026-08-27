@@ -99,12 +99,21 @@ RUN curl -fL --retry 4 \
     && rm /tmp/react-native-gradle.zip /tmp/react-native-gradle.zip.sha256
 
 # Node 22 image already ships Corepack shims.
-# Activate pinned Yarn classic and pnpm without overwriting existing /usr/local/bin shims.
-RUN corepack enable \
+# Keep the pinned Yarn/pnpm payloads in an immutable image-owned location.
+# Runtime source builds are network-disabled, so Corepack must never need
+# to download a package manager into the runtime user's HOME/cache.
+ENV COREPACK_HOME=/opt/appforge-corepack
+RUN mkdir -p "${COREPACK_HOME}" \
+    && corepack enable \
     && corepack prepare yarn@1.22.22 --activate \
     && corepack prepare pnpm@10.17.1 --activate \
     && test "$(yarn --version)" = "1.22.22" \
-    && test "$(pnpm --version)" = "10.17.1"
+    && test "$(pnpm --version)" = "10.17.1" \
+    && chmod -R a-w "${COREPACK_HOME}"
+
+ENV COREPACK_ENABLE_NETWORK=0
+ENV COREPACK_DEFAULT_TO_LATEST=0
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 
 # Fixed AppForge source-build DEBUG signing key.
@@ -318,24 +327,41 @@ RUN groupadd --gid 10001 appforge \
        /app/work \
        /app/outputs \
        /app/shared-inputs \
-       /app/gradle-cache \
+       /app/user-cache/10001 \
        /home/appforge/.cache \
     && chown -R \
        10001:10001 \
        /app/work \
        /app/outputs \
        /app/shared-inputs \
-       /app/gradle-cache \
+       /app/user-cache/10001 \
        /home/appforge \
     && chmod 0750 \
        /app/work \
        /app/outputs \
        /app/shared-inputs \
-       /app/gradle-cache \
+    && chmod 0700 \
+       /app/user-cache/10001 \
+       /home/appforge \
     && git config --system --add safe.directory /opt/flutter
 
 ENV HOME=/home/appforge
-ENV GRADLE_USER_HOME=/app/gradle-cache
+ENV APPFORGE_USER_CACHE_ROOT=/app/user-cache/10001
+ENV GRADLE_USER_HOME=/app/user-cache/10001/gradle
+ENV XDG_CACHE_HOME=/app/user-cache/10001/xdg-cache
+ENV XDG_DATA_HOME=/app/user-cache/10001/xdg-data
+ENV XDG_STATE_HOME=/app/user-cache/10001/xdg-state
+ENV NPM_CONFIG_CACHE=/app/user-cache/10001/npm
+ENV npm_config_cache=/app/user-cache/10001/npm
+ENV PIP_CACHE_DIR=/app/user-cache/10001/pip
+ENV DOTNET_CLI_HOME=/app/user-cache/10001/dotnet
+ENV NUGET_PACKAGES=/app/user-cache/10001/nuget
+ENV PUB_CACHE=/app/user-cache/10001/pub
+ENV YARN_CACHE_FOLDER=/app/user-cache/10001/yarn
+ENV DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+ENV FLUTTER_SUPPRESS_ANALYTICS=true
+ENV DART_SUPPRESS_ANALYTICS=true
+ENV FLUTTER_ALREADY_LOCKED=true
 
 ENV SOURCE_BUILD_ISOLATION_MODE=dedicated
 ENV SOURCE_BUILD_REQUIRE_ISOLATION=true

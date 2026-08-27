@@ -255,3 +255,88 @@ test(
     }
   }
 );
+
+test(
+  "source worker cache hardening keeps mutable caches UID-specific",
+  async () => {
+    const workflow =
+      await fs.readFile(
+        path.join(
+          repoRoot,
+          ".github",
+          "workflows",
+          "source-worker-image.yml"
+        ),
+        "utf8"
+      );
+
+    const docker =
+      await fs.readFile(
+        path.join(
+          repoRoot,
+          "build-service",
+          "Dockerfile.source-worker"
+        ),
+        "utf8"
+      );
+
+    const smoke =
+      await fs.readFile(
+        path.join(
+          repoRoot,
+          "build-service",
+          "scripts",
+          "source-worker-runtime-smoke.sh"
+        ),
+        "utf8"
+      );
+
+    for (
+      const marker of [
+        "--tmpfs /app/user-cache/10001:",
+        "mode=0700,size=1024m"
+      ]
+    ) {
+      assert.ok(
+        workflow.includes(marker),
+        marker
+      );
+    }
+
+    for (
+      const marker of [
+        "COREPACK_HOME=/opt/appforge-corepack",
+        "COREPACK_ENABLE_NETWORK=0",
+        "APPFORGE_USER_CACHE_ROOT=/app/user-cache/10001",
+        "GRADLE_USER_HOME=/app/user-cache/10001/gradle",
+        "NPM_CONFIG_CACHE=/app/user-cache/10001/npm",
+        "PIP_CACHE_DIR=/app/user-cache/10001/pip",
+        "DOTNET_CLI_HOME=/app/user-cache/10001/dotnet",
+        "NUGET_PACKAGES=/app/user-cache/10001/nuget",
+        "PUB_CACHE=/app/user-cache/10001/pub",
+        "FLUTTER_ALREADY_LOCKED=true"
+      ]
+    ) {
+      assert.ok(
+        docker.includes(marker),
+        marker
+      );
+    }
+
+    for (
+      const marker of [
+        "SOURCE_WORKER_CACHE_HARDENING_OK",
+        "ensure_cache_dir",
+        "cache_owner",
+        "cache_mode",
+        "COREPACK_ENABLE_NETWORK",
+        'code="$?"'
+      ]
+    ) {
+      assert.ok(
+        smoke.includes(marker),
+        marker
+      );
+    }
+  }
+);
