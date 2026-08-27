@@ -6,6 +6,36 @@ fail() {
   exit 1
 }
 
+run_tool() {
+  label="$1"
+  shift
+
+  echo
+  echo "=== tool: ${label} ==="
+  echo "command: $*"
+
+  first="$1"
+
+  command -v "$first" >/dev/null 2>&1 ||
+    fail "${label}: ${first} PATH içinde bulunamadı"
+
+  output_file="/tmp/appforge-tool-${label}-$$.log"
+
+  if ! timeout 60 "$@" >"$output_file" 2>&1; then
+    code="$?"
+    echo "--- ${label} output ---" >&2
+    cat "$output_file" >&2 || true
+    rm -f "$output_file" || true
+    fail "${label} çalıştırılamadı (exit=${code})"
+  fi
+
+  sed -n '1,12p' "$output_file"
+  rm -f "$output_file" ||
+    fail "${label} geçici logu silinemedi"
+
+  echo "TOOL_OK: ${label}"
+}
+
 echo "Source Worker runtime smoke..."
 
 uid="$(id -u)"
@@ -24,6 +54,17 @@ echo "isolation required=${SOURCE_BUILD_REQUIRE_ISOLATION:-<empty>}"
 echo "isolation capability=${SOURCE_BUILD_ISOLATION_CAPABILITY:-<empty>}"
 echo "worker capabilities=${WORKER_CAPABILITIES:-<empty>}"
 
+echo "HOME=${HOME:-<empty>}"
+echo "GRADLE_USER_HOME=${GRADLE_USER_HOME:-<empty>}"
+echo "NPM_CONFIG_CACHE=${NPM_CONFIG_CACHE:-<empty>}"
+echo "PIP_CACHE_DIR=${PIP_CACHE_DIR:-<empty>}"
+echo "PUB_CACHE=${PUB_CACHE:-<empty>}"
+echo "DOTNET_CLI_HOME=${DOTNET_CLI_HOME:-<empty>}"
+echo "NUGET_PACKAGES=${NUGET_PACKAGES:-<empty>}"
+echo "XDG_CACHE_HOME=${XDG_CACHE_HOME:-<empty>}"
+echo "COREPACK_HOME=${COREPACK_HOME:-<empty>}"
+echo "FLUTTER_ALREADY_LOCKED=${FLUTTER_ALREADY_LOCKED:-<empty>}"
+
 test "${SOURCE_BUILD_ISOLATION_MODE:-}" = "dedicated" ||
   fail "SOURCE_BUILD_ISOLATION_MODE dedicated değil"
 
@@ -41,7 +82,11 @@ case ",${WORKER_CAPABILITIES:-}," in
     ;;
 esac
 
-for dir in   /app/work   /app/outputs   /app/shared-inputs   /app/gradle-cache
+for dir in \
+  /app/work \
+  /app/outputs \
+  /app/shared-inputs \
+  /app/gradle-cache
 do
   test -d "$dir" ||
     fail "${dir} dizini yok"
@@ -67,6 +112,29 @@ test -f /app/package.json ||
 if test -w /app/package.json; then
   fail "/app/package.json runtime user tarafından yazılabilir olmamalı"
 fi
+
+# ---------------------------------------------------------
+# Real toolchain smoke under:
+#   --network none
+#   --read-only
+#   --cap-drop ALL
+#   no-new-privileges
+#   UID/GID 10001
+# ---------------------------------------------------------
+run_tool node node --version
+run_tool npm npm --version
+run_tool yarn yarn --version
+run_tool pnpm pnpm --version
+run_tool python python3 --version
+run_tool pip python3 -m pip --version
+run_tool java java -version
+run_tool javac javac -version
+run_tool gradle gradle --version
+run_tool dotnet dotnet --info
+run_tool flutter flutter --version
+run_tool dart dart --version
+run_tool cmake cmake --version
+run_tool ninja ninja --version
 
 if ! node --input-type=module <<'NODE'
 import {
@@ -113,4 +181,6 @@ then
   fail "Node source isolation attestation kontrolü başarısız"
 fi
 
+echo
+echo "SOURCE_WORKER_TOOLCHAIN_SMOKE_OK"
 echo "SOURCE_WORKER_RUNTIME_SMOKE_OK"

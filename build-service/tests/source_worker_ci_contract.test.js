@@ -87,6 +87,15 @@ test(
         "source-isolation-dedicated",
         "assertSourceBuildIsolation",
         "SOURCE_WORKER_RUNTIME_SMOKE_FAIL",
+        "SOURCE_WORKER_TOOLCHAIN_SMOKE_OK",
+        "run_tool node node --version",
+        "run_tool python python3 --version",
+        "run_tool java java -version",
+        "run_tool gradle gradle --version",
+        "run_tool dotnet dotnet --info",
+        "run_tool flutter flutter --version",
+        "run_tool cmake cmake --version",
+        "run_tool ninja ninja --version",
         "SOURCE_WORKER_RUNTIME_SMOKE_OK"
       ]
     ) {
