@@ -6961,6 +6961,38 @@ private fun TestLabScreen(
     languageCode: String,
     onBack: () -> Unit
 ) {
+    val testLabConfiguration =
+        LocalConfiguration.current
+
+    val testLabScreenWidthDp =
+        testLabConfiguration.screenWidthDp
+
+    val testLabScreenHeightDp =
+        testLabConfiguration.screenHeightDp
+
+    val testLabCompact =
+        testLabScreenWidthDp < 380
+
+    val testLabTablet =
+        minOf(
+            testLabScreenWidthDp,
+            testLabScreenHeightDp
+        ) >= 600
+
+    val testLabWide =
+        testLabScreenWidthDp >= 600
+
+    val testLabContentMaxWidth =
+        if (testLabWide) 980.dp else 10000.dp
+
+    val testLabHorizontalPadding =
+        when {
+            testLabCompact -> 10.dp
+            testLabTablet -> 28.dp
+            else -> 16.dp
+        }
+
+
     val context =
         LocalContext.current
 
@@ -7156,15 +7188,18 @@ private fun TestLabScreen(
         )
 
         LazyColumn(
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(max = testLabContentMaxWidth)
+                    .fillMaxWidth(),
             contentPadding =
                 PaddingValues(
-                    14.dp
+                    horizontal = testLabHorizontalPadding,
+                    vertical =
+                        if (testLabCompact) 10.dp else 16.dp
                 ),
-            verticalArrangement =
-                Arrangement
-                    .spacedBy(
-                        12.dp
-                    )
+            verticalArrangement = Arrangement.spacedBy(if (testLabCompact) 8.dp else 12.dp)
         ) {
             if (
                 message.isNotBlank()
@@ -7198,16 +7233,12 @@ private fun TestLabScreen(
                                     Card2
                             ),
                     shape =
-                        RoundedCornerShape(
-                            18.dp
-                        )
+                        RoundedCornerShape(if (testLabCompact) 15.dp else 18.dp)
                 ) {
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .padding(
-                                14.dp
-                            ),
+                            .padding(if (testLabCompact) 11.dp else 14.dp),
                         verticalArrangement =
                             Arrangement
                                 .spacedBy(
@@ -7288,7 +7319,7 @@ private fun TestLabScreen(
                                         )
                             ) {
                                 Text(
-                                    "Analiz Et"
+                                    if (testLabCompact) "Analiz" else "Analiz Et"
                                 )
                             }
 
@@ -7399,9 +7430,7 @@ private fun TestLabScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .height(
-                                    52.dp
-                                )
+                                .height(if (testLabCompact) 48.dp else 52.dp)
                     ) {
                         Text(
                             "A ↔ B KARŞILAŞTIR"
@@ -7470,9 +7499,7 @@ private fun TestLabScreen(
                         Column(
                             Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    14.dp
-                                )
+                                .padding(if (testLabCompact) 11.dp else 14.dp)
                         ) {
                             Text(
                                 "${insight.severity.uppercase()} • ${insight.title}",
@@ -7552,6 +7579,10 @@ private fun ArtifactReportCard(
     artifact:
         com.appforge.studio.build.ArtifactSizeReport
 ) {
+    val artifactReportCompact =
+        LocalConfiguration.current.screenWidthDp < 380
+
+
     Card(
         colors =
             CardDefaults
@@ -7561,7 +7592,7 @@ private fun ArtifactReportCard(
                 ),
         shape =
             RoundedCornerShape(
-                20.dp
+                if (artifactReportCompact) if (artifactReportCompact) 12.dp else 16.dp else 20.dp
             )
     ) {
         Column(
@@ -7675,6 +7706,38 @@ private fun LocalAiAssistantScreen(
     onModelChanged: (LocalAiModelInfo?) -> Unit,
     onBack: () -> Unit
 ) {
+    val aiConfiguration =
+        LocalConfiguration.current
+
+    val aiScreenWidthDp =
+        aiConfiguration.screenWidthDp
+
+    val aiScreenHeightDp =
+        aiConfiguration.screenHeightDp
+
+    val aiCompact =
+        aiScreenWidthDp < 380
+
+    val aiTablet =
+        minOf(
+            aiScreenWidthDp,
+            aiScreenHeightDp
+        ) >= 600
+
+    val aiWide =
+        aiScreenWidthDp >= 600
+
+    val aiContentMaxWidth =
+        if (aiWide) 980.dp else 10000.dp
+
+    val aiHorizontalPadding =
+        when {
+            aiCompact -> 10.dp
+            aiTablet -> 28.dp
+            else -> 16.dp
+        }
+
+
     val context =
         LocalContext.current
 
@@ -8184,19 +8247,19 @@ private fun LocalAiAssistantScreen(
         LazyColumn(
             modifier =
                 Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(max = aiContentMaxWidth)
                     .weight(
                         1f
                     )
                     .fillMaxWidth(),
             contentPadding =
                 PaddingValues(
-                    14.dp
+                    horizontal = aiHorizontalPadding,
+                    vertical =
+                        if (aiCompact) 10.dp else 16.dp
                 ),
-            verticalArrangement =
-                Arrangement
-                    .spacedBy(
-                        10.dp
-                    )
+            verticalArrangement = Arrangement.spacedBy(if (aiCompact) 8.dp else 12.dp)
         ) {
             item {
                 Card(
@@ -8207,16 +8270,12 @@ private fun LocalAiAssistantScreen(
                                     Card2
                             ),
                     shape =
-                        RoundedCornerShape(
-                            22.dp
-                        )
+                        RoundedCornerShape(if (aiCompact) 18.dp else 22.dp)
                 ) {
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .padding(
-                                16.dp
-                            ),
+                            .padding(if (aiCompact) 12.dp else 16.dp),
                         verticalArrangement =
                             Arrangement
                                 .spacedBy(
@@ -8410,9 +8469,7 @@ private fun LocalAiAssistantScreen(
                                         Color(0xFF102037)
                                 ),
                             shape =
-                                RoundedCornerShape(
-                                    20.dp
-                                ),
+                                RoundedCornerShape(if (aiCompact) 17.dp else 20.dp),
                             modifier =
                                 Modifier.fillMaxWidth()
                         ) {
@@ -8420,9 +8477,7 @@ private fun LocalAiAssistantScreen(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .padding(
-                                            16.dp
-                                        ),
+                                        .padding(if (aiCompact) 12.dp else 16.dp),
                                 verticalArrangement =
                                     Arrangement.spacedBy(
                                         10.dp
@@ -8683,6 +8738,11 @@ private fun LocalAiAssistantScreen(
                                 0xFF0C1627
                             )
                     ),
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(max = aiContentMaxWidth)
+                    .fillMaxWidth(),
             shape =
                 RoundedCornerShape(
                     topStart =
@@ -8802,6 +8862,10 @@ private fun LocalAiAssistantScreen(
 private fun LocalAiMessageBubble(
     message: LocalAiChatMessage
 ) {
+    val aiBubbleCompact =
+        LocalConfiguration.current.screenWidthDp < 380
+
+
     val user =
         message.role ==
         "user"
@@ -8834,17 +8898,17 @@ private fun LocalAiMessageBubble(
                     ),
             shape =
                 RoundedCornerShape(
-                    18.dp
+                    if (aiBubbleCompact) 15.dp else 18.dp
                 ),
             modifier =
                 Modifier
                     .fillMaxWidth(
-                        0.9f
+                        if (aiBubbleCompact) 0.96f else 0.9f
                     )
         ) {
             Column(
                 Modifier.padding(
-                    13.dp
+                    if (aiBubbleCompact) 11.dp else 13.dp
                 )
             ) {
                 Text(
@@ -16129,6 +16193,38 @@ private fun AccountScreen(
     onApiKeyCreated: (String) -> Unit,
     onBack: () -> Unit
 ) {
+    val accountConfiguration =
+        LocalConfiguration.current
+
+    val accountScreenWidthDp =
+        accountConfiguration.screenWidthDp
+
+    val accountScreenHeightDp =
+        accountConfiguration.screenHeightDp
+
+    val accountCompact =
+        accountScreenWidthDp < 380
+
+    val accountTablet =
+        minOf(
+            accountScreenWidthDp,
+            accountScreenHeightDp
+        ) >= 600
+
+    val accountWide =
+        accountScreenWidthDp >= 600
+
+    val accountContentMaxWidth =
+        if (accountWide) 820.dp else 10000.dp
+
+    val accountHorizontalPadding =
+        when {
+            accountCompact -> 10.dp
+            accountTablet -> 28.dp
+            else -> 16.dp
+        }
+
+
     val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -16166,8 +16262,18 @@ private fun AccountScreen(
         )
 
         LazyColumn(
-            contentPadding = PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(max = accountContentMaxWidth)
+                    .fillMaxWidth(),
+            contentPadding =
+                PaddingValues(
+                    horizontal = accountHorizontalPadding,
+                    vertical =
+                        if (accountCompact) 10.dp else 16.dp
+                ),
+            verticalArrangement = Arrangement.spacedBy(if (accountCompact) 8.dp else 12.dp)
         ) {
             if (session != null) {
                 item { NoteCard("Giriş yapıldı: ${session.email}") }
@@ -16433,7 +16539,7 @@ private fun AccountScreen(
                     )
                 }
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(if (accountCompact) 6.dp else 8.dp)) {
                         Button(
                             onClick = {
                                 busy = true
@@ -16686,6 +16792,38 @@ private fun TemplatesScreen(
     onApply: (RemoteTemplate) -> Unit,
     onBack: () -> Unit
 ) {
+    val templatesConfiguration =
+        LocalConfiguration.current
+
+    val templatesScreenWidthDp =
+        templatesConfiguration.screenWidthDp
+
+    val templatesScreenHeightDp =
+        templatesConfiguration.screenHeightDp
+
+    val templatesCompact =
+        templatesScreenWidthDp < 380
+
+    val templatesTablet =
+        minOf(
+            templatesScreenWidthDp,
+            templatesScreenHeightDp
+        ) >= 600
+
+    val templatesWide =
+        templatesScreenWidthDp >= 600
+
+    val templatesContentMaxWidth =
+        if (templatesWide) 980.dp else 10000.dp
+
+    val templatesHorizontalPadding =
+        when {
+            templatesCompact -> 10.dp
+            templatesTablet -> 28.dp
+            else -> 16.dp
+        }
+
+
     val scope = rememberCoroutineScope()
     val catalog = remember { templateCategoryCatalog() }
 
@@ -16821,9 +16959,17 @@ private fun TemplatesScreen(
         )
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(max = templatesContentMaxWidth).fillMaxSize(),
+            contentPadding =
+                PaddingValues(
+                    horizontal = templatesHorizontalPadding,
+                    vertical =
+                        if (templatesCompact) 10.dp else 16.dp
+                ),
+            verticalArrangement = Arrangement.spacedBy(if (templatesCompact) 8.dp else 12.dp)
         ) {
             item {
                 Card(
@@ -16831,13 +16977,13 @@ private fun TemplatesScreen(
                         CardDefaults.cardColors(
                             containerColor = Card2
                         ),
-                    shape = RoundedCornerShape(22.dp)
+                    shape = RoundedCornerShape(if (templatesCompact) 18.dp else 22.dp)
                 ) {
                     Column(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(18.dp),
+                                .padding(if (templatesCompact) 13.dp else 18.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
@@ -16853,7 +16999,14 @@ private fun TemplatesScreen(
                         )
 
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement =
+                                Arrangement.spacedBy(
+                                    if (templatesCompact) 7.dp else 10.dp
+                                )
                         ) {
                             TemplateStatPill(
                                 label = "Kategori",
@@ -16946,10 +17099,10 @@ private fun TemplatesScreen(
         ) {
             LazyColumn(
                 contentPadding = PaddingValues(
-                    start = 18.dp,
-                    end = 18.dp,
+                    start = templatesHorizontalPadding,
+                    end = templatesHorizontalPadding,
                     top = 6.dp,
-                    bottom = 28.dp
+                    bottom = if (templatesCompact) 18.dp else 28.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -16974,12 +17127,12 @@ private fun TemplatesScreen(
                     item {
                         Card(
                             colors = CardDefaults.cardColors(containerColor = Card2),
-                            shape = RoundedCornerShape(18.dp)
+                            shape = RoundedCornerShape(if (templatesCompact) 15.dp else 18.dp)
                         ) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(16.dp),
+                                    .padding(if (templatesCompact) 12.dp else 16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Text(
@@ -17015,6 +17168,10 @@ private fun TemplateStatPill(
     label: String,
     value: String
 ) {
+    val templatePillCompact =
+        LocalConfiguration.current.screenWidthDp < 380
+
+
     Card(
         colors =
             CardDefaults.cardColors(
@@ -17026,8 +17183,8 @@ private fun TemplateStatPill(
         Column(
             modifier =
                 Modifier.padding(
-                    horizontal = 12.dp,
-                    vertical = 10.dp
+                    horizontal = if (templatePillCompact) 10.dp else 12.dp,
+                    vertical = if (templatePillCompact) 8.dp else 10.dp
                 )
         ) {
             Text(
@@ -17050,6 +17207,10 @@ private fun AdvancedTemplateCategoryCard(
     loading: Boolean,
     onOpen: () -> Unit
 ) {
+    val templateCategoryCompact =
+        LocalConfiguration.current.screenWidthDp < 380
+
+
     Card(
         onClick = onOpen,
         colors =
@@ -17057,15 +17218,15 @@ private fun AdvancedTemplateCategoryCard(
                 containerColor = spec.container
             ),
         shape =
-            RoundedCornerShape(24.dp)
+            RoundedCornerShape(if (templateCategoryCompact) 19.dp else 24.dp)
     ) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .padding(
-                        horizontal = 18.dp,
-                        vertical = 18.dp
+                        horizontal = if (templateCategoryCompact) 13.dp else 18.dp,
+                        vertical = if (templateCategoryCompact) 13.dp else 18.dp
                     ),
             verticalAlignment =
                 Alignment.CenterVertically
@@ -17084,20 +17245,20 @@ private fun AdvancedTemplateCategoryCard(
                 Box(
                     modifier =
                         Modifier
-                            .size(64.dp),
+                            .size(if (templateCategoryCompact) 50.dp else 64.dp),
                     contentAlignment =
                         Alignment.Center
                 ) {
                     Text(
                         spec.icon,
                         color = spec.accent,
-                        fontSize = 26.sp,
+                        fontSize = if (templateCategoryCompact) 22.sp else 26.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(if (templateCategoryCompact) 11.dp else 16.dp))
 
             Column(
                 modifier =
@@ -17108,7 +17269,7 @@ private fun AdvancedTemplateCategoryCard(
                 Text(
                     spec.title,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
+                    fontSize = if (templateCategoryCompact) 17.sp else 20.sp
                 )
                 Text(
                     spec.subtitle,
@@ -17140,26 +17301,30 @@ private fun CategorySheetHeader(
     spec: TemplateCategorySpec,
     count: Int
 ) {
+    val categorySheetCompact =
+        LocalConfiguration.current.screenWidthDp < 380
+
+
     Card(
         colors =
             CardDefaults.cardColors(
                 containerColor = spec.container
             ),
         shape =
-            RoundedCornerShape(22.dp)
+            RoundedCornerShape(if (categorySheetCompact) 18.dp else 22.dp)
     ) {
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(18.dp),
+                    .padding(if (categorySheetCompact) 13.dp else 18.dp),
             verticalArrangement =
                 Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 "${spec.icon}  ${spec.title}",
                 fontWeight = FontWeight.Bold,
-                fontSize = 22.sp
+                fontSize = if (categorySheetCompact) 18.sp else 22.sp
             )
             Text(
                 spec.subtitle,
@@ -17180,26 +17345,30 @@ private fun RemoteTemplateCard(
     template: RemoteTemplate,
     onApply: () -> Unit
 ) {
+    val remoteTemplateCompact =
+        LocalConfiguration.current.screenWidthDp < 380
+
+
     Card(
         colors =
             CardDefaults.cardColors(
                 containerColor = Card2
             ),
         shape =
-            RoundedCornerShape(18.dp)
+            RoundedCornerShape(if (remoteTemplateCompact) 15.dp else 18.dp)
     ) {
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(if (remoteTemplateCompact) 12.dp else 16.dp),
             verticalArrangement =
                 Arrangement.spacedBy(10.dp)
         ) {
             Text(
                 template.name,
                 fontWeight = FontWeight.Bold,
-                fontSize = 17.sp
+                fontSize = if (remoteTemplateCompact) 15.sp else 17.sp
             )
 
             Text(
