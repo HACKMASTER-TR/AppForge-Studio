@@ -243,6 +243,19 @@ private val TextSecondary = Color(0xFFA5ADB7)
 private const val APPFORGE_DOWNLOAD_FOLDER =
     "AppForge Studio"
 
+private fun persistReadUriPermission(
+    context: Context,
+    uri: Uri
+) {
+    runCatching {
+        context.contentResolver
+            .takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+    }
+}
+
 private enum class AiDownloadNetwork {
     WIFI,
     MOBILE,
@@ -769,6 +782,10 @@ private fun AppForgeApp() {
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
+            persistReadUriPermission(
+                context,
+                uri
+            )
             draft = draft.copy(
                 keystoreUri = uri.toString(),
                 keystoreName = uri.lastPathSegment ?: "release.jks"
@@ -781,6 +798,10 @@ private fun AppForgeApp() {
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
+            persistReadUriPermission(
+                context,
+                uri
+            )
             draft = draft.copy(
                 iconUri = uri.toString(),
                 iconName = uri.lastPathSegment ?: "icon.png"
@@ -793,6 +814,10 @@ private fun AppForgeApp() {
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
+            persistReadUriPermission(
+                context,
+                uri
+            )
             draft = draft.copy(
                 firebaseConfigUri = uri.toString(),
                 firebaseConfigName = uri.lastPathSegment ?: "google-services.json"
@@ -2205,6 +2230,16 @@ private fun AppForgeApp() {
                     onLoad = { saved ->
                         ProjectLibrary.restore(context, saved.id)?.let {
                             draft = it
+                            sourceAnalysis =
+                                it.importedFolder
+                                    ?.let { folderPath ->
+                                        runCatching {
+                                            SourceCapabilityAnalyzer
+                                                .analyze(
+                                                    File(folderPath)
+                                                )
+                                        }.getOrNull()
+                                    }
                             currentProjectId = saved.id
                             serverUrl = it.buildServiceUrl
                             apiKey =
@@ -2904,6 +2939,7 @@ private fun AppForgeApp() {
                                 update = { draft = it },
                                 serverUrl = serverUrl,
                                 apiKey = apiKey,
+                                statusMessage = status,
                                 onServerUrl = {
                                     serverUrl = it
                                     draft = draft.copy(buildServiceUrl = it)
@@ -10581,7 +10617,10 @@ private fun AppearanceStep(
                         Text("Koyu")
                     },
                     modifier =
-                        Modifier.weight(1f)
+                        Modifier.widthIn(
+                            min =
+                                if (formCompact) 92.dp else 108.dp
+                        )
                 )
 
                 FilterChip(
@@ -10605,7 +10644,10 @@ private fun AppearanceStep(
                         Text("Açık")
                     },
                     modifier =
-                        Modifier.weight(1f)
+                        Modifier.widthIn(
+                            min =
+                                if (formCompact) 92.dp else 108.dp
+                        )
                 )
 
                 FilterChip(
@@ -10629,7 +10671,10 @@ private fun AppearanceStep(
                         Text("OLED")
                     },
                     modifier =
-                        Modifier.weight(1f)
+                        Modifier.widthIn(
+                            min =
+                                if (formCompact) 92.dp else 108.dp
+                        )
                 )
             }
         }
@@ -12937,6 +12982,7 @@ private fun BuildSettingsStep(
     update: (ProjectDraft) -> Unit,
     serverUrl: String,
     apiKey: String,
+    statusMessage: String,
     onServerUrl: (String) -> Unit,
     onApiKey: (String) -> Unit,
     onSave: () -> Unit
@@ -13586,6 +13632,16 @@ private fun BuildSettingsStep(
             ) {
                 Text(
                     "PROJEYİ KAYDET / GÜNCELLE"
+                )
+            }
+        }
+
+        if (
+            statusMessage.isNotBlank()
+        ) {
+            item {
+                NoteCard(
+                    statusMessage
                 )
             }
         }

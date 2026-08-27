@@ -313,6 +313,26 @@ object ProjectLibrary {
             sourceMode = runCatching {
                 SourceMode.valueOf(obj.optString("sourceMode", "LOCAL"))
             }.getOrDefault(SourceMode.LOCAL),
+            sourceTechnology =
+                obj.optString(
+                    "sourceTechnology",
+                    "web-static"
+                ),
+            sourceTechnologyLabel =
+                obj.optString(
+                    "sourceTechnologyLabel",
+                    "HTML / CSS / JavaScript"
+                ),
+            sourceBuildEngine =
+                obj.optString(
+                    "sourceBuildEngine",
+                    "webview-static"
+                ),
+            sourceBuildReady =
+                obj.optBoolean(
+                    "sourceBuildReady",
+                    true
+                ),
             webUrl = obj.optString("webUrl"),
             versionName = obj.optString("versionName", "1.0.0"),
             versionCode = obj.optInt("versionCode", 1),
@@ -325,6 +345,40 @@ object ProjectLibrary {
             navigationBarColor = obj.optString("navigationBarColor", "#07101F"),
             splashEnabled = obj.optBoolean("splashEnabled", true),
             splashText = obj.optString("splashText"),
+            iconUri =
+                obj.optString(
+                    "iconUri"
+                ).takeIf {
+                    it.isNotBlank() &&
+                    it != "null"
+                },
+            iconName = obj.optString("iconName"),
+            signingMode =
+                runCatching {
+                    SigningMode.valueOf(
+                        obj.optString(
+                            "signingMode",
+                            "DEBUG"
+                        )
+                    )
+                }.getOrDefault(
+                    SigningMode.DEBUG
+                ),
+            keystoreUri =
+                obj.optString(
+                    "keystoreUri"
+                ).takeIf {
+                    it.isNotBlank() &&
+                    it != "null"
+                },
+            keystoreName =
+                obj.optString(
+                    "keystoreName"
+                ),
+            keyAlias =
+                obj.optString(
+                    "keyAlias"
+                ),
             fileUpload = obj.optBoolean("fileUpload", true),
             downloads = obj.optBoolean("downloads", true),
             fullscreen = obj.optBoolean("fullscreen", false),
@@ -399,6 +453,17 @@ object ProjectLibrary {
             firebaseAnalyticsEnabled = obj.optBoolean("firebaseAnalyticsEnabled", false),
             firebaseCrashlyticsEnabled = obj.optBoolean("firebaseCrashlyticsEnabled", false),
             firebaseMessagingEnabled = obj.optBoolean("firebaseMessagingEnabled", false),
+            firebaseConfigUri =
+                obj.optString(
+                    "firebaseConfigUri"
+                ).takeIf {
+                    it.isNotBlank() &&
+                    it != "null"
+                },
+            firebaseConfigName =
+                obj.optString(
+                    "firebaseConfigName"
+                ),
             buildServiceUrl =
                 obj
                     .optString(
@@ -498,6 +563,10 @@ object ProjectLibrary {
             put("appName", d.appName)
             put("packageName", d.packageName)
             put("sourceMode", d.sourceMode.name)
+            put("sourceTechnology", d.sourceTechnology)
+            put("sourceTechnologyLabel", d.sourceTechnologyLabel)
+            put("sourceBuildEngine", d.sourceBuildEngine)
+            put("sourceBuildReady", d.sourceBuildReady)
 
             // LOCAL kaynak uygulamanın özel depolamasına kopyalandığı için
             // bu yollar uygulama yeniden açıldığında güvenle kullanılabilir.
@@ -518,6 +587,13 @@ object ProjectLibrary {
             put("navigationBarColor", d.navigationBarColor)
             put("splashEnabled", d.splashEnabled)
             put("splashText", d.splashText)
+            put("iconUri", d.iconUri)
+            put("iconName", d.iconName)
+
+            put("signingMode", d.signingMode.name)
+            put("keystoreUri", d.keystoreUri)
+            put("keystoreName", d.keystoreName)
+            put("keyAlias", d.keyAlias)
 
             put("fileUpload", d.fileUpload)
             put("downloads", d.downloads)
@@ -589,10 +665,12 @@ object ProjectLibrary {
             put("firebaseAnalyticsEnabled", d.firebaseAnalyticsEnabled)
             put("firebaseCrashlyticsEnabled", d.firebaseCrashlyticsEnabled)
             put("firebaseMessagingEnabled", d.firebaseMessagingEnabled)
+            put("firebaseConfigUri", d.firebaseConfigUri)
+            put("firebaseConfigName", d.firebaseConfigName)
 
             put("buildServiceUrl", d.buildServiceUrl)
 
             // Sensitive values intentionally excluded:
-            // keystoreUri, storePassword, keyPassword, buildApiKey
+            // storePassword, keyPassword, buildApiKey
         }
 }
