@@ -5044,6 +5044,37 @@ private fun AppPreviewScreen(
     onBack: () -> Unit,
     onOpenProduction: () -> Unit
 ) {
+    val previewConfiguration =
+        LocalConfiguration.current
+
+    val previewScreenWidthDp =
+        previewConfiguration.screenWidthDp
+
+    val previewScreenHeightDp =
+        previewConfiguration.screenHeightDp
+
+    val previewCompact =
+        previewScreenWidthDp < 380
+
+    val previewTablet =
+        minOf(
+            previewScreenWidthDp,
+            previewScreenHeightDp
+        ) >= 600
+
+    val previewWide =
+        previewScreenWidthDp >= 600
+
+    val previewContentMaxWidth =
+        if (previewWide) 980.dp else 10000.dp
+
+    val previewHorizontalPadding =
+        when {
+            previewCompact -> 10.dp
+            previewTablet -> 28.dp
+            else -> 14.dp
+        }
+
     var preset by
         remember {
             mutableStateOf(
@@ -5181,13 +5212,13 @@ private fun AppPreviewScreen(
                             FontWeight.Bold
                     )
 
-                    Text(
-                        "Preview + Console + Network + Performance + Security",
-                        color =
-                            TextSecondary,
-                        fontSize =
-                            12.sp
-                    )
+                    if (!previewCompact) {
+                        Text(
+                            "Preview + Console + Network + Performance + Security",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             },
             navigationIcon = {
@@ -5218,7 +5249,13 @@ private fun AppPreviewScreen(
                         onOpenProduction
                 ) {
                     Text(
-                        "Check"
+                        if (previewCompact) {
+                            "✓"
+                        } else {
+                            "Check"
+                        },
+                        fontSize =
+                            if (previewCompact) 12.sp else 14.sp
                     )
                 }
             },
@@ -5233,16 +5270,24 @@ private fun AppPreviewScreen(
         LazyColumn(
             modifier =
                 Modifier
+                    .align(
+                        Alignment.CenterHorizontally
+                    )
+                    .widthIn(
+                        max = previewContentMaxWidth
+                    )
                     .fillMaxSize(),
             contentPadding =
                 PaddingValues(
-                    14.dp
+                    horizontal =
+                        previewHorizontalPadding,
+                    vertical =
+                        if (previewCompact) 10.dp else 14.dp
                 ),
             verticalArrangement =
-                Arrangement
-                    .spacedBy(
-                        12.dp
-                    )
+                Arrangement.spacedBy(
+                    if (previewCompact) 8.dp else 12.dp
+                )
         ) {
             item {
                 Card(
@@ -5260,21 +5305,21 @@ private fun AppPreviewScreen(
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .padding(
-                                14.dp
-                            ),
+                            .padding(if (previewCompact) 10.dp else 14.dp),
                         verticalArrangement =
-                            Arrangement
-                                .spacedBy(
-                                    10.dp
-                                )
+                            Arrangement.spacedBy(if (previewCompact) 7.dp else 10.dp)
                     ) {
                         Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(
+                                        rememberScrollState()
+                                    ),
                             horizontalArrangement =
-                                Arrangement
-                                    .spacedBy(
-                                        6.dp
-                                    )
+                                Arrangement.spacedBy(
+                                    if (previewCompact) 4.dp else 6.dp
+                                )
                         ) {
                             PreviewInspectorTab
                                 .entries
@@ -5319,11 +5364,16 @@ private fun AppPreviewScreen(
                             PreviewInspectorTab.PREVIEW
                         ) {
                             Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(
+                                            rememberScrollState()
+                                        ),
                                 horizontalArrangement =
-                                    Arrangement
-                                        .spacedBy(
-                                            8.dp
-                                        )
+                                    Arrangement.spacedBy(
+                                        if (previewCompact) 5.dp else 8.dp
+                                    )
                             ) {
                                 previewPresets
                                     .forEach {
@@ -5423,9 +5473,7 @@ private fun AppPreviewScreen(
                                             Color.Black
                                     ),
                             shape =
-                                RoundedCornerShape(
-                                    28.dp
-                                ),
+                                RoundedCornerShape(if (previewCompact) 20.dp else 28.dp),
                             border =
                                 androidx.compose
                                     .foundation
@@ -5753,6 +5801,10 @@ private fun InspectorHeader(
     detail: String,
     onClear: () -> Unit
 ) {
+    val compact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     Card(
         colors =
             CardDefaults
@@ -5761,16 +5813,12 @@ private fun InspectorHeader(
                         Card2
                 ),
         shape =
-            RoundedCornerShape(
-                18.dp
-            )
+            RoundedCornerShape(if (compact) 15.dp else 18.dp)
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(
-                    14.dp
-                ),
+                .padding(if (compact) 10.dp else 14.dp),
             verticalAlignment =
                 Alignment
                     .CenterVertically
@@ -5792,7 +5840,7 @@ private fun InspectorHeader(
                     color =
                         TextSecondary,
                     fontSize =
-                        12.sp
+                        if (compact) 11.sp else 12.sp
                 )
             }
 
@@ -5812,6 +5860,10 @@ private fun InspectorHeader(
 private fun InspectorLine(
     text: String
 ) {
+    val compact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     Card(
         colors =
             CardDefaults
@@ -5831,11 +5883,9 @@ private fun InspectorLine(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(
-                        12.dp
-                    ),
+                    .padding(if (compact) 9.dp else 12.dp),
             fontSize =
-                11.sp,
+                if (compact) 10.sp else 11.sp,
             color =
                 Color(
                     0xFFC9D5E7
@@ -5857,6 +5907,37 @@ private fun ProductionCenterScreen(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit
 ) {
+    val productionConfiguration =
+        LocalConfiguration.current
+
+    val productionScreenWidthDp =
+        productionConfiguration.screenWidthDp
+
+    val productionScreenHeightDp =
+        productionConfiguration.screenHeightDp
+
+    val productionCompact =
+        productionScreenWidthDp < 380
+
+    val productionTablet =
+        minOf(
+            productionScreenWidthDp,
+            productionScreenHeightDp
+        ) >= 600
+
+    val productionWide =
+        productionScreenWidthDp >= 600
+
+    val productionContentMaxWidth =
+        if (productionWide) 920.dp else 10000.dp
+
+    val productionHorizontalPadding =
+        when {
+            productionCompact -> 10.dp
+            productionTablet -> 28.dp
+            else -> 16.dp
+        }
+
     val context =
         LocalContext.current
 
@@ -5938,13 +6019,13 @@ private fun ProductionCenterScreen(
                             FontWeight.Bold
                     )
 
-                    Text(
-                        "Önizleme, yayın kontrolü, sürümleme ve proje yedekleri",
-                        color =
-                            TextSecondary,
-                        fontSize =
-                            12.sp
-                    )
+                    if (!productionCompact) {
+                        Text(
+                            "Önizleme, yayın kontrolü, sürümleme ve proje yedekleri",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             },
             navigationIcon = {
@@ -5964,15 +6045,26 @@ private fun ProductionCenterScreen(
         )
 
         LazyColumn(
+            modifier =
+                Modifier
+                    .align(
+                        Alignment.CenterHorizontally
+                    )
+                    .widthIn(
+                        max = productionContentMaxWidth
+                    )
+                    .fillMaxWidth(),
             contentPadding =
                 PaddingValues(
-                    16.dp
+                    horizontal =
+                        productionHorizontalPadding,
+                    vertical =
+                        if (productionCompact) 10.dp else 16.dp
                 ),
             verticalArrangement =
-                Arrangement
-                    .spacedBy(
-                        14.dp
-                    )
+                Arrangement.spacedBy(
+                    if (productionCompact) 10.dp else 14.dp
+                )
         ) {
             item {
                 Section(
@@ -5987,10 +6079,7 @@ private fun ProductionCenterScreen(
             item {
                 Row(
                     horizontalArrangement =
-                        Arrangement
-                            .spacedBy(
-                                8.dp
-                            )
+                        Arrangement.spacedBy(if (productionCompact) 6.dp else 8.dp)
                 ) {
                     ProductionStat(
                         label =
@@ -6047,10 +6136,7 @@ private fun ProductionCenterScreen(
             item {
                 Row(
                     horizontalArrangement =
-                        Arrangement
-                            .spacedBy(
-                                8.dp
-                            )
+                        Arrangement.spacedBy(if (productionCompact) 6.dp else 8.dp)
                 ) {
                     ProductionStat(
                         label =
@@ -6100,9 +6186,7 @@ private fun ProductionCenterScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(
-                                56.dp
-                            )
+                            .height(if (productionCompact) 50.dp else 56.dp)
                 ) {
                     Text(
                         "👁  ${t(languageCode, "preview")}",
@@ -6152,9 +6236,7 @@ private fun ProductionCenterScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(
-                                56.dp
-                            )
+                            .height(if (productionCompact) 50.dp else 56.dp)
                 ) {
                     Text(
                         "🧪 TEST LAB'I AÇ",
@@ -6180,21 +6262,14 @@ private fun ProductionCenterScreen(
                                     Card2
                             ),
                     shape =
-                        RoundedCornerShape(
-                            20.dp
-                        )
+                        RoundedCornerShape(if (productionCompact) 17.dp else 20.dp)
                 ) {
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .padding(
-                                16.dp
-                            ),
+                            .padding(if (productionCompact) 12.dp else 16.dp),
                         verticalArrangement =
-                            Arrangement
-                                .spacedBy(
-                                    7.dp
-                                )
+                            Arrangement.spacedBy(if (productionCompact) 5.dp else 7.dp)
                     ) {
                         Text(
                             if (
@@ -6278,21 +6353,14 @@ private fun ProductionCenterScreen(
                                     Card2
                             ),
                     shape =
-                        RoundedCornerShape(
-                            20.dp
-                        )
+                        RoundedCornerShape(if (productionCompact) 17.dp else 20.dp)
                 ) {
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .padding(
-                                14.dp
-                            ),
+                            .padding(if (productionCompact) 10.dp else 14.dp),
                         verticalArrangement =
-                            Arrangement
-                                .spacedBy(
-                                    6.dp
-                                )
+                            Arrangement.spacedBy(if (productionCompact) 5.dp else 6.dp)
                     ) {
                         CompactModuleToggle(
                             "Native Bridge",
@@ -6409,21 +6477,14 @@ private fun ProductionCenterScreen(
                                     Card2
                             ),
                     shape =
-                        RoundedCornerShape(
-                            20.dp
-                        )
+                        RoundedCornerShape(if (productionCompact) 17.dp else 20.dp)
                 ) {
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .padding(
-                                16.dp
-                            ),
+                            .padding(if (productionCompact) 12.dp else 16.dp),
                         verticalArrangement =
-                            Arrangement
-                                .spacedBy(
-                                    10.dp
-                                )
+                            Arrangement.spacedBy(if (productionCompact) 7.dp else 10.dp)
                     ) {
                         InfoLine(
                             "Sürüm",
@@ -6432,10 +6493,7 @@ private fun ProductionCenterScreen(
 
                         Row(
                             horizontalArrangement =
-                                Arrangement
-                                    .spacedBy(
-                                        8.dp
-                                    )
+                                Arrangement.spacedBy(if (productionCompact) 6.dp else 8.dp)
                         ) {
                             OutlinedButton(
                                 onClick = {
@@ -6543,21 +6601,14 @@ private fun ProductionCenterScreen(
                                     Card2
                             ),
                     shape =
-                        RoundedCornerShape(
-                            20.dp
-                        )
+                        RoundedCornerShape(if (productionCompact) 17.dp else 20.dp)
                 ) {
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .padding(
-                                16.dp
-                            ),
+                            .padding(if (productionCompact) 12.dp else 16.dp),
                         verticalArrangement =
-                            Arrangement
-                                .spacedBy(
-                                    10.dp
-                                )
+                            Arrangement.spacedBy(if (productionCompact) 7.dp else 10.dp)
                     ) {
                         Button(
                             onClick =
@@ -6614,9 +6665,7 @@ private fun ProductionCenterScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(
-                                52.dp
-                            )
+                            .height(if (productionCompact) 48.dp else 52.dp)
                 ) {
                     Text(
                         "🧩 Şablon Kataloğunu Aç"
@@ -6640,6 +6689,10 @@ private fun ProductionStat(
     modifier: Modifier =
         Modifier
 ) {
+    val compact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     Card(
         modifier =
             modifier,
@@ -6658,7 +6711,7 @@ private fun ProductionStat(
             Modifier
                 .fillMaxWidth()
                 .padding(
-                    14.dp
+                    if (compact) 10.dp else 14.dp
                 ),
             horizontalAlignment =
                 Alignment
@@ -6667,7 +6720,7 @@ private fun ProductionStat(
             Text(
                 value,
                 fontSize =
-                    23.sp,
+                    if (compact) 20.sp else 23.sp,
                 fontWeight =
                     FontWeight.Bold,
                 color =
@@ -6679,7 +6732,7 @@ private fun ProductionStat(
                 color =
                     TextSecondary,
                 fontSize =
-                    11.sp
+                    if (compact) 10.sp else 11.sp
             )
         }
     }
@@ -6689,6 +6742,10 @@ private fun ProductionStat(
 private fun ProductionCheckCard(
     check: ProductionCheck
 ) {
+    val compact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     val accent =
         when (
             check.level
@@ -6740,7 +6797,7 @@ private fun ProductionCheckCard(
                 Modifier
                     .fillMaxWidth()
                     .padding(
-                        14.dp
+                        if (compact) 10.dp else 14.dp
                     ),
             verticalAlignment =
                 Alignment
@@ -6758,13 +6815,13 @@ private fun ProductionCheckCard(
                         ),
                 shape =
                     RoundedCornerShape(
-                        14.dp
+                        if (compact) 12.dp else 14.dp
                     )
             ) {
                 Box(
                     Modifier
                         .size(
-                            44.dp
+                            if (compact) 38.dp else 44.dp
                         ),
                     contentAlignment =
                         Alignment.Center
@@ -6776,14 +6833,14 @@ private fun ProductionCheckCard(
                         fontWeight =
                             FontWeight.Bold,
                         fontSize =
-                            23.sp
+                            if (compact) 20.sp else 23.sp
                     )
                 }
             }
 
             Spacer(
                 Modifier.width(
-                    12.dp
+                    if (compact) 8.dp else 12.dp
                 )
             )
 
@@ -6804,9 +6861,9 @@ private fun ProductionCheckCard(
                     color =
                         TextSecondary,
                     lineHeight =
-                        18.sp,
+                        if (compact) 16.sp else 18.sp,
                     fontSize =
-                        12.sp
+                        if (compact) 11.sp else 12.sp
                 )
             }
         }
@@ -6820,6 +6877,10 @@ private fun CompactModuleToggle(
     checked: Boolean,
     onChange: (Boolean) -> Unit
 ) {
+    val compact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     Row(
         modifier =
             Modifier
@@ -6830,6 +6891,10 @@ private fun CompactModuleToggle(
     ) {
         Text(
             label,
+            fontSize =
+                if (compact) 13.sp else 14.sp,
+            lineHeight =
+                if (compact) 17.sp else 19.sp,
             modifier =
                 Modifier
                     .weight(
