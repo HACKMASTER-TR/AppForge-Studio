@@ -15766,6 +15766,37 @@ private fun ProjectLibraryScreen(
     onBack: () -> Unit,
     onLoad: (SavedProject) -> Unit
 ) {
+    val libraryConfiguration =
+        LocalConfiguration.current
+
+    val libraryScreenWidthDp =
+        libraryConfiguration.screenWidthDp
+
+    val libraryScreenHeightDp =
+        libraryConfiguration.screenHeightDp
+
+    val libraryCompact =
+        libraryScreenWidthDp < 380
+
+    val libraryTablet =
+        minOf(
+            libraryScreenWidthDp,
+            libraryScreenHeightDp
+        ) >= 600
+
+    val libraryWide =
+        libraryScreenWidthDp >= 600
+
+    val libraryContentMaxWidth =
+        if (libraryWide) 880.dp else 10000.dp
+
+    val libraryHorizontalPadding =
+        when {
+            libraryCompact -> 10.dp
+            libraryTablet -> 28.dp
+            else -> 16.dp
+        }
+
     val context =
         LocalContext.current
 
@@ -15813,15 +15844,21 @@ private fun ProjectLibraryScreen(
         )
 
         LazyColumn(
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(
+                        max = libraryContentMaxWidth
+                    )
+                    .fillMaxWidth(),
             contentPadding =
                 PaddingValues(
-                    16.dp
+                    horizontal = libraryHorizontalPadding,
+                    vertical =
+                        if (libraryCompact) 10.dp else 16.dp
                 ),
             verticalArrangement =
-                Arrangement
-                    .spacedBy(
-                        10.dp
-                    )
+                Arrangement.spacedBy(if (libraryCompact) 7.dp else 10.dp)
         ) {
             item {
                 Card(
@@ -15840,17 +15877,13 @@ private fun ProjectLibraryScreen(
                                     }
                             ),
                     shape =
-                        RoundedCornerShape(
-                            20.dp
-                        )
+                        RoundedCornerShape(if (libraryCompact) 17.dp else 20.dp)
                 ) {
                     Column(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    16.dp
-                                ),
+                                .padding(if (libraryCompact) 12.dp else 16.dp),
                         verticalArrangement =
                             Arrangement
                                 .spacedBy(
@@ -15912,9 +15945,7 @@ private fun ProjectLibraryScreen(
                             )
                 ) {
                     Column(
-                        Modifier.padding(
-                            16.dp
-                        )
+                        Modifier.padding(if (libraryCompact) 12.dp else 16.dp)
                     ) {
                         Text(
                             p.name,
@@ -15947,10 +15978,7 @@ private fun ProjectLibraryScreen(
                         Row(
                             Modifier.fillMaxWidth(),
                             horizontalArrangement =
-                                Arrangement
-                                    .spacedBy(
-                                        8.dp
-                                    )
+                                Arrangement.spacedBy(if (libraryCompact) 6.dp else 8.dp)
                         ) {
                             Button(
                                 onClick = {
@@ -16009,6 +16037,37 @@ private fun ProjectLibraryScreen(
 
 @Composable
 private fun BuildHistoryScreen(onBack: () -> Unit) {
+    val historyConfiguration =
+        LocalConfiguration.current
+
+    val historyScreenWidthDp =
+        historyConfiguration.screenWidthDp
+
+    val historyScreenHeightDp =
+        historyConfiguration.screenHeightDp
+
+    val historyCompact =
+        historyScreenWidthDp < 380
+
+    val historyTablet =
+        minOf(
+            historyScreenWidthDp,
+            historyScreenHeightDp
+        ) >= 600
+
+    val historyWide =
+        historyScreenWidthDp >= 600
+
+    val historyContentMaxWidth =
+        if (historyWide) 880.dp else 10000.dp
+
+    val historyHorizontalPadding =
+        when {
+            historyCompact -> 10.dp
+            historyTablet -> 28.dp
+            else -> 16.dp
+        }
+
     val context = LocalContext.current
     val builds = remember { ProjectLibrary.loadBuilds(context) }
 
@@ -16027,12 +16086,24 @@ private fun BuildHistoryScreen(onBack: () -> Unit) {
             }
         } else {
             LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .widthIn(
+                            max = historyContentMaxWidth
+                        )
+                        .fillMaxWidth(),
+                contentPadding =
+                PaddingValues(
+                    horizontal = historyHorizontalPadding,
+                    vertical =
+                        if (historyCompact) 10.dp else 16.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(if (historyCompact) 7.dp else 10.dp)
             ) {
                 items(builds, key = { it.id }) { b ->
                     Card(colors = CardDefaults.cardColors(containerColor = Card2)) {
-                        Column(Modifier.padding(16.dp)) {
+                        Column(Modifier.padding(if (historyCompact) 12.dp else 16.dp)) {
                             Text(b.projectName, fontWeight = FontWeight.Bold)
                             Text(b.packageName, color = TextSecondary, fontSize = 12.sp)
                             Text("Durum: ${b.status}", color = TextSecondary)
@@ -17605,6 +17676,37 @@ private fun SettingsHubScreen(
     onFeedback: () -> Unit,
     onClearCache: () -> Unit
 ) {
+    val settingsConfiguration =
+        LocalConfiguration.current
+
+    val settingsScreenWidthDp =
+        settingsConfiguration.screenWidthDp
+
+    val settingsScreenHeightDp =
+        settingsConfiguration.screenHeightDp
+
+    val settingsCompact =
+        settingsScreenWidthDp < 380
+
+    val settingsTablet =
+        minOf(
+            settingsScreenWidthDp,
+            settingsScreenHeightDp
+        ) >= 600
+
+    val settingsWide =
+        settingsScreenWidthDp >= 600
+
+    val settingsContentMaxWidth =
+        if (settingsWide) 880.dp else 10000.dp
+
+    val settingsHorizontalPadding =
+        when {
+            settingsCompact -> 10.dp
+            settingsTablet -> 28.dp
+            else -> 16.dp
+        }
+
     val entries = listOf(
         SettingsEntry(
             "🌐",
@@ -17673,7 +17775,19 @@ private fun SettingsHubScreen(
         )
 
         LazyColumn(
-            contentPadding = PaddingValues(16.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(
+                        max = settingsContentMaxWidth
+                    )
+                    .fillMaxWidth(),
+            contentPadding =
+                PaddingValues(
+                    horizontal = settingsHorizontalPadding,
+                    vertical =
+                        if (settingsCompact) 10.dp else 16.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(entries) { item ->
@@ -17685,13 +17799,17 @@ private fun SettingsHubScreen(
 
 @Composable
 private fun SettingsCardRow(entry: SettingsEntry) {
+    val settingsCardCompact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     Card(
         onClick = entry.onClick,
         colors = CardDefaults.cardColors(containerColor = Card2),
-        shape = RoundedCornerShape(22.dp)
+        shape = RoundedCornerShape(if (settingsCardCompact) 18.dp else 22.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp),
+            modifier = Modifier.fillMaxWidth().padding(\n                horizontal = if (settingsCardCompact) 12.dp else 16.dp,\n                vertical = if (settingsCardCompact) 14.dp else 18.dp\n            ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Card(
@@ -17699,21 +17817,21 @@ private fun SettingsCardRow(entry: SettingsEntry) {
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Box(
-                    modifier = Modifier.size(52.dp),
+                    modifier = Modifier.size(if (settingsCardCompact) 44.dp else 52.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(entry.icon, fontSize = 24.sp)
+                    Text(\n                    entry.icon,\n                    fontSize = if (settingsCardCompact) 21.sp else 24.sp\n                )
                 }
             }
 
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(if (settingsCardCompact) 10.dp else 14.dp))
 
             Column(Modifier.weight(1f)) {
-                Text(entry.title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text(entry.subtitle, color = TextSecondary, lineHeight = 18.sp)
+                Text(\n                    entry.title,\n                    fontWeight = FontWeight.Bold,\n                    fontSize = if (settingsCardCompact) 16.sp else 18.sp\n                )
+                Text(\n                    entry.subtitle,\n                    color = TextSecondary,\n                    lineHeight = if (settingsCardCompact) 16.sp else 18.sp,\n                    fontSize = if (settingsCardCompact) 12.sp else 14.sp\n                )
             }
 
-            Text("›", fontSize = 28.sp, color = TextSecondary)
+            Text(\n                "›",\n                fontSize = if (settingsCardCompact) 24.sp else 28.sp,\n                color = TextSecondary\n            )
         }
     }
 }
@@ -17724,6 +17842,37 @@ private fun LanguageSettingsScreen(
     onBack: () -> Unit,
     onSelect: (String) -> Unit
 ) {
+    val languageConfiguration =
+        LocalConfiguration.current
+
+    val languageScreenWidthDp =
+        languageConfiguration.screenWidthDp
+
+    val languageScreenHeightDp =
+        languageConfiguration.screenHeightDp
+
+    val languageCompact =
+        languageScreenWidthDp < 380
+
+    val languageTablet =
+        minOf(
+            languageScreenWidthDp,
+            languageScreenHeightDp
+        ) >= 600
+
+    val languageWide =
+        languageScreenWidthDp >= 600
+
+    val languageContentMaxWidth =
+        if (languageWide) 880.dp else 10000.dp
+
+    val languageHorizontalPadding =
+        when {
+            languageCompact -> 10.dp
+            languageTablet -> 28.dp
+            else -> 16.dp
+        }
+
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text(t(languageCode, "choose_language"), fontWeight = FontWeight.Bold) },
@@ -17732,7 +17881,19 @@ private fun LanguageSettingsScreen(
         )
 
         LazyColumn(
-            contentPadding = PaddingValues(16.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(
+                        max = languageContentMaxWidth
+                    )
+                    .fillMaxWidth(),
+            contentPadding =
+                PaddingValues(
+                    horizontal = languageHorizontalPadding,
+                    vertical =
+                        if (languageCompact) 10.dp else 16.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(StudioI18n.languages) { lang ->
@@ -17741,7 +17902,7 @@ private fun LanguageSettingsScreen(
                     colors = CardDefaults.cardColors(
                         containerColor = if (lang.code == languageCode) Color(0xFF1B3158) else Card2
                     ),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(if (languageCompact) 17.dp else 20.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
