@@ -435,6 +435,15 @@ function npmInvocation(
   const candidates =
     [
       process.env.npm_execpath,
+      path.join(
+        path.dirname(
+          process.execPath
+        ),
+        "node_modules",
+        "npm",
+        "bin",
+        "npm-cli.js"
+      ),
       process.env.PREFIX
         ? path.join(
             process.env.PREFIX,

@@ -40,18 +40,14 @@ test("branding is server authoritative", async () => {
     true
   );
 
-  assert.equal(
-    text.includes(
-      'text:\n      "Built with AppForge"'
-    ),
-    true
+  assert.match(
+    text,
+    /text:\s*"Built with AppForge"/
   );
 
-  assert.equal(
-    text.includes(
-      "showWatermark:\n      !entitlement.active"
-    ),
-    true
+  assert.match(
+    text,
+    /showWatermark:\s*!entitlement\.active/
   );
 });
 

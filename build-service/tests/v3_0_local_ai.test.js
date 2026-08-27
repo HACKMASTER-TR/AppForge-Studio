@@ -87,3 +87,38 @@ test("assistant UI is project aware without secrets", async () => {
   assert.equal(kb.includes("buildApiKey"), false);
   assert.equal(kb.includes("keystorePassword"), false);
 });
+
+test("assistant technology guidance matches live source engines", async () => {
+  const text =
+    await readFile(
+      knowledge,
+      "utf8"
+    );
+
+  for (
+    const marker of [
+      "Android Kotlin/Java Gradle",
+      "Flutter/Dart",
+      "React Native",
+      "Expo managed",
+      "Python/Flask/Django",
+      "appforge_main",
+      "net10.0-android",
+      "appforge.remote.json",
+      "dedicated Unity Worker"
+    ]
+  ) {
+    assert.equal(
+      text.includes(marker),
+      true,
+      `Missing technology guidance: ${marker}`
+    );
+  }
+
+  assert.equal(
+    text.includes(
+      "doğrudan kaynak-proje build desteği henüz eklenmemiştir"
+    ),
+    false
+  );
+});

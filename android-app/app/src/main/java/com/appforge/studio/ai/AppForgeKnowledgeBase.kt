@@ -27,6 +27,20 @@ private data class FastFaq(
 
 object AppForgeKnowledgeBase {
 
+    private const val LANGUAGE_SUPPORT_ANSWER =
+        "AppForge HTML5, CSS3 ve JavaScript projelerini; HTTPS web sitelerini; " +
+            "React, Vue, Angular, Svelte, Vite ve npm/TypeScript web projelerini destekler. " +
+            "Next.js için static export, Nuxt için static generate yapılandırması gerekir. " +
+            "Android Kotlin/Java Gradle, Flutter/Dart, React Native, Expo managed, " +
+            "Python/Flask/Django, appforge_main girişli C/C++ ve net10.0-android hedefli " +
+            ".NET MAUI veya .NET Android kaynak projeleri doğrudan Android build motorlarına sahiptir. " +
+            "Node.js ve PHP backend projeleri Android içinde çalıştırılmaz; appforge.remote.json ile " +
+            "önceden yayınlanmış public HTTPS backend kullanılır. Unity build yolu yalnız lisanslı " +
+            "dedicated Unity Worker kurulduğunda açılır. WPF/WinForms, SSR-only Next.js/Nuxt ve " +
+            "gerekli giriş kontratı bulunmayan projeler build-ready değildir. Kaynak proje motorları " +
+            "AppForge Native Bridge, AdMob, Billing ve Firebase seçeneklerini otomatik enjekte etmez; " +
+            "bu projeler kendi native paketlerini kullanmalıdır."
+
     /*
      * AppForge Studio'nun cihaz içi bilgi tabanı.
      *
@@ -676,14 +690,7 @@ object AppForgeKnowledgeBase {
                 "dil deste"
             )
         ) {
-            return (
-                "Şu an AppForge kullanıcı projelerinde temel çalışma modeli HTML/WebView'dir. " +
-                "HTML5, CSS3 ve JavaScript doğrudan desteklenir. React, Vue, Bootstrap ve Vite benzeri " +
-                "web projeleri build edilmiş/static çıktı olarak kullanılabilir. TypeScript önce JavaScript'e " +
-                "derlenmelidir. Kotlin/Java AppForge Android build altyapısında kullanılır; ancak genel kaynak-proje " +
-                "import motoru henüz yoktur. Python, Flutter/Dart, C/C++, C#, React Native, Node.js ve PHP için " +
-                "doğrudan kaynak-proje build desteği henüz eklenmemiştir."
-            )
+            return LANGUAGE_SUPPORT_ANSWER
         }
 
         fastFaqs
@@ -986,7 +993,7 @@ object AppForgeKnowledgeBase {
                 title =
                     "Hangi yazılım dilleri ve teknolojiler destekleniyor?",
                 text =
-                    "Şu an kullanıcı projelerinde temel çalışma modeli HTML/WebView'dir. HTML5, CSS3 ve JavaScript doğrudan desteklenir. React, Vue, Bootstrap, Vite benzeri web projeleri build edilmiş/static çıktı olarak kullanılabilir. TypeScript önce JavaScript'e derlenmelidir. Kotlin ve Java AppForge'un Android build altyapısında kullanılır ancak kullanıcıdan alınan Kotlin/Java kaynak projesini henüz doğrudan APK'ya çeviren genel bir import motoru yoktur. Python, Flutter/Dart, C/C++, C#, React Native, Node.js ve PHP için doğrudan kaynak-proje build desteği henüz eklenmemiştir.",
+                    LANGUAGE_SUPPORT_ANSWER,
                 keywords =
                     setOf(
                         "html",

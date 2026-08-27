@@ -132,7 +132,6 @@ test(
       const marker of [
         "AppForgeApkConversion",
         "conversionApkUri",
-        'buildOutput =\n                        "exe"',
         "startBuildWithDraft("
       ]
     ) {
@@ -142,6 +141,11 @@ test(
         `Missing APK to EXE build marker: ${marker}`
       );
     }
+
+    assert.match(
+      text,
+      /buildOutput\s*=\s*"exe"/
+    );
   }
 );
 
@@ -161,13 +165,19 @@ test(
         "utf8"
       );
 
+    const normalizedText =
+      text.replaceAll(
+        "\r\n",
+        "\n"
+      );
+
     const start =
-      text.indexOf(
+      normalizedText.indexOf(
         "LaunchedEffect(\n        conversionApkUri"
       );
 
     const end =
-      text.indexOf(
+      normalizedText.indexOf(
         "    MaterialTheme(",
         start
       );
@@ -176,7 +186,7 @@ test(
     assert.notEqual(end, -1);
 
     const block =
-      text.slice(
+      normalizedText.slice(
         start,
         end
       );

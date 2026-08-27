@@ -654,6 +654,15 @@ function npmInvocation(
   const candidates =
     [
       process.env.npm_execpath,
+      path.join(
+        path.dirname(
+          process.execPath
+        ),
+        "node_modules",
+        "npm",
+        "bin",
+        "npm-cli.js"
+      ),
       process.env.PREFIX
         ? path.join(
             process.env.PREFIX,
@@ -1353,7 +1362,7 @@ export function selectReactNativeGradle(
   ) {
     return (
       process.env.GRADLE_HOME
-        ? path.join(
+        ? path.posix.join(
             process.env.GRADLE_HOME,
             "bin",
             "gradle"
@@ -1364,7 +1373,7 @@ export function selectReactNativeGradle(
 
   return (
     process.env.REACT_NATIVE_GRADLE_HOME
-      ? path.join(
+      ? path.posix.join(
           process.env.REACT_NATIVE_GRADLE_HOME,
           "bin",
           "gradle"

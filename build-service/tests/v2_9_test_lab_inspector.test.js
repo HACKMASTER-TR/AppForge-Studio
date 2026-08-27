@@ -138,10 +138,8 @@ test("S3 output materialization prefers async streaming", async () => {
     true
   );
 
-  assert.equal(
-    text.includes(
-      'error?.code !==\n      "EXDEV"'
-    ),
-    true
+  assert.match(
+    text,
+    /error\?\.code\s*!==\s*"EXDEV"/
   );
 });
