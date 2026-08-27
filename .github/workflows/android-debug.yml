@@ -31,6 +31,23 @@ jobs:
         with:
           gradle-version: "9.3.1"
 
+      - name: Restore AppForge Firebase config
+        shell: bash
+        env:
+          APPFORGE_FIREBASE_GOOGLE_SERVICES_B64: ${{ secrets.APPFORGE_FIREBASE_GOOGLE_SERVICES_B64 }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "$APPFORGE_FIREBASE_GOOGLE_SERVICES_B64" ]; then
+            printf '%s' "$APPFORGE_FIREBASE_GOOGLE_SERVICES_B64"               | base64 --decode               > android-app/app/google-services.json
+
+            python3 -m json.tool               android-app/app/google-services.json               >/dev/null
+
+            echo "AppForge Studio Firebase config restored."
+          else
+            echo "APPFORGE_FIREBASE_GOOGLE_SERVICES_B64 tanımlı değil; Studio FCM bu build'de pasif."
+          fi
+
       - name: Restore CI debug signing key
         shell: bash
         env:

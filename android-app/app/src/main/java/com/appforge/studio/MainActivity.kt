@@ -3193,6 +3193,8 @@ private fun createQuickDraft(
         firebaseAnalyticsEnabled =
             false,
         firebaseCrashlyticsEnabled =
+            false,
+        firebaseMessagingEnabled =
             false
     )
 
@@ -4703,9 +4705,26 @@ private fun QuickCreateScreen(
                             )
                         }
 
+                        Toggle(
+                            "🔔 Firebase Cloud Messaging",
+                            draft.firebaseMessagingEnabled
+                        ) {
+                            onDraftChange(
+                                draft.copy(
+                                    firebaseMessagingEnabled =
+                                        it,
+                                    notifications =
+                                        if (it) {
+                                            true
+                                        } else {
+                                            draft.notifications
+                                        }
+                                )
+                            )
+                        }
+
                         if (
-                            draft.firebaseAnalyticsEnabled ||
-                            draft.firebaseCrashlyticsEnabled
+                            draft.firebaseAnalyticsEnabled || draft.firebaseCrashlyticsEnabled || draft.firebaseMessagingEnabled
                         ) {
 
                             Button(
@@ -9007,7 +9026,7 @@ private fun validateDraft(d: ProjectDraft, serverUrl: String) {
         }
     }
 
-    if (d.firebaseAnalyticsEnabled || d.firebaseCrashlyticsEnabled) {
+    if (d.firebaseAnalyticsEnabled || d.firebaseCrashlyticsEnabled || d.firebaseMessagingEnabled) {
         require(!d.firebaseConfigUri.isNullOrBlank()) {
             "Firebase için google-services.json seç."
         }
@@ -11390,7 +11409,8 @@ private fun MonetizationStep(
 
     val firebaseEnabled =
         draft.firebaseAnalyticsEnabled ||
-        draft.firebaseCrashlyticsEnabled
+        draft.firebaseCrashlyticsEnabled ||
+        draft.firebaseMessagingEnabled
 
     val firebaseConfigured =
         !firebaseEnabled ||
@@ -11402,7 +11422,8 @@ private fun MonetizationStep(
             draft.admobEnabled,
             draft.billingEnabled,
             draft.firebaseAnalyticsEnabled,
-            draft.firebaseCrashlyticsEnabled
+            draft.firebaseCrashlyticsEnabled,
+            draft.firebaseMessagingEnabled
         ).count {
             it
         }
@@ -11416,7 +11437,7 @@ private fun MonetizationStep(
         item {
             Section(
                 "6. Para Kazanma + Firebase",
-                "AdMob, Google Play Billing, Analytics ve Crashlytics."
+                "AdMob, Billing, Analytics, Crashlytics ve Cloud Messaging."
             )
         }
 
@@ -11447,7 +11468,7 @@ private fun MonetizationStep(
                     )
 
                     Text(
-                        "$enabledServiceCount / 4 servis açık",
+                        "$enabledServiceCount / 5 servis açık",
                         color =
                             TextSecondary,
                         fontSize =
@@ -11982,6 +12003,30 @@ private fun MonetizationStep(
             }
         }
 
+        item {
+            FeatureToggleCard(
+                title =
+                    "Firebase Cloud Messaging",
+                description =
+                    "Push bildirimlerini, foreground mesajlarını ve data mesajlarını FCM ile alır.",
+                checked =
+                    draft.firebaseMessagingEnabled
+            ) {
+                update(
+                    draft.copy(
+                        firebaseMessagingEnabled =
+                            it,
+                        notifications =
+                            if (it) {
+                                true
+                            } else {
+                                draft.notifications
+                            }
+                    )
+                )
+            }
+        }
+
         if (
             firebaseEnabled
         ) {
@@ -12052,6 +12097,18 @@ private fun MonetizationStep(
                                 "✓ Crashlytics açık"
                             } else {
                                 "○ Crashlytics kapalı"
+                            },
+                            fontSize =
+                                12.sp
+                        )
+
+                        Text(
+                            if (
+                                draft.firebaseMessagingEnabled
+                            ) {
+                                "✓ Cloud Messaging açık"
+                            } else {
+                                "○ Cloud Messaging kapalı"
                             },
                             fontSize =
                                 12.sp
@@ -12935,6 +12992,7 @@ private fun BuildSettingsStep(
             draft.billingEnabled,
             draft.firebaseAnalyticsEnabled,
             draft.firebaseCrashlyticsEnabled,
+            draft.firebaseMessagingEnabled,
             draft.mediaPlayerBridge,
             draft.qrScanner
         ).count {
@@ -13470,6 +13528,14 @@ private fun BuildSettingsStep(
 
                     Text(
                         "Crashlytics: ${onOff(draft.firebaseCrashlyticsEnabled)}",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "FCM: ${onOff(draft.firebaseMessagingEnabled)}",
                         color =
                             TextSecondary,
                         fontSize =

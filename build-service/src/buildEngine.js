@@ -408,8 +408,7 @@ export function preflight(c, files = {}) {
           ? "Google Play Billing"
           : null,
         (
-          c.firebase?.analytics ||
-          c.firebase?.crashlytics
+          c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging
         )
           ? "Firebase"
           : null,
@@ -455,8 +454,7 @@ export function preflight(c, files = {}) {
           ? "Billing otomatik enjeksiyon"
           : null,
         (
-          c.firebase?.analytics ||
-          c.firebase?.crashlytics
+          c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging
         )
           ? "Firebase otomatik enjeksiyon"
           : null
@@ -496,8 +494,7 @@ export function preflight(c, files = {}) {
           ? "Billing otomatik enjeksiyon"
           : null,
         (
-          c.firebase?.analytics ||
-          c.firebase?.crashlytics
+          c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging
         )
           ? "Firebase otomatik enjeksiyon"
           : null
@@ -539,8 +536,7 @@ export function preflight(c, files = {}) {
           ? "Billing otomatik enjeksiyon"
           : null,
         (
-          c.firebase?.analytics ||
-          c.firebase?.crashlytics
+          c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging
         )
           ? "Firebase otomatik enjeksiyon"
           : null
@@ -583,8 +579,7 @@ export function preflight(c, files = {}) {
           ? "Billing otomatik enjeksiyon"
           : null,
         (
-          c.firebase?.analytics ||
-          c.firebase?.crashlytics
+          c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging
         )
           ? "Firebase otomatik enjeksiyon"
           : null
@@ -624,8 +619,7 @@ export function preflight(c, files = {}) {
           ? "Billing otomatik enjeksiyon"
           : null,
         (
-          c.firebase?.analytics ||
-          c.firebase?.crashlytics
+          c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging
         )
           ? "Firebase otomatik enjeksiyon"
           : null
@@ -665,8 +659,7 @@ export function preflight(c, files = {}) {
           ? "Billing otomatik enjeksiyon"
           : null,
         (
-          c.firebase?.analytics ||
-          c.firebase?.crashlytics
+          c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging
         )
           ? "Firebase otomatik enjeksiyon"
           : null
@@ -726,8 +719,7 @@ export function preflight(c, files = {}) {
           ? "Billing otomatik enjeksiyon"
           : null,
         (
-          c.firebase?.analytics ||
-          c.firebase?.crashlytics
+          c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging
         )
           ? "Firebase otomatik enjeksiyon"
           : null
@@ -758,11 +750,11 @@ export function preflight(c, files = {}) {
     warn("Debug signing seçili.");
   }
 
-  if ((c.firebase?.analytics || c.firebase?.crashlytics) && !files.hasFirebaseConfig) {
+  if ((c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging) && !files.hasFirebaseConfig) {
     throw new Error("Firebase açık ancak google-services.json eksik.");
   }
 
-  if (c.firebase?.analytics || c.firebase?.crashlytics) {
+  if (c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging) {
     ok("Firebase config mevcut.");
   }
 
@@ -999,8 +991,7 @@ function requiresFastExtended(
   return Boolean(
     c.admob?.enabled ||
     c.billing?.enabled ||
-    c.firebase?.analytics ||
-    c.firebase?.crashlytics
+    c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging
   );
 }
 
@@ -1079,8 +1070,7 @@ export async function executeBuild(job) {
     );
 
     if (
-      c.firebase?.analytics ||
-      c.firebase?.crashlytics
+      c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging
     ) {
       await validateFirebaseConfig(
         uploadedFirebaseConfig,
@@ -2930,7 +2920,7 @@ async function generateAndroidProject(projectDir, c, files) {
   );
 
   const firebaseEnabled =
-    Boolean(c.firebase?.analytics || c.firebase?.crashlytics);
+    Boolean(c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging);
 
   await fs.writeFile(
     path.join(projectDir, "settings.gradle.kts"),
@@ -3019,7 +3009,7 @@ kotlin.compiler.execution.strategy=in-process
     c.nativeBridge?.enabled && c.nativeBridge?.mediaPlayer
       ? 'implementation("androidx.media3:media3-session:1.11.0")'
       : "",
-    c.firebase?.analytics || c.firebase?.crashlytics
+    c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging
       ? 'implementation(platform("com.google.firebase:firebase-bom:34.17.0"))'
       : "",
     c.firebase?.analytics
@@ -3027,6 +3017,10 @@ kotlin.compiler.execution.strategy=in-process
       : "",
     c.firebase?.crashlytics
       ? 'implementation("com.google.firebase:firebase-crashlytics")'
+      : ""
+,
+    c.firebase?.messaging
+      ? 'implementation("com.google.firebase:firebase-messaging")'
       : ""
   ].filter(Boolean).join("\n    ");
 
@@ -3085,6 +3079,7 @@ dependencies {
       : "",
     (
       c.features?.notifications ||
+      c.firebase?.messaging ||
       (
         c.nativeBridge?.enabled &&
         c.nativeBridge?.mediaPlayer
@@ -3159,6 +3154,19 @@ dependencies {
         </service>`
       : "";
 
+  const firebaseMessagingServiceManifest =
+    c.firebase?.messaging
+      ? `
+        <service
+            android:name=".AppForgeFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action
+                    android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>`
+      : "";
+
   const orientation = ["portrait", "landscape", "unspecified"].includes(c.orientation)
     ? c.orientation
     : "unspecified";
@@ -3190,6 +3198,7 @@ dependencies {
         ${admobMeta}
         ${scannerMeta}
         ${mediaServiceManifest}
+        ${firebaseMessagingServiceManifest}
     </application>
 </manifest>
 `
@@ -3306,6 +3315,20 @@ dependencies {
   );
 
   if (
+    c.firebase?.messaging
+  ) {
+    await fs.writeFile(
+      path.join(
+        javaDir,
+        "AppForgeFirebaseMessagingService.kt"
+      ),
+      generatedFirebaseMessagingService(
+        pkg
+      )
+    );
+  }
+
+  if (
     c.nativeBridge?.enabled &&
     c.nativeBridge?.mediaPlayer
   ) {
@@ -3317,6 +3340,158 @@ dependencies {
       generatedMediaService(pkg)
     );
   }
+}
+
+
+function generatedFirebaseMessagingService(
+  pkg
+) {
+  return `
+package ${pkg}
+
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+
+class AppForgeFirebaseMessagingService :
+    FirebaseMessagingService() {
+
+    override fun onNewToken(
+        token: String
+    ) {
+        getSharedPreferences(
+            "appforge_fcm",
+            MODE_PRIVATE
+        )
+            .edit()
+            .putString(
+                "token",
+                token
+            )
+            .apply()
+    }
+
+    override fun onMessageReceived(
+        message: RemoteMessage
+    ) {
+        val title =
+            message.notification
+                ?.title
+                ?: message.data["title"]
+                ?: applicationInfo
+                    .loadLabel(
+                        packageManager
+                    )
+                    .toString()
+
+        val body =
+            message.notification
+                ?.body
+                ?: message.data["body"]
+                ?: message.data["message"]
+                ?: return
+
+        if (
+            Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(
+                Manifest.permission.POST_NOTIFICATIONS
+            ) !=
+                PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
+        val channelId =
+            "appforge_fcm"
+
+        val manager =
+            getSystemService(
+                NotificationManager::class.java
+            )
+
+        if (
+            Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.O
+        ) {
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    channelId,
+                    "Bildirimler",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                )
+            )
+        }
+
+        val launchIntent =
+            packageManager
+                .getLaunchIntentForPackage(
+                    packageName
+                )
+                ?.apply {
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    )
+                }
+
+        val pendingIntent =
+            launchIntent
+                ?.let {
+                    PendingIntent.getActivity(
+                        this,
+                        0,
+                        it,
+                        PendingIntent.FLAG_UPDATE_CURRENT or
+                            PendingIntent.FLAG_IMMUTABLE
+                    )
+                }
+
+        val builder =
+            NotificationCompat
+                .Builder(
+                    this,
+                    channelId
+                )
+                .setSmallIcon(
+                    android.R.drawable.ic_dialog_info
+                )
+                .setContentTitle(
+                    title
+                )
+                .setContentText(
+                    body
+                )
+                .setAutoCancel(
+                    true
+                )
+
+        if (
+            pendingIntent !=
+                null
+        ) {
+            builder.setContentIntent(
+                pendingIntent
+            )
+        }
+
+        manager.notify(
+            (
+                System.currentTimeMillis() %
+                    Int.MAX_VALUE
+            ).toInt(),
+            builder.build()
+        )
+    }
+}
+`;
 }
 
 

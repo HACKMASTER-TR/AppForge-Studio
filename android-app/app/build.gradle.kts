@@ -3,6 +3,13 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val appForgeStudioFirebaseConfigured =
+    file("google-services.json").isFile
+
+if (appForgeStudioFirebaseConfigured) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.appforge.studio"
     compileSdk = 37
@@ -153,6 +160,15 @@ dependencies {
     implementation(
         "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
     )
+    implementation(
+        platform(
+            "com.google.firebase:firebase-bom:34.17.0"
+        )
+    )
+    implementation(
+        "com.google.firebase:firebase-messaging"
+    )
+
     implementation(
         "com.google.android.play:integrity:1.6.0"
     )

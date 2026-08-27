@@ -84,6 +84,7 @@ data class ProjectDraft(
 
     var firebaseAnalyticsEnabled: Boolean = false,
     var firebaseCrashlyticsEnabled: Boolean = false,
+    var firebaseMessagingEnabled: Boolean = false,
     var firebaseConfigUri: String? = null,
     var firebaseConfigName: String = "",
 

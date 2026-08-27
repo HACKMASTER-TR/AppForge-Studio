@@ -398,6 +398,7 @@ object ProjectLibrary {
             purchaseVerificationUrl = obj.optString("purchaseVerificationUrl"),
             firebaseAnalyticsEnabled = obj.optBoolean("firebaseAnalyticsEnabled", false),
             firebaseCrashlyticsEnabled = obj.optBoolean("firebaseCrashlyticsEnabled", false),
+            firebaseMessagingEnabled = obj.optBoolean("firebaseMessagingEnabled", false),
             buildServiceUrl =
                 obj
                     .optString(
@@ -587,6 +588,7 @@ object ProjectLibrary {
 
             put("firebaseAnalyticsEnabled", d.firebaseAnalyticsEnabled)
             put("firebaseCrashlyticsEnabled", d.firebaseCrashlyticsEnabled)
+            put("firebaseMessagingEnabled", d.firebaseMessagingEnabled)
 
             put("buildServiceUrl", d.buildServiceUrl)
 

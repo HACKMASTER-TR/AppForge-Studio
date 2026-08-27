@@ -206,8 +206,7 @@ export function getFastBuildDecision(
   }
 
   if (
-    c.firebase?.analytics ||
-    c.firebase?.crashlytics
+    c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging
   ) {
     reasons.push(
       "Firebase"

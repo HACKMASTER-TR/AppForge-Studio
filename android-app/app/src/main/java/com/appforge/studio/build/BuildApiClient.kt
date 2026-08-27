@@ -229,6 +229,7 @@ class BuildApiClient(
             put("firebase", JSONObject().apply {
                 put("analytics", draft.firebaseAnalyticsEnabled)
                 put("crashlytics", draft.firebaseCrashlyticsEnabled)
+                put("messaging", draft.firebaseMessagingEnabled)
                 put("hasConfig", !draft.firebaseConfigUri.isNullOrBlank())
             })
 
@@ -243,7 +244,11 @@ class BuildApiClient(
                 put("fileUpload", draft.fileUpload)
                 put("downloads", draft.downloads)
                 put("fullscreen", draft.fullscreen)
-                put("notifications", draft.notifications)
+                put(
+                    "notifications",
+                    draft.notifications ||
+                        draft.firebaseMessagingEnabled
+                )
                 put("camera", draft.camera)
                 put("location", draft.location)
                 put("offlineCache", draft.offlineCache)
