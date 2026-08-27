@@ -340,3 +340,34 @@ test(
     }
   }
 );
+
+
+test(
+  "source worker CI contract stays outside build-service Docker context",
+  async () => {
+    for (
+      const dockerName of [
+        "Dockerfile.worker",
+        "Dockerfile.source-worker"
+      ]
+    ) {
+      const docker =
+        await fs.readFile(
+          path.join(
+            repoRoot,
+            "build-service",
+            dockerName
+          ),
+          "utf8"
+        );
+
+      assert.equal(
+        docker.includes(
+          "RUN node --test tests/source_worker_ci_contract.test.js"
+        ),
+        false,
+        `${dockerName}: repository-level CI contract Docker context içinde çalıştırılmamalı.`
+      );
+    }
+  }
+);
