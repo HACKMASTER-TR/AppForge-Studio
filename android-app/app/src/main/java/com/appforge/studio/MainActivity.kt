@@ -7149,13 +7149,13 @@ private fun TestLabScreen(
                             FontWeight.Bold
                     )
 
-                    Text(
-                        "APK/AAB Analyzer • Security • Compare • Release Notes",
-                        color =
-                            TextSecondary,
-                        fontSize =
-                            12.sp
-                    )
+                    if (!testLabCompact) {
+                        Text(
+                            "APK/AAB Analyzer • Security • Compare • Release Notes",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             },
             navigationIcon = {
@@ -8185,13 +8185,13 @@ private fun LocalAiAssistantScreen(
                             FontWeight.Bold
                     )
 
-                    Text(
-                        "Cihazda çalışan Yerel AI • Çevrimdışı",
-                        fontSize =
-                            12.sp,
-                        color =
-                            TextSecondary
-                    )
+                    if (!aiCompact) {
+                        Text(
+                            "Cihazda çalışan Yerel AI • Çevrimdışı",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
                 }
             },
             navigationIcon = {
@@ -16930,11 +16930,13 @@ private fun TemplatesScreen(
                         "Şablonlar",
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        "Native Android API'lerini kullanan hazır HTML projeleri",
-                        color = TextSecondary,
-                        fontSize = 12.sp
-                    )
+                    if (!templatesCompact) {
+                        Text(
+                            "Native Android API'lerini kullanan hazır HTML projeleri",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             },
             navigationIcon = {
@@ -19775,17 +19777,78 @@ private fun ColorField(label: String, value: String, onChange: (String) -> Unit)
 
 @Composable
 private fun NoteCard(text: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = Card2)) {
-        Text(text, modifier = Modifier.padding(14.dp), color = TextSecondary)
+    val noteCompact =
+        LocalConfiguration.current.screenWidthDp < 380
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Card2),
+        shape = RoundedCornerShape(if (noteCompact) 14.dp else 18.dp)
+    ) {
+        Text(
+            text,
+            modifier =
+                Modifier.padding(
+                    if (noteCompact) 11.dp else 14.dp
+                ),
+            color = TextSecondary,
+            fontSize =
+                if (noteCompact) 12.sp else 14.sp,
+            lineHeight =
+                if (noteCompact) 17.sp else 20.sp
+        )
     }
 }
 
 @Composable
 private fun InfoLine(label: String, value: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = Card2)) {
-        Row(Modifier.fillMaxWidth().padding(14.dp)) {
-            Text(label, color = TextSecondary, modifier = Modifier.width(80.dp))
-            Text(value, fontSize = 12.sp)
+    val infoCompact =
+        LocalConfiguration.current.screenWidthDp < 380
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Card2),
+        shape = RoundedCornerShape(if (infoCompact) 14.dp else 18.dp)
+    ) {
+        if (infoCompact) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(11.dp),
+                verticalArrangement =
+                    Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    label,
+                    color = TextSecondary,
+                    fontSize = 11.sp
+                )
+
+                Text(
+                    value,
+                    fontSize = 12.sp
+                )
+            }
+        } else {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                verticalAlignment =
+                    Alignment.CenterVertically
+            ) {
+                Text(
+                    label,
+                    color = TextSecondary,
+                    modifier = Modifier.width(80.dp)
+                )
+
+                Text(
+                    value,
+                    modifier = Modifier.weight(1f),
+                    fontSize = 12.sp
+                )
+            }
         }
     }
 }
