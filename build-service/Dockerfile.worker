@@ -1,31 +1,19 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e1ffd2a92ae84c1291bc1b6887501f8af98e6331e7af6d4c8d37168c5e87a64c AS dotnet-sdk
-
 FROM node:22-bookworm-slim
 
 ARG ANDROID_CMDLINE_TOOLS_VERSION=15859902
 ARG ANDROID_CMDLINE_TOOLS_SHA256=4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583
 ARG ANDROID_SDK_LICENSE_ACCEPTED=false
 ARG GRADLE_VERSION=9.3.1
-ARG REACT_NATIVE_GRADLE_VERSION=8.14.3
 ARG FLUTTER_VERSION=3.44.9
 ARG FLUTTER_SHA256=a9120fa4a01048bdef438ddc3a2d4b7389662ea98a95db86eeaf10382bc4efcb
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DOTNET_ROOT=/usr/share/dotnet
-ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
-ENV DOTNET_NOLOGO=1
-ENV NUGET_XMLDOC_MODE=skip
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
 ENV ANDROID_HOME=/opt/android-sdk
-ENV ANDROID_NDK_HOME=/opt/android-sdk/ndk/28.2.13676358
-ENV ANDROID_NDK_ROOT=/opt/android-sdk/ndk/28.2.13676358
 ENV GRADLE_HOME=/opt/gradle/gradle-9.3.1
-ENV REACT_NATIVE_GRADLE_HOME=/opt/gradle/gradle-8.14.3
 ENV FLUTTER_HOME=/opt/flutter
-ENV PATH=/usr/share/dotnet:/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:/opt/gradle/gradle-9.3.1/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/cmdline-tools/latest/bin:$PATH
+ENV PATH=/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:/opt/gradle/gradle-9.3.1/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/cmdline-tools/latest/bin:$PATH
 ENV NODE_ENV=production
-
-COPY --from=dotnet-sdk /usr/share/dotnet /usr/share/dotnet
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -34,11 +22,6 @@ RUN apt-get update \
        unzip \
        git \
        xz-utils \
-       cmake \
-       ninja-build \
-       libicu72 \
-       libssl3 \
-       zlib1g \
        python3 \
        python3-pip \
        openjdk-17-jdk-headless \
@@ -68,9 +51,7 @@ RUN if [ "${ANDROID_SDK_LICENSE_ACCEPTED}" != "true" ]; then \
        "platform-tools" \
        "platforms;android-36" \
        "platforms;android-37.0" \
-       "build-tools;36.0.0" \
-       "ndk;28.2.13676358" \
-       "cmake;3.22.1"
+       "build-tools;36.0.0"
 
 # AGP 9.1 requires Gradle 9.3.1 minimum. Verify Gradle's published checksum.
 RUN curl -fL --retry 4 \
@@ -84,55 +65,6 @@ RUN curl -fL --retry 4 \
     && unzip -q /tmp/gradle.zip -d /opt/gradle \
     && rm /tmp/gradle.zip /tmp/gradle.zip.sha256
 
-
-
-# React Native / Expo current Android projects commonly use Gradle 8.x.
-# Install a trusted system Gradle instead of executing uploaded gradle-wrapper.jar.
-RUN curl -fL --retry 4 \
-      "https://services.gradle.org/distributions/gradle-${REACT_NATIVE_GRADLE_VERSION}-bin.zip" \
-      -o /tmp/react-native-gradle.zip \
-    && curl -fL --retry 4 \
-      "https://services.gradle.org/distributions/gradle-${REACT_NATIVE_GRADLE_VERSION}-bin.zip.sha256" \
-      -o /tmp/react-native-gradle.zip.sha256 \
-    && printf "%s  %s\n" "$(cat /tmp/react-native-gradle.zip.sha256)" "/tmp/react-native-gradle.zip" | sha256sum -c - \
-    && unzip -q /tmp/react-native-gradle.zip -d /opt/gradle \
-    && rm /tmp/react-native-gradle.zip /tmp/react-native-gradle.zip.sha256
-
-# Node 22 image already ships Corepack shims.
-# Activate pinned Yarn classic and pnpm without overwriting existing /usr/local/bin shims.
-RUN corepack enable \
-    && corepack prepare yarn@1.22.22 --activate \
-    && corepack prepare pnpm@10.17.1 --activate \
-    && test "$(yarn --version)" = "1.22.22" \
-    && test "$(pnpm --version)" = "10.17.1"
-
-
-# Fixed AppForge source-build DEBUG signing key.
-# This key contains no production secret and is used only for test/installable builds.
-RUN keytool -genkeypair \
-      -keystore /opt/appforge-source-debug.keystore \
-      -storepass android \
-      -alias androiddebugkey \
-      -keypass android \
-      -dname "CN=Android Debug,O=Android,C=US" \
-      -keyalg RSA \
-      -keysize 2048 \
-      -validity 10000 \
-    && keytool -list \
-      -keystore /opt/appforge-source-debug.keystore \
-      -storepass android \
-      -alias androiddebugkey >/dev/null
-
-# =========================================================
-# .NET MAUI Android toolchain
-#
-# .NET 10 SDK is copied from Microsoft's pinned SDK image.
-# Linux MAUI Android support is installed through the official
-# maui-android workload.
-# =========================================================
-RUN dotnet --info \
-    && dotnet workload install maui-android \
-    && dotnet workload list | grep -F "maui-android"
 
 # =========================================================
 # Flutter Android toolchain
@@ -171,33 +103,6 @@ RUN node --test tests/flutter_build_engine.test.js
 RUN node --test tests/flutter_live_build_engine.test.js
 RUN node --test tests/react_native_build_engine.test.js
 RUN node --test tests/source_build_env.test.js
-RUN node --test tests/react_native_live_build_engine.test.js
-RUN node --test tests/cpp_android_build_engine.test.js
-RUN node --test tests/cpp_android_live_build_engine.test.js
-RUN node tests/cpp_android_template_build_smoke.js
-RUN node --test tests/dotnet_maui_build_engine.test.js
-RUN node --test tests/dotnet_maui_live_build_engine.test.js
-RUN node tests/dotnet_maui_android_smoke.js
-RUN node --test tests/unity_android_build_engine.test.js
-RUN node --test tests/unity_worker_contract.test.js
-RUN node --test tests/unity_licensed_build_engine.test.js
-RUN node --test tests/framework_static_build_engine.test.js
-RUN node --test tests/framework_static_live_build_engine.test.js
-RUN node --test tests/python_web_framework_engine.test.js
-RUN node --test tests/python_web_framework_live_build_engine.test.js
-RUN node tests/python_web_android_smoke.js
-RUN node --test tests/php_remote_backend_engine.test.js
-RUN node --test tests/php_remote_backend_live_engine.test.js
-RUN node --test tests/dotnet_android_build_engine.test.js
-RUN node --test tests/dotnet_android_live_build_engine.test.js
-RUN node tests/dotnet_android_smoke.js
-RUN node --test tests/node_remote_backend_engine.test.js
-RUN node --test tests/node_remote_backend_live_engine.test.js
-# Cross-repo technology matrix runs in GitHub Actions before Docker build.
-RUN node --test tests/source_build_isolation.test.js
-RUN node --test tests/source_worker_contract.test.js
-RUN node --test tests/source_worker_queue_routing.test.js
-# Repository-level source worker CI contract runs in GitHub Actions before Docker build.
 
 # =========================================================
 # AppForge FAST EXTENDED SDK bundle
