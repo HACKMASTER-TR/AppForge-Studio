@@ -86,7 +86,7 @@ test(
 
     assert.match(
       docker,
-      /GRADLE_USER_HOME=\/app\/gradle-cache/
+      /GRADLE_USER_HOME=\/app\/user-cache\/10001\/gradle/
     );
   }
 );
