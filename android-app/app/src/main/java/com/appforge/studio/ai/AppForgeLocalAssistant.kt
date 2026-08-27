@@ -554,6 +554,7 @@ class AppForgeLocalAssistant(
         question: String,
         draft: ProjectDraft,
         includeProjectContext: Boolean,
+        runtimeContext: AssistantRuntimeContext? = null,
         onPartial: (String) -> Unit
     ) {
         val clean =
@@ -604,7 +605,8 @@ class AppForgeLocalAssistant(
                 .promptContext(
                     clean,
                     draft,
-                    includeProjectContext
+                    includeProjectContext,
+                    runtimeContext
                 )
 
         val languageInstruction =
@@ -981,6 +983,12 @@ class AppForgeLocalAssistant(
                     AppForge Studio, Android build, HTML/WebView, Preview, Test Lab,
                     imzalama, sürümleme, Pro planları ve proje ayarları konusunda
                     uygulama içi yardım sağla.
+
+                    Sana her soruda uygulamanın modül haritası verilir. Kullanıcının
+                    sorusuyla ilgili ekranı, mevcut proje durumunu ve güvenli çalışma
+                    bağlamını birlikte değerlendir. Bir ayarın nerede olduğunu sorarsa
+                    açık ekran yolunu söyle. Mevcut build/proje durumu verilmişse genel
+                    cevap yerine o duruma göre somut sonraki adımı öner.
 
                     AppForge yerel bağlamıyla çelişme ve bilmediğin AppForge özelliğini uydurma.
                     Güncel internet bilgisine erişemediğin durumlarda bunu açıkça belirt.

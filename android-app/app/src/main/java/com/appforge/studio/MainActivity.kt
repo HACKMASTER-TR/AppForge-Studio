@@ -54,7 +54,11 @@ import com.appforge.studio.build.TestLabResult
 import com.appforge.studio.ai.AppForgeKnowledgeBase
 import com.appforge.studio.ai.AppForgeProjectAdvisor
 import com.appforge.studio.ai.AppForgeBuildErrorAdvisor
+import com.appforge.studio.ai.AppForgeAssistantIntegration
 import com.appforge.studio.ai.AppForgeSmartSuggestions
+import com.appforge.studio.ai.AssistantAppAction
+import com.appforge.studio.ai.AssistantDestination
+import com.appforge.studio.ai.AssistantRuntimeContext
 import com.appforge.studio.ai.LocalAiChatStore
 import com.appforge.studio.ai.StoredAiMessage
 import com.appforge.studio.ai.AppForgeLocalAssistant
@@ -619,6 +623,67 @@ private fun AppForgeApp() {
         remember {
             mutableStateOf("")
         }
+
+    fun navigateFromAssistant(
+        destination: AssistantDestination
+    ) {
+        val targetBuilderStep =
+            when (
+                destination
+            ) {
+                AssistantDestination.SOURCE -> 1
+                AssistantDestination.PERMISSIONS -> 2
+                AssistantDestination.FEATURES -> 3
+                AssistantDestination.APPEARANCE -> 4
+                AssistantDestination.NATIVE_BRIDGE -> 5
+                AssistantDestination.MONETIZATION -> 6
+                AssistantDestination.DEEP_LINK -> 7
+                AssistantDestination.SIGNING -> 8
+                AssistantDestination.BUILD_SETTINGS -> 9
+                AssistantDestination.BUILD -> 10
+                AssistantDestination.ADVANCED_CREATE -> 1
+                else -> null
+            }
+
+        if (
+            targetBuilderStep != null
+        ) {
+            step =
+                targetBuilderStep
+
+            screen =
+                AppScreen.BUILDER
+
+            status =
+                "Yerel AI ilgili düzenleme adımını açtı."
+
+            return
+        }
+
+        screen =
+            when (
+                destination
+            ) {
+                AssistantDestination.PROJECTS -> AppScreen.HOME
+                AssistantDestination.QUICK_CREATE -> AppScreen.MODE_SELECT
+                AssistantDestination.CONVERSION -> AppScreen.CONVERSION
+                AssistantDestination.PREVIEW -> AppScreen.PREVIEW
+                AssistantDestination.PRODUCTION -> AppScreen.PRODUCTION
+                AssistantDestination.TEST_LAB -> AppScreen.TEST_LAB
+                AssistantDestination.TEMPLATES -> AppScreen.TEMPLATES
+                AssistantDestination.HISTORY -> AppScreen.HISTORY
+                AssistantDestination.SETTINGS -> AppScreen.SETTINGS
+                AssistantDestination.ACCOUNT -> AppScreen.ACCOUNT
+                AssistantDestination.HELP -> AppScreen.HELP
+                AssistantDestination.PLAY_GUIDE -> AppScreen.PLAY_GUIDE
+                AssistantDestination.PRO -> AppScreen.PRO
+                AssistantDestination.KEYSTORES -> AppScreen.KEYSTORES
+                else -> AppScreen.HOME
+            }
+
+        status =
+            "Yerel AI ilgili uygulama bölümünü açtı."
+    }
 
     /*
      * Aynı anda yalnızca tek build oluşturulabilir/takip edilir.
@@ -2568,6 +2633,52 @@ private fun AppForgeApp() {
                         status =
                             "AI proje düzeltmeleri uygulandı."
                     },
+                    runtimeContext =
+                        AssistantRuntimeContext(
+                            workspace =
+                                workspaceReturnScreen.name,
+                            builderStep =
+                                workspaceReturnStep,
+                            buildStatus =
+                                status,
+                            buildProgress =
+                                progress,
+                            sourceTechnology =
+                                draft.sourceTechnologyLabel,
+                            sourceBuildReady =
+                                draft.sourceBuildReady,
+                            signedIn =
+                                session != null,
+                            proActive =
+                                proStatus?.active == true,
+                            hasApk =
+                                !apkUrl.isNullOrBlank(),
+                            hasAab =
+                                !aabUrl.isNullOrBlank(),
+                            hasExe =
+                                !exeUrl.isNullOrBlank(),
+                            buildDiagnosis =
+                                if (
+                                    logs.isNotEmpty() ||
+                                    preflight.isNotEmpty()
+                                ) {
+                                    AppForgeBuildErrorAdvisor
+                                        .diagnose(
+                                            logs,
+                                            preflight,
+                                            status
+                                        )
+                                        .let {
+                                            "${it.title}: ${it.reason}"
+                                        }
+                                } else {
+                                    null
+                                }
+                        ),
+                    buildLogs =
+                        logs,
+                    buildPreflight =
+                        preflight,
                     languageCode =
                         prefs.languageCode,
                     modelInfo =
@@ -2636,6 +2747,13 @@ private fun AppForgeApp() {
                         aiModelInfo =
                             it
                     },
+                    onNavigate = {
+                        destination ->
+
+                        navigateFromAssistant(
+                            destination
+                        )
+                    },
                     onBack = {
                         returnFromWorkspace()
                     }
@@ -2659,7 +2777,23 @@ private fun AppForgeApp() {
                         title = {
                             Column {
                                 Text("AppForge Studio", fontWeight = FontWeight.Bold)
-                                Text("v3.0 Local AI Assistant", fontSize = 12.sp, color = TextSecondary)
+                                Text(
+                                    "Adım $step/10 • " +
+                                        when (step) {
+                                            1 -> "Kaynak"
+                                            2 -> "İzinler"
+                                            3 -> "WebView"
+                                            4 -> "Görünüm"
+                                            5 -> "Native Bridge"
+                                            6 -> "Gelir ve Firebase"
+                                            7 -> "Deep Link"
+                                            8 -> "İmzalama"
+                                            9 -> "Build ayarları"
+                                            else -> "Derleme"
+                                        },
+                                    fontSize = 12.sp,
+                                    color = TextSecondary
+                                )
                             }
                         },
                         navigationIcon = {
@@ -2675,86 +2809,6 @@ private fun AppForgeApp() {
                         actions = {},
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
                     )
-
-                    BuilderShortcutBar(
-                        onHome = {
-                            screen = AppScreen.HOME
-                        },
-                        onHistory = {
-                            openWorkspaceScreen(
-                                AppScreen.HISTORY
-                            )
-                        },
-                        onTemplates = {
-                            openWorkspaceScreen(
-                                AppScreen.TEMPLATES
-                            )
-                        },
-                        onAi = {
-                            openWorkspaceScreen(
-                                AppScreen.AI_ASSISTANT
-                            )
-                        },
-                        onSettings = {
-                            openWorkspaceScreen(
-                                AppScreen.SETTINGS
-                            )
-                        },
-                        onAccount = {
-                            openWorkspaceScreen(
-                                AppScreen.ACCOUNT
-                            )
-                        }
-                    )
-
-                    Row(
-                        modifier =
-                            Modifier
-                                .align(
-                                    Alignment.CenterHorizontally
-                                )
-                                .widthIn(
-                                    max =
-                                        builderContentMaxWidth
-                                )
-                                .fillMaxWidth()
-                                .padding(
-                                    horizontal =
-                                        builderHorizontalPadding,
-                                    vertical =
-                                        if (builderCompact) {
-                                            5.dp
-                                        } else {
-                                            7.dp
-                                        }
-                                ),
-                        verticalAlignment =
-                            Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Adım $step / 10",
-                            color =
-                                Accent,
-                            fontSize =
-                                12.sp,
-                            fontWeight =
-                                FontWeight.Bold
-                        )
-
-                        Spacer(
-                            Modifier.weight(
-                                1f
-                            )
-                        )
-
-                        Text(
-                            "${step * 10}%",
-                            color =
-                                TextSecondary,
-                            fontSize =
-                                12.sp
-                        )
-                    }
 
                     LinearProgressIndicator(
                         progress = { step / 10f },
@@ -7751,6 +7805,9 @@ private data class LocalAiChatMessage(
 private fun LocalAiAssistantScreen(
     draft: ProjectDraft,
     onDraftChange: (ProjectDraft) -> Unit,
+    runtimeContext: AssistantRuntimeContext,
+    buildLogs: List<String>,
+    buildPreflight: List<String>,
     languageCode: String,
     modelInfo: LocalAiModelInfo?,
     importMessage: String,
@@ -7759,6 +7816,7 @@ private fun LocalAiAssistantScreen(
     onInstallDefaultModel: () -> Unit,
     onImportModel: () -> Unit,
     onModelChanged: (LocalAiModelInfo?) -> Unit,
+    onNavigate: (AssistantDestination) -> Unit,
     onBack: () -> Unit
 ) {
     val aiConfiguration =
@@ -7856,6 +7914,13 @@ private fun LocalAiAssistantScreen(
         remember {
             mutableStateOf(
                 "Model seçildiğinde tüm AI çıkarımı cihaz üzerinde yapılır."
+            )
+        }
+
+    var suggestedActions by
+        remember {
+            mutableStateOf<List<AssistantAppAction>>(
+                emptyList()
             )
         }
 
@@ -8076,6 +8141,66 @@ private fun LocalAiAssistantScreen(
             return
         }
 
+        suggestedActions =
+            AppForgeAssistantIntegration
+                .actionsFor(
+                    question
+                )
+
+        val normalizedQuestion =
+            question.lowercase()
+
+        val asksBuildDiagnosis =
+            listOf(
+                "build",
+                "derleme",
+                "derlen",
+                "hata",
+                "başarısız",
+                "neden olmadı",
+                "log"
+            ).any {
+                normalizedQuestion.contains(
+                    it
+                )
+            }
+
+        if (
+            asksBuildDiagnosis &&
+            (
+                buildLogs.isNotEmpty() ||
+                    buildPreflight.isNotEmpty()
+            )
+        ) {
+            val diagnosis =
+                AppForgeBuildErrorAdvisor
+                    .diagnose(
+                        logs = buildLogs,
+                        preflight = buildPreflight,
+                        status = runtimeContext.buildStatus
+                    )
+
+            input = ""
+
+            addMessage(
+                "user",
+                question
+            )
+
+            addMessage(
+                "assistant",
+                AppForgeAssistantIntegration
+                    .diagnosisAnswer(
+                        diagnosis
+                    )
+            )
+
+            status =
+                "Build tanısı tamamlandı • güvenli yerel analiz"
+
+            return
+        }
+
         /*
          * AppForge sık soruları modelden bağımsızdır.
          * Model henüz yüklenirken bile bilgi tabanından anında cevap ver.
@@ -8153,7 +8278,9 @@ private fun LocalAiAssistantScreen(
                         draft =
                             draft,
                         includeProjectContext =
-                            includeProjectContext
+                            includeProjectContext,
+                        runtimeContext =
+                            runtimeContext
                     ) {
                         part ->
                         result.append(
@@ -8268,6 +8395,9 @@ private fun LocalAiAssistantScreen(
                                 ?.cancel()
 
                             messages.clear()
+
+                            suggestedActions =
+                                emptyList()
 
                             LocalAiChatStore
                                 .clear(
@@ -8751,6 +8881,9 @@ private fun LocalAiAssistantScreen(
 
                         AppForgeKnowledgeBase
                             .quickQuestions()
+                            .take(
+                                if (aiCompact) 4 else 6
+                            )
                             .forEach {
                             prompt ->
                             OutlinedButton(
@@ -8768,6 +8901,13 @@ private fun LocalAiAssistantScreen(
                                 )
                             }
                         }
+
+                        Text(
+                            "Tüm AppForge özellikleri bilgi tabanında hazır. Başka bir konu için aşağıdaki alana yazman yeterli.",
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp
+                        )
                     }
                 }
             }
@@ -8781,6 +8921,79 @@ private fun LocalAiAssistantScreen(
                 LocalAiMessageBubble(
                     it
                 )
+            }
+
+            if (
+                suggestedActions.isNotEmpty()
+            ) {
+                item {
+                    Card(
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor =
+                                    Color(0xFF102037)
+                            ),
+                        shape =
+                            RoundedCornerShape(
+                                if (aiCompact) 17.dp else 20.dp
+                            ),
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        if (aiCompact) 12.dp else 16.dp
+                                    ),
+                            verticalArrangement =
+                                Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                "Uygulamada devam et",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+
+                            Text(
+                                "Yanıtla ilgili bölümü doğrudan açabilirsin.",
+                                color = TextSecondary,
+                                fontSize = 11.sp
+                            )
+
+                            suggestedActions.forEach {
+                                action ->
+
+                                OutlinedButton(
+                                    onClick = {
+                                        onNavigate(
+                                            action.destination
+                                        )
+                                    },
+                                    modifier =
+                                        Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier =
+                                            Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            action.label,
+                                            fontWeight = FontWeight.Bold
+                                        )
+
+                                        Text(
+                                            action.description,
+                                            color = TextSecondary,
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 

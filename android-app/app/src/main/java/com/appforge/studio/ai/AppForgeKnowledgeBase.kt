@@ -806,16 +806,78 @@ object AppForgeKnowledgeBase {
         ) {
             best.first.answer
         } else {
-            null
+            val relevant =
+                chunks
+                    .map {
+                        chunk ->
+
+                        val keywordMatches =
+                            chunk.keywords.count {
+                                keyword ->
+
+                                val key =
+                                    normalize(
+                                        keyword
+                                    )
+
+                                key in tokens ||
+                                    (
+                                        key.length >= 4 &&
+                                            normalizedQuestion.contains(key)
+                                    )
+                            }
+
+                        val titleMatches =
+                            tokenize(
+                                chunk.title
+                            ).count {
+                                it in tokens
+                            }
+
+                        chunk to
+                            (
+                                keywordMatches * 5 +
+                                    titleMatches * 2
+                            )
+                    }
+                    .filter {
+                        it.second >= 5
+                    }
+                    .sortedByDescending {
+                        it.second
+                    }
+                    .take(2)
+                    .map {
+                        it.first
+                    }
+
+            if (
+                relevant.isEmpty()
+            ) {
+                null
+            } else {
+                relevant.joinToString(
+                    separator = "\n\n"
+                ) {
+                    "${it.title}: ${it.text}"
+                }
+            }
         }
     }
 
     fun promptContext(
         question: String,
         draft: ProjectDraft,
-        includeProjectContext: Boolean
+        includeProjectContext: Boolean,
+        runtimeContext: AssistantRuntimeContext? = null
     ): String =
         buildString {
+            appendLine(
+                AppForgeAssistantIntegration
+                    .applicationMap()
+            )
+
+            appendLine()
             appendLine(
                 "APPFORGE YEREL BİLGİ TABANI:"
             )
@@ -840,6 +902,19 @@ object AppForgeKnowledgeBase {
                     projectContext(
                         draft
                     )
+                )
+            }
+
+            if (
+                runtimeContext != null
+            ) {
+                appendLine()
+                appendLine()
+                append(
+                    AppForgeAssistantIntegration
+                        .runtimeSummary(
+                            runtimeContext
+                        )
                 )
             }
         }
@@ -906,6 +981,30 @@ object AppForgeKnowledgeBase {
             )
             appendLine(
                 "Firebase Crashlytics: ${draft.firebaseCrashlyticsEnabled}"
+            )
+            appendLine(
+                "Firebase Messaging: ${draft.firebaseMessagingEnabled}"
+            )
+            appendLine(
+                "Bildirim: ${draft.notifications}"
+            )
+            appendLine(
+                "Dosya yükleme / indirme: ${draft.fileUpload} / ${draft.downloads}"
+            )
+            appendLine(
+                "Offline cache: ${draft.offlineCache}"
+            )
+            appendLine(
+                "Deep Link: ${draft.deepLinkEnabled}"
+            )
+            appendLine(
+                "Kaynak teknolojisi: ${draft.sourceTechnologyLabel}"
+            )
+            appendLine(
+                "Kaynak build motoru: ${draft.sourceBuildEngine}"
+            )
+            appendLine(
+                "Kaynak build-ready: ${draft.sourceBuildReady}"
             )
         }
 

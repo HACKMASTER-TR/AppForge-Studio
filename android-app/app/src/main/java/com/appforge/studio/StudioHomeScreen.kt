@@ -192,7 +192,7 @@ internal fun StudioHomeScreen(
                         Modifier.weight(1f)
                 ) {
                     Text(
-                        text = "Projelerim",
+                        text = "AppForge Studio",
                         fontSize =
                             when {
                                 compact -> 21.sp
@@ -207,33 +207,19 @@ internal fun StudioHomeScreen(
                     Text(
                         text =
                             if (proUnlocked) {
-                                "${projects.size} proje • PRO • Sınırsız"
+                                "Projeler • ${projects.size} kayıt • PRO"
                             } else {
-                                "${projects.size} proje • Ücretsiz $usedSlots/5"
+                                "Projeler • ${projects.size} kayıt • Ücretsiz $usedSlots/5"
                             },
                         fontSize = 12.sp,
                         color = HomeTextSecondary
                     )
                 }
 
-                LabeledActionButton(
-                    icon = "✨",
-                    label = "Yerel AI",
-                    onClick = onOpenAi
-                )
-
-                if (!compact) {
-                    LabeledActionButton(
-                        icon = "★",
-                        label = "Pro",
-                        onClick = onOpenPro
-                    )
-                }
-
                 Box {
                     LabeledActionButton(
                         icon = "⋮",
-                        label = "Menü",
+                        label = "Diğer",
                         onClick = {
                             showTopMenu =
                                 !showTopMenu
@@ -335,7 +321,7 @@ internal fun StudioHomeScreen(
                     )
 
                     Text(
-                        text = "Proje Oluştur",
+                        text = "Yeni proje",
                         fontSize =
                             when {
                                 compact -> 15.sp
@@ -1003,8 +989,8 @@ private fun StudioBottomNavigation(
                     ),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                BottomNavigationItem("⌂", "Projelerim", true, compact, onProjects)
-                BottomNavigationItem("✨", "Yerel AI", false, compact, onAi)
+                BottomNavigationItem("⌂", "Projeler", true, compact, onProjects)
+                BottomNavigationItem("✨", "AI Asistan", false, compact, onAi)
                 BottomNavigationItem("◇", "Şablonlar", false, compact, onTemplates)
                 BottomNavigationItem("⚙", "Ayarlar", false, compact, onSettings)
             }

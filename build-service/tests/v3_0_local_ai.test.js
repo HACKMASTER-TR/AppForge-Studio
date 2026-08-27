@@ -32,6 +32,18 @@ const knowledge =
     import.meta.url
   );
 
+const integration =
+  new URL(
+    "../../android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAssistantIntegration.kt",
+    import.meta.url
+  );
+
+const home =
+  new URL(
+    "../../android-app/app/src/main/java/com/appforge/studio/StudioHomeScreen.kt",
+    import.meta.url
+  );
+
 test("LiteRT-LM runtime is integrated", async () => {
   const text =
     await readFile(
@@ -121,4 +133,85 @@ test("assistant technology guidance matches live source engines", async () => {
     ),
     false
   );
+});
+
+test("assistant receives the complete application map and safe runtime context", async () => {
+  const map = await readFile(integration, "utf8");
+  const kb = await readFile(knowledge, "utf8");
+  const runtimeText = await readFile(runtime, "utf8");
+
+  for (const destination of [
+    "PROJECTS",
+    "QUICK_CREATE",
+    "ADVANCED_CREATE",
+    "CONVERSION",
+    "SOURCE",
+    "PERMISSIONS",
+    "FEATURES",
+    "APPEARANCE",
+    "NATIVE_BRIDGE",
+    "MONETIZATION",
+    "DEEP_LINK",
+    "SIGNING",
+    "BUILD_SETTINGS",
+    "BUILD",
+    "PREVIEW",
+    "PRODUCTION",
+    "TEST_LAB",
+    "TEMPLATES",
+    "HISTORY",
+    "SETTINGS",
+    "ACCOUNT",
+    "HELP",
+    "PLAY_GUIDE",
+    "PRO",
+    "KEYSTORES"
+  ]) {
+    assert.equal(map.includes(destination), true, `Missing ${destination}`);
+  }
+
+  assert.equal(kb.includes("applicationMap()"), true);
+  assert.equal(kb.includes("runtimeSummary("), true);
+  assert.equal(runtimeText.includes("runtimeContext"), true);
+
+  for (const secret of [
+    "buildApiKey",
+    "storePassword",
+    "keyPassword",
+    "firebaseConfigUri",
+    "keystoreUri"
+  ]) {
+    assert.equal(map.includes(secret), false, `Runtime map leaks ${secret}`);
+  }
+});
+
+test("assistant can diagnose builds and navigate to relevant app screens", async () => {
+  const ui = await readFile(main, "utf8");
+  const map = await readFile(integration, "utf8");
+
+  for (const token of [
+    "suggestedActions",
+    "navigateFromAssistant",
+    "onNavigate",
+    "buildLogs",
+    "buildPreflight",
+    "diagnosisAnswer"
+  ]) {
+    assert.equal(ui.includes(token), true, `Missing AI integration ${token}`);
+  }
+
+  assert.equal(map.includes("actionsFor"), true);
+  assert.equal(map.includes("Güvenli log ipucu"), true);
+});
+
+test("home keeps one clear primary action and one navigation path per section", async () => {
+  const ui = await readFile(home, "utf8");
+  const mainUi = await readFile(main, "utf8");
+
+  assert.equal(ui.includes('text = "Yeni proje"'), true);
+  assert.equal(ui.includes('"AI Asistan"'), true);
+  assert.equal(ui.includes('label = "Yerel AI"'), false);
+  assert.equal(ui.includes('label = "Pro"'), false);
+  assert.equal(mainUi.includes("BuilderShortcutBar("), false);
+  assert.equal(mainUi.includes('"Adım $step/10 • "'), true);
 });
