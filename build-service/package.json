@@ -4,28 +4,30 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "worker": "node worker.js",
+    "start": "node --import ./instrument.mjs server.js",
+    "worker": "node --import ./instrument.mjs worker.js",
     "test": "node --test tests/*.test.js",
     "doctor": "node scripts/toolchain-doctor.js",
     "doctor:strict": "node scripts/toolchain-doctor.js --strict",
-    "worker:unity": "node unity-worker.js",
-    "worker:source": "node source-worker.js"
+    "worker:unity": "node --import ./instrument.mjs unity-worker.js",
+    "worker:source": "node --import ./instrument.mjs source-worker.js"
   },
   "dependencies": {
-    "adm-zip": "^0.5.16",
-    "express": "^5.1.0",
-    "multer": "^2.0.2",
-    "uuid": "^11.1.0",
-    "googleapis": "^160.0.0",
-    "bcryptjs": "^3.0.2",
-    "jsonwebtoken": "^9.0.2",
-    "pg": "^8.16.3",
     "@aws-sdk/client-s3": "^3.1115.0",
     "@aws-sdk/s3-request-presigner": "^3.1115.0",
+    "@sentry/node": "10.71.0",
+    "adm-zip": "0.6.0",
+    "bcryptjs": "^3.0.2",
+    "express": "^5.1.0",
+    "googleapis": "^160.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "monaco-editor": "^0.52.2",
+    "multer": "^2.0.2",
     "nodemailer": "^9.0.5",
     "otplib": "^13.4.1",
+    "pg": "^8.16.3",
     "qrcode": "^1.5.4",
-    "monaco-editor": "^0.52.2"
+    "redis": "6.2.1",
+    "uuid": "^11.1.0"
   }
 }

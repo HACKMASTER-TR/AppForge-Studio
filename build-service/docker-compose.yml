@@ -15,26 +15,18 @@ services:
       timeout: 5s
       retries: 20
 
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    environment:
-      DATABASE_URL: postgresql://appforge:change_me@postgres:5432/appforge
-      JWT_SECRET: replace-with-a-long-random-secret-at-least-32-chars
-      RUN_INLINE_WORKER: "false"
-      SHARED_INPUT_ROOT: /shared-inputs
-      OUTPUT_ROOT: /outputs
-      WORK_ROOT: /work
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - "6379:6379"
     volumes:
-      - appforge_inputs:/shared-inputs
-      - appforge_outputs:/outputs
-      - appforge_work:/work
+      - appforge_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   minio:
     image: minio/minio:latest
@@ -48,6 +40,62 @@ services:
     volumes:
       - appforge_minio:/data
 
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set appforge http://minio:9000 appforge appforge_dev_secret; do sleep 2; done;
+      mc mb --ignore-existing appforge/appforge
+      "
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      DATABASE_URL: postgresql://appforge:change_me@postgres:5432/appforge
+      JWT_SECRET: replace-with-a-long-random-secret-at-least-32-chars
+      RUN_INLINE_WORKER: "false"
+      REDIS_URL: redis://redis:6379
+      REDIS_REQUIRED: "true"
+      STORAGE_DRIVER: s3
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: appforge
+      S3_ACCESS_KEY_ID: appforge
+      S3_SECRET_ACCESS_KEY: appforge_dev_secret
+      S3_FORCE_PATH_STYLE: "true"
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_SECURE: "false"
+      SMTP_REQUIRED: "true"
+      EMAIL_FROM: "AppForge <no-reply@appforge.local>"
+      SHARED_INPUT_ROOT: /shared-inputs
+      OUTPUT_ROOT: /outputs
+      WORK_ROOT: /work
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    volumes:
+      - appforge_inputs:/shared-inputs
+      - appforge_outputs:/outputs
+      - appforge_work:/work
+
   worker:
     build:
       context: .
@@ -60,6 +108,15 @@ services:
     environment:
       DATABASE_URL: postgresql://appforge:change_me@postgres:5432/appforge
       JWT_SECRET: replace-with-a-long-random-secret-at-least-32-chars
+      REDIS_URL: redis://redis:6379
+      REDIS_REQUIRED: "true"
+      STORAGE_DRIVER: s3
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: appforge
+      S3_ACCESS_KEY_ID: appforge
+      S3_SECRET_ACCESS_KEY: appforge_dev_secret
+      S3_FORCE_PATH_STYLE: "true"
       SHARED_INPUT_ROOT: /shared-inputs
       OUTPUT_ROOT: /outputs
       WORK_ROOT: /work
@@ -75,6 +132,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     volumes:
       - appforge_inputs:/shared-inputs
       - appforge_outputs:/outputs
@@ -83,6 +144,7 @@ services:
 
 volumes:
   appforge_pg:
+  appforge_redis:
   appforge_inputs:
   appforge_outputs:
   appforge_work:

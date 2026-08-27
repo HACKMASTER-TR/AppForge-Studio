@@ -87,3 +87,47 @@ export async function sendTeamInviteEmail({
       `Bağlantı süreli olarak geçerlidir.`
   });
 }
+
+
+export async function verifyMailTransport() {
+  if (!config.smtpHost) {
+    return {
+      ok: !config.smtpRequired,
+      configured: false,
+      required: config.smtpRequired,
+      latencyMs: 0,
+      error:
+        config.smtpRequired
+          ? "SMTP_HOST tanımlı değil."
+          : null
+    };
+  }
+
+  const started = Date.now();
+
+  try {
+    await transporter().verify();
+
+    return {
+      ok: true,
+      configured: true,
+      required: config.smtpRequired,
+      latencyMs:
+        Date.now() - started,
+      error: null
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      configured: true,
+      required: config.smtpRequired,
+      latencyMs:
+        Date.now() - started,
+      error:
+        String(
+          error?.message ||
+          error
+        ).slice(0, 500)
+    };
+  }
+}

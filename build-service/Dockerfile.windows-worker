@@ -22,4 +22,4 @@ RUN node --check src/windowsBuild.js \
     && node --check windows-worker.js \
     && node --check server.js
 
-CMD ["node", "windows-worker.js"]
+CMD ["node", "--import", "./instrument.mjs", "windows-worker.js"]

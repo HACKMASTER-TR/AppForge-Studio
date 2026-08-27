@@ -95,7 +95,8 @@ import {
 } from "./src/security.js";
 import {
   sendVerificationEmail,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  verifyMailTransport
 } from "./src/mail.js";
 import {
   putInput,
@@ -103,7 +104,8 @@ import {
   localOutputFile,
   createDirectInputUpload,
   validateDirectInputUpload,
-  deleteInput
+  deleteInput,
+  verifyStorageConnection
 } from "./src/storage.js";
 import {
   createPersistentDownloadTicket,
@@ -143,6 +145,14 @@ import {
   rememberIdempotency,
   cleanupIdempotency
 } from "./src/idempotency.js";
+import {
+  redisHealth,
+  redisStatus
+} from "./src/redis.js";
+import {
+  observabilityStatus,
+  setupExpressErrorHandling
+} from "./src/observability.js";
 
 assertCriticalConfig();
 
@@ -218,36 +228,122 @@ const upload =
 app.get(
   "/health",
   async (_req, res) => {
-    const db =
-      await query(
-        "SELECT NOW() AS now"
+    try {
+      const db =
+        await query(
+          "SELECT NOW() AS now"
+        );
+
+      res.json({
+        ok: true,
+        service:
+          "AppForge Build Service",
+        version: "1.9.0",
+        database: true,
+        databaseTime:
+          db.rows[0].now,
+        queue:
+          await queueStats(),
+        inlineWorker:
+          config.runInlineWorker,
+        redis:
+          redisStatus(),
+        storageDriver:
+          config.storageDriver,
+        smtpConfigured:
+          Boolean(config.smtpHost),
+        buildCache:
+          config.buildCacheEnabled,
+        buildCacheTtlHours:
+          config.buildCacheTtlHours,
+        observability:
+          observabilityStatus(),
+        liveLogs: true,
+        durableDownloadTickets: true,
+        idempotency: true
+      });
+    } catch (error) {
+      res
+        .status(503)
+        .json({
+          ok: false,
+          service:
+            "AppForge Build Service",
+          error:
+            String(
+              error?.message ||
+              error
+            )
+        });
+    }
+  }
+);
+
+app.get(
+  "/ready",
+  async (_req, res) => {
+    let database = null;
+
+    try {
+      const result =
+        await query(
+          "SELECT NOW() AS now"
+        );
+
+      database = {
+        ok: true,
+        time: result.rows[0].now
+      };
+    } catch (error) {
+      database = {
+        ok: false,
+        error:
+          String(
+            error?.message ||
+            error
+          ).slice(0, 500)
+      };
+    }
+
+    const [
+      redis,
+      storage,
+      smtp
+    ] = await Promise.all([
+      redisHealth(),
+      verifyStorageConnection(),
+      verifyMailTransport()
+    ]);
+
+    const ok =
+      Boolean(database?.ok) &&
+      (
+        !config.redisRequired ||
+        redis.ok
+      ) &&
+      (
+        config.storageDriver !== "s3" ||
+        storage.ok
+      ) &&
+      (
+        !config.smtpRequired ||
+        smtp.ok
       );
 
-    res.json({
-      ok: true,
-      service:
-        "AppForge Build Service",
-      version: "1.8.0",
-      database: true,
-      databaseTime:
-        db.rows[0].now,
-      queue:
-        await queueStats(),
-      inlineWorker:
-        config.runInlineWorker,
-      storageDriver:
-        config.storageDriver,
-      buildCache:
-        config.buildCacheEnabled,
-      buildCacheTtlHours:
-        config.buildCacheTtlHours,
-      liveLogs:
-        true,
-      durableDownloadTickets:
-        true,
-      idempotency:
-        true
-    });
+    res
+      .status(ok ? 200 : 503)
+      .json({
+        ok,
+        service:
+          "AppForge Build Service",
+        version: "1.9.0",
+        database,
+        redis,
+        storage,
+        smtp,
+        observability:
+          observabilityStatus()
+      });
   }
 );
 
@@ -4174,6 +4270,9 @@ app.use(
       });
   }
 );
+
+// Sentry Express error handler must be registered after routes.
+setupExpressErrorHandling(app);
 
 app.listen(
   config.port,

@@ -109,7 +109,7 @@ test(
       pkg.scripts[
         "worker:source"
       ],
-      "node source-worker.js"
+      "node --import ./instrument.mjs source-worker.js"
     );
   }
 );

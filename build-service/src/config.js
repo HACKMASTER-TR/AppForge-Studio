@@ -163,6 +163,25 @@ export const config = {
     Number(process.env.DOWNLOAD_TICKET_MINUTES || 5)
   ),
 
+  redisUrl:
+    String(process.env.REDIS_URL || "").trim(),
+  redisRequired: boolEnv(
+    "REDIS_REQUIRED",
+    false
+  ),
+  redisPrefix:
+    String(
+      process.env.REDIS_PREFIX ||
+      "appforge"
+    ).trim() || "appforge",
+  redisConnectTimeoutMs: Math.max(
+    500,
+    Number(
+      process.env.REDIS_CONNECT_TIMEOUT_MS ||
+      3000
+    )
+  ),
+
   storageDriver:
     String(process.env.STORAGE_DRIVER || "local").toLowerCase(),
   s3Endpoint: String(process.env.S3_ENDPOINT || ""),
@@ -177,9 +196,32 @@ export const config = {
   smtpSecure: boolEnv("SMTP_SECURE", false),
   smtpUser: String(process.env.SMTP_USER || ""),
   smtpPass: String(process.env.SMTP_PASS || ""),
+  smtpRequired: boolEnv(
+    "SMTP_REQUIRED",
+    false
+  ),
   emailFrom: String(
     process.env.EMAIL_FROM ||
     "AppForge <no-reply@appforge.local>"
+  ),
+
+  sentryDsn:
+    String(process.env.SENTRY_DSN || "").trim(),
+  sentryEnvironment:
+    String(
+      process.env.SENTRY_ENVIRONMENT ||
+      process.env.NODE_ENV ||
+      "development"
+    ),
+  sentryTracesSampleRate: Math.max(
+    0,
+    Math.min(
+      1,
+      Number(
+        process.env.SENTRY_TRACES_SAMPLE_RATE ||
+        0.1
+      )
+    )
   ),
 
   totpEncryptionKey:
@@ -275,6 +317,34 @@ export function assertCriticalConfig() {
 
   if (!config.databaseUrl) {
     throw new Error("DATABASE_URL gerekli.");
+  }
+
+  if (
+    config.redisRequired &&
+    !config.redisUrl
+  ) {
+    throw new Error(
+      "REDIS_REQUIRED=true ise REDIS_URL gerekli."
+    );
+  }
+
+  if (
+    config.smtpRequired &&
+    !config.smtpHost
+  ) {
+    throw new Error(
+      "SMTP_REQUIRED=true ise SMTP_HOST gerekli."
+    );
+  }
+
+  if (
+    config.smtpHost &&
+    config.smtpUser &&
+    !config.smtpPass
+  ) {
+    throw new Error(
+      "SMTP_USER tanımlıysa SMTP_PASS gerekli."
+    );
   }
 
   if (!config.jwtSecret || config.jwtSecret.length < 32) {

@@ -1,6 +1,7 @@
 import os from "os";
 import { query, tx } from "./db.js";
 import { config } from "./config.js";
+import { signalBuildQueue } from "./redis.js";
 import {
   requiredSourceWorkerCapabilities
 } from "./sourceBuildIsolation.js";
@@ -68,6 +69,9 @@ export async function enqueueJob({
     priority,
     requiredCapabilities: effectiveRequiredCapabilities
   });
+
+  // PostgreSQL is authoritative; Redis only wakes workers early.
+  await signalBuildQueue();
 }
 
 export async function registerWorker(
@@ -249,6 +253,8 @@ export async function failOrRequeueJob(job, error) {
         error: message
       }
     );
+
+    await signalBuildQueue();
   } else {
     await query(
       `UPDATE appforge_build_jobs
@@ -300,6 +306,12 @@ export async function requeueStaleJobs() {
      RETURNING id, build_id`,
     [String(config.workerStaleAfterMs)]
   );
+
+  if (result.rowCount) {
+    await signalBuildQueue(
+      result.rowCount
+    );
+  }
 
   return result.rows;
 }

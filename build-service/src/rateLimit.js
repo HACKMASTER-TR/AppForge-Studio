@@ -1,73 +1,189 @@
 import { config } from "./config.js";
+import {
+  fixedWindowLimit
+} from "./redis.js";
 
-const buckets = new Map();
+const localBuckets = new Map();
+const localPurchaseBuckets = new Map();
+const WINDOW_MS = 60 * 60 * 1000;
+const WINDOW_SECONDS = 60 * 60;
 
-export function buildRateLimit(req, res, next) {
-  const key = req.user?.id || req.ip || "anonymous";
+function localLimit(
+  buckets,
+  key,
+  limit
+) {
   const now = Date.now();
-  const hour = 60 * 60 * 1000;
+  const recent =
+    (buckets.get(key) || [])
+      .filter(ts =>
+        now - ts < WINDOW_MS
+      );
 
-  const recent = (buckets.get(key) || []).filter(ts => now - ts < hour);
+  const allowed =
+    recent.length < limit;
 
-  if (recent.length >= config.rateLimitPerHour) {
-    return res.status(429).json({
-      error: "Saatlik build limiti aşıldı.",
-      limit: config.rateLimitPerHour
-    });
+  if (allowed) {
+    recent.push(now);
+    buckets.set(key, recent);
   }
 
-  recent.push(now);
-  buckets.set(key, recent);
-  next();
+  const oldest = recent[0] || now;
+
+  return {
+    distributed: false,
+    allowed,
+    count:
+      recent.length +
+      (allowed ? 0 : 1),
+    limit,
+    remaining:
+      Math.max(
+        0,
+        limit - recent.length
+      ),
+    resetSeconds:
+      Math.max(
+        0,
+        Math.ceil(
+          (WINDOW_MS - (now - oldest)) /
+          1000
+        )
+      )
+  };
 }
 
+function applyHeaders(
+  res,
+  result
+) {
+  res.set(
+    "RateLimit-Limit",
+    String(result.limit)
+  );
 
-const purchaseBuckets = new Map();
+  res.set(
+    "RateLimit-Remaining",
+    String(result.remaining)
+  );
 
-export function purchaseVerifyRateLimit(
+  res.set(
+    "RateLimit-Reset",
+    String(result.resetSeconds)
+  );
+
+  res.set(
+    "X-AppForge-RateLimit-Backend",
+    result.distributed
+      ? "redis"
+      : "memory-fallback"
+  );
+}
+
+async function resolveLimit({
+  namespace,
+  identity,
+  limit,
+  fallbackBuckets
+}) {
+  const distributed =
+    await fixedWindowLimit(
+      namespace,
+      identity,
+      limit,
+      WINDOW_SECONDS
+    );
+
+  if (distributed) {
+    return distributed;
+  }
+
+  return localLimit(
+    fallbackBuckets,
+    identity,
+    limit
+  );
+}
+
+export async function buildRateLimit(
   req,
   res,
   next
 ) {
-  const key =
-    req.ip ||
-    "anonymous";
+  try {
+    const identity =
+      req.user?.id ||
+      req.ip ||
+      "anonymous";
 
-  const now =
-    Date.now();
-
-  const hour =
-    60 * 60 * 1000;
-
-  const recent =
-    (
-      purchaseBuckets.get(
-        key
-      ) || []
-    ).filter(
-      ts =>
-        now - ts < hour
-    );
-
-  if (
-    recent.length >=
-    config.playVerifyRatePerHour
-  ) {
-    return res
-      .status(429)
-      .json({
-        ok: false,
-        error:
-          "Purchase verification rate limiti aşıldı."
+    const result =
+      await resolveLimit({
+        namespace: "build",
+        identity,
+        limit:
+          config.rateLimitPerHour,
+        fallbackBuckets:
+          localBuckets
       });
+
+    applyHeaders(res, result);
+
+    if (!result.allowed) {
+      return res
+        .status(429)
+        .json({
+          error:
+            "Saatlik build limiti aşıldı.",
+          limit:
+            config.rateLimitPerHour,
+          retryAfterSeconds:
+            result.resetSeconds
+        });
+    }
+
+    next();
+  } catch (error) {
+    next(error);
   }
+}
 
-  recent.push(now);
+export async function purchaseVerifyRateLimit(
+  req,
+  res,
+  next
+) {
+  try {
+    const identity =
+      req.ip ||
+      "anonymous";
 
-  purchaseBuckets.set(
-    key,
-    recent
-  );
+    const result =
+      await resolveLimit({
+        namespace:
+          "purchase-verify",
+        identity,
+        limit:
+          config.playVerifyRatePerHour,
+        fallbackBuckets:
+          localPurchaseBuckets
+      });
 
-  next();
+    applyHeaders(res, result);
+
+    if (!result.allowed) {
+      return res
+        .status(429)
+        .json({
+          ok: false,
+          error:
+            "Purchase verification rate limiti aşıldı.",
+          retryAfterSeconds:
+            result.resetSeconds
+        });
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
 }

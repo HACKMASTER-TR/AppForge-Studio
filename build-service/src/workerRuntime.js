@@ -1,6 +1,12 @@
 import os from "os";
 import { config } from "./config.js";
 import {
+  waitForBuildSignal
+} from "./redis.js";
+import {
+  captureException
+} from "./observability.js";
+import {
   claimNextJob,
   completeJob,
   failOrRequeueJob,
@@ -104,7 +110,10 @@ async function workerLoop(workerSlotId, capabilities) {
       );
 
       if (!job) {
-        await sleep(config.workerPollMs);
+        await waitForBuildSignal(
+          workerSlotId,
+          config.workerPollMs
+        );
         continue;
       }
 
@@ -162,6 +171,16 @@ async function workerLoop(workerSlotId, capabilities) {
           job.team_id
         );
       } catch (error) {
+        captureException(
+          error,
+          {
+            component: "worker-build",
+            worker: workerSlotId,
+            jobId: job?.id,
+            buildId: job?.build_id
+          }
+        );
+
         console.error(
           `[WORKER BUILD ERROR] job=${job?.id} build=${job?.build_id}`,
           error?.stack || error
@@ -185,6 +204,16 @@ async function workerLoop(workerSlotId, capabilities) {
         clearInterval(interval);
       }
     } catch (error) {
+      captureException(
+        error,
+        {
+          component: "worker-loop",
+          worker: workerSlotId,
+          jobId: job?.id,
+          buildId: job?.build_id
+        }
+      );
+
       console.error("Worker loop error:", error);
 
       if (job) {

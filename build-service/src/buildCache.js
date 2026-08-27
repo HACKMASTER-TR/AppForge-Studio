@@ -2,6 +2,10 @@ import crypto from "crypto";
 import { promises as fs } from "fs";
 import { query } from "./db.js";
 import { config } from "./config.js";
+import {
+  cacheGetJson,
+  cacheSetJson
+} from "./redis.js";
 
 function stable(value) {
   if (Array.isArray(value)) {
@@ -116,6 +120,16 @@ export async function findCache(
     return null;
   }
 
+  const hot =
+    await cacheGetJson(
+      "build-cache",
+      cacheKey
+    );
+
+  if (hot) {
+    return hot;
+  }
+
   const result =
     await query(
       `SELECT
@@ -130,7 +144,31 @@ export async function findCache(
       [cacheKey]
     );
 
-  return result.rows[0] || null;
+  const row =
+    result.rows[0] || null;
+
+  if (row) {
+    const ttlSeconds =
+      Math.max(
+        1,
+        Math.floor(
+          (
+            new Date(row.expires_at)
+              .getTime() -
+            Date.now()
+          ) / 1000
+        )
+      );
+
+    await cacheSetJson(
+      "build-cache",
+      cacheKey,
+      row,
+      ttlSeconds
+    );
+  }
+
+  return row;
 }
 
 export async function storeCache({
@@ -172,6 +210,30 @@ export async function storeCache({
       JSON.stringify(metadata || {}),
       String(config.buildCacheTtlHours)
     ]
+  );
+
+  const ttlSeconds =
+    config.buildCacheTtlHours *
+    60 * 60;
+
+  await cacheSetJson(
+    "build-cache",
+    cacheKey,
+    {
+      cache_key: cacheKey,
+      source_build_id:
+        sourceBuildId,
+      outputs:
+        outputs || {},
+      metadata:
+        metadata || {},
+      expires_at:
+        new Date(
+          Date.now() +
+          ttlSeconds * 1000
+        ).toISOString()
+    },
+    ttlSeconds
   );
 }
 

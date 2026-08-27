@@ -9,7 +9,8 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
-  HeadObjectCommand
+  HeadObjectCommand,
+  HeadBucketCommand
 } from "@aws-sdk/client-s3";
 import {
   getSignedUrl
@@ -685,5 +686,50 @@ export async function deleteOutput(
         force: true
       }
     );
+  }
+}
+
+
+export async function verifyStorageConnection() {
+  if (config.storageDriver !== "s3") {
+    return {
+      ok: true,
+      configured: true,
+      driver: "local",
+      latencyMs: 0,
+      error: null
+    };
+  }
+
+  const started = Date.now();
+
+  try {
+    await s3.send(
+      new HeadBucketCommand({
+        Bucket: config.s3Bucket
+      })
+    );
+
+    return {
+      ok: true,
+      configured: true,
+      driver: "s3",
+      latencyMs:
+        Date.now() - started,
+      error: null
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      configured: true,
+      driver: "s3",
+      latencyMs:
+        Date.now() - started,
+      error:
+        String(
+          error?.message ||
+          error
+        ).slice(0, 500)
+    };
   }
 }
