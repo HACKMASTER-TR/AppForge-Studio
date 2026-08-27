@@ -531,6 +531,11 @@ async function runFlutterCommand({
       }
     );
 
+  const flutterArgs = [
+    "--no-version-check",
+    ...args
+  ];
+
   return new Promise(
     (
       resolve,
@@ -539,7 +544,7 @@ async function runFlutterCommand({
       const child =
         spawn(
           "flutter",
-          args,
+          flutterArgs,
           {
             cwd:
               projectRoot,
@@ -664,7 +669,7 @@ async function runFlutterCommand({
           } else {
             reject(
               new Error(
-                `flutter ${args.join(" ")} başarısız (exit=${code}).\n` +
+                `flutter ${flutterArgs.join(" ")} başarısız (exit=${code}).\n` +
                 output.slice(
                   -14_000
                 )

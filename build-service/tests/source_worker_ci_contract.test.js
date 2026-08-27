@@ -93,7 +93,7 @@ test(
         "run_tool java java -version",
         "run_tool gradle gradle --version",
         "run_tool dotnet dotnet --info",
-        "run_tool flutter flutter --version",
+        "run_tool flutter flutter --no-version-check --version",
         "run_tool cmake cmake --version",
         "run_tool ninja ninja --version",
         "SOURCE_WORKER_RUNTIME_SMOKE_OK"
