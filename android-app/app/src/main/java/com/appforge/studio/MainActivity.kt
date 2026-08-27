@@ -3202,97 +3202,138 @@ private fun CreateModeSelectionScreen(
     onAdvanced: () -> Unit,
     onConversion: () -> Unit
 ) {
-    Box(
+    val configuration =
+        LocalConfiguration.current
+
+    val screenWidthDp =
+        configuration.screenWidthDp
+
+    val screenHeightDp =
+        configuration.screenHeightDp
+
+    val compact =
+        screenWidthDp < 380
+
+    val tablet =
+        minOf(
+            screenWidthDp,
+            screenHeightDp
+        ) >= 600
+
+    val outerHorizontalPadding =
+        when {
+            compact -> 12.dp
+            tablet -> 32.dp
+            else -> 24.dp
+        }
+
+    LazyColumn(
         modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-        contentAlignment =
-            Alignment.Center
+            Modifier.fillMaxSize(),
+        contentPadding =
+            PaddingValues(
+                horizontal = outerHorizontalPadding,
+                vertical =
+                    if (compact) 14.dp else 24.dp
+            ),
+        verticalArrangement =
+            Arrangement.Center,
+        horizontalAlignment =
+            Alignment.CenterHorizontally
     ) {
-        Card(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .widthIn(
-                        max = 620.dp
-                    ),
-            shape =
-                RoundedCornerShape(
-                    30.dp
-                ),
-            colors =
-                CardDefaults
-                    .cardColors(
-                        containerColor =
-                            Color(
-                                0xFF0E1519
-                            )
-                    )
-        ) {
-            Column(
+        item {
+            Card(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(
-                            horizontal =
-                                28.dp,
-                            vertical =
-                                30.dp
-                        ),
-                verticalArrangement =
-                    Arrangement
-                        .spacedBy(
-                            20.dp
-                        )
+                        .widthIn(max = 620.dp),
+                shape =
+                    RoundedCornerShape(
+                        if (compact) 24.dp else 30.dp
+                    ),
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = Color(0xFF0E1519)
+                    )
             ) {
-                Text(
-                    text =
-                        "Nasıl oluşturmak istersin?",
-                    fontSize =
-                        28.sp,
-                    fontWeight =
-                        FontWeight.Bold
-                )
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal =
+                                    when {
+                                        compact -> 16.dp
+                                        tablet -> 30.dp
+                                        else -> 28.dp
+                                    },
+                                vertical =
+                                    when {
+                                        compact -> 18.dp
+                                        tablet -> 32.dp
+                                        else -> 30.dp
+                                    }
+                            ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            when {
+                                compact -> 12.dp
+                                tablet -> 22.dp
+                                else -> 20.dp
+                            }
+                        )
+                ) {
+                    Text(
+                        text = "Nasıl oluşturmak istersin?",
+                        fontSize =
+                            when {
+                                compact -> 23.sp
+                                tablet -> 30.sp
+                                else -> 28.sp
+                            },
+                        lineHeight =
+                            when {
+                                compact -> 27.sp
+                                tablet -> 35.sp
+                                else -> 33.sp
+                            },
+                        fontWeight = FontWeight.Bold
+                    )
 
-                CreateModeCard(
-                    icon = "⚡",
-                    title =
-                        "Hızlı Oluştur",
-                    description =
-                        "Sadece isim, içerik ve ikon. Gerisini AppForge otomatik ayarlar.",
-                    onClick =
-                        onQuick
-                )
+                    CreateModeCard(
+                        icon = "⚡",
+                        title = "Hızlı Oluştur",
+                        description =
+                            "Sadece isim, içerik ve ikon. Gerisini AppForge otomatik ayarlar.",
+                        onClick = onQuick
+                    )
 
-                CreateModeCard(
-                    icon = "☷",
-                    title =
-                        "Gelişmiş Oluştur",
-                    description =
-                        "Paket adı, tema, izinler, Native Bridge, Billing ve imzalama üzerinde tam kontrol.",
-                    onClick =
-                        onAdvanced
-                )
+                    CreateModeCard(
+                        icon = "☷",
+                        title = "Gelişmiş Oluştur",
+                        description =
+                            "Paket adı, tema, izinler, Native Bridge, Billing ve imzalama üzerinde tam kontrol.",
+                        onClick = onAdvanced
+                    )
 
-                CreateModeCard(
-                    icon = "🔄",
-                    title =
-                        "Dönüşüm",
-                    description =
-                        "APK → Windows EXE veya EXE → Android APK dönüşüm araçları.",
-                    onClick =
-                        onConversion
-                )
+                    CreateModeCard(
+                        icon = "🔄",
+                        title = "Dönüşüm",
+                        description =
+                            "APK → Windows EXE veya EXE → Android APK dönüşüm araçları.",
+                        onClick = onConversion
+                    )
 
-                Text(
-                    text =
-                        "v2.0 • Hızlı modda güvenli varsayılanlar kullanılır.",
-                    fontSize =
-                        12.sp,
-                    color =
-                        TextSecondary
-                )
+                    Text(
+                        text =
+                            "v2.0 • Hızlı modda güvenli varsayılanlar kullanılır.",
+                        fontSize =
+                            if (compact) 11.sp else 12.sp,
+                        lineHeight =
+                            if (compact) 15.sp else 17.sp,
+                        color = TextSecondary
+                    )
+                }
             }
         }
     }
@@ -3307,6 +3348,31 @@ private fun ConversionScreen(
     onApkToExe: () -> Unit,
     onExeToApk: () -> Unit
 ) {
+    val configuration =
+        LocalConfiguration.current
+
+    val screenWidthDp =
+        configuration.screenWidthDp
+
+    val screenHeightDp =
+        configuration.screenHeightDp
+
+    val compact =
+        screenWidthDp < 380
+
+    val tablet =
+        minOf(
+            screenWidthDp,
+            screenHeightDp
+        ) >= 600
+
+    val horizontalPadding =
+        when {
+            compact -> 12.dp
+            tablet -> 32.dp
+            else -> 20.dp
+        }
+
     Scaffold(
         containerColor = Bg,
         topBar = {
@@ -3315,112 +3381,128 @@ private fun ConversionScreen(
                     Column {
                         Text(
                             "Dönüşüm",
-                            fontWeight =
-                                FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            fontSize =
+                                if (compact) 18.sp else 20.sp
                         )
 
-                        Text(
-                            "APK ↔ EXE araçları",
-                            color =
-                                TextSecondary,
-                            fontSize =
-                                12.sp
-                        )
+                        if (!compact) {
+                            Text(
+                                "APK ↔ EXE araçları",
+                                color = TextSecondary,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
-                    TextButton(
-                        onClick =
-                            onBack
-                    ) {
+                    TextButton(onClick = onBack) {
                         Text(
-                            "← Geri"
+                            if (compact) "←" else "← Geri"
                         )
                     }
                 }
             )
         }
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(padding)
-                    .padding(20.dp),
+                    .padding(padding),
+            contentPadding =
+                PaddingValues(
+                    horizontal = horizontalPadding,
+                    vertical =
+                        if (compact) 12.dp else 20.dp
+                ),
             verticalArrangement =
                 Arrangement.spacedBy(
-                    16.dp
-                )
+                    if (compact) 10.dp else 16.dp
+                ),
+            horizontalAlignment =
+                Alignment.CenterHorizontally
         ) {
-            Text(
-                "Ne dönüştürmek istersin?",
-                fontSize =
-                    26.sp,
-                fontWeight =
-                    FontWeight.Bold
-            )
+            item {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 760.dp),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            if (compact) 10.dp else 16.dp
+                        )
+                ) {
+                    Text(
+                        "Ne dönüştürmek istersin?",
+                        fontSize =
+                            when {
+                                compact -> 22.sp
+                                tablet -> 28.sp
+                                else -> 26.sp
+                            },
+                        lineHeight =
+                            when {
+                                compact -> 26.sp
+                                tablet -> 33.sp
+                                else -> 31.sp
+                            },
+                        fontWeight = FontWeight.Bold
+                    )
 
-            Text(
-                "AppForge tarafından oluşturulan veya dönüştürme yetkiniz bulunan uygulamalar için.",
-                color =
-                    TextSecondary
-            )
+                    Text(
+                        "AppForge tarafından oluşturulan veya dönüştürme yetkiniz bulunan uygulamalar için.",
+                        color = TextSecondary,
+                        fontSize =
+                            if (compact) 12.sp else 14.sp,
+                        lineHeight =
+                            if (compact) 17.sp else 20.sp
+                    )
 
-            if (
-                status.isNotBlank()
-            ) {
-                NoteCard(
-                    status
-                )
+                    if (status.isNotBlank()) {
+                        NoteCard(status)
+                    }
+
+                    CreateModeCard(
+                        icon = "📱",
+                        title = "APK → Windows EXE",
+                        description =
+                            "Android APK içindeki AppForge proje verisini kullanarak Windows portable EXE oluştur.",
+                        onClick = onApkToExe
+                    )
+
+                    if (selectedApkName.isNotBlank()) {
+                        Text(
+                            "Seçilen APK: $selectedApkName",
+                            color = Accent,
+                            fontSize =
+                                if (compact) 12.sp else 13.sp
+                        )
+                    }
+
+                    CreateModeCard(
+                        icon = "🖥️",
+                        title = "EXE → Android APK",
+                        description =
+                            "AppForge Windows EXE içindeki proje verisini kullanarak Android APK oluştur.",
+                        onClick = onExeToApk
+                    )
+
+                    if (selectedExeName.isNotBlank()) {
+                        Text(
+                            "Seçilen EXE: $selectedExeName",
+                            color = Accent,
+                            fontSize =
+                                if (compact) 12.sp else 13.sp
+                        )
+                    }
+
+                    NoteCard(
+                        "İlk sürüm AppForge proje manifesti bulunan çıktıları destekleyecek."
+                    )
+                }
             }
-
-            CreateModeCard(
-                icon = "📱",
-                title =
-                    "APK → Windows EXE",
-                description =
-                    "Android APK içindeki AppForge proje verisini kullanarak Windows portable EXE oluştur.",
-                onClick =
-                    onApkToExe
-            )
-
-            if (
-                selectedApkName.isNotBlank()
-            ) {
-                Text(
-                    "Seçilen APK: $selectedApkName",
-                    color =
-                        Accent,
-                    fontSize =
-                        13.sp
-                )
-            }
-
-            CreateModeCard(
-                icon = "🖥️",
-                title =
-                    "EXE → Android APK",
-                description =
-                    "AppForge Windows EXE içindeki proje verisini kullanarak Android APK oluştur.",
-                onClick =
-                    onExeToApk
-            )
-
-            if (
-                selectedExeName.isNotBlank()
-            ) {
-                Text(
-                    "Seçilen EXE: $selectedExeName",
-                    color =
-                        Accent,
-                    fontSize =
-                        13.sp
-                )
-            }
-
-            NoteCard(
-                "İlk sürüm AppForge proje manifesti bulunan çıktıları destekleyecek."
-            )
         }
     }
 }
@@ -3433,23 +3515,21 @@ private fun CreateModeCard(
     description: String,
     onClick: () -> Unit
 ) {
+    val compact =
+        LocalConfiguration.current
+            .screenWidthDp < 380
+
     Card(
         onClick = onClick,
-        modifier =
-            Modifier
-                .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         shape =
             RoundedCornerShape(
-                24.dp
+                if (compact) 18.dp else 24.dp
             ),
         colors =
-            CardDefaults
-                .cardColors(
-                    containerColor =
-                        Color(
-                            0xFF171E22
-                        )
-                )
+            CardDefaults.cardColors(
+                containerColor = Color(0xFF171E22)
+            )
     ) {
         Row(
             modifier =
@@ -3457,9 +3537,9 @@ private fun CreateModeCard(
                     .fillMaxWidth()
                     .padding(
                         horizontal =
-                            22.dp,
+                            if (compact) 14.dp else 22.dp,
                         vertical =
-                            24.dp
+                            if (compact) 16.dp else 24.dp
                     ),
             verticalAlignment =
                 Alignment.CenterVertically
@@ -3467,50 +3547,50 @@ private fun CreateModeCard(
             Text(
                 text = icon,
                 fontSize =
-                    36.sp,
+                    if (compact) 28.sp else 36.sp,
                 modifier =
-                    Modifier
-                        .width(
-                            70.dp
-                        )
+                    Modifier.width(
+                        if (compact) 48.dp else 70.dp
+                    )
             )
 
             Column(
-                modifier =
-                    Modifier
-                        .weight(1f),
+                modifier = Modifier.weight(1f),
                 verticalArrangement =
-                    Arrangement
-                        .spacedBy(
-                            6.dp
-                        )
+                    Arrangement.spacedBy(
+                        if (compact) 4.dp else 6.dp
+                    )
             ) {
                 Text(
                     text = title,
                     fontSize =
-                        21.sp,
-                    fontWeight =
-                        FontWeight.Bold
+                        if (compact) 17.sp else 21.sp,
+                    lineHeight =
+                        if (compact) 21.sp else 25.sp,
+                    fontWeight = FontWeight.Bold
                 )
 
                 Text(
-                    text =
-                        description,
+                    text = description,
                     fontSize =
-                        15.sp,
-                    color =
-                        TextSecondary,
+                        if (compact) 12.sp else 15.sp,
+                    color = TextSecondary,
                     lineHeight =
-                        21.sp
+                        if (compact) 17.sp else 21.sp
                 )
             }
+
+            Spacer(
+                Modifier.width(
+                    if (compact) 6.dp else 10.dp
+                )
+            )
 
             Text(
                 text = "⋮",
                 fontSize =
-                    28.sp,
-                color =
-                    TextSecondary
+                    if (compact) 22.sp else 28.sp,
+                color = TextSecondary
             )
         }
     }
@@ -3529,6 +3609,37 @@ private fun QuickCreateScreen(
     onPreview: () -> Unit,
     onBuild: () -> Unit
 ) {
+    val quickConfiguration =
+        LocalConfiguration.current
+
+    val quickScreenWidthDp =
+        quickConfiguration.screenWidthDp
+
+    val quickScreenHeightDp =
+        quickConfiguration.screenHeightDp
+
+    val quickCompact =
+        quickScreenWidthDp < 380
+
+    val quickTablet =
+        minOf(
+            quickScreenWidthDp,
+            quickScreenHeightDp
+        ) >= 600
+
+    val quickWide =
+        quickScreenWidthDp >= 600
+
+    val quickContentMaxWidth =
+        if (quickWide) 840.dp else 10000.dp
+
+    val quickHorizontalPadding =
+        when {
+            quickCompact -> 12.dp
+            quickTablet -> 28.dp
+            else -> 20.dp
+        }
+
     Column(
         modifier =
             Modifier
@@ -3540,16 +3651,18 @@ private fun QuickCreateScreen(
                     Text(
                         "Hızlı Oluştur",
                         fontWeight =
-                            FontWeight.Bold
+                            FontWeight.Bold,
+                        fontSize =
+                            if (quickCompact) 17.sp else 20.sp
                     )
 
-                    Text(
-                        "İsim + içerik + ikon",
-                        fontSize =
-                            12.sp,
-                        color =
-                            TextSecondary
-                    )
+                    if (!quickCompact) {
+                        Text(
+                            "İsim + içerik + ikon",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
                 }
             },
             navigationIcon = {
@@ -3566,7 +3679,9 @@ private fun QuickCreateScreen(
                         onPreview
                 ) {
                     Text(
-                        "Önizle"
+                        "Önizle",
+                        fontSize =
+                            if (quickCompact) 12.sp else 14.sp
                     )
                 }
 
@@ -3575,7 +3690,13 @@ private fun QuickCreateScreen(
                         onAdvanced
                 ) {
                     Text(
-                        "Gelişmiş"
+                        if (quickCompact) {
+                            "Ayarlar"
+                        } else {
+                            "Gelişmiş"
+                        },
+                        fontSize =
+                            if (quickCompact) 12.sp else 14.sp
                     )
                 }
             },
@@ -3591,16 +3712,22 @@ private fun QuickCreateScreen(
             modifier =
                 Modifier
                     .weight(1f)
+                    .align(
+                        Alignment.CenterHorizontally
+                    )
+                    .widthIn(max = quickContentMaxWidth)
                     .fillMaxWidth(),
             contentPadding =
                 PaddingValues(
-                    20.dp
+                    horizontal =
+                        quickHorizontalPadding,
+                    vertical =
+                        if (quickCompact) 12.dp else 20.dp
                 ),
             verticalArrangement =
-                Arrangement
-                    .spacedBy(
-                        16.dp
-                    )
+                Arrangement.spacedBy(
+                    if (quickCompact) 10.dp else 16.dp
+                )
         ) {
             item {
                 Card(
@@ -3619,14 +3746,9 @@ private fun QuickCreateScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    18.dp
-                                ),
+                                .padding(if (quickCompact) 14.dp else 18.dp),
                         verticalArrangement =
-                            Arrangement
-                                .spacedBy(
-                                    12.dp
-                                )
+                            Arrangement.spacedBy(if (quickCompact) 8.dp else 12.dp)
                     ) {
                         Text(
                             "1. Uygulama adı",
@@ -3699,14 +3821,9 @@ private fun QuickCreateScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    18.dp
-                                ),
+                                .padding(if (quickCompact) 14.dp else 18.dp),
                         verticalArrangement =
-                            Arrangement
-                                .spacedBy(
-                                    12.dp
-                                )
+                            Arrangement.spacedBy(if (quickCompact) 8.dp else 12.dp)
                     ) {
                         Text(
                             "2. İçerik",
@@ -3715,11 +3832,16 @@ private fun QuickCreateScreen(
                         )
 
                         Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(
+                                        rememberScrollState()
+                                    ),
                             horizontalArrangement =
-                                Arrangement
-                                    .spacedBy(
-                                        8.dp
-                                    )
+                                Arrangement.spacedBy(
+                                    if (quickCompact) 6.dp else 8.dp
+                                )
                         ) {
                             FilterChip(
                                 selected =
@@ -3774,9 +3896,7 @@ private fun QuickCreateScreen(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .height(
-                                            52.dp
-                                        )
+                                        .height(if (quickCompact) 48.dp else 52.dp)
                             ) {
                                 Text(
                                     if (
@@ -3848,14 +3968,9 @@ private fun QuickCreateScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    18.dp
-                                ),
+                                .padding(if (quickCompact) 14.dp else 18.dp),
                         verticalArrangement =
-                            Arrangement
-                                .spacedBy(
-                                    12.dp
-                                )
+                            Arrangement.spacedBy(if (quickCompact) 8.dp else 12.dp)
                     ) {
                         Text(
                             "3. İkon",
@@ -3869,9 +3984,7 @@ private fun QuickCreateScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .height(
-                                        52.dp
-                                    )
+                                    .height(if (quickCompact) 48.dp else 52.dp)
                         ) {
                             Text(
                                 if (
@@ -3921,9 +4034,7 @@ private fun QuickCreateScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    16.dp
-                                ),
+                                .padding(if (quickCompact) 12.dp else 16.dp),
                         verticalArrangement =
                             Arrangement
                                 .spacedBy(
@@ -3973,9 +4084,7 @@ private fun QuickCreateScreen(
                     modifier =
                         Modifier.fillMaxWidth(),
                     verticalArrangement =
-                        Arrangement.spacedBy(
-                            12.dp
-                        )
+                        Arrangement.spacedBy(if (quickCompact) 8.dp else 12.dp)
                 ) {
                 Card(
                     modifier =
@@ -3985,7 +4094,7 @@ private fun QuickCreateScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(18.dp),
+                                .padding(if (quickCompact) 14.dp else 18.dp),
                         verticalAlignment =
                             Alignment.CenterVertically,
                         horizontalArrangement =
@@ -4043,7 +4152,7 @@ private fun QuickCreateScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(18.dp),
+                                .padding(if (quickCompact) 14.dp else 18.dp),
                         verticalAlignment =
                             Alignment.CenterVertically,
                         horizontalArrangement =
@@ -4101,7 +4210,7 @@ private fun QuickCreateScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(18.dp),
+                                .padding(if (quickCompact) 14.dp else 18.dp),
                         verticalAlignment =
                             Alignment.CenterVertically,
                         horizontalArrangement =
@@ -4180,9 +4289,9 @@ private fun QuickCreateScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(18.dp),
+                                .padding(if (quickCompact) 14.dp else 18.dp),
                         verticalArrangement =
-                            Arrangement.spacedBy(12.dp)
+                            Arrangement.spacedBy(if (quickCompact) 8.dp else 12.dp)
                     ) {
 
                         Text(
@@ -4648,15 +4757,19 @@ private fun QuickCreateScreen(
                 ),
             modifier =
                 Modifier
+                    .align(
+                        Alignment.CenterHorizontally
+                    )
+                    .widthIn(max = quickContentMaxWidth)
                     .fillMaxWidth()
                     .padding(
                         horizontal =
-                            20.dp,
+                            quickHorizontalPadding,
                         vertical =
-                            16.dp
+                            if (quickCompact) 10.dp else 16.dp
                     )
                     .height(
-                        58.dp
+                        if (quickCompact) 52.dp else 58.dp
                     )
         ) {
             Text(
