@@ -5766,6 +5766,38 @@ function generatedMainActivity(c, pkg) {
                 )
             }
 
+            ${c.firebase?.messaging ? `
+            // APPFORGE_FCM_TOKEN_BRIDGE_V1
+            "getFcmToken" -> {
+                val token =
+                    getSharedPreferences(
+                        "appforge_fcm",
+                        MODE_PRIVATE
+                    )
+                        .getString(
+                            "token",
+                            ""
+                        )
+                        .orEmpty()
+
+                val reply =
+                    JSONObject()
+                        .put(
+                            "type",
+                            "fcmToken"
+                        )
+                        .put(
+                            "token",
+                            token
+                        )
+                        .toString()
+
+                replyProxy.postMessage(
+                    reply
+                )
+            }
+            ` : ""}
+
             else -> {
                 bridgeError(
                     "Desteklenmeyen Native Bridge işlemi."
@@ -6134,6 +6166,122 @@ function generatedMainActivity(c, pkg) {
     restorePurchases() {
       send("restorePurchases");
     },` : ""}
+
+    ${c.firebase?.messaging ? `
+    getFcmToken() {
+      return new Promise(
+        (resolve, reject) => {
+          const native =
+            window.AppForgeNative;
+
+          if (
+            !native ||
+            typeof native.postMessage !==
+              "function"
+          ) {
+            reject(
+              new Error(
+                "AppForge FCM Native Bridge kullanılamıyor."
+              )
+            );
+            return;
+          }
+
+          const previous =
+            native.onmessage;
+
+          let completed =
+            false;
+
+          const cleanup =
+            () => {
+              if (completed) {
+                return;
+              }
+
+              completed =
+                true;
+
+              clearTimeout(
+                timeout
+              );
+
+              try {
+                native.onmessage =
+                  previous;
+              } catch {}
+            };
+
+          const timeout =
+            setTimeout(
+              () => {
+                cleanup();
+
+                reject(
+                  new Error(
+                    "FCM token yanıtı zaman aşımına uğradı."
+                  )
+                );
+              },
+              4000
+            );
+
+          native.onmessage =
+            event => {
+              let value =
+                null;
+
+              try {
+                value =
+                  JSON.parse(
+                    String(
+                      event?.data ??
+                      ""
+                    )
+                  );
+              } catch {}
+
+              if (
+                value &&
+                value.type ===
+                  "fcmToken"
+              ) {
+                const token =
+                  safeText(
+                    value.token,
+                    8192
+                  ).trim();
+
+                cleanup();
+                resolve(token);
+                return;
+              }
+
+              if (
+                typeof previous ===
+                  "function"
+              ) {
+                try {
+                  previous.call(
+                    native,
+                    event
+                  );
+                } catch {}
+              }
+            };
+
+          try {
+            send(
+              "getFcmToken"
+            );
+          } catch (error) {
+            cleanup();
+            reject(error);
+          }
+        }
+      );
+    },
+    ` : ""}
 
     platform() {
       return "android";
