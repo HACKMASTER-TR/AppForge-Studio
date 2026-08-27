@@ -371,3 +371,52 @@ test(
     }
   }
 );
+
+
+test(
+  "source worker keeps Flutter engine metadata compatible with read-only runtime",
+  async () => {
+    const docker =
+      await fs.readFile(
+        path.join(
+          repoRoot,
+          "build-service",
+          "Dockerfile.source-worker"
+        ),
+        "utf8"
+      );
+
+    const patch =
+      await fs.readFile(
+        path.join(
+          repoRoot,
+          "build-service",
+          "scripts",
+          "patch-flutter-readonly-sdk.sh"
+        ),
+        "utf8"
+      );
+
+    assert.ok(
+      docker.includes(
+        "RUN sh scripts/patch-flutter-readonly-sdk.sh"
+      ),
+      "Flutter read-only patch Docker image build'inde uygulanmalı."
+    );
+
+    for (
+      const marker of [
+        "AppForge hardened read-only SDK guard",
+        'desired_realm="${FLUTTER_REALM:-}"',
+        "engine.stamp",
+        "engine.realm",
+        "APPFORGE_FLUTTER_READONLY_GUARD_OK"
+      ]
+    ) {
+      assert.ok(
+        patch.includes(marker),
+        marker
+      );
+    }
+  }
+);

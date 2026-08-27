@@ -168,6 +168,11 @@ RUN npm install --omit=dev
 
 COPY . .
 
+# Flutter stable rewrites engine metadata even when unchanged.
+# Patch that write to be idempotent so the pinned SDK stays immutable
+# under the dedicated Source Worker's --read-only runtime.
+RUN sh scripts/patch-flutter-readonly-sdk.sh
+
 # Worker image'e geçmeden önce regression testleri çalıştır.
 # Media3 / Native Bridge gibi kritik generated-code kontratları
 # bozulursa pahalı Android/Gradle aşamalarına geçmeden fail olur.
