@@ -17809,7 +17809,10 @@ private fun SettingsCardRow(entry: SettingsEntry) {
         shape = RoundedCornerShape(if (settingsCardCompact) 18.dp else 22.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(\n                horizontal = if (settingsCardCompact) 12.dp else 16.dp,\n                vertical = if (settingsCardCompact) 14.dp else 18.dp\n            ),
+            modifier = Modifier.fillMaxWidth().padding(
+                horizontal = if (settingsCardCompact) 12.dp else 16.dp,
+                vertical = if (settingsCardCompact) 14.dp else 18.dp
+            ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Card(
@@ -17820,18 +17823,34 @@ private fun SettingsCardRow(entry: SettingsEntry) {
                     modifier = Modifier.size(if (settingsCardCompact) 44.dp else 52.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(\n                    entry.icon,\n                    fontSize = if (settingsCardCompact) 21.sp else 24.sp\n                )
+                    Text(
+                    entry.icon,
+                    fontSize = if (settingsCardCompact) 21.sp else 24.sp
+                )
                 }
             }
 
             Spacer(Modifier.width(if (settingsCardCompact) 10.dp else 14.dp))
 
             Column(Modifier.weight(1f)) {
-                Text(\n                    entry.title,\n                    fontWeight = FontWeight.Bold,\n                    fontSize = if (settingsCardCompact) 16.sp else 18.sp\n                )
-                Text(\n                    entry.subtitle,\n                    color = TextSecondary,\n                    lineHeight = if (settingsCardCompact) 16.sp else 18.sp,\n                    fontSize = if (settingsCardCompact) 12.sp else 14.sp\n                )
+                Text(
+                    entry.title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (settingsCardCompact) 16.sp else 18.sp
+                )
+                Text(
+                    entry.subtitle,
+                    color = TextSecondary,
+                    lineHeight = if (settingsCardCompact) 16.sp else 18.sp,
+                    fontSize = if (settingsCardCompact) 12.sp else 14.sp
+                )
             }
 
-            Text(\n                "›",\n                fontSize = if (settingsCardCompact) 24.sp else 28.sp,\n                color = TextSecondary\n            )
+            Text(
+                "›",
+                fontSize = if (settingsCardCompact) 24.sp else 28.sp,
+                color = TextSecondary
+            )
         }
     }
 }
