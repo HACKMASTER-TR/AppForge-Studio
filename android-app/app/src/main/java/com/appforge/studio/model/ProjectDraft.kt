@@ -30,6 +30,7 @@ data class ProjectDraft(
     var splashText: String = "",
     var iconUri: String? = null,
     var iconName: String = "",
+    var appCategory: String = "auto",
 
     var signingMode: SigningMode = SigningMode.DEBUG,
     var keystoreUri: String? = null,

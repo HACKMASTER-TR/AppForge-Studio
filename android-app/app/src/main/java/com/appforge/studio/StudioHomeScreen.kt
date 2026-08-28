@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.appforge.studio.io.ProjectLibrary
+import com.appforge.studio.io.DeletedProject
 import com.appforge.studio.io.SavedProject
 import org.json.JSONObject
 import java.text.DateFormat
@@ -97,6 +98,7 @@ internal fun StudioHomeScreen(
     onOpenSettings: () -> Unit,
     onOpenAccount: () -> Unit,
     onOpenHistory: () -> Unit,
+    onOpenTrash: () -> Unit,
     onOpenPro: () -> Unit
 ) {
     val context =
@@ -143,6 +145,13 @@ internal fun StudioHomeScreen(
         ProjectLibrary.freeProjectSlotsUsed(
             context
         )
+
+    val trashCount =
+        ProjectLibrary
+            .loadTrash(
+                context
+            )
+            .size
 
     var showCreateDialog by remember {
         mutableStateOf(false)
@@ -249,6 +258,18 @@ internal fun StudioHomeScreen(
                             onClick = {
                                 showTopMenu = false
                                 onOpenHistory()
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "Geri Dönüşüm Kutusu ($trashCount)"
+                                )
+                            },
+                            onClick = {
+                                showTopMenu = false
+                                onOpenTrash()
                             }
                         )
 
@@ -471,7 +492,7 @@ internal fun StudioHomeScreen(
             },
             text = {
                 Text(
-                    "${project.name} cihazdaki proje listesinden kaldırılacak."
+                    "${project.name} geri dönüşüm kutusuna taşınacak ve 30 gün sonra otomatik silinecek."
                 )
             },
             confirmButton = {
@@ -492,7 +513,7 @@ internal fun StudioHomeScreen(
                     }
                 ) {
                     Text(
-                        "Sil",
+                        "Çöpe taşı",
                         color =
                             Color(0xFFFF7171)
                     )
@@ -502,6 +523,272 @@ internal fun StudioHomeScreen(
                 TextButton(
                     onClick = {
                         deleteCandidate =
+                            null
+                    }
+                ) {
+                    Text("Vazgeç")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+internal fun StudioTrashScreen(
+    onBack: () -> Unit,
+    onMessage: (String) -> Unit
+) {
+    val context =
+        androidx.compose.ui.platform.LocalContext.current
+
+    var deletedProjects by
+        remember {
+            mutableStateOf(
+                ProjectLibrary.loadTrash(
+                    context
+                )
+            )
+        }
+
+    var permanentDeleteCandidate by
+        remember {
+            mutableStateOf<DeletedProject?>(
+                null
+            )
+        }
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(HomeBackground)
+    ) {
+        androidx.compose.material3.TopAppBar(
+            title = {
+                Column {
+                    Text(
+                        "Geri Dönüşüm Kutusu",
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Silinen projeler 30 gün saklanır",
+                        color = HomeTextSecondary,
+                        fontSize = 11.sp
+                    )
+                }
+            },
+            navigationIcon = {
+                TextButton(
+                    onClick = onBack
+                ) {
+                    Text("← Geri")
+                }
+            },
+            colors =
+                androidx.compose.material3.TopAppBarDefaults
+                    .topAppBarColors(
+                        containerColor = HomeBackground
+                    )
+        )
+
+        LazyColumn(
+            modifier =
+                Modifier.fillMaxSize(),
+            contentPadding =
+                PaddingValues(
+                    horizontal = 16.dp,
+                    vertical = 12.dp
+                ),
+            verticalArrangement =
+                Arrangement.spacedBy(12.dp)
+        ) {
+            if (
+                deletedProjects.isEmpty()
+            ) {
+                item {
+                    Card(
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor = HomeCard
+                            ),
+                        shape =
+                            RoundedCornerShape(22.dp)
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                            horizontalAlignment =
+                                Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                "♻",
+                                fontSize = 40.sp,
+                                color = HomeBlue
+                            )
+                            Text(
+                                "Geri dönüşüm kutusu boş",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            items(
+                items = deletedProjects,
+                key = {
+                    it.id
+                }
+            ) {
+                project ->
+
+                val dayMs =
+                    24L * 60L * 60L * 1000L
+
+                val remainingDays =
+                    maxOf(
+                        1L,
+                        (
+                            project.purgeAt -
+                                System.currentTimeMillis() +
+                                dayMs -
+                                1L
+                        ) /
+                            dayMs
+                    )
+
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = HomeCard
+                        ),
+                    shape =
+                        RoundedCornerShape(22.dp)
+                ) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                        verticalArrangement =
+                            Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            project.name,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp
+                        )
+                        Text(
+                            project.packageName,
+                            color = HomeTextSecondary,
+                            fontSize = 11.sp
+                        )
+                        Text(
+                            "$remainingDays gün sonra otomatik silinecek",
+                            color = HomePurple,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Row(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            horizontalArrangement =
+                                Arrangement.spacedBy(8.dp)
+                        ) {
+                            TextButton(
+                                onClick = {
+                                    if (
+                                        ProjectLibrary.restoreDeleted(
+                                            context,
+                                            project.id
+                                        )
+                                    ) {
+                                        deletedProjects =
+                                            ProjectLibrary.loadTrash(
+                                                context
+                                            )
+
+                                        onMessage(
+                                            "Proje geri yüklendi: ${project.name}"
+                                        )
+                                    }
+                                },
+                                modifier =
+                                    Modifier.weight(1f)
+                            ) {
+                                Text("Geri yükle")
+                            }
+
+                            TextButton(
+                                onClick = {
+                                    permanentDeleteCandidate =
+                                        project
+                                },
+                                modifier =
+                                    Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    "Kalıcı sil",
+                                    color = Color(0xFFFF7171)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    permanentDeleteCandidate?.let {
+        project ->
+
+        AlertDialog(
+            onDismissRequest = {
+                permanentDeleteCandidate =
+                    null
+            },
+            title = {
+                Text("Kalıcı olarak silinsin mi?")
+            },
+            text = {
+                Text(
+                    "${project.name} geri alınamayacak."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        ProjectLibrary.deletePermanently(
+                            context,
+                            project.id
+                        )
+
+                        deletedProjects =
+                            ProjectLibrary.loadTrash(
+                                context
+                            )
+
+                        permanentDeleteCandidate =
+                            null
+
+                        onMessage(
+                            "Proje kalıcı olarak silindi."
+                        )
+                    }
+                ) {
+                    Text(
+                        "Kalıcı sil",
+                        color = Color(0xFFFF7171)
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        permanentDeleteCandidate =
                             null
                     }
                 ) {

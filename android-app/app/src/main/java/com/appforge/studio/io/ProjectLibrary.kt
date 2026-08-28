@@ -18,6 +18,15 @@ data class SavedProject(
     val json: String
 )
 
+data class DeletedProject(
+    val id: String,
+    val name: String,
+    val packageName: String,
+    val deletedAt: Long,
+    val purgeAt: Long,
+    val json: String
+)
+
 data class SavedBuild(
     val id: String,
     val projectName: String,
@@ -30,8 +39,14 @@ data class SavedBuild(
 )
 
 object ProjectLibrary {
+    private const val TRASH_RETENTION_MS =
+        30L * 24L * 60L * 60L * 1000L
+
     private fun projectFile(context: Context) =
         File(context.filesDir, "project_library.json")
+
+    private fun trashFile(context: Context) =
+        File(context.filesDir, "project_trash.json")
 
     private fun buildFile(context: Context) =
         File(context.filesDir, "build_history.json")
@@ -178,6 +193,8 @@ object ProjectLibrary {
     }
 
     fun load(context: Context): List<SavedProject> {
+        purgeExpiredTrash(context)
+
         val file = projectFile(context)
         if (!file.exists()) return emptyList()
 
@@ -353,6 +370,11 @@ object ProjectLibrary {
                     it != "null"
                 },
             iconName = obj.optString("iconName"),
+            appCategory =
+                obj.optString(
+                    "appCategory",
+                    "auto"
+                ),
             signingMode =
                 runCatching {
                     SigningMode.valueOf(
@@ -478,7 +500,143 @@ object ProjectLibrary {
     }
 
     fun delete(context: Context, id: String) {
-        persistProjects(context, load(context).filterNot { it.id == id })
+        val active =
+            load(context)
+
+        val project =
+            active.firstOrNull {
+                it.id == id
+            } ?: return
+
+        val now =
+            System.currentTimeMillis()
+
+        val trash =
+            loadTrashInternal(context)
+                .filterNot {
+                    it.id == id
+                }
+                .toMutableList()
+
+        trash.add(
+            0,
+            DeletedProject(
+                id = project.id,
+                name = project.name,
+                packageName = project.packageName,
+                deletedAt = now,
+                purgeAt = now + TRASH_RETENTION_MS,
+                json = project.json
+            )
+        )
+
+        persistTrash(
+            context,
+            trash
+        )
+
+        persistProjects(
+            context,
+            active.filterNot {
+                it.id == id
+            }
+        )
+    }
+
+    fun loadTrash(
+        context: Context
+    ): List<DeletedProject> {
+        purgeExpiredTrash(context)
+
+        return loadTrashInternal(context)
+            .sortedByDescending {
+                it.deletedAt
+            }
+    }
+
+    fun restoreDeleted(
+        context: Context,
+        id: String
+    ): Boolean {
+        val trash =
+            loadTrash(context)
+
+        val deleted =
+            trash.firstOrNull {
+                it.id == id
+            } ?: return false
+
+        val active =
+            load(context)
+                .filterNot {
+                    it.id == id
+                }
+                .toMutableList()
+
+        val restoredJson =
+            JSONObject(
+                deleted.json
+            ).apply {
+                put(
+                    "updatedAt",
+                    System.currentTimeMillis()
+                )
+            }
+
+        active.add(
+            SavedProject(
+                id = deleted.id,
+                name = deleted.name,
+                packageName = deleted.packageName,
+                updatedAt =
+                    restoredJson.optLong(
+                        "updatedAt"
+                    ),
+                json = restoredJson.toString()
+            )
+        )
+
+        persistProjects(
+            context,
+            active
+        )
+
+        persistTrash(
+            context,
+            trash.filterNot {
+                it.id == id
+            }
+        )
+
+        return true
+    }
+
+    fun deletePermanently(
+        context: Context,
+        id: String
+    ) {
+        val current =
+            loadTrashInternal(context)
+
+        val deleted =
+            current.firstOrNull {
+                it.id == id
+            }
+
+        persistTrash(
+            context,
+            current
+                .filterNot {
+                    it.id == id
+                }
+        )
+
+        deleted?.let {
+            cleanupProjectFiles(
+                context,
+                it.json
+            )
+        }
     }
 
     fun saveBuild(
@@ -556,6 +714,271 @@ object ProjectLibrary {
         projectFile(context).writeText(arr.toString(2))
     }
 
+    private fun loadTrashInternal(
+        context: Context
+    ): List<DeletedProject> {
+        val file =
+            trashFile(context)
+
+        if (!file.exists()) {
+            return emptyList()
+        }
+
+        return runCatching {
+            val array =
+                JSONArray(
+                    file.readText()
+                )
+
+            buildList {
+                for (
+                    index in 0 until
+                    array.length()
+                ) {
+                    val item =
+                        array.getJSONObject(
+                            index
+                        )
+
+                    val project =
+                        item.getJSONObject(
+                            "project"
+                        )
+
+                    add(
+                        DeletedProject(
+                            id = project.getString("id"),
+                            name = project.optString("appName", "Adsız Proje"),
+                            packageName = project.optString("packageName", ""),
+                            deletedAt = item.optLong("deletedAt"),
+                            purgeAt = item.optLong("purgeAt"),
+                            json = project.toString()
+                        )
+                    )
+                }
+            }
+        }.getOrDefault(
+            emptyList()
+        )
+    }
+
+    private fun persistTrash(
+        context: Context,
+        projects: List<DeletedProject>
+    ) {
+        val array =
+            JSONArray()
+
+        projects.forEach {
+            deleted ->
+
+            array.put(
+                JSONObject().apply {
+                    put("deletedAt", deleted.deletedAt)
+                    put("purgeAt", deleted.purgeAt)
+                    put("project", JSONObject(deleted.json))
+                }
+            )
+        }
+
+        trashFile(context)
+            .writeText(
+                array.toString(2)
+            )
+    }
+
+    private fun purgeExpiredTrash(
+        context: Context,
+        now: Long = System.currentTimeMillis()
+    ) {
+        val current =
+            loadTrashInternal(context)
+
+        val retained =
+            current.filter {
+                it.purgeAt > now
+            }
+
+        if (
+            retained.size != current.size
+        ) {
+            persistTrash(
+                context,
+                retained
+            )
+
+            current
+                .filter {
+                    it.purgeAt <= now
+                }
+                .forEach {
+                    cleanupProjectFiles(
+                        context,
+                        it.json
+                    )
+                }
+        }
+    }
+
+    private fun cleanupProjectFiles(
+        context: Context,
+        projectJson: String
+    ) {
+        val project =
+            runCatching {
+                JSONObject(
+                    projectJson
+                )
+            }.getOrNull()
+                ?: return
+
+        val protectedProjects =
+            buildList {
+                addAll(
+                    runCatching {
+                        val file =
+                            projectFile(context)
+
+                        if (!file.exists()) {
+                            emptyList()
+                        } else {
+                            val array =
+                                JSONArray(
+                                    file.readText()
+                                )
+
+                            buildList {
+                                for (
+                                    index in 0 until
+                                        array.length()
+                                ) {
+                                    add(
+                                        array.getJSONObject(index)
+                                            .toString()
+                                    )
+                                }
+                            }
+                        }
+                    }.getOrDefault(
+                        emptyList()
+                    )
+                )
+                addAll(
+                    loadTrashInternal(context).map {
+                        it.json
+                    }
+                )
+            }
+
+        fun isStillReferenced(
+            field: String,
+            value: String
+        ): Boolean =
+            protectedProjects.any {
+                candidate ->
+
+                runCatching {
+                    val candidateJson =
+                        JSONObject(candidate)
+
+                    candidateJson.optString("id") !=
+                        project.optString("id") &&
+                        candidateJson.optString(field) == value
+                }.getOrDefault(false)
+            }
+
+        val allowedProjectRoot =
+            File(
+                context.filesDir,
+                "projects"
+            ).canonicalFile
+
+        project
+            .optString(
+                "importedFolder"
+            )
+            .takeIf {
+                it.isNotBlank() &&
+                    it != "null"
+            }
+            ?.let {
+                path ->
+
+                if (
+                    isStillReferenced(
+                        "importedFolder",
+                        path
+                    )
+                ) {
+                    return@let
+                }
+
+                runCatching {
+                    val target =
+                        File(path)
+                            .canonicalFile
+
+                    if (
+                        target.path.startsWith(
+                            allowedProjectRoot.path +
+                                File.separator
+                        )
+                    ) {
+                        target.deleteRecursively()
+                    }
+                }
+            }
+
+        val allowedIconRoot =
+            File(
+                context.filesDir,
+                "prepared-icons"
+            ).canonicalFile
+
+        project
+            .optString(
+                "iconUri"
+            )
+            .takeIf {
+                it.startsWith(
+                    "file:",
+                    true
+                )
+            }
+            ?.let {
+                value ->
+
+                if (
+                    isStillReferenced(
+                        "iconUri",
+                        value
+                    )
+                ) {
+                    return@let
+                }
+
+                runCatching {
+                    val target =
+                        File(
+                            android.net.Uri
+                                .parse(value)
+                                .path
+                                .orEmpty()
+                        ).canonicalFile
+
+                    if (
+                        target.isFile &&
+                        target.path.startsWith(
+                            allowedIconRoot.path +
+                                File.separator
+                        )
+                    ) {
+                        target.delete()
+                    }
+                }
+            }
+    }
+
     private fun serializeProject(id: String, updatedAt: Long, d: ProjectDraft) =
         JSONObject().apply {
             put("id", id)
@@ -589,6 +1012,7 @@ object ProjectLibrary {
             put("splashText", d.splashText)
             put("iconUri", d.iconUri)
             put("iconName", d.iconName)
+            put("appCategory", d.appCategory)
 
             put("signingMode", d.signingMode.name)
             put("keystoreUri", d.keystoreUri)

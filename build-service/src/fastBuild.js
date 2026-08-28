@@ -2,6 +2,9 @@ import AdmZip from "adm-zip";
 import { promises as fs } from "fs";
 import path from "path";
 import { spawn } from "child_process";
+import {
+  androidAppCategoryAttribute
+} from "./androidAppCategory.js";
 
 const ANDROID_HOME =
   process.env.ANDROID_HOME ||
@@ -431,6 +434,11 @@ export async function buildFastApk({
         android:roundIcon="@mipmap/ic_launcher"`
       : "";
 
+  const appCategoryAttribute =
+    androidAppCategoryAttribute(
+      c
+    );
+
   const notificationPermission =
     c.features?.notifications === true
       ? `
@@ -564,7 +572,7 @@ ${notificationPermission}${vibrationPermission}${cameraPermission}${locationPerm
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
-        android:label="${xml(c.appName || "AppForge App")}"${iconAttributes}
+        android:label="${xml(c.appName || "AppForge App")}"${appCategoryAttribute}${iconAttributes}
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="false">
 

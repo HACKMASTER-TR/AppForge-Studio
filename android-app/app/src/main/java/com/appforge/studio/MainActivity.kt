@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.appforge.studio.build.BuildApiClient
@@ -68,6 +69,7 @@ import com.appforge.studio.ai.LocalAiModelStore
 import com.appforge.studio.ai.LocalAiModelDownloader
 import com.appforge.studio.i18n.StudioI18n
 import com.appforge.studio.io.AppSettingsStore
+import com.appforge.studio.io.AppIconProcessor
 import com.appforge.studio.io.AppForgeApkConversion
 import com.appforge.studio.io.AppForgeExeConversion
 import com.appforge.studio.io.KeystoreVault
@@ -449,7 +451,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 @Composable
 private fun AppForgeApp() {
@@ -564,6 +566,8 @@ private fun AppForgeApp() {
             screen ==
                 AppScreen.HISTORY ||
             screen ==
+                AppScreen.TRASH ||
+            screen ==
                 AppScreen.TEMPLATES ||
             screen ==
                 AppScreen.SETTINGS ||
@@ -672,6 +676,7 @@ private fun AppForgeApp() {
                 AssistantDestination.TEST_LAB -> AppScreen.TEST_LAB
                 AssistantDestination.TEMPLATES -> AppScreen.TEMPLATES
                 AssistantDestination.HISTORY -> AppScreen.HISTORY
+                AssistantDestination.TRASH -> AppScreen.TRASH
                 AssistantDestination.SETTINGS -> AppScreen.SETTINGS
                 AssistantDestination.ACCOUNT -> AppScreen.ACCOUNT
                 AssistantDestination.HELP -> AppScreen.HELP
@@ -867,11 +872,39 @@ private fun AppForgeApp() {
                 context,
                 uri
             )
-            draft = draft.copy(
-                iconUri = uri.toString(),
-                iconName = uri.lastPathSegment ?: "icon.png"
-            )
-            status = "Uygulama ikonu seçildi."
+            status =
+                "Uygulama ikonu hazırlanıyor..."
+
+            scope.launch {
+                try {
+                    val prepared =
+                        withContext(
+                            Dispatchers.IO
+                        ) {
+                            AppIconProcessor
+                                .prepare(
+                                    context = context,
+                                    source = uri,
+                                    backgroundColor =
+                                        draft.primaryColor
+                                )
+                        }
+
+                    draft =
+                        draft.copy(
+                            iconUri = prepared.uri,
+                            iconName = prepared.name
+                        )
+
+                    status =
+                        "İkon hazırlandı: ${prepared.sourceWidth}×${prepared.sourceHeight} → güvenli 1024×1024 PNG"
+                } catch (
+                    t: Throwable
+                ) {
+                    status =
+                        "İkon hazırlanamadı: ${t.message}"
+                }
+            }
         }
     }
 
@@ -2157,6 +2190,12 @@ private fun AppForgeApp() {
                             )
                         },
 
+                        onOpenTrash = {
+                            openWorkspaceScreen(
+                                AppScreen.TRASH
+                            )
+                        },
+
                         onOpenPro = {
                             screen =
                                 AppScreen.PRO
@@ -2251,7 +2290,7 @@ private fun AppForgeApp() {
                         onPickIcon = {
                             iconPicker.launch(
                                 arrayOf(
-                                    "image/png"
+                                    "image/*"
                                 )
                             )
                         },
@@ -2323,6 +2362,15 @@ private fun AppForgeApp() {
                 AppScreen.HISTORY -> BuildHistoryScreen(
                     onBack = {
                         returnFromWorkspace()
+                    }
+                )
+
+                AppScreen.TRASH -> StudioTrashScreen(
+                    onBack = {
+                        returnFromWorkspace()
+                    },
+                    onMessage = {
+                        status = it
                     }
                 )
 
@@ -2632,6 +2680,45 @@ private fun AppForgeApp() {
 
                         status =
                             "AI proje düzeltmeleri uygulandı."
+                    },
+                    currentProjectId =
+                        currentProjectId,
+                    onSelectProject = {
+                        saved ->
+
+                        ProjectLibrary
+                            .restore(
+                                context,
+                                saved.id
+                            )
+                            ?.let {
+                                restored ->
+
+                                draft =
+                                    restored
+
+                                currentProjectId =
+                                    saved.id
+
+                                serverUrl =
+                                    restored.buildServiceUrl
+
+                                sourceAnalysis =
+                                    restored.importedFolder
+                                        ?.let {
+                                            folderPath ->
+
+                                            runCatching {
+                                                SourceCapabilityAnalyzer
+                                                    .analyze(
+                                                        File(folderPath)
+                                                    )
+                                            }.getOrNull()
+                                        }
+
+                                status =
+                                    "AI analiz projesi seçildi: ${saved.name}"
+                            }
                     },
                     runtimeContext =
                         AssistantRuntimeContext(
@@ -2966,7 +3053,7 @@ private fun AppForgeApp() {
                             3 -> FeaturesStep(draft) { draft = it }
 
                             4 -> AppearanceStep(draft, { draft = it }) {
-                                iconPicker.launch(arrayOf("image/png"))
+                                iconPicker.launch(arrayOf("image/*"))
                             }
 
                             5 -> NativeBridgeStep(draft) { draft = it }
@@ -7805,6 +7892,8 @@ private data class LocalAiChatMessage(
 private fun LocalAiAssistantScreen(
     draft: ProjectDraft,
     onDraftChange: (ProjectDraft) -> Unit,
+    currentProjectId: String?,
+    onSelectProject: (SavedProject) -> Unit,
     runtimeContext: AssistantRuntimeContext,
     buildLogs: List<String>,
     buildPreflight: List<String>,
@@ -7854,6 +7943,27 @@ private fun LocalAiAssistantScreen(
     val context =
         LocalContext.current
 
+    val availableProjects =
+        remember(
+            currentProjectId
+        ) {
+            ProjectLibrary.load(
+                context
+            )
+        }
+
+    val selectedProject =
+        availableProjects.firstOrNull {
+            it.id == currentProjectId
+        }
+
+    var projectMenuExpanded by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
     val scope =
         rememberCoroutineScope()
 
@@ -7897,9 +8007,11 @@ private fun LocalAiAssistantScreen(
         }
 
     var includeProjectContext by
-        remember {
+        remember(
+            currentProjectId
+        ) {
             mutableStateOf(
-                true
+                currentProjectId != null
             )
         }
 
@@ -8556,6 +8668,87 @@ private fun LocalAiAssistantScreen(
                             )
                         }
 
+                        Text(
+                            "Analiz edilen proje",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+
+                        Box(
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    projectMenuExpanded =
+                                        true
+                                },
+                                enabled =
+                                    availableProjects.isNotEmpty(),
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    selectedProject
+                                        ?.let {
+                                            "${it.name} • ${it.packageName}"
+                                        }
+                                        ?: if (
+                                            availableProjects.isEmpty()
+                                        ) {
+                                            "Önce bir proje kaydet"
+                                        } else {
+                                            "Proje seç"
+                                        },
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded =
+                                    projectMenuExpanded,
+                                onDismissRequest = {
+                                    projectMenuExpanded =
+                                        false
+                                }
+                            ) {
+                                availableProjects.forEach {
+                                    project ->
+
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(
+                                                    project.name,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                                Text(
+                                                    project.packageName,
+                                                    color = TextSecondary,
+                                                    fontSize = 10.sp
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            projectMenuExpanded =
+                                                false
+
+                                            includeProjectContext =
+                                                true
+
+                                            onSelectProject(
+                                                project
+                                            )
+
+                                            status =
+                                                "Analiz projesi seçildi: ${project.name}"
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
                         Row(
                             verticalAlignment =
                                 Alignment
@@ -8583,11 +8776,14 @@ private fun LocalAiAssistantScreen(
 
                             Switch(
                                 checked =
-                                    includeProjectContext,
+                                    includeProjectContext &&
+                                        currentProjectId != null,
                                 onCheckedChange = {
                                     includeProjectContext =
                                         it
-                                }
+                                },
+                                enabled =
+                                    currentProjectId != null
                             )
                         }
 
@@ -8704,6 +8900,8 @@ private fun LocalAiAssistantScreen(
                                         status =
                                             "Proje analizi tamamlandı."
                                     },
+                                    enabled =
+                                        currentProjectId != null,
                                     modifier =
                                         Modifier.fillMaxWidth()
                                 ) {
@@ -8730,6 +8928,8 @@ private fun LocalAiAssistantScreen(
                                         status =
                                             "Play Store hazırlık denetimi tamamlandı."
                                     },
+                                    enabled =
+                                        currentProjectId != null,
                                     modifier =
                                         Modifier.fillMaxWidth()
                                 ) {
@@ -8774,6 +8974,8 @@ private fun LocalAiAssistantScreen(
                                                 "${fixResult.changes.size} güvenli düzeltme uygulandı."
                                             }
                                     },
+                                    enabled =
+                                        currentProjectId != null,
                                     modifier =
                                         Modifier.fillMaxWidth()
                                 ) {
@@ -8785,7 +8987,13 @@ private fun LocalAiAssistantScreen(
                         }
 
                         Text(
-                            "Bu projeye göre",
+                            if (
+                                currentProjectId != null
+                            ) {
+                                "Bu projeye göre"
+                            } else {
+                                "Önce analiz projesini seç"
+                            },
                             fontWeight =
                                 FontWeight.Bold,
                             fontSize =
@@ -8793,17 +9001,31 @@ private fun LocalAiAssistantScreen(
                         )
 
                         Text(
-                            "AppForge açık proje ayarlarına göre en yararlı soruları otomatik seçer.",
+                            if (
+                                currentProjectId != null
+                            ) {
+                                "AppForge seçili proje ayarlarına göre en yararlı soruları otomatik seçer."
+                            } else {
+                                "Üstteki proje seçiciden kayıtlı bir proje seçmeden proje analizi yapılmaz."
+                            },
                             color =
                                 TextSecondary,
                             fontSize =
                                 11.sp
                         )
 
-                        AppForgeSmartSuggestions
-                            .forProject(
-                                draft
-                            )
+                        (
+                            if (
+                                currentProjectId != null
+                            ) {
+                                AppForgeSmartSuggestions
+                                    .forProject(
+                                        draft
+                                    )
+                            } else {
+                                emptyList()
+                            }
+                        )
                             .forEach {
                                 prompt ->
                                 OutlinedButton(
@@ -10705,7 +10927,7 @@ private fun AppearanceStep(
                     }
 
                     Text(
-                        "Önerilen: kare PNG, en az 512 × 512 px.",
+                        "PNG/JPEG otomatik yönlendirilir, gerçek PNG'ye çevrilir ve adaptive-icon güvenli alanına sığdırılır.",
                         color =
                             TextSecondary,
                         fontSize =
@@ -10713,6 +10935,80 @@ private fun AppearanceStep(
                     )
                 }
             }
+        }
+
+        item {
+            Text(
+                "Uygulama türü",
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+        }
+
+        item {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(
+                            rememberScrollState()
+                        ),
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        if (formCompact) 5.dp else 7.dp
+                    )
+            ) {
+                FilterChip(
+                    selected =
+                        d.appCategory == "auto",
+                    onClick = {
+                        update(
+                            d.copy(
+                                appCategory = "auto"
+                            )
+                        )
+                    },
+                    label = {
+                        Text("Otomatik")
+                    }
+                )
+
+                FilterChip(
+                    selected =
+                        d.appCategory == "game",
+                    onClick = {
+                        update(
+                            d.copy(
+                                appCategory = "game"
+                            )
+                        )
+                    },
+                    label = {
+                        Text("Oyun")
+                    }
+                )
+
+                FilterChip(
+                    selected =
+                        d.appCategory == "none",
+                    onClick = {
+                        update(
+                            d.copy(
+                                appCategory = "none"
+                            )
+                        )
+                    },
+                    label = {
+                        Text("Standart uygulama")
+                    }
+                )
+            }
+        }
+
+        item {
+            NoteCard(
+                "Otomatik mod Unity ve oyun işaretli projeleri android:appCategory=\"game\" olarak üretir. Telefonun Gaming Hub'a taşıma kararı üreticiye aittir; istersen türü elle değiştirebilirsin."
+            )
         }
 
         item {
@@ -19925,6 +20221,7 @@ private fun applyTemplate(current: ProjectDraft, template: RemoteTemplate): Proj
                 SourceMode.valueOf(obj.optString("sourceMode", current.sourceMode.name))
             }.getOrDefault(current.sourceMode),
             orientation = obj.optString("orientation", current.orientation),
+            appCategory = obj.optString("appCategory", current.appCategory),
             fileUpload = features?.optBoolean("fileUpload", current.fileUpload) ?: current.fileUpload,
             downloads = features?.optBoolean("downloads", current.downloads) ?: current.downloads,
             fullscreen = features?.optBoolean("fullscreen", current.fullscreen) ?: current.fullscreen,

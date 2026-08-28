@@ -7,6 +7,7 @@ import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
 import org.json.JSONObject
 import java.io.File
+import java.io.FileInputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.HttpURLConnection
@@ -155,6 +156,7 @@ class BuildApiClient(
             put("navigationBarColor", draft.navigationBarColor)
             put("splashEnabled", draft.splashEnabled)
             put("splashText", draft.splashText)
+            put("appCategory", draft.appCategory)
 
             put("deepLink", JSONObject().apply {
                 put("enabled", draft.deepLinkEnabled)
@@ -1183,9 +1185,42 @@ class BuildApiClient(
         mime: String,
         uri: Uri
     ) {
-        val input = context.contentResolver
-            .openInputStream(uri)
-            ?: error("Dosya okunamadı: $uri")
+        val input =
+            if (
+                uri.scheme.equals(
+                    "file",
+                    true
+                )
+            ) {
+                val path =
+                    uri.path
+                        ?: error(
+                            "Dosya yolu okunamadı: $uri"
+                        )
+
+                val file =
+                    File(path)
+
+                require(
+                    file.isFile &&
+                        file.canonicalPath.startsWith(
+                            context.filesDir.canonicalPath +
+                                File.separator
+                        )
+                ) {
+                    "Uygulama dışındaki file URI okunamaz."
+                }
+
+                FileInputStream(
+                    file
+                )
+            } else {
+                context.contentResolver
+                    .openInputStream(uri)
+                    ?: error(
+                        "Dosya okunamadı: $uri"
+                    )
+            }
 
         writeFilePart(
             out,

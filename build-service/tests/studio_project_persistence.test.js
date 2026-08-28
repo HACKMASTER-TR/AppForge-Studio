@@ -38,6 +38,7 @@ test("project save and restore preserves non-secret builder selections", async (
     'put("sourceBuildEngine", d.sourceBuildEngine)',
     'put("iconUri", d.iconUri)',
     'put("iconName", d.iconName)',
+    'put("appCategory", d.appCategory)',
     'put("signingMode", d.signingMode.name)',
     'put("keystoreUri", d.keystoreUri)',
     'put("keystoreName", d.keystoreName)',
@@ -47,6 +48,7 @@ test("project save and restore preserves non-secret builder selections", async (
     'sourceTechnology =',
     'sourceBuildEngine =',
     'iconUri =',
+    'appCategory =',
     'signingMode =',
     'keystoreUri =',
     'firebaseConfigUri ='

@@ -56,6 +56,9 @@ import {
 import {
   assertSourceBuildIsolation
 } from "./sourceBuildIsolation.js";
+import {
+  androidAppCategoryAttribute
+} from "./androidAppCategory.js";
 
 function esc(s) {
   return String(s ?? "").replaceAll("\\", "\\\\").replaceAll('"', '\\"');
@@ -3171,6 +3174,11 @@ dependencies {
     ? c.orientation
     : "unspecified";
 
+  const appCategoryAttribute =
+    androidAppCategoryAttribute(
+      c
+    );
+
   await fs.writeFile(
     path.join(appDir, "src/main/AndroidManifest.xml"),
 `<?xml version="1.0" encoding="utf-8"?>
@@ -3180,6 +3188,7 @@ dependencies {
     <application
         android:allowBackup="true"
         android:label="${xml(c.appName)}"
+        ${appCategoryAttribute.trimStart()}
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:theme="${c.splashEnabled ? "@style/AppSplashTheme" : "@style/AppTheme"}"

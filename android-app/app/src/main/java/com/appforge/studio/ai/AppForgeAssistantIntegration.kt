@@ -22,6 +22,7 @@ enum class AssistantDestination {
     TEST_LAB,
     TEMPLATES,
     HISTORY,
+    TRASH,
     SETTINGS,
     ACCOUNT,
     HELP,
@@ -155,6 +156,11 @@ object AppForgeAssistantIntegration {
                 AssistantAppAction(AssistantDestination.HISTORY, "Geçmişi aç", "Önceki build ve çıktıları görüntüle."),
                 setOf("geçmiş", "history", "önceki build", "eski çıktı"),
                 "Geçmiş: önceki build durumları ve indirilebilir çıktılar."
+            ),
+            FeatureRoute(
+                AssistantAppAction(AssistantDestination.TRASH, "Geri dönüşüm kutusu", "Son 30 günde silinen projeleri gör veya geri yükle."),
+                setOf("geri dönüşüm", "çöp", "silinen proje", "geri yükle", "30 gün"),
+                "Geri Dönüşüm Kutusu: silinen projeleri 30 gün saklar, geri yükler ve süresi dolunca proje dosyalarıyla birlikte temizler."
             ),
             FeatureRoute(
                 AssistantAppAction(AssistantDestination.ACCOUNT, "Hesabı aç", "Oturum ve Build Service bağlantısını yönet."),

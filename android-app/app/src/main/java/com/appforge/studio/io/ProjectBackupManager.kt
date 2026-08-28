@@ -448,6 +448,10 @@ object ProjectBackupManager {
                 d.orientation
             )
             put(
+                "appCategory",
+                d.appCategory
+            )
+            put(
                 "primaryColor",
                 d.primaryColor
             )
@@ -755,6 +759,11 @@ object ProjectBackupManager {
                 o.optString(
                     "orientation",
                     "unspecified"
+                ),
+            appCategory =
+                o.optString(
+                    "appCategory",
+                    "auto"
                 ),
             primaryColor =
                 o.optString(

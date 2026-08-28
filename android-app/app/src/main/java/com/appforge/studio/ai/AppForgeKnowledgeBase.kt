@@ -110,8 +110,13 @@ object AppForgeKnowledgeBase {
             ),
             KnowledgeChunk(
                 "Uygulama ikonu",
-                "Özel uygulama ikonu için kare PNG kullanılması önerilir. Play Store mağaza simgesi ile Android uygulama içindeki launcher ikonunun gereksinimleri farklı olabilir.",
+                "PNG veya JPEG ikon seçildiğinde AppForge EXIF yönünü düzeltir, resmi gerçek 1024×1024 PNG'ye dönüştürür ve adaptive-icon güvenli alanına sığdırır. Play Store mağaza simgesi ile Android launcher ikonunun gereksinimleri farklı olabilir.",
                 setOf("ikon", "simge", "png", "launcher", "play")
+            ),
+            KnowledgeChunk(
+                "Uygulama ve oyun kategorisi",
+                "Görünüm adımındaki Otomatik uygulama türü Unity ve oyun sinyali bulunan projelerde android:appCategory=game üretir. Kullanıcı Oyun veya Standart uygulama seçerek sonucu değiştirebilir. Gaming Hub'a otomatik taşıma kararı telefon üreticisine aittir.",
+                setOf("oyun", "game", "kategori", "gaming", "hub", "appcategory")
             ),
             KnowledgeChunk(
                 "Native Bridge",
@@ -270,8 +275,13 @@ object AppForgeKnowledgeBase {
             ),
             KnowledgeChunk(
                 "Projelerim",
-                "Projelerim ekranı yerel projeleri listelemek, yeni proje oluşturmak ve mevcut proje akışına dönmek için kullanılır.",
+                "Projelerim ekranı yerel projeleri listelemek, yeni proje oluşturmak ve mevcut proje akışına dönmek için kullanılır. Silinen projeler geri dönüşüm kutusunda 30 gün tutulur ve bu süre içinde geri yüklenebilir.",
                 setOf("projelerim", "proje", "liste", "oluştur")
+            ),
+            KnowledgeChunk(
+                "AI analiz projesi seçimi",
+                "Yerel AI ekranında Analiz edilen proje alanından kayıtlı proje açıkça seçilir. AI yalnız seçili projenin güvenli ayar bağlamını kullanır; proje seçilmeden proje analizi ve güvenli otomatik düzeltme çalıştırılmaz.",
+                setOf("ai", "analiz", "proje", "seç", "bağlam")
             ),
             KnowledgeChunk(
                 "Geçmiş ve build kayıtları",
@@ -1005,6 +1015,9 @@ object AppForgeKnowledgeBase {
             )
             appendLine(
                 "Kaynak build-ready: ${draft.sourceBuildReady}"
+            )
+            appendLine(
+                "Uygulama kategorisi: ${draft.appCategory}"
             )
         }
 
