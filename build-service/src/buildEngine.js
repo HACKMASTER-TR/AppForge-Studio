@@ -4429,7 +4429,9 @@ function generatedMainActivity(c, pkg) {
     "androidx.activity.result.contract.ActivityResultContracts",
     "androidx.appcompat.app.AppCompatActivity",
     "androidx.core.content.ContextCompat",
-    c.features?.camera ? "android.provider.MediaStore" : "",
+    (c.features?.camera || c.features?.fileUpload)
+      ? "android.provider.MediaStore"
+      : "",
     c.features?.camera ? "androidx.core.content.FileProvider" : "",
     c.features?.camera ? "java.io.File" : "",
     c.features?.camera ? "java.text.SimpleDateFormat" : "",
@@ -4636,6 +4638,40 @@ function generatedMainActivity(c, pkg) {
                     fileChooserCallback =
                         filePathCallback
 
+                    // APPFORGE_NATIVE_CAPTURE_ROUTER_V1
+                    val acceptTypes =
+                        fileChooserParams
+                            ?.acceptTypes
+                            ?.flatMap { raw ->
+                                raw.split(",")
+                            }
+                            ?.map { value ->
+                                value
+                                    .trim()
+                                    .lowercase()
+                            }
+                            ?.filter { value ->
+                                value.isNotBlank()
+                            }
+                            .orEmpty()
+
+                    val wantsImage =
+                        acceptTypes.any { value ->
+                            value == "image/*" ||
+                                value.startsWith("image/")
+                        }
+
+                    val wantsAudio =
+                        acceptTypes.any { value ->
+                            value == "audio/*" ||
+                                value.startsWith("audio/")
+                        }
+
+                    val captureEnabled =
+                        fileChooserParams
+                            ?.isCaptureEnabled ==
+                        true
+
                     val picker =
                         try {
                             fileChooserParams
@@ -4658,6 +4694,29 @@ function generatedMainActivity(c, pkg) {
                                 )
                             }
                         }
+
+                    if (
+                        captureEnabled &&
+                        wantsAudio
+                    ) {
+                        val audioRecorderIntent =
+                            Intent(
+                                MediaStore.Audio.Media
+                                    .RECORD_SOUND_ACTION
+                            )
+
+                        if (
+                            audioRecorderIntent
+                                .resolveActivity(
+                                    packageManager
+                                ) != null
+                        ) {
+                            fileChooserLauncher.launch(
+                                audioRecorderIntent
+                            )
+                            return true
+                        }
+                    }
 
                     ${c.features?.camera ? `
                     val cameraIntent =
@@ -4698,22 +4757,48 @@ function generatedMainActivity(c, pkg) {
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                     )
 
-                    val chooser =
-                        Intent.createChooser(
-                            picker,
-                            "Dosya seç"
-                        ).apply {
-                            putExtra(
-                                Intent.EXTRA_INITIAL_INTENTS,
-                                arrayOf(
-                                    cameraIntent
-                                )
-                            )
-                        }
+                    if (
+                        captureEnabled &&
+                        wantsImage &&
+                        cameraIntent
+                            .resolveActivity(
+                                packageManager
+                            ) != null
+                    ) {
+                        fileChooserLauncher.launch(
+                            cameraIntent
+                        )
+                        return true
+                    }
 
-                    fileChooserLauncher.launch(
-                        chooser
-                    )
+                    if (
+                        wantsImage &&
+                        cameraIntent
+                            .resolveActivity(
+                                packageManager
+                            ) != null
+                    ) {
+                        val chooser =
+                            Intent.createChooser(
+                                picker,
+                                "Dosya seç"
+                            ).apply {
+                                putExtra(
+                                    Intent.EXTRA_INITIAL_INTENTS,
+                                    arrayOf(
+                                        cameraIntent
+                                    )
+                                )
+                            }
+
+                        fileChooserLauncher.launch(
+                            chooser
+                        )
+                    } else {
+                        fileChooserLauncher.launch(
+                            picker
+                        )
+                    }
                     ` : `
                     fileChooserLauncher.launch(
                         picker

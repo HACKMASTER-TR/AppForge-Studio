@@ -216,6 +216,20 @@ export function getFastBuildDecision(
     );
   }
 
+  /*
+   * Kamera / dosya upload kullanan uygulamalar native chooser
+   * yönlendirmesine ihtiyaç duyar. FAST runtime bu davranışı
+   * eşitleyene kadar FULL generator kullanılır.
+   */
+  if (
+    c.features?.fileUpload ||
+    c.features?.camera
+  ) {
+    reasons.push(
+      "Native dosya / kamera seçici"
+    );
+  }
+
   if (
     c.nativeBridge?.enabled === true &&
     c.nativeBridge?.mediaPlayer === true
