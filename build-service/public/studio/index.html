@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>AppForge Studio Web v1.7</title>
+<title>AppForge Studio Web v1.8</title>
 <style>
 :root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#07101f;color:#eef3ff}
 *{box-sizing:border-box}body{margin:0;background:#07101f}
@@ -159,9 +159,19 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px so
 
 <script>
 window.APPFORGE_MONACO_ROOT=(location.hostname.endsWith(".github.io")||location.protocol==="file:")?"./vendor/monaco":"/vendor/monaco";
-document.write('<script src="'+window.APPFORGE_MONACO_ROOT+'/loader.js"><\\/script>');
-</script>
-<script>
+
+function loadMonacoLoader(){
+ return new Promise((resolve,reject)=>{
+  if(window.require?.config){resolve();return}
+  const script=document.createElement("script");
+  script.src=window.APPFORGE_MONACO_ROOT+"/loader.js";
+  script.async=true;
+  script.onload=()=>resolve();
+  script.onerror=()=>reject(new Error("Monaco loader yüklenemedi."));
+  document.head.appendChild(script);
+ });
+}
+
 let token=localStorage.getItem("afs_jwt")||"";
 let challengeToken="";
 let editor=null;
@@ -193,9 +203,10 @@ let liveLogAbort=null;
 let lastLiveLogId=0;
 
 const standaloneWeb=location.hostname.endsWith(".github.io");
+const desktopLoopback=location.hostname==="127.0.0.1"||location.hostname==="localhost";
 const desktopApiBase=window.AppForgeDesktop?.apiBaseUrl||"";
 if(desktopApiBase)baseUrl.value=desktopApiBase;
-else if(standaloneWeb)baseUrl.value="https://appforge-studio-production.up.railway.app";
+else if(standaloneWeb||desktopLoopback)baseUrl.value="https://appforge-studio-production.up.railway.app";
 
 function base(){const t=baseUrl.value.trim();return t?t.replace(/\/$/,""):location.origin}
 async function api(path,opts={}){
@@ -466,8 +477,15 @@ async function setup2fa(){try{const j=await api("/api/auth/2fa/setup",{method:"P
 async function confirm2fa(){try{await api("/api/auth/2fa/confirm",{method:"POST",body:{code:confirm2faCode.value}});alert("2FA etkin.")}catch(e){alert(e.message)}}
 function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}
 
-require.config({paths:{vs:window.APPFORGE_MONACO_ROOT}});
-require(["vs/editor/editor.main"],()=>{editor=monaco.editor.create(document.getElementById("monaco"),{value:files[activeFile],language:lang(activeFile),theme:"vs-dark",automaticLayout:true,minimap:{enabled:false},fontSize:14,wordWrap:"on"});editor.onDidChangeModelContent(()=>{files[activeFile]=editor.getValue();dirty=true;autosaveStatus.textContent="Değişiklik var";autosaveStatus.className="status yellow";preview();scheduleAutosave()});renderTree();preview()});
+loadMonacoLoader()
+ .then(()=>initMonaco())
+ .catch(error=>{
+  console.error(error);
+  autosaveStatus.textContent="Editör yüklenemedi";
+  autosaveStatus.className="status red";
+  renderTree();
+  preview();
+ });
 if(token)finishLogin({token});
 </script>
 </body>

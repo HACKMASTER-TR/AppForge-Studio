@@ -15,6 +15,11 @@ test("Studio web release keeps a relative Monaco bundle and trusted API CORS", a
 
   assert.ok(studio.includes("APPFORGE_MONACO_ROOT"));
   assert.ok(studio.includes("appforge-studio-production.up.railway.app"));
+  assert.ok(!studio.includes("document.write("));
+  assert.ok(studio.includes('document.createElement("script")'));
+  assert.ok(studio.includes("loadMonacoLoader()"));
+  assert.ok(studio.includes("standaloneWeb||desktopLoopback"));
+  assert.ok(studio.includes(".then(()=>initMonaco())"));
   assert.ok(server.includes("isAllowedWebStudioOrigin"));
   assert.ok(server.includes("127\\.0\\.0\\.1"));
   assert.ok(config.includes("WEB_STUDIO_ALLOWED_ORIGINS"));
