@@ -4,9 +4,11 @@ const path = require("path");
 const desktopRoot = path.resolve(__dirname, "..");
 const repositoryRoot = path.resolve(desktopRoot, "..");
 const destination = path.join(desktopRoot, "site");
+const bundledMonaco = path.join(desktopRoot, "node_modules", "monaco-editor", "min", "vs");
+const serviceMonaco = path.join(repositoryRoot, "build-service", "node_modules", "monaco-editor", "min", "vs");
 const sources = [
   [path.join(repositoryRoot, "build-service", "public", "studio"), path.join(destination, "studio")],
-  [path.join(repositoryRoot, "build-service", "node_modules", "monaco-editor", "min", "vs"), path.join(destination, "vendor", "monaco")]
+  [fs.existsSync(bundledMonaco) ? bundledMonaco : serviceMonaco, path.join(destination, "vendor", "monaco")]
 ];
 
 fs.rmSync(destination, { recursive: true, force: true });

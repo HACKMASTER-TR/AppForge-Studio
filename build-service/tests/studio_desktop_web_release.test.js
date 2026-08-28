@@ -32,6 +32,7 @@ test("Windows Studio release is an isolated portable Electron client", async () 
 
   assert.match(packageJson, /"target": "portable"/);
   assert.match(packageJson, /"electron": "43\.4\.1"/);
+  assert.match(packageJson, /"monaco-editor": "0\.52\.2"/);
   assert.ok(main.includes('localServer.listen(0, "127.0.0.1"'));
   assert.ok(main.includes("contextIsolation: true"));
   assert.ok(main.includes("nodeIntegration: false"));
