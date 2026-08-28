@@ -33,19 +33,23 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install Monaco asset
+      - name: Install Studio browser assets
         working-directory: build-service
-        run: npm install --no-save --ignore-scripts monaco-editor@0.52.2
+        run: npm install --no-save --ignore-scripts monaco-editor@0.52.2 fflate@0.8.2
 
       - name: Assemble standalone web studio
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p _site/vendor/monaco
-          cp build-service/public/studio/index.html _site/index.html
+          mkdir -p _site/vendor/monaco _site/vendor/fflate
+          cp -R build-service/public/studio/. _site/
           cp -R build-service/node_modules/monaco-editor/min/vs/. _site/vendor/monaco/
+          cp -R build-service/node_modules/fflate/umd/. _site/vendor/fflate/
           test -s _site/index.html
+          test -s _site/v4.js
+          test -s _site/v4.css
           test -f _site/vendor/monaco/loader.js
+          test -f _site/vendor/fflate/index.js
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

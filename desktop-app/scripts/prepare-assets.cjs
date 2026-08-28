@@ -6,9 +6,12 @@ const repositoryRoot = path.resolve(desktopRoot, "..");
 const destination = path.join(desktopRoot, "site");
 const bundledMonaco = path.join(desktopRoot, "node_modules", "monaco-editor", "min", "vs");
 const serviceMonaco = path.join(repositoryRoot, "build-service", "node_modules", "monaco-editor", "min", "vs");
+const bundledFflate = path.join(desktopRoot, "node_modules", "fflate", "umd");
+
 const sources = [
   [path.join(repositoryRoot, "build-service", "public", "studio"), path.join(destination, "studio")],
-  [fs.existsSync(bundledMonaco) ? bundledMonaco : serviceMonaco, path.join(destination, "vendor", "monaco")]
+  [fs.existsSync(bundledMonaco) ? bundledMonaco : serviceMonaco, path.join(destination, "vendor", "monaco")],
+  [bundledFflate, path.join(destination, "vendor", "fflate")]
 ];
 
 fs.rmSync(destination, { recursive: true, force: true });

@@ -1,7 +1,9 @@
 {
   "name": "appforge-studio-desktop",
-  "version": "3.1.0",
+  "version": "4.0.0",
   "private": true,
+  "description": "AppForge Studio Windows desktop client",
+  "author": "AppForge Studio",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
@@ -11,6 +13,7 @@
   "devDependencies": {
     "electron": "43.4.1",
     "electron-builder": "26.15.3",
+    "fflate": "0.8.2",
     "monaco-editor": "0.52.2"
   },
   "build": {

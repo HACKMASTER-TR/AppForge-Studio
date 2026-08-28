@@ -3,532 +3,628 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>AppForge Studio Web v1.8</title>
-<style>
-:root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#07101f;color:#eef3ff}
-*{box-sizing:border-box}body{margin:0;background:#07101f}
-header{padding:14px 18px;border-bottom:1px solid #24324a;position:sticky;top:0;background:#07101fee;backdrop-filter:blur(18px);z-index:10}
-main{max-width:1600px;margin:auto;padding:14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
-.card{background:#101b2e;border:1px solid #263652;border-radius:16px;padding:14px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-input,textarea,select,button{border-radius:10px;border:1px solid #344560;background:#0c1728;color:#fff;padding:10px 12px}
-input,textarea,select{width:100%}button{cursor:pointer;background:#6172ff;border:0;font-weight:700}button.secondary{background:#1b2941}
-button.danger{background:#a83b4c}.muted{color:#9dabc4}.tabs{display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap}
-.tab{padding:9px 12px;border-radius:999px;background:#16233a;cursor:pointer}.tab.active{background:#6172ff}.hidden{display:none}
-.ide{display:grid;grid-template-columns:220px minmax(420px,1fr) minmax(320px,.8fr);gap:10px;min-height:680px}
-.sidebar{background:#0b1525;border:1px solid #253650;border-radius:14px;padding:10px;overflow:auto}
-.file{padding:8px 9px;border-radius:8px;cursor:pointer;font-family:ui-monospace,monospace;font-size:13px}.file:hover,.file.active{background:#1c2b46}
-#monaco{height:680px;border-radius:14px;overflow:hidden;border:1px solid #2c3b57}
-iframe{width:100%;height:680px;background:#fff;border:0;border-radius:14px}.pill{padding:4px 8px;border-radius:999px;background:#1d2b45;font-size:12px}
-table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #253550;font-size:12px;text-align:left}
-.diffline{font-family:ui-monospace,monospace;white-space:pre-wrap;padding:2px 6px}.add{background:#113920}.remove{background:#4a1720}.same{color:#91a0b8}
-.status{font-size:12px}.green{color:#68d391}.yellow{color:#f6c85f}.red{color:#fc8181}
-@media(max-width:1100px){.ide{grid-template-columns:190px 1fr}.previewPane{grid-column:1/-1}iframe{height:420px}}
-@media(max-width:720px){.ide{grid-template-columns:1fr}.sidebar{max-height:220px}#monaco{height:520px}}
-</style>
+<meta name="color-scheme" content="dark light"/>
+<title>AppForge Studio V4</title>
+<link rel="stylesheet" href="./v4.css"/>
 </head>
 <body>
-<header>
-<div class="row">
-<strong>AppForge Studio Web v1.8</strong>
-<span class="muted">Live Operations</span>
-<span id="autosaveStatus" class="status muted">Autosave hazır</span>
-</div>
+<header class="topbar">
+  <div class="brand">
+    <strong>AppForge Studio V4</strong>
+    <span class="muted">Android • Windows • Web</span>
+  </div>
+  <div class="top-actions">
+    <span id="activeProjectBadge" class="pill">Proje seçilmedi</span>
+    <span id="autosaveStatus" class="status muted">Autosave hazır</span>
+    <button class="ghost" id="logoutTopBtn" onclick="logout()" hidden>Çıkış</button>
+  </div>
 </header>
 
 <main>
-<section id="authCard" class="card">
-<h2>Hesap</h2>
-<div class="grid">
-<input id="baseUrl" placeholder="Sunucu URL (boş = bu sunucu)"/>
-<input id="email" placeholder="E-posta"/>
-<input id="password" type="password" placeholder="Parola"/>
-</div>
-<div class="row" style="margin-top:10px">
-<button onclick="login()">Giriş</button>
-<button class="secondary" onclick="register()">Kayıt</button>
-</div>
-<div id="twoFactorBox" class="hidden" style="margin-top:10px">
-<input id="twoFactorCode" placeholder="2FA kodu"/>
-<button onclick="verify2fa()">Doğrula</button>
-</div>
-<div id="authMsg" class="muted"></div>
+<section id="authCard" class="card auth-card">
+  <div>
+    <h1>AppForge Studio</h1>
+    <p class="muted">Tek hesapla Android, Windows ve Web projelerini yönet.</p>
+  </div>
+  <div class="form-grid cols-2">
+    <label>Sunucu URL<input id="baseUrl" placeholder="Sunucu URL"/></label>
+    <label>E-posta<input id="email" type="email" autocomplete="username" placeholder="mail@example.com"/></label>
+    <label>Parola<input id="password" type="password" autocomplete="current-password" placeholder="Parola"/></label>
+  </div>
+  <div class="row">
+    <button onclick="login()">Giriş</button>
+    <button class="secondary" onclick="register()">Kayıt</button>
+    <button class="ghost" onclick="forgotPassword()">Parolamı unuttum</button>
+  </div>
+  <div id="twoFactorBox" class="hidden">
+    <label>2FA kodu<input id="twoFactorCode" inputmode="numeric" placeholder="123456"/></label>
+    <button onclick="verify2fa()">Doğrula</button>
+  </div>
+  <div id="authMsg" class="muted"></div>
 </section>
 
-<section id="app" class="hidden">
-<div class="tabs">
-<div class="tab active" onclick="tab('idePanel',this)">IDE</div>
-<div class="tab" onclick="tab('projectsPanel',this)">Projeler</div>
-<div class="tab" onclick="tab('historyPanel',this)">Versiyonlar</div>
-<div class="tab" onclick="tab('buildsPanel',this)">Build Kontrol</div>
-<div class="tab" onclick="tab('githubPanel',this)">GitHub Import</div>
-<div class="tab" onclick="tab('teamsPanel',this)">Takımlar</div>
-<div class="tab" onclick="tab('securityPanel',this)">Güvenlik</div>
-</div>
+<section id="app" class="hidden app-shell">
+  <nav id="mainNav" class="nav">
+    <button class="nav-item active" data-panel="homePanel">Ana Sayfa</button>
+    <button class="nav-item" data-panel="idePanel">IDE</button>
+    <button class="nav-item" data-panel="createPanel">Yeni Proje</button>
+    <button class="nav-item" data-panel="templatesPanel">Şablonlar</button>
+    <button class="nav-item" data-panel="sourcePanel">Kaynak & Dönüşüm</button>
+    <button class="nav-item" data-panel="builderPanel">Builder</button>
+    <button class="nav-item" data-panel="previewPanel">Preview</button>
+    <button class="nav-item" data-panel="buildsPanel">Build Kontrol</button>
+    <button class="nav-item" data-panel="productionPanel">Production</button>
+    <button class="nav-item" data-panel="testLabPanel">Test Lab</button>
+    <button class="nav-item" data-panel="projectsPanel">Projeler</button>
+    <button class="nav-item" data-panel="historyPanel">Versiyonlar</button>
+    <button class="nav-item" data-panel="trashPanel">Çöp Kutusu</button>
+    <button class="nav-item" data-panel="aiPanel">AI Asistan</button>
+    <button class="nav-item" data-panel="githubPanel">GitHub</button>
+    <button class="nav-item" data-panel="teamsPanel">Takımlar</button>
+    <button class="nav-item" data-panel="localizationPanel">Diller</button>
+    <button class="nav-item" data-panel="settingsPanel">Ayarlar</button>
+    <button class="nav-item" data-panel="accountPanel">Hesap</button>
+    <button class="nav-item" data-panel="securityPanel">Güvenlik</button>
+    <button class="nav-item" data-panel="helpPanel">Yardım</button>
+  </nav>
 
-<div id="idePanel" class="panel">
-<div class="card" style="margin-bottom:10px">
-<div class="row">
-<input id="editorName" placeholder="Proje adı" style="flex:1"/>
-<input id="editorPackage" placeholder="com.example.app" style="flex:1"/>
-<button onclick="createOrSaveProject()">Proje Kaydet</button>
-<button class="secondary" onclick="createRevisionPrompt()">Revision</button>
-<button onclick="workspaceBuild()">APK+AAB Build</button>
-</div>
-</div>
-<div class="ide">
-<div class="sidebar">
-<div class="row" style="margin-bottom:8px">
-<button onclick="newFile()" style="flex:1">+ Dosya</button>
-<button class="secondary" onclick="deleteActiveFile()">Sil</button>
-</div>
-<input id="workspaceSearch" placeholder="Dosyalarda ara..." onkeydown="if(event.key==='Enter')searchWorkspace()"/>
-<button class="secondary" onclick="searchWorkspace()" style="width:100%;margin:6px 0">Ara</button>
-<div id="searchResults"></div>
-<div id="fileTree"></div>
-</div>
-<div id="monaco"></div>
-<div class="previewPane">
-<iframe id="previewFrame" sandbox="allow-scripts allow-forms"></iframe>
-</div>
-</div>
-</div>
+  <div class="content">
+    <section id="homePanel" class="panel">
+      <div class="hero card">
+        <div>
+          <span class="eyebrow">APPFORGE STUDIO V4</span>
+          <h1>Bir projeyi her platformdan yönet.</h1>
+          <p class="muted">Quick/Advanced oluşturma, kaynak analizi, APK↔EXE dönüşümü, build, preview, test, yayın, AI ve takım araçları tek yerde.</p>
+        </div>
+        <div class="row">
+          <button onclick="showPanel('createPanel');setCreateMode('quick')">Yeni proje</button>
+          <button class="secondary" onclick="showPanel('projectsPanel')">Projelerim</button>
+          <button class="ghost" onclick="showPanel('aiPanel')">AI Asistan</button>
+        </div>
+      </div>
+      <div class="metric-grid">
+        <div class="card"><div class="metric" id="homeProjectCount">-</div><div class="muted">Projeler</div></div>
+        <div class="card"><div class="metric" id="homeBuildCount">-</div><div class="muted">Son buildler</div></div>
+        <div class="card"><div class="metric" id="homeSuccessRate">-</div><div class="muted">Başarı</div></div>
+        <div class="card"><div class="metric" id="homePlan">-</div><div class="muted">Plan</div></div>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <h3>Hızlı İşlemler</h3>
+          <div class="action-grid">
+            <button class="secondary" onclick="showPanel('templatesPanel')">Hazır şablon</button>
+            <button class="secondary" onclick="showPanel('sourcePanel')">ZIP / APK / EXE</button>
+            <button class="secondary" onclick="showPanel('builderPanel')">APK/AAB/EXE Build</button>
+            <button class="secondary" onclick="showPanel('testLabPanel')">Test Lab</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Aktif Proje</h3>
+          <div id="homeActiveProject" class="muted">Henüz proje seçilmedi.</div>
+        </div>
+      </div>
+    </section>
 
-<div id="projectsPanel" class="panel hidden">
-  <div class="card" style="margin-bottom:12px">
-    <strong>Proje Hakkı</strong>
-    <div id="projectQuota" class="muted">Yükleniyor...</div>
+    <section id="idePanel" class="panel hidden">
+      <div class="card toolbar">
+        <input id="editorName" placeholder="Proje adı"/>
+        <input id="editorPackage" placeholder="com.example.app"/>
+        <button onclick="createOrSaveProject()">Proje Kaydet</button>
+        <button class="secondary" onclick="createRevisionPrompt()">Revision</button>
+        <button onclick="workspaceBuild('both')">APK+AAB</button>
+        <button class="secondary" onclick="workspaceBuild('exe')">EXE</button>
+      </div>
+      <div class="ide">
+        <aside class="sidebar">
+          <div class="row">
+            <button onclick="newFile()">+ Dosya</button>
+            <button class="danger ghost" onclick="deleteActiveFile()">Sil</button>
+          </div>
+          <input id="workspaceSearch" placeholder="Dosyalarda ara..."/>
+          <button class="secondary full" onclick="searchWorkspace()">Ara</button>
+          <div id="searchResults"></div>
+          <div id="fileTree"></div>
+        </aside>
+        <div id="monaco"></div>
+        <div class="previewPane">
+          <div class="preview-toolbar">
+            <span class="pill">Canlı</span>
+            <button class="ghost" onclick="setPreviewDevice('phone')">Telefon</button>
+            <button class="ghost" onclick="setPreviewDevice('tablet')">Tablet</button>
+            <button class="ghost" onclick="setPreviewDevice('desktop')">Desktop</button>
+          </div>
+          <div class="device-wrap compact" id="ideDeviceWrap"><iframe id="previewFrame" sandbox="allow-scripts allow-forms"></iframe></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="createPanel" class="panel hidden">
+      <div class="card">
+        <div class="segmented">
+          <button id="quickModeBtn" class="active" onclick="setCreateMode('quick')">Quick</button>
+          <button id="advancedModeBtn" onclick="setCreateMode('advanced')">Advanced</button>
+        </div>
+        <div id="quickCreate">
+          <h2>Quick Create</h2>
+          <p class="muted">Adı yaz; paket adı ve güvenli varsayılanlar otomatik hazırlansın.</p>
+          <div class="form-grid cols-2">
+            <label>Uygulama adı<input id="quickName" placeholder="Yeni Uygulama" oninput="syncQuickPackage()"/></label>
+            <label>Paket adı<input id="quickPackage" placeholder="com.appforge.yeniuygulama"/></label>
+            <label>Başlangıç türü
+              <select id="quickStarter">
+                <option value="blank">Boş Web Uygulaması</option>
+                <option value="task-manager">Görev Yöneticisi</option>
+                <option value="inventory-panel">Stok Paneli</option>
+                <option value="booking-form">Rezervasyon Formu</option>
+                <option value="restaurant-menu">Restoran Menü</option>
+                <option value="event-invitation">Etkinlik Daveti</option>
+              </select>
+            </label>
+            <label>Çıktı
+              <select id="quickOutput"><option value="both">APK + AAB</option><option value="apk">APK</option><option value="aab">AAB</option><option value="exe">Windows EXE</option></select>
+            </label>
+          </div>
+          <button onclick="quickCreateProject()">Projeyi Oluştur</button>
+        </div>
+        <div id="advancedCreate" class="hidden">
+          <h2>Advanced Create</h2>
+          <p class="muted">Proje oluştur, ardından Builder ekranında tüm Android/Windows seçeneklerini düzenle.</p>
+          <div class="form-grid cols-2">
+            <label>Uygulama adı<input id="advancedName"/></label>
+            <label>Paket adı<input id="advancedPackage" value="com.example.myapp"/></label>
+            <label>Kaynak
+              <select id="advancedSourceMode"><option value="LOCAL">LOCAL</option><option value="URL">URL</option></select>
+            </label>
+            <label>Teknoloji
+              <select id="advancedTechnology">
+                <option value="web-static">HTML / CSS / JavaScript</option>
+                <option value="android-gradle">Android Kotlin/Java Gradle</option>
+                <option value="flutter">Flutter/Dart</option>
+                <option value="react-native">React Native</option>
+                <option value="python">Python/Flask/Django</option>
+                <option value="cpp">C/C++</option>
+                <option value="dotnet-android">.NET Android</option>
+                <option value="unity">Unity</option>
+              </select>
+            </label>
+          </div>
+          <button onclick="advancedCreateProject()">Oluştur ve Builder'a Geç</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="templatesPanel" class="panel hidden">
+      <div class="card">
+        <div class="panel-title"><div><h2>Hazır şablon kataloğu</h2><p class="muted">Kategori gez, ilgili örnekleri filtrele.</p></div><button onclick="loadTemplates()">Yenile</button></div>
+        <input id="templateSearch" placeholder="Arama eşleşmeleri..." oninput="renderTemplates()"/>
+        <div id="templateCategories" class="chips"></div>
+      </div>
+      <div id="templateList" class="grid"></div>
+    </section>
+
+    <section id="sourcePanel" class="panel hidden">
+      <div class="grid">
+        <div class="card">
+          <h2>Kaynak Proje</h2>
+          <p class="muted">ZIP yükle veya klasör seç. Teknoloji ve izinler otomatik algılanır.</p>
+          <label>ZIP proje<input id="sourceZipInput" type="file" accept=".zip,application/zip"/></label>
+          <label>Klasör<input id="sourceFolderInput" type="file" webkitdirectory multiple/></label>
+          <div class="row"><button onclick="analyzeSelectedSource()">Analiz Et</button><button class="secondary" onclick="importAnalyzedSourceToIde()">IDE'ye Aktar</button></div>
+          <pre id="sourceAnalysisBox" class="console small">Kaynak bekleniyor.</pre>
+        </div>
+        <div class="card">
+          <h2>APK → EXE</h2>
+          <p class="muted">Yalnız AppForge dönüşüm manifesti içeren APK desteklenir.</p>
+          <input id="apkConvertInput" type="file" accept=".apk,application/vnd.android.package-archive"/>
+          <button onclick="extractApkConversion()">APK Projesini Çıkar</button>
+          <div id="apkConvertResult" class="muted"></div>
+        </div>
+        <div class="card">
+          <h2>EXE → APK</h2>
+          <p class="muted">Yalnız AppForge dönüşüm payload'ı taşıyan Windows EXE desteklenir.</p>
+          <input id="exeConvertInput" type="file" accept=".exe,application/vnd.microsoft.portable-executable"/>
+          <button onclick="extractExeConversion()">EXE Projesini Çıkar</button>
+          <div id="exeConvertResult" class="muted"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="builderPanel" class="panel hidden">
+      <div class="step-header card">
+        <div><strong>Advanced Builder</strong><span id="builderStepLabel" class="muted">Adım 1/10 • Kaynak</span></div>
+        <div class="row"><button class="ghost" onclick="builderPrev()">←</button><button class="ghost" onclick="builderNext()">→</button></div>
+      </div>
+
+      <div class="builder-step" data-step="1">
+        <div class="card">
+          <h2>1. Kaynak</h2>
+          <div class="form-grid cols-2">
+            <label>Kaynak modu<select id="bSourceMode"><option value="LOCAL">LOCAL</option><option value="URL">URL</option></select></label>
+            <label>Kaynak teknoloji<input id="bTechnology" value="web-static"/></label>
+            <label class="span-2">Web URL<input id="bWebUrl" placeholder="https://..."/></label>
+            <label class="span-2">Proje ZIP<input id="bProjectFile" type="file" accept=".zip"/></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="builder-step hidden" data-step="2">
+        <div class="card">
+          <h2>2. Uygulama</h2>
+          <div class="form-grid cols-3">
+            <label>Ad<input id="bAppName"/></label>
+            <label>Paket<input id="bPackageName" value="com.example.myapp"/></label>
+            <label>Kategori<select id="bAppCategory"><option value="auto">Otomatik</option><option value="game">Oyun</option><option value="productivity">Verimlilik</option><option value="business">İşletme</option><option value="education">Eğitim</option></select></label>
+            <label>Version Name<input id="bVersionName" value="1.0.0"/></label>
+            <label>Version Code<input id="bVersionCode" type="number" min="1" value="1"/></label>
+            <label><span>Otomatik versionCode</span><input id="bAutoVersion" type="checkbox"/></label>
+            <label>Çıktı<select id="bBuildOutput"><option value="both">APK + AAB</option><option value="apk">APK</option><option value="aab">AAB</option><option value="exe">Windows EXE</option></select></label>
+            <label>Yön<select id="bOrientation"><option value="unspecified">Otomatik</option><option value="portrait">Dikey</option><option value="landscape">Yatay</option></select></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="builder-step hidden" data-step="3">
+        <div class="card">
+          <h2>3. İzinler</h2>
+          <p class="muted">Kaynak analizi sonucunda uygun izinler otomatik işaretlenebilir.</p>
+          <div class="check-grid" id="permissionGrid">
+            <label><input id="pFileUpload" type="checkbox" checked/> Dosya yükleme</label>
+            <label><input id="pDownloads" type="checkbox" checked/> İndirmeler</label>
+            <label><input id="pNotifications" type="checkbox"/> Bildirim</label>
+            <label><input id="pCamera" type="checkbox"/> Kamera</label>
+            <label><input id="pMicrophone" type="checkbox"/> Mikrofon</label>
+            <label><input id="pLocation" type="checkbox"/> Konum</label>
+            <label><input id="pNetworkState" type="checkbox" checked/> Ağ durumu</label>
+            <label><input id="pWakeLock" type="checkbox"/> Wake Lock</label>
+            <label><input id="pNfc" type="checkbox"/> NFC</label>
+            <label><input id="pBluetooth" type="checkbox"/> Bluetooth Scan</label>
+            <label><input id="pBiometric" type="checkbox"/> Biyometri</label>
+            <label><input id="pCalendar" type="checkbox"/> Takvim</label>
+            <label><input id="pContacts" type="checkbox"/> Kişiler</label>
+            <label><input id="pBackgroundLocation" type="checkbox"/> Arka plan konum</label>
+            <label><input id="pExactAlarm" type="checkbox"/> Exact Alarm</label>
+            <label><input id="pMediaImages" type="checkbox"/> Fotoğraflar</label>
+            <label><input id="pMediaVideo" type="checkbox"/> Videolar</label>
+            <label><input id="pActivityRecognition" type="checkbox"/> Activity Recognition</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="builder-step hidden" data-step="4">
+        <div class="card">
+          <h2>4. Görünüm</h2>
+          <div class="form-grid cols-3">
+            <label>Ana renk<input id="bPrimaryColor" type="color" value="#6b7cff"/></label>
+            <label>Arka plan<input id="bBackgroundColor" type="color" value="#07101f"/></label>
+            <label>Status bar<input id="bStatusBarColor" type="color" value="#07101f"/></label>
+            <label>Navigation bar<input id="bNavigationBarColor" type="color" value="#07101f"/></label>
+            <label><span>Splash</span><input id="bSplashEnabled" type="checkbox" checked/></label>
+            <label>Splash metni<input id="bSplashText"/></label>
+            <label class="span-3">Uygulama ikonu<input id="bIconFile" type="file" accept="image/*"/></label>
+          </div>
+          <div id="iconInfo" class="muted"></div>
+        </div>
+      </div>
+
+      <div class="builder-step hidden" data-step="5">
+        <div class="card">
+          <h2>5. WebView Pro</h2>
+          <div class="check-grid">
+            <label><input id="wJavaScript" type="checkbox" checked/> JavaScript</label>
+            <label><input id="wDomStorage" type="checkbox" checked/> DOM Storage</label>
+            <label><input id="wZoom" type="checkbox" checked/> Zoom</label>
+            <label><input id="wWideViewport" type="checkbox" checked/> Wide viewport</label>
+            <label><input id="wOverview" type="checkbox" checked/> Overview mode</label>
+            <label><input id="wAutoplay" type="checkbox" checked/> Media autoplay</label>
+            <label><input id="wMixedContent" type="checkbox"/> Mixed content</label>
+            <label><input id="wOfflineCache" type="checkbox" checked/> Offline cache</label>
+            <label><input id="wFullscreen" type="checkbox"/> Fullscreen</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="builder-step hidden" data-step="6">
+        <div class="card">
+          <h2>6. Native Bridge & Deep Link</h2>
+          <div class="check-grid">
+            <label><input id="nJavascriptBridge" type="checkbox" checked/> Native Bridge</label>
+            <label><input id="nRemoteBridge" type="checkbox"/> Remote Bridge</label>
+            <label><input id="nShare" type="checkbox" checked/> Share</label>
+            <label><input id="nClipboard" type="checkbox" checked/> Clipboard</label>
+            <label><input id="nVibration" type="checkbox" checked/> Vibration</label>
+            <label><input id="nMediaPlayer" type="checkbox"/> Media Player</label>
+            <label><input id="nQrScanner" type="checkbox"/> QR Scanner</label>
+          </div>
+          <div class="form-grid cols-3">
+            <label><span>Deep Link</span><input id="dEnabled" type="checkbox"/></label>
+            <label>Scheme<input id="dScheme" value="https"/></label>
+            <label>Host<input id="dHost"/></label>
+            <label>Path Prefix<input id="dPath" value="/"/></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="builder-step hidden" data-step="7">
+        <div class="card">
+          <h2>7. Firebase</h2>
+          <div class="check-grid">
+            <label><input id="fAnalytics" type="checkbox"/> Analytics</label>
+            <label><input id="fCrashlytics" type="checkbox"/> Crashlytics</label>
+            <label><input id="fMessaging" type="checkbox"/> Cloud Messaging</label>
+          </div>
+          <label>google-services.json<input id="bFirebaseFile" type="file" accept=".json,application/json"/></label>
+          <button class="secondary" onclick="inspectFirebase()">Dosyayı Doğrula</button>
+          <pre id="firebaseInfo" class="console small">Firebase dosyası seçilmedi.</pre>
+        </div>
+      </div>
+
+      <div class="builder-step hidden" data-step="8">
+        <div class="card">
+          <h2>8. Reklam & Satın Alma</h2>
+          <div class="form-grid cols-2">
+            <label><span>AdMob</span><input id="mAdmobEnabled" type="checkbox"/></label>
+            <label>AdMob App ID<input id="mAdmobAppId"/></label>
+            <label>Banner Unit<input id="mBanner"/></label>
+            <label>Interstitial Unit<input id="mInterstitial"/></label>
+            <label>Rewarded Unit<input id="mRewarded"/></label>
+            <label><span>UMP Consent</span><input id="mUmp" type="checkbox"/></label>
+            <label><span>Google Play Billing</span><input id="mBillingEnabled" type="checkbox"/></label>
+            <label>Ürün ID'leri<input id="mProducts" placeholder="pro_lifetime,remove_ads"/></label>
+            <label>Abonelik ID'leri<input id="mSubs" placeholder="pro_monthly"/></label>
+            <label>Consumable ID'leri<input id="mConsumables"/></label>
+            <label>Remove Ads ID<input id="mRemoveAds"/></label>
+            <label>Doğrulama URL<input id="mVerifyUrl" placeholder="https://..."/></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="builder-step hidden" data-step="9">
+        <div class="card">
+          <h2>9. Signing & Keystore</h2>
+          <div class="form-grid cols-2">
+            <label>Signing<select id="sMode"><option value="DEBUG">DEBUG</option><option value="CUSTOM">CUSTOM</option></select></label>
+            <label>Keystore<input id="bKeystoreFile" type="file" accept=".jks,.keystore,application/octet-stream"/></label>
+            <label>Key Alias<input id="sAlias"/></label>
+            <label>Store Password<input id="sStorePassword" type="password"/></label>
+            <label>Key Password<input id="sKeyPassword" type="password"/></label>
+            <label><span>Windows'ta güvenli kasada hatırla</span><input id="sRemember" type="checkbox"/></label>
+          </div>
+          <div class="row"><button class="secondary" onclick="saveKeystoreVault()">Kasaya Kaydet</button><button class="ghost" onclick="loadKeystoreVault()">Kasadan Yükle</button><button class="danger ghost" onclick="clearKeystoreVault()">Kasayı Temizle</button></div>
+          <div id="keystoreInfo" class="muted"></div>
+        </div>
+      </div>
+
+      <div class="builder-step hidden" data-step="10">
+        <div class="card">
+          <h2>10. Build</h2>
+          <div class="form-grid cols-2">
+            <label>Öncelik<input id="bPriority" type="number" min="1" max="1000" value="100"/></label>
+            <label><span>Önce projeyi kaydet</span><input id="bSaveBeforeBuild" type="checkbox" checked/></label>
+          </div>
+          <pre id="builderSummary" class="console small"></pre>
+          <div class="row">
+            <button onclick="startAdvancedBuild()">Build Başlat</button>
+            <button class="secondary" onclick="saveBuilderProject()">Sadece Kaydet</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="previewPanel" class="panel hidden">
+      <div class="card">
+        <div class="panel-title">
+          <div><h2>Live Preview</h2><p class="muted">Telefon, tablet ve desktop presetleri + Console / Network / Performance / Security inspector.</p></div>
+          <div class="row"><button onclick="setPreviewDevice('phone')">Telefon</button><button class="secondary" onclick="setPreviewDevice('tablet')">Tablet</button><button class="secondary" onclick="setPreviewDevice('desktop')">Desktop</button></div>
+        </div>
+      </div>
+      <div class="preview-lab">
+        <div class="device-wrap compact" id="labDeviceWrap"><iframe id="labPreviewFrame" sandbox="allow-scripts allow-forms"></iframe></div>
+        <div class="card inspector">
+          <div class="segmented"><button class="active" onclick="inspectorTab('console',this)">Console</button><button onclick="inspectorTab('network',this)">Network</button><button onclick="inspectorTab('performance',this)">Performance</button><button onclick="inspectorTab('security',this)">Security</button></div>
+          <pre id="inspectorConsole" class="console"></pre>
+          <pre id="inspectorNetwork" class="console hidden"></pre>
+          <pre id="inspectorPerformance" class="console hidden"></pre>
+          <pre id="inspectorSecurity" class="console hidden"></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="buildsPanel" class="panel hidden">
+      <div class="card">
+        <div class="panel-title"><h2>Build Kontrol</h2><button onclick="loadBuilds()">Yenile</button></div>
+        <div class="table-wrap"><table><thead><tr><th>ID</th><th>Uygulama</th><th>Çıktı</th><th>Durum</th><th>Cache</th><th>Öncelik</th><th>%</th><th>Kontrol</th></tr></thead><tbody id="buildRows"></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="row"><strong>Canlı Build Konsolu</strong><span id="liveBuildStatus" class="muted">Build seçilmedi.</span><button class="ghost" onclick="stopLiveLogs()">Durdur</button></div>
+        <pre id="liveBuildLog" class="console"></pre>
+      </div>
+    </section>
+
+    <section id="productionPanel" class="panel hidden">
+      <div class="grid">
+        <div class="card">
+          <h2>Production Center</h2>
+          <label>Başarılı Build<select id="publishBuild"></select></label>
+          <label>Track<select id="publishTrack"><option value="internal">Internal</option><option value="alpha">Alpha</option><option value="beta">Beta</option><option value="production">Production</option></select></label>
+          <label>Release adı<input id="publishName" placeholder="1.0 Production"/></label>
+          <label>Release notes<textarea id="publishNotes" rows="6"></textarea></label>
+          <button onclick="createPublishDraftUi()">Yayın Taslağı Oluştur</button>
+        </div>
+        <div class="card"><h2>Yayın Taslakları</h2><div id="publishDraftList"></div></div>
+      </div>
+    </section>
+
+    <section id="testLabPanel" class="panel hidden">
+      <div class="card">
+        <h2>Test Lab & Artifact Inspector</h2>
+        <div class="form-grid cols-3">
+          <label>Build<select id="testBuild"></select></label>
+          <label>Sol Build<select id="compareLeft"></select></label>
+          <label>Sağ Build<select id="compareRight"></select></label>
+        </div>
+        <div class="row"><button onclick="runTestLab()">Test Lab</button><button class="secondary" onclick="loadArtifacts()">Artifact Analyzer</button><button class="secondary" onclick="compareBuildsUi()">Karşılaştır</button><button class="secondary" onclick="releaseNotesUi()">Release Notes</button></div>
+        <pre id="testLabOutput" class="console"></pre>
+      </div>
+    </section>
+
+    <section id="projectsPanel" class="panel hidden">
+      <div class="card"><strong>Proje Hakkı</strong><div id="projectQuota" class="muted">Yükleniyor...</div></div>
+      <div id="projectList" class="grid"></div>
+    </section>
+
+    <section id="historyPanel" class="panel hidden">
+      <div class="card">
+        <div class="row">
+          <button onclick="createRevisionPrompt()">Yeni Revision</button>
+          <select id="revisionSelect"></select>
+          <select id="diffFileSelect"></select>
+          <button class="secondary" onclick="showDiff()">Diff</button>
+        </div>
+        <div id="revisionList"></div>
+        <div id="diffBox" class="card diff-box"></div>
+      </div>
+    </section>
+
+    <section id="trashPanel" class="panel hidden">
+      <div class="card"><h2>Geri Dönüşüm Kutusu</h2><p class="muted">Silinen projelerin yerel güvenli yedeği 30 gün tutulur. Geri yükleme projeyi aynı hesaba yeniden oluşturur.</p></div>
+      <div id="trashList" class="grid"></div>
+    </section>
+
+    <section id="aiPanel" class="panel hidden">
+      <div class="ai-layout">
+        <div class="card">
+          <h2>AI Asistan</h2>
+          <p class="muted">Windows: localhost Ollama varsa gerçek yerel model; Web: çevrimdışı AppForge bilgi motoru. Proje sırları bağlama eklenmez.</p>
+          <label>Model<input id="aiModel" value="qwen2.5-coder:7b"/></label>
+          <label><input id="aiProjectContext" type="checkbox" checked/> Mevcut proje bağlamını kullan</label>
+          <div id="aiProjectLabel" class="muted">Analiz edilen proje: seçilmedi</div>
+          <div class="chips">
+            <button class="ghost" onclick="askAiPreset('Build hatamı analiz et')">Build hatası</button>
+            <button class="ghost" onclick="askAiPreset('Firebase ayarlarımı kontrol et')">Firebase</button>
+            <button class="ghost" onclick="askAiPreset('Projem için güvenli izinleri öner')">İzinler</button>
+            <button class="ghost" onclick="askAiPreset('APK ve EXE build ayarlarımı kontrol et')">Build ayarları</button>
+          </div>
+        </div>
+        <div class="card ai-chat">
+          <div id="aiMessages" class="messages"></div>
+          <div class="row"><textarea id="aiPrompt" rows="3" placeholder="AppForge hakkında sor..."></textarea><button onclick="sendAi()">Gönder</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="githubPanel" class="panel hidden">
+      <div class="card">
+        <h2>GitHub Repository Import</h2>
+        <input id="githubRepo" placeholder="https://github.com/owner/repo veya owner/repo"/>
+        <input id="githubRef" placeholder="Branch/tag (boş = default branch)"/>
+        <input id="githubToken" type="password" placeholder="Opsiyonel GitHub token (saklanmaz)"/>
+        <button onclick="githubImport()">Repository'yi Aktar</button>
+        <div id="githubResult" class="muted"></div>
+      </div>
+    </section>
+
+    <section id="teamsPanel" class="panel hidden">
+      <div class="grid">
+        <div class="card">
+          <h2>Takımlar</h2>
+          <div class="row"><input id="teamName" placeholder="Takım adı"/><button onclick="createTeam()">Oluştur</button></div>
+          <div id="teamList"></div>
+        </div>
+        <div class="card">
+          <h2>Üyeler</h2>
+          <div id="activeTeamLabel" class="muted">Takım seçilmedi.</div>
+          <div class="row"><input id="inviteEmail" type="email" placeholder="E-posta"/><select id="inviteRole"><option value="member">member</option><option value="viewer">viewer</option><option value="admin">admin</option></select><button onclick="inviteMember()">Davet</button></div>
+          <div id="teamMembers"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="localizationPanel" class="panel hidden">
+      <div class="grid">
+        <div class="card">
+          <h2>Proje Yerelleştirme</h2>
+          <p class="muted">Sunucudaki proje dillerini Android, Windows ve Web arasında ortak kullan.</p>
+          <label>Dil<select id="localizationLocale"><option value="tr">Türkçe</option><option value="en">English</option><option value="de">Deutsch</option><option value="ar">العربية</option></select></label>
+          <label>JSON<textarea id="localizationJson" rows="14">{}</textarea></label>
+          <div class="row"><button onclick="saveLocalizationUi()">Kaydet</button><button class="secondary" onclick="loadLocalizationsUi()">Yenile</button></div>
+        </div>
+        <div class="card"><h2>Kayıtlı Diller</h2><div id="localizationList"></div></div>
+      </div>
+    </section>
+
+    <section id="settingsPanel" class="panel hidden">
+      <div class="grid">
+        <div class="card">
+          <h2>Ayarlar</h2>
+          <label>Görünüm<select id="settingTheme"><option value="system">Sistem</option><option value="dark">Koyu</option><option value="light">Açık</option></select></label>
+          <label>Arayüz dili<select id="settingLanguage"><option value="tr">Türkçe</option><option value="en">English</option><option value="de">Deutsch</option><option value="ar">العربية</option></select></label>
+          <label>Vurgu rengi<input id="settingAccent" type="color" value="#6172ff"/></label>
+          <button onclick="saveSettings()">Ayarları Kaydet</button>
+        </div>
+        <div class="card">
+          <h2>Proje Backup</h2>
+          <p class="muted">Kaynak dosyaları, güvenli proje ayarları ve yerelleştirmeler. Parolalar ve API tokenları dışa aktarılmaz.</p>
+          <div class="row"><button onclick="exportProjectBackup()">Backup Dışa Aktar</button><label class="file-button">Backup İçe Aktar<input id="backupInput" type="file" accept=".zip,.appforge"/></label></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="accountPanel" class="panel hidden">
+      <div class="grid">
+        <div class="card">
+          <h2>Hesap</h2>
+          <div id="accountInfo" class="muted">-</div>
+          <div class="row"><button onclick="resendVerification()">Doğrulama E-postası</button><button class="danger ghost" onclick="logout()">Çıkış</button></div>
+        </div>
+        <div class="card">
+          <h2>Pro</h2>
+          <div id="proStatus" class="muted">Kontrol edilmedi.</div>
+          <p class="muted">Google Play Billing satın alma işlemi Android uygulamasında yapılır; Windows/Web burada sunucudaki yetkiyi gösterir.</p>
+          <button onclick="loadProStatus()">Durumu Yenile</button>
+        </div>
+        <div class="card">
+          <h2>API Tokenları</h2>
+          <div class="row"><input id="apiTokenName" placeholder="Token adı"/><button onclick="createApiTokenUi()">Token Oluştur</button></div>
+          <div id="newApiToken" class="warning"></div>
+          <div id="apiTokenList"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="securityPanel" class="panel hidden">
+      <div class="grid">
+        <div class="card"><h2>E-posta</h2><div id="emailState" class="muted">-</div></div>
+        <div class="card">
+          <h2>2FA</h2>
+          <button onclick="setup2fa()">QR Oluştur</button>
+          <div id="qrWrap"></div>
+          <input id="confirm2faCode" placeholder="Authenticator kodu"/>
+          <div class="row"><button onclick="confirm2fa()">Etkinleştir</button><button class="danger ghost" onclick="disable2faUi()">Devre Dışı</button></div>
+        </div>
+        <div class="card">
+          <h2>Windows Güvenli Kasa</h2>
+          <div id="desktopSecurityState" class="muted">Web modunda kalıcı gizli bilgi saklanmaz.</div>
+          <p class="muted">Windows Setup sürümünde oturum ve isteğe bağlı keystore bilgileri Electron safeStorage ile şifrelenir.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="helpPanel" class="panel hidden">
+      <div class="grid">
+        <div class="card"><h2>Nasıl Kullanılır?</h2><p>1. Yeni Proje → 2. Kaynak/Şablon → 3. Builder → 4. Preview → 5. Build → 6. Test Lab → 7. Production.</p></div>
+        <div class="card"><h2>Google Play Yayın Rehberi</h2><p class="muted">AAB üret, imzalama bilgilerini doğrula, Test Lab sonucunu kontrol et, Production Center'da release notlarını hazırla ve Play Console'a yükle.</p></div>
+        <div class="card"><h2>Platform Notları</h2><p class="muted">Google Play satın alma, Android runtime permission isteme ve cihaz FCM tokenı Android'e özeldir. Windows/Web bunların proje yapılandırmasını yönetir.</p></div>
+        <div class="card"><h2>Destek</h2><p class="muted">Build hatasında Build Kontrol → Canlı Log ve Test Lab sonuçlarını kullan. AI Asistan hata loglarını güvenli şekilde yorumlar.</p></div>
+      </div>
+    </section>
   </div>
-  <div id="projectList" class="grid"></div>
-</div>
-
-<div id="historyPanel" class="panel hidden">
-<div class="card">
-<div class="row">
-<button onclick="createRevisionPrompt()">Yeni Revision</button>
-<select id="revisionSelect" style="max-width:380px"></select>
-<select id="diffFileSelect" style="max-width:260px"></select>
-<button onclick="showDiff()">Seçili Revision → Şimdi Diff</button>
-</div>
-<div id="revisionList" style="margin-top:10px"></div>
-<div id="diffBox" class="card" style="margin-top:10px;max-height:600px;overflow:auto"></div>
-</div>
-</div>
-
-<div id="buildsPanel" class="panel hidden">
-<div class="card">
-<button onclick="loadBuilds()">Yenile</button>
-<div style="overflow:auto"><table>
-<thead><tr><th>ID</th><th>Uygulama</th><th>Durum</th><th>Cache</th><th>Öncelik</th><th>%</th><th>Kontrol</th></tr></thead>
-<tbody id="buildRows"></tbody>
-</table></div>
-</div>
-<div class="card" style="margin-top:10px">
-<div class="row">
-<strong>Canlı Build Konsolu</strong>
-<span id="liveBuildStatus" class="muted">Build seçilmedi.</span>
-<button class="secondary" onclick="stopLiveLogs()">Akışı Durdur</button>
-</div>
-<pre id="liveBuildLog" style="height:360px;overflow:auto;background:#07101f;padding:12px;border-radius:12px;white-space:pre-wrap"></pre>
-</div>
-</div>
-
-<div id="githubPanel" class="panel hidden">
-<div class="card">
-<h3>GitHub Repository Import</h3>
-<input id="githubRepo" placeholder="https://github.com/owner/repo veya owner/repo"/>
-<input id="githubRef" placeholder="Branch/tag (boş = default branch)"/>
-<input id="githubToken" type="password" placeholder="Opsiyonel GitHub token (saklanmaz)"/>
-<button onclick="githubImport()">Repository'yi Aktar</button>
-<div id="githubResult" class="muted" style="margin-top:8px"></div>
-</div>
-</div>
-
-<div id="teamsPanel" class="panel hidden">
-<div class="card"><div class="row"><input id="teamName" placeholder="Takım adı" style="flex:1"/><button onclick="createTeam()">Oluştur</button></div></div>
-<div id="teamList" class="grid" style="margin-top:10px"></div>
-</div>
-
-<div id="securityPanel" class="panel hidden">
-<div class="grid">
-<div class="card"><h3>E-posta</h3><div id="emailState" class="muted">-</div></div>
-<div class="card"><h3>2FA</h3><button onclick="setup2fa()">QR Oluştur</button><div id="qrWrap"></div><input id="confirm2faCode" placeholder="Authenticator kodu"/><button onclick="confirm2fa()">Etkinleştir</button></div>
-</div>
-</div>
 </section>
 </main>
 
 <script>
 window.APPFORGE_MONACO_ROOT=(location.hostname.endsWith(".github.io")||location.protocol==="file:")?"./vendor/monaco":"/vendor/monaco";
-
-function loadMonacoLoader(){
- return new Promise((resolve,reject)=>{
-  if(window.require?.config){resolve();return}
-  const script=document.createElement("script");
-  script.src=window.APPFORGE_MONACO_ROOT+"/loader.js";
-  script.async=true;
-  script.onload=()=>resolve();
-  script.onerror=()=>reject(new Error("Monaco loader yüklenemedi."));
-  document.head.appendChild(script);
- });
-}
-
-const desktopAuth=window.AppForgeDesktop?.auth||null;
-let token=desktopAuth?"":(localStorage.getItem("afs_jwt")||"");
-let challengeToken="";
-let editor=null;
-let activeProjectId=null;
-let activeTeamId=null;
-let activeFile="index.html";
-let files={
-"index.html":`<!doctype html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="style.css">
-<title>AppForge App</title>
-</head>
-<body>
-<h1>AppForge v1.4</h1>
-<p>HTML / CSS / JS ayrı dosyalarda.</p>
-<button id="testBtn">Test</button>
-<script src="app.js"><\/script>
-</body>
-</html>`,
-"style.css":`body{font-family:system-ui;padding:24px;background:#0b1220;color:white}
-button{padding:12px 18px;border:0;border-radius:10px}`,
-"app.js":`document.getElementById("testBtn")?.addEventListener("click",()=>alert("Çalışıyor!"));`
-};
-let dirty=false;
-let autosaveTimer=null;
-let liveLogAbort=null;
-let lastLiveLogId=0;
-
-const standaloneWeb=location.hostname.endsWith(".github.io");
-const desktopLoopback=location.hostname==="127.0.0.1"||location.hostname==="localhost";
-const desktopApiBase=window.AppForgeDesktop?.apiBaseUrl||"";
-if(desktopApiBase)baseUrl.value=desktopApiBase;
-else if(standaloneWeb||desktopLoopback)baseUrl.value="https://appforge-studio-production.up.railway.app";
-
-async function persistAuthToken(value){
- token=value||"";
- if(desktopAuth?.setToken){
-  await desktopAuth.setToken(token);
-  localStorage.removeItem("afs_jwt");
- }else if(token){
-  localStorage.setItem("afs_jwt",token);
- }else{
-  localStorage.removeItem("afs_jwt");
- }
-}
-async function clearAuthToken(){
- token="";
- if(desktopAuth?.clearToken){
-  try{await desktopAuth.clearToken()}catch(e){console.warn("Desktop auth clear failed",e)}
- }
- localStorage.removeItem("afs_jwt");
-}
-async function restorePersistedToken(){
- if(desktopAuth?.getToken){
-  try{token=await desktopAuth.getToken()||""}
-  catch(e){console.warn("Desktop auth restore failed",e);token=""}
- }
- return token;
-}
-function showAuthenticatedApp(){
- authCard.classList.add("hidden");
- app.classList.remove("hidden");
-}
-async function resumeSession(){
- await restorePersistedToken();
- if(!token)return;
- try{
-  const j=await api("/api/auth/me");
-  emailState.textContent=j.user.emailVerified?"E-posta doğrulandı.":"E-posta doğrulanmadı.";
-  showAuthenticatedApp();
- }catch(e){
-  await clearAuthToken();
-  authMsg.textContent="Oturum süresi doldu. Tekrar giriş yapın.";
- }
-}
-function base(){const t=baseUrl.value.trim();return t?t.replace(/\/$/,""):location.origin}
-async function api(path,opts={}){
- const headers={...(opts.headers||{}),Accept:"application/json"};
- if(token)headers.Authorization="Bearer "+token;
- if(opts.body&&typeof opts.body!=="string"){headers["Content-Type"]="application/json";opts.body=JSON.stringify(opts.body)}
- const r=await fetch(base()+path,{...opts,headers});const text=await r.text();const j=text?JSON.parse(text):{};
- if(!r.ok)throw new Error(j.error||"İstek başarısız");return j;
-}
-async function login(){try{const j=await api("/api/auth/login",{method:"POST",body:{email:email.value,password:password.value}});if(j.requiresTwoFactor){challengeToken=j.challengeToken;twoFactorBox.classList.remove("hidden");return}await finishLogin(j)}catch(e){authMsg.textContent=e.message}}
-async function verify2fa(){try{await finishLogin(await api("/api/auth/2fa/verify-login",{method:"POST",body:{challengeToken,code:twoFactorCode.value}}))}catch(e){authMsg.textContent=e.message}}
-async function register(){try{await finishLogin(await api("/api/auth/register",{method:"POST",body:{email:email.value,password:password.value,displayName:email.value.split("@")[0]}}))}catch(e){authMsg.textContent=e.message}}
-async function finishLogin(j){if(j?.token)await persistAuthToken(j.token);showAuthenticatedApp();await loadMe()}
-function tab(id,el){document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));document.getElementById(id).classList.remove("hidden");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));el.classList.add("active");if(id==="projectsPanel")loadProjects();if(id==="historyPanel")loadRevisions();if(id==="buildsPanel")loadBuilds();if(id==="teamsPanel")loadTeams();if(id==="securityPanel")loadMe()}
-function lang(path){const e=path.split(".").pop().toLowerCase();return e==="html"?"html":e==="css"?"css":["js","mjs"].includes(e)?"javascript":e==="json"?"json":"plaintext"}
-function initMonaco(){
- require.config({paths:{vs:window.APPFORGE_MONACO_ROOT}});
- require(["vs/editor/editor.main"],()=>{
-  editor=monaco.editor.create(document.getElementById("monaco"),{value:files[activeFile],language:lang(activeFile),theme:"vs-dark",automaticLayout:true,minimap:{enabled:false},fontSize:14,wordWrap:"on"});
-  editor.onDidChangeModelContent(()=>{files[activeFile]=editor.getValue();dirty=true;autosaveStatus.textContent="Değişiklik var";autosaveStatus.className="status yellow";preview();scheduleAutosave()});
-  renderTree();preview();
- });
-}
-function switchFile(path){if(editor){files[activeFile]=editor.getValue();activeFile=path;monaco.editor.setModelLanguage(editor.getModel(),lang(path));editor.setValue(files[path]??"")}renderTree();preview()}
-function renderTree(){
- fileTree.innerHTML="";
- Object.keys(files).sort().forEach(p=>{const d=document.createElement("div");d.className="file"+(p===activeFile?" active":"");d.textContent=p;d.onclick=()=>switchFile(p);fileTree.appendChild(d)});
- diffFileSelect.innerHTML=Object.keys(files).sort().map(p=>`<option>${esc(p)}</option>`).join("");
-}
-function preview(){
- const html=files["index.html"]||"";
- const css=files["style.css"]||"";
- const js=files["app.js"]||"";
- let out=html.replace(/<link[^>]*href=["']style\.css["'][^>]*>/i,`<style>${css}</style>`);
- out=out.replace(/<script[^>]*src=["']app\.js["'][^>]*><\/script>/i,`<script>${js}<\/script>`);
- previewFrame.srcdoc=out;
-}
-function newFile(){const p=prompt("Dosya yolu (örn. pages/about.html):");if(!p||files[p]!=null)return;files[p]="";switchFile(p);dirty=true;scheduleAutosave()}
-async function deleteActiveFile(){
- if(!confirm(activeFile+" silinsin mi?"))return;
- if(activeProjectId)try{await api(`/api/projects/${activeProjectId}/files?path=${encodeURIComponent(activeFile)}`,{method:"DELETE"})}catch(e){alert(e.message);return}
- delete files[activeFile];activeFile=Object.keys(files)[0]||"index.html";if(files[activeFile]==null)files[activeFile]="";switchFile(activeFile);
-}
-function scheduleAutosave(){clearTimeout(autosaveTimer);autosaveTimer=setTimeout(()=>autosave(),1800)}
-async function autosave(){
- if(!activeProjectId||!dirty)return;
- try{
-  if(editor)files[activeFile]=editor.getValue();
-  autosaveStatus.textContent="Kaydediliyor...";autosaveStatus.className="status yellow";
-  await Promise.all(Object.entries(files).map(([path,content])=>api(`/api/projects/${activeProjectId}/files`,{method:"PUT",body:{path,content,autosave:true}})));
-  dirty=false;autosaveStatus.textContent="Autosave ✓";autosaveStatus.className="status green";
- }catch(e){autosaveStatus.textContent="Autosave hata: "+e.message;autosaveStatus.className="status red"}
-}
-async function createOrSaveProject(){
- try{
-  if(editor)files[activeFile]=editor.getValue();
-  const config={sourceMode:"LOCAL",versionName:"1.0.0",versionCode:1,buildOutput:"both",features:{downloads:true,offlineCache:true}};
-  const j=await api("/api/projects",{method:"POST",body:{name:editorName.value||"Workspace Project",packageName:editorPackage.value||"com.example.app",teamId:activeTeamId,config}});
-  activeProjectId=j.project.id;
-  await autosaveForce();
-  await api(`/api/projects/${activeProjectId}/revisions`,{method:"POST",body:{kind:"manual",message:"Project save"}});
-  alert("Proje ve dosyalar kaydedildi.");
- }catch(e){alert(e.message)}
-}
-async function autosaveForce(){if(editor)files[activeFile]=editor.getValue();await Promise.all(Object.entries(files).map(([path,content])=>api(`/api/projects/${activeProjectId}/files`,{method:"PUT",body:{path,content,autosave:true}})));dirty=false;autosaveStatus.textContent="Kaydedildi ✓";autosaveStatus.className="status green"}
-async function loadProjects(){
- const path=activeTeamId?"/api/projects?teamId="+encodeURIComponent(activeTeamId):"/api/projects";
- const j=await api(path);projectList.innerHTML="";
- if(j.quota){
-  projectQuota.textContent=j.quota.unlimited
-   ? `${j.quota.used} proje • Pro: sınırsız`
-   : `${j.quota.used} / ${j.quota.limit} deneme hakkı kullanıldı • ${j.quota.remaining} yeni proje hakkı kaldı • silmek hakkı geri getirmez`;
- }
- for(const p of j.projects){const d=document.createElement("div");d.className="card";d.innerHTML=`<strong>${esc(p.name)}</strong><div class="muted">${esc(p.package_name)}</div><button>IDE'de Aç</button>`;d.querySelector("button").onclick=()=>openProject(p);projectList.appendChild(d)}
-}
-async function openProject(p){
- activeProjectId=p.id;editorName.value=p.name;editorPackage.value=p.package_name;
- const j=await api(`/api/projects/${p.id}/files`);const loaded={};
- for(const meta of j.files){const one=await api(`/api/projects/${p.id}/files?path=${encodeURIComponent(meta.path)}`);loaded[meta.path]=one.file.content}
- files=Object.keys(loaded).length?loaded:files;activeFile=files["index.html"]!=null?"index.html":Object.keys(files)[0];switchFile(activeFile);dirty=false;autosaveStatus.textContent="Proje açıldı";autosaveStatus.className="status green";
-}
-async function createRevisionPrompt(){if(!activeProjectId){alert("Önce projeyi kaydet.");return}await autosaveForce();const message=prompt("Revision açıklaması:","Manuel kayıt")||"";await api(`/api/projects/${activeProjectId}/revisions`,{method:"POST",body:{kind:"manual",message}});loadRevisions()}
-async function loadRevisions(){
- if(!activeProjectId){revisionList.innerHTML="<span class='muted'>Önce proje aç.</span>";return}
- const j=await api(`/api/projects/${activeProjectId}/revisions`);
- revisionSelect.innerHTML=j.revisions.map(r=>`<option value="${r.id}">#${r.id} — ${esc(r.message||r.revision_kind)} — ${new Date(r.created_at).toLocaleString()}</option>`).join("");
- revisionList.innerHTML="";
- for(const r of j.revisions){
-  const d=document.createElement("div");
-  d.className="card";
-  d.style.margin="6px 0";
-  d.innerHTML=`#${r.id} <b>${esc(r.revision_kind)}</b> — ${esc(r.message)} <span class="muted">${new Date(r.created_at).toLocaleString()}</span> <button class="secondary restoreBtn">Geri Yükle</button>`;
-  d.querySelector(".restoreBtn").onclick=()=>restoreRevision(r.id);
-  revisionList.appendChild(d);
- }
- renderTree();
-}
-async function showDiff(){
- if(!activeProjectId||!revisionSelect.value)return;
- const j=await api(`/api/projects/${activeProjectId}/diff?path=${encodeURIComponent(diffFileSelect.value)}&fromRevision=${encodeURIComponent(revisionSelect.value)}&toRevision=current`);
- diffBox.innerHTML=j.diff.map(x=>`<div class="diffline ${x.type}">${x.type==="add"?"+":x.type==="remove"?"-":" "}${esc(x.text)}</div>`).join("");
-}
-async function workspaceBuild(){
- if(!activeProjectId){alert("Önce projeyi kaydet.");return}
- await autosaveForce();
- try{
-  const idem=`workspace-${activeProjectId}-${Date.now()}`;
-  const j=await api(`/api/projects/${activeProjectId}/builds`,{
-   method:"POST",
-   headers:{"Idempotency-Key":idem},
-   body:{buildOutput:"both",priority:100}
-  });
-  alert(`Build ${j.status}: ${j.buildId}${j.cacheHit?" (CACHE HIT)":""}${j.idempotentReplay?" (IDEMPOTENT REPLAY)":""}`);
-  tab("buildsPanel",document.querySelectorAll(".tab")[3]);
-  await loadBuilds();
-  startLiveLogs(j.buildId);
- }catch(e){alert(e.message)}
-}
-async function loadBuilds(){
- const path=activeTeamId?"/api/builds?teamId="+encodeURIComponent(activeTeamId):"/api/builds";
- const j=await api(path);buildRows.innerHTML="";
- for(const b of j.builds){
-  const tr=document.createElement("tr");
-  const canControl=["queued","building"].includes(b.status);
-  tr.innerHTML=`<td>${esc(b.buildId)}</td><td>${esc(b.appName)}</td><td>${esc(b.status)}${b.cancelRequested?" / iptal bekliyor":""}</td><td>${b.cacheHit?"HIT":"-"}</td><td><input type="number" min="1" max="1000" value="${b.priority||100}" style="width:80px" class="prio"></td><td>${b.progress}%</td><td><button class="secondary liveBtn">Canlı</button> <button class="secondary priorityBtn" ${b.status!=="queued"?"disabled":""}>Öncelik</button> <button class="danger cancelBtn" ${!canControl?"disabled":""}>İptal</button></td>`;
-  tr.querySelector(".liveBtn").onclick=()=>startLiveLogs(b.buildId);
-  tr.querySelector(".priorityBtn").onclick=async()=>{try{await api(`/api/builds/${b.buildId}/priority`,{method:"PATCH",body:{priority:Number(tr.querySelector(".prio").value)}});loadBuilds()}catch(e){alert(e.message)}};
-  tr.querySelector(".cancelBtn").onclick=async()=>{if(!confirm("Build iptal edilsin mi?"))return;try{await api(`/api/builds/${b.buildId}/cancel`,{method:"POST",body:{}});loadBuilds()}catch(e){alert(e.message)}};
-  buildRows.appendChild(tr);
- }
-}
-
-async function restoreRevision(id){
- if(!activeProjectId)return;
- if(!confirm(`#${id} revision geri yüklensin mi? Mevcut durum önce otomatik yedeklenecek.`))return;
- try{
-  await api(`/api/projects/${activeProjectId}/revisions/${id}/restore`,{method:"POST",body:{}});
-  const p={id:activeProjectId,name:editorName.value,package_name:editorPackage.value};
-  await openProject(p);
-  await loadRevisions();
-  alert("Revision geri yüklendi.");
- }catch(e){alert(e.message)}
-}
-async function searchWorkspace(){
- if(!activeProjectId){searchResults.innerHTML="<span class='muted'>Önce proje aç.</span>";return}
- const q=workspaceSearch.value.trim();
- if(!q){searchResults.innerHTML="";return}
- try{
-  const j=await api(`/api/projects/${activeProjectId}/search?q=${encodeURIComponent(q)}`);
-  searchResults.innerHTML="";
-  for(const r of j.results){
-   const d=document.createElement("div");
-   d.className="file";
-   d.textContent=`${r.path}${r.line?":"+r.line:""} ${r.preview||""}`;
-   d.onclick=()=>{if(files[r.path]!=null)switchFile(r.path)};
-   searchResults.appendChild(d);
-  }
-  if(!j.results.length)searchResults.innerHTML="<span class='muted'>Sonuç yok.</span>";
- }catch(e){searchResults.innerHTML=`<span class='red'>${esc(e.message)}</span>`}
-}
-
-function stopLiveLogs(){
- if(liveLogAbort){
-  liveLogAbort.abort();
-  liveLogAbort=null;
- }
- liveBuildStatus.textContent="Akış durduruldu.";
-}
-async function startLiveLogs(buildId){
- stopLiveLogs();
- liveBuildLog.textContent="";
- lastLiveLogId=0;
- liveBuildStatus.textContent=`${buildId} bağlanıyor...`;
- liveLogAbort=new AbortController();
-
- try{
-  const response=await fetch(
-   `${base()}/api/builds/${encodeURIComponent(buildId)}/events?after=0`,
-   {
-    headers:{
-     Authorization:"Bearer "+token,
-     Accept:"text/event-stream"
-    },
-    signal:liveLogAbort.signal
-   }
-  );
-
-  if(!response.ok){
-   throw new Error(await response.text());
-  }
-
-  const reader=response.body.getReader();
-  const decoder=new TextDecoder();
-  let buffer="";
-  let currentEvent="message";
-  let currentId=null;
-  let dataLines=[];
-
-  const flush=()=>{
-   if(!dataLines.length)return;
-   const raw=dataLines.join("\\n");
-   let data;
-   try{data=JSON.parse(raw)}catch{data={raw}}
-
-   if(currentEvent==="log"){
-    lastLiveLogId=Number(currentId||data.id||lastLiveLogId);
-    liveBuildLog.textContent+=`[${data.createdAt||""}] ${data.line||""}\\n`;
-    liveBuildLog.scrollTop=liveBuildLog.scrollHeight;
-   }else if(currentEvent==="status"){
-    liveBuildStatus.textContent=`${buildId}: ${data.status} %${data.progress}`;
-   }else if(currentEvent==="done"){
-    liveBuildStatus.textContent=`${buildId}: ${data.status}`;
-   }else if(currentEvent==="error"){
-    liveBuildLog.textContent+=`HATA: ${data.message||raw}\\n`;
-   }
-
-   currentEvent="message";
-   currentId=null;
-   dataLines=[];
-  };
-
-  while(true){
-   const {value,done}=await reader.read();
-   if(done)break;
-   buffer+=decoder.decode(value,{stream:true});
-   const lines=buffer.split("\\n");
-   buffer=lines.pop()||"";
-
-   for(const lineRaw of lines){
-    const line=lineRaw.replace(/\\r$/,"");
-    if(line===""){
-     flush();
-     continue;
-    }
-    if(line.startsWith("event:")){
-     currentEvent=line.slice(6).trim();
-    }else if(line.startsWith("id:")){
-     currentId=line.slice(3).trim();
-    }else if(line.startsWith("data:")){
-     dataLines.push(line.slice(5).trimStart());
-    }
-   }
-  }
-  flush();
- }catch(e){
-  if(e.name!=="AbortError"){
-   liveBuildStatus.textContent="Canlı log hatası.";
-   liveBuildLog.textContent+=`\\n${e.message}`;
-  }
- }finally{
-  liveLogAbort=null;
- }
-}
-async function githubImport(){
- if(!activeProjectId){githubResult.textContent="Önce bir proje aç/kaydet.";return}
- githubResult.textContent="İçe aktarılıyor...";
- try{
-  const j=await api(`/api/projects/${activeProjectId}/github/import`,{method:"POST",body:{repoUrl:githubRepo.value,ref:githubRef.value,token:githubToken.value}});
-  githubToken.value="";
-  githubResult.textContent=`${j.owner}/${j.repo}@${j.ref}: ${j.importedFiles} metin dosyası aktarıldı, ${j.skippedBinary} binary atlandı.`;
-  const p={id:activeProjectId,name:editorName.value,package_name:editorPackage.value};await openProject(p);
- }catch(e){githubResult.textContent=e.message}
-}
-async function createTeam(){await api("/api/teams",{method:"POST",body:{name:teamName.value}});teamName.value="";loadTeams()}
-async function loadTeams(){const j=await api("/api/teams");teamList.innerHTML="";for(const t of j.teams){const d=document.createElement("div");d.className="card";d.innerHTML=`<strong>${esc(t.name)}</strong><div class="muted">${esc(t.slug)}</div><span class="pill">${esc(t.role)}</span><div><button>Bu Takımda Çalış</button></div>`;d.querySelector("button").onclick=()=>{activeTeamId=t.id;alert("Aktif takım: "+t.name)};teamList.appendChild(d)}}
-async function loadMe(){try{const j=await api("/api/auth/me");emailState.textContent=j.user.emailVerified?"E-posta doğrulandı.":"E-posta doğrulanmadı."}catch{}}
-async function setup2fa(){try{const j=await api("/api/auth/2fa/setup",{method:"POST",body:{}});qrWrap.innerHTML=`<img src="${j.qrDataUrl}" style="width:260px;max-width:100%;background:#fff;padding:8px;border-radius:12px"><div class="muted">${esc(j.secret)}</div>`}catch(e){qrWrap.textContent=e.message}}
-async function confirm2fa(){try{await api("/api/auth/2fa/confirm",{method:"POST",body:{code:confirm2faCode.value}});alert("2FA etkin.")}catch(e){alert(e.message)}}
-function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}
-
-loadMonacoLoader()
- .then(()=>initMonaco())
- .catch(error=>{
-  console.error(error);
-  autosaveStatus.textContent="Editör yüklenemedi";
-  autosaveStatus.className="status red";
-  renderTree();
-  preview();
- });
-resumeSession();
+window.APPFORGE_FFLATE_URL=(location.hostname.endsWith(".github.io")||location.protocol==="file:")?"./vendor/fflate/index.js":"/vendor/fflate/index.js";
 </script>
+<script src="./v4.js" defer></script>
 </body>
 </html>
