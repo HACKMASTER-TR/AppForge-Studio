@@ -3157,7 +3157,7 @@ dependencies {
             </intent-filter>`
     : "";
 
-  const provider = c.features?.camera
+  const provider = (c.features?.camera || c.features?.fileUpload)
     ? `
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -3169,6 +3169,15 @@ dependencies {
                 android:resource="@xml/file_paths" />
         </provider>`
     : "";
+
+  const audioRecorderActivityManifest =
+    c.features?.fileUpload
+      ? `
+        <activity
+            android:name=".AppForgeAudioRecorderActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme" />`
+      : "";
 
   const admobMeta = c.admob?.enabled
     ? `
@@ -3246,6 +3255,7 @@ dependencies {
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>${deepLink}
         </activity>
+        ${audioRecorderActivityManifest}
         ${provider}
         ${admobMeta}
         ${scannerMeta}
@@ -3344,11 +3354,12 @@ dependencies {
 `
   );
 
-  if (c.features?.camera) {
+  if (c.features?.camera || c.features?.fileUpload) {
     await fs.writeFile(
       path.join(xmlDir, "file_paths.xml"),
 `<paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <cache-path name="camera" path="camera/"/>
+    ${c.features?.camera ? '<cache-path name="camera" path="camera/"/>' : ""}
+    ${c.features?.fileUpload ? '<cache-path name="audio" path="audio/"/>' : ""}
 </paths>
 `
     );
@@ -3365,6 +3376,16 @@ dependencies {
     path.join(javaDir, "MainActivity.kt"),
     generatedMainActivity(c, pkg)
   );
+
+  if (c.features?.fileUpload) {
+    await fs.writeFile(
+      path.join(
+        javaDir,
+        "AppForgeAudioRecorderActivity.kt"
+      ),
+      generatedAudioRecorderActivity(pkg)
+    );
+  }
 
   if (
     c.firebase?.messaging
@@ -3392,6 +3413,373 @@ dependencies {
       generatedMediaService(pkg)
     );
   }
+}
+
+
+// APPFORGE_NATIVE_AUDIO_RECORDER_V3
+function generatedAudioRecorderActivity(pkg) {
+  return `
+package ${pkg}
+
+import android.Manifest
+import android.app.Activity
+import android.content.ClipData
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.media.MediaRecorder
+import android.os.Build
+import android.os.Bundle
+import android.view.Gravity
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import java.io.File
+
+class AppForgeAudioRecorderActivity :
+    AppCompatActivity() {
+
+    private lateinit var statusText: TextView
+    private lateinit var stopButton: Button
+    private var recorder: MediaRecorder? = null
+    private var outputFile: File? = null
+    private var recording = false
+    private var resultDelivered = false
+
+    private val microphonePermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            if (granted) {
+                startRecording()
+            } else {
+                Toast.makeText(
+                    this,
+                    "Mikrofon izni gerekli.",
+                    Toast.LENGTH_SHORT
+                ).show()
+                setResult(Activity.RESULT_CANCELED)
+                finish()
+            }
+        }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        buildUi()
+
+        if (
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            startRecording()
+        } else {
+            microphonePermissionLauncher.launch(
+                Manifest.permission.RECORD_AUDIO
+            )
+        }
+    }
+
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density)
+            .toInt()
+
+    private fun buildUi() {
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(
+                dp(24),
+                dp(32),
+                dp(24),
+                dp(32)
+            )
+        }
+
+        statusText = TextView(this).apply {
+            text = "Ses kaydı hazırlanıyor..."
+            textSize = 20f
+            gravity = Gravity.CENTER
+        }
+
+        stopButton = Button(this).apply {
+            text = "Kaydı bitir"
+            isEnabled = false
+            setOnClickListener {
+                finishRecording()
+            }
+        }
+
+        val cancelButton = Button(this).apply {
+            text = "İptal"
+            setOnClickListener {
+                cancelRecording()
+            }
+        }
+
+        root.addView(
+            statusText,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = dp(24)
+            }
+        )
+
+        root.addView(
+            stopButton,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = dp(12)
+            }
+        )
+
+        root.addView(
+            cancelButton,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        setContentView(root)
+    }
+
+    private fun createRecorder(): MediaRecorder {
+        return if (Build.VERSION.SDK_INT >= 31) {
+            MediaRecorder(this)
+        } else {
+            @Suppress("DEPRECATION")
+            MediaRecorder()
+        }
+    }
+
+    private fun startRecording() {
+        if (recording) {
+            return
+        }
+
+        val audioDir =
+            File(
+                cacheDir,
+                "audio"
+            ).apply {
+                mkdirs()
+            }
+
+        val file =
+            File.createTempFile(
+                "appforge_voice_",
+                ".m4a",
+                audioDir
+            )
+
+        val nextRecorder =
+            createRecorder()
+
+        try {
+            nextRecorder.setAudioSource(
+                MediaRecorder.AudioSource.MIC
+            )
+            nextRecorder.setOutputFormat(
+                MediaRecorder.OutputFormat.MPEG_4
+            )
+            nextRecorder.setAudioEncoder(
+                MediaRecorder.AudioEncoder.AAC
+            )
+            nextRecorder.setAudioEncodingBitRate(
+                128000
+            )
+            nextRecorder.setAudioSamplingRate(
+                44100
+            )
+            nextRecorder.setMaxDuration(
+                300000
+            )
+            nextRecorder.setOutputFile(
+                file.absolutePath
+            )
+            nextRecorder.setOnInfoListener {
+                _, what, _ ->
+                if (
+                    what ==
+                    MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED
+                ) {
+                    finishRecording()
+                }
+            }
+            nextRecorder.prepare()
+            nextRecorder.start()
+
+            recorder = nextRecorder
+            outputFile = file
+            recording = true
+            statusText.text =
+                "Ses kaydı yapılıyor..."
+            stopButton.isEnabled = true
+        } catch (error: Throwable) {
+            runCatching {
+                nextRecorder.reset()
+            }
+            runCatching {
+                nextRecorder.release()
+            }
+            runCatching {
+                file.delete()
+            }
+
+            Toast.makeText(
+                this,
+                "Ses kaydı başlatılamadı: " +
+                    (error.message ?: "bilinmeyen hata"),
+                Toast.LENGTH_LONG
+            ).show()
+
+            setResult(Activity.RESULT_CANCELED)
+            finish()
+        }
+    }
+
+    private fun finishRecording() {
+        if (!recording) {
+            return
+        }
+
+        val activeRecorder = recorder
+        val file = outputFile
+
+        val stopped =
+            runCatching {
+                activeRecorder?.stop()
+                true
+            }.getOrDefault(false)
+
+        runCatching {
+            activeRecorder?.reset()
+        }
+        runCatching {
+            activeRecorder?.release()
+        }
+
+        recorder = null
+        recording = false
+        stopButton.isEnabled = false
+
+        if (
+            !stopped ||
+            file == null ||
+            !file.exists() ||
+            file.length() <= 0L
+        ) {
+            runCatching {
+                file?.delete()
+            }
+
+            Toast.makeText(
+                this,
+                "Ses kaydı oluşturulamadı.",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            setResult(Activity.RESULT_CANCELED)
+            finish()
+            return
+        }
+
+        val uri =
+            FileProvider.getUriForFile(
+                this,
+                packageName +
+                    ".fileprovider",
+                file
+            )
+
+        val resultIntent =
+            Intent().apply {
+                data = uri
+                type = "audio/mp4"
+                clipData =
+                    ClipData.newRawUri(
+                        "appforge_audio",
+                        uri
+                    )
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+
+        resultDelivered = true
+        setResult(
+            Activity.RESULT_OK,
+            resultIntent
+        )
+        finish()
+    }
+
+    private fun cancelRecording() {
+        val activeRecorder = recorder
+
+        if (recording) {
+            runCatching {
+                activeRecorder?.stop()
+            }
+        }
+        runCatching {
+            activeRecorder?.reset()
+        }
+        runCatching {
+            activeRecorder?.release()
+        }
+
+        recorder = null
+        recording = false
+        runCatching {
+            outputFile?.delete()
+        }
+        outputFile = null
+
+        setResult(Activity.RESULT_CANCELED)
+        finish()
+    }
+
+    @Deprecated("Deprecated in Android")
+    override fun onBackPressed() {
+        cancelRecording()
+    }
+
+    override fun onDestroy() {
+        if (!resultDelivered && recorder != null) {
+            val activeRecorder = recorder
+            if (recording) {
+                runCatching {
+                    activeRecorder?.stop()
+                }
+            }
+            runCatching {
+                activeRecorder?.reset()
+            }
+            runCatching {
+                activeRecorder?.release()
+            }
+            recorder = null
+            recording = false
+            runCatching {
+                outputFile?.delete()
+            }
+        }
+        super.onDestroy()
+    }
+}
+`;
 }
 
 
@@ -4491,6 +4879,7 @@ function generatedMainActivity(c, pkg) {
     ${c.features?.fileUpload ? "private var pendingWebPermissionRequest: PermissionRequest? = null" : ""}
     ${c.features?.camera ? "private var cameraUri: Uri? = null" : ""}
     ${c.features?.camera ? "private var pendingCameraCapture = false" : ""}
+    ${c.features?.camera ? "private var pendingCameraFilePath: String? = null" : ""}
     ${c.billing?.enabled ? "private var billingClient: BillingClient? = null" : ""}
     ${c.billing?.enabled ? "private val productDetailsCache = mutableMapOf<String, ProductDetails>()" : ""}
     ${c.admob?.enabled && c.admob?.interstitialUnitId ? "private var interstitialAd: InterstitialAd? = null" : ""}
@@ -4503,22 +4892,43 @@ function generatedMainActivity(c, pkg) {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val callback = fileChooserCallback ?: return@registerForActivityResult
             val data = result.data
+            // APPFORGE_CAMERA_FILE_RETURN_V3
+            ${c.features?.camera ? `
+            val validCameraUri =
+                if (
+                    cameraUri != null &&
+                    pendingCameraFilePath
+                        ?.let { path ->
+                            val file = File(path)
+                            file.exists() &&
+                                file.length() > 0L
+                        } == true
+                ) {
+                    cameraUri
+                } else {
+                    null
+                }
+            ` : `
+            val validCameraUri: Uri? = null
+            `}
+
             val uris = when {
+                // Bazı üretici kamera uygulamaları EXTRA_OUTPUT ile fotoğrafı
+                // başarıyla yazdığı halde RESULT_CANCELED döndürebilir.
+                ${c.features?.camera ? "pendingCameraCapture && validCameraUri != null -> arrayOf(validCameraUri)" : "false -> null"}
                 result.resultCode != Activity.RESULT_OK -> null
-                // APPFORGE_CAMERA_RESULT_V2: direct camera capture must win over
-                // thumbnail / vendor-specific result data.
-                ${c.features?.camera ? "pendingCameraCapture && cameraUri != null -> arrayOf(cameraUri!!)" : "false -> null"}
                 data?.clipData != null -> Array(data.clipData!!.itemCount) { i ->
                     data.clipData!!.getItemAt(i).uri
                 }
                 data?.data != null -> arrayOf(data.data!!)
-                ${c.features?.camera ? "cameraUri != null -> arrayOf(cameraUri!!)" : "false -> null"}
+                validCameraUri != null -> arrayOf(validCameraUri)
                 else -> null
             }
             callback.onReceiveValue(uris)
             fileChooserCallback = null
             ${c.features?.camera ? "pendingCameraCapture = false" : ""}
             ${c.features?.camera ? "cameraUri = null" : ""}
+            ${c.features?.camera ? "pendingCameraFilePath = null" : ""}
         }
 ` : "";
 
@@ -4799,21 +5209,14 @@ function generatedMainActivity(c, pkg) {
                     ) {
                         val audioRecorderIntent =
                             Intent(
-                                MediaStore.Audio.Media
-                                    .RECORD_SOUND_ACTION
+                                this@MainActivity,
+                                AppForgeAudioRecorderActivity::class.java
                             )
 
-                        if (
+                        fileChooserLauncher.launch(
                             audioRecorderIntent
-                                .resolveActivity(
-                                    packageManager
-                                ) != null
-                        ) {
-                            fileChooserLauncher.launch(
-                                audioRecorderIntent
-                            )
-                            return true
-                        }
+                        )
+                        return true
                     }
 
                     ${c.features?.camera ? `
@@ -4836,6 +5239,9 @@ function generatedMainActivity(c, pkg) {
                             ".jpg",
                             cameraDir
                         )
+
+                    pendingCameraFilePath =
+                        cameraFile.absolutePath
 
                     cameraUri =
                         FileProvider.getUriForFile(

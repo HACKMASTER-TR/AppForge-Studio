@@ -15,7 +15,7 @@ const fastPath =
   );
 
 test(
-  "generated WebView routes image/audio capture to native intents",
+  "generated WebView routes image/audio capture to AppForge native handlers",
   async () => {
     const source =
       await readFile(
@@ -26,22 +26,22 @@ test(
     for (const marker of [
       "APPFORGE_NATIVE_CAPTURE_ROUTER_V1",
       "APPFORGE_WEB_MEDIA_PERMISSION_V2",
-      "APPFORGE_CAMERA_RESULT_V2",
+      "APPFORGE_CAMERA_FILE_RETURN_V3",
+      "APPFORGE_NATIVE_AUDIO_RECORDER_V3",
       "android.permission.RECORD_AUDIO",
       "PermissionRequest.RESOURCE_AUDIO_CAPTURE",
       "pendingWebPermissionRequest",
       "pendingCameraCapture",
+      "pendingCameraFilePath",
       "ClipData.newRawUri",
       "allowContentAccess",
       "isCaptureEnabled",
       "wantsImage",
       "wantsAudio",
-      "MediaStore.Audio.Media",
-      "RECORD_SOUND_ACTION",
+      "AppForgeAudioRecorderActivity",
       "MediaStore.ACTION_IMAGE_CAPTURE",
       "cameraIntent",
       "audioRecorderIntent",
-      ".resolveActivity(",
       ".resolveActivity("
     ]) {
       assert.ok(
@@ -49,6 +49,13 @@ test(
         marker
       );
     }
+
+    assert.ok(
+      !source.includes(
+        "MediaStore.Audio.Media\\n                                    .RECORD_SOUND_ACTION"
+      ),
+      "external RECORD_SOUND_ACTION route must not be required"
+    );
   }
 );
 
