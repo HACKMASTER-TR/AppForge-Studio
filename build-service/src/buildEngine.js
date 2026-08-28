@@ -135,7 +135,7 @@ export function resolveSourceBuildEngine(
       .trim()
       .toLowerCase();
 
-  const engine =
+  const requestedEngine =
     SOURCE_BUILD_ENGINES
       .has(
         rawEngine
@@ -143,7 +143,28 @@ export function resolveSourceBuildEngine(
       ? rawEngine
       : "unknown";
 
-  const technology =
+  const hasWebStartPage =
+    c?.sourceHasWebStartPage ===
+      true;
+
+  const webFallbackAllowed =
+    hasWebStartPage &&
+    String(
+      c?.sourceTechnology ||
+      "unknown"
+    )
+      .trim()
+      .toLowerCase() ===
+        "unknown";
+
+  const engine =
+    requestedEngine ===
+      "unknown" &&
+    webFallbackAllowed
+      ? "webview-static"
+      : requestedEngine;
+
+  const requestedTechnology =
     String(
       c?.sourceTechnology ||
       (
@@ -156,7 +177,15 @@ export function resolveSourceBuildEngine(
       .trim()
       .toLowerCase();
 
-  const label =
+  const technology =
+    engine ===
+      "webview-static" &&
+    requestedTechnology ===
+      "unknown"
+      ? "web-static"
+      : requestedTechnology;
+
+  const requestedLabel =
     String(
       c?.sourceTechnologyLabel ||
       (
@@ -167,6 +196,17 @@ export function resolveSourceBuildEngine(
       )
     )
       .trim();
+
+  const label =
+    engine ===
+      "webview-static" &&
+    (
+      !requestedLabel ||
+      requestedLabel.toLowerCase() ===
+        "bilinmeyen proje"
+    )
+      ? "HTML / CSS / JavaScript"
+      : requestedLabel;
 
   const ready =
     c?.sourceBuildReady ===
@@ -7315,7 +7355,7 @@ ${deepLinkHandling}
 `.trim();
 }
 
-async function extractZipSafely(
+export async function extractZipSafely(
   zipPath,
   dest
 ) {
@@ -7519,7 +7559,7 @@ async function extractZipSafely(
     );
   }
 
-  const index =
+  let index =
     await findFirst(
       root,
       p =>
@@ -7530,10 +7570,52 @@ async function extractZipSafely(
     );
 
   if (!index) {
+    const preferredNames =
+      new Set([
+        "main.html",
+        "main.htm",
+        "app.html",
+        "app.htm",
+        "home.html",
+        "home.htm"
+      ]);
+
+    index =
+      await findFirst(
+        root,
+        p =>
+          preferredNames.has(
+            path
+              .basename(p)
+              .toLowerCase()
+          )
+      );
+  }
+
+  if (!index) {
+    index =
+      await findFirst(
+        root,
+        p =>
+          [
+            ".html",
+            ".htm"
+          ].includes(
+            path
+              .extname(p)
+              .toLowerCase()
+          )
+      );
+  }
+
+  if (!index) {
     throw new Error(
-      "index.html bulunamadı."
+      "ZIP içinde index.html, main.html veya başka bir HTML başlangıç sayfası bulunamadı."
     );
   }
+
+  const entryName =
+    path.basename(index);
 
   if (
     path.dirname(index) !==
@@ -7573,6 +7655,22 @@ async function extractZipSafely(
     await fs.rename(
       temp,
       root
+    );
+  }
+
+  if (
+    entryName.toLowerCase() !==
+      "index.html"
+  ) {
+    await fs.rename(
+      path.join(
+        root,
+        entryName
+      ),
+      path.join(
+        root,
+        "index.html"
+      )
     );
   }
 }

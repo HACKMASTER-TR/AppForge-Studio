@@ -23,6 +23,19 @@ object AppForgeBuildErrorAdvisor {
     private val rules =
         listOf(
             Rule(
+                category = "Proje türü",
+                title = "Proje başlangıç sayfası algılanamadı",
+                needles = listOf(
+                    "unknown build motoru",
+                    "bilinmeyen proje algılandı",
+                    "güvenli bir build motoru seçilemedi",
+                    "webview build motoruna yanlışlıkla gönderilmedi"
+                ),
+                reason = "Seçilen ZIP içinde desteklenen proje imzası veya HTML başlangıç sayfası bulunamadı.",
+                solution = "ZIP içinde index.html, main.html ya da desteklenen Android/Flutter/React Native proje dosyalarının bulunduğunu kontrol et. Geçerli HTML sayfası varsa AppForge onu artık otomatik başlangıç sayfasına dönüştürür.",
+                confidence = 99
+            ),
+            Rule(
                 category = "İmzalama",
                 title = "Keystore / imza bilgisi hatası",
                 needles = listOf(

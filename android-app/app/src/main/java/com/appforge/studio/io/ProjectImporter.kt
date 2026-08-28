@@ -286,6 +286,17 @@ object ProjectImporter {
                     "index.html",
                     true
                 )
+            } ?: dir
+            .walkTopDown()
+            .maxDepth(MAX_DEPTH)
+            .take(MAX_ENTRIES)
+            .firstOrNull {
+                it.isFile &&
+                it.extension.lowercase() in
+                    setOf(
+                        "html",
+                        "htm"
+                    )
             }
 
     private fun queryDisplayName(

@@ -12,13 +12,14 @@ data class ProjectTechnologyInfo(
 
 object ProjectTechnologyDetector {
 
-    private const val MAX_DEPTH = 6
+    private const val MAX_DEPTH = 20
+    private const val MAX_FILES = 5_000
 
     private fun files(root: File): List<File> =
         root.walkTopDown()
             .maxDepth(MAX_DEPTH)
             .filter { it.isFile }
-            .take(4_000)
+            .take(MAX_FILES)
             .toList()
 
     private fun text(file: File?): String =
@@ -535,13 +536,26 @@ object ProjectTechnologyDetector {
             )
         }
 
-        if (has("index.html")) {
+        if (
+            has("index.html") ||
+            hasExt(
+                "html",
+                "htm"
+            )
+        ) {
             return ProjectTechnologyInfo(
                 id = "web-static",
                 label = "HTML / CSS / JavaScript",
                 buildEngine = "webview-static",
                 buildReady = true,
-                reason = "index.html bulundu."
+                reason =
+                    if (
+                        has("index.html")
+                    ) {
+                        "index.html bulundu."
+                    } else {
+                        "HTML başlangıç sayfası bulundu; AppForge bunu index.html olarak hazırlayacak."
+                    }
             )
         }
 

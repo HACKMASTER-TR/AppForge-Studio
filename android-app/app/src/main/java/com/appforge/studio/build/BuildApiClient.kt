@@ -120,6 +120,60 @@ class BuildApiClient(
             }
 
         val boundary = "----AppForge${UUID.randomUUID()}"
+
+        val localWebStartPage =
+            findLocalWebStartPage(
+                draft
+            )
+
+        val safeUnknownWebFallback =
+            draft.sourceBuildEngine.equals(
+                "unknown",
+                true
+            ) &&
+            draft.sourceTechnology.equals(
+                "unknown",
+                true
+            ) &&
+            localWebStartPage
+
+        val effectiveSourceEngine =
+            if (
+                safeUnknownWebFallback
+            ) {
+                "webview-static"
+            } else {
+                draft.sourceBuildEngine
+            }
+
+        val effectiveSourceTechnology =
+            if (
+                effectiveSourceEngine ==
+                    "webview-static" &&
+                draft.sourceTechnology.equals(
+                    "unknown",
+                    true
+                )
+            ) {
+                "web-static"
+            } else {
+                draft.sourceTechnology
+            }
+
+        val effectiveSourceLabel =
+            if (
+                effectiveSourceEngine ==
+                    "webview-static" &&
+                draft.sourceTechnologyLabel.equals(
+                    "Bilinmeyen proje",
+                    true
+                )
+            ) {
+                "HTML / CSS / JavaScript"
+            } else {
+                draft.sourceTechnologyLabel
+            }
+
         val conn = connection("/api/builds").apply {
             requestMethod = "POST"
             if (!idempotencyKey.isNullOrBlank()) {
@@ -140,10 +194,18 @@ class BuildApiClient(
             put("appName", draft.appName)
             put("packageName", draft.packageName)
             put("sourceMode", draft.sourceMode.name)
-            put("sourceTechnology", draft.sourceTechnology)
-            put("sourceTechnologyLabel", draft.sourceTechnologyLabel)
-            put("sourceBuildEngine", draft.sourceBuildEngine)
-            put("sourceBuildReady", draft.sourceBuildReady)
+            put("sourceTechnology", effectiveSourceTechnology)
+            put("sourceTechnologyLabel", effectiveSourceLabel)
+            put("sourceBuildEngine", effectiveSourceEngine)
+            put(
+                "sourceBuildReady",
+                draft.sourceBuildReady ||
+                    safeUnknownWebFallback
+            )
+            put(
+                "sourceHasWebStartPage",
+                safeUnknownWebFallback
+            )
             put("webUrl", draft.webUrl)
             put("versionName", draft.versionName)
             put("versionCode", draft.versionCode)
@@ -367,6 +429,40 @@ class BuildApiClient(
         } finally {
             multipartBody.delete()
         }
+    }
+
+    private fun findLocalWebStartPage(
+        draft: ProjectDraft
+    ): Boolean {
+        if (
+            draft.sourceMode !=
+                SourceMode.LOCAL
+        ) {
+            return false
+        }
+
+        val root =
+            draft.importedFolder
+                ?.let(::File)
+                ?.takeIf {
+                    it.isDirectory
+                }
+                ?: return false
+
+        return root
+            .walkTopDown()
+            .maxDepth(20)
+            .filter {
+                it.isFile
+            }
+            .take(5_000)
+            .any {
+                it.extension.lowercase() in
+                    setOf(
+                        "html",
+                        "htm"
+                    )
+            }
     }
 
     fun getBuild(buildId: String): BuildStatusResult {
