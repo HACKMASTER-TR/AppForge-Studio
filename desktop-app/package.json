@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "appforge-studio-desktop",
   "version": "3.1.0",
   "private": true,
@@ -6,7 +6,7 @@
   "scripts": {
     "start": "electron .",
     "prepare-assets": "node scripts/prepare-assets.cjs",
-    "package:win": "npm run prepare-assets && electron-builder --win portable --x64"
+    "package:win": "npm run prepare-assets && electron-builder --win --x64"
   },
   "devDependencies": {
     "electron": "43.4.1",
@@ -37,10 +37,25 @@
       "signAndEditExecutable": false,
       "target": [
         {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
           "target": "portable",
           "arch": ["x64"]
         }
       ]
+    },
+    "nsis": {
+      "artifactName": "AppForgeStudio-Setup-${version}.exe",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AppForge Studio",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
     },
     "portable": {
       "artifactName": "AppForgeStudio-Windows-${version}.exe"

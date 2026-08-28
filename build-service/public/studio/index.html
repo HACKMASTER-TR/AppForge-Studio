@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="tr">
 <head>
 <meta charset="utf-8"/>
@@ -172,7 +172,8 @@ function loadMonacoLoader(){
  });
 }
 
-let token=localStorage.getItem("afs_jwt")||"";
+const desktopAuth=window.AppForgeDesktop?.auth||null;
+let token=desktopAuth?"":(localStorage.getItem("afs_jwt")||"");
 let challengeToken="";
 let editor=null;
 let activeProjectId=null;
@@ -208,6 +209,47 @@ const desktopApiBase=window.AppForgeDesktop?.apiBaseUrl||"";
 if(desktopApiBase)baseUrl.value=desktopApiBase;
 else if(standaloneWeb||desktopLoopback)baseUrl.value="https://appforge-studio-production.up.railway.app";
 
+async function persistAuthToken(value){
+ token=value||"";
+ if(desktopAuth?.setToken){
+  await desktopAuth.setToken(token);
+  localStorage.removeItem("afs_jwt");
+ }else if(token){
+  localStorage.setItem("afs_jwt",token);
+ }else{
+  localStorage.removeItem("afs_jwt");
+ }
+}
+async function clearAuthToken(){
+ token="";
+ if(desktopAuth?.clearToken){
+  try{await desktopAuth.clearToken()}catch(e){console.warn("Desktop auth clear failed",e)}
+ }
+ localStorage.removeItem("afs_jwt");
+}
+async function restorePersistedToken(){
+ if(desktopAuth?.getToken){
+  try{token=await desktopAuth.getToken()||""}
+  catch(e){console.warn("Desktop auth restore failed",e);token=""}
+ }
+ return token;
+}
+function showAuthenticatedApp(){
+ authCard.classList.add("hidden");
+ app.classList.remove("hidden");
+}
+async function resumeSession(){
+ await restorePersistedToken();
+ if(!token)return;
+ try{
+  const j=await api("/api/auth/me");
+  emailState.textContent=j.user.emailVerified?"E-posta doğrulandı.":"E-posta doğrulanmadı.";
+  showAuthenticatedApp();
+ }catch(e){
+  await clearAuthToken();
+  authMsg.textContent="Oturum süresi doldu. Tekrar giriş yapın.";
+ }
+}
 function base(){const t=baseUrl.value.trim();return t?t.replace(/\/$/,""):location.origin}
 async function api(path,opts={}){
  const headers={...(opts.headers||{}),Accept:"application/json"};
@@ -216,10 +258,10 @@ async function api(path,opts={}){
  const r=await fetch(base()+path,{...opts,headers});const text=await r.text();const j=text?JSON.parse(text):{};
  if(!r.ok)throw new Error(j.error||"İstek başarısız");return j;
 }
-async function login(){try{const j=await api("/api/auth/login",{method:"POST",body:{email:email.value,password:password.value}});if(j.requiresTwoFactor){challengeToken=j.challengeToken;twoFactorBox.classList.remove("hidden");return}finishLogin(j)}catch(e){authMsg.textContent=e.message}}
-async function verify2fa(){try{finishLogin(await api("/api/auth/2fa/verify-login",{method:"POST",body:{challengeToken,code:twoFactorCode.value}}))}catch(e){authMsg.textContent=e.message}}
-async function register(){try{finishLogin(await api("/api/auth/register",{method:"POST",body:{email:email.value,password:password.value,displayName:email.value.split("@")[0]}}))}catch(e){authMsg.textContent=e.message}}
-function finishLogin(j){if(j?.token){token=j.token;localStorage.setItem("afs_jwt",token)}authCard.classList.add("hidden");app.classList.remove("hidden");loadMe()}
+async function login(){try{const j=await api("/api/auth/login",{method:"POST",body:{email:email.value,password:password.value}});if(j.requiresTwoFactor){challengeToken=j.challengeToken;twoFactorBox.classList.remove("hidden");return}await finishLogin(j)}catch(e){authMsg.textContent=e.message}}
+async function verify2fa(){try{await finishLogin(await api("/api/auth/2fa/verify-login",{method:"POST",body:{challengeToken,code:twoFactorCode.value}}))}catch(e){authMsg.textContent=e.message}}
+async function register(){try{await finishLogin(await api("/api/auth/register",{method:"POST",body:{email:email.value,password:password.value,displayName:email.value.split("@")[0]}}))}catch(e){authMsg.textContent=e.message}}
+async function finishLogin(j){if(j?.token)await persistAuthToken(j.token);showAuthenticatedApp();await loadMe()}
 function tab(id,el){document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));document.getElementById(id).classList.remove("hidden");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));el.classList.add("active");if(id==="projectsPanel")loadProjects();if(id==="historyPanel")loadRevisions();if(id==="buildsPanel")loadBuilds();if(id==="teamsPanel")loadTeams();if(id==="securityPanel")loadMe()}
 function lang(path){const e=path.split(".").pop().toLowerCase();return e==="html"?"html":e==="css"?"css":["js","mjs"].includes(e)?"javascript":e==="json"?"json":"plaintext"}
 function initMonaco(){
@@ -486,7 +528,7 @@ loadMonacoLoader()
   renderTree();
   preview();
  });
-if(token)finishLogin({token});
+resumeSession();
 </script>
 </body>
 </html>

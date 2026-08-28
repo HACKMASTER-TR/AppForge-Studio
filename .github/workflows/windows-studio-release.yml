@@ -1,4 +1,4 @@
-name: AppForge Studio Windows Release
+﻿name: AppForge Studio Windows Release
 
 on:
   workflow_dispatch:
@@ -32,28 +32,59 @@ jobs:
 
       - name: Install desktop dependencies
         working-directory: desktop-app
-        run: npm install
+        run: npm ci
 
-      - name: Package portable Windows EXE
+      - name: Package Windows Setup and portable EXE
         working-directory: desktop-app
         run: npm run package:win
 
-      - name: Prepare latest EXE
+      - name: Prepare latest Windows assets
         shell: pwsh
         run: |
-          $exe = Get-ChildItem desktop-app/dist -Filter *.exe | Select-Object -First 1
-          if ($null -eq $exe -or $exe.Length -le 0) { throw "Windows EXE bulunamadı." }
-          Copy-Item $exe.FullName AppForgeStudio-latest.exe
-          Get-FileHash AppForgeStudio-latest.exe -Algorithm SHA256
+          $setup = Get-ChildItem desktop-app/dist -Filter "AppForgeStudio-Setup-*.exe" |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          $portable = Get-ChildItem desktop-app/dist -Filter "AppForgeStudio-Windows-*.exe" |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
 
-      - name: Publish latest EXE release
+          if ($null -eq $setup -or $setup.Length -le 0) {
+            throw "Windows Setup EXE not found."
+          }
+          if ($null -eq $portable -or $portable.Length -le 0) {
+            throw "Windows portable EXE not found."
+          }
+
+          Copy-Item $setup.FullName AppForgeStudio-Setup-latest.exe
+          Copy-Item $setup.FullName AppForgeStudio-latest.exe
+          Copy-Item $portable.FullName AppForgeStudio-Portable-latest.exe
+
+          Get-FileHash AppForgeStudio-Setup-latest.exe -Algorithm SHA256
+          Get-FileHash AppForgeStudio-latest.exe -Algorithm SHA256
+          Get-FileHash AppForgeStudio-Portable-latest.exe -Algorithm SHA256
+
+      - name: Publish latest Windows release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          NOTES="Use AppForgeStudio-Setup-latest.exe for normal Windows installation, Start Menu/taskbar shortcuts, and persistent sessions. AppForgeStudio-Portable-latest.exe is optional."
           if gh release view appforge-studio-windows-latest >/dev/null 2>&1; then
-            gh release upload appforge-studio-windows-latest AppForgeStudio-latest.exe --clobber
+            gh release upload appforge-studio-windows-latest \
+              AppForgeStudio-Setup-latest.exe \
+              AppForgeStudio-latest.exe \
+              AppForgeStudio-Portable-latest.exe \
+              --clobber
+            gh release edit appforge-studio-windows-latest \
+              --title "AppForge Studio Windows Latest" \
+              --notes "$NOTES"
           else
-            gh release create appforge-studio-windows-latest AppForgeStudio-latest.exe --title "AppForge Studio Windows Latest" --notes "Latest portable AppForge Studio Windows client." --target "$GITHUB_SHA"
+            gh release create appforge-studio-windows-latest \
+              AppForgeStudio-Setup-latest.exe \
+              AppForgeStudio-latest.exe \
+              AppForgeStudio-Portable-latest.exe \
+              --title "AppForge Studio Windows Latest" \
+              --notes "$NOTES" \
+              --target "$GITHUB_SHA"
           fi

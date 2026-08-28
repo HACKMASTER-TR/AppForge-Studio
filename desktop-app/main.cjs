@@ -1,8 +1,10 @@
-const { app, BrowserWindow } = require("electron");
+﻿const { app, BrowserWindow, ipcMain, safeStorage } = require("electron");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
+const APP_USER_MODEL_ID = "com.appforge.studio.desktop";
+const AUTH_TOKEN_FILE = "auth-token.bin";
 let localServer;
 
 function assets() {
@@ -17,6 +19,49 @@ function assets() {
     studio: path.join(root, "public", "studio"),
     monaco: path.join(root, "node_modules", "monaco-editor", "min", "vs")
   };
+}
+
+function authTokenPath() {
+  return path.join(app.getPath("userData"), AUTH_TOKEN_FILE);
+}
+
+function clearAuthToken() {
+  try {
+    fs.rmSync(authTokenPath(), { force: true });
+  } catch {
+    // Clearing a stale token must not block startup/shutdown.
+  }
+  return true;
+}
+
+function readAuthToken() {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return "";
+    const encrypted = fs.readFileSync(authTokenPath());
+    return safeStorage.decryptString(encrypted);
+  } catch {
+    return "";
+  }
+}
+
+function writeAuthToken(value) {
+  const token = typeof value === "string" ? value.trim() : "";
+  if (!token) return clearAuthToken();
+
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error("Windows secure session storage is unavailable.");
+  }
+
+  const target = authTokenPath();
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, safeStorage.encryptString(token));
+  return true;
+}
+
+function registerDesktopIpc() {
+  ipcMain.handle("appforge:auth:get", () => readAuthToken());
+  ipcMain.handle("appforge:auth:set", (_event, token) => writeAuthToken(token));
+  ipcMain.handle("appforge:auth:clear", () => clearAuthToken());
 }
 
 function contentType(file) {
@@ -104,6 +149,11 @@ async function createWindow() {
   await window.loadURL(url);
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  app.setAppUserModelId(APP_USER_MODEL_ID);
+  registerDesktopIpc();
+  await createWindow();
+});
+
 app.on("window-all-closed", () => app.quit());
 app.on("before-quit", () => localServer?.close());
