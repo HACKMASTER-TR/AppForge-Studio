@@ -107,13 +107,23 @@ async function pRemove(key){
 async function persistAuthToken(value){
   token=value || "";
   if(desktopAuth?.setToken){
-    await desktopAuth.setToken(token);
-    localStorage.removeItem("afs_jwt");
+    try{
+      await desktopAuth.setToken(token);
+      localStorage.removeItem("afs_jwt");
+      return true;
+    }catch(e){
+      // A successful login must remain usable even when Windows safeStorage
+      // is temporarily unavailable. Keep the token only in renderer memory.
+      console.warn("Desktop secure token persistence failed",e);
+      localStorage.removeItem("afs_jwt");
+      return false;
+    }
   }else if(token){
     localStorage.setItem("afs_jwt",token);
   }else{
     localStorage.removeItem("afs_jwt");
   }
+  return true;
 }
 async function clearAuthToken(){
   token="";
@@ -205,9 +215,13 @@ window.forgotPassword=async function forgotPassword(){
   }catch(e){setText("authMsg",e.message)}
 };
 async function finishLogin(j){
-  if(j?.token)await persistAuthToken(j.token);
+  const persisted=j?.token ? await persistAuthToken(j.token) : true;
   currentUser=j.user || null;
   showAuthenticatedApp();
+  if(!persisted){
+    setText("autosaveStatus","Oturum geçici");
+    $("autosaveStatus").className="status yellow";
+  }
   await postLoginLoad();
 }
 window.logout=async function logout(){
@@ -1450,7 +1464,22 @@ window.sendAi=async function sendAi(){
 };
 
 async function updateDesktopSecurityState(){
-  setText("desktopSecurityState",desktop?.security?.safeStorage?"Windows safeStorage aktif. Oturum ve isteğe bağlı kasa verileri şifreli saklanır.":"Web modu: yalnız tarayıcı depolaması kullanılır; signing parolaları kalıcı saklanmaz.");
+  if(!desktop?.security?.getState){
+    setText("desktopSecurityState","Web modu: yalnız tarayıcı depolaması kullanılır; signing parolaları kalıcı saklanmaz.");
+    return;
+  }
+  try{
+    const state=await desktop.security.getState();
+    setText(
+      "desktopSecurityState",
+      state?.safeStorage
+        ? "Windows safeStorage aktif. Oturum ve isteğe bağlı kasa verileri şifreli saklanır."
+        : "Windows güvenli kasası şu anda kullanılamıyor. Oturum bu pencere açıkken çalışır; yeniden açınca tekrar giriş gerekebilir."
+    );
+  }catch(e){
+    console.warn("Desktop security state unavailable",e);
+    setText("desktopSecurityState","Windows güvenli kasa durumu okunamadı.");
+  }
 }
 
 async function loadTrashAndAi(){

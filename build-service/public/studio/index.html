@@ -15,7 +15,7 @@
   </div>
   <div class="top-actions">
     <span id="activeProjectBadge" class="pill">Proje seçilmedi</span>
-    <span id="autosaveStatus" class="status muted">Autosave hazır</span>
+    <span id="autosaveStatus" class="status muted" role="status" aria-live="polite">Autosave hazır</span>
     <button class="ghost" id="logoutTopBtn" onclick="logout()" hidden>Çıkış</button>
   </div>
 </header>
@@ -27,7 +27,7 @@
     <p class="muted">Tek hesapla Android, Windows ve Web projelerini yönet.</p>
   </div>
   <div class="form-grid cols-2">
-    <label>Sunucu URL<input id="baseUrl" placeholder="Sunucu URL"/></label>
+    <label class="span-2">Sunucu URL<input id="baseUrl" placeholder="Sunucu URL" inputmode="url"/></label>
     <label>E-posta<input id="email" type="email" autocomplete="username" placeholder="mail@example.com"/></label>
     <label>Parola<input id="password" type="password" autocomplete="current-password" placeholder="Parola"/></label>
   </div>
@@ -40,11 +40,11 @@
     <label>2FA kodu<input id="twoFactorCode" inputmode="numeric" placeholder="123456"/></label>
     <button onclick="verify2fa()">Doğrula</button>
   </div>
-  <div id="authMsg" class="muted"></div>
+  <div id="authMsg" class="muted" role="status" aria-live="polite"></div>
 </section>
 
 <section id="app" class="hidden app-shell">
-  <nav id="mainNav" class="nav">
+  <nav id="mainNav" class="nav" aria-label="Ana menü">
     <button class="nav-item active" data-panel="homePanel">Ana Sayfa</button>
     <button class="nav-item" data-panel="idePanel">IDE</button>
     <button class="nav-item" data-panel="createPanel">Yeni Proje</button>

@@ -198,6 +198,9 @@ function registerDesktopIpc() {
   ipcMain.handle("appforge:keystore:clear", () => clearKeystore());
 
   ipcMain.handle("appforge:local-ai:chat", (_event, payload) => localAiChat(payload));
+  ipcMain.handle("appforge:security:state", () => ({
+    safeStorage: safeStorage.isEncryptionAvailable()
+  }));
 }
 
 function contentType(file) {

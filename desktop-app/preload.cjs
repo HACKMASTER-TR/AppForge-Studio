@@ -22,11 +22,15 @@ const localAi = Object.freeze({
   chat: payload => ipcRenderer.invoke("appforge:local-ai:chat", payload)
 });
 
+const security = Object.freeze({
+  getState: () => ipcRenderer.invoke("appforge:security:state")
+});
+
 contextBridge.exposeInMainWorld("AppForgeDesktop", Object.freeze({
   apiBaseUrl: process.env.APPFORGE_API_BASE_URL || "https://appforge-studio-production.up.railway.app",
   auth,
   store,
   keystore,
   localAi,
-  security: Object.freeze({ safeStorage: true })
+  security
 }));
