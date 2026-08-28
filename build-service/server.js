@@ -182,6 +182,35 @@ const app = express();
 
 app.disable("x-powered-by");
 
+/*
+ * Web Studio GitHub Pages'te, Windows istemcisi ise yalnız loopback
+ * üzerinde çalışır. API CORS'u yalnız bu güvenilir origin'lere açılır;
+ * token'lar cookie yerine Authorization başlığında taşınır.
+ */
+function isAllowedWebStudioOrigin(origin) {
+  return (
+    config.webStudioAllowedOrigins.includes(origin) ||
+    /^http:\/\/(localhost|127\.0\.0\.1)(?::\d+)?$/i.test(origin)
+  );
+}
+
+app.use("/api", (req, res, next) => {
+  const origin = String(req.get("origin") || "");
+
+  if (origin && isAllowedWebStudioOrigin(origin)) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept");
+    res.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    res.set("Vary", "Origin");
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+  }
+
+  return next();
+});
+
 app.use(
   express.json({
     limit: "2mb"

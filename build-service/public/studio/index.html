@@ -29,7 +29,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px so
 <body>
 <header>
 <div class="row">
-<strong>AppForge Studio Web v1.7</strong>
+<strong>AppForge Studio Web v1.8</strong>
 <span class="muted">Live Operations</span>
 <span id="autosaveStatus" class="status muted">Autosave hazır</span>
 </div>
@@ -157,7 +157,10 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px so
 </section>
 </main>
 
-<script src="/vendor/monaco/loader.js"></script>
+<script>
+window.APPFORGE_MONACO_ROOT=(location.hostname.endsWith(".github.io")||location.protocol==="file:")?"./vendor/monaco":"/vendor/monaco";
+document.write('<script src="'+window.APPFORGE_MONACO_ROOT+'/loader.js"><\\/script>');
+</script>
 <script>
 let token=localStorage.getItem("afs_jwt")||"";
 let challengeToken="";
@@ -189,6 +192,11 @@ let autosaveTimer=null;
 let liveLogAbort=null;
 let lastLiveLogId=0;
 
+const standaloneWeb=location.hostname.endsWith(".github.io");
+const desktopApiBase=window.AppForgeDesktop?.apiBaseUrl||"";
+if(desktopApiBase)baseUrl.value=desktopApiBase;
+else if(standaloneWeb)baseUrl.value="https://appforge-studio-production.up.railway.app";
+
 function base(){const t=baseUrl.value.trim();return t?t.replace(/\/$/,""):location.origin}
 async function api(path,opts={}){
  const headers={...(opts.headers||{}),Accept:"application/json"};
@@ -204,7 +212,7 @@ function finishLogin(j){if(j?.token){token=j.token;localStorage.setItem("afs_jwt
 function tab(id,el){document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));document.getElementById(id).classList.remove("hidden");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));el.classList.add("active");if(id==="projectsPanel")loadProjects();if(id==="historyPanel")loadRevisions();if(id==="buildsPanel")loadBuilds();if(id==="teamsPanel")loadTeams();if(id==="securityPanel")loadMe()}
 function lang(path){const e=path.split(".").pop().toLowerCase();return e==="html"?"html":e==="css"?"css":["js","mjs"].includes(e)?"javascript":e==="json"?"json":"plaintext"}
 function initMonaco(){
- require.config({paths:{vs:"/vendor/monaco"}});
+ require.config({paths:{vs:window.APPFORGE_MONACO_ROOT}});
  require(["vs/editor/editor.main"],()=>{
   editor=monaco.editor.create(document.getElementById("monaco"),{value:files[activeFile],language:lang(activeFile),theme:"vs-dark",automaticLayout:true,minimap:{enabled:false},fontSize:14,wordWrap:"on"});
   editor.onDidChangeModelContent(()=>{files[activeFile]=editor.getValue();dirty=true;autosaveStatus.textContent="Değişiklik var";autosaveStatus.className="status yellow";preview();scheduleAutosave()});
@@ -458,7 +466,7 @@ async function setup2fa(){try{const j=await api("/api/auth/2fa/setup",{method:"P
 async function confirm2fa(){try{await api("/api/auth/2fa/confirm",{method:"POST",body:{code:confirm2faCode.value}});alert("2FA etkin.")}catch(e){alert(e.message)}}
 function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}
 
-require.config({paths:{vs:"/vendor/monaco"}});
+require.config({paths:{vs:window.APPFORGE_MONACO_ROOT}});
 require(["vs/editor/editor.main"],()=>{editor=monaco.editor.create(document.getElementById("monaco"),{value:files[activeFile],language:lang(activeFile),theme:"vs-dark",automaticLayout:true,minimap:{enabled:false},fontSize:14,wordWrap:"on"});editor.onDidChangeModelContent(()=>{files[activeFile]=editor.getValue();dirty=true;autosaveStatus.textContent="Değişiklik var";autosaveStatus.className="status yellow";preview();scheduleAutosave()});renderTree();preview()});
 if(token)finishLogin({token});
 </script>

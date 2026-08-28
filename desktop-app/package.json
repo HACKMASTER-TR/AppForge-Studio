@@ -1,0 +1,48 @@
+{
+  "name": "appforge-studio-desktop",
+  "version": "3.1.0",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "prepare-assets": "node scripts/prepare-assets.cjs",
+    "package:win": "npm run prepare-assets && electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "43.4.1",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.appforge.studio.desktop",
+    "productName": "AppForge Studio",
+    "electronVersion": "43.4.1",
+    "asar": true,
+    "npmRebuild": false,
+    "compression": "store",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs"
+    ],
+    "extraResources": [
+      {
+        "from": "site",
+        "to": "public"
+      }
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "AppForgeStudio-Windows-${version}.exe"
+    }
+  }
+}

@@ -17,6 +17,10 @@ export const config = {
   port: Number(process.env.PORT || 8080),
   publicBaseUrl: String(process.env.PUBLIC_BASE_URL || "http://localhost:8080")
     .replace(/\/$/, ""),
+  webStudioAllowedOrigins: csv(
+    "WEB_STUDIO_ALLOWED_ORIGINS",
+    "https://hackmaster-tr.github.io"
+  ),
 
   gradleBin: process.env.GRADLE_BIN || "gradle",
   gradleCacheRoot: path.resolve(

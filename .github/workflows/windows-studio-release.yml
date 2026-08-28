@@ -1,0 +1,59 @@
+name: AppForge Studio Windows Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "desktop-app/**"
+      - "build-service/public/studio/**"
+      - ".github/workflows/windows-studio-release.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: appforge-studio-windows-release
+  cancel-in-progress: true
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Install desktop dependencies
+        working-directory: desktop-app
+        run: npm install
+
+      - name: Package portable Windows EXE
+        working-directory: desktop-app
+        run: npm run package:win
+
+      - name: Prepare latest EXE
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem desktop-app/dist -Filter *.exe | Select-Object -First 1
+          if ($null -eq $exe -or $exe.Length -le 0) { throw "Windows EXE bulunamadı." }
+          Copy-Item $exe.FullName AppForgeStudio-latest.exe
+          Get-FileHash AppForgeStudio-latest.exe -Algorithm SHA256
+
+      - name: Publish latest EXE release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view appforge-studio-windows-latest >/dev/null 2>&1; then
+            gh release upload appforge-studio-windows-latest AppForgeStudio-latest.exe --clobber
+          else
+            gh release create appforge-studio-windows-latest AppForgeStudio-latest.exe --title "AppForge Studio Windows Latest" --notes "Latest portable AppForge Studio Windows client." --target "$GITHUB_SHA"
+          fi
