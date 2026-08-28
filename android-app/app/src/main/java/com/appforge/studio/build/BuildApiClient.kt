@@ -305,7 +305,9 @@ class BuildApiClient(
             })
 
             put("features", JSONObject().apply {
-                put("fileUpload", draft.fileUpload)
+                // Mikrofon/WebRTC izni, güvenli WebChromeClient izin
+                // yönlendiricisini kullanan dosya-yakalama altyapısına bağlıdır.
+                put("fileUpload", draft.fileUpload || draft.microphone)
                 put("downloads", draft.downloads)
                 put("fullscreen", draft.fullscreen)
                 put(
@@ -314,7 +316,17 @@ class BuildApiClient(
                         draft.firebaseMessagingEnabled
                 )
                 put("camera", draft.camera)
+                put("microphone", draft.microphone)
                 put("location", draft.location)
+                put("networkState", draft.networkState)
+                put("wakeLock", draft.wakeLock)
+                put("nfc", draft.nfc)
+                put(
+                    "additionalPermissions",
+                    org.json.JSONArray(
+                        draft.additionalPermissions.sorted()
+                    )
+                )
                 put("offlineCache", draft.offlineCache)
             })
         }.toString()

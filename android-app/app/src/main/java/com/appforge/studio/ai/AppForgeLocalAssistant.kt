@@ -932,7 +932,7 @@ class AppForgeLocalAssistant(
                  * azaltır ve yanıt süresini iyileştirir.
                  */
                 maxNumTokens =
-                    1536,
+                    768,
                 cacheDir =
                     File(
                         appContext.cacheDir,
@@ -1010,7 +1010,7 @@ class AppForgeLocalAssistant(
             samplerConfig =
                 SamplerConfig(
                     topK =
-                        20,
+                        12,
                     topP =
                         0.80,
                     temperature =

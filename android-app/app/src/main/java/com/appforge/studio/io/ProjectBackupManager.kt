@@ -496,8 +496,30 @@ object ProjectBackupManager {
                 d.camera
             )
             put(
+                "microphone",
+                d.microphone
+            )
+            put(
                 "location",
                 d.location
+            )
+            put(
+                "networkState",
+                d.networkState
+            )
+            put(
+                "wakeLock",
+                d.wakeLock
+            )
+            put(
+                "nfc",
+                d.nfc
+            )
+            put(
+                "additionalPermissions",
+                org.json.JSONArray(
+                    d.additionalPermissions.sorted()
+                )
             )
             put(
                 "offlineCache",
@@ -821,11 +843,43 @@ object ProjectBackupManager {
                     "camera",
                     false
                 ),
+            microphone =
+                o.optBoolean(
+                    "microphone",
+                    false
+                ),
             location =
                 o.optBoolean(
                     "location",
                     false
                 ),
+            networkState =
+                o.optBoolean(
+                    "networkState",
+                    true
+                ),
+            wakeLock =
+                o.optBoolean(
+                    "wakeLock",
+                    false
+                ),
+            nfc =
+                o.optBoolean(
+                    "nfc",
+                    false
+                ),
+            additionalPermissions =
+                o.optJSONArray(
+                    "additionalPermissions"
+                )?.let { array ->
+                    buildSet {
+                        for (index in 0 until array.length()) {
+                            array.optString(index)
+                                .takeIf { it.isNotBlank() }
+                                ?.let(::add)
+                        }
+                    }
+                } ?: emptySet(),
             offlineCache =
                 o.optBoolean(
                     "offlineCache",

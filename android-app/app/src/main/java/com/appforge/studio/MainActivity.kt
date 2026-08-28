@@ -56,6 +56,7 @@ import com.appforge.studio.ai.AppForgeKnowledgeBase
 import com.appforge.studio.ai.AppForgeProjectAdvisor
 import com.appforge.studio.ai.AppForgeBuildErrorAdvisor
 import com.appforge.studio.ai.AppForgeAssistantIntegration
+import com.appforge.studio.ai.AppForgeAiCommandParser
 import com.appforge.studio.ai.AppForgeSmartSuggestions
 import com.appforge.studio.ai.AssistantAppAction
 import com.appforge.studio.ai.AssistantDestination
@@ -76,6 +77,7 @@ import com.appforge.studio.io.KeystoreVault
 import com.appforge.studio.io.ManagedKeystore
 import com.appforge.studio.io.ProjectBackupManager
 import com.appforge.studio.io.ProjectImporter
+import com.appforge.studio.io.FirebaseConfigInspector
 import com.appforge.studio.io.SourceCapabilityAnalysis
 import com.appforge.studio.io.SourceCapabilityAnalyzer
 import com.appforge.studio.io.TemplateProjectFactory
@@ -506,6 +508,14 @@ private fun AppForgeApp() {
     var screen by remember { mutableStateOf(AppScreen.HOME) }
     var step by remember { mutableIntStateOf(1) }
 
+    // Yalnız daha önce açıkça kaydedilmiş projeleri debounce ile güncelle.
+    // ProjectLibrary secret alanları diske yazmadığı için izolasyon korunur.
+    LaunchedEffect(currentProjectId, draft) {
+        val projectId = currentProjectId ?: return@LaunchedEffect
+        delay(1200L)
+        ProjectLibrary.save(context, draft, projectId)
+    }
+
     /*
      * Önizleme / Production / AI gibi yardımcı ekranlardan
      * geri dönerken proje ve mevcut builder adımı korunur.
@@ -795,11 +805,26 @@ private fun AppForgeApp() {
                         camera =
                             analysis.camera,
 
+                        microphone =
+                            analysis.microphone,
+
                         location =
                             analysis.location,
 
                         notifications =
                             analysis.notifications,
+
+                        networkState =
+                            analysis.networkState,
+
+                        wakeLock =
+                            analysis.wakeLock,
+
+                        nfc =
+                            analysis.nfc,
+
+                        additionalPermissions =
+                            analysis.additionalPermissions,
 
                         fileUpload =
                             analysis.fileUpload,
@@ -916,11 +941,26 @@ private fun AppForgeApp() {
                 context,
                 uri
             )
-            draft = draft.copy(
-                firebaseConfigUri = uri.toString(),
-                firebaseConfigName = uri.lastPathSegment ?: "google-services.json"
-            )
-            status = "Firebase yapılandırması seçildi."
+            status = "Firebase yapılandırması doğrulanıyor..."
+            scope.launch {
+                try {
+                    val inspection = withContext(Dispatchers.IO) {
+                        FirebaseConfigInspector.inspect(context, uri, draft.packageName)
+                    }
+                    if (!inspection.packageMatches) {
+                        status =
+                            "Firebase package uyuşmuyor. Beklenen: ${draft.packageName}; dosya: ${inspection.packageNames.joinToString()}"
+                        return@launch
+                    }
+                    draft = draft.copy(
+                        firebaseConfigUri = uri.toString(),
+                        firebaseConfigName = uri.lastPathSegment ?: "google-services.json"
+                    )
+                    status = "Firebase doğrulandı • ${inspection.projectId}"
+                } catch (t: Throwable) {
+                    status = "Firebase dosyası geçersiz: ${t.message}"
+                }
+            }
         }
     }
 
@@ -1418,6 +1458,8 @@ private fun AppForgeApp() {
                     serverUrl
                 )
 
+                var uploadCacheHit = false
+
                 val zip =
                     withContext(
                         Dispatchers.IO
@@ -1434,13 +1476,15 @@ private fun AppForgeApp() {
                                         "Önce HTML/ZIP kaynağı seç."
                                     )
 
-                            ZipUtils.zipDirectory(
-                                sourceDir,
-                                File(
+                            ZipUtils.cachedZipDirectory(
+                                sourceDir = sourceDir,
+                                cacheDir = File(
                                     context.cacheDir,
-                                    "build-upload/project.zip"
+                                    "build-upload-cache"
                                 )
-                            )
+                            ).also {
+                                uploadCacheHit = it.cacheHit
+                            }.file
                         } else {
                             null
                         }
@@ -1452,6 +1496,11 @@ private fun AppForgeApp() {
                         baseUrl = serverUrl,
                         apiKey = apiKey
                     )
+
+                if (uploadCacheHit) {
+                    status =
+                        "Kaynak değişmedi • hızlı ZIP önbelleği kullanıldı"
+                }
 
                 /*
                  * Aynı idempotency key bütün tekrar
@@ -5177,7 +5226,9 @@ private fun productionChecks(
         draft.admobEnabled ||
         draft.billingEnabled ||
         draft.location ||
-        draft.camera
+        draft.camera ||
+        draft.microphone ||
+        draft.nfc
     ) {
         checks +=
             ProductionCheck(
@@ -5195,6 +5246,42 @@ private fun productionChecks(
                 "Remote Native Bridge",
                 "Uzak içerikte Native Bridge açık. Yalnız güvenilir HTTPS origin kullan.",
                 CheckLevel.WARN
+            )
+    }
+
+    if (draft.webMixedContentAllowed) {
+        checks +=
+            ProductionCheck(
+                "Mixed content",
+                "HTTPS sayfa içinde güvensiz HTTP içeriğe izin veriliyor. Üretimde kapatılması önerilir.",
+                CheckLevel.WARN
+            )
+    }
+
+    val firebaseEnabled =
+        draft.firebaseAnalyticsEnabled ||
+            draft.firebaseCrashlyticsEnabled ||
+            draft.firebaseMessagingEnabled
+
+    if (firebaseEnabled) {
+        checks +=
+            ProductionCheck(
+                "Firebase yapılandırması",
+                if (draft.firebaseConfigUri.isNullOrBlank()) {
+                    "Firebase özelliği açık ancak google-services.json seçilmedi."
+                } else {
+                    draft.firebaseConfigName.ifBlank { "google-services.json hazır" }
+                },
+                if (draft.firebaseConfigUri.isNullOrBlank()) CheckLevel.BLOCK else CheckLevel.PASS
+            )
+    }
+
+    if ("BACKGROUND_LOCATION" in draft.additionalPermissions && !draft.location) {
+        checks +=
+            ProductionCheck(
+                "Arka plan konumu",
+                "Arka plan konumu seçili fakat temel konum izni kapalı.",
+                CheckLevel.BLOCK
             )
     }
 
@@ -6416,6 +6503,31 @@ private fun ProductionCenterScreen(
                 ProductionCheckCard(
                     check
                 )
+            }
+
+            if (
+                draft.webMixedContentAllowed ||
+                draft.remoteBridgeAllowed ||
+                draft.versionCode < 1 ||
+                draft.versionName.isBlank()
+            ) {
+                item {
+                    OutlinedButton(
+                        onClick = {
+                            onDraftChange(
+                                draft.copy(
+                                    webMixedContentAllowed = false,
+                                    remoteBridgeAllowed = false,
+                                    versionCode = draft.versionCode.coerceAtLeast(1),
+                                    versionName = draft.versionName.ifBlank { "1.0.0" }
+                                )
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("🛡 GÜVENLİ DÜZELTMELERİ UYGULA")
+                    }
+                }
             }
 
             item {
@@ -8259,6 +8371,25 @@ private fun LocalAiAssistantScreen(
                     question
                 )
 
+        AppForgeAiCommandParser
+            .parse(question, draft)
+            ?.let { command ->
+                input = ""
+                onDraftChange(command.draft)
+                suggestedActions =
+                    listOf(
+                        AssistantAppAction(
+                            command.destination,
+                            "Değişikliği aç",
+                            "Uygulanan proje ayarını gözden geçir."
+                        )
+                    )
+                addMessage("user", question)
+                addMessage("assistant", command.answer)
+                status = "Komut uygulandı • cihaz üzerinde anında"
+                return
+            }
+
         val normalizedQuestion =
             question.lowercase()
 
@@ -8313,6 +8444,41 @@ private fun LocalAiAssistantScreen(
             return
         }
 
+        val quickGuidance =
+            if (
+                languageCode == "tr" ||
+                languageCode == "system"
+            ) {
+                AppForgeAssistantIntegration
+                    .quickGuidance(
+                        question
+                    )
+            } else {
+                null
+            }
+
+        if (quickGuidance != null) {
+            input = ""
+
+            suggestedActions =
+                quickGuidance.actions
+
+            addMessage(
+                "user",
+                question
+            )
+
+            addMessage(
+                "assistant",
+                quickGuidance.answer
+            )
+
+            status =
+                "Yanıt tamamlandı • hızlı yönlendirme"
+
+            return
+        }
+
         /*
          * AppForge sık soruları modelden bağımsızdır.
          * Model henüz yüklenirken bile bilgi tabanından anında cevap ver.
@@ -8354,7 +8520,7 @@ private fun LocalAiAssistantScreen(
 
         if (!initialized) {
             status =
-                "Yerel AI hazırlanıyor. Birkaç saniye sonra tekrar dene."
+                "Yerel AI hazırlanıyor; bilgi ve yönlendirme soruları bu sırada da anında çalışır."
             return
         }
 
@@ -10071,6 +10237,26 @@ private fun SourceStep(
     }
 }
 
+private data class ExtraPermissionSpec(
+    val key: String,
+    val title: String,
+    val description: String,
+    val manifestLabel: String
+)
+
+private val extraPermissionSpecs =
+    listOf(
+        ExtraPermissionSpec("BLUETOOTH", "Bluetooth ve yakın cihazlar", "Android 12+ tarama ve bağlantı izinlerini ekler.", "BLUETOOTH_SCAN / CONNECT"),
+        ExtraPermissionSpec("BIOMETRIC", "Biyometrik doğrulama", "Parmak izi veya yüz doğrulama kullanan native projeler içindir.", "USE_BIOMETRIC"),
+        ExtraPermissionSpec("CALENDAR", "Takvim", "Takvim etkinliklerini okuma ve yazma yeteneklerini ekler.", "READ / WRITE_CALENDAR"),
+        ExtraPermissionSpec("CONTACTS", "Kişiler", "Kişi listesini okuma ve kullanıcı onayıyla kayıt ekleme yeteneklerini ekler.", "READ / WRITE_CONTACTS"),
+        ExtraPermissionSpec("BACKGROUND_LOCATION", "Arka plan konumu", "Yüksek hassasiyetli izindir; yalnız gerçek arka plan konum ihtiyacında aç.", "ACCESS_BACKGROUND_LOCATION"),
+        ExtraPermissionSpec("EXACT_ALARM", "Kesin alarm", "Tam zamanında alarm/hatırlatıcı kuran uygulamalar içindir.", "SCHEDULE_EXACT_ALARM"),
+        ExtraPermissionSpec("MEDIA_IMAGES", "Fotoğraf erişimi", "Android 13+ cihazlarda galerideki görselleri okumayı sağlar.", "READ_MEDIA_IMAGES"),
+        ExtraPermissionSpec("MEDIA_VIDEO", "Video erişimi", "Android 13+ cihazlarda galerideki videoları okumayı sağlar.", "READ_MEDIA_VIDEO"),
+        ExtraPermissionSpec("ACTIVITY_RECOGNITION", "Fiziksel aktivite", "Adım ve hareket tanıma özellikleri içindir.", "ACTIVITY_RECOGNITION")
+    )
+
 @Composable
 private fun PermissionsStep(
     d: ProjectDraft,
@@ -10084,9 +10270,14 @@ private fun PermissionsStep(
     val permissionCount =
         listOf(
             d.camera,
+            d.microphone,
             d.location,
-            d.notifications
+            d.notifications,
+            d.networkState,
+            d.wakeLock,
+            d.nfc
         ).count { it }
+            + d.additionalPermissions.size
 
     LazyColumn(
         contentPadding = PaddingValues(if (formCompact) 12.dp else 20.dp),
@@ -10233,6 +10424,30 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                title = "Mikrofon",
+                description =
+                    if (analysis?.microphone == true) {
+                        "Ses kaydı ve WebRTC mikrofon erişimi için RECORD_AUDIO iznini ekler.\n" +
+                            "✓ Otomatik algılandı • " +
+                            (analysis.microphoneReason ?: "Mikrofon kullanımı")
+                    } else {
+                        "Ses kaydı ve WebRTC mikrofon erişimi için RECORD_AUDIO iznini ekler."
+                    },
+                checked = d.microphone,
+                permission = "RECORD_AUDIO"
+            ) {
+                update(
+                    d.copy(
+                        microphone = it,
+                        fileUpload =
+                            d.fileUpload || it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
                 title = "Konum",
                 description =
                     if (
@@ -10255,6 +10470,72 @@ private fun PermissionsStep(
                 update(
                     d.copy(
                         location = it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title = "Ağ durumunu okuma",
+                description =
+                    if (analysis?.networkState == true) {
+                        "İnternet bağlantısının Wi-Fi veya mobil veri durumunu kontrol etmeyi sağlar.\n" +
+                            "✓ Otomatik algılandı • " +
+                            (analysis.networkStateReason ?: "Ağ durumu kullanımı")
+                    } else {
+                        "İnternet bağlantısının Wi-Fi veya mobil veri durumunu kontrol etmeyi sağlar."
+                    },
+                checked = d.networkState,
+                permission = "ACCESS_NETWORK_STATE"
+            ) {
+                update(
+                    d.copy(
+                        networkState = it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title = "Ekranı/işlemi uyanık tutma",
+                description =
+                    if (analysis?.wakeLock == true) {
+                        "Uzun medya, aktarım veya kiosk işlemlerinde WAKE_LOCK yeteneğini ekler.\n" +
+                            "✓ Otomatik algılandı • " +
+                            (analysis.wakeLockReason ?: "Wake Lock kullanımı")
+                    } else {
+                        "Uzun medya, aktarım veya kiosk işlemlerinde WAKE_LOCK yeteneğini ekler."
+                    },
+                checked = d.wakeLock,
+                permission = "WAKE_LOCK"
+            ) {
+                update(
+                    d.copy(
+                        wakeLock = it
+                    )
+                )
+            }
+        }
+
+        item {
+            FeatureToggleCard(
+                title = "NFC",
+                description =
+                    if (analysis?.nfc == true) {
+                        "NFC destekli kaynak projeler için NFC donanım erişimini bildirir.\n" +
+                            "✓ Otomatik algılandı • " +
+                            (analysis.nfcReason ?: "NFC kullanımı")
+                    } else {
+                        "NFC destekli kaynak projeler için NFC donanım erişimini bildirir."
+                    },
+                checked = d.nfc,
+                permission = "NFC"
+            ) {
+                update(
+                    d.copy(
+                        nfc = it
                     )
                 )
             }
@@ -10291,8 +10572,39 @@ private fun PermissionsStep(
         }
 
         item {
+            Text(
+                "Gelişmiş izinler",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+        }
+
+        items(
+            extraPermissionSpecs,
+            key = { it.key }
+        ) { spec ->
+            FeatureToggleCard(
+                title = spec.title,
+                description = spec.description,
+                checked = spec.key in d.additionalPermissions,
+                permission = spec.manifestLabel
+            ) { enabled ->
+                update(
+                    d.copy(
+                        additionalPermissions =
+                            if (enabled) {
+                                d.additionalPermissions + spec.key
+                            } else {
+                                d.additionalPermissions - spec.key
+                            }
+                    )
+                )
+            }
+        }
+
+        item {
             NoteCard(
-                "🔍 HTML/ZIP seçildiğinde Kamera, Konum, Bildirim ve ilgili WebView özellikleri kaynak koduna göre otomatik işaretlenir."
+                "🔍 Yüklenen HTML/ZIP veya kaynak projede Kamera, Mikrofon, Konum, Bildirim, Ağ durumu, WAKE_LOCK, NFC ve ilgili özellikler otomatik algılanıp işaretlenir."
             )
         }
 
@@ -13638,8 +13950,12 @@ private fun BuildSettingsStep(
                         "İzinler: ${
                             listOf(
                                 draft.camera,
+                                draft.microphone,
                                 draft.location,
-                                draft.notifications
+                                draft.notifications,
+                                draft.networkState,
+                                draft.wakeLock,
+                                draft.nfc
                             ).count {
                                 it
                             }
@@ -17304,6 +17620,38 @@ private fun templateCategoryCatalog() = listOf(
         icon = "▦",
         container = Color(0xFF4A420E),
         accent = Color(0xFFFFD53D)
+    ),
+    TemplateCategorySpec(
+        key = "productivity",
+        title = "Verimlilik",
+        subtitle = "Görev, not ve günlük iş akışları",
+        icon = "✓",
+        container = Color(0xFF17382D),
+        accent = Color(0xFF65E3A1)
+    ),
+    TemplateCategorySpec(
+        key = "business",
+        title = "İşletme",
+        subtitle = "Stok, randevu ve operasyon panelleri",
+        icon = "▤",
+        container = Color(0xFF243557),
+        accent = Color(0xFF86A9FF)
+    ),
+    TemplateCategorySpec(
+        key = "commerce",
+        title = "E-ticaret ve Menü",
+        subtitle = "Ürün, mobil menü, sepet ve mağaza başlangıçları",
+        icon = "◈",
+        container = Color(0xFF4A2A22),
+        accent = Color(0xFFFF9A72)
+    ),
+    TemplateCategorySpec(
+        key = "events",
+        title = "Etkinlik",
+        subtitle = "Davetiye, katılım ve etkinlik bilgi ekranları",
+        icon = "★",
+        container = Color(0xFF412653),
+        accent = Color(0xFFD991FF)
     )
 )
 
@@ -17332,7 +17680,11 @@ private fun normalizeTemplateCategory(template: RemoteTemplate): String {
             "device",
             "sensors",
             "system",
-            "panels"
+            "panels",
+            "productivity",
+            "business",
+            "commerce",
+            "events"
         )
 
     if (
@@ -20226,7 +20578,23 @@ private fun applyTemplate(current: ProjectDraft, template: RemoteTemplate): Proj
             downloads = features?.optBoolean("downloads", current.downloads) ?: current.downloads,
             fullscreen = features?.optBoolean("fullscreen", current.fullscreen) ?: current.fullscreen,
             camera = features?.optBoolean("camera", current.camera) ?: current.camera,
+            microphone = features?.optBoolean("microphone", current.microphone) ?: current.microphone,
             location = features?.optBoolean("location", current.location) ?: current.location,
+            networkState = features?.optBoolean("networkState", current.networkState) ?: current.networkState,
+            wakeLock = features?.optBoolean("wakeLock", current.wakeLock) ?: current.wakeLock,
+            nfc = features?.optBoolean("nfc", current.nfc) ?: current.nfc,
+            additionalPermissions =
+                features?.optJSONArray("additionalPermissions")
+                    ?.let { array ->
+                        buildSet {
+                            for (index in 0 until array.length()) {
+                                array.optString(index)
+                                    .takeIf { it.isNotBlank() }
+                                    ?.let(::add)
+                            }
+                        }
+                    }
+                    ?: current.additionalPermissions,
             notifications = features?.optBoolean("notifications", current.notifications) ?: current.notifications,
             offlineCache = features?.optBoolean("offlineCache", current.offlineCache) ?: current.offlineCache,
 

@@ -11,16 +11,25 @@ data class SourceCapabilityAnalysis(
     val technologyReason: String? = null,
 
     val camera: Boolean = false,
+    val microphone: Boolean = false,
     val location: Boolean = false,
     val notifications: Boolean = false,
+    val networkState: Boolean = false,
+    val wakeLock: Boolean = false,
+    val nfc: Boolean = false,
+    val additionalPermissions: Set<String> = emptySet(),
     val fileUpload: Boolean = false,
     val downloads: Boolean = false,
     val mediaPlayer: Boolean = false,
     val qrScanner: Boolean = false,
 
     val cameraReason: String? = null,
+    val microphoneReason: String? = null,
     val locationReason: String? = null,
     val notificationsReason: String? = null,
+    val networkStateReason: String? = null,
+    val wakeLockReason: String? = null,
+    val nfcReason: String? = null,
     val fileUploadReason: String? = null,
     val downloadsReason: String? = null,
     val mediaPlayerReason: String? = null,
@@ -40,8 +49,13 @@ data class SourceCapabilityAnalysis(
                 )
             }
             if (camera) add("Kamera")
+            if (microphone) add("Mikrofon")
             if (location) add("Konum")
             if (notifications) add("Bildirim")
+            if (networkState) add("Ağ durumu")
+            if (wakeLock) add("Uyanık tutma")
+            if (nfc) add("NFC")
+            additionalPermissions.forEach { add(it.replace('_', ' ')) }
             if (fileUpload) add("Dosya yükleme")
             if (downloads) add("DownloadManager")
             if (mediaPlayer) add("Media3")
@@ -73,6 +87,13 @@ data class SourceCapabilityAnalysis(
                 )
             }
 
+            if (microphone) {
+                add(
+                    "Mikrofon • " +
+                        (microphoneReason ?: "Ses yakalama kullanımı bulundu")
+                )
+            }
+
             if (location) {
                 add(
                     "Konum • " +
@@ -91,6 +112,22 @@ data class SourceCapabilityAnalysis(
                                 ?: "Bildirim kullanımı bulundu"
                         )
                 )
+            }
+
+            if (networkState) {
+                add("Ağ durumu • " + (networkStateReason ?: "Bağlantı kontrolü bulundu"))
+            }
+
+            if (wakeLock) {
+                add("Uyanık tutma • " + (wakeLockReason ?: "Wake Lock kullanımı bulundu"))
+            }
+
+            if (nfc) {
+                add("NFC • " + (nfcReason ?: "NFC kullanımı bulundu"))
+            }
+
+            additionalPermissions.forEach {
+                add("Gelişmiş izin • ${it.replace('_', ' ')}")
             }
 
             if (fileUpload) {
@@ -161,7 +198,20 @@ object SourceCapabilityAnalyzer {
             "json",
             "css",
             "vue",
-            "svelte"
+            "svelte",
+            "xml",
+            "kt",
+            "kts",
+            "java",
+            "gradle",
+            "dart",
+            "cs",
+            "cpp",
+            "cc",
+            "c",
+            "h",
+            "hpp",
+            "py"
         )
 
 
@@ -174,7 +224,14 @@ object SourceCapabilityAnalyzer {
 
     private val cameraInputRegex =
         Regex(
-            """<input\b(?=[^>]*\btype\s*=\s*["']?file["']?)(?=[^>]*\bcapture\b)[^>]*>""",
+            """<input\b(?=[^>]*\btype\s*=\s*["']?file["']?)(?=[^>]*\bcapture\b)(?![^>]*\baccept\s*=\s*["'][^"']*audio/)[^>]*>""",
+            RegexOption.IGNORE_CASE
+        )
+
+
+    private val audioCaptureInputRegex =
+        Regex(
+            """<input\b(?=[^>]*\btype\s*=\s*["']?file["']?)(?=[^>]*\baccept\s*=\s*["'][^"']*audio/)(?=[^>]*\bcapture\b)[^>]*>""",
             RegexOption.IGNORE_CASE
         )
 
@@ -228,11 +285,26 @@ object SourceCapabilityAnalyzer {
         var camera =
             false
 
+        var microphone =
+            false
+
         var location =
             false
 
         var notifications =
             false
+
+        var networkState =
+            false
+
+        var wakeLock =
+            false
+
+        var nfc =
+            false
+
+        val additionalPermissions =
+            mutableSetOf<String>()
 
         var fileUpload =
             false
@@ -250,10 +322,22 @@ object SourceCapabilityAnalyzer {
         var cameraReason: String? =
             null
 
+        var microphoneReason: String? =
+            null
+
         var locationReason: String? =
             null
 
         var notificationsReason: String? =
+            null
+
+        var networkStateReason: String? =
+            null
+
+        var wakeLockReason: String? =
+            null
+
+        var nfcReason: String? =
             null
 
         var fileUploadReason: String? =
@@ -396,7 +480,38 @@ object SourceCapabilityAnalyzer {
                         cameraReason =
                             "facingMode kamera seçimi"
                     }
+
+                    lower.contains("android.permission.camera") ||
+                        lower.contains("manifest.permission.camera") -> {
+                        camera = true
+                        cameraReason = "Android CAMERA izni"
+                    }
                 }
+            }
+
+            if (
+                !microphone &&
+                (
+                    lower.contains("android.permission.record_audio") ||
+                    lower.contains("manifest.permission.record_audio") ||
+                    (
+                        lower.contains("getusermedia") &&
+                        (
+                            lower.contains("audio:true") ||
+                            lower.contains("audio: true") ||
+                            lower.contains("audio: {")
+                        )
+                    ) ||
+                    audioCaptureInputRegex.containsMatchIn(text)
+                )
+            ) {
+                microphone = true
+                microphoneReason =
+                    if (lower.contains("record_audio")) {
+                        "Android RECORD_AUDIO izni"
+                    } else {
+                        "Ses yakalama API'si"
+                    }
             }
 
 
@@ -437,6 +552,13 @@ object SourceCapabilityAnalyzer {
 
                         locationReason =
                             "watchPosition()"
+                    }
+
+                    lower.contains("android.permission.access_fine_location") ||
+                        lower.contains("android.permission.access_coarse_location") ||
+                        lower.contains("manifest.permission.access_fine_location") -> {
+                        location = true
+                        locationReason = "Android konum izni"
                     }
                 }
             }
@@ -480,7 +602,76 @@ object SourceCapabilityAnalyzer {
                         notificationsReason =
                             "showNotification()"
                     }
+
+                    lower.contains("android.permission.post_notifications") ||
+                        lower.contains("manifest.permission.post_notifications") -> {
+                        notifications = true
+                        notificationsReason = "Android POST_NOTIFICATIONS izni"
+                    }
                 }
+            }
+
+            if (
+                !networkState &&
+                listOf(
+                    "navigator.online",
+                    "navigator.onLine".lowercase(),
+                    "connectivitymanager",
+                    "android.permission.access_network_state",
+                    "manifest.permission.access_network_state"
+                ).any { lower.contains(it) }
+            ) {
+                networkState = true
+                networkStateReason = "Bağlantı/ağ durumu API'si"
+            }
+
+            if (
+                !wakeLock &&
+                listOf(
+                    "navigator.wakelock",
+                    "flag_keep_screen_on",
+                    "android.permission.wake_lock",
+                    "manifest.permission.wake_lock",
+                    ".newwakelock("
+                ).any { lower.contains(it) }
+            ) {
+                wakeLock = true
+                wakeLockReason = "Wake Lock / ekranı açık tutma kullanımı"
+            }
+
+            if (
+                !nfc &&
+                listOf(
+                    "ndefreader",
+                    "nfcadapter",
+                    "android.permission.nfc",
+                    "manifest.permission.nfc",
+                    "navigator.nfc"
+                ).any { lower.contains(it) }
+            ) {
+                nfc = true
+                nfcReason = "NFC / NDEF kullanımı"
+            }
+
+            mapOf(
+                "BLUETOOTH" to listOf("bluetooth_scan", "bluetooth_connect", "bluetoothadapter"),
+                "BIOMETRIC" to listOf("use_biometric", "biometricprompt"),
+                "CALENDAR" to listOf("read_calendar", "write_calendar", "calendarcontract"),
+                "CONTACTS" to listOf("read_contacts", "write_contacts", "contactscontract"),
+                "BACKGROUND_LOCATION" to listOf("access_background_location"),
+                "EXACT_ALARM" to listOf("schedule_exact_alarm", "setexactandallowwhileidle"),
+                "MEDIA_IMAGES" to listOf("read_media_images"),
+                "MEDIA_VIDEO" to listOf("read_media_video"),
+                "ACTIVITY_RECOGNITION" to listOf("activity_recognition", "step_detector")
+            ).forEach { (key, markers) ->
+                if (markers.any { lower.contains(it) }) {
+                    additionalPermissions.add(key)
+                }
+            }
+
+            if ("BACKGROUND_LOCATION" in additionalPermissions && !location) {
+                location = true
+                locationReason = "Arka plan konumu temel konum izni gerektiriyor"
             }
 
 
@@ -572,8 +763,12 @@ object SourceCapabilityAnalyzer {
 
             if (
                 camera &&
+                microphone &&
                 location &&
                 notifications &&
+                networkState &&
+                wakeLock &&
+                nfc &&
                 fileUpload &&
                 downloads &&
                 mediaPlayer &&
@@ -603,11 +798,26 @@ object SourceCapabilityAnalyzer {
             camera =
                 camera,
 
+            microphone =
+                microphone,
+
             location =
                 location,
 
             notifications =
                 notifications,
+
+            networkState =
+                networkState,
+
+            wakeLock =
+                wakeLock,
+
+            nfc =
+                nfc,
+
+            additionalPermissions =
+                additionalPermissions,
 
             fileUpload =
                 fileUpload,
@@ -624,11 +834,23 @@ object SourceCapabilityAnalyzer {
             cameraReason =
                 cameraReason,
 
+            microphoneReason =
+                microphoneReason,
+
             locationReason =
                 locationReason,
 
             notificationsReason =
                 notificationsReason,
+
+            networkStateReason =
+                networkStateReason,
+
+            wakeLockReason =
+                wakeLockReason,
+
+            nfcReason =
+                nfcReason,
 
             fileUploadReason =
                 fileUploadReason,

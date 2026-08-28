@@ -42,7 +42,7 @@ export const config = {
     `worker-${process.pid}`,
   workerPollMs: Math.max(
     250,
-    Number(process.env.WORKER_POLL_MS || 1200)
+    Number(process.env.WORKER_POLL_MS || 500)
   ),
   workerHeartbeatMs: Math.max(
     1000,

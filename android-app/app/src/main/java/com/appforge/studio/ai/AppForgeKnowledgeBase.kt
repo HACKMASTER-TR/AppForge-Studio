@@ -972,7 +972,7 @@ object AppForgeKnowledgeBase {
                 "Remote Bridge: ${draft.remoteBridgeAllowed}"
             )
             appendLine(
-                "Kamera: ${draft.camera}"
+                "Kamera: ${draft.camera}; Mikrofon: ${draft.microphone}; NFC: ${draft.nfc}; Ağ durumu: ${draft.networkState}; Uyanık tutma: ${draft.wakeLock}"
             )
             appendLine(
                 "Konum: ${draft.location}"

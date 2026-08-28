@@ -44,7 +44,12 @@ data class ProjectDraft(
     var fullscreen: Boolean = false,
     var notifications: Boolean = false,
     var camera: Boolean = false,
+    var microphone: Boolean = false,
     var location: Boolean = false,
+    var networkState: Boolean = true,
+    var wakeLock: Boolean = false,
+    var nfc: Boolean = false,
+    var additionalPermissions: Set<String> = emptySet(),
     var offlineCache: Boolean = true,
 
     // WebView Pro

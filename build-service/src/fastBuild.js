@@ -493,6 +493,66 @@ export async function buildFastApk({
 `
       : "";
 
+  const microphonePermission =
+    (c.features?.microphone === true ||
+      c.features?.fileUpload === true)
+      ? `
+    <uses-permission
+        android:name="android.permission.RECORD_AUDIO" />
+`
+      : "";
+
+  const networkStatePermission =
+    c.features?.networkState === true
+      ? `
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE" />
+`
+      : "";
+
+  const wakeLockPermission =
+    c.features?.wakeLock === true
+      ? `
+    <uses-permission
+        android:name="android.permission.WAKE_LOCK" />
+`
+      : "";
+
+  const nfcPermission =
+    c.features?.nfc === true
+      ? `
+    <uses-permission
+        android:name="android.permission.NFC" />
+
+    <uses-feature
+        android:name="android.hardware.nfc"
+        android:required="false" />
+`
+      : "";
+
+  const additionalPermissionMap = {
+    BLUETOOTH: ["BLUETOOTH_SCAN", "BLUETOOTH_CONNECT"],
+    BIOMETRIC: ["USE_BIOMETRIC"],
+    CALENDAR: ["READ_CALENDAR", "WRITE_CALENDAR"],
+    CONTACTS: ["READ_CONTACTS", "WRITE_CONTACTS"],
+    BACKGROUND_LOCATION: ["ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION"],
+    EXACT_ALARM: ["SCHEDULE_EXACT_ALARM"],
+    MEDIA_IMAGES: ["READ_MEDIA_IMAGES"],
+    MEDIA_VIDEO: ["READ_MEDIA_VIDEO"],
+    ACTIVITY_RECOGNITION: ["ACTIVITY_RECOGNITION"]
+  };
+
+  const additionalPermissions =
+    (Array.isArray(c.features?.additionalPermissions)
+      ? c.features.additionalPermissions
+      : [])
+      .flatMap(key => additionalPermissionMap[key] || [])
+      .map(name => `
+    <uses-permission
+        android:name="android.permission.${name}" />
+`)
+      .join("");
+
   const qrNetworkPermission =
     qrEnabled
       ? `
@@ -582,7 +642,7 @@ export async function buildFastApk({
 
     <uses-permission
         android:name="android.permission.INTERNET" />
-${notificationPermission}${vibrationPermission}${cameraPermission}${locationPermission}${qrNetworkPermission}
+${notificationPermission}${vibrationPermission}${cameraPermission}${microphonePermission}${locationPermission}${networkStatePermission}${wakeLockPermission}${nfcPermission}${additionalPermissions}${qrNetworkPermission}
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"

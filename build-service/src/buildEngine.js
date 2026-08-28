@@ -3112,16 +3112,46 @@ dependencies {
 `
   );
 
+  const additionalPermissionMap = {
+    BLUETOOTH: ["BLUETOOTH_SCAN", "BLUETOOTH_CONNECT"],
+    BIOMETRIC: ["USE_BIOMETRIC"],
+    CALENDAR: ["READ_CALENDAR", "WRITE_CALENDAR"],
+    CONTACTS: ["READ_CONTACTS", "WRITE_CONTACTS"],
+    BACKGROUND_LOCATION: ["ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION"],
+    EXACT_ALARM: ["SCHEDULE_EXACT_ALARM"],
+    MEDIA_IMAGES: ["READ_MEDIA_IMAGES"],
+    MEDIA_VIDEO: ["READ_MEDIA_VIDEO"],
+    ACTIVITY_RECOGNITION: ["ACTIVITY_RECOGNITION"]
+  };
+
+  const additionalPermissions =
+    (Array.isArray(c.features?.additionalPermissions)
+      ? c.features.additionalPermissions
+      : [])
+      .flatMap(key => additionalPermissionMap[key] || [])
+      .map(name =>
+        `<uses-permission android:name="android.permission.${name}" />`
+      );
+
   const permissions = [
     '<uses-permission android:name="android.permission.INTERNET" />',
     c.features?.camera
       ? '<uses-permission android:name="android.permission.CAMERA" />'
       : "",
-    c.features?.fileUpload
+    (c.features?.fileUpload || c.features?.microphone)
       ? '<uses-permission android:name="android.permission.RECORD_AUDIO" />'
       : "",
     c.features?.location
       ? '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />'
+      : "",
+    c.features?.networkState
+      ? '<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />'
+      : "",
+    c.features?.wakeLock
+      ? '<uses-permission android:name="android.permission.WAKE_LOCK" />'
+      : "",
+    c.features?.nfc
+      ? '<uses-permission android:name="android.permission.NFC" />'
       : "",
     (
       c.features?.notifications ||
@@ -3141,7 +3171,8 @@ dependencies {
       : "",
     c.nativeBridge?.enabled && c.nativeBridge?.mediaPlayer
       ? '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />'
-      : ""
+      : "",
+    ...additionalPermissions
   ].filter(Boolean).join("\n    ");
 
   const deepLink = c.deepLink?.enabled

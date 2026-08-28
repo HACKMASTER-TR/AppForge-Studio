@@ -1376,6 +1376,153 @@ object TemplateProjectFactory {
                         """.trimIndent()
                 )
 
+            "task-manager" ->
+                shell(
+                    "Görev Yöneticisi",
+                    "Görevlerini ekle, tamamla ve cihazında sakla.",
+                    """
+                    <section class="card">
+                        <input id="taskInput" placeholder="Yeni görev">
+                        <button onclick="addTask()">GÖREV EKLE</button>
+                    </section>
+                    <div id="tasks" class="grid"></div>
+                    """.trimIndent(),
+                    """
+                    var tasks=JSON.parse(localStorage.getItem('tasks')||'[]');
+                    function renderTasks(){
+                        tasks=document.getElementById('tasks')?tasks:[];
+                        document.getElementById('tasks').innerHTML=tasks.map(function(t,i){
+                            return '<section class="card"><h3>'+t.text+'</h3><p>'+(t.done?'Tamamlandı':'Devam ediyor')+'</p><button onclick="toggleTask('+i+')">DURUMU DEĞİŞTİR</button></section>';
+                        }).join('');
+                        localStorage.setItem('tasks',JSON.stringify(tasks));
+                    }
+                    function addTask(){var input=document.getElementById('taskInput');if(!input.value.trim())return;tasks.push({text:input.value.trim(),done:false});input.value='';renderTasks();}
+                    function toggleTask(i){tasks[i].done=!tasks[i].done;renderTasks();}
+                    renderTasks();
+                    """.trimIndent()
+                )
+
+            "inventory-panel" ->
+                shell(
+                    "Stok ve Envanter",
+                    "Kritik seviyeleri hızlıca takip eden örnek yönetim paneli.",
+                    """
+                    <div class="grid">
+                        <section class="card"><h3>Toplam ürün</h3><div class="value">128</div></section>
+                        <section class="card"><h3>Kritik stok</h3><div class="value">7 ürün</div></section>
+                        <section class="card"><h3>Bugün giriş</h3><div class="value">34 adet</div></section>
+                    </div>
+                    <section class="card"><h3>Hızlı işlem</h3><input placeholder="Ürün veya barkod"><button onclick="showToast('Stok kaydı hazır')">STOK EKLE</button></section>
+                    """.trimIndent()
+                )
+
+            "booking-form" ->
+                shell(
+                    "Randevu Oluştur",
+                    "Mobil uyumlu tarih, saat ve müşteri formu.",
+                    """
+                    <section class="card">
+                        <input id="customer" placeholder="Ad soyad">
+                        <input id="date" type="date">
+                        <input id="time" type="time">
+                        <textarea placeholder="Not"></textarea>
+                        <button onclick="saveBooking()">RANDEVUYU KAYDET</button>
+                        <div id="booking" class="value">Henüz randevu yok</div>
+                    </section>
+                    """.trimIndent(),
+                    """
+                    function saveBooking(){var name=document.getElementById('customer').value||'Müşteri';var date=document.getElementById('date').value;var time=document.getElementById('time').value;document.getElementById('booking').textContent=name+' • '+date+' '+time;showToast('Randevu kaydedildi');}
+                    """.trimIndent()
+                )
+
+            "restaurant-menu" ->
+                shell(
+                    "Mobil Menü",
+                    "Ürün kartları ve çalışan sepet sayacıyla restoran başlangıcı.",
+                    """
+                    <div class="grid">
+                        <section class="card"><h3>Karışık Menü</h3><p>Izgara, garnitür ve içecek</p><div class="value">₺320</div><button onclick="addCart()">SEPETE EKLE</button></section>
+                        <section class="card"><h3>Tavuk Menü</h3><p>Tavuk, patates ve içecek</p><div class="value">₺245</div><button onclick="addCart()">SEPETE EKLE</button></section>
+                    </div>
+                    <section class="card"><h3>Sepet</h3><div id="cart" class="value">0 ürün</div></section>
+                    """.trimIndent(),
+                    """var cart=0;function addCart(){cart++;document.getElementById('cart').textContent=cart+' ürün';showToast('Sepete eklendi');}"""
+                )
+
+            "event-invitation" ->
+                shell(
+                    "Etkinlik Davetiyesi",
+                    "Katılım yanıtı, konum ve paylaşım için hazır etkinlik ekranı.",
+                    """
+                    <section class="hero"><h2>28 Ağustos • 19:30</h2><p>Etkinlik adresi ve program ayrıntılarını buraya yaz.</p></section>
+                    <div class="grid">
+                        <section class="card"><h3>Katılım</h3><button onclick="showToast('Katılımın kaydedildi')">KATILIYORUM</button></section>
+                        <section class="card"><h3>Konum</h3><button onclick="getEventLocation()">KONUMU KONTROL ET</button><div id="eventLocation" class="value">Bekleniyor</div></section>
+                        <section class="card"><h3>Paylaş</h3><button onclick="shareEvent()">DAVETİ PAYLAŞ</button></section>
+                    </div>
+                    """.trimIndent(),
+                    """
+                    function getEventLocation(){navigator.geolocation?navigator.geolocation.getCurrentPosition(function(p){document.getElementById('eventLocation').textContent=p.coords.latitude.toFixed(4)+', '+p.coords.longitude.toFixed(4);},function(){showToast('Konum alınamadı');}):showToast('Konum desteklenmiyor');}
+                    async function shareEvent(){if(navigator.share){await navigator.share({title:'Etkinlik',text:'Etkinlik davetiyesi'});}else{showToast('Paylaşım desteklenmiyor');}}
+                    """.trimIndent()
+                )
+
+            "visual-designer" ->
+                shell(
+                    "Görsel Sayfa Tasarımcısı",
+                    "Blok ekle, önizle ve tarayıcıda yerel olarak sakla.",
+                    """
+                    <section class="card"><button onclick="addBlock('h3')">METİN EKLE</button><button onclick="addBlock('button')">BUTON EKLE</button><button onclick="addBlock('section')">KART EKLE</button></section>
+                    <div id="canvas" class="grid"></div>
+                    """.trimIndent(),
+                    """
+                    var blocks=JSON.parse(localStorage.getItem('designerBlocks')||'[]');
+                    function draw(){document.getElementById('canvas').innerHTML=blocks.map(function(b,i){return b==='h3'?'<h3 contenteditable="true">Düzenlenebilir metin</h3>':b==='button'?'<button onclick="showToast(\'Buton çalışıyor\')">ÖRNEK BUTON</button>':'<section class="card"><h3>Kart '+(i+1)+'</h3><p>İçeriği projene göre düzenle.</p></section>';}).join('');localStorage.setItem('designerBlocks',JSON.stringify(blocks));}
+                    function addBlock(type){blocks.push(type);draw();}draw();
+                    """.trimIndent()
+                )
+
+            "personnel-tracker" ->
+                shell(
+                    "Personel Takibi",
+                    "Ekip durumunu ve vardiyaları tek ekranda izle.",
+                    """
+                    <section class="card"><input id="staffSearch" placeholder="Personel ara" oninput="filterStaff()"></section>
+                    <div id="staff" class="grid"><section class="card" data-name="ayşe"><h3>Ayşe • Sabah</h3><p>Görevde</p></section><section class="card" data-name="mehmet"><h3>Mehmet • Akşam</h3><p>İzinli</p></section></div>
+                    """.trimIndent(),
+                    "function filterStaff(){var q=document.getElementById('staffSearch').value.toLowerCase();document.querySelectorAll('[data-name]').forEach(function(x){x.style.display=x.dataset.name.includes(q)?'block':'none';});}"
+                )
+
+            "qr-menu" ->
+                shell(
+                    "QR Menü ve Sipariş",
+                    "Kamera/QR yeteneğine hazır çalışan sepet başlangıcı.",
+                    """
+                    <section class="card"><button onclick="showToast('QR tarayıcı proje izinlerinden açılır')">QR TARA</button></section>
+                    <div class="grid"><section class="card"><h3>Günün Menüsü</h3><p>₺280</p><button onclick="addOrder()">EKLE</button></section></div><section class="card"><div id="order" class="value">0 ürün</div></section>
+                    """.trimIndent(),
+                    "var order=0;function addOrder(){order++;document.getElementById('order').textContent=order+' ürün';}"
+                )
+
+            "education-quiz" ->
+                shell(
+                    "Eğitim ve Quiz",
+                    "Puan tutan etkileşimli soru başlangıcı.",
+                    """
+                    <section class="card"><h3 id="question">Android uygulama paketi hangisidir?</h3><button onclick="answer(true)">APK</button><button onclick="answer(false)">CSV</button><div id="score" class="value">Puan: 0</div></section>
+                    """.trimIndent(),
+                    "var score=0;function answer(ok){if(ok)score++;document.getElementById('score').textContent='Puan: '+score;showToast(ok?'Doğru':'Tekrar dene');}"
+                )
+
+            "firebase-login" ->
+                shell(
+                    "Firebase Giriş",
+                    "Firebase bağlantısı eklenince gerçek kimlik doğrulamaya uyarlanabilen ekran.",
+                    """
+                    <section class="card"><input id="email" type="email" placeholder="E-posta"><input type="password" placeholder="Şifre"><button onclick="loginPreview()">GİRİŞ YAP</button><p id="loginState">Demo modu</p></section>
+                    """.trimIndent(),
+                    "function loginPreview(){var email=document.getElementById('email').value;document.getElementById('loginState').textContent=email?'Form doğrulandı • Firebase yapılandırmasını bağla':'E-posta gerekli';}"
+                )
 
             else ->
                 null

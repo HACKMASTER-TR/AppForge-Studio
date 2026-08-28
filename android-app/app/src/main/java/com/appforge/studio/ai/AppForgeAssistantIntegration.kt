@@ -37,6 +37,11 @@ data class AssistantAppAction(
     val description: String
 )
 
+data class AssistantQuickGuidance(
+    val answer: String,
+    val actions: List<AssistantAppAction>
+)
+
 data class AssistantRuntimeContext(
     val workspace: String,
     val builderStep: Int,
@@ -88,9 +93,9 @@ object AppForgeAssistantIntegration {
                 "Kaynak: HTML/ZIP/URL ile desteklenen Android, Flutter, React Native, Python, C++, .NET ve Unity proje algılama."
             ),
             FeatureRoute(
-                AssistantAppAction(AssistantDestination.PERMISSIONS, "İzinleri aç", "Kamera, konum, bildirim ve dosya izinlerini yönet."),
-                setOf("izin", "kamera", "konum", "bildirim", "dosya", "permission"),
-                "İzinler: yalnız kullanılan kamera, konum, bildirim, yükleme ve indirme yeteneklerini açar."
+                AssistantAppAction(AssistantDestination.PERMISSIONS, "İzinleri aç", "Kamera, mikrofon, konum, bildirim, ağ, uyanık tutma ve NFC izinlerini yönet."),
+                setOf("izin", "kamera", "mikrofon", "konum", "bildirim", "ağ", "nfc", "wake lock", "dosya", "permission"),
+                "İzinler: kamera, mikrofon, konum, bildirim, ağ durumu, WAKE_LOCK, NFC, yükleme ve indirme yeteneklerini güvenli biçimde açar."
             ),
             FeatureRoute(
                 AssistantAppAction(AssistantDestination.FEATURES, "WebView ayarları", "Web, çevrimdışı ve görüntüleme seçeneklerini düzenle."),
@@ -237,6 +242,34 @@ object AppForgeAssistantIntegration {
             .distinctBy { it.first.action.destination }
             .take(limit)
             .map { it.first.action }
+    }
+
+    fun quickGuidance(question: String): AssistantQuickGuidance? {
+        val normalized = normalize(question)
+        val navigationIntent =
+            listOf(
+                "aç",
+                "götür",
+                "yönlendir",
+                "nerede",
+                "nereden",
+                "hangi adım",
+                "nasıl giderim",
+                "nasıl açarım"
+            ).any { normalized.contains(it) }
+
+        if (!navigationIntent) return null
+
+        val actions = actionsFor(question, limit = 2)
+        val primary = actions.firstOrNull() ?: return null
+
+        return AssistantQuickGuidance(
+            answer =
+                "${primary.label} seçeneği doğru bölüm. " +
+                    "Aşağıdaki kısayola dokunarak doğrudan açabilirsin. " +
+                    primary.description,
+            actions = actions
+        )
     }
 
     fun diagnosisAnswer(diagnosis: BuildErrorDiagnosis): String =

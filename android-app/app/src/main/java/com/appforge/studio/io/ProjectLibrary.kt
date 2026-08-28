@@ -406,7 +406,23 @@ object ProjectLibrary {
             fullscreen = obj.optBoolean("fullscreen", false),
             notifications = obj.optBoolean("notifications", false),
             camera = obj.optBoolean("camera", false),
+            microphone = obj.optBoolean("microphone", false),
             location = obj.optBoolean("location", false),
+            networkState = obj.optBoolean("networkState", true),
+            wakeLock = obj.optBoolean("wakeLock", false),
+            nfc = obj.optBoolean("nfc", false),
+            additionalPermissions =
+                obj.optJSONArray("additionalPermissions")
+                    ?.let { array ->
+                        buildSet {
+                            for (index in 0 until array.length()) {
+                                array.optString(index)
+                                    .takeIf { it.isNotBlank() }
+                                    ?.let(::add)
+                            }
+                        }
+                    }
+                    ?: emptySet(),
             offlineCache = obj.optBoolean("offlineCache", true),
 
             webJavaScriptEnabled =
@@ -1024,7 +1040,15 @@ object ProjectLibrary {
             put("fullscreen", d.fullscreen)
             put("notifications", d.notifications)
             put("camera", d.camera)
+            put("microphone", d.microphone)
             put("location", d.location)
+            put("networkState", d.networkState)
+            put("wakeLock", d.wakeLock)
+            put("nfc", d.nfc)
+            put(
+                "additionalPermissions",
+                JSONArray(d.additionalPermissions.sorted())
+            )
             put("offlineCache", d.offlineCache)
 
             put(
