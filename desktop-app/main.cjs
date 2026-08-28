@@ -1,4 +1,4 @@
-﻿const { app, BrowserWindow, ipcMain, safeStorage } = require("electron");
+const { app, BrowserWindow, ipcMain, safeStorage } = require("electron");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");

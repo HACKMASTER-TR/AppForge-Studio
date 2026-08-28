@@ -1,4 +1,4 @@
-﻿name: AppForge Studio Windows Release
+name: AppForge Studio Windows Release
 
 on:
   workflow_dispatch:

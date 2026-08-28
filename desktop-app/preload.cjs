@@ -1,4 +1,4 @@
-﻿const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer } = require("electron");
 
 const auth = Object.freeze({
   getToken: () => ipcRenderer.invoke("appforge:auth:get"),
