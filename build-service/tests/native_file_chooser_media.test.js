@@ -25,6 +25,14 @@ test(
 
     for (const marker of [
       "APPFORGE_NATIVE_CAPTURE_ROUTER_V1",
+      "APPFORGE_WEB_MEDIA_PERMISSION_V2",
+      "APPFORGE_CAMERA_RESULT_V2",
+      "android.permission.RECORD_AUDIO",
+      "PermissionRequest.RESOURCE_AUDIO_CAPTURE",
+      "pendingWebPermissionRequest",
+      "pendingCameraCapture",
+      "ClipData.newRawUri",
+      "allowContentAccess",
       "isCaptureEnabled",
       "wantsImage",
       "wantsAudio",

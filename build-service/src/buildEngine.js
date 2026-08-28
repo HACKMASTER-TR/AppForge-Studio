@@ -3117,6 +3117,9 @@ dependencies {
     c.features?.camera
       ? '<uses-permission android:name="android.permission.CAMERA" />'
       : "",
+    c.features?.fileUpload
+      ? '<uses-permission android:name="android.permission.RECORD_AUDIO" />'
+      : "",
     c.features?.location
       ? '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />'
       : "",
@@ -4409,6 +4412,7 @@ function generatedMainActivity(c, pkg) {
     c.features?.downloads ? "android.os.Environment" : "",
     "android.webkit.CookieManager",
     "android.webkit.GeolocationPermissions",
+    c.features?.fileUpload ? "android.webkit.PermissionRequest" : "",
     "android.webkit.ValueCallback",
     "android.webkit.WebChromeClient",
     "android.webkit.WebView",
@@ -4462,7 +4466,7 @@ function generatedMainActivity(c, pkg) {
     c.billing?.enabled ? "com.android.billingclient.api.QueryProductDetailsParams" : "",
     c.billing?.enabled ? "com.android.billingclient.api.QueryPurchasesParams" : "",
     c.nativeBridge?.clipboard ? "android.content.ClipboardManager" : "",
-    c.nativeBridge?.clipboard ? "android.content.ClipData" : "",
+    (c.nativeBridge?.clipboard || c.features?.camera) ? "android.content.ClipData" : "",
     c.nativeBridge?.qrScanner ? "com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions" : "",
     c.nativeBridge?.qrScanner ? "com.google.mlkit.vision.codescanner.GmsBarcodeScanning" : "",
     c.firebase?.analytics ? "com.google.firebase.analytics.FirebaseAnalytics" : "",
@@ -4484,7 +4488,9 @@ function generatedMainActivity(c, pkg) {
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var pendingGeoOrigin: String? = null
     private var pendingGeoCallback: GeolocationPermissions.Callback? = null
+    ${c.features?.fileUpload ? "private var pendingWebPermissionRequest: PermissionRequest? = null" : ""}
     ${c.features?.camera ? "private var cameraUri: Uri? = null" : ""}
+    ${c.features?.camera ? "private var pendingCameraCapture = false" : ""}
     ${c.billing?.enabled ? "private var billingClient: BillingClient? = null" : ""}
     ${c.billing?.enabled ? "private val productDetailsCache = mutableMapOf<String, ProductDetails>()" : ""}
     ${c.admob?.enabled && c.admob?.interstitialUnitId ? "private var interstitialAd: InterstitialAd? = null" : ""}
@@ -4499,6 +4505,9 @@ function generatedMainActivity(c, pkg) {
             val data = result.data
             val uris = when {
                 result.resultCode != Activity.RESULT_OK -> null
+                // APPFORGE_CAMERA_RESULT_V2: direct camera capture must win over
+                // thumbnail / vendor-specific result data.
+                ${c.features?.camera ? "pendingCameraCapture && cameraUri != null -> arrayOf(cameraUri!!)" : "false -> null"}
                 data?.clipData != null -> Array(data.clipData!!.itemCount) { i ->
                     data.clipData!!.getItemAt(i).uri
                 }
@@ -4508,7 +4517,33 @@ function generatedMainActivity(c, pkg) {
             }
             callback.onReceiveValue(uris)
             fileChooserCallback = null
+            ${c.features?.camera ? "pendingCameraCapture = false" : ""}
             ${c.features?.camera ? "cameraUri = null" : ""}
+        }
+` : "";
+
+  const audioPermissionLauncher = c.features?.fileUpload ? `
+    private val audioPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            val request = pendingWebPermissionRequest
+            pendingWebPermissionRequest = null
+
+            if (request != null) {
+                val wantsAudio =
+                    request.resources.any { resource ->
+                        resource == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                    }
+
+                if (granted && wantsAudio) {
+                    request.grant(
+                        arrayOf(
+                            PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                        )
+                    )
+                } else {
+                    request.deny()
+                }
+            }
         }
 ` : "";
 
@@ -4542,7 +4577,9 @@ function generatedMainActivity(c, pkg) {
                 ${webDomStorageEnabled ? "true" : "false"}
 
             allowFileAccess = false
-            allowContentAccess = false
+            // File input / camera content:// URI'lerinin WebView tarafından okunmasına izin ver.
+            allowContentAccess =
+                ${c.features?.fileUpload ? "true" : "false"}
 
             mediaPlaybackRequiresUserGesture =
                 ${webMediaAutoplayEnabled ? "false" : "true"}
@@ -4627,6 +4664,65 @@ function generatedMainActivity(c, pkg) {
         web.webChromeClient =
             object : WebChromeClient() {
                 ${c.features?.fileUpload ? `
+                // APPFORGE_WEB_MEDIA_PERMISSION_V2
+                override fun onPermissionRequest(
+                    request: PermissionRequest?
+                ) {
+                    if (request == null) {
+                        return
+                    }
+
+                    val expectedOrigin =
+                        "${esc(bridgeOriginRule)}"
+
+                    val actualOrigin =
+                        request.origin
+                            .toString()
+                            .trimEnd('/')
+
+                    if (
+                        expectedOrigin.isBlank() ||
+                        actualOrigin != expectedOrigin
+                    ) {
+                        request.deny()
+                        return
+                    }
+
+                    val wantsAudio =
+                        request.resources.any { resource ->
+                            resource == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                        }
+
+                    if (!wantsAudio) {
+                        request.deny()
+                        return
+                    }
+
+                    val granted =
+                        ContextCompat.checkSelfPermission(
+                            this@MainActivity,
+                            android.Manifest.permission.RECORD_AUDIO
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                    if (granted) {
+                        request.grant(
+                            arrayOf(
+                                PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                            )
+                        )
+                    } else {
+                        pendingWebPermissionRequest
+                            ?.deny()
+
+                        pendingWebPermissionRequest =
+                            request
+
+                        audioPermissionLauncher.launch(
+                            android.Manifest.permission.RECORD_AUDIO
+                        )
+                    }
+                }
+
                 override fun onShowFileChooser(
                     webView: WebView?,
                     filePathCallback: ValueCallback<Array<Uri>>?,
@@ -4637,6 +4733,8 @@ function generatedMainActivity(c, pkg) {
 
                     fileChooserCallback =
                         filePathCallback
+
+                    ${c.features?.camera ? "pendingCameraCapture = false" : ""}
 
                     // APPFORGE_NATIVE_CAPTURE_ROUTER_V1
                     val acceptTypes =
@@ -4757,6 +4855,12 @@ function generatedMainActivity(c, pkg) {
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                     )
 
+                    cameraIntent.clipData =
+                        ClipData.newRawUri(
+                            "appforge_camera",
+                            cameraUri
+                        )
+
                     if (
                         captureEnabled &&
                         wantsImage &&
@@ -4765,6 +4869,9 @@ function generatedMainActivity(c, pkg) {
                                 packageManager
                             ) != null
                     ) {
+                        pendingCameraCapture =
+                            true
+
                         fileChooserLauncher.launch(
                             cameraIntent
                         )
@@ -7199,6 +7306,7 @@ class MainActivity : AppCompatActivity() {
 
 ${fields}
 ${fileChooserLauncher}
+${audioPermissionLauncher}
 ${geoLauncher}
 ${notificationLauncher}
 ${bridgeClass}
@@ -7413,6 +7521,12 @@ ${deepLinkHandling}
     }
 
     override fun onDestroy() {
+        ${c.features?.fileUpload ? `
+        pendingWebPermissionRequest
+            ?.deny()
+        pendingWebPermissionRequest =
+            null
+        ` : ""}
         ${c.billing?.enabled ? "billingClient?.endConnection()" : ""}
         ${c.admob?.enabled ? "bannerAdView?.destroy()" : ""}
         ${bridgeEnabled ? `
