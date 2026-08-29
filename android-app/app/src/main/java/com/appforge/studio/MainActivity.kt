@@ -2914,7 +2914,7 @@ private fun AppForgeApp() {
                             Column {
                                 Text("AppForge Studio", fontWeight = FontWeight.Bold)
                                 Text(
-                                    "V5 • Adım $step/10 • " +
+                                    "Adım $step/10 • " +
                                         when (step) {
                                             1 -> "Kaynak"
                                             2 -> "İzinler"
