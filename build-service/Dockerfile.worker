@@ -154,6 +154,28 @@ RUN gradle \
     && printf "ready\n" > /opt/appforge-fast-extended/cache-ready \
     && test -s /opt/appforge-fast-extended/cache-ready
 
+# =========================================================
+# AppForge first-build warm cache
+#
+# Precompile release APK + AAB tasks while building Worker.
+# This fills Gradle build/configuration caches before the
+# first real user BOTH/AAB build reaches the Worker.
+# =========================================================
+RUN gradle \
+    -p fast-extended-template \
+    --no-daemon \
+    --build-cache \
+    --configuration-cache \
+    --configuration-cache-problems=warn \
+    --max-workers=4 \
+    -Dorg.gradle.parallel=true \
+    -Pkotlin.compiler.execution.strategy=in-process \
+    --stacktrace \
+    :app:assembleRelease \
+    :app:bundleRelease \
+    && test -s fast-extended-template/app/build/outputs/apk/release/app-release-unsigned.apk \
+    && test -s fast-extended-template/app/build/outputs/bundle/release/app-release.aab
+
 # AppForge FAST BUILD runtime.
 # Bu kod Worker image oluşturulurken yalnızca bir kez DEX'e çevrilir.
 # Kullanıcı APK build'lerinde D8/Gradle tekrar çalıştırılmaz.
