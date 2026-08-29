@@ -1541,6 +1541,14 @@ private fun AppForgeApp() {
                 buildId =
                     created.buildId
 
+                BuildProgressService.start(
+                    context = context,
+                    buildId = created.buildId,
+                    serverUrl = serverUrl,
+                    apiKey = apiKey,
+                    appName = effectiveBuildDraft.appName
+                )
+
                 status =
                     created.status
 

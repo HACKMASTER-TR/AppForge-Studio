@@ -10,6 +10,14 @@ const androidMain = new URL(
 );
 const webStudio = new URL("../public/studio/index.html", import.meta.url);
 const server = new URL("../server.js", import.meta.url);
+const buildProgressService = new URL(
+  "../../android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt",
+  import.meta.url
+);
+const knowledgeBase = new URL(
+  "../../android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+  import.meta.url
+);
 
 test("V5 version manager increments semantic patch and Android code", () => {
   assert.deepEqual(bumpVersion("2.4.9", 29), {
@@ -72,4 +80,23 @@ test("V5 scaffold API is authenticated and wired into the service", async () => 
   const text = await readFile(server, "utf8");
   assert.match(text, /"\/api\/v5\/scaffold",\s*authRequired/);
   assert.match(text, /createV5Scaffold/);
+});
+
+test("Android keeps a remote build visible as a background notification", async () => {
+  const [main, service] = await Promise.all([
+    readFile(androidMain, "utf8"),
+    readFile(buildProgressService, "utf8")
+  ]);
+  assert.match(main, /BuildProgressService\.start/);
+  assert.match(service, /startForeground/);
+  assert.match(service, /client\.getBuild\(buildId\)/);
+  assert.match(service, /"AppForge derlemeleri"/);
+});
+
+test("local AI describes the current AppForge feature set", async () => {
+  const knowledge = await readFile(knowledgeBase, "utf8");
+  assert.match(knowledge, /Windows EXE/);
+  assert.match(knowledge, /otomatik sürüm artırma/);
+  assert.match(knowledge, /arka planda.*bildirimi/);
+  assert.match(knowledge, /Yerel AI/);
 });

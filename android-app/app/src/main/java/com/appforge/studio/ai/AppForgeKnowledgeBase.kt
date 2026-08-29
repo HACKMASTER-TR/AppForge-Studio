@@ -380,7 +380,7 @@ object AppForgeKnowledgeBase {
             ),
             FastFaq(
                 "AppForge Studio ne işe yarar?",
-                "AppForge Studio; HTML, ZIP veya web projelerini Android uygulamasına dönüştürmek, APK/AAB üretmek, önizlemek, imzalamak, test etmek ve proje ayarlarını yönetmek için kullanılır.",
+                "AppForge Studio; HTML, ZIP, web URL'si ve desteklenen kaynak projelerden Android APK/AAB ile Windows EXE üretmeye yardımcı olan bir geliştirme platformudur. Hızlı Oluştur ve Gelişmiş Oluştur ile proje başlatır; HTML/ZIP kaynak analizi, şablonlar, görsel tema/ikon/splash, otomatik paket adı ve otomatik sürüm artırma sunar.\n\nGelişmiş Builder'da izinler, WebView güvenliği, Native Bridge (paylaşım, pano, titreşim, QR), deep link, Media3 arka plan medya oynatma, Firebase, AdMob, Billing, keystore imzalama ve APK/AAB/EXE çıktıları yönetilir. Canlı önizleme; console, network, performans ve güvenlik incelemesi; Test Lab, build karşılaştırma, release note, Production Center, GitHub/takım/proje yedeği, APK↔EXE dönüşümü ve build kuyruğu bulunur. Derlemeler sunucuda arka planda sürer; uygulama arka plana alındığında ilerleme bildirimi gösterir. Yerel AI ise proje önerileri, komutlar ve build hata açıklamaları sunar.",
                 setOf("appforge", "studio", "ne", "işe", "yarar"),
                 setOf("appforge nedir", "uygulama ne işe yarar")
             ),
