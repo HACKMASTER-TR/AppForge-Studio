@@ -41,6 +41,17 @@ object AppForgeKnowledgeBase {
             "AppForge Native Bridge, AdMob, Billing ve Firebase seçeneklerini otomatik enjekte etmez; " +
             "bu projeler kendi native paketlerini kullanmalıdır."
 
+    private const val FULL_FEATURES_ANSWER =
+        "AppForge Studio, uygulama üretimi ve yayın hazırlığı için kullanılan çok platformlu bir Studio'dur. Desteklediği güncel özellikler:\n\n" +
+            "• Kaynak ve proje türleri: HTML, ZIP, HTTPS web URL'si; React/Vue/Angular/Svelte/Vite/npm web projeleri; Android Gradle, Flutter, React Native, Expo, Python/Flask/Django, C/C++, .NET Android/MAUI ve uygun Unity projeleri.\n" +
+            "• Hızlı/Gelişmiş oluşturma: hazır şablon, HTML veya ZIP seçimi, otomatik paket adı, otomatik versionName/versionCode artırma, kaynak analizi ve izin önerileri.\n" +
+            "• Çıktılar: APK, Play Store için AAB ve Windows EXE; AppForge manifesti bulunan kendi APK/EXE çıktıları arasında güvenli dönüşüm.\n" +
+            "• Builder: ikon, splash, tema/renk/yön, WebView, offline cache, güvenli Native Bridge, paylaşım, pano, titreşim, QR, deep link ve Media3 arka plan medya oynatma.\n" +
+            "• Servisler: Firebase Analytics/Crashlytics/Cloud Messaging, AdMob/UMP, Google Play Billing ve keystore ile debug/release imzalama.\n" +
+            "• Kontrol ve yayın: canlı önizleme; console, ağ, performans ve güvenlik inspector; Test Lab, artifact boyut analizi, build karşılaştırma, release note, Production Center ve Play yayın rehberi.\n" +
+            "• Çalışma alanı: proje kaydetme/geri yükleme, sürüm-geçmişi, 30 günlük çöp kutusu, yedek içe/dışa aktarma, GitHub ve takım akışları.\n" +
+            "• Build ve AI: sunucu tabanlı build kuyruğu, canlı log, arka planda build bildirimi, FAST APK yolu ve cihazda çalışan gizlilik odaklı Yerel AI ile proje önerisi, komutlar ve hata açıklamaları."
+
     /*
      * AppForge Studio'nun cihaz içi bilgi tabanı.
      *
@@ -680,6 +691,20 @@ object AppForgeKnowledgeBase {
             normalizedQuestion.isBlank()
         ) {
             return null
+        }
+
+        if (
+            normalizedQuestion.contains("appforge") &&
+            listOf(
+                "ne ise yarar",
+                "ne yapar",
+                "neleri destek",
+                "hangi ozellik",
+                "ozellikleri",
+                "tum ozellik"
+            ).any { normalizedQuestion.contains(it) }
+        ) {
+            return FULL_FEATURES_ANSWER
         }
 
 

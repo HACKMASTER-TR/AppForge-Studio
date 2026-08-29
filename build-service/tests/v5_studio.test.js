@@ -98,8 +98,12 @@ test("Android keeps a remote build visible as a background notification", async 
 
 test("local AI describes the current AppForge feature set", async () => {
   const knowledge = await readFile(knowledgeBase, "utf8");
+  assert.match(knowledge, /FULL_FEATURES_ANSWER/);
   assert.match(knowledge, /Windows EXE/);
+  assert.match(knowledge, /Flutter, React Native, Expo/);
   assert.match(knowledge, /otomatik sürüm artırma/);
+  assert.match(knowledge, /Firebase Analytics\/Crashlytics\/Cloud Messaging/);
+  assert.match(knowledge, /GitHub ve takım akışları/);
   assert.match(knowledge, /arka planda.*bildirimi/);
   assert.match(knowledge, /Yerel AI/);
 });
