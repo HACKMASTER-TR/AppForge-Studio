@@ -114,7 +114,7 @@ export const config = {
   gradlePerformanceProfile:
     String(
       process.env.GRADLE_PERFORMANCE_PROFILE ||
-      "balanced"
+      "low-memory"
     )
       .trim()
       .toLowerCase(),

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { promises as fs } from "node:fs";
 
 test(
-  "Gradle worker uses balanced default and stall watchdog",
+  "Gradle worker uses low-memory default and stall watchdog",
   async () => {
     const configSource =
       await fs.readFile(
@@ -19,7 +19,7 @@ test(
 
     assert.match(
       configSource,
-      /GRADLE_PERFORMANCE_PROFILE[\s\S]*?"balanced"/
+      /GRADLE_PERFORMANCE_PROFILE[\s\S]*?"low-memory"/
     );
 
     assert.match(
