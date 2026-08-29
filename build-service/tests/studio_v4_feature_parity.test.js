@@ -36,6 +36,18 @@ test("V4 navigation animates the next panel while respecting reduced motion", as
   assert.match(css, /prefers-reduced-motion:reduce/);
 });
 
+test("V4 adds explanatory text below every feature input", async () => {
+  const [script, css] = await Promise.all([
+    read("build-service/public/studio/v4.js"),
+    read("build-service/public/studio/v4.css")
+  ]);
+
+  assert.match(script, /function addFeatureHelp/);
+  assert.match(script, /qsa\("label"\)/);
+  assert.match(script, /featureHelpText/);
+  assert.match(css, /\.field-help/);
+});
+
 test("Windows login remains usable when secure token persistence is unavailable", async () => {
   const v4 = await read("build-service/public/studio/v4.js");
 

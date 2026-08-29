@@ -244,6 +244,48 @@ async function postLoginLoad(){
 function wireNavigation(){
   qsa(".nav-item").forEach(btn=>btn.addEventListener("click",()=>showPanel(btn.dataset.panel,btn)));
 }
+
+function featureHelpText(label){
+  const text=String(label||"").replace(/\s+/g," ").trim();
+  const key=text.toLocaleLowerCase("tr-TR");
+  const hints=[
+    [/uygulama adı|proje adı/,"Uygulamanın kullanıcıya görünen adını belirler; proje listesinde ve oluşturulan pakette kullanılır."],
+    [/paket adı/,"Android uygulamasının benzersiz kimliğidir. Yayınlandıktan sonra değiştirmek yeni bir uygulama olarak değerlendirilir."],
+    [/html veya zip|zip proje|kaynak proje|başlangıç türü/,"Uygulamanın içerik kaynağını seçer. HTML doğrudan açılır, ZIP ise dosyaları analiz edilerek projeye aktarılır."],
+    [/çıktı|apk|aab|windows exe/,"Hangi platform paketi üretileceğini seçer. APK cihaz testi, AAB Play Store, EXE ise Windows kurulumu içindir."],
+    [/otomatik sürüm|sürüm adı|sürüm kodu/,"Yeni buildlerde sürüm bilgisini yönetir. Otomatik seçenek, yayın için gerekli Android sürüm kodunu artırır."],
+    [/tema|renk|splash|ikon|görünüm/,"Uygulamanın marka görünümünü değiştirir; önizlemede ve üretilen pakette uygulanır."],
+    [/izin|kamera|mikrofon|konum|bildirim|nfc|wake|ağ/,"Yalnız kullandığınız cihaz özelliği için açın. Gereksiz izinler kullanıcı güvenini ve mağaza incelemesini olumsuz etkileyebilir."],
+    [/firebase|analytics|crashlytics|messaging/,"Firebase hizmetini projeye bağlar. Etkinleştirmeden önce doğru google-services.json dosyasını ekleyin."],
+    [/admob|reklam|ump/,"Reklam ve kullanıcı onayı yapılandırmasını ekler. Yayına çıkmadan önce gerçek reklam birim kimliklerini kullanın."],
+    [/billing|satın alma|ürün id|abonelik/,"Google Play üzerinden ücretli ürün veya abonelik sunmak için ürün kimliklerini tanımlar."],
+    [/native bridge|bridge|paylaşım|pano|titreşim|medya|qr/,"Web içeriğinin güvenli şekilde cihaz özelliklerini kullanmasını sağlar. Uzak web sitelerinde yalnız güvenilir HTTPS kaynakları için açın."],
+    [/deep link|bağlantı/,"Uygulamayı belirli bir bağlantıdan açmak için URL şemasını ve yönlendirme kurallarını tanımlar."],
+    [/imzalama|keystore|anahtar|alias/,"Yayın paketinizi doğrulayan imza ayarını belirler. Aynı uygulama güncellemelerinde aynı anahtarı koruyun."],
+    [/sunucu url|api anahtarı|token/,"Studio'nun build ve proje servisleriyle güvenli iletişim kurmasını sağlar. Gizli anahtarları paylaşmayın."],
+    [/dil/,"Studio arayüz dilini değiştirir; proje dosyalarınızı veya build ayarlarınızı değiştirmez."],
+    [/açık|koyu|sistem/,"Arayüz görünümünü belirler. Sistem seçeneği cihazın açık/koyu tema tercihine uyar."],
+    [/github/,"Projeyi GitHub deposuyla ilişkilendirir veya bir depodan kaynak içe aktarır."],
+    [/takım|team/,"Projeye erişebilecek çalışma alanını seçer. Yetkiler ekip rolüne göre uygulanır."],
+    [/parola|2fa|doğrulama/,"Hesap güvenliğini yönetir. 2FA açıldığında girişte doğrulama kodu istenir."]
+  ];
+  return hints.find(([pattern])=>pattern.test(key))?.[1] || `${text} ayarını belirler; seçimin proje yapılandırmasına kaydedilir.`;
+}
+
+function addFeatureHelp(){
+  qsa("label").forEach(label=>{
+    if(label.dataset.helpReady==="true" || !label.querySelector("input,textarea,select"))return;
+    const copy=label.cloneNode(true);
+    qsa("input,textarea,select,.field-help",copy).forEach(node=>node.remove());
+    const title=copy.textContent.trim() || "Bu alan";
+    const help=document.createElement("p");
+    help.className="field-help";
+    help.textContent=featureHelpText(title);
+    label.appendChild(help);
+    label.dataset.helpReady="true";
+  });
+}
+
 window.showPanel=function showPanel(id,button=null){
   const nextPanel=$(id);
   qsa(".panel").forEach(x=>x.classList.add("hidden"));
@@ -1515,6 +1557,7 @@ $("bProjectFile").addEventListener("change",async()=>{const f=$("bProjectFile").
 $("backupInput").value="";
 
 wireNavigation();
+addFeatureHelp();
 renderBuilderStep();
 loadMonacoLoader()
   .then(()=>initMonaco())
