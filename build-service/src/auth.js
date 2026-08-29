@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { query } from "./db.js";
+import { query, tx } from "./db.js";
 import { config } from "./config.js";
 import { requireTeamRole } from "./teams.js";
 
@@ -23,7 +23,142 @@ function apiToken(req) {
   return String(req.get("X-AppForge-Key") || "").trim();
 }
 
-export async function createUser({ email, password, displayName }) {
+function normalizeDeviceId(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (!/^[a-f0-9]{64}$/.test(normalized)) {
+    const error = new Error("Geçerli cihaz kimliği gerekli.");
+    error.statusCode = 400;
+    error.code = "DEVICE_ID_REQUIRED";
+    throw error;
+  }
+
+  return normalized;
+}
+
+export function requestDeviceId(req) {
+  return normalizeDeviceId(req.get("X-AppForge-Device-ID"));
+}
+
+async function bindDeviceWithClient(client, userId, deviceId) {
+  const deviceHash = sha256(normalizeDeviceId(deviceId));
+
+  await client.query(
+    `SELECT pg_advisory_xact_lock(hashtext($1))`,
+    [`appforge-device:${deviceHash}`]
+  );
+
+  const existing = await client.query(
+    `SELECT user_id, device_hash
+     FROM appforge_account_devices
+     WHERE user_id = $1 OR device_hash = $2
+     FOR UPDATE`,
+    [userId, deviceHash]
+  );
+
+  const accountDevice = existing.rows.find(row => row.user_id === userId);
+  const deviceOwner = existing.rows.find(row => row.device_hash === deviceHash);
+
+  if (deviceOwner && deviceOwner.user_id !== userId) {
+    const error = new Error("Bu cihaz daha önce başka bir AppForge hesabına bağlanmış.");
+    error.statusCode = 409;
+    error.code = "DEVICE_ALREADY_BOUND";
+    throw error;
+  }
+
+  if (accountDevice && accountDevice.device_hash !== deviceHash) {
+    const error = new Error("Bu hesap başka bir cihaza bağlı. Hesap ekranından cihaz değişikliği yapmalısın.");
+    error.statusCode = 403;
+    error.code = "ACCOUNT_BOUND_TO_ANOTHER_DEVICE";
+    throw error;
+  }
+
+  await client.query(
+    `INSERT INTO appforge_account_devices(user_id, device_hash)
+     VALUES($1,$2)
+     ON CONFLICT(device_hash)
+     DO UPDATE SET last_seen_at = NOW()`,
+    [userId, deviceHash]
+  );
+}
+
+export async function bindAccountDevice(userId, deviceId) {
+  return tx(client => bindDeviceWithClient(client, userId, deviceId));
+}
+
+export async function transferAccountDevice(userId, deviceId) {
+  const deviceHash = sha256(normalizeDeviceId(deviceId));
+
+  return tx(async client => {
+    await client.query(
+      `SELECT pg_advisory_xact_lock(hashtext($1))`,
+      [`appforge-device:${deviceHash}`]
+    );
+
+    const current = await client.query(
+      `SELECT device_hash, bound_at, transferred_at
+       FROM appforge_account_devices
+       WHERE user_id = $1
+       FOR UPDATE`,
+      [userId]
+    );
+
+    const row = current.rows[0];
+    const lastChange = row?.transferred_at || row?.bound_at;
+    if (lastChange && Date.now() - new Date(lastChange).getTime() < 30 * 24 * 60 * 60 * 1000) {
+      const error = new Error("Cihaz yalnızca 30 günde bir değiştirilebilir.");
+      error.statusCode = 429;
+      error.code = "DEVICE_TRANSFER_COOLDOWN";
+      throw error;
+    }
+
+    const owner = await client.query(
+      `SELECT user_id FROM appforge_account_devices
+       WHERE device_hash = $1 AND user_id <> $2
+       LIMIT 1`,
+      [deviceHash, userId]
+    );
+    if (owner.rowCount) {
+      const error = new Error("Bu cihaz başka bir AppForge hesabına bağlı.");
+      error.statusCode = 409;
+      error.code = "DEVICE_ALREADY_BOUND";
+      throw error;
+    }
+
+    await client.query(
+      `INSERT INTO appforge_account_devices(user_id, device_hash, transferred_at)
+       VALUES($1,$2,NOW())
+       ON CONFLICT(user_id)
+       DO UPDATE SET device_hash = EXCLUDED.device_hash,
+                     transferred_at = NOW(),
+                     last_seen_at = NOW()`,
+      [userId, deviceHash]
+    );
+  });
+}
+
+export async function assertAccountDevice(userId, deviceId) {
+  const normalized = normalizeDeviceId(deviceId);
+  const deviceHash = sha256(normalized);
+  const result = await query(
+    `UPDATE appforge_account_devices
+     SET last_seen_at = NOW()
+     WHERE user_id = $1 AND device_hash = $2
+     RETURNING user_id`,
+    [userId, deviceHash]
+  );
+
+  if (!result.rowCount) {
+    const error = new Error("Bu hesap başka bir cihaza bağlı.");
+    error.statusCode = 403;
+    error.code = "DEVICE_MISMATCH";
+    throw error;
+  }
+}
+
+export async function createUser({ email, password, displayName, deviceId = null }) {
   const normalized = normalizeEmail(email);
 
   if (!normalized || !normalized.includes("@")) {
@@ -36,21 +171,27 @@ export async function createUser({ email, password, displayName }) {
 
   const hash = await bcrypt.hash(password, 12);
 
-  const result = await query(
-    `INSERT INTO appforge_users(email, password_hash, display_name)
-     VALUES($1, $2, $3)
-     RETURNING
-       id,
-       email,
-       display_name,
-       role,
-       email_verified_at,
-       totp_enabled,
-       created_at`,
-    [normalized, hash, String(displayName || "").trim()]
-  );
+  return tx(async client => {
+    const result = await client.query(
+      `INSERT INTO appforge_users(email, password_hash, display_name)
+       VALUES($1, $2, $3)
+       RETURNING
+         id,
+         email,
+         display_name,
+         role,
+         email_verified_at,
+         totp_enabled,
+         created_at`,
+      [normalized, hash, String(displayName || "").trim()]
+    );
 
-  return mapUser(result.rows[0]);
+    if (deviceId) {
+      await bindDeviceWithClient(client, result.rows[0].id, deviceId);
+    }
+
+    return mapUser(result.rows[0]);
+  });
 }
 
 export async function findUserByEmail(email) {
@@ -85,13 +226,14 @@ export async function loginUser({ email, password }) {
   return mapUser(user);
 }
 
-export function issueAccessToken(user) {
+export function issueAccessToken(user, { deviceBound = false } = {}) {
   return jwt.sign(
     {
       sub: user.id,
       email: user.email,
       role: user.role,
-      type: "access"
+      type: "access",
+      deviceBound
     },
     config.jwtSecret,
     {
@@ -102,13 +244,17 @@ export function issueAccessToken(user) {
   );
 }
 
-export function issueTwoFactorChallenge(user) {
+export function issueTwoFactorChallenge(user, deviceId = null) {
   return jwt.sign(
     {
       sub: user.id,
       email: user.email,
       role: user.role,
-      type: "2fa"
+      type: "2fa",
+      deviceId:
+        deviceId
+          ? normalizeDeviceId(deviceId)
+          : null
     },
     config.jwtSecret,
     {
@@ -251,7 +397,11 @@ async function authenticateJwt(raw) {
     const row = result.rows[0];
     if (!row || !row.is_active) return null;
 
-    return mapUser(row);
+    return {
+      ...mapUser(row),
+      deviceBound:
+        payload.deviceBound === true
+    };
   } catch {
     return null;
   }
@@ -269,6 +419,19 @@ export async function authRequired(req, res, next) {
     const user = await optionalAuth(req);
     if (!user) {
       return res.status(401).json({ error: "Yetkilendirme gerekli." });
+    }
+
+    const deviceId = String(
+      req.get("X-AppForge-Device-ID") || ""
+    ).trim();
+
+    if (deviceId) {
+      await bindAccountDevice(
+        user.id,
+        deviceId
+      );
+    } else if (user.deviceBound) {
+      await assertAccountDevice(user.id, deviceId);
     }
 
     req.user = user;

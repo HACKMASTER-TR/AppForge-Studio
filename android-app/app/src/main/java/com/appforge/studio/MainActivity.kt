@@ -17407,6 +17407,8 @@ private fun AccountScreen(
     onApiKeyCreated: (String) -> Unit,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+
     val accountConfiguration =
         LocalConfiguration.current
 
@@ -17445,6 +17447,7 @@ private fun AccountScreen(
     var displayName by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    var transferTwoFactorCode by remember { mutableStateOf("") }
 
     var showDeleteAccount by
         remember {
@@ -17498,7 +17501,7 @@ private fun AccountScreen(
                             scope.launch {
                                 try {
                                     val token = withContext(Dispatchers.IO) {
-                                        AppForgeAccountClient(serverUrl)
+                                        AppForgeAccountClient(context, serverUrl)
                                             .createBuildApiToken(session.token, "Android App")
                                     }
                                     onApiKeyCreated(token)
@@ -17663,6 +17666,7 @@ private fun AccountScreen(
                                             Dispatchers.IO
                                         ) {
                                             AppForgeAccountClient(
+                                                context,
                                                 serverUrl
                                             ).deleteAccount(
                                                 email =
@@ -17761,7 +17765,7 @@ private fun AccountScreen(
                                     try {
                                         val loginResult =
                                             withContext(Dispatchers.IO) {
-                                                AppForgeAccountClient(serverUrl)
+                                                AppForgeAccountClient(context, serverUrl)
                                                     .login(email, password)
                                             }
 
@@ -17791,7 +17795,7 @@ private fun AccountScreen(
                                 scope.launch {
                                     try {
                                         val s = withContext(Dispatchers.IO) {
-                                            AppForgeAccountClient(serverUrl)
+                                            AppForgeAccountClient(context, serverUrl)
                                                 .register(email, password, displayName)
                                         }
                                         onSession(s)
@@ -17804,6 +17808,52 @@ private fun AccountScreen(
                             enabled = !busy,
                             modifier = Modifier.weight(1f)
                         ) { Text("Kayıt Ol") }
+                    }
+                }
+                item {
+                    OutlinedTextField(
+                        value = transferTwoFactorCode,
+                        onValueChange = {
+                            transferTwoFactorCode =
+                                it.filter(Char::isDigit).take(6)
+                        },
+                        label = { Text("2FA kodu (etkinse)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    OutlinedButton(
+                        onClick = {
+                            busy = true
+                            scope.launch {
+                                try {
+                                    val transferred =
+                                        withContext(Dispatchers.IO) {
+                                            AppForgeAccountClient(context, serverUrl)
+                                                .transferDevice(
+                                                    email,
+                                                    password,
+                                                    transferTwoFactorCode
+                                                )
+                                        }
+                                    onSession(transferred)
+                                    message =
+                                        "Bu cihaz etkinleştirildi; önceki cihazın erişimi kapatıldı."
+                                } catch (t: Throwable) {
+                                    message = "Cihaz değiştirilemedi: ${t.message}"
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        },
+                        enabled =
+                            !busy &&
+                            email.isNotBlank() &&
+                            password.length >= 8,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("BU CİHAZI ETKİNLEŞTİR")
                     }
                 }
             }
@@ -18102,6 +18152,7 @@ private fun TemplatesScreen(
                         Dispatchers.IO
                     ) {
                         WorkspaceClient(
+                            context,
                             serverUrl,
                             current.token
                         ).listTemplates()

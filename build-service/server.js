@@ -26,7 +26,10 @@ import {
   verifiedEmailRequired,
   adminRequired,
   markEmailVerified,
-  updatePassword
+  updatePassword,
+  requestDeviceId,
+  bindAccountDevice,
+  transferAccountDevice
 } from "./src/auth.js";
 import {
   buildRateLimit,
@@ -203,7 +206,7 @@ app.use("/api", (req, res, next) => {
 
   if (origin && isAllowedWebStudioOrigin(origin)) {
     res.set("Access-Control-Allow-Origin", origin);
-    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept");
+    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, X-AppForge-Device-ID");
     res.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
     res.set("Vary", "Origin");
 
@@ -401,7 +404,11 @@ app.post(
     try {
       const user =
         await createUser(
-          req.body || {}
+          {
+            ...(req.body || {}),
+            deviceId:
+              requestDeviceId(req)
+          }
         );
 
       if (config.smtpHost) {
@@ -423,7 +430,10 @@ app.post(
         .json({
           user,
           token:
-            issueAccessToken(user),
+            issueAccessToken(
+              user,
+              { deviceBound: true }
+            ),
           verificationEmailSent:
             Boolean(
               config.smtpHost
@@ -452,6 +462,9 @@ app.post(
           req.body || {}
         );
 
+      const deviceId =
+        requestDeviceId(req);
+
       if (
         user.twoFactorEnabled
       ) {
@@ -459,15 +472,24 @@ app.post(
           requiresTwoFactor: true,
           challengeToken:
             issueTwoFactorChallenge(
-              user
+              user,
+              deviceId
             )
         });
       }
 
+      await bindAccountDevice(
+        user.id,
+        deviceId
+      );
+
       res.json({
         user,
         token:
-          issueAccessToken(user)
+          issueAccessToken(
+            user,
+            { deviceBound: true }
+          )
       });
     } catch (error) {
       res
@@ -507,6 +529,12 @@ app.post(
           });
       }
 
+      await bindAccountDevice(
+        payload.sub,
+        payload.deviceId ||
+          requestDeviceId(req)
+      );
+
       const result =
         await query(
           `SELECT
@@ -544,7 +572,10 @@ app.post(
       res.json({
         user,
         token:
-          issueAccessToken(user)
+          issueAccessToken(
+            user,
+            { deviceBound: true }
+          )
       });
     } catch (error) {
       res
@@ -556,6 +587,51 @@ app.post(
               error
             )
         });
+    }
+  }
+);
+
+app.post(
+  "/api/auth/device-transfer",
+  async (req, res) => {
+    try {
+      const user = await loginUser(req.body || {});
+
+      if (!user.emailVerified) {
+        const error = new Error("Cihaz değiştirmek için e-posta doğrulaması gerekli.");
+        error.statusCode = 403;
+        throw error;
+      }
+
+      if (user.twoFactorEnabled) {
+        const ok = await verifyUserTotp(
+          user.id,
+          req.body?.twoFactorCode
+        );
+        if (!ok) {
+          const error = new Error("2FA kodu geçersiz.");
+          error.statusCode = 401;
+          throw error;
+        }
+      }
+
+      await transferAccountDevice(
+        user.id,
+        requestDeviceId(req)
+      );
+
+      res.json({
+        user,
+        token: issueAccessToken(
+          user,
+          { deviceBound: true }
+        )
+      });
+    } catch (error) {
+      res.status(error.statusCode || 400).json({
+        error: String(error.message || error),
+        code: error.code || null
+      });
     }
   }
 );

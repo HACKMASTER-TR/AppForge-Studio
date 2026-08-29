@@ -1,5 +1,7 @@
 package com.appforge.studio.net
 
+import android.content.Context
+import com.appforge.studio.security.StudioDeviceIdentity
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -14,9 +16,14 @@ data class RemoteTemplate(
 )
 
 class WorkspaceClient(
+    context: Context,
     private val baseUrl: String,
     private val bearerToken: String
 ) {
+    private val deviceId =
+        StudioDeviceIdentity.value(
+            context.applicationContext
+        )
     fun listTemplates(): List<RemoteTemplate> {
         val json = get("/api/templates")
         val arr = json.optJSONArray("templates") ?: JSONArray()
@@ -71,6 +78,7 @@ class WorkspaceClient(
             connectTimeout = 15_000
             readTimeout = 20_000
             setRequestProperty("Authorization", "Bearer $bearerToken")
+            setRequestProperty("X-AppForge-Device-ID", deviceId)
             setRequestProperty("Accept", "application/json")
 
             if (body != null) {

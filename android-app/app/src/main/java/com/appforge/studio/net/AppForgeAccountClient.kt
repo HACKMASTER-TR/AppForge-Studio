@@ -1,5 +1,7 @@
 package com.appforge.studio.net
 
+import android.content.Context
+import com.appforge.studio.security.StudioDeviceIdentity
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -19,8 +21,14 @@ sealed class LoginResult {
 }
 
 class AppForgeAccountClient(
+    context: Context,
     private val baseUrl: String
 ) {
+    private val deviceId =
+        StudioDeviceIdentity.value(
+            context.applicationContext
+        )
+
     fun register(
         email: String,
         password: String,
@@ -69,6 +77,25 @@ class AppForgeAccountClient(
         return session(json)
     }
 
+    fun transferDevice(
+        email: String,
+        password: String,
+        twoFactorCode: String = ""
+    ): Session {
+        return session(
+            request(
+                "/api/auth/device-transfer",
+                JSONObject().apply {
+                    put("email", email)
+                    put("password", password)
+                    if (twoFactorCode.isNotBlank()) {
+                        put("twoFactorCode", twoFactorCode)
+                    }
+                }
+            )
+        )
+    }
+
 
     fun createBuildApiToken(
         sessionToken: String,
@@ -99,6 +126,11 @@ class AppForgeAccountClient(
                 setRequestProperty(
                     "Authorization",
                     "Bearer $sessionToken"
+                )
+
+                setRequestProperty(
+                    "X-AppForge-Device-ID",
+                    deviceId
                 )
             }
 
@@ -216,6 +248,10 @@ class AppForgeAccountClient(
                 setRequestProperty(
                     "Content-Type",
                     "application/json; charset=utf-8"
+                )
+                setRequestProperty(
+                    "X-AppForge-Device-ID",
+                    deviceId
                 )
             }
 

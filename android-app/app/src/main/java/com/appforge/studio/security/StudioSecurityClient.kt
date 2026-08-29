@@ -398,6 +398,10 @@ class StudioSecurityClient(
                     "Authorization",
                     "Bearer $accessToken"
                 )
+                setRequestProperty(
+                    "X-AppForge-Device-ID",
+                    StudioDeviceIdentity.value(appContext)
+                )
 
                 if (
                     !integritySession

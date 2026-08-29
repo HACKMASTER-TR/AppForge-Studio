@@ -6,6 +6,7 @@ import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
 import com.appforge.studio.security.SecureAccountStore
+import com.appforge.studio.security.StudioDeviceIdentity
 import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream
@@ -1380,6 +1381,10 @@ class BuildApiClient(
         ).apply {
             connectTimeout = 20_000
             setRequestProperty("Accept", "application/json")
+            setRequestProperty(
+                "X-AppForge-Device-ID",
+                StudioDeviceIdentity.value(context)
+            )
 
             SecureAccountStore
                 .loadSession(context)
