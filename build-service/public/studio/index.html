@@ -4,13 +4,13 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="color-scheme" content="dark light"/>
-<title>AppForge Studio V4</title>
+<title>AppForge Studio V5</title>
 <link rel="stylesheet" href="./v4.css"/>
 </head>
 <body>
 <header class="topbar">
   <div class="brand">
-    <strong>AppForge Studio V4</strong>
+    <strong>AppForge Studio V5</strong>
     <span class="muted">Android • Windows • Web</span>
   </div>
   <div class="top-actions">
@@ -72,7 +72,7 @@
     <section id="homePanel" class="panel">
       <div class="hero card">
         <div>
-          <span class="eyebrow">APPFORGE STUDIO V4</span>
+          <span class="eyebrow">APPFORGE STUDIO V5</span>
           <h1>Bir projeyi her platformdan yönet.</h1>
           <p class="muted">Quick/Advanced oluşturma, kaynak analizi, APK↔EXE dönüşümü, build, preview, test, yayın, AI ve takım araçları tek yerde.</p>
         </div>
@@ -163,6 +163,8 @@
             <label>Çıktı
               <select id="quickOutput"><option value="both">APK + AAB</option><option value="apk">APK</option><option value="aab">AAB</option><option value="exe">Windows EXE</option></select>
             </label>
+            <label>HTML veya ZIP<input id="quickSource" type="file" accept=".html,.htm,.zip,text/html,application/zip"/></label>
+            <label class="check"><input id="quickAutoVersion" type="checkbox" checked/> Otomatik sürüm arttır</label>
           </div>
           <button onclick="quickCreateProject()">Projeyi Oluştur</button>
         </div>
@@ -187,6 +189,8 @@
                 <option value="unity">Unity</option>
               </select>
             </label>
+            <label>HTML veya ZIP<input id="advancedSource" type="file" accept=".html,.htm,.zip,text/html,application/zip"/></label>
+            <label class="check"><input id="advancedAutoVersion" type="checkbox"/> Otomatik sürüm arttır</label>
           </div>
           <button onclick="advancedCreateProject()">Oluştur ve Builder'a Geç</button>
         </div>

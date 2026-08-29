@@ -1,4 +1,8 @@
-# AppForge Studio v3.0 — Local AI Assistant
+# AppForge Studio V5 — AI Application Studio
+
+V5 adds a working Quick/Advanced application scaffold flow to the shared Studio: responsive visual UI, live preview, CRUD data schema, Node.js backend, authentication, notifications and Android/Windows/Web publishing metadata are generated together. HTML and ZIP source selection now includes an `Otomatik sürüm arttır` control; when enabled, semantic `versionName` and Android `versionCode` advance together.
+
+Android Gradle builds use the balanced V5 performance profile by default: APK+AAB tasks share one warm Gradle invocation, two workers run in parallel, Kotlin incremental compilation stays enabled and the persistent Gradle build cache is reused. If the worker reaches its memory limit, the same build automatically falls back to isolated low-memory tasks without discarding completed outputs. Set `GRADLE_PERFORMANCE_PROFILE=low-memory` only for constrained workers.
 
 ## ✨ Yerel AI Asistan
 AppForge now has an on-device AI assistant for questions about:
@@ -34,7 +38,7 @@ The user can optionally give the local model a safe summary of the current proje
 ## Built-in AppForge knowledge
 A local retrieval layer supplies the model with relevant AppForge product documentation before each question.
 
-## Existing v2.9 features remain
+## Existing features remain
 - Preview Console / Network / Performance / Security
 - Test Lab
 - APK/AAB analyzer

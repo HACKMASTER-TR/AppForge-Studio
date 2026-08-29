@@ -16,6 +16,12 @@ import {
   getFastBuildDecision
 } from "./fastBuild.js";
 import {
+  gradleArguments,
+  gradleInvocationPlan,
+  gradleJvmOptions,
+  gradlePerformanceProfile
+} from "./gradlePerformance.js";
+import {
   buildNodeWebSource,
   preparePythonAndroidProject,
   prepareAndroidGradleProject
@@ -2498,10 +2504,19 @@ export async function executeBuild(job) {
        */
       const runGradleTaskWithRetry =
         async (
-          task,
-          label = task,
-          maxAttempts = 3
+          requestedTasks,
+          label,
+          profile,
+          maxAttempts =
+            profile.name === "balanced"
+              ? 1
+              : 3
         ) => {
+          const taskList =
+            Array.isArray(requestedTasks)
+              ? requestedTasks
+              : [requestedTasks];
+
           for (
             let attempt = 1;
             attempt <= maxAttempts;
@@ -2522,8 +2537,9 @@ export async function executeBuild(job) {
               await runGradle(
                 buildId,
                 android,
-                [task],
-                gradleEnv
+                taskList,
+                gradleEnv,
+                profile
               );
 
               await appendLog(
@@ -2578,56 +2594,62 @@ export async function executeBuild(job) {
           }
         };
 
-      for (const task of tasks) {
-        /*
-         * AAB pipeline:
-         *
-         * 1. Kotlin derleme
-         * 2. External DEX birleştirme
-         * 3. Bundle paketleme
-         * 4. bundleRelease yalnızca son kontroller + signing
-         *
-         * Önceki aşamaların çıktıları aynı build klasöründe kaldığı
-         * için bundleRelease bunları UP-TO-DATE / FROM-CACHE görür.
-         */
-        if (
-          task === "bundleRelease" &&
-          ![
-            "android-gradle",
-            "android-ndk"
-          ].includes(
-            source.engine
-          )
-        ) {
-          await appendLog(
-            buildId,
-            "🧩 AAB düşük bellek pipeline başlatılıyor..."
+      const preferredGradleProfile =
+        gradlePerformanceProfile(
+          config.gradlePerformanceProfile
+        );
+
+      const runPlan = async profile => {
+        const plan =
+          gradleInvocationPlan(
+            tasks,
+            profile.name
           );
 
+        await appendLog(
+          buildId,
+          profile.name === "balanced"
+            ? `⚡ Gradle hız profili • ${profile.maxWorkers} worker • ${plan.length} JVM çağrısı`
+            : "🛡 Gradle düşük bellek profili • görevler izole çalışacak"
+        );
+
+        for (const invocationTasks of plan) {
           await runGradleTaskWithRetry(
-            "compileReleaseKotlin",
-            "AAB 1/3 • Kotlin"
-          );
-
-          await runGradleTaskWithRetry(
-            "mergeExtDexRelease",
-            "AAB 2/3 • DEX"
-          );
-
-          await runGradleTaskWithRetry(
-            "packageReleaseBundle",
-            "AAB 3/3 • Bundle paketleme"
-          );
-
-          await appendLog(
-            buildId,
-            "🔐 AAB sonlandırılıyor ve imzalanıyor..."
+            invocationTasks,
+            invocationTasks.join(" + "),
+            profile
           );
         }
+      };
 
-        await runGradleTaskWithRetry(
-          task,
-          task
+      try {
+        await runPlan(
+          preferredGradleProfile
+        );
+      } catch (error) {
+        const message =
+          String(error?.message || error || "");
+        const memoryFailure =
+          /daemon.*disappeared|DaemonDisappearedException|OutOfMemoryError|exit(?:=| code )null/i.test(
+            message
+          );
+
+        if (
+          preferredGradleProfile.name === "low-memory" ||
+          !memoryFailure
+        ) {
+          throw error;
+        }
+
+        await appendLog(
+          buildId,
+          "⚠️ Hız profili bellek sınırına ulaştı; mevcut çıktılar korunarak düşük bellek profiline geçiliyor."
+        );
+
+        await runPlan(
+          gradlePerformanceProfile(
+            "low-memory"
+          )
         );
       }
 
@@ -2965,6 +2987,11 @@ async function generateAndroidProject(projectDir, c, files) {
   const firebaseEnabled =
     Boolean(c.firebase?.analytics || c.firebase?.crashlytics || c.firebase?.messaging);
 
+  const generatedGradleProfile =
+    gradlePerformanceProfile(
+      config.gradlePerformanceProfile
+    );
+
   await fs.writeFile(
     path.join(projectDir, "settings.gradle.kts"),
 `pluginManagement {
@@ -2998,13 +3025,13 @@ include(":app")
 
   await fs.writeFile(
     path.join(projectDir, "gradle.properties"),
-`org.gradle.jvmargs=-Xmx320m -XX:MaxMetaspaceSize=256m -XX:+UseSerialGC -Dfile.encoding=UTF-8
-org.gradle.workers.max=1
-org.gradle.parallel=false
+`org.gradle.jvmargs=${gradleJvmOptions(generatedGradleProfile)}
+org.gradle.workers.max=${generatedGradleProfile.maxWorkers}
+org.gradle.parallel=${generatedGradleProfile.parallel}
 org.gradle.vfs.watch=false
 org.gradle.daemon=false
 org.gradle.caching=true
-kotlin.incremental=false
+kotlin.incremental=${generatedGradleProfile.incremental}
 android.useAndroidX=true
 kotlin.code.style=official
 kotlin.compiler.execution.strategy=in-process
@@ -8316,7 +8343,10 @@ async function runGradle(
   buildId,
   cwd,
   tasks,
-  env
+  env,
+  profile = gradlePerformanceProfile(
+    config.gradlePerformanceProfile
+  )
 ) {
   return new Promise(
     (resolve, reject) => {
@@ -8343,24 +8373,10 @@ async function runGradle(
       const child =
         spawn(
           config.gradleBin,
-          [
-            ...tasks,
-            "--no-daemon",
-            "--build-cache",
-
-            /*
-             * Railway Worker düşük bellek profili:
-             * - Gradle aynı anda yalnızca 1 worker çalıştırır.
-             * - Kotlin ayrı daemon JVM açmaz.
-             * Bu özellikle D8 / mergeDex sırasında bellek
-             * tepesini ciddi şekilde düşürür.
-             */
-            "--max-workers=1",
-            "-Pkotlin.compiler.execution.strategy=in-process",
-            "-Dorg.gradle.parallel=false",
-
-            "--stacktrace"
-          ],
+          gradleArguments(
+            tasks,
+            profile
+          ),
           {
             cwd,
             shell:
@@ -8369,10 +8385,9 @@ async function runGradle(
             env: {
               ...env,
               GRADLE_OPTS:
-                "-Xmx320m " +
-                "-XX:MaxMetaspaceSize=256m " +
-                "-XX:+UseSerialGC " +
-                "-Dfile.encoding=UTF-8"
+                gradleJvmOptions(
+                  profile
+                )
             }
           }
         );

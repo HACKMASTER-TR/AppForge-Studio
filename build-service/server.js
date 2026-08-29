@@ -153,6 +153,9 @@ import {
   observabilityStatus,
   setupExpressErrorHandling
 } from "./src/observability.js";
+import {
+  createV5Scaffold
+} from "./src/v5Studio.js";
 
 assertCriticalConfig();
 
@@ -267,7 +270,7 @@ app.get(
         ok: true,
         service:
           "AppForge Build Service",
-        version: "1.9.0",
+        version: "5.0.0",
         database: true,
         databaseTime:
           db.rows[0].now,
@@ -285,6 +288,8 @@ app.get(
           config.buildCacheEnabled,
         buildCacheTtlHours:
           config.buildCacheTtlHours,
+        gradlePerformanceProfile:
+          config.gradlePerformanceProfile,
         observability:
           observabilityStatus(),
         liveLogs: true,
@@ -1293,6 +1298,24 @@ app.post(
 // -----------------------------------------------------------------------------
 // Projects
 // -----------------------------------------------------------------------------
+app.post(
+  "/api/v5/scaffold",
+  authRequired,
+  (req, res) => {
+    try {
+      res.status(201).json(
+        createV5Scaffold(
+          req.body || {}
+        )
+      );
+    } catch (error) {
+      res.status(400).json({
+        error: String(error.message || error)
+      });
+    }
+  }
+);
+
 app.get(
   "/api/projects",
   authRequired,
@@ -4308,7 +4331,7 @@ app.listen(
   "0.0.0.0",
   () => {
     console.log(
-      `AppForge Build Service v1.8: http://0.0.0.0:${config.port}`
+      `AppForge Build Service V5: http://0.0.0.0:${config.port}`
     );
 
     console.log(
@@ -4321,6 +4344,10 @@ app.listen(
 
     console.log(
       `Gradle cache: ${config.gradleCacheRoot}`
+    );
+
+    console.log(
+      `Gradle profile: ${config.gradlePerformanceProfile}`
     );
   }
 );

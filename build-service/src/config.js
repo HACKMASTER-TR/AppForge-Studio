@@ -111,6 +111,13 @@ export const config = {
     1,
     Number(process.env.BUILD_CONCURRENCY || 2)
   ),
+  gradlePerformanceProfile:
+    String(
+      process.env.GRADLE_PERFORMANCE_PROFILE ||
+      "balanced"
+    )
+      .trim()
+      .toLowerCase(),
   sourceBuildIsolationMode:
     String(
       process.env.SOURCE_BUILD_ISOLATION_MODE ||

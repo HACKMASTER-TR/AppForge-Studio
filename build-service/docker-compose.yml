@@ -128,6 +128,7 @@ services:
       EXPECTED_GRADLE: "9.3.1"
       EXPECTED_JDK_MAJOR: "17"
       BUILD_CONCURRENCY: "2"
+      GRADLE_PERFORMANCE_PROFILE: balanced
       WORKER_CAPABILITIES: android-api-37,build-tools-36.0.0,java-17,gradle
     depends_on:
       postgres:

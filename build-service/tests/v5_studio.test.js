@@ -1,0 +1,75 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import AdmZip from "adm-zip";
+import { bumpVersion, createV5Scaffold } from "../src/v5Studio.js";
+
+const androidMain = new URL(
+  "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+  import.meta.url
+);
+const webStudio = new URL("../public/studio/index.html", import.meta.url);
+const server = new URL("../server.js", import.meta.url);
+
+test("V5 version manager increments semantic patch and Android code", () => {
+  assert.deepEqual(bumpVersion("2.4.9", 29), {
+    versionName: "2.4.10",
+    versionCode: 30
+  });
+  assert.deepEqual(bumpVersion("invalid", 0), {
+    versionName: "1.0.1",
+    versionCode: 2
+  });
+});
+
+test("V5 scaffold creates working UI, data, backend, auth and notification flows", () => {
+  const result = createV5Scaffold({
+    appName: "Görevler",
+    entity: "tasks",
+    fields: ["title", "completed"],
+    autoVersion: true,
+    versionName: "1.3.0",
+    versionCode: 7
+  });
+
+  assert.equal(result.config.versionName, "1.3.1");
+  assert.equal(result.config.versionCode, 8);
+  assert.match(result.files["index.html"], /Bildirimleri aç/);
+  assert.match(result.files["app.js"], /localStorage/);
+  assert.doesNotThrow(() => new Function(result.files["app.js"]));
+  assert.match(result.files["backend\/server.js"], /\/api\/tasks/);
+  assert.match(result.files["database/schema.sql"], /CREATE TABLE IF NOT EXISTS tasks/);
+  assert.deepEqual(
+    JSON.parse(result.files["database/schema.json"]).fields.map((x) => x.name),
+    ["title", "completed"]
+  );
+});
+
+test("V5 scaffold safely imports HTML ZIP sources", () => {
+  const zip = new AdmZip();
+  zip.addFile("index.html", Buffer.from("<h1>Imported</h1>"));
+  zip.addFile("assets/app.js", Buffer.from("globalThis.imported=true"));
+  zip.addFile("../unsafe.js", Buffer.from("throw new Error('unsafe')"));
+  const result = createV5Scaffold({
+    sourceZipBase64: zip.toBuffer().toString("base64")
+  });
+  assert.equal(result.files["index.html"], "<h1>Imported</h1>");
+  assert.equal(result.files["assets/app.js"], "globalThis.imported=true");
+  assert.equal(result.files["../unsafe.js"], undefined);
+});
+
+test("Quick and Advanced HTML or ZIP screens expose automatic version increment", async () => {
+  const android = await readFile(androidMain, "utf8");
+  const web = await readFile(webStudio, "utf8");
+  assert.ok(android.match(/Otomatik sürüm arttır/g).length >= 2);
+  assert.match(web, /Quick Create/);
+  assert.match(web, /Advanced Create/);
+  assert.match(web, /accept="\.html,\.htm,\.zip/);
+  assert.ok(web.match(/Otomatik sürüm arttır/g).length >= 2);
+});
+
+test("V5 scaffold API is authenticated and wired into the service", async () => {
+  const text = await readFile(server, "utf8");
+  assert.match(text, /"\/api\/v5\/scaffold",\s*authRequired/);
+  assert.match(text, /createV5Scaffold/);
+});

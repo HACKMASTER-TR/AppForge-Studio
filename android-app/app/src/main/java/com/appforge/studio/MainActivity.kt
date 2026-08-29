@@ -2914,7 +2914,7 @@ private fun AppForgeApp() {
                             Column {
                                 Text("AppForge Studio", fontWeight = FontWeight.Bold)
                                 Text(
-                                    "Adım $step/10 • " +
+                                    "V5 • Adım $step/10 • " +
                                         when (step) {
                                             1 -> "Kaynak"
                                             2 -> "İzinler"
@@ -4140,6 +4140,25 @@ private fun QuickCreateScreen(
                                                 }
                                         }"
                                     }
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    onDraftChange(
+                                        draft.copy(
+                                            autoVersionCode =
+                                                !draft.autoVersionCode
+                                        )
+                                    )
+                                },
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    "Otomatik sürüm arttır: ${
+                                        if (draft.autoVersionCode) "Açık" else "Kapalı"
+                                    }"
                                 )
                             }
                         } else {
@@ -10004,6 +10023,27 @@ private fun SourceStep(
                         } else {
                             "Kaynağı değiştir"
                         }
+                    )
+                }
+            }
+
+            item {
+                OutlinedButton(
+                    onClick = {
+                        update(
+                            d.copy(
+                                autoVersionCode =
+                                    !d.autoVersionCode
+                            )
+                        )
+                    },
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "Otomatik sürüm arttır: ${
+                            if (d.autoVersionCode) "Açık" else "Kapalı"
+                        }"
                     )
                 }
             }

@@ -498,19 +498,32 @@ window.setCreateMode=function setCreateMode(mode){
   $("advancedModeBtn").classList.toggle("active",mode==="advanced");
 };
 window.syncQuickPackage=function syncQuickPackage(){ $("quickPackage").value=slugPackage(val("quickName")); };
+async function applyCreateSource(inputId,name){
+  const source=$(inputId).files?.[0];
+  if(!source){files=starterFiles(val("quickStarter")||"blank",name);return}
+  if(/\.html?$/i.test(source.name)){
+    files={"index.html":await source.text(),"style.css":"","app.js":""};
+    pendingProjectFile=null;
+    return;
+  }
+  if(!/\.zip$/i.test(source.name))throw new Error("Yalnız HTML veya ZIP seçilebilir.");
+  await analyzeZipFile(source);
+  if(!analyzedSourceFiles||!Object.keys(analyzedSourceFiles).length)throw new Error("ZIP içinde düzenlenebilir proje dosyası bulunamadı.");
+  files=structuredClone(analyzedSourceFiles);
+}
 window.quickCreateProject=async function quickCreateProject(){
   const name=val("quickName").trim()||"Yeni Uygulama";
   const packageName=val("quickPackage").trim()||slugPackage(name);
-  const config={...defaultConfig(),appName:name,packageName,buildOutput:val("quickOutput")||"both"};
-  files=starterFiles(val("quickStarter"),name);
+  const config={...defaultConfig(),appName:name,packageName,buildOutput:val("quickOutput")||"both",autoVersionCode:bool("quickAutoVersion")};
+  await applyCreateSource("quickSource",name);
   await createProjectRecord(name,packageName,config,true);
   showPanel("idePanel");
 };
 window.advancedCreateProject=async function advancedCreateProject(){
   const name=val("advancedName").trim()||"Yeni Uygulama";
   const packageName=val("advancedPackage").trim()||slugPackage(name);
-  const config={...defaultConfig(),appName:name,packageName,sourceMode:val("advancedSourceMode"),sourceTechnology:val("advancedTechnology")};
-  files=starterFiles("blank",name);
+  const config={...defaultConfig(),appName:name,packageName,sourceMode:val("advancedSourceMode"),sourceTechnology:val("advancedTechnology"),autoVersionCode:bool("advancedAutoVersion")};
+  await applyCreateSource("advancedSource",name);
   await createProjectRecord(name,packageName,config,true);
   fillBuilder(config);
   showPanel("builderPanel");
