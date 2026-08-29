@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   computeCacheKey,
@@ -27,6 +28,25 @@ const baseConfig = {
     messaging: true
   }
 };
+
+test(
+  "raw cache-hit INSERT includes the priority target column",
+  () => {
+    const serverSource =
+      readFileSync(
+        new URL(
+          "../server.js",
+          import.meta.url
+        ),
+        "utf8"
+      );
+
+    assert.match(
+      serverSource,
+      /cache_key,\s*cache_hit,\s*priority,\s*started_at,\s*completed_at[\s\S]*?\$9::jsonb,\$10,TRUE,\$11,\s*NOW\(\),NOW\(\)/
+    );
+  }
+);
 
 test(
   "direct S3 uploads use content identity instead of random object key",

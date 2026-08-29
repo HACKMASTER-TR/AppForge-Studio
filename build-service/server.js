@@ -2555,6 +2555,7 @@ app.post(
              outputs,
              cache_key,
              cache_hit,
+             priority,
              started_at,
              completed_at
            )
