@@ -10,13 +10,6 @@ import {
   cacheSetJson
 } from "./redis.js";
 
-const BUILD_OUTPUTS =
-  new Set([
-    "apk",
-    "aab",
-    "both"
-  ]);
-
 function normalizeBuildOutput(
   value
 ) {
@@ -27,11 +20,13 @@ function normalizeBuildOutput(
       .trim()
       .toLowerCase();
 
-  return BUILD_OUTPUTS.has(
-    output
-  )
+  return /^[a-z0-9][a-z0-9_-]{0,63}$/
+    .test(output)
     ? output
-    : "both";
+    : `other-${crypto
+        .createHash("sha256")
+        .update(output)
+        .digest("hex")}`;
 }
 
 function stable(value) {
@@ -119,7 +114,7 @@ export function cacheKeyDescriptor(
   cacheKey
 ) {
   const match =
-    /^([a-f0-9]{64}):(apk|aab|both)$/
+    /^([a-f0-9]{64}):([a-z0-9][a-z0-9_-]{0,69})$/
       .exec(
         String(
           cacheKey || ""
@@ -207,10 +202,37 @@ export function cacheSupportsOutput(
     return hasAab;
   }
 
-  return (
-    hasApk &&
-    hasAab
+  if (output === "both") {
+    return (
+      hasApk &&
+      hasAab
+    );
+  }
+
+  return validArtifactRef(
+    outputs?.[output]
   );
+}
+
+export function outputsForRequest(
+  outputs,
+  requestedOutput
+) {
+  const output =
+    normalizeBuildOutput(
+      requestedOutput
+    );
+
+  if (output === "both") {
+    return {
+      apk: outputs?.apk,
+      aab: outputs?.aab
+    };
+  }
+
+  return {
+    [output]: outputs?.[output]
+  };
 }
 
 async function cacheArtifactsExist(
@@ -235,6 +257,12 @@ async function cacheArtifactsExist(
   ) {
     return outputExists(
       outputs?.aab
+    );
+  }
+
+  if (output !== "both") {
+    return outputExists(
+      outputs?.[output]
     );
   }
 
@@ -386,6 +414,18 @@ export async function findCache(
         )
       )
     ) {
+      const hit =
+        requestedOutput
+          ? {
+              ...hot,
+              outputs:
+                outputsForRequest(
+                  hot.outputs,
+                  requestedOutput
+                )
+            }
+          : hot;
+
       /*
        * BOTH fallback bulunduysa istenen output key'i
        * için de kısa yol Redis alias'ı oluştur.
@@ -396,11 +436,11 @@ export async function findCache(
       ) {
         await cacheRowInRedis(
           cacheKey,
-          hot
+          hit
         );
       }
 
-      return hot;
+      return hit;
     }
 
     const result =
@@ -446,6 +486,18 @@ export async function findCache(
       continue;
     }
 
+    const hit =
+      requestedOutput
+        ? {
+            ...row,
+            outputs:
+              outputsForRequest(
+                row.outputs,
+                requestedOutput
+              )
+          }
+        : row;
+
     await cacheRowInRedis(
       lookupKey,
       row
@@ -454,11 +506,11 @@ export async function findCache(
     if (lookupKey !== cacheKey) {
       await cacheRowInRedis(
         cacheKey,
-        row
+        hit
       );
     }
 
-    return row;
+    return hit;
   }
 
   return null;

@@ -5,7 +5,8 @@ import {
   computeCacheKey,
   cacheKeyDescriptor,
   cacheLookupKeys,
-  cacheSupportsOutput
+  cacheSupportsOutput,
+  outputsForRequest
 } from "../src/buildCache.js";
 
 const baseConfig = {
@@ -23,6 +24,52 @@ const baseConfig = {
     messaging: true
   }
 };
+
+test(
+  "non-Android outputs do not collide with Android cache identities",
+  async () => {
+    const outputs = [
+      "apk",
+      "aab",
+      "both",
+      "exe"
+    ];
+
+    const keys =
+      await Promise.all(
+        outputs.map(
+          buildOutput =>
+            computeCacheKey(
+              {
+                ...baseConfig,
+                buildOutput
+              },
+              {
+                projectIdentity:
+                  "same-project"
+              }
+            )
+        )
+      );
+
+    assert.equal(
+      new Set(keys).size,
+      outputs.length
+    );
+    assert.equal(
+      cacheKeyDescriptor(
+        keys.at(-1)
+      ).output,
+      "exe"
+    );
+    assert.deepEqual(
+      cacheLookupKeys(
+        keys.at(-1)
+      ),
+      [keys.at(-1)]
+    );
+  }
+);
 
 test(
   "APK AAB BOTH share build identity but keep request output suffix",
@@ -184,6 +231,41 @@ test(
         "both"
       ),
       false
+    );
+  }
+);
+
+test(
+  "single-artifact fallback does not expose the other BOTH artifact",
+  () => {
+    const outputs = {
+      apk: {
+        driver: "s3",
+        key: "build/app-release.apk"
+      },
+      aab: {
+        driver: "s3",
+        key: "build/app-release.aab"
+      }
+    };
+
+    assert.deepEqual(
+      outputsForRequest(
+        outputs,
+        "apk"
+      ),
+      {
+        apk: outputs.apk
+      }
+    );
+    assert.deepEqual(
+      outputsForRequest(
+        outputs,
+        "aab"
+      ),
+      {
+        aab: outputs.aab
+      }
     );
   }
 );
