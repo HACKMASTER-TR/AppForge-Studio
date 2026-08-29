@@ -2566,6 +2566,9 @@ export async function executeBuild(job) {
                 /OutOfMemoryError:\s*Metaspace/i.test(
                   message
                 ) ||
+                /GradleStallTimeout/i.test(
+                  message
+                ) ||
                 /Çıkış kodu:\s*null/i.test(
                   message
                 );
@@ -2630,7 +2633,7 @@ export async function executeBuild(job) {
         const message =
           String(error?.message || error || "");
         const memoryFailure =
-          /daemon.*disappeared|DaemonDisappearedException|OutOfMemoryError|exit(?:=| code )null/i.test(
+          /daemon.*disappeared|DaemonDisappearedException|OutOfMemoryError|GradleStallTimeout|exit(?:=| code )null/i.test(
             message
           );
 
@@ -8352,6 +8355,8 @@ async function runGradle(
     (resolve, reject) => {
       let settled = false;
       let cancellationRequested = false;
+      let stallDetected = false;
+      let lastOutputAt = Date.now();
 
       const recentGradleLines = [];
 
@@ -8472,9 +8477,51 @@ async function runGradle(
 
       poll.unref();
 
+      const stallWatchdog =
+        setInterval(
+          () => {
+            if (
+              settled ||
+              cancellationRequested ||
+              stallDetected
+            ) {
+              return;
+            }
+
+            const silentForMs =
+              Date.now() -
+              lastOutputAt;
+
+            if (
+              silentForMs <
+              config.gradleStallTimeoutMs
+            ) {
+              return;
+            }
+
+            stallDetected = true;
+
+            appendLog(
+              buildId,
+              "⚠️ Gradle uzun süre yeni çıktı üretmedi; " +
+              "takılan süreç durduruluyor ve güvenli profile geçilecek."
+            ).catch(
+              () => {}
+            );
+
+            terminate();
+          },
+          5000
+        );
+
+      stallWatchdog.unref();
+
       child.stdout.on(
         "data",
         data => {
+          lastOutputAt =
+            Date.now();
+
           String(data)
             .split(/\r?\n/)
             .filter(Boolean)
@@ -8496,6 +8543,9 @@ async function runGradle(
       child.stderr.on(
         "data",
         data => {
+          lastOutputAt =
+            Date.now();
+
           String(data)
             .split(/\r?\n/)
             .filter(Boolean)
@@ -8520,6 +8570,9 @@ async function runGradle(
           if (settled) return;
           settled = true;
           clearInterval(poll);
+          clearInterval(
+            stallWatchdog
+          );
           reject(error);
         }
       );
@@ -8530,12 +8583,31 @@ async function runGradle(
           if (settled) return;
           settled = true;
           clearInterval(poll);
+          clearInterval(
+            stallWatchdog
+          );
 
           if (
             cancellationRequested
           ) {
             reject(
               cancelledError()
+            );
+            return;
+          }
+
+          if (
+            stallDetected
+          ) {
+            reject(
+              new Error(
+                "GradleStallTimeout: " +
+                Math.round(
+                  config.gradleStallTimeoutMs /
+                  1000
+                ) +
+                " saniye boyunca yeni Gradle çıktısı alınamadı."
+              )
             );
             return;
           }

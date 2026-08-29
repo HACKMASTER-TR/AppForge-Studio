@@ -114,10 +114,19 @@ export const config = {
   gradlePerformanceProfile:
     String(
       process.env.GRADLE_PERFORMANCE_PROFILE ||
-      "throughput"
+      "balanced"
     )
       .trim()
       .toLowerCase(),
+
+  gradleStallTimeoutMs: Math.max(
+    60_000,
+    Number(
+      process.env.GRADLE_STALL_TIMEOUT_MS ||
+      180_000
+    )
+  ),
+
   sourceBuildIsolationMode:
     String(
       process.env.SOURCE_BUILD_ISOLATION_MODE ||
