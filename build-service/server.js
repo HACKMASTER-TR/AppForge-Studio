@@ -104,6 +104,7 @@ import {
   localOutputFile,
   createDirectInputUpload,
   validateDirectInputUpload,
+  directInputCacheIdentity,
   deleteInput,
   verifyStorageConnection
 } from "./src/storage.js";
@@ -2437,7 +2438,9 @@ app.post(
               incomingProject,
             projectIdentity:
               directProjectRef
-                ? `direct-s3:${directProjectRef.key}:${directProjectRef.sizeBytes}`
+                ? directInputCacheIdentity(
+                    directProjectRef
+                  )
                 : null,
             keystoreFile:
               incomingKeystore,

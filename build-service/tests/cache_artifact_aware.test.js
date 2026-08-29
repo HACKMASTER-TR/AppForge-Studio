@@ -8,6 +8,9 @@ import {
   cacheSupportsOutput,
   outputsForRequest
 } from "../src/buildCache.js";
+import {
+  directInputCacheIdentity
+} from "../src/storage.js";
 
 const baseConfig = {
   appName: "Cache Test",
@@ -24,6 +27,31 @@ const baseConfig = {
     messaging: true
   }
 };
+
+test(
+  "direct S3 uploads use content identity instead of random object key",
+  () => {
+    const first =
+      directInputCacheIdentity({
+        key: "uploads/user/first/project.zip",
+        sizeBytes: 1234,
+        etag: "same-content-etag"
+      });
+
+    const second =
+      directInputCacheIdentity({
+        key: "uploads/user/second/project.zip",
+        sizeBytes: 1234,
+        etag: "same-content-etag"
+      });
+
+    assert.equal(first, second);
+    assert.doesNotMatch(
+      first,
+      /first|second/
+    );
+  }
+);
 
 test(
   "non-Android outputs do not collide with Android cache identities",

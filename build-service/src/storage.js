@@ -294,8 +294,49 @@ export async function validateDirectInputUpload(
       "s3",
     key:
       String(key),
-    sizeBytes
+    sizeBytes,
+    checksumSha256:
+      String(
+        head.ChecksumSHA256 ||
+        ""
+      ).trim() || null,
+    etag:
+      String(
+        head.ETag ||
+        ""
+      )
+        .replace(/^"|"$/g, "")
+        .trim() || null
   };
+}
+
+export function directInputCacheIdentity(
+  ref
+) {
+  if (!ref) return null;
+
+  const contentIdentity =
+    String(
+      ref.checksumSha256 ||
+      ref.etag ||
+      ""
+    ).trim();
+
+  if (contentIdentity) {
+    return (
+      `direct-s3:${contentIdentity}:` +
+      `${Number(ref.sizeBytes || 0)}`
+    );
+  }
+
+  /*
+   * Eski/custom S3 sağlayıcılarında checksum veya ETag
+   * yoksa önceki güvenli exact-object davranışını koru.
+   */
+  return (
+    `direct-s3-key:${String(ref.key || "")}:` +
+    `${Number(ref.sizeBytes || 0)}`
+  );
 }
 
 
