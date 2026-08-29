@@ -29,7 +29,7 @@ class BuildProgressService : Service() {
         val apiKey = intent.getStringExtra(EXTRA_API_KEY) ?: ""
         val appName = intent.getStringExtra(EXTRA_APP_NAME) ?: "AppForge uygulaması"
         createChannel()
-        startForeground(NOTIFICATION_ID, notification(appName, "Derleme arka planda hazırlanıyor", 0, true))
+        startForeground(NOTIFICATION_ID, notification(appName, "Derleme arka planda hazırlanıyor", 0, true, buildId, serverUrl))
         monitorJob?.cancel()
         monitorJob = serviceScope.launch {
             val client = BuildApiClient(this@BuildProgressService, serverUrl, apiKey)
@@ -43,7 +43,7 @@ class BuildProgressService : Service() {
                         else -> "Derleme tamamlanamadı. Ayrıntılar için AppForge Studio'yu aç."
                     }
                     val manager = getSystemService(NotificationManager::class.java)
-                    manager.notify(NOTIFICATION_ID, notification(appName, text, status.progress, active))
+                    manager.notify(NOTIFICATION_ID, notification(appName, text, status.progress, active, buildId, serverUrl))
                     if (!active) {
                         clear(this@BuildProgressService)
                         stopForeground(STOP_FOREGROUND_DETACH)
@@ -53,7 +53,7 @@ class BuildProgressService : Service() {
                 } catch (_: Throwable) {
                     getSystemService(NotificationManager::class.java).notify(
                         NOTIFICATION_ID,
-                        notification(appName, "Derleme sunucuda devam ediyor • bağlantı yeniden denenecek", 0, true)
+                        notification(appName, "Derleme sunucuda devam ediyor • bağlantı yeniden denenecek", 0, true, buildId, serverUrl)
                     )
                 }
                 delay(5_000)
@@ -76,17 +76,27 @@ class BuildProgressService : Service() {
         )
     }
 
-    private fun notification(appName: String, text: String, progress: Int, ongoing: Boolean) =
+    private fun notification(
+        appName: String,
+        text: String,
+        progress: Int,
+        ongoing: Boolean,
+        buildId: String,
+        serverUrl: String
+    ) =
         NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .setContentTitle(appName)
             .setContentText(text)
-            .setContentIntent(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java).apply {
+            .setContentIntent(PendingIntent.getActivity(this, buildId.hashCode(), Intent(this, MainActivity::class.java).apply {
                 putExtra("appforge_open_builds", true)
+                putExtra("appforge_build_id", buildId)
+                putExtra("appforge_build_server_url", serverUrl)
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
             .setOnlyAlertOnce(true)
             .setOngoing(ongoing)
+            .setAutoCancel(!ongoing)
             .setProgress(100, progress.coerceIn(0, 100), progress <= 0 && ongoing)
             .build()
 

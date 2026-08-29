@@ -114,6 +114,15 @@ class MainActivity : ComponentActivity() {
     var openBuildFromNotification by mutableStateOf(false)
         private set
 
+    var buildIdFromNotification by mutableStateOf<String?>(null)
+        private set
+
+    var buildServerUrlFromNotification by mutableStateOf<String?>(null)
+        private set
+
+    var buildNotificationSequence by mutableIntStateOf(0)
+        private set
+
 
     override fun onCreate(
         savedInstanceState: Bundle?
@@ -121,6 +130,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         openBuildFromNotification =
             intent?.getBooleanExtra("appforge_open_builds", false) == true
+
+        buildIdFromNotification =
+            intent?.getStringExtra("appforge_build_id")
+
+        buildServerUrlFromNotification =
+            intent?.getStringExtra("appforge_build_server_url")
+
+        if (openBuildFromNotification) {
+            buildNotificationSequence += 1
+        }
 
         /*
          * Android 13+ bildirim izni.
@@ -257,7 +276,14 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.getBooleanExtra("appforge_open_builds", false)) {
+            buildIdFromNotification =
+                intent.getStringExtra("appforge_build_id")
+
+            buildServerUrlFromNotification =
+                intent.getStringExtra("appforge_build_server_url")
+
             openBuildFromNotification = true
+            buildNotificationSequence += 1
         }
     }
 
@@ -534,7 +560,7 @@ private fun AppForgeApp() {
     var screen by remember { mutableStateOf(AppScreen.HOME) }
     var step by remember { mutableIntStateOf(1) }
 
-    LaunchedEffect(hostActivity?.openBuildFromNotification) {
+    LaunchedEffect(hostActivity?.buildNotificationSequence) {
         if (hostActivity?.consumeBuildNotificationNavigation() == true) {
             screen = AppScreen.BUILDER
             step = 10
@@ -650,6 +676,99 @@ private fun AppForgeApp() {
     var apkUrl by remember { mutableStateOf<String?>(null) }
     var aabUrl by remember { mutableStateOf<String?>(null) }
     var exeUrl by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(hostActivity?.buildNotificationSequence) {
+        val activity =
+            hostActivity
+                ?: return@LaunchedEffect
+
+        if (activity.buildNotificationSequence <= 0) {
+            return@LaunchedEffect
+        }
+
+        val notificationBuildId =
+            activity
+                .buildIdFromNotification
+                ?.takeIf { it.isNotBlank() }
+                ?: return@LaunchedEffect
+
+        val notificationServerUrl =
+            activity
+                .buildServerUrlFromNotification
+                ?.takeIf { it.isNotBlank() }
+                ?: serverUrl
+
+        if (notificationServerUrl.isBlank()) {
+            status = "Build Service adresi bulunamadı"
+            return@LaunchedEffect
+        }
+
+        serverUrl = notificationServerUrl
+        buildId = notificationBuildId
+        status = "Derleme durumu yükleniyor..."
+
+        val notificationClient =
+            BuildApiClient(
+                context,
+                notificationServerUrl,
+                apiKey
+            )
+
+        while (true) {
+            try {
+                val s =
+                    withContext(Dispatchers.IO) {
+                        notificationClient.getBuild(
+                            notificationBuildId
+                        )
+                    }
+
+                buildId = s.buildId
+                status = s.status
+                progress = s.progress
+                logs = s.logs
+                preflight = s.preflight
+
+                apkUrl =
+                    if (s.apkAvailable) {
+                        "available"
+                    } else {
+                        null
+                    }
+
+                aabUrl =
+                    if (s.aabAvailable) {
+                        "available"
+                    } else {
+                        null
+                    }
+
+                exeUrl =
+                    if (s.exeAvailable) {
+                        "available"
+                    } else {
+                        null
+                    }
+
+                val active =
+                    s.status == "queued" ||
+                        s.status == "building"
+
+                if (!active) {
+                    BuildProgressService.clear(context)
+                    break
+                }
+
+                delay(1_000L)
+            } catch (t: Throwable) {
+                status = "Derleme durumu alınamadı"
+                logs =
+                    logs +
+                        "Bildirimden build yeniden yüklenemedi: ${t.message.orEmpty()}"
+                break
+            }
+        }
+    }
 
     var conversionApkUri by
         remember {
