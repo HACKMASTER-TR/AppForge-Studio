@@ -96,6 +96,11 @@ internal fun StudioHomeScreen(
     onOpenAi: () -> Unit,
     onOpenTemplates: () -> Unit,
     onOpenSettings: () -> Unit,
+
+    onImportProject: () -> Unit,
+    onExportAllProjects: () -> Unit,
+    onExportAllAndroidProjects: () -> Unit,
+
     onOpenAccount: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenTrash: () -> Unit,
@@ -241,6 +246,48 @@ internal fun StudioHomeScreen(
                             showTopMenu = false
                         }
                     ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "Proje İçe Aktar (ZIP)"
+                                )
+                            },
+                            onClick = {
+                                showTopMenu =
+                                    false
+
+                                onImportProject()
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "Tüm Projeleri Dışa Aktar (ZIP)"
+                                )
+                            },
+                            onClick = {
+                                showTopMenu =
+                                    false
+
+                                onExportAllProjects()
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "Tümünü Android Projesi Olarak Dışa Aktar (ZIP)"
+                                )
+                            },
+                            onClick = {
+                                showTopMenu =
+                                    false
+
+                                onExportAllAndroidProjects()
+                            }
+                        )
+
                         DropdownMenuItem(
                             text = {
                                 Text("Hesabım")

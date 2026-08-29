@@ -71,6 +71,200 @@ object ProjectBackupManager {
         }
     }
 
+
+    fun exportAllProjectsToUri(
+        context: Context,
+        target: Uri
+    ) {
+        val projects =
+            ProjectLibrary
+                .load(
+                    context
+                )
+
+        require(
+            projects.isNotEmpty()
+        ) {
+            "Dışa aktarılacak proje yok."
+        }
+
+        val output =
+            context.contentResolver
+                .openOutputStream(
+                    target
+                )
+                ?: error(
+                    "ZIP hedefi açılamadı."
+                )
+
+        output.use {
+            stream ->
+
+            ZipOutputStream(
+                stream
+            ).use {
+                zip ->
+
+                val manifest =
+                    JSONObject()
+                        .apply {
+                            put(
+                                "formatVersion",
+                                1
+                            )
+
+                            put(
+                                "product",
+                                "AppForge Studio"
+                            )
+
+                            put(
+                                "type",
+                                "project-library"
+                            )
+
+                            put(
+                                "projectCount",
+                                projects.size
+                            )
+
+                            put(
+                                "exportedAt",
+                                System.currentTimeMillis()
+                            )
+                        }
+
+                putText(
+                    zip,
+                    "appforge-library.json",
+                    manifest
+                        .toString(2)
+                )
+
+                projects.forEach {
+                    saved ->
+
+                    val draft =
+                        ProjectLibrary
+                            .restore(
+                                context,
+                                saved.id
+                            )
+                            ?: return@forEach
+
+                    val folder =
+                        "projects/" +
+                            safeFolderName(
+                                saved.name
+                            ) +
+                            "_" +
+                            saved.id
+                                .take(8) +
+                            "/"
+
+                    putText(
+                        zip,
+                        folder +
+                            META,
+                        serialize(
+                            draft
+                        ).toString(2)
+                    )
+
+                    if (
+                        draft.sourceMode ==
+                        SourceMode.LOCAL
+                    ) {
+                        val root =
+                            draft
+                                .importedFolder
+                                ?.let(::File)
+
+                        if (
+                            root != null &&
+                            root.isDirectory
+                        ) {
+                            addDirectory(
+                                zip,
+                                root,
+                                root,
+                                folder +
+                                    "source/"
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    fun exportAllAndroidProjectsToUri(
+        context: Context,
+        target: Uri
+    ) {
+        val projects =
+            ProjectLibrary
+                .load(
+                    context
+                )
+
+        require(
+            projects.isNotEmpty()
+        ) {
+            "Dışa aktarılacak proje yok."
+        }
+
+        val output =
+            context.contentResolver
+                .openOutputStream(
+                    target
+                )
+                ?: error(
+                    "ZIP hedefi açılamadı."
+                )
+
+        output.use {
+            stream ->
+
+            ZipOutputStream(
+                stream
+            ).use {
+                zip ->
+
+                projects.forEach {
+                    saved ->
+
+                    val draft =
+                        ProjectLibrary
+                            .restore(
+                                context,
+                                saved.id
+                            )
+                            ?: return@forEach
+
+                    val projectFolder =
+                        safeFolderName(
+                            saved.name
+                        ) +
+                            "_" +
+                            saved.id
+                                .take(8)
+
+                    writeAndroidProject(
+                        zip =
+                            zip,
+                        base =
+                            "$projectFolder/",
+                        draft =
+                            draft
+                    )
+                }
+            }
+        }
+    }
+
+
     fun importFromUri(
         context: Context,
         source: Uri
@@ -345,6 +539,504 @@ object ProjectBackupManager {
         )
     }
 
+
+    private fun safeFolderName(
+        value: String
+    ): String =
+        value
+            .trim()
+            .replace(
+                Regex(
+                    "[^A-Za-z0-9._-]+"
+                ),
+                "_"
+            )
+            .trim('_')
+            .ifBlank {
+                "AppForgeProject"
+            }
+
+
+    private fun putText(
+        zip: ZipOutputStream,
+        path: String,
+        text: String
+    ) {
+        zip.putNextEntry(
+            ZipEntry(
+                path
+            )
+        )
+
+        zip.write(
+            text.toByteArray(
+                Charsets.UTF_8
+            )
+        )
+
+        zip.closeEntry()
+    }
+
+
+    private fun xmlEscape(
+        value: String
+    ): String =
+        value
+            .replace(
+                "&",
+                "&amp;"
+            )
+            .replace(
+                "\"",
+                "&quot;"
+            )
+            .replace(
+                "<",
+                "&lt;"
+            )
+            .replace(
+                ">",
+                "&gt;"
+            )
+
+
+    private fun javaEscape(
+        value: String
+    ): String =
+        value
+            .replace(
+                "\\",
+                "\\\\"
+            )
+            .replace(
+                "\"",
+                "\\\""
+            )
+            .replace(
+                "\r",
+                ""
+            )
+            .replace(
+                "\n",
+                "\\n"
+            )
+
+
+    private fun writeAndroidProject(
+        zip: ZipOutputStream,
+        base: String,
+        draft: ProjectDraft
+    ) {
+        val packageName =
+            draft.packageName
+                .ifBlank {
+                    "com.appforge.exported"
+                }
+
+        val packagePath =
+            packageName
+                .replace(
+                    ".",
+                    "/"
+                )
+
+        val safeVersionName =
+            draft.versionName
+                .replace(
+                    Regex(
+                        "[^A-Za-z0-9._-]+"
+                    ),
+                    "_"
+                )
+                .ifBlank {
+                    "1.0.0"
+                }
+
+        val appLabel =
+            xmlEscape(
+                draft.appName
+                    .ifBlank {
+                        "AppForge App"
+                    }
+            )
+
+        val sourceRoot =
+            draft.importedFolder
+                ?.let(::File)
+                ?.takeIf {
+                    it.isDirectory
+                }
+
+        val localStart =
+            if (
+                draft.sourceMode ==
+                    SourceMode.LOCAL &&
+                sourceRoot != null
+            ) {
+                draft.startPage
+                    ?.let(::File)
+                    ?.takeIf {
+                        it.isFile
+                    }
+                    ?.let {
+                        runCatching {
+                            it.relativeTo(
+                                sourceRoot
+                            ).invariantSeparatorsPath
+                        }.getOrNull()
+                    }
+                    ?: "index.html"
+            } else {
+                null
+            }
+
+        val launchUrl =
+            if (
+                draft.sourceMode ==
+                    SourceMode.LOCAL
+            ) {
+                "file:///android_asset/" +
+                    (
+                        localStart
+                            ?: "index.html"
+                    )
+            } else {
+                draft.webUrl
+                    .ifBlank {
+                        "about:blank"
+                    }
+            }
+
+        val permissions =
+            buildList {
+                add(
+                    "android.permission.INTERNET"
+                )
+
+                if (
+                    draft.networkState
+                ) {
+                    add(
+                        "android.permission.ACCESS_NETWORK_STATE"
+                    )
+                }
+
+                if (
+                    draft.camera
+                ) {
+                    add(
+                        "android.permission.CAMERA"
+                    )
+                }
+
+                if (
+                    draft.microphone
+                ) {
+                    add(
+                        "android.permission.RECORD_AUDIO"
+                    )
+                }
+
+                if (
+                    draft.location
+                ) {
+                    add(
+                        "android.permission.ACCESS_FINE_LOCATION"
+                    )
+                }
+
+                if (
+                    draft.notifications
+                ) {
+                    add(
+                        "android.permission.POST_NOTIFICATIONS"
+                    )
+                }
+
+                if (
+                    draft.wakeLock
+                ) {
+                    add(
+                        "android.permission.WAKE_LOCK"
+                    )
+                }
+
+                if (
+                    draft.nfc
+                ) {
+                    add(
+                        "android.permission.NFC"
+                    )
+                }
+
+                draft.additionalPermissions
+                    .forEach {
+                        permission ->
+
+                        val normalized =
+                            permission
+                                .trim()
+
+                        if (
+                            normalized.isNotBlank()
+                        ) {
+                            add(
+                                if (
+                                    normalized.contains(
+                                        "."
+                                    )
+                                ) {
+                                    normalized
+                                } else {
+                                    "android.permission.$normalized"
+                                }
+                            )
+                        }
+                    }
+            }
+                .distinct()
+
+        val permissionXml =
+            permissions
+                .joinToString(
+                    "\n"
+                ) {
+                    permission ->
+
+                    """    <uses-permission android:name="${xmlEscape(permission)}" />"""
+                }
+
+        val orientationAttribute =
+            when (
+                draft.orientation
+            ) {
+                "portrait",
+                "landscape" ->
+                    """ android:screenOrientation="${draft.orientation}""""
+
+                else ->
+                    ""
+            }
+
+        putText(
+            zip,
+            base +
+                "settings.gradle.kts",
+            """
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "${safeFolderName(draft.appName)}"
+include(":app")
+""".trimIndent() +
+                "\n"
+        )
+
+        putText(
+            zip,
+            base +
+                "build.gradle.kts",
+            """
+plugins {
+    id("com.android.application") version "9.1.1" apply false
+}
+""".trimIndent() +
+                "\n"
+        )
+
+        putText(
+            zip,
+            base +
+                "gradle.properties",
+            """
+org.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8
+android.useAndroidX=true
+""".trimIndent() +
+                "\n"
+        )
+
+        putText(
+            zip,
+            base +
+                "app/build.gradle.kts",
+            """
+plugins {
+    id("com.android.application")
+}
+
+android {
+    namespace = "$packageName"
+    compileSdk = 37
+
+    defaultConfig {
+        applicationId = "$packageName"
+        minSdk = ${draft.minSdk}
+        targetSdk = ${draft.targetSdk}
+        versionCode = ${draft.versionCode.coerceAtLeast(1)}
+        versionName = "$safeVersionName"
+    }
+}
+""".trimIndent() +
+                "\n"
+        )
+
+        putText(
+            zip,
+            base +
+                "app/src/main/AndroidManifest.xml",
+            """
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+$permissionXml
+
+    <application
+        android:allowBackup="true"
+        android:label="$appLabel"
+        android:usesCleartextTraffic="${draft.webMixedContentAllowed}">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"$orientationAttribute>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+""".trimIndent() +
+                "\n"
+        )
+
+        val mixedContentLine =
+            if (
+                draft.webMixedContentAllowed
+            ) {
+                """
+        if (android.os.Build.VERSION.SDK_INT >= 21) {
+            settings.setMixedContentMode(
+                WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            );
+        }
+"""
+            } else {
+                ""
+            }
+
+        putText(
+            zip,
+            base +
+                "app/src/main/java/" +
+                packagePath +
+                "/MainActivity.java",
+            """
+package $packageName;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+
+public class MainActivity extends Activity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        WebView webView =
+            new WebView(this);
+
+        WebSettings settings =
+            webView.getSettings();
+
+        settings.setJavaScriptEnabled(${draft.webJavaScriptEnabled});
+        settings.setDomStorageEnabled(${draft.webDomStorageEnabled});
+        settings.setSupportZoom(${draft.webZoomEnabled});
+        settings.setBuiltInZoomControls(${draft.webZoomEnabled});
+        settings.setDisplayZoomControls(false);
+        settings.setUseWideViewPort(${draft.webWideViewPortEnabled});
+        settings.setLoadWithOverviewMode(${draft.webOverviewModeEnabled});
+$mixedContentLine
+        webView.setWebViewClient(
+            new WebViewClient()
+        );
+
+        setContentView(
+            webView
+        );
+
+        webView.loadUrl(
+            "${javaEscape(launchUrl)}"
+        );
+    }
+}
+""".trimIndent() +
+                "\n"
+        )
+
+        /*
+         * AppForge ayarlarının tamamını da kaynak projeye ekle.
+         * Böylece gelişmiş Bridge/Firebase/Billing gibi ayarlar
+         * kaybolmaz ve daha sonra AppForge tarafından okunabilir.
+         */
+        putText(
+            zip,
+            base +
+                META,
+            serialize(
+                draft
+            ).toString(2)
+        )
+
+        putText(
+            zip,
+            base +
+                "README_APPFORGE.txt",
+            """
+AppForge Studio Android Project Export
+
+Bu klasör Android Studio ile açılabilir bir WebView kaynak projesidir.
+
+AppForge proje ayarlarının tam kopyası:
+$appLabel -> $META
+
+Not:
+Firebase, Billing, AdMob ve AppForge Native Bridge gibi AppForge'e özel
+gelişmiş üretim özelliklerinin yapılandırma bilgileri $META içinde korunur.
+""".trimIndent() +
+                "\n"
+        )
+
+        if (
+            draft.sourceMode ==
+                SourceMode.LOCAL &&
+            sourceRoot != null
+        ) {
+            addDirectory(
+                zip,
+                sourceRoot,
+                sourceRoot,
+                base +
+                    "app/src/main/assets/"
+            )
+        }
+    }
+
+
     private fun addDirectory(
         zip: ZipOutputStream,
         root: File,
@@ -442,6 +1134,14 @@ object ProjectBackupManager {
             put(
                 "buildOutput",
                 d.buildOutput
+            )
+            put(
+                "minSdk",
+                d.minSdk
+            )
+            put(
+                "targetSdk",
+                d.targetSdk
             )
             put(
                 "orientation",
@@ -776,6 +1476,16 @@ object ProjectBackupManager {
                 o.optString(
                     "buildOutput",
                     "both"
+                ),
+            minSdk =
+                o.optInt(
+                    "minSdk",
+                    26
+                ),
+            targetSdk =
+                o.optInt(
+                    "targetSdk",
+                    37
                 ),
             orientation =
                 o.optString(

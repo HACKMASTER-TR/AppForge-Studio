@@ -1317,6 +1317,66 @@ private fun AppForgeApp() {
             }
         }
 
+    val allProjectsExportLauncher =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts
+                    .CreateDocument(
+                        "application/zip"
+                    )
+        ) {
+            uri: Uri? ->
+
+            if (uri != null) {
+                try {
+                    ProjectBackupManager
+                        .exportAllProjectsToUri(
+                            context,
+                            uri
+                        )
+
+                    status =
+                        "Tüm AppForge projeleri ZIP olarak dışa aktarıldı."
+                } catch (
+                    t: Throwable
+                ) {
+                    status =
+                        "Projeler dışa aktarılamadı: ${t.message}"
+                }
+            }
+        }
+
+
+    val allAndroidProjectsExportLauncher =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts
+                    .CreateDocument(
+                        "application/zip"
+                    )
+        ) {
+            uri: Uri? ->
+
+            if (uri != null) {
+                try {
+                    ProjectBackupManager
+                        .exportAllAndroidProjectsToUri(
+                            context,
+                            uri
+                        )
+
+                    status =
+                        "Android Studio projeleri ZIP olarak dışa aktarıldı."
+                } catch (
+                    t: Throwable
+                ) {
+                    status =
+                        "Android projeleri dışa aktarılamadı: ${t.message}"
+                }
+            }
+        }
+
+
     val backupImportLauncher =
         rememberLauncherForActivityResult(
             contract =
@@ -1333,21 +1393,70 @@ private fun AppForgeApp() {
                                 uri
                             )
 
-                    draft =
+                    val importedDraft =
                         imported.draft
 
-                    currentProjectId =
-                        null
+                    val canSaveImported =
+                        proStatus?.active == true ||
+                            ProjectLibrary
+                                .claimFreeProjectSlot(
+                                    context,
+                                    importedDraft
+                                        .packageName
+                                        .trim(),
+                                    5
+                                )
 
-                    serverUrl =
-                        draft.buildServiceUrl
+                    if (
+                        canSaveImported
+                    ) {
+                        val importedId =
+                            ProjectLibrary
+                                .save(
+                                    context,
+                                    importedDraft
+                                )
 
-                    status =
-                        "AppForge proje yedeği içe aktarıldı."
+                        draft =
+                            importedDraft
 
-                    step = 1
-                    screen =
-                        AppScreen.BUILDER
+                        currentProjectId =
+                            importedId
+
+                        autosaveBaseline =
+                            importedId to
+                                importedDraft
+
+                        serverUrl =
+                            importedDraft
+                                .buildServiceUrl
+
+                        sourceAnalysis =
+                            importedDraft
+                                .importedFolder
+                                ?.let {
+                                    folderPath ->
+
+                                    runCatching {
+                                        SourceCapabilityAnalyzer
+                                            .analyze(
+                                                File(
+                                                    folderPath
+                                                )
+                                            )
+                                    }.getOrNull()
+                                }
+
+                        status =
+                            "AppForge projesi içe aktarıldı ve kaydedildi."
+
+                        step = 1
+                        screen =
+                            AppScreen.BUILDER
+                    } else {
+                        status =
+                            "Ücretsiz proje sınırı dolu. İçe aktarma için Pro gerekli."
+                    }
                 } catch (
                     t: Throwable
                 ) {
@@ -2577,6 +2686,52 @@ private fun AppForgeApp() {
                             openWorkspaceScreen(
                                 AppScreen.SETTINGS
                             )
+                        },
+
+                        onImportProject = {
+                            backupImportLauncher
+                                .launch(
+                                    arrayOf(
+                                        "application/zip",
+                                        "application/octet-stream"
+                                    )
+                                )
+                        },
+
+                        onExportAllProjects = {
+                            if (
+                                ProjectLibrary
+                                    .load(
+                                        context
+                                    )
+                                    .isEmpty()
+                            ) {
+                                status =
+                                    "Dışa aktarılacak proje yok."
+                            } else {
+                                allProjectsExportLauncher
+                                    .launch(
+                                        "AppForge_Tum_Projeler.zip"
+                                    )
+                            }
+                        },
+
+                        onExportAllAndroidProjects = {
+                            if (
+                                ProjectLibrary
+                                    .load(
+                                        context
+                                    )
+                                    .isEmpty()
+                            ) {
+                                status =
+                                    "Dışa aktarılacak proje yok."
+                            } else {
+                                allAndroidProjectsExportLauncher
+                                    .launch(
+                                        "AppForge_Tum_Android_Projeleri.zip"
+                                    )
+                            }
                         },
 
                         onOpenAccount = {
