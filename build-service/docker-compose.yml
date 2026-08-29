@@ -96,6 +96,31 @@ services:
       - appforge_outputs:/outputs
       - appforge_work:/work
 
+  video-downloader:
+    profiles: ["video"]
+    build:
+      context: ./video-downloader
+      dockerfile: Dockerfile
+    environment:
+      PORT: "8081"
+      MAX_FILESIZE: ${VIDEO_MAX_FILESIZE:-750M}
+      MAX_DOWNLOADS: ${VIDEO_MAX_DOWNLOADS:-2}
+      PROCESS_TIMEOUT_MS: ${VIDEO_PROCESS_TIMEOUT_MS:-900000}
+      VIDEO_API_TOKEN: ${VIDEO_API_TOKEN:-}
+    ports:
+      - "${VIDEO_PORT:-8081}:8081"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=1g,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 128
+    networks:
+      - video_public
+
   worker:
     build:
       context: .
@@ -153,3 +178,7 @@ volumes:
   appforge_work:
   appforge_gradle_cache:
   appforge_minio:
+
+networks:
+  video_public:
+    driver: bridge
