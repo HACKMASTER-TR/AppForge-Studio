@@ -557,6 +557,12 @@ private fun AppForgeApp() {
         }
 
     var currentProjectId by remember { mutableStateOf<String?>(null) }
+    var autosaveBaseline by
+        remember {
+            mutableStateOf<Pair<String, ProjectDraft>?>(
+                null
+            )
+        }
     var screen by remember { mutableStateOf(AppScreen.HOME) }
     var step by remember { mutableIntStateOf(1) }
 
@@ -565,14 +571,6 @@ private fun AppForgeApp() {
             screen = AppScreen.BUILDER
             step = 10
         }
-    }
-
-    // Yalnız daha önce açıkça kaydedilmiş projeleri debounce ile güncelle.
-    // ProjectLibrary secret alanları diske yazmadığı için izolasyon korunur.
-    LaunchedEffect(currentProjectId, draft) {
-        val projectId = currentProjectId ?: return@LaunchedEffect
-        delay(1200L)
-        ProjectLibrary.save(context, draft, projectId)
     }
 
     /*
@@ -676,6 +674,63 @@ private fun AppForgeApp() {
     var apkUrl by remember { mutableStateOf<String?>(null) }
     var aabUrl by remember { mutableStateOf<String?>(null) }
     var exeUrl by remember { mutableStateOf<String?>(null) }
+
+    // Yalnız daha önce açıkça kaydedilmiş projeleri debounce ile güncelle.
+    // Proje açılışı gerçek değişiklik sayılmaz. İlk farklı taslak Free planda
+    // kalıcı slotu bir kez talep eder; sonraki değişiklikler aynı slotu kullanır.
+    // ProjectLibrary secret alanları diske yazmadığı için izolasyon korunur.
+    LaunchedEffect(currentProjectId, draft) {
+        val projectId =
+            currentProjectId
+                ?: run {
+                    autosaveBaseline = null
+                    return@LaunchedEffect
+                }
+
+        val baseline =
+            autosaveBaseline
+
+        if (
+            baseline == null ||
+            baseline.first != projectId
+        ) {
+            autosaveBaseline =
+                projectId to draft
+            return@LaunchedEffect
+        }
+
+        if (baseline.second == draft) {
+            return@LaunchedEffect
+        }
+
+        delay(1200L)
+
+        val canSaveProject =
+            proStatus?.active == true ||
+            ProjectLibrary
+                .claimFreeProjectSlot(
+                    context,
+                    draft.packageName
+                        .trim(),
+                    5
+                )
+
+        if (!canSaveProject) {
+            status =
+                "Ücretsiz denemede toplam 5 farklı proje hakkın doldu. " +
+                "Bu projedeki ilk değişikliği kaydetmek için Pro veya Pro Aylık gerekli."
+            return@LaunchedEffect
+        }
+
+        ProjectLibrary.save(
+            context,
+            draft,
+            projectId
+        )
+
+        autosaveBaseline =
+            projectId to draft
+    }
 
     LaunchedEffect(hostActivity?.buildNotificationSequence) {
         val activity =

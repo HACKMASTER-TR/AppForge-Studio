@@ -20,6 +20,12 @@ const library =
     import.meta.url
   );
 
+const mainActivity =
+  new URL(
+    "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+    import.meta.url
+  );
+
 test("quota counts permanent free slot ledger", async () => {
   const text = await readFile(projects, "utf8");
   assert.equal(text.includes("FROM appforge_free_project_slots"), true);
@@ -37,4 +43,26 @@ test("android mirrors lifetime slot ledger", async () => {
   assert.equal(text.includes("free_project_slots.json"), true);
   assert.equal(text.includes("claimFreeProjectSlot"), true);
   assert.equal(text.includes("freeProjectSlotsUsed"), true);
+});
+
+test("first real edit of an existing project claims one free slot", async () => {
+  const text = await readFile(mainActivity, "utf8");
+  assert.equal(text.includes("autosaveBaseline"), true);
+  assert.equal(text.includes("baseline.second == draft"), true);
+
+  const autosave = text.indexOf(
+    "LaunchedEffect(currentProjectId, draft)"
+  );
+  const claim = text.indexOf(
+    ".claimFreeProjectSlot(",
+    autosave
+  );
+  const save = text.indexOf(
+    "ProjectLibrary.save(",
+    claim
+  );
+
+  assert.equal(autosave >= 0, true);
+  assert.equal(claim > autosave, true);
+  assert.equal(save > claim, true);
 });
