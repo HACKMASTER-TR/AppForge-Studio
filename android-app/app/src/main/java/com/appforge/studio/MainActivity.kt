@@ -15311,6 +15311,263 @@ private fun BuildStep(
             )
         }
 
+        /*
+         * Sürüm ayarlarını build ekranında da doğrudan göster.
+         * Böylece cache MISS / yeni yayın testleri için
+         * versionCode değiştirmek üzere Production ekranına
+         * gitmek gerekmez.
+         */
+        item {
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor =
+                            Card2
+                    ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            if (formCompact) 12.dp
+                            else 16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            if (formCompact) 8.dp
+                            else 10.dp
+                        )
+                ) {
+                    Text(
+                        "Sürüm ayarları",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Text(
+                        "Yeni yayın veya cache MISS testi için sürümü buradan değiştirebilirsin.",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            draft.versionCode
+                                .toString(),
+                        onValueChange = {
+                            raw ->
+
+                            val value =
+                                raw
+                                    .filter {
+                                        it.isDigit()
+                                    }
+                                    .toIntOrNull()
+
+                            if (
+                                value != null &&
+                                value >= 1
+                            ) {
+                                onDraftChange(
+                                    draft.copy(
+                                        versionCode =
+                                            value,
+                                        autoVersionCode =
+                                            false
+                                    )
+                                )
+                            }
+                        },
+                        label = {
+                            Text(
+                                "Version Code"
+                            )
+                        },
+                        supportingText = {
+                            Text(
+                                "Google Play'de her yeni sürümde daha büyük olmalı."
+                            )
+                        },
+                        singleLine =
+                            true,
+                        enabled =
+                            !buildActive,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(
+                                8.dp
+                            )
+                    ) {
+                        OutlinedButton(
+                            enabled =
+                                !buildActive &&
+                                draft.versionCode > 1,
+                            onClick = {
+                                onDraftChange(
+                                    draft.copy(
+                                        versionCode =
+                                            (
+                                                draft.versionCode -
+                                                    1
+                                            ).coerceAtLeast(
+                                                1
+                                            ),
+                                        autoVersionCode =
+                                            false
+                                    )
+                                )
+                            },
+                            modifier =
+                                Modifier.weight(
+                                    1f
+                                )
+                        ) {
+                            Text(
+                                "−1"
+                            )
+                        }
+
+                        Button(
+                            enabled =
+                                !buildActive,
+                            onClick = {
+                                onDraftChange(
+                                    draft.copy(
+                                        versionCode =
+                                            draft.versionCode +
+                                                1,
+                                        autoVersionCode =
+                                            false
+                                    )
+                                )
+                            },
+                            modifier =
+                                Modifier.weight(
+                                    1f
+                                )
+                        ) {
+                            Text(
+                                "VERSION +1"
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value =
+                            draft.versionName,
+                        onValueChange = {
+                            value ->
+
+                            onDraftChange(
+                                draft.copy(
+                                    versionName =
+                                        value
+                                            .trim()
+                                            .take(
+                                                32
+                                            )
+                                )
+                            )
+                        },
+                        label = {
+                            Text(
+                                "Version Name"
+                            )
+                        },
+                        supportingText = {
+                            Text(
+                                "Örnek: 1.0.0 veya 1.0.1"
+                            )
+                        },
+                        singleLine =
+                            true,
+                        enabled =
+                            !buildActive,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+                        verticalAlignment =
+                            Alignment.CenterVertically,
+                        horizontalArrangement =
+                            Arrangement.SpaceBetween
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier.weight(
+                                    1f
+                                )
+                        ) {
+                            Text(
+                                "Otomatik Version Code",
+                                fontWeight =
+                                    FontWeight.SemiBold,
+                                fontSize =
+                                    13.sp
+                            )
+
+                            Text(
+                                if (
+                                    draft.autoVersionCode
+                                ) {
+                                    "Her yeni build başlangıcında otomatik artırılır."
+                                } else {
+                                    "Version Code manuel yönetiliyor."
+                                },
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+
+                        Switch(
+                            checked =
+                                draft.autoVersionCode,
+                            enabled =
+                                !buildActive,
+                            onCheckedChange = {
+                                enabled ->
+
+                                onDraftChange(
+                                    draft.copy(
+                                        autoVersionCode =
+                                            enabled
+                                    )
+                                )
+                            }
+                        )
+                    }
+
+                    Text(
+                        "Aktif sürüm: ${draft.versionName} • versionCode ${draft.versionCode}",
+                        color =
+                            Accent,
+                        fontWeight =
+                            FontWeight.SemiBold,
+                        fontSize =
+                            12.sp
+                    )
+                }
+            }
+        }
+
         item {
             Card(
                 colors =
