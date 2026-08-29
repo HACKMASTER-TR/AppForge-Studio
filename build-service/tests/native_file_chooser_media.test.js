@@ -60,7 +60,7 @@ test(
 );
 
 test(
-  "FAST build falls back to FULL when native media chooser is needed",
+  "FAST build keeps file and camera chooser projects on the prebuilt runtime",
   async () => {
     const source =
       await readFile(
@@ -68,22 +68,7 @@ test(
         "utf8"
       );
 
-    assert.ok(
-      source.includes(
-        "Native dosya / kamera seçici"
-      )
-    );
-
-    assert.ok(
-      source.includes(
-        "c.features?.fileUpload"
-      )
-    );
-
-    assert.ok(
-      source.includes(
-        "c.features?.camera"
-      )
-    );
+    assert.ok(source.includes("FAST runtime artık onShowFileChooser"));
+    assert.equal(source.includes('"Native dosya / kamera seçici"'), false);
   }
 );

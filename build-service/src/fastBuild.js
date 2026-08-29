@@ -217,18 +217,10 @@ export function getFastBuildDecision(
   }
 
   /*
-   * Kamera / dosya upload kullanan uygulamalar native chooser
-   * yönlendirmesine ihtiyaç duyar. FAST runtime bu davranışı
-   * eşitleyene kadar FULL generator kullanılır.
+   * FAST runtime artık onShowFileChooser, medya yakalama ve
+   * kamera sonucu akışını içerir. Bu yaygın varsayılanlar için
+   * FULL Gradle derlemesine düşmek gereksiz yere dakikalar ekler.
    */
-  if (
-    c.features?.fileUpload ||
-    c.features?.camera
-  ) {
-    reasons.push(
-      "Native dosya / kamera seçici"
-    );
-  }
 
   if (
     c.nativeBridge?.enabled === true &&

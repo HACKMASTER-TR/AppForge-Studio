@@ -45,6 +45,7 @@ class BuildProgressService : Service() {
                     val manager = getSystemService(NotificationManager::class.java)
                     manager.notify(NOTIFICATION_ID, notification(appName, text, status.progress, active))
                     if (!active) {
+                        clear(this@BuildProgressService)
                         stopForeground(STOP_FOREGROUND_DETACH)
                         stopSelf(startId)
                         return@launch
@@ -80,7 +81,10 @@ class BuildProgressService : Service() {
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .setContentTitle(appName)
             .setContentText(text)
-            .setContentIntent(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+            .setContentIntent(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java).apply {
+                putExtra("appforge_open_builds", true)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
             .setOnlyAlertOnce(true)
             .setOngoing(ongoing)
             .setProgress(100, progress.coerceIn(0, 100), progress <= 0 && ongoing)
@@ -93,14 +97,35 @@ class BuildProgressService : Service() {
         private const val EXTRA_SERVER_URL = "server_url"
         private const val EXTRA_API_KEY = "api_key"
         private const val EXTRA_APP_NAME = "app_name"
+        private const val PREFS = "appforge_background_build"
 
-        fun start(context: Context, buildId: String, serverUrl: String, apiKey: String, appName: String) {
+        fun track(context: Context, buildId: String, serverUrl: String, apiKey: String, appName: String) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString(EXTRA_BUILD_ID, buildId)
+                .putString(EXTRA_SERVER_URL, serverUrl)
+                .putString(EXTRA_API_KEY, apiKey)
+                .putString(EXTRA_APP_NAME, appName)
+                .apply()
+        }
+
+        fun startPending(context: Context) {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val buildId = prefs.getString(EXTRA_BUILD_ID, null) ?: return
             ContextCompat.startForegroundService(context, Intent(context, BuildProgressService::class.java).apply {
                 putExtra(EXTRA_BUILD_ID, buildId)
-                putExtra(EXTRA_SERVER_URL, serverUrl)
-                putExtra(EXTRA_API_KEY, apiKey)
-                putExtra(EXTRA_APP_NAME, appName)
+                putExtra(EXTRA_SERVER_URL, prefs.getString(EXTRA_SERVER_URL, ""))
+                putExtra(EXTRA_API_KEY, prefs.getString(EXTRA_API_KEY, ""))
+                putExtra(EXTRA_APP_NAME, prefs.getString(EXTRA_APP_NAME, "AppForge uygulaması"))
             })
+        }
+
+        fun stop(context: Context) {
+            context.stopService(Intent(context, BuildProgressService::class.java))
+            context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
+        }
+
+        fun clear(context: Context) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
         }
     }
 }

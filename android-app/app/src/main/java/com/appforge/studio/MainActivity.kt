@@ -111,11 +111,16 @@ import java.util.Date
 import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
+    var openBuildFromNotification by mutableStateOf(false)
+        private set
+
 
     override fun onCreate(
         savedInstanceState: Bundle?
     ) {
         super.onCreate(savedInstanceState)
+        openBuildFromNotification =
+            intent?.getBooleanExtra("appforge_open_builds", false) == true
 
         /*
          * Android 13+ bildirim izni.
@@ -171,6 +176,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        BuildProgressService.stop(this)
 
         /*
          * APK yükleme izni ekranından döndüğünde
@@ -240,6 +246,25 @@ class MainActivity : ComponentActivity() {
                 downloadId = pendingDownloadId
             )
         }
+    }
+
+    override fun onStop() {
+        BuildProgressService.startPending(this)
+        super.onStop()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra("appforge_open_builds", false)) {
+            openBuildFromNotification = true
+        }
+    }
+
+    fun consumeBuildNotificationNavigation(): Boolean {
+        if (!openBuildFromNotification) return false
+        openBuildFromNotification = false
+        return true
     }
 }
 
@@ -458,6 +483,7 @@ private enum class AppScreen { HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PR
 @Composable
 private fun AppForgeApp() {
     val context = LocalContext.current
+    val hostActivity = context as? MainActivity
     val scope = rememberCoroutineScope()
 
     val appConfiguration =
@@ -507,6 +533,13 @@ private fun AppForgeApp() {
     var currentProjectId by remember { mutableStateOf<String?>(null) }
     var screen by remember { mutableStateOf(AppScreen.HOME) }
     var step by remember { mutableIntStateOf(1) }
+
+    LaunchedEffect(hostActivity?.openBuildFromNotification) {
+        if (hostActivity?.consumeBuildNotificationNavigation() == true) {
+            screen = AppScreen.BUILDER
+            step = 10
+        }
+    }
 
     // Yalnız daha önce açıkça kaydedilmiş projeleri debounce ile güncelle.
     // ProjectLibrary secret alanları diske yazmadığı için izolasyon korunur.
@@ -1541,7 +1574,7 @@ private fun AppForgeApp() {
                 buildId =
                     created.buildId
 
-                BuildProgressService.start(
+                BuildProgressService.track(
                     context = context,
                     buildId = created.buildId,
                     serverUrl = serverUrl,
@@ -1699,6 +1732,7 @@ private fun AppForgeApp() {
                         s.status ==
                             "cancelled"
                     ) {
+                        BuildProgressService.clear(context)
                         if (
                             s.status ==
                                 "success"
