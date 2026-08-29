@@ -11,6 +11,7 @@ test("device binding survives account deletion and is unique", async () => {
   assert.match(sql, /device_hash TEXT PRIMARY KEY/);
   assert.match(sql, /user_id UUID UNIQUE/);
   assert.match(sql, /ON DELETE SET NULL/);
+  assert.equal(sql.trimStart().startsWith("CREATE TABLE"), true);
 });
 
 test("account device binding is atomic and rejects account sharing", async () => {
