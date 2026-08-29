@@ -20,6 +20,12 @@ const config =
     import.meta.url
   );
 
+const buildClient =
+  new URL(
+    "../../android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt",
+    import.meta.url
+  );
+
 test("free project limit defaults to five", async () => {
   const text =
     await readFile(
@@ -98,6 +104,33 @@ test("quota endpoint exists", async () => {
   assert.equal(
     text.includes(
       '"/api/projects/quota"'
+    ),
+    true
+  );
+});
+
+test("free account build client sends the saved bearer session", async () => {
+  const text =
+    await readFile(
+      buildClient,
+      "utf8"
+    );
+
+  assert.equal(
+    text.includes(
+      "SecureAccountStore"
+    ),
+    true
+  );
+  assert.equal(
+    text.includes(
+      '"Authorization"'
+    ),
+    true
+  );
+  assert.equal(
+    text.includes(
+      '"Bearer $it"'
     ),
     true
   );

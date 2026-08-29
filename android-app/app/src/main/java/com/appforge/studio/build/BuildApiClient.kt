@@ -5,6 +5,7 @@ import android.net.Uri
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
+import com.appforge.studio.security.SecureAccountStore
 import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream
@@ -1379,6 +1380,21 @@ class BuildApiClient(
         ).apply {
             connectTimeout = 20_000
             setRequestProperty("Accept", "application/json")
+
+            SecureAccountStore
+                .loadSession(context)
+                ?.token
+                ?.trim()
+                ?.takeIf {
+                    it.isNotBlank()
+                }
+                ?.let {
+                    setRequestProperty(
+                        "Authorization",
+                        "Bearer $it"
+                    )
+                }
+
             if (apiKey.isNotBlank()) {
                 setRequestProperty("X-AppForge-Key", apiKey)
             }
