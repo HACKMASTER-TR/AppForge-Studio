@@ -167,8 +167,9 @@ RUN gradle \
     --build-cache \
     --configuration-cache \
     --configuration-cache-problems=warn \
-    --max-workers=4 \
-    -Dorg.gradle.parallel=true \
+    --max-workers=1 \
+    -Dorg.gradle.parallel=false \
+    -Dorg.gradle.jvmargs="-Xmx768m -XX:MaxMetaspaceSize=384m -XX:+UseSerialGC" \
     -Pkotlin.compiler.execution.strategy=in-process \
     --stacktrace \
     :app:assembleRelease \
