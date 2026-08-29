@@ -3268,7 +3268,7 @@ private fun AppForgeApp() {
                                 Text(
                                     "Adım $step/10 • " +
                                         when (step) {
-                                            1 -> "Kaynak"
+                                            1 -> "Proje"
                                             2 -> "İzinler"
                                             3 -> "WebView"
                                             4 -> "Görünüm"
@@ -4333,81 +4333,6 @@ private fun QuickCreateScreen(
                             Arrangement.spacedBy(if (quickCompact) 8.dp else 12.dp)
                     ) {
                         Text(
-                            "1. Uygulama adı",
-                            fontWeight =
-                                FontWeight.Bold
-                        )
-
-                        OutlinedTextField(
-                            value =
-                                draft.appName,
-                            onValueChange = {
-                                onDraftChange(
-                                    draft.copy(
-                                        appName =
-                                            it,
-                                        packageName =
-                                            quickPackageName(
-                                                it
-                                            )
-                                    )
-                                )
-                            },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth(),
-                            singleLine =
-                                true,
-                            placeholder = {
-                                Text(
-                                    "Örn. Benim Uygulamam"
-                                )
-                            }
-                        )
-
-                        if (
-                            draft.appName
-                                .isNotBlank()
-                        ) {
-                            Text(
-                                text =
-                                    "Paket adı otomatik: ${
-                                        quickPackageName(
-                                            draft.appName
-                                        )
-                                    }",
-                                color =
-                                    TextSecondary,
-                                fontSize =
-                                    12.sp
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                Card(
-                    colors =
-                        CardDefaults
-                            .cardColors(
-                                containerColor =
-                                    Card2
-                            ),
-                    shape =
-                        RoundedCornerShape(
-                            20.dp
-                        )
-                ) {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(if (quickCompact) 14.dp else 18.dp),
-                        verticalArrangement =
-                            Arrangement.spacedBy(if (quickCompact) 8.dp else 12.dp)
-                    ) {
-                        Text(
                             "2. İçerik",
                             fontWeight =
                                 FontWeight.Bold
@@ -4553,6 +4478,81 @@ private fun QuickCreateScreen(
             }
 
             item {
+                Card(
+                    colors =
+                        CardDefaults
+                            .cardColors(
+                                containerColor =
+                                    Card2
+                            ),
+                    shape =
+                        RoundedCornerShape(
+                            20.dp
+                        )
+                ) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(if (quickCompact) 14.dp else 18.dp),
+                        verticalArrangement =
+                            Arrangement.spacedBy(if (quickCompact) 8.dp else 12.dp)
+                    ) {
+                        Text(
+                            "1. Uygulama adı",
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        OutlinedTextField(
+                            value =
+                                draft.appName,
+                            onValueChange = {
+                                onDraftChange(
+                                    draft.copy(
+                                        appName =
+                                            it,
+                                        packageName =
+                                            quickPackageName(
+                                                it
+                                            )
+                                    )
+                                )
+                            },
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth(),
+                            singleLine =
+                                true,
+                            placeholder = {
+                                Text(
+                                    "Örn. Benim Uygulamam"
+                                )
+                            }
+                        )
+
+                        if (
+                            draft.appName
+                                .isNotBlank()
+                        ) {
+                            Text(
+                                text =
+                                    "Paket adı otomatik: ${
+                                        quickPackageName(
+                                            draft.appName
+                                        )
+                                    }",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+                item {
                 Card(
                     colors =
                         CardDefaults
@@ -9989,6 +9989,18 @@ private fun validateDraft(d: ProjectDraft, serverUrl: String) {
         "Geçerli package name gir."
     }
 
+    require(d.minSdk in 26..37) {
+        "Min SDK 26 ile 37 arasında olmalı."
+    }
+
+    require(d.targetSdk in 26..37) {
+        "Hedef SDK 26 ile 37 arasında olmalı."
+    }
+
+    require(d.minSdk <= d.targetSdk) {
+        "Min SDK, Hedef SDK değerinden büyük olamaz."
+    }
+
     if (d.sourceMode == SourceMode.URL) {
         require(d.webUrl.startsWith("https://", true)) {
             "URL https:// ile başlamalı."
@@ -10167,8 +10179,8 @@ private fun SourceStep(
     ) {
         item {
             Section(
-                "1. Kaynak",
-                "Uygulama bilgilerini ve web içeriğini seç."
+                "1. Proje",
+                "Uygulama, sürüm, Android SDK ve kaynak ayarlarını yapılandır."
             )
         }
 
@@ -10355,6 +10367,304 @@ private fun SourceStep(
                 modifier =
                     Modifier.fillMaxWidth()
             )
+        }
+
+
+        // APPFORGE_STEP1_VERSION_SDK
+        item {
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = Card2
+                    ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            if (formCompact) 12.dp
+                            else 16.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            if (formCompact) 8.dp
+                            else 10.dp
+                        )
+                ) {
+                    Text(
+                        "Sürüm ayarları",
+                        fontWeight =
+                            FontWeight.Bold,
+                        fontSize =
+                            16.sp
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            d.versionCode.toString(),
+                        onValueChange = {
+                            raw ->
+
+                            raw
+                                .filter {
+                                    it.isDigit()
+                                }
+                                .toIntOrNull()
+                                ?.takeIf {
+                                    it >= 1
+                                }
+                                ?.let {
+                                    update(
+                                        d.copy(
+                                            versionCode = it,
+                                            autoVersionCode = false
+                                        )
+                                    )
+                                }
+                        },
+                        label = {
+                            Text("Version Code")
+                        },
+                        supportingText = {
+                            Text(
+                                "Her yeni Play Store sürümünde artırılmalı."
+                            )
+                        },
+                        singleLine = true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                update(
+                                    d.copy(
+                                        versionCode =
+                                            (
+                                                d.versionCode - 1
+                                            ).coerceAtLeast(1),
+                                        autoVersionCode =
+                                            false
+                                    )
+                                )
+                            },
+                            enabled =
+                                d.versionCode > 1,
+                            modifier =
+                                Modifier.weight(1f)
+                        ) {
+                            Text("−1")
+                        }
+
+                        Button(
+                            onClick = {
+                                update(
+                                    d.copy(
+                                        versionCode =
+                                            d.versionCode + 1,
+                                        autoVersionCode =
+                                            false
+                                    )
+                                )
+                            },
+                            modifier =
+                                Modifier.weight(1f)
+                        ) {
+                            Text("VERSION +1")
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value =
+                            d.versionName,
+                        onValueChange = {
+                            update(
+                                d.copy(
+                                    versionName =
+                                        it.trim()
+                                            .take(32)
+                                )
+                            )
+                        },
+                        label = {
+                            Text("Version Name")
+                        },
+                        placeholder = {
+                            Text("1.0.0")
+                        },
+                        singleLine = true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+                        verticalAlignment =
+                            Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier.weight(1f)
+                        ) {
+                            Text(
+                                "Otomatik Version Code",
+                                fontWeight =
+                                    FontWeight.SemiBold,
+                                fontSize =
+                                    13.sp
+                            )
+
+                            Text(
+                                if (d.autoVersionCode) {
+                                    "Yeni build başlatılırken otomatik artırılır."
+                                } else {
+                                    "Version Code manuel yönetiliyor."
+                                },
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+
+                        Switch(
+                            checked =
+                                d.autoVersionCode,
+                            onCheckedChange = {
+                                update(
+                                    d.copy(
+                                        autoVersionCode = it
+                                    )
+                                )
+                            }
+                        )
+                    }
+
+                    HorizontalDivider()
+
+                    Text(
+                        "Android SDK",
+                        fontWeight =
+                            FontWeight.Bold,
+                        fontSize =
+                            16.sp
+                    )
+
+                    Text(
+                        "Min SDK en eski desteklenen Android sürümünü, Hedef SDK ise uygulamanın hedeflediği Android API seviyesini belirler.",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            11.sp,
+                        lineHeight =
+                            16.sp
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            d.minSdk.toString(),
+                        onValueChange = {
+                            raw ->
+
+                            raw
+                                .filter {
+                                    it.isDigit()
+                                }
+                                .toIntOrNull()
+                                ?.takeIf {
+                                    it in 26..37 &&
+                                    it <= d.targetSdk
+                                }
+                                ?.let {
+                                    update(
+                                        d.copy(
+                                            minSdk = it
+                                        )
+                                    )
+                                }
+                        },
+                        label = {
+                            Text("Min SDK")
+                        },
+                        supportingText = {
+                            Text(
+                                "API 26–37 • Varsayılan: 26"
+                            )
+                        },
+                        singleLine = true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            d.targetSdk.toString(),
+                        onValueChange = {
+                            raw ->
+
+                            raw
+                                .filter {
+                                    it.isDigit()
+                                }
+                                .toIntOrNull()
+                                ?.takeIf {
+                                    it in 26..37 &&
+                                    it >= d.minSdk
+                                }
+                                ?.let {
+                                    update(
+                                        d.copy(
+                                            targetSdk = it
+                                        )
+                                    )
+                                }
+                        },
+                        label = {
+                            Text("Hedef SDK")
+                        },
+                        supportingText = {
+                            Text(
+                                "API 26–37 • Güncel öneri: 37"
+                            )
+                        },
+                        singleLine = true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    Text(
+                        "Aktif sürüm: ${d.versionName} • code ${d.versionCode}",
+                        color =
+                            Accent,
+                        fontWeight =
+                            FontWeight.SemiBold,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "SDK: min ${d.minSdk} • target ${d.targetSdk} • compile 37",
+                        color =
+                            Accent,
+                        fontWeight =
+                            FontWeight.SemiBold,
+                        fontSize =
+                            12.sp
+                    )
+                }
+            }
         }
 
         if (
@@ -15309,263 +15619,6 @@ private fun BuildStep(
                 "10. Derleme",
                 "Build durumunu takip et, çıktıları indir ve ön-kontrolleri incele."
             )
-        }
-
-        /*
-         * Sürüm ayarlarını build ekranında da doğrudan göster.
-         * Böylece cache MISS / yeni yayın testleri için
-         * versionCode değiştirmek üzere Production ekranına
-         * gitmek gerekmez.
-         */
-        item {
-            Card(
-                colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
-                shape =
-                    RoundedCornerShape(
-                        18.dp
-                    ),
-                modifier =
-                    Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier =
-                        Modifier.padding(
-                            if (formCompact) 12.dp
-                            else 16.dp
-                        ),
-                    verticalArrangement =
-                        Arrangement.spacedBy(
-                            if (formCompact) 8.dp
-                            else 10.dp
-                        )
-                ) {
-                    Text(
-                        "Sürüm ayarları",
-                        fontWeight =
-                            FontWeight.Bold
-                    )
-
-                    Text(
-                        "Yeni yayın veya cache MISS testi için sürümü buradan değiştirebilirsin.",
-                        color =
-                            TextSecondary,
-                        fontSize =
-                            12.sp
-                    )
-
-                    OutlinedTextField(
-                        value =
-                            draft.versionCode
-                                .toString(),
-                        onValueChange = {
-                            raw ->
-
-                            val value =
-                                raw
-                                    .filter {
-                                        it.isDigit()
-                                    }
-                                    .toIntOrNull()
-
-                            if (
-                                value != null &&
-                                value >= 1
-                            ) {
-                                onDraftChange(
-                                    draft.copy(
-                                        versionCode =
-                                            value,
-                                        autoVersionCode =
-                                            false
-                                    )
-                                )
-                            }
-                        },
-                        label = {
-                            Text(
-                                "Version Code"
-                            )
-                        },
-                        supportingText = {
-                            Text(
-                                "Google Play'de her yeni sürümde daha büyük olmalı."
-                            )
-                        },
-                        singleLine =
-                            true,
-                        enabled =
-                            !buildActive,
-                        modifier =
-                            Modifier.fillMaxWidth()
-                    )
-
-                    Row(
-                        modifier =
-                            Modifier.fillMaxWidth(),
-                        horizontalArrangement =
-                            Arrangement.spacedBy(
-                                8.dp
-                            )
-                    ) {
-                        OutlinedButton(
-                            enabled =
-                                !buildActive &&
-                                draft.versionCode > 1,
-                            onClick = {
-                                onDraftChange(
-                                    draft.copy(
-                                        versionCode =
-                                            (
-                                                draft.versionCode -
-                                                    1
-                                            ).coerceAtLeast(
-                                                1
-                                            ),
-                                        autoVersionCode =
-                                            false
-                                    )
-                                )
-                            },
-                            modifier =
-                                Modifier.weight(
-                                    1f
-                                )
-                        ) {
-                            Text(
-                                "−1"
-                            )
-                        }
-
-                        Button(
-                            enabled =
-                                !buildActive,
-                            onClick = {
-                                onDraftChange(
-                                    draft.copy(
-                                        versionCode =
-                                            draft.versionCode +
-                                                1,
-                                        autoVersionCode =
-                                            false
-                                    )
-                                )
-                            },
-                            modifier =
-                                Modifier.weight(
-                                    1f
-                                )
-                        ) {
-                            Text(
-                                "VERSION +1"
-                            )
-                        }
-                    }
-
-                    OutlinedTextField(
-                        value =
-                            draft.versionName,
-                        onValueChange = {
-                            value ->
-
-                            onDraftChange(
-                                draft.copy(
-                                    versionName =
-                                        value
-                                            .trim()
-                                            .take(
-                                                32
-                                            )
-                                )
-                            )
-                        },
-                        label = {
-                            Text(
-                                "Version Name"
-                            )
-                        },
-                        supportingText = {
-                            Text(
-                                "Örnek: 1.0.0 veya 1.0.1"
-                            )
-                        },
-                        singleLine =
-                            true,
-                        enabled =
-                            !buildActive,
-                        modifier =
-                            Modifier.fillMaxWidth()
-                    )
-
-                    Row(
-                        modifier =
-                            Modifier.fillMaxWidth(),
-                        verticalAlignment =
-                            Alignment.CenterVertically,
-                        horizontalArrangement =
-                            Arrangement.SpaceBetween
-                    ) {
-                        Column(
-                            modifier =
-                                Modifier.weight(
-                                    1f
-                                )
-                        ) {
-                            Text(
-                                "Otomatik Version Code",
-                                fontWeight =
-                                    FontWeight.SemiBold,
-                                fontSize =
-                                    13.sp
-                            )
-
-                            Text(
-                                if (
-                                    draft.autoVersionCode
-                                ) {
-                                    "Her yeni build başlangıcında otomatik artırılır."
-                                } else {
-                                    "Version Code manuel yönetiliyor."
-                                },
-                                color =
-                                    TextSecondary,
-                                fontSize =
-                                    11.sp
-                            )
-                        }
-
-                        Switch(
-                            checked =
-                                draft.autoVersionCode,
-                            enabled =
-                                !buildActive,
-                            onCheckedChange = {
-                                enabled ->
-
-                                onDraftChange(
-                                    draft.copy(
-                                        autoVersionCode =
-                                            enabled
-                                    )
-                                )
-                            }
-                        )
-                    }
-
-                    Text(
-                        "Aktif sürüm: ${draft.versionName} • versionCode ${draft.versionCode}",
-                        color =
-                            Accent,
-                        fontWeight =
-                            FontWeight.SemiBold,
-                        fontSize =
-                            12.sp
-                    )
-                }
-            }
         }
 
         item {

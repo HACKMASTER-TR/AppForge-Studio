@@ -355,6 +355,8 @@ object ProjectLibrary {
             versionCode = obj.optInt("versionCode", 1),
             autoVersionCode = obj.optBoolean("autoVersionCode", false),
             buildOutput = obj.optString("buildOutput", "both"),
+            minSdk = obj.optInt("minSdk", 26),
+            targetSdk = obj.optInt("targetSdk", 37),
             orientation = obj.optString("orientation", "unspecified"),
             primaryColor = obj.optString("primaryColor", "#6B7CFF"),
             backgroundColor = obj.optString("backgroundColor", "#07101F"),
@@ -1018,6 +1020,8 @@ object ProjectLibrary {
             put("versionCode", d.versionCode)
             put("autoVersionCode", d.autoVersionCode)
             put("buildOutput", d.buildOutput)
+            put("minSdk", d.minSdk)
+            put("targetSdk", d.targetSdk)
 
             put("orientation", d.orientation)
             put("primaryColor", d.primaryColor)

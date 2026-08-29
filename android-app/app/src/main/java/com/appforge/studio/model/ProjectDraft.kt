@@ -21,6 +21,10 @@ data class ProjectDraft(
     var autoVersionCode: Boolean = false,
     var buildOutput: String = "both",
 
+    // Android SDK
+    var minSdk: Int = 26,
+    var targetSdk: Int = 37,
+
     var orientation: String = "unspecified",
     var primaryColor: String = "#6B7CFF",
     var backgroundColor: String = "#07101F",

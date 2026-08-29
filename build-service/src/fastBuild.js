@@ -97,6 +97,46 @@ function safeOrientation(value) {
     : "unspecified";
 }
 
+
+function resolveAndroidSdk(c) {
+  const minSdk =
+    Number(c?.minSdk ?? 26);
+
+  const targetSdk =
+    Number(c?.targetSdk ?? 37);
+
+  if (
+    !Number.isInteger(minSdk) ||
+    minSdk < 26 ||
+    minSdk > 37
+  ) {
+    throw new Error(
+      "FAST BUILD: Min SDK 26 ile 37 arasında olmalı."
+    );
+  }
+
+  if (
+    !Number.isInteger(targetSdk) ||
+    targetSdk < 26 ||
+    targetSdk > 37
+  ) {
+    throw new Error(
+      "FAST BUILD: Hedef SDK 26 ile 37 arasında olmalı."
+    );
+  }
+
+  if (minSdk > targetSdk) {
+    throw new Error(
+      "FAST BUILD: Min SDK, Hedef SDK değerinden büyük olamaz."
+    );
+  }
+
+  return {
+    minSdk,
+    targetSdk
+  };
+}
+
 function command(
   executable,
   args,
@@ -359,6 +399,12 @@ export async function buildFastApk({
     safeOrientation(
       c.orientation
     );
+
+  const {
+    minSdk,
+    targetSdk
+  } =
+    resolveAndroidSdk(c);
 
   const deepLinkEnabled =
     c.deepLink?.enabled === true;
@@ -629,8 +675,8 @@ export async function buildFastApk({
     android:versionName="${xml(versionName)}">
 
     <uses-sdk
-        android:minSdkVersion="26"
-        android:targetSdkVersion="37" />
+        android:minSdkVersion="${minSdk}"
+        android:targetSdkVersion="${targetSdk}" />
 
     <uses-permission
         android:name="android.permission.INTERNET" />

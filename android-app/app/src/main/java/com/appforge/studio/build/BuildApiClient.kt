@@ -212,6 +212,8 @@ class BuildApiClient(
             put("versionName", draft.versionName)
             put("versionCode", draft.versionCode)
             put("buildOutput", draft.buildOutput)
+            put("minSdk", draft.minSdk)
+            put("targetSdk", draft.targetSdk)
 
             put("orientation", draft.orientation)
             put("primaryColor", draft.primaryColor)

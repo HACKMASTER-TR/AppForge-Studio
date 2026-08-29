@@ -97,6 +97,47 @@ function safeHex(value, fallback) {
 }
 
 
+function resolveAndroidSdk(c) {
+  const minSdk =
+    Number(c?.minSdk ?? 26);
+
+  const targetSdk =
+    Number(c?.targetSdk ?? 37);
+
+  if (
+    !Number.isInteger(minSdk) ||
+    minSdk < 26 ||
+    minSdk > 37
+  ) {
+    throw new Error(
+      "Min SDK 26 ile 37 arasında olmalı."
+    );
+  }
+
+  if (
+    !Number.isInteger(targetSdk) ||
+    targetSdk < 26 ||
+    targetSdk > 37
+  ) {
+    throw new Error(
+      "Hedef SDK 26 ile 37 arasında olmalı."
+    );
+  }
+
+  if (minSdk > targetSdk) {
+    throw new Error(
+      "Min SDK, Hedef SDK değerinden büyük olamaz."
+    );
+  }
+
+  return {
+    minSdk,
+    targetSdk,
+    compileSdk: 37
+  };
+}
+
+
 const SOURCE_BUILD_ENGINES =
   new Set([
     "webview-static",
@@ -865,7 +906,13 @@ export function preflight(c, files = {}) {
     );
   }
 
-  ok("Target SDK 37.");
+  const androidSdk =
+    resolveAndroidSdk(c);
+
+  ok(`Min SDK ${androidSdk.minSdk}.`);
+  ok(`Target SDK ${androidSdk.targetSdk}.`);
+  ok(`Compile SDK ${androidSdk.compileSdk}.`);
+
   return out;
 }
 
@@ -3111,8 +3158,8 @@ android {
 
     defaultConfig {
         applicationId = "${pkg}"
-        minSdk = 26
-        targetSdk = 37
+        minSdk = ${resolveAndroidSdk(c).minSdk}
+        targetSdk = ${resolveAndroidSdk(c).targetSdk}
         versionCode = ${Number(c.versionCode || 1)}
         versionName = "${esc(c.versionName || "1.0.0")}"
     }
