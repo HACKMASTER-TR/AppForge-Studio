@@ -18092,6 +18092,8 @@ private fun TemplatesScreen(
     onApply: (RemoteTemplate) -> Unit,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+
     val templatesConfiguration =
         LocalConfiguration.current
 
