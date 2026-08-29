@@ -2508,9 +2508,9 @@ export async function executeBuild(job) {
           label,
           profile,
           maxAttempts =
-            profile.name === "balanced"
-              ? 1
-              : 3
+            profile.name === "low-memory"
+              ? 3
+              : 1
         ) => {
           const taskList =
             Array.isArray(requestedTasks)
