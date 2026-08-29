@@ -48,6 +48,19 @@ test("V4 adds explanatory text below every feature input", async () => {
   assert.match(css, /\.field-help/);
 });
 
+test("V4 keeps server-queued builds visible while the Studio works in the background", async () => {
+  const [html, script] = await Promise.all([
+    read("build-service/public/studio/index.html"),
+    read("build-service/public/studio/v4.js")
+  ]);
+
+  assert.ok(html.includes('id="backgroundBuildStatus"'));
+  assert.match(script, /function trackBackgroundBuild/);
+  assert.match(script, /function startBackgroundBuildMonitor/);
+  assert.match(script, /await trackBackgroundBuild\(j\.buildId\)/);
+  assert.match(script, /backgroundBuilds=await pGet\("backgroundBuilds",\{\}\)/);
+});
+
 test("Windows login remains usable when secure token persistence is unavailable", async () => {
   const v4 = await read("build-service/public/studio/v4.js");
 

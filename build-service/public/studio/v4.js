@@ -42,6 +42,8 @@ let previewNetwork = [];
 let previewPerformance = [];
 let studioSettings = {theme:"system", language:"tr", accent:"#6172ff"};
 let aiHistory = [];
+let backgroundBuilds = {};
+let backgroundBuildPoll = null;
 
 let files = starterFiles("blank", "AppForge App");
 
@@ -226,6 +228,7 @@ async function finishLogin(j){
 }
 window.logout=async function logout(){
   stopLiveLogs();
+  stopBackgroundBuildMonitor();
   await clearAuthToken();
   currentUser=null;
   $("app").classList.add("hidden");
@@ -234,11 +237,51 @@ window.logout=async function logout(){
   $("password").value="";
 };
 async function postLoginLoad(){
+  backgroundBuilds=await pGet("backgroundBuilds",{});
   await Promise.allSettled([loadMe(),loadProjects(),loadBuilds(),loadTeams(),loadTemplates(),loadProStatus(),loadApiTokens()]);
+  startBackgroundBuildMonitor();
   updateHome();
   renderTree();
   preview();
   updateProjectBadges();
+}
+
+function backgroundBuildMessage(build){
+  const name=build.appName || "Build";
+  if(build.status==="success")return `✓ ${name} hazır`;
+  if(build.status==="failed")return `✕ ${name} başarısız`;
+  if(build.status==="cancelled")return `— ${name} iptal edildi`;
+  return `⚙ ${name} arka planda derleniyor • %${build.progress||0}`;
+}
+function notifyBackgroundBuild(build, previousStatus){
+  if(!previousStatus || !["queued","building"].includes(previousStatus) || !["success","failed","cancelled"].includes(build.status))return;
+  if(document.hidden && "Notification" in window && Notification.permission==="granted")new Notification("AppForge Studio",{body:backgroundBuildMessage(build)});
+}
+function updateBackgroundBuildStatus(){
+  const button=$("backgroundBuildStatus");
+  if(!button)return;
+  const tracked=lastBuilds.filter(build=>backgroundBuilds[build.buildId]);
+  const active=tracked.filter(build=>["queued","building"].includes(build.status));
+  const latest=active[0] || tracked[0];
+  button.classList.toggle("hidden",!latest);
+  button.classList.remove("building","success","failed");
+  if(!latest)return;
+  button.textContent=backgroundBuildMessage(latest);
+  button.classList.add(["queued","building"].includes(latest.status)?"building":latest.status==="success"?"success":"failed");
+}
+async function trackBackgroundBuild(buildId){
+  if(!buildId)return;
+  backgroundBuilds[buildId] ||= {status:"queued"};
+  await pSet("backgroundBuilds",backgroundBuilds);
+  updateBackgroundBuildStatus();
+  startBackgroundBuildMonitor();
+}
+function startBackgroundBuildMonitor(){
+  if(backgroundBuildPoll || !token)return;
+  backgroundBuildPoll=setInterval(()=>{if(Object.keys(backgroundBuilds).length)loadBuilds()},15000);
+}
+function stopBackgroundBuildMonitor(){
+  if(backgroundBuildPoll){clearInterval(backgroundBuildPoll);backgroundBuildPoll=null}
 }
 
 function wireNavigation(){
@@ -1011,6 +1054,7 @@ window.startAdvancedBuild=async function startAdvancedBuild(){
     if(keystoreFile)form.append("keystore",keystoreFile,keystoreFile.name||"release.jks");
     const idem=`v4-${c.packageName}-${Date.now()}-${crypto.getRandomValues(new Uint32Array(1))[0]}`;
     const j=await apiForm("/api/builds",form,{headers:{"Idempotency-Key":idem}});
+    await trackBackgroundBuild(j.buildId);
     alert(`Build ${j.status}: ${j.buildId}${j.cacheHit?" (CACHE HIT)":""}`);
     showPanel("buildsPanel");
     await loadBuilds();
@@ -1025,6 +1069,7 @@ window.workspaceBuild=async function workspaceBuild(output="both"){
     const c=collectBuilderConfig();
     const idem=`workspace-${activeProjectId}-${Date.now()}`;
     const j=await api(`/api/projects/${activeProjectId}/builds`,{method:"POST",headers:{"Idempotency-Key":idem},body:{buildOutput:output,priority:intVal("bPriority",100),configOverride:safeConfigForProject({...c,buildOutput:output})}});
+    await trackBackgroundBuild(j.buildId);
     showPanel("buildsPanel");await loadBuilds();startLiveLogs(j.buildId);
   }catch(e){alert(e.message)}
 };
@@ -1201,6 +1246,17 @@ async function loadBuilds(){
   try{
     const path=activeTeamId?"/api/builds?teamId="+encodeURIComponent(activeTeamId):"/api/builds";
     const j=await api(path);lastBuilds=j.builds||[];
+    let changed=false;
+    for(const build of lastBuilds){
+      const previousStatus=backgroundBuilds[build.buildId]?.status;
+      if(previousStatus){
+        notifyBackgroundBuild(build,previousStatus);
+        backgroundBuilds[build.buildId]={status:build.status};
+        changed=true;
+      }
+    }
+    if(changed)pSet("backgroundBuilds",backgroundBuilds);
+    updateBackgroundBuildStatus();
     $("buildRows").innerHTML="";
     for(const b of lastBuilds){
       const tr=document.createElement("tr");
