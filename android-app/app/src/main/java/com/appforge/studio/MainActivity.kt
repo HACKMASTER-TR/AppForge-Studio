@@ -1598,6 +1598,17 @@ private fun AppForgeApp() {
     val startBuildWithDraft: (ProjectDraft) -> Unit =
         buildStart@{ buildDraft ->
 
+        if (session == null) {
+            status =
+                "Production derlemesi için kayıt ol veya giriş yap."
+
+            openWorkspaceScreen(
+                AppScreen.ACCOUNT
+            )
+
+            return@buildStart
+        }
+
         if (
             buildBusy
         ) {
