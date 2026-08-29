@@ -160,7 +160,8 @@ test(
   async () => {
     const repoRoot =
       path.resolve(
-        process.cwd(),
+        import.meta.dirname,
+        "..",
         ".."
       );
 

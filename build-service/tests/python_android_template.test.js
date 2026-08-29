@@ -5,6 +5,8 @@ import path from "path";
 
 const root =
   path.resolve(
+    import.meta.dirname,
+    "..",
     "python-android-template"
   );
 
