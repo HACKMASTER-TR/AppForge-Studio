@@ -668,12 +668,128 @@ private fun AppForgeApp() {
 
     var status by remember { mutableStateOf("Hazır") }
     var progress by remember { mutableIntStateOf(0) }
+
+    var buildStartedAtMs by
+        remember {
+            mutableStateOf<Long?>(
+                null
+            )
+        }
+
+    var buildElapsedMs by
+        remember {
+            mutableLongStateOf(
+                0L
+            )
+        }
+
+    var buildTimerRunning by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
     var logs by remember { mutableStateOf(listOf<String>()) }
     var preflight by remember { mutableStateOf(listOf<String>()) }
     var buildId by remember { mutableStateOf<String?>(null) }
     var apkUrl by remember { mutableStateOf<String?>(null) }
     var aabUrl by remember { mutableStateOf<String?>(null) }
     var exeUrl by remember { mutableStateOf<String?>(null) }
+
+    /*
+     * Build süresi:
+     * Başlatıldığı andan itibaren canlı sayar.
+     * Başarı / hata / iptal durumunda son değerde kalır.
+     */
+    LaunchedEffect(
+        buildTimerRunning,
+        buildStartedAtMs
+    ) {
+        while (
+            buildTimerRunning
+        ) {
+            val startedAt =
+                buildStartedAtMs
+                    ?: break
+
+            buildElapsedMs =
+                (
+                    System.currentTimeMillis() -
+                        startedAt
+                ).coerceAtLeast(
+                    0L
+                )
+
+            delay(
+                250L
+            )
+        }
+    }
+
+    LaunchedEffect(
+        status,
+        progress,
+        buildTimerRunning
+    ) {
+        if (
+            !buildTimerRunning
+        ) {
+            return@LaunchedEffect
+        }
+
+        val normalizedStatus =
+            status
+                .trim()
+                .lowercase()
+
+        val terminal =
+            progress >= 100 ||
+                normalizedStatus in
+                    setOf(
+                        "success",
+                        "succeeded",
+                        "completed",
+                        "done",
+                        "failed",
+                        "cancelled",
+                        "canceled"
+                    ) ||
+                normalizedStatus
+                    .startsWith(
+                        "hata"
+                    ) ||
+                normalizedStatus
+                    .contains(
+                        "tamamlandı"
+                    ) ||
+                normalizedStatus
+                    .contains(
+                        "iptal"
+                    )
+
+        if (
+            terminal
+        ) {
+            val startedAt =
+                buildStartedAtMs
+
+            if (
+                startedAt != null
+            ) {
+                buildElapsedMs =
+                    (
+                        System.currentTimeMillis() -
+                            startedAt
+                    ).coerceAtLeast(
+                        0L
+                    )
+            }
+
+            buildTimerRunning =
+                false
+        }
+    }
 
     // Yalnız daha önce açıkça kaydedilmiş projeleri debounce ile güncelle.
     // Proje açılışı gerçek değişiklik sayılmaz. İlk farklı taslak Free planda
@@ -1661,6 +1777,15 @@ private fun AppForgeApp() {
             effectiveBuildDraft
 
         scope.launch {
+            buildStartedAtMs =
+                System.currentTimeMillis()
+
+            buildElapsedMs =
+                0L
+
+            buildTimerRunning =
+                true
+
             status = "Derleme hazırlanıyor..."
             progress = 2
             logs = emptyList()
@@ -3425,6 +3550,8 @@ private fun AppForgeApp() {
                                 },
                                 status = status,
                                 progress = progress,
+                                buildElapsedMs = buildElapsedMs,
+                                buildTimerRunning = buildTimerRunning,
                                 logs = logs,
                                 preflight = preflight,
                                 buildId = buildId,
@@ -14753,6 +14880,8 @@ private fun BuildStep(
     onRetryBuild: (ProjectDraft) -> Unit,
     status: String,
     progress: Int,
+    buildElapsedMs: Long,
+    buildTimerRunning: Boolean,
     logs: List<String>,
     preflight: List<String>,
     buildId: String?,
@@ -15240,6 +15369,40 @@ private fun BuildStep(
                         modifier =
                             Modifier.fillMaxWidth()
                     )
+
+                    if (
+                        buildTimerRunning ||
+                        buildElapsedMs > 0L
+                    ) {
+                        Text(
+                            text =
+                                if (
+                                    buildTimerRunning
+                                ) {
+                                    "⏱ Geçen süre: " +
+                                        formatBuildDuration(
+                                            buildElapsedMs
+                                        )
+                                } else {
+                                    "⏱ Toplam süre: " +
+                                        formatBuildDuration(
+                                            buildElapsedMs
+                                        )
+                                },
+                            color =
+                                Accent,
+                            fontSize =
+                                13.sp,
+                            fontWeight =
+                                FontWeight.SemiBold
+                        )
+
+                        Spacer(
+                            Modifier.height(
+                                6.dp
+                            )
+                        )
+                    }
 
                     if (
                         buildId != null
@@ -21213,4 +21376,49 @@ private fun artifactDownloadName(
         }
 
     return "$safeName.$safeExtension"
+}
+
+
+private fun formatBuildDuration(
+    durationMs: Long
+): String {
+    val totalSeconds =
+        (
+            durationMs /
+                1000L
+        ).coerceAtLeast(
+            0L
+        )
+
+    val hours =
+        totalSeconds /
+            3600L
+
+    val minutes =
+        (
+            totalSeconds %
+                3600L
+        ) /
+            60L
+
+    val seconds =
+        totalSeconds %
+            60L
+
+    return if (
+        hours > 0L
+    ) {
+        String.format(
+            "%02d:%02d:%02d",
+            hours,
+            minutes,
+            seconds
+        )
+    } else {
+        String.format(
+            "%02d:%02d",
+            minutes,
+            seconds
+        )
+    }
 }
