@@ -192,6 +192,179 @@ object ProjectLibrary {
         return id
     }
 
+    fun cloneProject(
+        context: Context,
+        id: String
+    ): SavedProject? {
+
+        val original =
+            restore(
+                context,
+                id
+            ) ?: return null
+
+        val existing =
+            load(
+                context
+            )
+
+        val baseName =
+            original.appName
+                .ifBlank {
+                    "Adsız Proje"
+                }
+
+        var cloneName =
+            "$baseName Kopya"
+
+        var index =
+            2
+
+        while (
+            existing.any {
+                it.name.equals(
+                    cloneName,
+                    ignoreCase = true
+                )
+            }
+        ) {
+            cloneName =
+                "$baseName Kopya $index"
+
+            index++
+        }
+
+        val cloneId =
+            UUID.randomUUID()
+                .toString()
+
+        var clonedFolder =
+            original.importedFolder
+
+        var clonedStartPage =
+            original.startPage
+
+        if (
+            original.sourceMode ==
+            SourceMode.LOCAL
+        ) {
+            val sourceFolder =
+                original.importedFolder
+                    ?.let(::File)
+                    ?.takeIf {
+                        it.isDirectory
+                    }
+
+            if (
+                sourceFolder != null
+            ) {
+                val destination =
+                    File(
+                        context.filesDir,
+                        "projects/clone_" +
+                            cloneId.replace(
+                                "-",
+                                ""
+                            )
+                    )
+
+                destination
+                    .deleteRecursively()
+
+                val copied =
+                    sourceFolder
+                        .copyRecursively(
+                            target =
+                                destination,
+                            overwrite =
+                                true
+                        )
+
+                if (copied) {
+                    clonedFolder =
+                        destination.absolutePath
+
+                    val oldStart =
+                        original.startPage
+                            ?.let(::File)
+
+                    val relativeStart =
+                        if (
+                            oldStart != null &&
+                            oldStart.isFile
+                        ) {
+                            runCatching {
+                                oldStart
+                                    .relativeTo(
+                                        sourceFolder
+                                    )
+                                    .path
+                            }.getOrNull()
+                        } else {
+                            null
+                        }
+
+                    clonedStartPage =
+                        relativeStart
+                            ?.let {
+                                File(
+                                    destination,
+                                    it
+                                )
+                            }
+                            ?.takeIf {
+                                it.isFile
+                            }
+                            ?.absolutePath
+                            ?: File(
+                                destination,
+                                "index.html"
+                            )
+                                .takeIf {
+                                    it.isFile
+                                }
+                                ?.absolutePath
+                            ?: destination
+                                .walkTopDown()
+                                .firstOrNull {
+                                    it.isFile &&
+                                    it.name.equals(
+                                        "index.html",
+                                        true
+                                    )
+                                }
+                                ?.absolutePath
+                }
+            }
+        }
+
+        val clone =
+            original.copy(
+                appName =
+                    cloneName,
+                importedFolder =
+                    clonedFolder,
+                startPage =
+                    clonedStartPage
+            )
+
+        save(
+            context =
+                context,
+            draft =
+                clone,
+            existingId =
+                cloneId
+        )
+
+        return load(
+            context
+        ).firstOrNull {
+            it.id ==
+                cloneId
+        }
+    }
+
     fun load(context: Context): List<SavedProject> {
         purgeExpiredTrash(context)
 

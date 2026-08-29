@@ -426,6 +426,31 @@ internal fun StudioHomeScreen(
                                     project
                                 )
                             },
+                            onClone = {
+                                openProjectMenu =
+                                    null
+
+                                val cloned =
+                                    ProjectLibrary
+                                        .cloneProject(
+                                            context,
+                                            project.id
+                                        )
+
+                                projects =
+                                    ProjectLibrary
+                                        .load(
+                                            context
+                                        )
+
+                                if (
+                                    cloned != null
+                                ) {
+                                    onOpenProject(
+                                        cloned
+                                    )
+                                }
+                            },
                             onDelete = {
                                 openProjectMenu =
                                     null
@@ -987,6 +1012,7 @@ private fun ProjectHomeCard(
     onMenu: () -> Unit,
     onDismissMenu: () -> Unit,
     onOpen: () -> Unit,
+    onClone: () -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
@@ -1089,6 +1115,14 @@ private fun ProjectHomeCard(
                         },
                         onClick =
                             onOpen
+                    )
+
+                    DropdownMenuItem(
+                        text = {
+                            Text("Klonla")
+                        },
+                        onClick =
+                            onClone
                     )
 
                     DropdownMenuItem(
