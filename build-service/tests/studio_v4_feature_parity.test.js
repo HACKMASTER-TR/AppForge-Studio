@@ -25,6 +25,17 @@ test("V4 shared Windows/Web UI avoids responsive sticky overlap and narrow overf
   assert.ok(html.includes('aria-label="Ana menü"'));
 });
 
+test("V4 navigation animates the next panel while respecting reduced motion", async () => {
+  const [script, css] = await Promise.all([
+    read("build-service/public/studio/v4.js"),
+    read("build-service/public/studio/v4.css")
+  ]);
+
+  assert.match(script, /classList\.add\("panel-enter"\)/);
+  assert.match(css, /@keyframes panel-enter/);
+  assert.match(css, /prefers-reduced-motion:reduce/);
+});
+
 test("Windows login remains usable when secure token persistence is unavailable", async () => {
   const v4 = await read("build-service/public/studio/v4.js");
 

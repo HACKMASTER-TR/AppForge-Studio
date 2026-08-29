@@ -245,8 +245,14 @@ function wireNavigation(){
   qsa(".nav-item").forEach(btn=>btn.addEventListener("click",()=>showPanel(btn.dataset.panel,btn)));
 }
 window.showPanel=function showPanel(id,button=null){
+  const nextPanel=$(id);
   qsa(".panel").forEach(x=>x.classList.add("hidden"));
-  $(id)?.classList.remove("hidden");
+  if(nextPanel){
+    nextPanel.classList.remove("hidden","panel-enter");
+    // Restart the entrance animation when the user changes section quickly.
+    void nextPanel.offsetWidth;
+    nextPanel.classList.add("panel-enter");
+  }
   qsa(".nav-item").forEach(x=>x.classList.toggle("active",x.dataset.panel===id));
   if(button)button.classList.add("active");
   if(id==="projectsPanel")loadProjects();
