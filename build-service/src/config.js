@@ -109,12 +109,12 @@ export const config = {
   ),
   buildConcurrency: Math.max(
     1,
-    Number(process.env.BUILD_CONCURRENCY || 2)
+    Number(process.env.BUILD_CONCURRENCY || 1)
   ),
   gradlePerformanceProfile:
     String(
       process.env.GRADLE_PERFORMANCE_PROFILE ||
-      "balanced"
+      "throughput"
     )
       .trim()
       .toLowerCase(),

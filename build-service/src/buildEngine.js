@@ -2608,7 +2608,7 @@ export async function executeBuild(job) {
 
         await appendLog(
           buildId,
-          profile.name === "balanced"
+          profile.name !== "low-memory"
             ? `⚡ Gradle hız profili • ${profile.maxWorkers} worker • ${plan.length} JVM çağrısı`
             : "🛡 Gradle düşük bellek profili • görevler izole çalışacak"
         );

@@ -2,7 +2,7 @@
 
 V5 adds a working Quick/Advanced application scaffold flow to the shared Studio: responsive visual UI, live preview, CRUD data schema, Node.js backend, authentication, notifications and Android/Windows/Web publishing metadata are generated together. HTML and ZIP source selection now includes an `Otomatik sürüm arttır` control; when enabled, semantic `versionName` and Android `versionCode` advance together.
 
-Android Gradle builds use the balanced V5 performance profile by default: APK+AAB tasks share one warm Gradle invocation, two workers run in parallel, Kotlin incremental compilation stays enabled and the persistent Gradle build cache is reused. If the worker reaches its memory limit, the same build automatically falls back to isolated low-memory tasks without discarding completed outputs. Set `GRADLE_PERFORMANCE_PROFILE=low-memory` only for constrained workers.
+Android Gradle builds use the V5 throughput profile by default: the Gradle daemon stays warm, configuration/build caches are reused, APK+AAB tasks share one invocation and one focused build receives the worker's CPU/RAM. This is faster for the build the user is waiting for than running two memory-heavy Gradle JVMs at once. If the worker reaches its memory limit, the same build automatically falls back to isolated low-memory tasks without discarding completed outputs. Set `GRADLE_PERFORMANCE_PROFILE=balanced` for medium workers or `low-memory` only for constrained workers.
 
 ## ✨ Yerel AI Asistan
 AppForge now has an on-device AI assistant for questions about:

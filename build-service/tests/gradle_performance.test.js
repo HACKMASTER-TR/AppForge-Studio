@@ -7,16 +7,18 @@ import {
   gradlePerformanceProfile
 } from "../src/gradlePerformance.js";
 
-test("balanced Gradle profile batches APK and AAB in one warm invocation", () => {
-  const profile = gradlePerformanceProfile("balanced");
+test("throughput Gradle profile keeps one warm daemon and batches APK and AAB", () => {
+  const profile = gradlePerformanceProfile("throughput");
   assert.deepEqual(
     gradleInvocationPlan(["assembleRelease", "bundleRelease"], profile.name),
     [["assembleRelease", "bundleRelease"]]
   );
-  assert.equal(profile.maxWorkers, 2);
+  assert.equal(profile.maxWorkers, 4);
   assert.equal(profile.incremental, true);
-  assert.ok(gradleArguments(["bundleRelease"], profile).includes("--max-workers=2"));
-  assert.match(gradleJvmOptions(profile), /-Xmx640m/);
+  assert.ok(gradleArguments(["bundleRelease"], profile).includes("--max-workers=4"));
+  assert.ok(gradleArguments(["bundleRelease"], profile).includes("--daemon"));
+  assert.ok(gradleArguments(["bundleRelease"], profile).includes("--configuration-cache"));
+  assert.match(gradleJvmOptions(profile), /-Xmx1024m/);
 });
 
 test("low-memory Gradle fallback isolates output tasks", () => {

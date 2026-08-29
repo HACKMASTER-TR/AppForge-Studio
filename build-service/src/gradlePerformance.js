@@ -1,5 +1,5 @@
 export function gradlePerformanceProfile(
-  name = "balanced"
+  name = "throughput"
 ) {
   if (String(name).toLowerCase() === "low-memory") {
     return {
@@ -13,11 +13,23 @@ export function gradlePerformanceProfile(
     };
   }
 
+  if (String(name).toLowerCase() === "balanced") {
+    return {
+      name: "balanced",
+      maxWorkers: 2,
+      heapMb: 640,
+      metaspaceMb: 320,
+      parallel: true,
+      incremental: true,
+      gc: "-XX:+UseG1GC"
+    };
+  }
+
   return {
-    name: "balanced",
-    maxWorkers: 2,
-    heapMb: 640,
-    metaspaceMb: 320,
+    name: "throughput",
+    maxWorkers: 4,
+    heapMb: 1024,
+    metaspaceMb: 512,
     parallel: true,
     incremental: true,
     gc: "-XX:+UseG1GC"
@@ -26,7 +38,7 @@ export function gradlePerformanceProfile(
 
 export function gradleInvocationPlan(
   tasks,
-  profileName = "balanced"
+  profileName = "throughput"
 ) {
   const unique = [...new Set(tasks)];
   if (profileName === "low-memory") {
@@ -41,8 +53,10 @@ export function gradleArguments(
 ) {
   return [
     ...tasks,
-    "--no-daemon",
+    "--daemon",
     "--build-cache",
+    "--configuration-cache",
+    "--configuration-cache-problems=warn",
     `--max-workers=${profile.maxWorkers}`,
     `-Pkotlin.compiler.execution.strategy=in-process`,
     `-Dorg.gradle.parallel=${profile.parallel}`,
