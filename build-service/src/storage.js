@@ -549,6 +549,91 @@ export async function putOutput(
 }
 
 
+
+export async function outputExists(
+  outputRef
+) {
+  if (
+    !outputRef ||
+    typeof outputRef !== "object" ||
+    !String(
+      outputRef.key || ""
+    ).trim()
+  ) {
+    return false;
+  }
+
+  if (
+    outputRef.driver ===
+    "s3"
+  ) {
+    try {
+      await s3.send(
+        new HeadObjectCommand({
+          Bucket:
+            config.s3Bucket,
+          Key:
+            outputRef.key
+        })
+      );
+
+      return true;
+    } catch (error) {
+      const code =
+        String(
+          error?.name ||
+          error?.Code ||
+          ""
+        );
+
+      const status =
+        Number(
+          error?.$metadata
+            ?.httpStatusCode ||
+          0
+        );
+
+      if (
+        status === 404 ||
+        code === "NotFound" ||
+        code === "NoSuchKey"
+      ) {
+        return false;
+      }
+
+      throw error;
+    }
+  }
+
+  if (
+    outputRef.driver ===
+    "local"
+  ) {
+    try {
+      const stat =
+        await fs.stat(
+          outputLocalPath(
+            outputRef.key
+          )
+        );
+
+      return stat.isFile() &&
+        stat.size > 0;
+    } catch (error) {
+      if (
+        error?.code ===
+        "ENOENT"
+      ) {
+        return false;
+      }
+
+      throw error;
+    }
+  }
+
+  return false;
+}
+
 export async function materializeOutput(
   outputRef,
   target
