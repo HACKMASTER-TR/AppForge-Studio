@@ -1167,10 +1167,21 @@ private fun AppForgeApp() {
                             analysis.additionalPermissions,
 
                         fileUpload =
-                            analysis.fileUpload,
+                            analysis.fileUpload ||
+                                analysis.camera ||
+                                analysis.microphone,
 
                         downloads =
                             analysis.downloads,
+
+                        webMediaAutoplayEnabled =
+                            draft.webMediaAutoplayEnabled ||
+                                analysis.mediaPlayer,
+
+                        webJavaScriptEnabled =
+                            draft.webJavaScriptEnabled ||
+                                analysis.mediaPlayer ||
+                                analysis.qrScanner,
 
                         mediaPlayerBridge =
                             analysis.mediaPlayer,
@@ -3719,13 +3730,19 @@ private fun AppForgeApp() {
                                 sourceAnalysis
                             ) { draft = it }
 
-                            3 -> FeaturesStep(draft) { draft = it }
+                            3 -> FeaturesStep(
+                                draft,
+                                sourceAnalysis
+                            ) { draft = it }
 
                             4 -> AppearanceStep(draft, { draft = it }) {
                                 iconPicker.launch(arrayOf("image/*"))
                             }
 
-                            5 -> NativeBridgeStep(draft) { draft = it }
+                            5 -> NativeBridgeStep(
+                                draft,
+                                sourceAnalysis
+                            ) { draft = it }
 
                             6 -> MonetizationStep(
                                 draft = draft,
@@ -11598,6 +11615,7 @@ private fun PermissionsStep(
 @Composable
 private fun FeaturesStep(
     d: ProjectDraft,
+    analysis: SourceCapabilityAnalysis?,
     update: (ProjectDraft) -> Unit
 ) {
     val formCompact =
@@ -11630,8 +11648,102 @@ private fun FeaturesStep(
         item {
             Section(
                 "3. WebView Pro",
-                "Web motorunun davranışını ayrıntılı olarak yapılandır."
+                "Kaynak kod otomatik analiz edilir. Gereken WebView özellikleri açılır; istersen seçimleri değiştirebilirsin."
             )
+        }
+
+        if (
+            analysis != null
+        ) {
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                if (formCompact) 12.dp else 16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                6.dp
+                            )
+                    ) {
+                        Text(
+                            "🔍 Otomatik WebView analizi",
+                            color =
+                                Accent,
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            "${analysis.scannedFiles} kaynak dosyası tarandı",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+
+                        if (analysis.fileUpload) {
+                            Text(
+                                "✓ Dosya yükleme • ${
+                                    analysis.fileUploadReason
+                                        ?: "Dosya seçici kullanımı bulundu"
+                                }",
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+
+                        if (analysis.downloads) {
+                            Text(
+                                "✓ DownloadManager • ${
+                                    analysis.downloadsReason
+                                        ?: "İndirme kullanımı bulundu"
+                                }",
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+
+                        if (analysis.mediaPlayer) {
+                            Text(
+                                "✓ Medya özellikleri • ${
+                                    analysis.mediaPlayerReason
+                                        ?: "Medya kullanımı bulundu"
+                                }",
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+
+                        if (
+                            !analysis.fileUpload &&
+                            !analysis.downloads &&
+                            !analysis.mediaPlayer
+                        ) {
+                            Text(
+                                "Ek WebView özelliği gerektiren kullanım bulunmadı.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         item {
@@ -12687,6 +12799,7 @@ private fun AppearanceStep(
 @Composable
 private fun NativeBridgeStep(
     d: ProjectDraft,
+    analysis: SourceCapabilityAnalysis?,
     update: (ProjectDraft) -> Unit
 ) {
     val formCompact =
@@ -12735,8 +12848,90 @@ private fun NativeBridgeStep(
         item {
             Section(
                 "5. Native Bridge",
-                "Web içeriğine güvenli Android özellikleri ekle."
+                "Kaynak kod analiz edilir; gereken AppForge Android köprüleri otomatik açılır."
             )
+        }
+
+        if (
+            analysis != null
+        ) {
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                if (formCompact) 12.dp else 16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                6.dp
+                            )
+                    ) {
+                        Text(
+                            "🔍 Otomatik Native Bridge analizi",
+                            color =
+                                Accent,
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        if (analysis.mediaPlayer) {
+                            Text(
+                                "✓ Media3 / arka plan medya • ${
+                                    analysis.mediaPlayerReason
+                                        ?: "Medya kullanımı bulundu"
+                                }",
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+
+                        if (analysis.qrScanner) {
+                            Text(
+                                "✓ QR / Barkod • ${
+                                    analysis.qrScannerReason
+                                        ?: "QR kullanımı bulundu"
+                                }",
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+
+                        if (
+                            analysis.mediaPlayer ||
+                            analysis.qrScanner
+                        ) {
+                            Text(
+                                "✓ JavaScript Bridge otomatik etkinleştirildi",
+                                color =
+                                    Accent,
+                                fontSize =
+                                    12.sp
+                            )
+                        } else {
+                            Text(
+                                "Native Bridge gerektiren kullanım bulunmadı.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         item {
