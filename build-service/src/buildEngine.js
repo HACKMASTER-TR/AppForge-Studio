@@ -2556,7 +2556,12 @@ export async function executeBuild(job) {
           label,
           profile,
           maxAttempts =
-            profile.name === "low-memory"
+            [
+              "low-memory",
+              "native-android"
+            ].includes(
+              profile.name
+            )
               ? 3
               : 1
         ) => {
@@ -2647,7 +2652,10 @@ export async function executeBuild(job) {
 
       const preferredGradleProfile =
         gradlePerformanceProfile(
-          config.gradlePerformanceProfile
+          source.engine ===
+            "android-gradle"
+            ? "native-android"
+            : config.gradlePerformanceProfile
         );
 
       const runPlan = async profile => {
@@ -2659,9 +2667,13 @@ export async function executeBuild(job) {
 
         await appendLog(
           buildId,
-          profile.name !== "low-memory"
-            ? `⚡ Gradle hız profili • ${profile.maxWorkers} worker • ${plan.length} JVM çağrısı`
-            : "🛡 Gradle düşük bellek profili • görevler izole çalışacak"
+          profile.name ===
+            "native-android"
+            ? "🤖 Native Android güvenli Gradle profili • 1 worker • görevler izole"
+            : profile.name !==
+                "low-memory"
+              ? `⚡ Gradle hız profili • ${profile.maxWorkers} worker • ${plan.length} JVM çağrısı`
+              : "🛡 Gradle düşük bellek profili • görevler izole çalışacak"
         );
 
         for (const invocationTasks of plan) {
@@ -2686,7 +2698,12 @@ export async function executeBuild(job) {
           );
 
         if (
-          preferredGradleProfile.name === "low-memory" ||
+          [
+            "low-memory",
+            "native-android"
+          ].includes(
+            preferredGradleProfile.name
+          ) ||
           !memoryFailure
         ) {
           throw error;

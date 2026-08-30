@@ -52,7 +52,7 @@ test(
 );
 
 test(
-  "throughput memory failure falls back without repeated throughput attempts",
+  "memory constrained profiles retry without repeated throughput attempts",
   async () => {
     const source =
       await fs.readFile(
@@ -63,9 +63,40 @@ test(
         "utf8"
       );
 
+    const start =
+      source.indexOf(
+        "const runGradleTaskWithRetry"
+      );
+
+    const end =
+      source.indexOf(
+        "const preferredGradleProfile"
+      );
+
+    assert.ok(
+      start >= 0 &&
+      end > start
+    );
+
+    const section =
+      source.slice(
+        start,
+        end
+      );
+
     assert.match(
-      source,
-      /maxAttempts\s*=\s*profile\.name === "low-memory"\s*\?\s*3\s*:\s*1/
+      section,
+      /"low-memory"/
+    );
+
+    assert.match(
+      section,
+      /"native-android"/
+    );
+
+    assert.match(
+      section,
+      /\?\s*3\s*:\s*1/
     );
   }
 );

@@ -1,3 +1,4 @@
+import AdmZip from "adm-zip";
 import crypto from "crypto";
 import { promises as fs } from "fs";
 import { query } from "./db.js";
@@ -107,6 +108,246 @@ async function fileSha256(file) {
     return hash.digest("hex");
   } finally {
     await handle.close();
+  }
+}
+
+
+function normalizeArchiveEntryName(
+  value
+) {
+  const raw =
+    String(
+      value || ""
+    )
+      .replaceAll(
+        "\\",
+        "/"
+      );
+
+  if (
+    !raw ||
+    raw.startsWith("/") ||
+    raw.includes("\0")
+  ) {
+    return null;
+  }
+
+  const parts = [];
+
+  for (
+    const part of
+    raw.split("/")
+  ) {
+    if (
+      !part ||
+      part === "."
+    ) {
+      continue;
+    }
+
+    if (
+      part === ".."
+    ) {
+      return null;
+    }
+
+    parts.push(part);
+  }
+
+  if (
+    !parts.length ||
+    parts.length > 20
+  ) {
+    return null;
+  }
+
+  const normalized =
+    parts.join("/");
+
+  if (
+    normalized.length > 240
+  ) {
+    return null;
+  }
+
+  return normalized;
+}
+
+/*
+ * Proje ZIP'i yeniden paketlendiğinde:
+ *
+ * - ZIP timestamp
+ * - ZIP entry sırası
+ * - compression metadata
+ *
+ * değişebilir.
+ *
+ * Bunlar uygulama kaynak içeriğini değiştirmez.
+ * Artifact cache bu metadata yerine gerçek dosya
+ * içeriklerinin SHA-256 kimliğini kullanır.
+ */
+export async function projectContentSha256(
+  file
+) {
+  if (!file) {
+    return null;
+  }
+
+  const rawFallback =
+    () =>
+      fileSha256(file);
+
+  try {
+    const zip =
+      new AdmZip(file);
+
+    const entries =
+      zip.getEntries();
+
+    if (
+      !entries.length ||
+      entries.length > 10_000
+    ) {
+      return rawFallback();
+    }
+
+    const records = [];
+    const seen =
+      new Set();
+
+    let declaredTotal = 0;
+    let actualTotal = 0;
+
+    const maxTotal =
+      180 *
+      1024 *
+      1024;
+
+    for (
+      const entry of entries
+    ) {
+      const name =
+        normalizeArchiveEntryName(
+          entry.entryName
+        );
+
+      if (
+        !name ||
+        seen.has(name)
+      ) {
+        return rawFallback();
+      }
+
+      seen.add(name);
+
+      const mode =
+        (
+          Number(
+            entry.header?.attr ||
+            0
+          ) >>> 16
+        ) &
+        0xffff;
+
+      if (
+        (
+          mode &
+          0o170000
+        ) ===
+        0o120000
+      ) {
+        return rawFallback();
+      }
+
+      if (
+        entry.isDirectory
+      ) {
+        records.push([
+          name,
+          "directory",
+          0,
+          ""
+        ]);
+
+        continue;
+      }
+
+      const declared =
+        Math.max(
+          0,
+          Number(
+            entry.header?.size ||
+            0
+          )
+        );
+
+      declaredTotal +=
+        declared;
+
+      if (
+        declaredTotal >
+        maxTotal
+      ) {
+        return rawFallback();
+      }
+
+      const data =
+        entry.getData();
+
+      actualTotal +=
+        data.length;
+
+      if (
+        actualTotal >
+        maxTotal
+      ) {
+        return rawFallback();
+      }
+
+      const digest =
+        crypto
+          .createHash(
+            "sha256"
+          )
+          .update(data)
+          .digest("hex");
+
+      records.push([
+        name,
+        "file",
+        data.length,
+        digest
+      ]);
+    }
+
+    records.sort(
+      (a, b) =>
+        a[0] < b[0]
+          ? -1
+          : a[0] > b[0]
+            ? 1
+            : 0
+    );
+
+    return crypto
+      .createHash(
+        "sha256"
+      )
+      .update(
+        "appforge-project-content-v1\n"
+      )
+      .update(
+        JSON.stringify(
+          records
+        )
+      )
+      .digest("hex");
+  } catch {
+    /*
+     * ZIP değilse veya güvenli canonicalization
+     * yapılamazsa eski exact-byte davranışına dön.
+     */
+    return rawFallback();
   }
 }
 
@@ -329,7 +570,9 @@ export async function computeCacheKey(
   const inputHashes = {
     project:
       projectIdentity ||
-      await fileSha256(projectFile),
+      await projectContentSha256(
+        projectFile
+      ),
     keystore:
       await fileSha256(keystoreFile),
     icon:

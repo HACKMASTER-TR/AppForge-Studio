@@ -1,38 +1,90 @@
+const EPHEMERAL_PROFILES =
+  new Set([
+    "low-memory",
+    "native-android"
+  ]);
+
 export function gradlePerformanceProfile(
   name = "throughput"
 ) {
-  if (String(name).toLowerCase() === "low-memory") {
+  const normalized =
+    String(name || "")
+      .trim()
+      .toLowerCase();
+
+  /*
+   * Native Android/Kotlin projeleri:
+   *
+   * - Tek worker
+   * - Parallel kapalı
+   * - Persistent daemon yok
+   * - Dosya sistemi watcher kapalı
+   * - Gradle launcher JVM daha küçük
+   * - Build daemon heap'i korunurken metaspace/code-cache
+   *   sınırlandırılarak container OOM riski azaltılır.
+   */
+  if (
+    normalized ===
+      "native-android"
+  ) {
     return {
-      name: "low-memory",
+      name:
+        "native-android",
+      maxWorkers: 1,
+      heapMb: 320,
+      metaspaceMb: 224,
+      codeCacheMb: 96,
+      parallel: false,
+      incremental: false,
+      gc:
+        "-XX:+UseSerialGC"
+    };
+  }
+
+  if (
+    normalized ===
+      "low-memory"
+  ) {
+    return {
+      name:
+        "low-memory",
       maxWorkers: 1,
       heapMb: 320,
       metaspaceMb: 256,
       parallel: false,
       incremental: false,
-      gc: "-XX:+UseSerialGC"
+      gc:
+        "-XX:+UseSerialGC"
     };
   }
 
-  if (String(name).toLowerCase() === "balanced") {
+  if (
+    normalized ===
+      "balanced"
+  ) {
     return {
-      name: "balanced",
+      name:
+        "balanced",
       maxWorkers: 2,
       heapMb: 640,
       metaspaceMb: 320,
       parallel: true,
       incremental: true,
-      gc: "-XX:+UseG1GC"
+      gc:
+        "-XX:+UseG1GC"
     };
   }
 
   return {
-    name: "throughput",
+    name:
+      "throughput",
     maxWorkers: 4,
     heapMb: 1024,
     metaspaceMb: 512,
     parallel: true,
     incremental: true,
-    gc: "-XX:+UseG1GC"
+    gc:
+      "-XX:+UseG1GC"
   };
 }
 
@@ -40,35 +92,85 @@ export function gradleInvocationPlan(
   tasks,
   profileName = "throughput"
 ) {
-  const unique = [...new Set(tasks)];
-  if (profileName === "low-memory") {
-    return unique.map(task => [task]);
+  const unique =
+    [...new Set(tasks)];
+
+  if (
+    EPHEMERAL_PROFILES.has(
+      profileName
+    )
+  ) {
+    return unique.map(
+      task => [task]
+    );
   }
-  return unique.length ? [unique] : [];
+
+  return unique.length
+    ? [unique]
+    : [];
 }
 
 export function gradleArguments(
   tasks,
   profile
 ) {
+  const ephemeral =
+    EPHEMERAL_PROFILES.has(
+      profile.name
+    );
+
   return [
     ...tasks,
-    profile.name === "low-memory"
+
+    ephemeral
       ? "--no-daemon"
       : "--daemon",
+
+    ...(
+      profile.name ===
+        "native-android"
+        ? [
+            "--no-watch-fs"
+          ]
+        : []
+    ),
+
     "--build-cache",
     "--configuration-cache",
     "--configuration-cache-problems=warn",
+
     `--max-workers=${profile.maxWorkers}`,
-    `-Pkotlin.compiler.execution.strategy=in-process`,
+
+    "-Pkotlin.compiler.execution.strategy=in-process",
+
     `-Dorg.gradle.parallel=${profile.parallel}`,
+
     `-Dorg.gradle.jvmargs=${gradleJvmOptions(profile)}`,
+
     "--stacktrace"
   ];
 }
 
-export function gradleClientJvmOptions(profile) {
-  if (profile.name === "low-memory") {
+export function gradleClientJvmOptions(
+  profile
+) {
+  if (
+    profile.name ===
+      "native-android"
+  ) {
+    return [
+      "-Xmx64m",
+      "-XX:MaxMetaspaceSize=96m",
+      "-XX:ReservedCodeCacheSize=64m",
+      "-XX:+UseSerialGC",
+      "-Dfile.encoding=UTF-8"
+    ].join(" ");
+  }
+
+  if (
+    profile.name ===
+      "low-memory"
+  ) {
     return [
       "-Xmx96m",
       "-XX:MaxMetaspaceSize=128m",
@@ -77,14 +179,26 @@ export function gradleClientJvmOptions(profile) {
     ].join(" ");
   }
 
-  return gradleJvmOptions(profile);
+  return gradleJvmOptions(
+    profile
+  );
 }
 
-export function gradleJvmOptions(profile) {
+export function gradleJvmOptions(
+  profile
+) {
   return [
     `-Xmx${profile.heapMb}m`,
     `-XX:MaxMetaspaceSize=${profile.metaspaceMb}m`,
+
+    profile.codeCacheMb
+      ? `-XX:ReservedCodeCacheSize=${profile.codeCacheMb}m`
+      : null,
+
     profile.gc,
+
     "-Dfile.encoding=UTF-8"
-  ].join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
