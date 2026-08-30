@@ -504,7 +504,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { ONBOARDING, HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 @Composable
 private fun AppForgeApp() {
@@ -563,23 +563,7 @@ private fun AppForgeApp() {
                 null
             )
         }
-    var screen by remember {
-        mutableStateOf(
-            if (
-                context.getSharedPreferences(
-                    "appforge_onboarding",
-                    Context.MODE_PRIVATE
-                ).getBoolean(
-                    "completed",
-                    false
-                )
-            ) {
-                AppScreen.HOME
-            } else {
-                AppScreen.ONBOARDING
-            }
-        )
-    }
+    var screen by remember { mutableStateOf(AppScreen.HOME) }
     var step by remember { mutableIntStateOf(1) }
 
     LaunchedEffect(hostActivity?.buildNotificationSequence) {
@@ -914,7 +898,7 @@ private fun AppForgeApp() {
                 status = s.status
                 progress = s.progress
                 logs = s.logs
-                preflight = AppForgeUiSanitizer.preflight(s.preflight)
+                preflight = s.preflight
 
                 apkUrl =
                     if (s.apkAvailable) {
@@ -1140,40 +1124,6 @@ private fun AppForgeApp() {
 
                         sourceBuildReady =
                             analysis.buildReady,
-
-                        fileUpload =
-                            analysis.fileUpload ||
-                                analysis.camera ||
-                                analysis.microphone,
-
-                        downloads =
-                            analysis.downloads,
-
-                        webJavaScriptEnabled =
-                            true,
-
-                        webDomStorageEnabled =
-                            true,
-
-                        webMediaAutoplayEnabled =
-                            draft.webMediaAutoplayEnabled ||
-                                analysis.mediaPlayer,
-
-                        javascriptBridge =
-                            draft.javascriptBridge ||
-                                analysis.mediaPlayer ||
-                                analysis.qrScanner ||
-                                analysis.fileUpload ||
-                                analysis.camera ||
-                                analysis.microphone,
-
-                        mediaPlayerBridge =
-                            draft.mediaPlayerBridge ||
-                                analysis.mediaPlayer,
-
-                        qrScanner =
-                            draft.qrScanner ||
-                                analysis.qrScanner,
 
                         camera =
                             analysis.camera,
@@ -2344,7 +2294,8 @@ private fun AppForgeApp() {
                     }
                 }
             } catch (t: Throwable) {
-                status = "Derleme başarısız. Lütfen tekrar deneyin."
+                status =
+                    "Hata: ${t.message}"
 
                 progress = 0
 
@@ -2698,27 +2649,7 @@ private fun AppForgeApp() {
 
         Surface(Modifier.fillMaxSize(), color = Bg) {
             when (screen) {
-                AppScreen.ONBOARDING ->
-                    AppForgeOnboardingScreen(
-                        onDone = {
-                            context.getSharedPreferences(
-                                "appforge_onboarding",
-                                Context.MODE_PRIVATE
-                            )
-                                .edit()
-                                .putBoolean(
-                                    "completed",
-                                    true
-                                )
-                                .apply()
-
-                            screen =
-                                AppScreen.HOME
-                        }
-                    )
-
                 AppScreen.HOME ->
-                    AppForgeMotionBackground {
                     StudioHomeScreen(
                         proUnlocked =
                             proStatus?.active == true,
@@ -2899,7 +2830,6 @@ private fun AppForgeApp() {
                                 AppScreen.PRO
                         }
                     )
-                    }
 
                 AppScreen.MODE_SELECT ->
                     CreateModeSelectionScreen(
@@ -3584,8 +3514,8 @@ private fun AppForgeApp() {
                         },
                         navigationIcon = {
                             LabeledActionButton(
-                                icon = "⌂",
-                                label = "Ana Sayfa",
+                                icon = "←",
+                                label = "Geri",
                                 onClick = {
                                     screen =
                                         AppScreen.HOME
@@ -3749,19 +3679,13 @@ private fun AppForgeApp() {
                                 sourceAnalysis
                             ) { draft = it }
 
-                            3 -> FeaturesStep(
-                                draft,
-                                sourceAnalysis
-                            ) { draft = it }
+                            3 -> FeaturesStep(draft) { draft = it }
 
                             4 -> AppearanceStep(draft, { draft = it }) {
                                 iconPicker.launch(arrayOf("image/*"))
                             }
 
-                            5 -> NativeBridgeStep(
-                                draft,
-                                sourceAnalysis
-                            ) { draft = it }
+                            5 -> NativeBridgeStep(draft) { draft = it }
 
                             6 -> MonetizationStep(
                                 draft = draft,
@@ -11275,25 +11199,6 @@ private fun PermissionsStep(
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    val universalLanguages =
-        remember(
-            d.importedFolder
-        ) {
-            d.importedFolder
-                ?.let(
-                    ::File
-                )
-                ?.takeIf {
-                    it.isDirectory
-                }
-                ?.let {
-                    UniversalLanguageSupport
-                        .analyze(
-                            it
-                        )
-                }
-        }
-
     val permissionCount =
         listOf(
             d.camera,
@@ -11316,17 +11221,6 @@ private fun PermissionsStep(
                 "2. İzinler",
                 "HTML/ZIP içeriği otomatik analiz edilir. İstersen seçimleri değiştirebilirsin."
             )
-        }
-
-        if (
-            universalLanguages !=
-            null
-        ) {
-            item {
-                NoteCard(
-                    "🌐 Universal Language Support • ${universalLanguages.summary}"
-                )
-            }
         }
 
         item {
@@ -11664,7 +11558,6 @@ private fun PermissionsStep(
 @Composable
 private fun FeaturesStep(
     d: ProjectDraft,
-    analysis: SourceCapabilityAnalysis?,
     update: (ProjectDraft) -> Unit
 ) {
     val formCompact =
@@ -11697,19 +11590,8 @@ private fun FeaturesStep(
         item {
             Section(
                 "3. WebView Pro",
-                "Kaynak analiziyle WebView özellikleri otomatik hazırlanır; istersen seçimleri değiştirebilirsin."
+                "Web motorunun davranışını ayrıntılı olarak yapılandır."
             )
-        }
-
-        if (
-            analysis !=
-            null
-        ) {
-            item {
-                NoteCard(
-                    "🔍 3. adım otomatik • Dosya yükleme: ${if (analysis.fileUpload) "açık" else "gerekmedi"} • İndirme: ${if (analysis.downloads) "açık" else "gerekmedi"} • Medya: ${if (analysis.mediaPlayer) "açık" else "gerekmedi"}"
-                )
-            }
         }
 
         item {
@@ -12765,7 +12647,6 @@ private fun AppearanceStep(
 @Composable
 private fun NativeBridgeStep(
     d: ProjectDraft,
-    analysis: SourceCapabilityAnalysis?,
     update: (ProjectDraft) -> Unit
 ) {
     val formCompact =
@@ -12814,19 +12695,8 @@ private fun NativeBridgeStep(
         item {
             Section(
                 "5. Native Bridge",
-                "Kaynak analiziyle gereken Android köprüleri otomatik hazırlanır."
+                "Web içeriğine güvenli Android özellikleri ekle."
             )
-        }
-
-        if (
-            analysis !=
-            null
-        ) {
-            item {
-                NoteCard(
-                    "🔍 5. adım otomatik • Media3: ${if (analysis.mediaPlayer) "algılandı" else "gerekmedi"} • QR: ${if (analysis.qrScanner) "algılandı" else "gerekmedi"}"
-                )
-            }
         }
 
         item {
@@ -15094,8 +14964,127 @@ private fun BuildSettingsStep(
         }
 
         item {
-            NoteCard(
-                "✓ AppForge Cloud otomatik hazır. Teknik sunucu ve API ayarları güvenli şekilde arka planda yönetilir."
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor =
+                            Card2
+                    ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
+                    verticalArrangement =
+                        Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
+                ) {
+                    Text(
+                        "Build Service durumu",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Text(
+                        "✓ Resmi AppForge Build Service",
+                        fontSize =
+                            13.sp
+                    )
+
+                    Text(
+                        if (
+                            apiKeyReady
+                        ) {
+                            "✓ Build API Key hazır"
+                        } else {
+                            "○ Build API Key girilmedi"
+                        },
+                        color =
+                            if (
+                                apiKeyReady
+                            ) {
+                                Accent
+                            } else {
+                                TextSecondary
+                            },
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        "Çıktı: $outputLabel",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    Text(
+                        buildRouteText,
+                        color =
+                            Accent,
+                        fontSize =
+                            12.sp,
+                        fontWeight =
+                            FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        item {
+            OutlinedTextField(
+                value =
+                    serverUrl,
+                onValueChange = {},
+                readOnly = true,
+                singleLine = true,
+                label = {
+                    Text(
+                        "Build Service URL"
+                    )
+                },
+                supportingText = {
+                    Text(
+                        "AppForge resmi Build Service • Değiştirilemez"
+                    )
+                },
+                modifier =
+                    Modifier.fillMaxWidth()
+            )
+        }
+
+        item {
+            OutlinedTextField(
+                value =
+                    apiKey,
+                onValueChange =
+                    onApiKey,
+                label = {
+                    Text(
+                        "Build API Key"
+                    )
+                },
+                supportingText = {
+                    Text(
+                        if (
+                            apiKeyReady
+                        ) {
+                            "✓ API anahtarı girildi"
+                        } else {
+                            "Sunucuda APPFORGE_API_KEY kullanılıyorsa gereklidir."
+                        }
+                    )
+                },
+                visualTransformation =
+                    PasswordVisualTransformation(),
+                singleLine = true,
+                modifier =
+                    Modifier.fillMaxWidth()
             )
         }
 
@@ -15957,7 +15946,7 @@ private fun BuildStep(
                         buildId != null
                     ) {
                         Text(
-                            "Derleme No",
+                            "Build ID",
                             color =
                                 TextSecondary,
                             fontSize =
@@ -15965,7 +15954,7 @@ private fun BuildStep(
                         )
 
                         Text(
-                            AppForgeBuildNumbers.label(context, buildId),
+                            buildId,
                             fontSize =
                                 12.sp
                         )
@@ -16722,6 +16711,118 @@ private fun BuildStep(
                 )
             }
         }
+
+        item {
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor =
+                            Card2
+                    ),
+                shape =
+                    RoundedCornerShape(
+                        18.dp
+                    ),
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
+                    verticalArrangement =
+                        Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
+                ) {
+                    Text(
+                        if (
+                            buildOutput ==
+                            "exe"
+                        ) {
+                            "Canlı Windows logu"
+                        } else {
+                            "Canlı Gradle logu"
+                        },
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+                    Text(
+                        "${logs.size} log satırı",
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    if (
+                        !buildFailed
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                showLogs =
+                                    !showLogs
+                            },
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                if (
+                                    showLogs
+                                ) {
+                                    "Logları gizle"
+                                } else {
+                                    "Logları göster"
+                                }
+                            )
+                        }
+                    } else {
+                        Text(
+                            "Hata nedeniyle loglar otomatik açıldı.",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                11.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        if (
+            logsVisible
+        ) {
+            items(
+                logs.takeLast(
+                    120
+                )
+            ) {
+                line ->
+                Text(
+                    line,
+                    color =
+                        TextSecondary,
+                    fontSize =
+                        11.sp,
+                    lineHeight =
+                        16.sp
+                )
+            }
+        } else if (
+            logs.isNotEmpty()
+        ) {
+            item {
+                Text(
+                    "Son log: ${logs.last()}",
+                    color =
+                        TextSecondary,
+                    fontSize =
+                        11.sp
+                )
+            }
+        }
+    }
+}
+
+
 
 private fun downloadArtifactToDownloads(
     context: Context,
