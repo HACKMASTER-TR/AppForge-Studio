@@ -504,7 +504,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { ONBOARDING, HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 @Composable
 private fun AppForgeApp() {
@@ -563,7 +563,24 @@ private fun AppForgeApp() {
                 null
             )
         }
-    var screen by remember { mutableStateOf(AppScreen.HOME) }
+    var screen by remember {
+        mutableStateOf(
+            if (
+                context.getSharedPreferences(
+                    "appforge_onboarding",
+                    Context.MODE_PRIVATE
+                ).getBoolean(
+                    "completed",
+                    false
+                )
+            ) {
+                AppScreen.HOME
+            } else {
+                AppScreen.ONBOARDING
+            }
+        )
+    }
+
     var step by remember { mutableIntStateOf(1) }
 
     LaunchedEffect(hostActivity?.buildNotificationSequence) {
@@ -2649,8 +2666,30 @@ private fun AppForgeApp() {
 
         Surface(Modifier.fillMaxSize(), color = Bg) {
             when (screen) {
+
+                AppScreen.ONBOARDING ->
+                    AppForgeOnboardingScreen(
+                        onDone = {
+                            context
+                                .getSharedPreferences(
+                                    "appforge_onboarding",
+                                    Context.MODE_PRIVATE
+                                )
+                                .edit()
+                                .putBoolean(
+                                    "completed",
+                                    true
+                                )
+                                .apply()
+
+                            screen =
+                                AppScreen.HOME
+                        }
+                    )
+
                 AppScreen.HOME ->
-                    StudioHomeScreen(
+                    AppForgeMotionBackground {
+                        StudioHomeScreen(
                         proUnlocked =
                             proStatus?.active == true,
 
@@ -2830,6 +2869,7 @@ private fun AppForgeApp() {
                                 AppScreen.PRO
                         }
                     )
+                    }
 
                 AppScreen.MODE_SELECT ->
                     CreateModeSelectionScreen(
@@ -3514,8 +3554,8 @@ private fun AppForgeApp() {
                         },
                         navigationIcon = {
                             LabeledActionButton(
-                                icon = "←",
-                                label = "Geri",
+                                icon = "⌂",
+                                label = "Ana Sayfa",
                                 onClick = {
                                     screen =
                                         AppScreen.HOME
