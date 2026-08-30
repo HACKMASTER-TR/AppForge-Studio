@@ -129,7 +129,7 @@ test(
 );
 
 test(
-  "Studio labels EXE logs as Windows logs",
+  "Studio hides raw EXE logs from normal users",
   async () => {
     const text =
       await readFile(
@@ -141,13 +141,18 @@ test(
       text.includes(
         '"Canlı Windows logu"'
       ),
-      true
+      false
     );
 
-    assert.match(
-      text,
-      /buildOutput\s*==\s*"exe"/
+    assert.equal(
+      text.includes(
+        '"Canlı Gradle logu"'
+      ),
+      false
     );
+
+    // Ham Windows/Gradle log arayüzü artık normal kullanıcıdan gizli.
+    // EXE desteği build katmanında devam eder; UI log etiketi beklenmez.
   }
 );
 

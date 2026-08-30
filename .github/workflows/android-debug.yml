@@ -112,6 +112,7 @@ jobs:
           ls -lh AppForgeStudio-latest.apk
 
       - name: Publish latest APK release
+        if: github.ref == 'refs/heads/main'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

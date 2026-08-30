@@ -211,7 +211,26 @@ object SourceCapabilityAnalyzer {
             "c",
             "h",
             "hpp",
-            "py"
+            "py",
+            "rs",
+            "go",
+            "rb",
+            "php",
+            "swift",
+            "m",
+            "mm",
+            "lua",
+            "sh",
+            "bash",
+            "zsh",
+            "ps1",
+            "yaml",
+            "yml",
+            "toml",
+            "groovy",
+            "scss",
+            "sass",
+            "less"
         )
 
 

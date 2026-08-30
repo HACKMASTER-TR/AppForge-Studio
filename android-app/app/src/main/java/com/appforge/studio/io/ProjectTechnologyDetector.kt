@@ -75,6 +75,9 @@ object ProjectTechnologyDetector {
         val pyproject =
             text(first("pyproject.toml")).lowercase()
 
+        val composer =
+            text(first("composer.json")).lowercase()
+
         val packageJsonCompact =
             packageJson.replace(
                 Regex("\\s+"),
@@ -428,6 +431,30 @@ object ProjectTechnologyDetector {
         }
 
         if (
+            composer.contains(
+                "laravel/framework"
+            )
+        ) {
+            val hasRemoteContract =
+                has(
+                    "appforge.remote.json"
+                )
+
+            return ProjectTechnologyInfo(
+                id = "laravel",
+                label = "Laravel / PHP",
+                buildEngine = "remote-backend",
+                buildReady = hasRemoteContract,
+                reason =
+                    if (hasRemoteContract) {
+                        "Laravel ve AppForge HTTPS remote backend kontratı bulundu."
+                    } else {
+                        "Laravel backend algılandı; appforge.remote.json ile önceden deploy edilmiş HTTPS backend gerekli."
+                    }
+            )
+        }
+
+        if (
             has("composer.json") ||
             hasExt("php")
         ) {
@@ -556,6 +583,173 @@ object ProjectTechnologyDetector {
                     } else {
                         "HTML başlangıç sayfası bulundu; AppForge bunu index.html olarak hazırlayacak."
                     }
+            )
+        }
+
+
+        // Universal Language Support: framework/language detection.
+        // Tanıma ve gerçek build kabiliyeti ayrı tutulur.
+        if (
+            packageJson.contains("\"@capacitor/") ||
+            packageJson.contains("\"@ionic/")
+        ) {
+            return ProjectTechnologyInfo(
+                id = "capacitor-ionic",
+                label = "Ionic / Capacitor",
+                buildEngine = "node-web",
+                buildReady = true,
+                reason = "Ionic/Capacitor web projesi bulundu; web çıktısı Android kabuğunda hazırlanabilir."
+            )
+        }
+
+        if (packageJson.contains("cordova")) {
+            return ProjectTechnologyInfo(
+                id = "cordova",
+                label = "Apache Cordova",
+                buildEngine = "node-web",
+                buildReady = true,
+                reason = "Cordova tabanlı web proje yapısı bulundu."
+            )
+        }
+
+        if (packageJson.contains("electron")) {
+            return ProjectTechnologyInfo(
+                id = "electron",
+                label = "Electron / JavaScript",
+                buildEngine = "unknown",
+                buildReady = false,
+                reason = "Electron masaüstü projesi algılandı; doğrudan Android APK motoru değildir."
+            )
+        }
+
+        if (
+            packageJson.contains("@nestjs/") ||
+            packageJson.contains("\"express\"")
+        ) {
+            val hasRemoteContract =
+                has("appforge.remote.json")
+
+            return ProjectTechnologyInfo(
+                id =
+                    if (packageJson.contains("@nestjs/")) {
+                        "nestjs"
+                    } else {
+                        "express"
+                    },
+                label =
+                    if (packageJson.contains("@nestjs/")) {
+                        "NestJS / Node.js"
+                    } else {
+                        "Express / Node.js"
+                    },
+                buildEngine = "remote-backend",
+                buildReady = hasRemoteContract,
+                reason =
+                    if (hasRemoteContract) {
+                        "Node backend ve AppForge HTTPS remote kontratı bulundu."
+                    } else {
+                        "Backend proje algılandı; mobil istemci için appforge.remote.json HTTPS kontratı gerekli."
+                    }
+            )
+        }
+
+        if (
+            has("cargo.toml") ||
+            hasExt("rs")
+        ) {
+            return ProjectTechnologyInfo(
+                id = "rust",
+                label = "Rust",
+                buildEngine = "unknown",
+                buildReady = false,
+                reason = "Rust kaynakları algılandı. Mevcut AppForge Android Worker doğrudan Cargo/NDK Rust zincirini çalıştırmıyor."
+            )
+        }
+
+        if (
+            has("go.mod") ||
+            hasExt("go")
+        ) {
+            val hasRemoteContract =
+                has("appforge.remote.json")
+
+            return ProjectTechnologyInfo(
+                id = "go",
+                label = "Go",
+                buildEngine = "remote-backend",
+                buildReady = hasRemoteContract,
+                reason =
+                    if (hasRemoteContract) {
+                        "Go backend ve HTTPS remote kontratı bulundu."
+                    } else {
+                        "Go projesi algılandı; backend ise appforge.remote.json ile HTTPS endpoint gerekli."
+                    }
+            )
+        }
+
+        if (
+            has("gemfile") ||
+            hasExt("rb")
+        ) {
+            val hasRemoteContract =
+                has("appforge.remote.json")
+
+            return ProjectTechnologyInfo(
+                id = "ruby",
+                label = "Ruby",
+                buildEngine = "remote-backend",
+                buildReady = hasRemoteContract,
+                reason =
+                    if (hasRemoteContract) {
+                        "Ruby backend ve HTTPS remote kontratı bulundu."
+                    } else {
+                        "Ruby/Rails projesi algılandı; mobil istemci için HTTPS backend kontratı gerekli."
+                    }
+            )
+        }
+
+        if (hasExt("swift")) {
+            return ProjectTechnologyInfo(
+                id = "swift",
+                label = "Swift",
+                buildEngine = "unknown",
+                buildReady = false,
+                reason = "Swift kaynakları algılandı. iOS/macOS hedefi doğrudan Android APK'ya çevrilmez."
+            )
+        }
+
+        if (
+            hasExt("m", "mm") &&
+            !hasExt("c", "cc", "cpp", "cxx")
+        ) {
+            return ProjectTechnologyInfo(
+                id = "objective-c",
+                label = "Objective-C",
+                buildEngine = "unknown",
+                buildReady = false,
+                reason = "Objective-C/iOS kaynakları algılandı; doğrudan Android APK motoru değildir."
+            )
+        }
+
+        if (hasExt("lua")) {
+            return ProjectTechnologyInfo(
+                id = "lua",
+                label = "Lua",
+                buildEngine = "unknown",
+                buildReady = false,
+                reason = "Lua kaynakları algılandı; çalışacağı runtime/framework ayrıca belirlenmeli."
+            )
+        }
+
+        if (
+            hasExt("sh", "bash", "zsh", "ps1")
+        ) {
+            return ProjectTechnologyInfo(
+                id = "script",
+                label = "Shell / PowerShell",
+                buildEngine = "unknown",
+                buildReady = false,
+                reason = "Otomasyon/script projesi algılandı; tek başına Android uygulama projesi değildir."
             )
         }
 
