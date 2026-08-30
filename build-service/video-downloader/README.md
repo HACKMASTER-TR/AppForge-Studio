@@ -1,41 +1,27 @@
-# VideoForge Video + Turkish Dubbing Service
+# VideoForge V3
 
-A secrets-isolated media export service for AppForge. It downloads only public/DRM-free media that the user is authorized to process.
+DRM/paywall aşmadan, kullanıcının indirme/dönüştürme hakkı bulunan videolar için indirme ve otomatik Türkçe dublaj servisi.
 
-## Existing endpoints
+## Kaynaklar
 
-- `GET /health`
-- `POST /api/info`
-- `GET /api/download`
+- URL: yt-dlp destekli genel/DRM'siz kaynaklar.
+- Yerel dosya: MP4, MOV, WebM, MKV, M4V.
 
-## Turkish dubbing endpoints
+Yerel dosyalar 8 MB varsayılan parçalar halinde yüklenir. Tam dosya sunucuda birleştirilir, ffprobe ile video+ses akışı doğrulanır ve dublaj kuyruğuna alınır.
 
-- `GET /api/dub/health`
-- `POST /api/dub/jobs`
-- `GET /api/dub/jobs/:id`
-- `GET /api/dub/jobs/:id/download`
+## Dublaj
 
-Dubbing is an asynchronous job so long videos do not keep a WebView request open.
+- Konuşmacı ayrımı: `gpt-4o-transcribe-diarize`
+- Türkçe çeviri: `DUB_TRANSLATE_MODEL`
+- TTS: `gpt-4o-mini-tts`
+- Konuşmacı başına tutarlı yapay ses profili
+- İsteğe bağlı Türkçe altyazı
+- FFmpeg ile orijinal ses ducking + Türkçe dublaj mix
 
-## Required for dubbing
+## Upload env
 
-Set `OPENAI_API_KEY` only on the VideoForge backend service. Never put this key in the APK or `index.html`.
+- `DUB_MAX_UPLOAD_MB=256`
+- `DUB_UPLOAD_CHUNK_MB=8`
+- `DUB_MAX_PENDING_UPLOADS=2`
 
-Optional environment variables:
-
-- `DUB_TRANSCRIBE_MODEL=gpt-4o-transcribe-diarize`
-- `DUB_TRANSLATE_MODEL=gpt-5.6-luna`
-- `DUB_TTS_MODEL=gpt-4o-mini-tts`
-- `DUB_MAX_JOBS=1`
-- `DUB_MAX_DURATION_SECONDS=1800`
-- `DUB_MAX_SEGMENTS=220`
-- `DUB_ORIGINAL_VOLUME=0.55`
-- `DUB_PROCESS_TIMEOUT_MS=2700000`
-
-## Voice behavior
-
-The service uses diarization to distinguish speakers and assigns each speaker a stable synthetic Turkish voice profile. It does not clone a real person's voice and does not infer a person's gender from their voice.
-
-## Audio mix
-
-The original soundtrack is retained and automatically ducked while Turkish synthesized speech is active. This is not full music/dialogue stem separation, so some original dialogue may remain faintly audible.
+`OPENAI_API_KEY` yalnız sunucuda tutulmalıdır; APK içine gömülmemelidir.

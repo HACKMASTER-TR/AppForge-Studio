@@ -13,6 +13,7 @@ const PORT = Number(process.env.PORT || 8081);
 const YTDLP_BIN = process.env.YTDLP_BIN || "yt-dlp";
 const MAX_FILESIZE = process.env.MAX_FILESIZE || "750M";
 const MAX_DOWNLOADS = Math.max(1, Number(process.env.MAX_DOWNLOADS || 2));
+const RATE_LIMIT_PER_MIN = Math.max(20, Number(process.env.RATE_LIMIT_PER_MIN || 120));
 const PROCESS_TIMEOUT_MS = Math.max(30_000, Number(process.env.PROCESS_TIMEOUT_MS || 15 * 60_000));
 const VIDEO_API_TOKEN = String(process.env.VIDEO_API_TOKEN || "").trim();
 const TEMP_ROOT = process.env.TEMP_ROOT || path.join(os.tmpdir(), "appforge-video");
@@ -52,7 +53,7 @@ function rateLimit(req, res, next) {
   }
 
   current.count += 1;
-  if (current.count > 40) {
+  if (current.count > RATE_LIMIT_PER_MIN) {
     res.set("Retry-After", String(Math.max(1, Math.ceil((current.resetAt - now) / 1000))));
     return res.status(429).json({ error: "Çok fazla istek. Biraz sonra tekrar deneyin." });
   }
@@ -243,11 +244,13 @@ app.get("/health", (_req, res) => {
   res.json({
     ok: true,
     service: "AppForge Video Downloader",
-    version: "2.0.0",
+    version: "3.0.0",
     activeDownloads,
     maxDownloads: MAX_DOWNLOADS,
+    rateLimitPerMin: RATE_LIMIT_PER_MIN,
     protected: Boolean(VIDEO_API_TOKEN),
-    dubbing: true
+    dubbing: true,
+    localUploadDubbing: true
   });
 });
 
