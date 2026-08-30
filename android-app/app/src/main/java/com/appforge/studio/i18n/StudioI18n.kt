@@ -221,13 +221,13 @@ object StudioI18n {
             "ar" to "معاينة التطبيق"
         ),
         "production_center" to mapOf(
-            "tr" to "Production Center",
+            "tr" to "Üretim Merkezi",
             "en" to "Production Center",
             "de" to "Production Center",
             "ar" to "مركز الإنتاج"
         ),
         "appforge_check" to mapOf(
-            "tr" to "AppForge Check",
+            "tr" to "AppForge Kontrol",
             "en" to "AppForge Check",
             "de" to "AppForge Check",
             "ar" to "AppForge Check"
@@ -251,13 +251,13 @@ object StudioI18n {
             "ar" to "زيادة versionCode تلقائيًا عند البناء"
         ),
         "dashboard" to mapOf(
-            "tr" to "Dashboard",
+            "tr" to "Kontrol Paneli",
             "en" to "Dashboard",
             "de" to "Dashboard",
             "ar" to "لوحة المعلومات"
         ),
         "test_lab" to mapOf(
-            "tr" to "Test Lab",
+            "tr" to "Test Laboratuvarı",
             "en" to "Test Lab",
             "de" to "Test Lab",
             "ar" to "مختبر الاختبار"
@@ -296,8 +296,20 @@ object StudioI18n {
 
     fun t(languageCode: String, key: String): String {
         val normalized =
-            if (languageCode == "system") "tr"
-            else languageCode
+            if (languageCode == "system") {
+                val systemLanguage =
+                    java.util.Locale.getDefault()
+                        .language
+                        .lowercase(java.util.Locale.ROOT)
+
+                if (systemLanguage in setOf("tr", "en", "de", "ar")) {
+                    systemLanguage
+                } else {
+                    "en"
+                }
+            } else {
+                languageCode
+            }
 
         return strings[key]?.get(normalized)
             ?: strings[key]?.get("tr")

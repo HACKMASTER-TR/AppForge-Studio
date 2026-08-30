@@ -294,10 +294,10 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private val Bg = Color(0xFF08070D)
-private val Card2 = Color(0xFF111820)
-private val Accent = Color(0xFF8CC9F6)
-private val TextSecondary = Color(0xFFA5ADB7)
+private val Bg = Color(0xFF060711)
+private val Card2 = Color(0xFF101426)
+private val Accent = Color(0xFF63D9FF)
+private val TextSecondary = Color(0xFFA9B1C7)
 
 private const val APPFORGE_DOWNLOAD_FOLDER =
     "AppForge Studio"
@@ -2710,7 +2710,7 @@ private fun AppForgeApp() {
 
                 AppScreen.HOME ->
                     AppForgeMotionBackground {
-                        StudioHomeScreen(
+                        com.appforge.studio.ui.StudioHomeV2(
                         proUnlocked =
                             proStatus?.active == true,
 
@@ -3676,7 +3676,7 @@ private fun AppForgeApp() {
                                 if (builderCompact) {
                                     "Üretim"
                                 } else {
-                                    "🚀 Production"
+                                    "🚀 Üretim"
                                 },
                                 fontSize =
                                     if (builderCompact) {
@@ -6294,16 +6294,16 @@ private fun AppPreviewScreen(
                                                         "Önizleme"
 
                                                     PreviewInspectorTab.CONSOLE ->
-                                                        "Console"
+                                                        "Konsol"
 
                                                     PreviewInspectorTab.NETWORK ->
-                                                        "Network"
+                                                        "Ağ"
 
                                                     PreviewInspectorTab.PERFORMANCE ->
-                                                        "Perf"
+                                                        "Performans"
 
                                                     PreviewInspectorTab.SECURITY ->
-                                                        "Security"
+                                                        "Güvenlik"
                                                 }
                                             )
                                         }
@@ -6629,7 +6629,7 @@ private fun AppPreviewScreen(
             ) {
                 item {
                     InspectorHeader(
-                        "JavaScript Console",
+                        "JavaScript Konsolu",
                         "${consoleEvents.size} kayıt",
                         onClear = {
                             consoleEvents.clear()
@@ -6667,7 +6667,7 @@ private fun AppPreviewScreen(
             ) {
                 item {
                     InspectorHeader(
-                        "Network Inspector",
+                        "Ağ Denetleyicisi",
                         "${networkEvents.size} istek",
                         onClear = {
                             networkEvents.clear()
@@ -6705,7 +6705,7 @@ private fun AppPreviewScreen(
             ) {
                 item {
                     Section(
-                        "Performance Inspector",
+                        "Performans Denetleyicisi",
                         "Navigation Timing ve resource boyutlarının canlı özeti."
                     )
                 }
@@ -6729,7 +6729,7 @@ private fun AppPreviewScreen(
             ) {
                 item {
                     Section(
-                        "Security Center",
+                        "Güvenlik Merkezi",
                         "Kaynak, izin, imzalama, Billing ve Native Bridge risklerini kontrol eder."
                     )
                 }
@@ -8114,14 +8114,14 @@ private fun TestLabScreen(
             title = {
                 Column {
                     Text(
-                        "Test Lab",
+                        "Test Laboratuvarı",
                         fontWeight =
                             FontWeight.Bold
                     )
 
                     if (!testLabCompact) {
                         Text(
-                            "APK/AAB Analyzer • Security • Compare • Release Notes",
+                            "APK/AAB Analizi • Güvenlik • Karşılaştırma • Sürüm Notları",
                             color = TextSecondary,
                             fontSize = 12.sp
                         )
@@ -8418,7 +8418,7 @@ private fun TestLabScreen(
             ) {
                 item {
                     Section(
-                        "Artifact Size Analyzer",
+                        "Çıktı Boyut Analizi",
                         "${currentReport.appName} • ${currentReport.packageName}"
                     )
                 }
@@ -8445,7 +8445,7 @@ private fun TestLabScreen(
 
                 item {
                     Section(
-                        "Security Center",
+                        "Güvenlik Merkezi",
                         "Sunucu tarafı build yapılandırma kontrolleri."
                     )
                 }
@@ -8492,7 +8492,7 @@ private fun TestLabScreen(
                 ) {
                     item {
                         Section(
-                            "Release Notes Generator",
+                            "Sürüm Notu Oluşturucu",
                             "Önceki başarılı build ile değişikliklerden oluşturuldu."
                         )
                     }

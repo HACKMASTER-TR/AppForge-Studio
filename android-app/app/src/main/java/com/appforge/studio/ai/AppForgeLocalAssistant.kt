@@ -612,11 +612,19 @@ class AppForgeLocalAssistant(
         val languageInstruction =
             answerLanguageInstruction()
 
+        val studioSnapshot =
+            AppForgeAiSnapshotV2.build(
+                draft = draft,
+                runtime = runtimeContext
+            )
+
         val prompt =
             """
             /no_think
 
             $languageInstruction
+
+            $studioSnapshot
 
             Aşağıdaki yerel AppForge bilgisini yalnızca soruyla ilgiliyse kullan.
             AppForge hakkında bağlamda olmayan hiçbir özellik uydurma.
