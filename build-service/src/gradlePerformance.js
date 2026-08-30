@@ -130,7 +130,13 @@ export function gradleArguments(
       profile.name ===
         "native-android"
         ? [
-            "--no-watch-fs"
+            "--no-watch-fs",
+            "-x",
+            "lintVitalAnalyzeRelease",
+            "-x",
+            "lintVitalReportRelease",
+            "-x",
+            "lintVitalRelease"
           ]
         : []
     ),

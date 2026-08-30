@@ -11,6 +11,21 @@ import {
   cacheSetJson
 } from "./redis.js";
 
+function cacheDebug(
+  cacheKey,
+  status,
+  detail = ""
+) {
+  const safeKey =
+    String(cacheKey || "")
+      .slice(0, 12);
+
+  console.log(
+    `[APPFORGE-CACHE ${safeKey}] ${status}` +
+    (detail ? ` • ${detail}` : "")
+  );
+}
+
 function normalizeBuildOutput(
   value
 ) {
@@ -617,8 +632,11 @@ export async function findCache(
   cacheKey
 ) {
   if (!config.buildCacheEnabled) {
+    cacheDebug(cacheKey, "DISABLED");
     return null;
   }
+
+  cacheDebug(cacheKey, "LOOKUP");
 
   const descriptor =
     cacheKeyDescriptor(
@@ -756,6 +774,7 @@ export async function findCache(
     return hit;
   }
 
+  cacheDebug(cacheKey, "MISS");
   return null;
 }
 
