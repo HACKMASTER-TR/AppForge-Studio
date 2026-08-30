@@ -67,7 +67,7 @@ data class SourceCapabilityAnalysis(
         buildList {
 
             add(
-                "Proje türü • $technologyLabel • Motor: $buildEngine" +
+                "Proje türü • $technologyLabel" +
                     (
                         technologyReason
                             ?.let {

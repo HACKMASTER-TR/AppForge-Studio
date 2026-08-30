@@ -35,7 +35,8 @@ data class SavedBuild(
     val createdAt: Long,
     val apkUrl: String?,
     val aabUrl: String?,
-    val exeUrl: String? = null
+    val exeUrl: String? = null,
+    val buildNo: Long? = null
 )
 
 object ProjectLibrary {
@@ -837,7 +838,8 @@ object ProjectLibrary {
         status: String,
         apkUrl: String?,
         aabUrl: String?,
-        exeUrl: String? = null
+        exeUrl: String? = null,
+        buildNo: Long? = null
     ) {
         val current = loadBuilds(context).toMutableList()
         current.removeAll { it.id == buildId }
@@ -851,7 +853,8 @@ object ProjectLibrary {
                 createdAt = System.currentTimeMillis(),
                 apkUrl = apkUrl,
                 aabUrl = aabUrl,
-                exeUrl = exeUrl
+                exeUrl = exeUrl,
+                buildNo = buildNo
             )
         )
 
@@ -867,6 +870,7 @@ object ProjectLibrary {
                     put("apkUrl", b.apkUrl)
                     put("aabUrl", b.aabUrl)
                     put("exeUrl", b.exeUrl)
+                    put("buildNo", b.buildNo)
                 }
             )
         }
@@ -891,7 +895,14 @@ object ProjectLibrary {
                             createdAt = o.optLong("createdAt"),
                             apkUrl = o.optString("apkUrl").takeIf { it.isNotBlank() && it != "null" },
                             aabUrl = o.optString("aabUrl").takeIf { it.isNotBlank() && it != "null" },
-                            exeUrl = o.optString("exeUrl").takeIf { it.isNotBlank() && it != "null" }
+                            exeUrl = o.optString("exeUrl").takeIf { it.isNotBlank() && it != "null" },
+                            buildNo =
+                                o.optLong(
+                                    "buildNo",
+                                    0L
+                                ).takeIf {
+                                    it > 0L
+                                }
                         )
                     )
                 }

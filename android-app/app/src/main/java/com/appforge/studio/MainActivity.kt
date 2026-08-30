@@ -710,6 +710,7 @@ private fun AppForgeApp() {
     var logs by remember { mutableStateOf(listOf<String>()) }
     var preflight by remember { mutableStateOf(listOf<String>()) }
     var buildId by remember { mutableStateOf<String?>(null) }
+    var buildNo by remember { mutableStateOf<Long?>(null) }
     var apkUrl by remember { mutableStateOf<String?>(null) }
     var aabUrl by remember { mutableStateOf<String?>(null) }
     var exeUrl by remember { mutableStateOf<String?>(null) }
@@ -887,7 +888,7 @@ private fun AppForgeApp() {
                 ?: serverUrl
 
         if (notificationServerUrl.isBlank()) {
-            status = "Build Service adresi bulunamadı"
+            status = "AppForge bağlantısı hazırlanamadı"
             return@LaunchedEffect
         }
 
@@ -912,6 +913,7 @@ private fun AppForgeApp() {
                     }
 
                 buildId = s.buildId
+                buildNo = s.buildNo
                 status = s.status
                 progress = s.progress
                 logs = s.logs
@@ -1203,7 +1205,6 @@ private fun AppForgeApp() {
                         analysis.buildReady
                     ) {
                         "Proje algılandı: ${analysis.technologyLabel} • " +
-                            "Motor: ${analysis.buildEngine} • " +
                             (
                                 if (
                                     detected.isEmpty()
@@ -1215,8 +1216,7 @@ private fun AppForgeApp() {
                             )
                     } else {
                         "Proje algılandı: ${analysis.technologyLabel} • " +
-                            "Motor: ${analysis.buildEngine} • " +
-                            "çoklu dil build altyapısına hazır"
+                            "uygun derleme yolu otomatik seçilecek"
                     }
             } catch (t: Throwable) {
                 status = "Hata: ${t.message}"
@@ -2001,6 +2001,7 @@ private fun AppForgeApp() {
             logs = emptyList()
             preflight = emptyList()
             buildId = null
+            buildNo = null
             apkUrl = null
             aabUrl = null
             exeUrl = null
@@ -2076,7 +2077,7 @@ private fun AppForgeApp() {
                             _ ->
 
                             status =
-                                "Build Service bağlantısı kuruluyor • $attempt/$maxAttempts"
+                                "AppForge bağlantısı kuruluyor • $attempt/$maxAttempts"
                         }
                     ) {
                         withContext(
@@ -2093,6 +2094,9 @@ private fun AppForgeApp() {
 
                 buildId =
                     created.buildId
+
+                buildNo =
+                    created.buildNo
 
                 BuildProgressService.track(
                     context = context,
@@ -2196,7 +2200,7 @@ private fun AppForgeApp() {
                         logs =
                             (
                                 logs +
-                                    "✅ Build Service bağlantısı yeniden kuruldu."
+                                    "✅ AppForge bağlantısı yeniden kuruldu."
                             ).takeLast(
                                 120
                             )
@@ -2210,6 +2214,10 @@ private fun AppForgeApp() {
 
                     progress =
                         s.progress
+
+                    buildNo =
+                        s.buildNo
+                            ?: buildNo
 
                     logs =
                         s.logs
@@ -2315,7 +2323,9 @@ private fun AppForgeApp() {
                                 "available"
                             } else {
                                 null
-                            }
+                            },
+                            buildNo =
+                                s.buildNo
                         )
 
                         break
@@ -3555,7 +3565,7 @@ private fun AppForgeApp() {
                                             6 -> "Gelir ve Firebase"
                                             7 -> "Deep Link"
                                             8 -> "İmzalama"
-                                            9 -> "Build ayarları"
+                                            9 -> "Derleme ayarları"
                                             else -> "Derleme"
                                         },
                                     fontSize = 12.sp,
@@ -3840,6 +3850,7 @@ private fun AppForgeApp() {
                                 logs = logs,
                                 preflight = preflight,
                                 buildId = buildId,
+                                buildNo = buildNo,
                                 appName = draft.appName,
                                 serverUrl = serverUrl,
                                 apiKey = apiKey,
@@ -7607,7 +7618,7 @@ private fun ProductionCenterScreen(
                         }
 
                         Text(
-                            "Güvenlik için keystore parolaları, Build API anahtarları ve hassas imzalama bilgileri ZIP yedeğine yazılmaz.",
+                            "Güvenlik için keystore parolaları, hesap erişim bilgileri ve hassas imzalama bilgileri ZIP yedeğine yazılmaz.",
                             color =
                                 TextSecondary,
                             fontSize =
@@ -7641,7 +7652,7 @@ private fun ProductionCenterScreen(
 
             item {
                 NoteCard(
-                    "Production Center yerel hazırlık kontrollerini yapar. Gerçek APK/AAB compile ve cihaz kurulum testi için resmi Build Service sonucu hâlâ esas alınır."
+                    "Production Center yerel hazırlık kontrollerini yapar. Son APK/AAB sonucu AppForge derleme altyapısında doğrulanır."
                 )
             }
         }
@@ -8076,12 +8087,12 @@ private fun TestLabScreen(
                         )
 
                 message =
-                    "${remoteBuilds.size} başarılı build bulundu."
+                    "${remoteBuilds.size} başarılı derleme bulundu."
             } catch (
                 t: Throwable
             ) {
                 message =
-                    "Build geçmişi alınamadı: ${t.message}"
+                    "Derleme geçmişi alınamadı: ${t.message}"
             } finally {
                 loading =
                     false
@@ -8093,14 +8104,7 @@ private fun TestLabScreen(
         serverUrl,
         apiKey
     ) {
-        if (
-            apiKey.isNotBlank()
-        ) {
-            loadHistory()
-        } else {
-            message =
-                "Test Lab için Build Service API anahtarı gerekli."
-        }
+        loadHistory()
     }
 
     Column(
@@ -8179,7 +8183,7 @@ private fun TestLabScreen(
 
             item {
                 Section(
-                    "Başarılı Build'ler",
+                    "Başarılı Derlemeler",
                     "Analiz etmek veya iki sürümü karşılaştırmak için build seç."
                 )
             }
@@ -8221,7 +8225,7 @@ private fun TestLabScreen(
                         )
 
                         Text(
-                            "${item.packageName}\n${item.buildId}",
+                            "${item.packageName}\n${AppForgeBuildNumbers.label(item.buildNo)}",
                             color =
                                 TextSecondary,
                             fontSize =
@@ -8381,7 +8385,7 @@ private fun TestLabScreen(
                                         }
 
                                     message =
-                                        "Build karşılaştırması hazır."
+                                        "Sürüm karşılaştırması hazır."
                                 } catch (
                                     t: Throwable
                                 ) {
@@ -8513,8 +8517,26 @@ private fun TestLabScreen(
             ) {
                 item {
                     Section(
-                        "Build Compare",
-                        "${compare.leftBuildId.take(8)}… → ${compare.rightBuildId.take(8)}…"
+                        "Sürüm Karşılaştırma",
+                        "${
+                            AppForgeBuildNumbers.label(
+                                remoteBuilds
+                                    .firstOrNull {
+                                        it.buildId ==
+                                            compare.leftBuildId
+                                    }
+                                    ?.buildNo
+                            )
+                        } → ${
+                            AppForgeBuildNumbers.label(
+                                remoteBuilds
+                                    .firstOrNull {
+                                        it.buildId ==
+                                            compare.rightBuildId
+                                    }
+                                    ?.buildNo
+                            )
+                        }"
                     )
                 }
 
@@ -9590,7 +9612,7 @@ private fun LocalAiAssistantScreen(
                                 )
 
                                 Text(
-                                    "Uygulama adı, package, sürüm, build ve açık özellikler AI bağlamına eklenir; parola/API anahtarı eklenmez.",
+                                    "Uygulama adı, paket, sürüm, derleme ve açık özellikler AI bağlamına eklenir; hassas hesap bilgileri eklenmez.",
                                     color =
                                         TextSecondary,
                                     fontSize =
@@ -9645,7 +9667,7 @@ private fun LocalAiAssistantScreen(
 
             item {
                 NoteCard(
-                    "Yerel Asistan AI yanıtı için AppForge Build Service veya başka bir bulut LLM API'si çağırmaz. Model cihazda çalışır. Güncel internet bilgilerini kendiliğinden kontrol edemez."
+                    "Yerel Asistan yanıtları cihaz üzerinde üretir; proje içeriğini harici bir AI hizmetine göndermez. Güncel internet bilgilerini kendiliğinden kontrol edemez."
                 )
             }
 
@@ -15041,7 +15063,7 @@ private fun BuildSettingsStep(
     ) {
         item {
             Section(
-                "9. Özet & Build",
+                "9. Özet & Derleme",
                 "Son ayarlarını kontrol et ve çıktı türünü seç."
             )
         }
@@ -15199,131 +15221,6 @@ private fun BuildSettingsStep(
         }
 
         item {
-            Card(
-                colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
-                shape =
-                    RoundedCornerShape(
-                        18.dp
-                    ),
-                modifier =
-                    Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier =
-                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
-                    verticalArrangement =
-                        Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
-                ) {
-                    Text(
-                        "Build Service durumu",
-                        fontWeight =
-                            FontWeight.Bold
-                    )
-
-                    Text(
-                        "✓ Resmi AppForge Build Service",
-                        fontSize =
-                            13.sp
-                    )
-
-                    Text(
-                        if (
-                            apiKeyReady
-                        ) {
-                            "✓ Build API Key hazır"
-                        } else {
-                            "○ Build API Key girilmedi"
-                        },
-                        color =
-                            if (
-                                apiKeyReady
-                            ) {
-                                Accent
-                            } else {
-                                TextSecondary
-                            },
-                        fontSize =
-                            12.sp
-                    )
-
-                    Text(
-                        "Çıktı: $outputLabel",
-                        color =
-                            TextSecondary,
-                        fontSize =
-                            12.sp
-                    )
-
-                    Text(
-                        buildRouteText,
-                        color =
-                            Accent,
-                        fontSize =
-                            12.sp,
-                        fontWeight =
-                            FontWeight.Medium
-                    )
-                }
-            }
-        }
-
-        item {
-            OutlinedTextField(
-                value =
-                    serverUrl,
-                onValueChange = {},
-                readOnly = true,
-                singleLine = true,
-                label = {
-                    Text(
-                        "Build Service URL"
-                    )
-                },
-                supportingText = {
-                    Text(
-                        "AppForge resmi Build Service • Değiştirilemez"
-                    )
-                },
-                modifier =
-                    Modifier.fillMaxWidth()
-            )
-        }
-
-        item {
-            OutlinedTextField(
-                value =
-                    apiKey,
-                onValueChange =
-                    onApiKey,
-                label = {
-                    Text(
-                        "Build API Key"
-                    )
-                },
-                supportingText = {
-                    Text(
-                        if (
-                            apiKeyReady
-                        ) {
-                            "✓ API anahtarı girildi"
-                        } else {
-                            "Sunucuda APPFORGE_API_KEY kullanılıyorsa gereklidir."
-                        }
-                    )
-                },
-                visualTransformation =
-                    PasswordVisualTransformation(),
-                singleLine = true,
-                modifier =
-                    Modifier.fillMaxWidth()
-            )
-        }
-
-        item {
             Text(
                 "Çıktı türü",
                 fontWeight =
@@ -15418,7 +15315,7 @@ private fun BuildSettingsStep(
                             )
 
                             Text(
-                                "🪟 Electron tabanlı ayrı Windows Worker kullanılır.",
+                                "Windows 10/11 x64 için taşınabilir çıktı hazırlanır.",
                                 color =
                                     Accent,
                                 fontSize =
@@ -15458,7 +15355,7 @@ private fun BuildSettingsStep(
                             )
 
                             Text(
-                                "⚡ FAST uyumlu projelerde APK tarafı Hybrid olarak hızlandırılabilir.",
+                                "APK ve AAB birlikte hazırlanır.",
                                 color =
                                     Accent,
                                 fontSize =
@@ -15482,7 +15379,7 @@ private fun BuildSettingsStep(
                             )
 
                             Text(
-                                "⚡ Uyumlu projelerde normal FAST BUILD kullanılır.",
+                                "APK doğrudan kurulum için hazırlanır.",
                                 color =
                                     Accent,
                                 fontSize =
@@ -15658,6 +15555,7 @@ private fun BuildStep(
     logs: List<String>,
     preflight: List<String>,
     buildId: String?,
+    buildNo: Long?,
     appName: String,
     serverUrl: String,
     apiKey: String,
@@ -15883,6 +15781,17 @@ private fun BuildStep(
 
 
 
+    val userPreflight =
+        remember(
+            preflight
+        ) {
+            AppForgeUiSanitizer
+                .preflight(
+                    preflight
+                )
+        }
+
+
     val buildDiagnosis =
         remember(
             buildFailed,
@@ -16080,7 +15989,7 @@ private fun BuildStep(
         item {
             Section(
                 "10. Derleme",
-                "Build durumunu takip et, çıktıları indir ve ön-kontrolleri incele."
+                "Derleme durumunu takip et, çıktıları indir ve ön kontrolleri incele."
             )
         }
 
@@ -16105,7 +16014,7 @@ private fun BuildStep(
                         Arrangement.spacedBy(if (formCompact) 7.dp else 10.dp)
                 ) {
                     Text(
-                        "Build durumu",
+                        "Derleme durumu",
                         fontWeight =
                             FontWeight.Bold
                     )
@@ -16181,7 +16090,7 @@ private fun BuildStep(
                         buildId != null
                     ) {
                         Text(
-                            "Build ID",
+                            "Derleme No",
                             color =
                                 TextSecondary,
                             fontSize =
@@ -16189,9 +16098,16 @@ private fun BuildStep(
                         )
 
                         Text(
-                            buildId,
+                            AppForgeBuildNumbers
+                                .label(
+                                    buildNo
+                                ),
+                            color =
+                                Accent,
+                            fontWeight =
+                                FontWeight.Bold,
                             fontSize =
-                                12.sp
+                                13.sp
                         )
                     }
 
@@ -16200,7 +16116,7 @@ private fun BuildStep(
                         !buildSucceeded
                     ) {
                         Text(
-                            "Son işlem: ${logs.last()}",
+                            "Derleme işlemi devam ediyor.",
                             color =
                                 TextSecondary,
                             fontSize =
@@ -16259,11 +16175,11 @@ private fun BuildStep(
         }
 
         if (
-            preflight.isNotEmpty()
+            userPreflight.isNotEmpty()
         ) {
             item {
                 Text(
-                    "Preflight",
+                    "Ön Kontroller",
                     fontWeight =
                         FontWeight.Bold,
                     fontSize =
@@ -16292,14 +16208,14 @@ private fun BuildStep(
                             Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
                     ) {
                         Text(
-                            "${preflight.size} kontrol tamamlandı",
+                            "${userPreflight.size} kontrol tamamlandı",
                             color =
                                 TextSecondary,
                             fontSize =
                                 12.sp
                         )
 
-                        preflight.forEach {
+                        userPreflight.forEach {
                             check ->
                             Text(
                                 check,
@@ -16434,7 +16350,7 @@ private fun BuildStep(
                             )
 
                             Text(
-                                "Kategori: ${diagnosis.category} • Güven: %${diagnosis.confidence}",
+                                "Tanı güveni: %${diagnosis.confidence}",
                                 color =
                                     TextSecondary,
                                 fontSize =
@@ -16498,7 +16414,7 @@ private fun BuildStep(
                                                 )
                                     ) {
                                         Text(
-                                            "Log ipucu",
+                                            "Teknik ayrıntı",
                                             fontWeight =
                                                 FontWeight.Bold,
                                             fontSize =
@@ -16506,7 +16422,7 @@ private fun BuildStep(
                                         )
 
                                         Text(
-                                            diagnosis.evidence,
+                                            "Teknik hata ayrıntıları kullanıcı görünümünde gizlendi.",
                                             color =
                                                 TextSecondary,
                                             fontSize =
@@ -16580,7 +16496,7 @@ private fun BuildStep(
                         }
 
                         Text(
-                            "Keystore parolaları ve API anahtarları tanı kartına taşınmaz.",
+                            "Keystore parolaları ve hassas hesap bilgileri tanı kartına taşınmaz.",
                             color =
                                 TextSecondary,
                             fontSize =
@@ -16638,7 +16554,7 @@ private fun BuildStep(
                                         val fileName =
                                             artifactDownloadName(
                                                 appName,
-                                                id,
+                                                AppForgeBuildNumbers.label(buildNo),
                                                 "apk"
                                             )
 
@@ -16827,7 +16743,7 @@ private fun BuildStep(
                                             Environment.DIRECTORY_DOWNLOADS,
                                             "$APPFORGE_DOWNLOAD_FOLDER/${artifactDownloadName(
                                                 appName,
-                                                id,
+                                                AppForgeBuildNumbers.label(buildNo),
                                                 "aab"
                                             )}"
                                         )
@@ -16873,10 +16789,10 @@ private fun BuildStep(
 
                         val fileName =
                             artifactDownloadName(
-                                appName,
-                                id,
-                                "exe"
-                            )
+                                                appName,
+                                                AppForgeBuildNumbers.label(buildNo),
+                                                "exe"
+                                            )
 
                         if (
                             Build.VERSION.SDK_INT >=
@@ -16947,113 +16863,17 @@ private fun BuildStep(
             }
         }
 
-        item {
-            Card(
-                colors =
-                    CardDefaults.cardColors(
-                        containerColor =
-                            Card2
-                    ),
-                shape =
-                    RoundedCornerShape(
-                        18.dp
-                    ),
-                modifier =
-                    Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier =
-                        Modifier.padding(if (formCompact) 12.dp else 16.dp),
-                    verticalArrangement =
-                        Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
-                ) {
-                    Text(
-                        if (
-                            buildOutput ==
-                            "exe"
-                        ) {
-                            "Canlı Windows logu"
-                        } else {
-                            "Canlı Gradle logu"
-                        },
-                        fontWeight =
-                            FontWeight.Bold
-                    )
-
-                    Text(
-                        "${logs.size} log satırı",
-                        color =
-                            TextSecondary,
-                        fontSize =
-                            12.sp
-                    )
-
-                    if (
-                        !buildFailed
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                showLogs =
-                                    !showLogs
-                            },
-                            modifier =
-                                Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                if (
-                                    showLogs
-                                ) {
-                                    "Logları gizle"
-                                } else {
-                                    "Logları göster"
-                                }
-                            )
-                        }
-                    } else {
-                        Text(
-                            "Hata nedeniyle loglar otomatik açıldı.",
-                            color =
-                                TextSecondary,
-                            fontSize =
-                                11.sp
-                        )
-                    }
-                }
-            }
-        }
-
         if (
-            logsVisible
-        ) {
-            items(
-                logs.takeLast(
-                    120
-                )
-            ) {
-                line ->
-                Text(
-                    line,
-                    color =
-                        TextSecondary,
-                    fontSize =
-                        11.sp,
-                    lineHeight =
-                        16.sp
-                )
-            }
-        } else if (
-            logs.isNotEmpty()
+            buildFailed
         ) {
             item {
-                Text(
-                    "Son log: ${logs.last()}",
-                    color =
-                        TextSecondary,
-                    fontSize =
-                        11.sp
+                NoteCard(
+                    "Teknik derleme ayrıntıları kullanıcı görünümünde gizlendi. " +
+                        "Sorunu çözmek için yukarıdaki Derleme Hatası Asistanı önerilerini kullan."
                 )
             }
         }
+
     }
 }
 
@@ -18287,7 +18107,7 @@ private fun BuildHistoryScreen(onBack: () -> Unit) {
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Build Geçmişi") },
+            title = { Text("Derleme Geçmişi") },
             navigationIcon = {
                 IconButton(onClick = onBack) { Text("←") }
             },
@@ -18320,6 +18140,14 @@ private fun BuildHistoryScreen(onBack: () -> Unit) {
                         Column(Modifier.padding(if (historyCompact) 12.dp else 16.dp)) {
                             Text(b.projectName, fontWeight = FontWeight.Bold)
                             Text(b.packageName, color = TextSecondary, fontSize = 12.sp)
+                            Text(
+                                AppForgeBuildNumbers.label(
+                                    b.buildNo
+                                ),
+                                color = Accent,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
                             Text("Durum: ${b.status}", color = TextSecondary)
                             Text(
                                 DateFormat.getDateTimeInstance().format(Date(b.createdAt)),
@@ -18431,31 +18259,6 @@ private fun AccountScreen(
             if (session != null) {
                 item { NoteCard("Giriş yapıldı: ${session.email}") }
                 item {
-                    Button(
-                        onClick = {
-                            busy = true
-                            scope.launch {
-                                try {
-                                    val token = withContext(Dispatchers.IO) {
-                                        AppForgeAccountClient(context, serverUrl)
-                                            .createBuildApiToken(session.token, "Android App")
-                                    }
-                                    onApiKeyCreated(token)
-                                    message = "Build API token oluşturuldu ve aktif edildi."
-                                } catch (t: Throwable) {
-                                    message = "Hata: ${t.message}"
-                                } finally {
-                                    busy = false
-                                }
-                            }
-                        },
-                        enabled = !busy,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("YENİ BUILD API TOKEN OLUŞTUR")
-                    }
-                }
-                item {
                     OutlinedButton(
                         onClick = {
                             onSession(
@@ -18512,7 +18315,7 @@ private fun AccountScreen(
                 ) {
                     item {
                         NoteCard(
-                            "Bu işlem kalıcıdır. Hesabın, projelerin, build kayıtların, API tokenların ve AppForge Pro hesabına bağlı erişimin silinir. Aktif bir build varsa önce tamamlanması veya iptal edilmesi gerekir."
+                            "Bu işlem kalıcıdır. Hesabın, projelerin, build kayıtların, hesap erişim anahtarların ve AppForge Pro hesabına bağlı erişimin silinir. Aktif bir build varsa önce tamamlanması veya iptal edilmesi gerekir."
                         )
                     }
 

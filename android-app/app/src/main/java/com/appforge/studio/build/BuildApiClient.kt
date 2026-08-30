@@ -18,6 +18,7 @@ import java.util.UUID
 
 data class BuildCreateResult(
     val buildId: String,
+    val buildNo: Long?,
     val status: String
 )
 
@@ -28,6 +29,7 @@ data class BuildCancelResult(
 
 data class BuildStatusResult(
     val buildId: String,
+    val buildNo: Long?,
     val status: String,
     val progress: Int,
     val logs: List<String>,
@@ -45,6 +47,7 @@ data class DownloadTicketResult(
 
 data class RemoteBuildHistoryItem(
     val buildId: String,
+    val buildNo: Long?,
     val appName: String,
     val packageName: String,
     val status: String,
@@ -439,8 +442,21 @@ class BuildApiClient(
             )
 
             return BuildCreateResult(
-                buildId = json.getString("buildId"),
-                status = json.getString("status")
+                buildId =
+                    json.getString(
+                        "buildId"
+                    ),
+                buildNo =
+                    json.optLong(
+                        "buildNo",
+                        0L
+                    ).takeIf {
+                        it > 0L
+                    },
+                status =
+                    json.getString(
+                        "status"
+                    )
             )
         } finally {
             multipartBody.delete()
@@ -502,6 +518,13 @@ class BuildApiClient(
 
         return BuildStatusResult(
             buildId = buildId,
+            buildNo =
+                json.optLong(
+                    "buildNo",
+                    0L
+                ).takeIf {
+                    it > 0L
+                },
             status = json.optString("status", "unknown"),
             progress = json.optInt("progress", 0),
             logs = array("logs"),
@@ -634,6 +657,13 @@ class BuildApiClient(
                 add(
                     RemoteBuildHistoryItem(
                         buildId = o.optString("buildId"),
+                        buildNo =
+                            o.optLong(
+                                "buildNo",
+                                0L
+                            ).takeIf {
+                                it > 0L
+                            },
                         appName = o.optString("appName"),
                         packageName = o.optString("packageName"),
                         status = o.optString("status"),

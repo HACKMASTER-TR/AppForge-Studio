@@ -301,6 +301,33 @@ async function directProjectContentIdentity(
 }
 
 
+async function publicBuildNumber(
+  buildId
+) {
+  const result =
+    await query(
+      `SELECT
+         build_no AS "buildNo"
+       FROM appforge_builds
+       WHERE id = $1`,
+      [buildId]
+    );
+
+  const value =
+    Number(
+      result.rows[0]
+        ?.buildNo || 0
+    );
+
+  return (
+    Number.isFinite(value) &&
+    value > 0
+  )
+    ? value
+    : null;
+}
+
+
 app.get(
   "/health",
   async (_req, res) => {
@@ -2218,6 +2245,7 @@ app.get(
       await query(
         `SELECT
            id AS "buildId",
+           build_no AS "buildNo",
            app_name AS "appName",
            package_name AS "packageName",
            status,
@@ -2258,6 +2286,7 @@ app.get(
       await query(
         `SELECT
            id AS "buildId",
+           build_no AS "buildNo",
            user_id AS "userId",
            team_id AS "teamId",
            app_name AS "appName",
@@ -2622,6 +2651,11 @@ app.post(
                 .buildId,
             status:
               "existing",
+            buildNo:
+              await publicBuildNumber(
+                existingIdempotentBuild
+                  .buildId
+              ),
             idempotentReplay:
               true
           });
@@ -2729,6 +2763,10 @@ app.post(
           .status(201)
           .json({
             buildId,
+            buildNo:
+              await publicBuildNumber(
+                buildId
+              ),
             status: "success",
             cacheHit: true
           });
@@ -2871,6 +2909,10 @@ app.post(
         .status(202)
         .json({
           buildId,
+          buildNo:
+            await publicBuildNumber(
+              buildId
+            ),
           status: "queued",
           cacheHit: false,
           requiredCapabilities,
