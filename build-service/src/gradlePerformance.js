@@ -62,7 +62,13 @@ export function gradleArguments(
     `--max-workers=${profile.maxWorkers}`,
     `-Pkotlin.compiler.execution.strategy=in-process`,
     `-Dorg.gradle.parallel=${profile.parallel}`,
-    `-Dorg.gradle.jvmargs=${gradleJvmOptions(profile)}`,
+    ...(
+      profile.name === "low-memory"
+        ? []
+        : [
+            `-Dorg.gradle.jvmargs=${gradleJvmOptions(profile)}`
+          ]
+    ),
     "--stacktrace"
   ];
 }

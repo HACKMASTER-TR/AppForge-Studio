@@ -8,8 +8,8 @@ import {
 } from "../src/gradlePerformance.js";
 
 test(
-  "low-memory Gradle profile overrides daemon JVM args",
-  () => {
+  "low-memory Gradle uses launcher JVM limits without daemon JVM override",
+  async () => {
     const profile =
       gradlePerformanceProfile(
         "low-memory"
@@ -31,10 +31,19 @@ test(
       false
     );
 
-    assert.ok(
-      args.includes(
-        `-Dorg.gradle.jvmargs=${gradleJvmOptions(profile)}`
-      )
+    assert.equal(
+      args.some(
+        arg =>
+          arg.startsWith(
+            "-Dorg.gradle.jvmargs="
+          )
+      ),
+      false
+    );
+
+    assert.match(
+      gradleJvmOptions(profile),
+      /-Xmx320m/
     );
 
     assert.ok(
@@ -47,6 +56,20 @@ test(
       args.includes(
         "-Dorg.gradle.parallel=false"
       )
+    );
+
+    const source =
+      await fs.readFile(
+        new URL(
+          "../src/buildEngine.js",
+          import.meta.url
+        ),
+        "utf8"
+      );
+
+    assert.match(
+      source,
+      /GRADLE_OPTS:\s*gradleJvmOptions\(\s*profile\s*\)/
     );
   }
 );
