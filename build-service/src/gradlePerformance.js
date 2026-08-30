@@ -53,7 +53,9 @@ export function gradleArguments(
 ) {
   return [
     ...tasks,
-    "--daemon",
+    profile.name === "low-memory"
+      ? "--no-daemon"
+      : "--daemon",
     "--build-cache",
     "--configuration-cache",
     "--configuration-cache-problems=warn",
