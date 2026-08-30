@@ -1386,30 +1386,57 @@ private fun AppForgeApp() {
             uri: Uri? ->
             if (uri != null) {
                 try {
-                    val imported =
+                    val importedProjects =
                         ProjectBackupManager
-                            .importFromUri(
+                            .importManyFromUri(
                                 context,
                                 uri
                             )
 
-                    val importedDraft =
-                        imported.draft
+                    var importedCount =
+                        0
 
-                    val canSaveImported =
-                        proStatus?.active == true ||
-                            ProjectLibrary
-                                .claimFreeProjectSlot(
-                                    context,
-                                    importedDraft
-                                        .packageName
-                                        .trim(),
-                                    5
-                                )
+                    var skippedCount =
+                        0
 
-                    if (
-                        canSaveImported
-                    ) {
+                    var firstImportedId:
+                        String? =
+                        null
+
+                    var firstImportedDraft:
+                        ProjectDraft? =
+                        null
+
+                    importedProjects.forEach {
+                        imported ->
+
+                        val importedDraft =
+                            imported.draft
+
+                        val canSaveImported =
+                            proStatus?.active ==
+                                true ||
+                                ProjectLibrary
+                                    .claimFreeProjectSlot(
+                                        context,
+                                        importedDraft
+                                            .packageName
+                                            .trim(),
+                                        5
+                                    )
+
+                        if (
+                            !canSaveImported
+                        ) {
+                            skippedCount++
+
+                            imported
+                                .importedFolder
+                                ?.deleteRecursively()
+
+                            return@forEach
+                        }
+
                         val importedId =
                             ProjectLibrary
                                 .save(
@@ -1417,6 +1444,30 @@ private fun AppForgeApp() {
                                     importedDraft
                                 )
 
+                        importedCount++
+
+                        if (
+                            firstImportedId ==
+                                null
+                        ) {
+                            firstImportedId =
+                                importedId
+
+                            firstImportedDraft =
+                                importedDraft
+                        }
+                    }
+
+                    val importedId =
+                        firstImportedId
+
+                    val importedDraft =
+                        firstImportedDraft
+
+                    if (
+                        importedId != null &&
+                        importedDraft != null
+                    ) {
                         draft =
                             importedDraft
 
@@ -1448,14 +1499,36 @@ private fun AppForgeApp() {
                                 }
 
                         status =
-                            "AppForge projesi içe aktarıldı ve kaydedildi."
+                            buildString {
+                                append(
+                                    "$importedCount proje başarıyla içe aktarıldı."
+                                )
 
-                        step = 1
+                                if (
+                                    skippedCount >
+                                        0
+                                ) {
+                                    append(
+                                        " $skippedCount proje sınır nedeniyle atlandı."
+                                    )
+                                }
+                            }
+
+                        step =
+                            1
+
                         screen =
                             AppScreen.BUILDER
                     } else {
                         status =
-                            "Ücretsiz proje sınırı dolu. İçe aktarma için Pro gerekli."
+                            if (
+                                skippedCount >
+                                    0
+                            ) {
+                                "Ücretsiz proje sınırı dolu. İçe aktarma için Pro gerekli."
+                            } else {
+                                "İçe aktarılacak proje bulunamadı."
+                            }
                     }
                 } catch (
                     t: Throwable

@@ -265,6 +265,351 @@ object ProjectBackupManager {
     }
 
 
+    fun importManyFromUri(
+        context: Context,
+        source: Uri
+    ): List<BackupImportResult> {
+        var hasRootProject =
+            false
+
+        val libraryProjects =
+            mutableListOf<
+                Pair<String, JSONObject>
+            >()
+
+        val firstInput =
+            context.contentResolver
+                .openInputStream(source)
+                ?: error(
+                    "Yedek dosyası açılamadı."
+                )
+
+        firstInput.use {
+            raw ->
+            ZipInputStream(raw).use {
+                zip ->
+                var entries =
+                    0
+
+                while (true) {
+                    val entry =
+                        zip.nextEntry
+                            ?: break
+
+                    entries++
+
+                    require(
+                        entries <=
+                            5000
+                    ) {
+                        "ZIP çok fazla dosya içeriyor."
+                    }
+
+                    val safeName =
+                        entry.name
+                            .replace(
+                                "\\",
+                                "/"
+                            )
+                            .trimStart('/')
+
+                    require(
+                        safeName.length <=
+                            300
+                    ) {
+                        "ZIP yolu çok uzun."
+                    }
+
+                    require(
+                        !safeName.contains(
+                            "../"
+                        ) &&
+                            safeName !=
+                            ".."
+                    ) {
+                        "Güvensiz ZIP yolu."
+                    }
+
+                    if (
+                        safeName ==
+                            META
+                    ) {
+                        hasRootProject =
+                            true
+                    } else if (
+                        safeName.startsWith(
+                            "projects/"
+                        ) &&
+                            safeName.endsWith(
+                                "/$META"
+                            )
+                    ) {
+                        val bytes =
+                            zip.readBytes()
+
+                        require(
+                            bytes.size <=
+                                1_000_000
+                        ) {
+                            "Proje metadata dosyası çok büyük."
+                        }
+
+                        libraryProjects +=
+                            safeName to
+                                JSONObject(
+                                    bytes.toString(
+                                        Charsets.UTF_8
+                                    )
+                                )
+                    }
+
+                    zip.closeEntry()
+                }
+            }
+        }
+
+        if (
+            hasRootProject
+        ) {
+            return listOf(
+                importFromUri(
+                    context,
+                    source
+                )
+            )
+        }
+
+        require(
+            libraryProjects.isNotEmpty()
+        ) {
+            "Bu ZIP içinde AppForge proje bilgisi bulunamadı."
+        }
+
+        return libraryProjects
+            .distinctBy {
+                it.first
+            }
+            .mapIndexed {
+                index,
+                project ->
+
+                val metadataPath =
+                    project.first
+
+                val metadata =
+                    project.second
+
+                val projectPrefix =
+                    metadataPath
+                        .removeSuffix(
+                            META
+                        )
+
+                val sourcePrefix =
+                    projectPrefix +
+                        "source/"
+
+                val destination =
+                    File(
+                        context.filesDir,
+                        "backup-imports/" +
+                            UUID.randomUUID()
+                                .toString() +
+                            "_$index"
+                    ).apply {
+                        mkdirs()
+                    }
+
+                try {
+                    val secondInput =
+                        context.contentResolver
+                            .openInputStream(
+                                source
+                            )
+                            ?: error(
+                                "Yedek dosyası tekrar açılamadı."
+                            )
+
+                    secondInput.use {
+                        raw ->
+                        ZipInputStream(
+                            raw
+                        ).use {
+                            zip ->
+                            var entries =
+                                0
+
+                            var totalBytes =
+                                0L
+
+                            val buffer =
+                                ByteArray(
+                                    64 *
+                                        1024
+                                )
+
+                            while (true) {
+                                val entry =
+                                    zip.nextEntry
+                                        ?: break
+
+                                entries++
+
+                                require(
+                                    entries <=
+                                        5000
+                                ) {
+                                    "ZIP çok fazla dosya içeriyor."
+                                }
+
+                                val safeName =
+                                    entry.name
+                                        .replace(
+                                            "\\",
+                                            "/"
+                                        )
+                                        .trimStart('/')
+
+                                if (
+                                    safeName.startsWith(
+                                        sourcePrefix
+                                    ) &&
+                                        safeName.length >
+                                        sourcePrefix.length
+                                ) {
+                                    val relative =
+                                        safeName
+                                            .removePrefix(
+                                                sourcePrefix
+                                            )
+
+                                    val target =
+                                        File(
+                                            destination,
+                                            relative
+                                        )
+
+                                    val canonicalRoot =
+                                        destination
+                                            .canonicalFile
+
+                                    val canonicalTarget =
+                                        target
+                                            .canonicalFile
+
+                                    require(
+                                        canonicalTarget.path
+                                            .startsWith(
+                                                canonicalRoot.path +
+                                                    File.separator
+                                            )
+                                    ) {
+                                        "ZIP hedef yolu proje dışına çıkıyor."
+                                    }
+
+                                    if (
+                                        entry.isDirectory
+                                    ) {
+                                        canonicalTarget
+                                            .mkdirs()
+                                    } else {
+                                        canonicalTarget
+                                            .parentFile
+                                            ?.mkdirs()
+
+                                        canonicalTarget
+                                            .outputStream()
+                                            .use {
+                                                output ->
+                                                var entryBytes =
+                                                    0L
+
+                                                while (true) {
+                                                    val read =
+                                                        zip.read(
+                                                            buffer
+                                                        )
+
+                                                    if (
+                                                        read < 0
+                                                    ) {
+                                                        break
+                                                    }
+
+                                                    entryBytes +=
+                                                        read
+
+                                                    totalBytes +=
+                                                        read
+
+                                                    require(
+                                                        entryBytes <=
+                                                            50L *
+                                                            1024L *
+                                                            1024L
+                                                    ) {
+                                                        "ZIP içindeki tek dosya 50 MB sınırını aşıyor."
+                                                    }
+
+                                                    require(
+                                                        totalBytes <=
+                                                            250L *
+                                                            1024L *
+                                                            1024L
+                                                    ) {
+                                                        "Proje kaynakları 250 MB sınırını aşıyor."
+                                                    }
+
+                                                    output.write(
+                                                        buffer,
+                                                        0,
+                                                        read
+                                                    )
+                                                }
+                                            }
+                                    }
+                                }
+
+                                zip.closeEntry()
+                            }
+                        }
+                    }
+
+                    val draft =
+                        deserialize(
+                            metadata,
+                            destination
+                        )
+
+                    if (
+                        draft.sourceMode !=
+                            SourceMode.LOCAL
+                    ) {
+                        destination
+                            .deleteRecursively()
+                    }
+
+                    BackupImportResult(
+                        draft =
+                            draft,
+                        importedFolder =
+                            destination.takeIf {
+                                draft.sourceMode ==
+                                    SourceMode.LOCAL
+                            }
+                    )
+                } catch (
+                    t: Throwable
+                ) {
+                    destination
+                        .deleteRecursively()
+
+                    throw t
+                }
+            }
+    }
+
+
     fun importFromUri(
         context: Context,
         source: Uri
