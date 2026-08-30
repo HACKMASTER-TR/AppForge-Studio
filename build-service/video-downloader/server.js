@@ -269,7 +269,6 @@ app.post("/api/info", rateLimit, requireToken, async (req, res) => {
       "--skip-download",
       "--no-playlist",
       "--no-warnings",
-      "--no-call-home",
       "--no-cache-dir",
       "--socket-timeout", "15",
       "--retries", "2",
@@ -357,7 +356,6 @@ app.get("/api/download", rateLimit, requireToken, async (req, res) => {
 
     await runProcess(YTDLP_BIN, [
       "--no-playlist",
-      "--no-call-home",
       "--no-cache-dir",
       "--socket-timeout", "20",
       "--retries", "2",

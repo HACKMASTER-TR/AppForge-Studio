@@ -280,7 +280,6 @@ export function createDubRouter(options) {
       const sourceTemplate = path.join(job.tempDir, "source.%(ext)s");
       await runProcess(ytdlpBin, [
         "--no-playlist",
-        "--no-call-home",
         "--no-cache-dir",
         "--socket-timeout", "20",
         "--retries", "2",
