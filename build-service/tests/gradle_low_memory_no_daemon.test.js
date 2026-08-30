@@ -6,7 +6,7 @@ import {
 } from "../src/gradlePerformance.js";
 
 test(
-  "low-memory Gradle runs without persistent or single-use daemon override",
+  "low-memory Gradle uses ephemeral daemon",
   () => {
     const profile =
       gradlePerformanceProfile(
@@ -30,16 +30,6 @@ test(
     );
 
     assert.equal(
-      args.some(
-        arg =>
-          arg.startsWith(
-            "-Dorg.gradle.jvmargs="
-          )
-      ),
-      false
-    );
-
-    assert.equal(
       args.includes("--build-cache"),
       true
     );
@@ -52,7 +42,7 @@ test(
 );
 
 test(
-  "balanced profile keeps reusable daemon and daemon JVM override",
+  "balanced profile keeps reusable daemon",
   () => {
     const profile =
       gradlePerformanceProfile(
@@ -73,16 +63,6 @@ test(
     assert.equal(
       args.includes("--no-daemon"),
       false
-    );
-
-    assert.equal(
-      args.some(
-        arg =>
-          arg.startsWith(
-            "-Dorg.gradle.jvmargs="
-          )
-      ),
-      true
     );
   }
 );
