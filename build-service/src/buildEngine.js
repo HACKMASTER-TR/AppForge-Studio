@@ -18,6 +18,7 @@ import {
 import {
   gradleArguments,
   gradleInvocationPlan,
+  gradleClientJvmOptions,
   gradleJvmOptions,
   gradlePerformanceProfile
 } from "./gradlePerformance.js";
@@ -8442,8 +8443,11 @@ async function runGradle(
               GRADLE_USER_HOME:
                 config.gradleUserHome,
 
+              // Gradle launcher JVM küçük tutulur.
+              // Asıl build daemon belleği org.gradle.jvmargs
+              // üzerinden ayrı yönetilir.
               GRADLE_OPTS:
-                gradleJvmOptions(
+                gradleClientJvmOptions(
                   profile
                 )
             }

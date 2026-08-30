@@ -67,6 +67,19 @@ export function gradleArguments(
   ];
 }
 
+export function gradleClientJvmOptions(profile) {
+  if (profile.name === "low-memory") {
+    return [
+      "-Xmx96m",
+      "-XX:MaxMetaspaceSize=128m",
+      "-XX:+UseSerialGC",
+      "-Dfile.encoding=UTF-8"
+    ].join(" ");
+  }
+
+  return gradleJvmOptions(profile);
+}
+
 export function gradleJvmOptions(profile) {
   return [
     `-Xmx${profile.heapMb}m`,
