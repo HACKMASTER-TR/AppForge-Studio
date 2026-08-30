@@ -107,7 +107,7 @@ import {
   localOutputFile,
   createDirectInputUpload,
   validateDirectInputUpload,
-  directInputCacheIdentity,
+  materializeInput,
   deleteInput,
   verifyStorageConnection
 } from "./src/storage.js";
@@ -125,6 +125,7 @@ import {
 } from "./src/permissions.js";
 import {
   computeCacheKey,
+  projectContentSha256,
   findCache,
   cleanupCache
 } from "./src/buildCache.js";
@@ -260,6 +261,45 @@ const upload =
       files: 4
     }
   });
+
+
+async function directProjectContentIdentity(
+  ref
+) {
+  const tempDir =
+    path.join(
+      config.workRoot,
+      "_cache-identity"
+    );
+
+  await fs.mkdir(
+    tempDir,
+    { recursive: true }
+  );
+
+  const tempFile =
+    path.join(
+      tempDir,
+      `${uuidv4()}.zip`
+    );
+
+  try {
+    await materializeInput(
+      ref,
+      tempFile
+    );
+
+    return await projectContentSha256(
+      tempFile
+    );
+  } finally {
+    await fs.rm(
+      tempFile,
+      { force: true }
+    ).catch(() => {});
+  }
+}
+
 
 app.get(
   "/health",
@@ -2514,7 +2554,7 @@ app.post(
               incomingProject,
             projectIdentity:
               directProjectRef
-                ? directInputCacheIdentity(
+                ? await directProjectContentIdentity(
                     directProjectRef
                   )
                 : null,
