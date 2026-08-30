@@ -6,6 +6,7 @@ import dns from "dns/promises";
 import net from "net";
 import crypto from "crypto";
 import { spawn } from "child_process";
+import { createDubRouter } from "./dub.js";
 
 const app = express();
 const PORT = Number(process.env.PORT || 8081);
@@ -242,10 +243,11 @@ app.get("/health", (_req, res) => {
   res.json({
     ok: true,
     service: "AppForge Video Downloader",
-    version: "1.0.0",
+    version: "2.0.0",
     activeDownloads,
     maxDownloads: MAX_DOWNLOADS,
-    protected: Boolean(VIDEO_API_TOKEN)
+    protected: Boolean(VIDEO_API_TOKEN),
+    dubbing: true
   });
 });
 
@@ -413,6 +415,16 @@ app.get("/api/download", rateLimit, requireToken, async (req, res) => {
     }
   }
 });
+
+app.use("/api/dub", rateLimit, requireToken, createDubRouter({
+  assertPublicUrl,
+  runProcess,
+  tempRoot: TEMP_ROOT,
+  ytdlpBin: YTDLP_BIN,
+  maxFilesize: MAX_FILESIZE,
+  safeFilename,
+  processTimeoutMs: PROCESS_TIMEOUT_MS
+}));
 
 app.use((error, _req, res, _next) => {
   if (res.headersSent) return;

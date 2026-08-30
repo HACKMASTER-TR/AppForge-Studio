@@ -1,53 +1,41 @@
-# AppForge Video Downloader
+# VideoForge Video + Turkish Dubbing Service
 
-AppForge ile APK'ya dönüştürülebilecek mobil video indirici ve ona ait ayrı backend servisi.
+A secrets-isolated media export service for AppForge. It downloads only public/DRM-free media that the user is authorized to process.
 
-## Kapsam
+## Existing endpoints
 
-- URL yapıştırma
-- Video başlığı, süre ve küçük resim
-- Mevcut çözünürlükleri listeleme
-- MP4 indirme
-- Ayrı video/ses akışlarını FFmpeg ile birleştirme
-- yt-dlp tarafından desteklenen DRM'siz video sayfaları
-- Playlist indirme kapalı
-- Private/local IP engeli
-- İndirme eşzamanlılık limiti
-- İstek limiti
-- Temp dosya temizliği
+- `GET /health`
+- `POST /api/info`
+- `GET /api/download`
 
-DRM, ödeme duvarı, üyelik veya erişim koruması aşılmaz. Yalnızca indirme hakkınız bulunan içeriklerde kullanılmalıdır.
+## Turkish dubbing endpoints
 
-## Çalıştırma
+- `GET /api/dub/health`
+- `POST /api/dub/jobs`
+- `GET /api/dub/jobs/:id`
+- `GET /api/dub/jobs/:id/download`
 
-AppForge build-service klasöründe:
+Dubbing is an asynchronous job so long videos do not keep a WebView request open.
 
-```bash
-docker compose --profile video up -d --build video-downloader
-```
+## Required for dubbing
 
-Yerel test:
+Set `OPENAI_API_KEY` only on the VideoForge backend service. Never put this key in the APK or `index.html`.
 
-- Arayüz: `http://SUNUCU_IP:8081/`
-- Health: `http://SUNUCU_IP:8081/health`
+Optional environment variables:
 
-## APK
+- `DUB_TRANSCRIBE_MODEL=gpt-4o-transcribe-diarize`
+- `DUB_TRANSLATE_MODEL=gpt-5.6-luna`
+- `DUB_TTS_MODEL=gpt-4o-mini-tts`
+- `DUB_MAX_JOBS=1`
+- `DUB_MAX_DURATION_SECONDS=1800`
+- `DUB_MAX_SEGMENTS=220`
+- `DUB_ORIGINAL_VOLUME=0.55`
+- `DUB_PROCESS_TIMEOUT_MS=2700000`
 
-`public/index.html` dosyasını AppForge projesine ekleyin. APK ilk açıldığında Ayarlar bölümünden Video API adresini girin.
+## Voice behavior
 
-Üretimde HTTPS kullanın. Örnek:
+The service uses diarization to distinguish speakers and assigns each speaker a stable synthetic Turkish voice profile. It does not clone a real person's voice and does not infer a person's gender from their voice.
 
-```text
-https://video.example.com
-```
+## Audio mix
 
-## Ortam değişkenleri
-
-- `PORT=8081`
-- `MAX_FILESIZE=750M`
-- `MAX_DOWNLOADS=2`
-- `PROCESS_TIMEOUT_MS=900000`
-- `VIDEO_API_TOKEN=` (isteğe bağlı)
-- `YTDLP_BIN=yt-dlp`
-
-`VIDEO_API_TOKEN` tanımlanırsa AppForge uygulamasında Ayarlar > API anahtarı alanına aynı değeri yazın.
+The original soundtrack is retained and automatically ducked while Turkish synthesized speech is active. This is not full music/dialogue stem separation, so some original dialogue may remain faintly audible.
