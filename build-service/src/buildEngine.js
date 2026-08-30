@@ -8436,6 +8436,12 @@ async function runGradle(
               "win32",
             env: {
               ...env,
+
+              // Worker image oluşturulurken ısıtılan Gradle
+              // cache'i gerçek kullanıcı build'lerinde de kullan.
+              GRADLE_USER_HOME:
+                config.gradleUserHome,
+
               GRADLE_OPTS:
                 gradleJvmOptions(
                   profile

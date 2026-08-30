@@ -15,6 +15,12 @@ ENV FLUTTER_HOME=/opt/flutter
 ENV PATH=/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:/opt/gradle/gradle-9.3.1/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/cmdline-tools/latest/bin:$PATH
 ENV NODE_ENV=production
 
+# AppForge Gradle cache:
+# Worker image prewarm ve gerçek kullanıcı build'leri
+# aynı Gradle user home'u kullanır.
+ENV APPFORGE_GRADLE_USER_HOME=/root/.gradle
+ENV GRADLE_USER_HOME=/root/.gradle
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        ca-certificates \

@@ -23,6 +23,17 @@ export const config = {
   ),
 
   gradleBin: process.env.GRADLE_BIN || "gradle",
+
+  gradleUserHome: path.resolve(
+    process.env.APPFORGE_GRADLE_USER_HOME ||
+      path.join(
+        process.env.HOME ||
+          process.env.USERPROFILE ||
+          ".",
+        ".gradle"
+      )
+  ),
+
   gradleCacheRoot: path.resolve(
     process.env.GRADLE_CACHE_ROOT || "./gradle-cache"
   ),
