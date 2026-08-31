@@ -277,8 +277,98 @@ window.login=async function login(){
       return;
     }
     await finishLogin(j);
-  }catch(e){setText("authMsg",e.message)}
+  }catch(e){
+    setText("authMsg",e.message);
+
+    if(
+      String(e?.message || "")
+        .toLocaleLowerCase("tr-TR")
+        .includes("başka bir cihaza bağlı")
+    ){
+      $("deviceTransferBox")
+        ?.classList
+        .remove("hidden");
+    }
+  }
 };
+
+window.toggleDeviceTransfer=function toggleDeviceTransfer(force){
+  const box = $("deviceTransferBox");
+  if(!box)return;
+
+  const shouldShow =
+    typeof force === "boolean"
+      ? force
+      : box.classList.contains("hidden");
+
+  box.classList.toggle(
+    "hidden",
+    !shouldShow
+  );
+
+  if(shouldShow){
+    setText(
+      "authMsg",
+      "E-posta ve parolanızla bu cihazı hesabınıza bağlayabilirsiniz."
+    );
+  }
+};
+
+window.transferDevice=async function transferDevice(){
+  const email =
+    val("email").trim();
+
+  const password =
+    val("password");
+
+  const twoFactorCode =
+    val("deviceTransferCode").trim();
+
+  if(!email){
+    setText(
+      "authMsg",
+      "Önce e-posta adresinizi yazın."
+    );
+    return;
+  }
+
+  if(!password){
+    setText(
+      "authMsg",
+      "Önce parolanızı yazın."
+    );
+    return;
+  }
+
+  try{
+    setText(
+      "authMsg",
+      "Cihaz değişikliği doğrulanıyor..."
+    );
+
+    const result =
+      await api(
+        "/api/auth/device-transfer",
+        {
+          method: "POST",
+          body: {
+            email,
+            password,
+            twoFactorCode
+          }
+        }
+      );
+
+    await finishLogin(result);
+  }catch(error){
+    setText(
+      "authMsg",
+      error?.message ||
+      "Cihaz değiştirilemedi."
+    );
+  }
+};
+
 window.verify2fa=async function verify2fa(){
   try{
     await finishLogin(await api("/api/auth/2fa/verify-login",{method:"POST",body:{challengeToken,code:val("twoFactorCode")}}));

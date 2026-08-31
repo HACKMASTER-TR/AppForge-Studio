@@ -37,11 +37,45 @@
     <button onclick="login()">Giriş</button>
     <button class="secondary" onclick="register()">Kayıt</button>
     <button class="ghost" onclick="forgotPassword()">Parolamı unuttum</button>
+    <button class="ghost" onclick="toggleDeviceTransfer()">Cihazı değiştir</button>
   </div>
+
   <div id="twoFactorBox" class="hidden">
     <label>2FA kodu<input id="twoFactorCode" inputmode="numeric" placeholder="123456"/></label>
     <button onclick="verify2fa()">Doğrula</button>
   </div>
+
+  <div id="deviceTransferBox" class="hidden">
+    <p class="muted">
+      Bu AppForge hesabını bu cihaz/tarayıcıya bağla.
+      Hesabında 2FA açıksa doğrulama kodunu da gir.
+    </p>
+
+    <div class="form-grid cols-2">
+      <label>
+        2FA kodu (isteğe bağlı)
+        <input
+          id="deviceTransferCode"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          placeholder="123456"
+        />
+      </label>
+    </div>
+
+    <div class="row">
+      <button onclick="transferDevice()">
+        Bu cihazı bağla
+      </button>
+      <button
+        class="ghost"
+        onclick="toggleDeviceTransfer(false)"
+      >
+        İptal
+      </button>
+    </div>
+  </div>
+
   <div id="authMsg" class="muted" role="status" aria-live="polite"></div>
 </section>
 
