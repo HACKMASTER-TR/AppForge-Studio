@@ -18213,6 +18213,16 @@ private fun AccountScreen(
     var busy by remember { mutableStateOf(false) }
     var transferTwoFactorCode by remember { mutableStateOf("") }
 
+    var showForgotPasswordDialog by
+        remember {
+            mutableStateOf(false)
+        }
+
+    var forgotPasswordEmail by
+        remember {
+            mutableStateOf("")
+        }
+
     var showDeleteAccount by
         remember {
             mutableStateOf(false)
@@ -18232,6 +18242,128 @@ private fun AccountScreen(
         remember {
             mutableStateOf("")
         }
+
+    if (
+        showForgotPasswordDialog
+    ) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!busy) {
+                    showForgotPasswordDialog =
+                        false
+                }
+            },
+            title = {
+                Text(
+                    "Şifremi Unuttum"
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            10.dp
+                        )
+                ) {
+                    Text(
+                        "AppForge hesabında kullandığın e-posta adresini yaz. " +
+                            "Hesap mevcutsa parola sıfırlama bağlantısı gönderilecek.",
+                        color =
+                            TextSecondary,
+                        lineHeight =
+                            19.sp
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            forgotPasswordEmail,
+                        onValueChange = {
+                            forgotPasswordEmail =
+                                it
+                        },
+                        label = {
+                            Text(
+                                "E-posta"
+                            )
+                        },
+                        singleLine =
+                            true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled =
+                        !busy &&
+                        forgotPasswordEmail
+                            .trim()
+                            .contains("@") &&
+                        forgotPasswordEmail
+                            .trim()
+                            .contains("."),
+                    onClick = {
+                        busy =
+                            true
+
+                        scope.launch {
+                            try {
+                                val result =
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        AppForgeAccountClient(
+                                            context,
+                                            serverUrl
+                                        ).forgotPassword(
+                                            forgotPasswordEmail
+                                                .trim()
+                                        )
+                                    }
+
+                                message =
+                                    result
+
+                                showForgotPasswordDialog =
+                                    false
+                            } catch (
+                                t: Throwable
+                            ) {
+                                message =
+                                    "Parola sıfırlama isteği gönderilemedi: ${t.message}"
+                            } finally {
+                                busy =
+                                    false
+                            }
+                        }
+                    }
+                ) {
+                    Text(
+                        if (busy) {
+                            "Gönderiliyor..."
+                        } else {
+                            "SIFIRLAMA BAĞLANTISI GÖNDER"
+                        }
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled =
+                        !busy,
+                    onClick = {
+                        showForgotPasswordDialog =
+                            false
+                    }
+                ) {
+                    Text(
+                        "İptal"
+                    )
+                }
+            }
+        )
+    }
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
@@ -18549,6 +18681,26 @@ private fun AccountScreen(
                         ) { Text("Kayıt Ol") }
                     }
                 }
+                item {
+                    TextButton(
+                        onClick = {
+                            forgotPasswordEmail =
+                                email.trim()
+
+                            showForgotPasswordDialog =
+                                true
+                        },
+                        enabled =
+                            !busy,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Şifremi Unuttum?"
+                        )
+                    }
+                }
+
                 item {
                     OutlinedTextField(
                         value = transferTwoFactorCode,

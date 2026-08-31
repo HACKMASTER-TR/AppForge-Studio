@@ -63,6 +63,26 @@ class AppForgeAccountClient(
         return LoginResult.Success(session(json))
     }
 
+    fun forgotPassword(
+        email: String
+    ): String {
+        val json =
+            request(
+                "/api/auth/forgot-password",
+                JSONObject().apply {
+                    put(
+                        "email",
+                        email.trim()
+                    )
+                }
+            )
+
+        return json.optString(
+            "message",
+            "Hesap mevcutsa parola sıfırlama e-postası gönderildi."
+        )
+    }
+
     fun verifyTwoFactor(
         challengeToken: String,
         code: String
