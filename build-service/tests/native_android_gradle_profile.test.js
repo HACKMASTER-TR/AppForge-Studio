@@ -7,7 +7,8 @@ import {
   gradleClientJvmOptions,
   gradleInvocationPlan,
   gradleJvmOptions,
-  gradlePerformanceProfile
+  gradlePerformanceProfile,
+  sourceGradleProfileName
 } from "../src/gradlePerformance.js";
 
 test(
@@ -113,6 +114,14 @@ test(
 test(
   "build engine routes android-gradle projects to native profile",
   async () => {
+    assert.equal(
+      sourceGradleProfileName(
+        "android-gradle",
+        "throughput"
+      ),
+      "native-android"
+    );
+
     const source =
       await fs.readFile(
         new URL(
@@ -134,17 +143,17 @@ test(
     const section =
       source.slice(
         start,
-        start + 600
+        start + 500
       );
 
     assert.match(
       section,
-      /source\.engine\s*===\s*"android-gradle"/
+      /sourceGradleProfileName\(/
     );
 
     assert.match(
       section,
-      /"native-android"/
+      /source\.engine/
     );
   }
 );

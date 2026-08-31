@@ -1,8 +1,36 @@
 const EPHEMERAL_PROFILES =
   new Set([
     "low-memory",
-    "native-android"
+    "native-android",
+    "python-android"
   ]);
+
+
+export function sourceGradleProfileName(
+  engine,
+  fallback = "throughput"
+) {
+  const normalized =
+    String(engine || "")
+      .trim()
+      .toLowerCase();
+
+  if (
+    normalized ===
+      "android-gradle"
+  ) {
+    return "native-android";
+  }
+
+  if (
+    normalized ===
+      "python-android"
+  ) {
+    return "python-android";
+  }
+
+  return fallback;
+}
 
 export function gradlePerformanceProfile(
   name = "throughput"
@@ -11,6 +39,30 @@ export function gradlePerformanceProfile(
     String(name || "")
       .trim()
       .toLowerCase();
+
+  /*
+   * Chaquopy configuration-cache uyumlu değil.
+   * Python Android build'leri tek worker ve ephemeral
+   * daemon ile, configuration cache kapalı çalışır.
+   */
+  if (
+    normalized ===
+      "python-android"
+  ) {
+    return {
+      name:
+        "python-android",
+      maxWorkers: 1,
+      heapMb: 512,
+      metaspaceMb: 256,
+      codeCacheMb: 96,
+      parallel: false,
+      incremental: false,
+      configurationCache: false,
+      gc:
+        "-XX:+UseSerialGC"
+    };
+  }
 
   /*
    * Native Android/Kotlin projeleri:
@@ -142,8 +194,18 @@ export function gradleArguments(
     ),
 
     "--build-cache",
-    "--configuration-cache",
-    "--configuration-cache-problems=warn",
+
+    ...(
+      profile.configurationCache ===
+        false
+        ? [
+            "--no-configuration-cache"
+          ]
+        : [
+            "--configuration-cache",
+            "--configuration-cache-problems=warn"
+          ]
+    ),
 
     `--max-workers=${profile.maxWorkers}`,
 
@@ -160,6 +222,19 @@ export function gradleArguments(
 export function gradleClientJvmOptions(
   profile
 ) {
+  if (
+    profile.name ===
+      "python-android"
+  ) {
+    return [
+      "-Xmx96m",
+      "-XX:MaxMetaspaceSize=128m",
+      "-XX:ReservedCodeCacheSize=64m",
+      "-XX:+UseSerialGC",
+      "-Dfile.encoding=UTF-8"
+    ].join(" ");
+  }
+
   if (
     profile.name ===
       "native-android"

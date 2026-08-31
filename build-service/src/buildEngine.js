@@ -20,7 +20,8 @@ import {
   gradleInvocationPlan,
   gradleClientJvmOptions,
   gradleJvmOptions,
-  gradlePerformanceProfile
+  gradlePerformanceProfile,
+  sourceGradleProfileName
 } from "./gradlePerformance.js";
 import {
   buildNodeWebSource,
@@ -2664,10 +2665,10 @@ export async function executeBuild(job) {
 
       const preferredGradleProfile =
         gradlePerformanceProfile(
-          source.engine ===
-            "android-gradle"
-            ? "native-android"
-            : config.gradlePerformanceProfile
+          sourceGradleProfileName(
+            source.engine,
+            config.gradlePerformanceProfile
+          )
         );
 
       const runPlan = async profile => {
@@ -2682,10 +2683,13 @@ export async function executeBuild(job) {
           profile.name ===
             "native-android"
             ? "🤖 Native Android güvenli Gradle profili • 1 worker • görevler izole"
-            : profile.name !==
-                "low-memory"
-              ? `⚡ Gradle hız profili • ${profile.maxWorkers} worker • ${plan.length} JVM çağrısı`
-              : "🛡 Gradle düşük bellek profili • görevler izole çalışacak"
+            : profile.name ===
+                "python-android"
+              ? "🐍 Python/Chaquopy Gradle profili • 1 worker • configuration cache kapalı"
+              : profile.name !==
+                  "low-memory"
+                ? `⚡ Gradle hız profili • ${profile.maxWorkers} worker • ${plan.length} JVM çağrısı`
+                : "🛡 Gradle düşük bellek profili • görevler izole çalışacak"
         );
 
         for (const invocationTasks of plan) {
@@ -2712,7 +2716,8 @@ export async function executeBuild(job) {
         if (
           [
             "low-memory",
-            "native-android"
+            "native-android",
+            "python-android"
           ].includes(
             preferredGradleProfile.name
           ) ||
