@@ -109,5 +109,36 @@ test(
       args.includes("--max-workers=1"),
       true
     );
+
+    assert.equal(
+      profile.metaspaceMb,
+      320
+    );
+
+    assert.equal(
+      args.includes("--no-watch-fs"),
+      true
+    );
+
+    for (
+      const task of [
+        "lintVitalAnalyzeRelease",
+        "lintVitalReportRelease",
+        "lintVitalRelease"
+      ]
+    ) {
+      const index =
+        args.indexOf(task);
+
+      assert.equal(
+        index > 0,
+        true
+      );
+
+      assert.equal(
+        args[index - 1],
+        "-x"
+      );
+    }
   }
 );

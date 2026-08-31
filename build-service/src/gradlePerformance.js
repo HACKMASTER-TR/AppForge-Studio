@@ -54,7 +54,7 @@ export function gradlePerformanceProfile(
         "python-android",
       maxWorkers: 1,
       heapMb: 512,
-      metaspaceMb: 256,
+      metaspaceMb: 320,
       codeCacheMb: 96,
       parallel: false,
       incremental: false,
@@ -179,8 +179,12 @@ export function gradleArguments(
       : "--daemon",
 
     ...(
-      profile.name ===
-        "native-android"
+      [
+        "native-android",
+        "python-android"
+      ].includes(
+        profile.name
+      )
         ? [
             "--no-watch-fs",
             "-x",
