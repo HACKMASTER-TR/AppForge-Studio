@@ -45,6 +45,50 @@ SENTRY_RELEASE=
 
 For AWS S3, leave `S3_ENDPOINT` empty and set the real AWS region. For Cloudflare R2, use the account-specific R2 S3 endpoint and `S3_REGION=auto`.
 
+## Dedicated Source Worker routing
+
+Production source builds use a reserved Source Worker. The Source Worker is
+intentionally not an extra normal Android build slot: a worker that advertises
+`source-isolation-dedicated` may only claim jobs that explicitly require that
+capability. Normal APK/AAB jobs continue to run on the normal Android Worker pool.
+
+The API service is responsible for tagging eligible untrusted `LOCAL` source builds.
+Set this routing policy on the production API service:
+
+```env
+SOURCE_BUILD_ISOLATION_MODE=dedicated
+SOURCE_BUILD_REQUIRE_ISOLATION=true
+SOURCE_BUILD_ISOLATION_CAPABILITY=source-isolation-dedicated
+```
+
+The dedicated Source Worker image already provides safe defaults for the same
+isolation mode/capability. If the hosting platform overrides worker variables,
+preserve the dedicated capability:
+
+```env
+SOURCE_BUILD_ISOLATION_MODE=dedicated
+SOURCE_BUILD_REQUIRE_ISOLATION=true
+SOURCE_BUILD_ISOLATION_CAPABILITY=source-isolation-dedicated
+WORKER_CAPABILITIES=android-api-37,build-tools-36.0.0,java-17,gradle,source-isolation-dedicated
+```
+
+Do not add `source-isolation-dedicated` to normal Android Workers.
+
+The dedicated Source Worker is expected for code-executing `LOCAL` engines such as
+`android-gradle`, `node-web`, `flutter`, `react-native-android`, `python-android`,
+`android-ndk`, `.NET Android/MAUI`, and `unity-android`. Static `webview-static`
+builds remain on the normal Android Worker pool.
+
+Production acceptance:
+
+1. Normal Android APK/AAB builds are claimed by normal Android Workers.
+2. An eligible untrusted `LOCAL` source build is tagged with
+   `source-isolation-dedicated` when `SOURCE_BUILD_REQUIRE_ISOLATION=true`.
+3. Only the dedicated Source Worker claims that tagged build.
+
+If `/health` reports `sourceBuildIsolation.required=false`, the API service is not
+tagging source jobs for the reserved Source Worker.
+
 ## Health endpoints
 
 - `GET /health`: liveness plus configuration summary, DB status, queue state, Redis state and observability state.

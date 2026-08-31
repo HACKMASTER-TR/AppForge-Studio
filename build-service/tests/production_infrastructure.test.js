@@ -71,6 +71,10 @@ test("production infrastructure is wired", async () => {
   assert.match(server, /redisHealth/);
   assert.match(server, /observabilityStatus/);
   assert.match(server, /setupExpressErrorHandling/);
+  assert.match(server, /sourceBuildIsolation:/);
+  assert.match(server, /config\.sourceBuildIsolationMode/);
+  assert.match(server, /config\.sourceBuildRequireIsolation/);
+  assert.match(server, /config\.sourceBuildIsolationCapability/);
 
   assert.match(compose, /redis:8-alpine/);
   assert.match(compose, /minio-init:/);

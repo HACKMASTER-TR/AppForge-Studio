@@ -364,6 +364,14 @@ app.get(
           config.buildCacheTtlHours,
         gradlePerformanceProfile:
           config.gradlePerformanceProfile,
+        sourceBuildIsolation: {
+          mode:
+            config.sourceBuildIsolationMode,
+          required:
+            config.sourceBuildRequireIsolation,
+          capability:
+            config.sourceBuildIsolationCapability
+        },
         observability:
           observabilityStatus(),
         liveLogs: true,
