@@ -159,7 +159,11 @@ RUN curl -fL --retry 4 \
     && flutter config --no-analytics \
     && flutter --version \
     && dart --version \
-    && flutter precache --android
+    && flutter precache --android \
+    && cd /opt/flutter/packages/flutter_tools \
+    && dart pub get \
+    && test -s .dart_tool/package_config.json \
+    && chmod -R a+rX .dart_tool
 
 WORKDIR /app
 

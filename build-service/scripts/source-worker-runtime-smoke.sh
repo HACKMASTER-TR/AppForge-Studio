@@ -233,6 +233,14 @@ run_tool dart dart --version
 run_tool cmake cmake --version
 run_tool ninja ninja --version
 
+flutter_tool_package_config="/opt/flutter/packages/flutter_tools/.dart_tool/package_config.json"
+
+if ! test -r "$flutter_tool_package_config"; then
+  fail "Flutter tool package_config.json non-root Worker tarafından okunamıyor"
+fi
+
+echo "TOOL_OK: flutter_tool_package_config_readable"
+
 flutter_smoke_dir="/app/work/flutter-readonly-smoke"
 mkdir -p "$flutter_smoke_dir/lib"
 printf '%s\n' \
@@ -255,7 +263,7 @@ printf '%s\n' \
   printf '%s\n' "$flutter_pub_output"
 
   if printf '%s\n' "$flutter_pub_output" |
-    grep -E 'Flutter failed to write|Read-only file system|/opt/flutter/bin/cache.*(failed|Cannot open)' >/dev/null; then
+    grep -E 'Flutter failed to write|Read-only file system|/opt/flutter/.*(Permission denied|Cannot open|failed)' >/dev/null; then
     fail "flutter pub get salt-okunur SDK cache'ine yazmaya çalıştı"
   fi
 

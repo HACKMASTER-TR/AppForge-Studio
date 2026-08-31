@@ -409,6 +409,20 @@ test(
 
     for (
       const marker of [
+        "cd /opt/flutter/packages/flutter_tools",
+        "dart pub get",
+        "test -s .dart_tool/package_config.json",
+        "chmod -R a+rX .dart_tool"
+      ]
+    ) {
+      assert.ok(
+        docker.includes(marker),
+        marker
+      );
+    }
+
+    for (
+      const marker of [
         "AppForge hardened read-only SDK guard",
         'desired_realm="${FLUTTER_REALM:-}"',
         "engine.stamp",
@@ -453,6 +467,8 @@ test(
       const marker of [
         "Flutter failed to write",
         "Read-only file system",
+        "Permission denied",
+        "flutter_tool_package_config_readable",
         "TOOL_OK: flutter_pub_get_readonly_cache"
       ]
     ) {
