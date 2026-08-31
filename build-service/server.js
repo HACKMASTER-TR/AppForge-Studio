@@ -915,9 +915,19 @@ app.post(
           req.body?.email
         );
 
+      const mailDeliveryConfigured =
+        Boolean(
+          (
+            config.mailjetApiKey &&
+            config.mailjetSecretKey &&
+            config.mailjetSenderEmail
+          ) ||
+          config.smtpHost
+        );
+
       if (
         user &&
-        config.smtpHost
+        mailDeliveryConfigured
       ) {
         const token =
           await createOneTimeToken(
