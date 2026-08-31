@@ -29,7 +29,9 @@ object AppForgeBuildErrorAdvisor {
                     "unknown build motoru",
                     "bilinmeyen proje algılandı",
                     "güvenli bir build motoru seçilemedi",
-                    "webview build motoruna yanlışlıkla gönderilmedi"
+                    "webview build motoruna yanlışlıkla gönderilmedi",
+                    "projede html başlangıç dosyası bulunamadı",
+                    "html başlangıç dosyası bulunamadı"
                 ),
                 reason = "Seçilen ZIP içinde desteklenen proje imzası veya HTML başlangıç sayfası bulunamadı.",
                 solution = "ZIP içinde index.html, main.html ya da desteklenen Android/Flutter/React Native proje dosyalarının bulunduğunu kontrol et. Geçerli HTML sayfası varsa AppForge onu artık otomatik başlangıç sayfasına dönüştürür.",
@@ -254,9 +256,33 @@ object AppForgeBuildErrorAdvisor {
         preflight: List<String>,
         status: String
     ): BuildErrorDiagnosis {
+        /*
+         * Başarılı ön kontrol satırları hata teşhisinin kanıtı değildir.
+         *
+         * Örnek:
+         * "✅ versionName dolu."
+         *
+         * Bu satır eski yapıda "versionName" kuralını tetikleyip
+         * gerçek build hatasını gizleyebiliyordu.
+         */
+        val diagnosticPreflight =
+            preflight
+                .filterNot {
+                    line ->
+                    val normalized =
+                        line.trim()
+
+                    normalized.startsWith(
+                        "✅"
+                    ) ||
+                        normalized.startsWith(
+                            "✓"
+                        )
+                }
+
         val combinedLines =
             (
-                preflight +
+                diagnosticPreflight +
                     logs.takeLast(160) +
                     status
             )

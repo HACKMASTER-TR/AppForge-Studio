@@ -15674,6 +15674,20 @@ private fun BuildStep(
 
     val stageLabel =
         when {
+            normalizedStatus ==
+                "failed" ||
+            normalizedStatus
+                .startsWith(
+                    "hata:"
+                ) ->
+                "Derleme başarısız"
+
+            normalizedStatus ==
+                "cancelled" ||
+            normalizedStatus ==
+                "canceled" ->
+                "Derleme iptal edildi"
+
             safeProgress >= 100 ->
                 "Tamamlandı"
 
@@ -16067,7 +16081,7 @@ private fun BuildStep(
 
                     if (
                         logs.isNotEmpty() &&
-                        !buildSucceeded
+                        buildActive
                     ) {
                         Text(
                             "Derleme işlemi devam ediyor.",
