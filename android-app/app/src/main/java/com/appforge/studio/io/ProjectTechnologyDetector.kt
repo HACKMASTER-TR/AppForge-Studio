@@ -151,7 +151,15 @@ object ProjectTechnologyDetector {
             ) &&
             hasPath("app/src/main/androidmanifest.xml")
         ) {
-            val kotlin = hasExt("kt", "kts")
+            val kotlin =
+                all.any {
+                    val path = relative(it)
+
+                    path.startsWith("app/src/") &&
+                        path.endsWith(".kt") &&
+                        !path.startsWith("app/src/test/") &&
+                        !path.startsWith("app/src/androidtest/")
+                }
 
             return ProjectTechnologyInfo(
                 id = if (kotlin) "android-kotlin" else "android-java",
