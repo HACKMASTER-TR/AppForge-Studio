@@ -200,16 +200,14 @@ test(
       )
     );
 
-    assert.ok(
-      queueSource.includes(
-        "JSON.stringify(effectiveRequiredCapabilities)"
-      )
+    assert.match(
+      queueSource,
+      /JSON\.stringify\(\s*effectiveRequiredCapabilities\s*\)/
     );
 
-    assert.ok(
-      queueSource.includes(
-        "requiredCapabilities: effectiveRequiredCapabilities"
-      )
+    assert.match(
+      queueSource,
+      /requiredCapabilities:\s*effectiveRequiredCapabilities/
     );
   }
 );

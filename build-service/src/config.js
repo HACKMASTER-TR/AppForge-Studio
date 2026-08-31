@@ -155,10 +155,56 @@ export const config = {
       "source-isolation-dedicated"
     )
       .trim(),
+  /*
+   * Production burst protection.
+   *
+   * Kuyruk kapasitesi worker concurrency'den ayrıdır:
+   * worker'lar güvenli hızda işlerken çok sayıda kullanıcı
+   * build'ini kalıcı PostgreSQL kuyruğunda bekletebilir.
+   */
   maxQueueSize: Math.max(
     1,
-    Number(process.env.MAX_QUEUE_SIZE || 100)
+    Number(process.env.MAX_QUEUE_SIZE || 2000)
   ),
+
+  freeActiveBuildLimit: Math.max(
+    1,
+    Number(
+      process.env.FREE_ACTIVE_BUILD_LIMIT ||
+      1
+    )
+  ),
+
+  proActiveBuildLimit: Math.max(
+    1,
+    Number(
+      process.env.PRO_ACTIVE_BUILD_LIMIT ||
+      3
+    )
+  ),
+
+  freeBuildPriority: Math.max(
+    1,
+    Math.min(
+      1000,
+      Number(
+        process.env.FREE_BUILD_PRIORITY ||
+        100
+      )
+    )
+  ),
+
+  proBuildPriority: Math.max(
+    1,
+    Math.min(
+      1000,
+      Number(
+        process.env.PRO_BUILD_PRIORITY ||
+        50
+      )
+    )
+  ),
+
   maxJobAttempts: Math.max(
     1,
     Number(process.env.MAX_JOB_ATTEMPTS || 2)

@@ -1,6 +1,9 @@
 import os from "os";
 import { query, tx } from "./db.js";
 import { config } from "./config.js";
+import {
+  getProEntitlement
+} from "./proEntitlements.js";
 import { signalBuildQueue } from "./redis.js";
 import {
   requiredSourceWorkerCapabilities
@@ -20,7 +23,7 @@ export async function enqueueJob({
   userId,
   teamId = null,
   payload,
-  priority = 100,
+  priority: requestedPriority = 100,
   requiredCapabilities = []
 }) {
   const effectiveRequiredCapabilities =
@@ -35,43 +38,310 @@ export async function enqueueJob({
       }
     );
 
-  const count = await queuedCount();
+  /*
+   * Priority istemciden güvenilir kabul edilmez.
+   * Free / Pro önceliğini resmi sunucu belirler.
+   */
+  const entitlement =
+    await getProEntitlement(
+      userId
+    );
 
-  if (count >= config.maxQueueSize) {
-    const error = new Error("Build kuyruğu dolu.");
-    error.code = "QUEUE_FULL";
+  const isPro =
+    Boolean(
+      entitlement?.active
+    );
+
+  const plan =
+    isPro
+      ? "pro"
+      : "free";
+
+  const queuePriority =
+    isPro
+      ? config.proBuildPriority
+      : config.freeBuildPriority;
+
+  const activeLimit =
+    isPro
+      ? config.proActiveBuildLimit
+      : config.freeActiveBuildLimit;
+
+  /*
+   * Global advisory transaction lock:
+   *
+   * COUNT -> LIMIT CHECK -> INSERT zincirini
+   * tek kritik bölüm haline getirir.
+   *
+   * Böylece yüzlerce / binlerce eşzamanlı HTTP isteği
+   * MAX_QUEUE_SIZE sınırını aynı anda aşamaz.
+   */
+  const admission =
+    await tx(
+      async client => {
+        await client.query(
+          `SELECT
+             pg_advisory_xact_lock(
+               hashtext(
+                 'appforge-build-queue-admission'
+               )::bigint
+             )`
+        );
+
+        const queueResult =
+          await client.query(
+            `SELECT
+               COUNT(*)::int AS count
+             FROM appforge_build_jobs
+             WHERE status = 'queued'`
+          );
+
+        const queued =
+          Number(
+            queueResult.rows[0]
+              ?.count || 0
+          );
+
+        if (
+          queued >=
+          config.maxQueueSize
+        ) {
+          const message =
+            "Build kuyruğu şu anda dolu. Lütfen kısa süre sonra tekrar dene.";
+
+          await client.query(
+            `UPDATE appforge_builds
+             SET
+               status = 'failed',
+               progress = 0,
+               error = $2,
+               completed_at = NOW()
+             WHERE id = $1`,
+            [
+              buildId,
+              message
+            ]
+          );
+
+          await client.query(
+            `INSERT INTO appforge_build_events(
+               build_id,
+               user_id,
+               team_id,
+               event_type,
+               payload
+             )
+             VALUES(
+               $1,$2,$3,'queue_rejected',$4::jsonb
+             )`,
+            [
+              buildId,
+              userId,
+              teamId,
+              JSON.stringify({
+                code:
+                  "QUEUE_FULL",
+                queued,
+                maxQueueSize:
+                  config.maxQueueSize,
+                plan
+              })
+            ]
+          );
+
+          return {
+            rejected: true,
+            code:
+              "QUEUE_FULL",
+            statusCode: 503,
+            message,
+            queued,
+            maxQueueSize:
+              config.maxQueueSize
+          };
+        }
+
+        const activeResult =
+          await client.query(
+            `SELECT
+               COUNT(*)::int AS count
+             FROM appforge_build_jobs
+             WHERE user_id = $1
+               AND status IN (
+                 'queued',
+                 'running'
+               )`,
+            [
+              userId
+            ]
+          );
+
+        const active =
+          Number(
+            activeResult.rows[0]
+              ?.count || 0
+          );
+
+        if (
+          active >=
+          activeLimit
+        ) {
+          const message =
+            plan === "pro"
+              ? `Aynı anda en fazla ${activeLimit} aktif Pro build kullanılabilir.`
+              : `Free hesapta aynı anda en fazla ${activeLimit} aktif build kullanılabilir.`;
+
+          await client.query(
+            `UPDATE appforge_builds
+             SET
+               status = 'failed',
+               progress = 0,
+               error = $2,
+               completed_at = NOW()
+             WHERE id = $1`,
+            [
+              buildId,
+              message
+            ]
+          );
+
+          await client.query(
+            `INSERT INTO appforge_build_events(
+               build_id,
+               user_id,
+               team_id,
+               event_type,
+               payload
+             )
+             VALUES(
+               $1,$2,$3,'queue_rejected',$4::jsonb
+             )`,
+            [
+              buildId,
+              userId,
+              teamId,
+              JSON.stringify({
+                code:
+                  "ACTIVE_BUILD_LIMIT",
+                active,
+                activeLimit,
+                plan
+              })
+            ]
+          );
+
+          return {
+            rejected: true,
+            code:
+              "ACTIVE_BUILD_LIMIT",
+            statusCode: 429,
+            message,
+            active,
+            activeLimit,
+            plan
+          };
+        }
+
+        await client.query(
+          `INSERT INTO appforge_build_jobs(
+             build_id,
+             user_id,
+             team_id,
+             payload,
+             priority,
+             max_attempts,
+             required_capabilities
+           )
+           VALUES(
+             $1,$2,$3,$4::jsonb,$5,$6,$7::jsonb
+           )`,
+          [
+            buildId,
+            userId,
+            teamId,
+            JSON.stringify(
+              payload
+            ),
+            queuePriority,
+            config.maxJobAttempts,
+            JSON.stringify(
+              effectiveRequiredCapabilities
+            )
+          ]
+        );
+
+        await client.query(
+          `INSERT INTO appforge_build_events(
+             build_id,
+             user_id,
+             team_id,
+             event_type,
+             payload
+           )
+           VALUES(
+             $1,$2,$3,'queued',$4::jsonb
+           )`,
+          [
+            buildId,
+            userId,
+            teamId,
+            JSON.stringify({
+              priority:
+                queuePriority,
+              requestedPriority:
+                Number(
+                  requestedPriority ||
+                  100
+                ),
+              plan,
+              activeLimit,
+              queuedBefore:
+                queued,
+              requiredCapabilities:
+                effectiveRequiredCapabilities
+            })
+          ]
+        );
+
+        return {
+          rejected: false,
+          plan,
+          priority:
+            queuePriority,
+          activeLimit,
+          queuedBefore:
+            queued
+        };
+      }
+    );
+
+  if (
+    admission.rejected
+  ) {
+    const error =
+      new Error(
+        admission.message
+      );
+
+    error.code =
+      admission.code;
+
+    error.statusCode =
+      admission.statusCode;
+
+    error.queue =
+      admission;
+
     throw error;
   }
 
-  await query(
-    `INSERT INTO appforge_build_jobs(
-       build_id,
-       user_id,
-       team_id,
-       payload,
-       priority,
-       max_attempts,
-       required_capabilities
-     )
-     VALUES($1,$2,$3,$4::jsonb,$5,$6,$7::jsonb)`,
-    [
-      buildId,
-      userId,
-      teamId,
-      JSON.stringify(payload),
-      priority,
-      config.maxJobAttempts,
-      JSON.stringify(effectiveRequiredCapabilities)
-    ]
-  );
-
-  await event(buildId, userId, teamId, "queued", {
-    priority,
-    requiredCapabilities: effectiveRequiredCapabilities
-  });
-
-  // PostgreSQL is authoritative; Redis only wakes workers early.
+  /*
+   * PostgreSQL asıl kayıt sistemidir.
+   * Redis yalnız worker'ı beklemeden uyandırır.
+   */
   await signalBuildQueue();
+
+  return admission;
 }
 
 export async function registerWorker(
