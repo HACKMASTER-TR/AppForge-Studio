@@ -239,13 +239,9 @@ printf '%s\n' \
   'name: appforge_flutter_readonly_smoke' \
   'environment:' \
   "  sdk: '>=3.0.0 <4.0.0'" \
-  'dependencies:' \
-  '  flutter:' \
-  '    sdk: flutter' \
   >"$flutter_smoke_dir/pubspec.yaml"
 printf '%s\n' \
-  "import 'package:flutter/widgets.dart';" \
-  'void main() => runApp(const SizedBox.shrink());' \
+  "void main() {}" \
   >"$flutter_smoke_dir/lib/main.dart"
 
 (

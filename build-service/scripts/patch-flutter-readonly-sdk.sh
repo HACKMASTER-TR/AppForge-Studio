@@ -87,31 +87,41 @@ grep -F \
 
 echo "APPFORGE_FLUTTER_READONLY_GUARD_OK"
 
-# Flutter 3.44.9 registers the macOS-only libimobiledevice bundle as a
-# universal artifact. On Linux its updater intentionally downloads nothing,
-# but its freshness check still requires these two executables. Without the
-# harmless placeholders every command tries to rewrite
-# bin/cache/libimobiledevice.stamp. That fails when the dedicated Source
-# Worker runs with a read-only root filesystem.
-libimobiledevice_dir="$flutter_root/bin/cache/artifacts/libimobiledevice"
-mkdir -p "$libimobiledevice_dir"
+# Flutter 3.44.9 registers macOS-only iOS USB bundles as universal artifacts.
+# On Linux their updater intentionally downloads nothing, but the cache still
+# expects artifact directories and matching stamps. Seal those unused entries
+# while the image is writable so every Flutter command remains read-only safe.
+for artifact in \
+  libimobiledevice \
+  libusbmuxd \
+  libplist \
+  openssl \
+  libimobiledeviceglue \
+  ios-deploy; do
+  artifact_dir="$flutter_root/bin/cache/artifacts/$artifact"
+  version_file="$flutter_root/bin/internal/$artifact.version"
+  stamp_file="$flutter_root/bin/cache/$artifact.stamp"
 
-for executable in idevicescreenshot idevicesyslog; do
-  placeholder="$libimobiledevice_dir/$executable"
-  if [ ! -e "$placeholder" ]; then
-    : >"$placeholder"
+  if [ ! -s "$version_file" ]; then
+    echo "APPFORGE_FLUTTER_READONLY_PATCH_FAIL: $version_file bulunamadı" >&2
+    exit 1
   fi
+
+  mkdir -p "$artifact_dir"
+  cp "$version_file" "$stamp_file"
+done
+
+# Two artifact freshness checks additionally require executable names even on
+# Linux. They are never invoked by Android builds; placeholders only prevent
+# Flutter from repeatedly attempting a macOS-only refresh.
+for executable in idevicescreenshot idevicesyslog; do
+  placeholder="$flutter_root/bin/cache/artifacts/libimobiledevice/$executable"
+  : >"$placeholder"
   chmod 0755 "$placeholder"
 done
 
-libimobiledevice_version="$flutter_root/bin/internal/libimobiledevice.version"
-libimobiledevice_stamp="$flutter_root/bin/cache/libimobiledevice.stamp"
-
-if [ ! -s "$libimobiledevice_version" ]; then
-  echo "APPFORGE_FLUTTER_READONLY_PATCH_FAIL: $libimobiledevice_version bulunamadı" >&2
-  exit 1
-fi
-
-cp "$libimobiledevice_version" "$libimobiledevice_stamp"
+placeholder="$flutter_root/bin/cache/artifacts/libusbmuxd/iproxy"
+: >"$placeholder"
+chmod 0755 "$placeholder"
 
 echo "APPFORGE_FLUTTER_READONLY_UNIVERSAL_CACHE_OK"

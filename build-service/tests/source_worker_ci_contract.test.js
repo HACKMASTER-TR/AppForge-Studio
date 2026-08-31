@@ -411,10 +411,14 @@ test(
         "engine.stamp",
         "engine.realm",
         "APPFORGE_FLUTTER_READONLY_GUARD_OK",
-        "libimobiledevice.stamp",
-        "libimobiledevice.version",
+        'stamp_file="$flutter_root/bin/cache/$artifact.stamp"',
+        'version_file="$flutter_root/bin/internal/$artifact.version"',
+        "libimobiledevice",
         "idevicescreenshot",
         "idevicesyslog",
+        "libusbmuxd",
+        "iproxy",
+        "ios-deploy",
         "APPFORGE_FLUTTER_READONLY_UNIVERSAL_CACHE_OK"
       ]
     ) {
