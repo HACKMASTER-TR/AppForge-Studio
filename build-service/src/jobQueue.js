@@ -403,6 +403,20 @@ export async function buildQueuePosition(
                AND rw.toolchain_ok = TRUE
                AND $2::jsonb <@
                    rw.capabilities
+
+               -- Dedicated Source Worker yalnız
+               -- source-isolation-dedicated isteyen
+               -- build'lerde kapasiteye dahil edilir.
+               AND (
+                 NOT (
+                   rw.capabilities ?
+                   $3::text
+                 )
+                 OR (
+                   $2::jsonb ?
+                   $3::text
+                 )
+               )
            ),
            0
          )::int AS running
@@ -412,7 +426,19 @@ export async function buildQueuePosition(
          ($1 || ' milliseconds')::interval
          AND w.toolchain_ok = TRUE
          AND $2::jsonb <@
-             w.capabilities`,
+             w.capabilities
+
+         -- Source Worker normal Android slotu değildir.
+         AND (
+           NOT (
+             w.capabilities ?
+             $3::text
+           )
+           OR (
+             $2::jsonb ?
+             $3::text
+           )
+         )`,
       [
         String(
           config.workerStaleAfterMs *
@@ -421,7 +447,8 @@ export async function buildQueuePosition(
         JSON.stringify(
           target.required_capabilities ||
           []
-        )
+        ),
+        config.sourceBuildIsolationCapability
       ]
     );
 
@@ -571,11 +598,37 @@ export async function buildQueuePosition(
              AND $4::jsonb <@
                  w.capabilities
 
+             -- Hedef normal build ise dedicated Source
+             -- Worker bu hedef için uygun değildir.
+             AND (
+               NOT (
+                 w.capabilities ?
+                 $5::text
+               )
+               OR (
+                 $4::jsonb ?
+                 $5::text
+               )
+             )
+
              -- Aynı worker öndeki işi de
              -- çalıştırabiliyorsa gerçekten
              -- hedef build'in önündedir.
              AND q.required_capabilities <@
                  w.capabilities
+
+             -- Source Worker yalnız explicit source
+             -- capability taşıyan öndeki işi claim edebilir.
+             AND (
+               NOT (
+                 w.capabilities ?
+                 $5::text
+               )
+               OR (
+                 q.required_capabilities ?
+                 $5::text
+               )
+             )
          )`,
       [
         target.priority,
@@ -587,7 +640,8 @@ export async function buildQueuePosition(
         JSON.stringify(
           target.required_capabilities ||
           []
-        )
+        ),
+        config.sourceBuildIsolationCapability
       ]
     );
 
@@ -747,10 +801,31 @@ export async function claimNextJob(workerId, capabilities) {
          AND b.cancel_requested = FALSE
          AND j.available_at <= NOW()
          AND j.required_capabilities <@ $1::jsonb
+
+         -- Bir Worker source isolation capability taşıyorsa
+         -- yalnız bu capability'yi açıkça isteyen job'ları
+         -- claim edebilir. Böylece dedicated Source Worker
+         -- normal APK/AAB kuyruğundan ayrılır.
+         AND (
+           NOT (
+             $1::jsonb ?
+             $2::text
+           )
+           OR (
+             j.required_capabilities ?
+             $2::text
+           )
+         )
+
        ORDER BY j.priority ASC, j.created_at ASC
        FOR UPDATE OF j SKIP LOCKED
        LIMIT 1`,
-      [JSON.stringify(capabilities)]
+      [
+        JSON.stringify(
+          capabilities
+        ),
+        config.sourceBuildIsolationCapability
+      ]
     );
 
     if (!result.rowCount) return null;
