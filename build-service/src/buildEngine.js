@@ -61,7 +61,8 @@ import {
   applyNodeRemoteBackendConfig
 } from "./nodeRemoteBackendEngine.js";
 import {
-  assertSourceBuildIsolation
+  assertSourceBuildIsolation,
+  sourceBuildPreflightCapabilities
 } from "./sourceBuildIsolation.js";
 import {
   androidAppCategoryAttribute
@@ -373,7 +374,18 @@ export function preflight(c, files = {}) {
         requireIsolation:
           config.sourceBuildRequireIsolation,
         workerCapabilities:
-          config.workerCapabilities,
+          sourceBuildPreflightCapabilities(
+            {
+              runInlineWorker:
+                config.runInlineWorker,
+              workerCapabilities:
+                config.workerCapabilities,
+              requireIsolation:
+                config.sourceBuildRequireIsolation,
+              isolationCapability:
+                config.sourceBuildIsolationCapability
+            }
+          ),
         requiredCapability:
           config.sourceBuildIsolationCapability
       }

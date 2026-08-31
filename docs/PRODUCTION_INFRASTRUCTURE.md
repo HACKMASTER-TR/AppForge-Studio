@@ -73,6 +73,7 @@ WORKER_CAPABILITIES=android-api-37,build-tools-36.0.0,java-17,gradle,source-isol
 ```
 
 Do not add `source-isolation-dedicated` to normal Android Workers.
+The API service does not need to advertise this value through `WORKER_CAPABILITIES` when `RUN_INLINE_WORKER=false`; the API tags eligible jobs and the dedicated Source Worker attests the capability at startup.
 
 The dedicated Source Worker is expected for code-executing `LOCAL` engines such as
 `android-gradle`, `node-web`, `flutter`, `react-native-android`, `python-android`,

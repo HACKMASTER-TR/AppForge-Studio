@@ -104,6 +104,44 @@ export function untrustedSourceEngines() {
   return [...UNTRUSTED_SOURCE_ENGINES].sort();
 }
 
+
+export function sourceBuildPreflightCapabilities({
+  runInlineWorker = true,
+  workerCapabilities = [],
+  requireIsolation = false,
+  isolationCapability = "source-isolation-dedicated"
+}) {
+  const actualCapabilities =
+    (Array.isArray(workerCapabilities) ? workerCapabilities : [])
+      .map(value => String(value || "").trim())
+      .filter(Boolean);
+
+  /*
+   * Inline modda preflight gerçekten bu prosesin Worker
+   * capability'lerini doğrular.
+   *
+   * Distributed modda API bir Worker değildir. API'nin
+   * WORKER_CAPABILITIES değeri execution attestation olarak
+   * kullanılamaz. Güvenlik kontratı queue'nun build'e eklediği
+   * zorunlu source-isolation-dedicated capability'dir; gerçek
+   * Source Worker kendi startup guard'ında aynı capability ve
+   * isolation mode'u ayrıca doğrular.
+   */
+  if (
+    runInlineWorker ||
+    !Boolean(requireIsolation)
+  ) {
+    return [...new Set(actualCapabilities)];
+  }
+
+  const capability =
+    String(isolationCapability || "").trim();
+
+  return capability
+    ? [capability]
+    : [];
+}
+
 export function requiredSourceWorkerCapabilities({
   payload,
   requiredCapabilities = [],

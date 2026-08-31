@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import {
   assertSourceBuildIsolation,
   isUntrustedSourceEngine,
-  sourceBuildIsolationStatus
+  sourceBuildIsolationStatus,
+  sourceBuildPreflightCapabilities
 } from "../src/sourceBuildIsolation.js";
 
 test(
@@ -104,5 +105,67 @@ test(
 
     assert.equal(status.attestedIsolation, true);
     assert.equal(status.blocked, false);
+  }
+);
+
+test(
+  "distributed API preflight uses the reserved Source Worker route capability",
+  () => {
+    const capabilities =
+      sourceBuildPreflightCapabilities({
+        runInlineWorker: false,
+        workerCapabilities: [
+          "android-api-37",
+          "gradle"
+        ],
+        requireIsolation: true,
+        isolationCapability:
+          "source-isolation-dedicated"
+      });
+
+    assert.deepEqual(
+      capabilities,
+      ["source-isolation-dedicated"]
+    );
+
+    const status =
+      assertSourceBuildIsolation({
+        engine: "android-gradle",
+        mode: "dedicated",
+        requireIsolation: true,
+        workerCapabilities: capabilities,
+        requiredCapability:
+          "source-isolation-dedicated"
+      });
+
+    assert.equal(status.attestedIsolation, true);
+    assert.equal(status.blocked, false);
+  }
+);
+
+test(
+  "distributed API still fails closed when isolation mode is shared",
+  () => {
+    const capabilities =
+      sourceBuildPreflightCapabilities({
+        runInlineWorker: false,
+        workerCapabilities: [],
+        requireIsolation: true,
+        isolationCapability:
+          "source-isolation-dedicated"
+      });
+
+    assert.throws(
+      () =>
+        assertSourceBuildIsolation({
+          engine: "android-gradle",
+          mode: "shared",
+          requireIsolation: true,
+          workerCapabilities: capabilities,
+          requiredCapability:
+            "source-isolation-dedicated"
+        }),
+      /izole Worker zorunlu/
+    );
   }
 );
