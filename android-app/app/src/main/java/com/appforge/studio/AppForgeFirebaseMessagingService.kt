@@ -14,6 +14,14 @@ import com.google.firebase.messaging.RemoteMessage
 class AppForgeFirebaseMessagingService :
     FirebaseMessagingService() {
 
+    /*
+     * Firebase Messaging registration API geçiş sürecinde
+     * bu callback deprecated olarak işaretlenebiliyor.
+     *
+     * Callback hâlâ token yenilenmesini yakalamak için
+     * Firebase tarafından desteklenen akışta kullanılıyor.
+     */
+    @Suppress("OVERRIDE_DEPRECATION")
     override fun onNewToken(
         token: String
     ) {
