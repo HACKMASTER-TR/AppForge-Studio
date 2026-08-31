@@ -15770,7 +15770,7 @@ private fun BuildStep(
             mutableStateOf("")
         }
 
-    val safeProgress =
+    val backendProgress =
         progress.coerceIn(
             0,
             100
@@ -15780,6 +15780,133 @@ private fun BuildStep(
         status
             .trim()
             .lowercase()
+
+    val progressTerminalFailure =
+        normalizedStatus ==
+            "failed" ||
+        normalizedStatus ==
+            "cancelled" ||
+        normalizedStatus ==
+            "canceled" ||
+        normalizedStatus
+            .startsWith(
+                "hata:"
+            )
+
+    var flowingProgress by
+        remember(
+            buildId
+        ) {
+            mutableIntStateOf(
+                if (
+                    backendProgress > 0
+                ) {
+                    1
+                } else {
+                    0
+                }
+            )
+        }
+
+    LaunchedEffect(
+        buildId,
+        backendProgress,
+        normalizedStatus
+    ) {
+        val active =
+            backendProgress > 0 ||
+            normalizedStatus ==
+                "queued" ||
+            normalizedStatus ==
+                "building" ||
+            normalizedStatus ==
+                "success"
+
+        if (
+            !active
+        ) {
+            flowingProgress =
+                0
+
+            return@LaunchedEffect
+        }
+
+        if (
+            flowingProgress <= 0
+        ) {
+            flowingProgress =
+                1
+        }
+
+        if (
+            normalizedStatus ==
+                "success"
+        ) {
+            while (
+                flowingProgress <
+                    100
+            ) {
+                delay(
+                    18L
+                )
+
+                flowingProgress +=
+                    1
+            }
+
+            return@LaunchedEffect
+        }
+
+        if (
+            progressTerminalFailure
+        ) {
+            return@LaunchedEffect
+        }
+
+        while (
+            flowingProgress <
+                99
+        ) {
+            val serverTarget =
+                backendProgress
+                    .coerceIn(
+                        1,
+                        99
+                    )
+
+            val waitMs =
+                when {
+                    flowingProgress <
+                        serverTarget ->
+                        40L
+
+                    flowingProgress <
+                        60 ->
+                        850L
+
+                    flowingProgress <
+                        85 ->
+                        1_150L
+
+                    else ->
+                        1_650L
+                }
+
+            delay(
+                waitMs
+            )
+
+            flowingProgress +=
+                1
+        }
+    }
+
+    val safeProgress =
+        flowingProgress
+            .coerceIn(
+                0,
+                100
+            )
 
     val queueWaitLabel =
         when {
@@ -15869,22 +15996,26 @@ private fun BuildStep(
                 "canceled" ->
                 "Derleme iptal edildi"
 
-            safeProgress >= 100 ->
+            normalizedStatus ==
+                "success" ->
                 "Tamamlandı"
 
-            safeProgress >= 90 ->
+            backendProgress >= 100 ->
+                "Tamamlandı"
+
+            backendProgress >= 90 ->
                 "Çıktılar hazırlanıyor"
 
-            safeProgress >= 70 ->
+            backendProgress >= 70 ->
                 "Uygulama paketleniyor"
 
-            safeProgress >= 40 ->
+            backendProgress >= 40 ->
                 "Kaynaklar derleniyor"
 
-            safeProgress >= 15 ->
+            backendProgress >= 15 ->
                 "Proje hazırlanıyor"
 
-            safeProgress > 0 ->
+            backendProgress > 0 ->
                 "Build başlatılıyor"
 
             else ->

@@ -68,6 +68,9 @@ import {
 import {
   androidAppCategoryAttribute
 } from "./androidAppCategory.js";
+import {
+  installGradleAndroidSafeArea
+} from "./androidSafeArea.js";
 
 function esc(s) {
   return String(s ?? "").replaceAll("\\", "\\\\").replaceAll('"', '\\"');
@@ -2662,6 +2665,18 @@ export async function executeBuild(job) {
             }
           }
         };
+
+      await installGradleAndroidSafeArea(
+        {
+          androidProjectDir:
+            android
+        }
+      );
+
+      await appendLog(
+        buildId,
+        "📱 Android safe-area runtime etkin • sistem çubukları içerik alanından ayrıldı."
+      );
 
       const preferredGradleProfile =
         gradlePerformanceProfile(

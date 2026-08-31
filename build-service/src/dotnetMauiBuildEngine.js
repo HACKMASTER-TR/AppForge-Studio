@@ -1,3 +1,4 @@
+import { installDotnetAndroidSafeArea } from "./androidSafeArea.js";
 import AdmZip from "adm-zip";
 import {
   promises as fs
@@ -1076,6 +1077,15 @@ export async function buildDotnetMauiArtifacts({
   onLog = null,
   cancelled = null
 }) {
+  /* APPFORGE_SAFE_AREA_buildDotnetMauiArtifacts */
+  await installDotnetAndroidSafeArea(
+    {
+      projectRoot:
+        prepared.projectRoot,
+      packageName
+    }
+  );
+
   if (
     !prepared?.androidReady
   ) {

@@ -1,3 +1,4 @@
+import { installGradleAndroidSafeArea } from "./androidSafeArea.js";
 import AdmZip from "adm-zip";
 import {
   promises as fs
@@ -972,6 +973,16 @@ export async function buildFlutterArtifacts({
       "Flutter proje hazırlığı eksik."
     );
   }
+
+  await installGradleAndroidSafeArea(
+    {
+      androidProjectDir:
+        path.join(
+          prepared.projectRoot,
+          "android"
+        )
+    }
+  );
 
   await configureFlutterAndroidSigning(
     prepared.projectRoot,

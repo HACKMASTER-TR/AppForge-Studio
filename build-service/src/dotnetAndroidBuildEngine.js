@@ -1,3 +1,4 @@
+import { installDotnetAndroidSafeArea } from "./androidSafeArea.js";
 import AdmZip from "adm-zip";
 import {
   promises as fs
@@ -1122,6 +1123,15 @@ export async function buildDotnetAndroidArtifacts({
   onLog = null,
   cancelled = null
 }) {
+  /* APPFORGE_SAFE_AREA_buildDotnetAndroidArtifacts */
+  await installDotnetAndroidSafeArea(
+    {
+      projectRoot:
+        prepared.projectRoot,
+      packageName
+    }
+  );
+
   if (
     !prepared
       ?.androidReady

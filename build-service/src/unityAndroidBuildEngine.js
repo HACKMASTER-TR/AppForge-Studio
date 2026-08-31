@@ -1,3 +1,4 @@
+import { installUnityAndroidSafeArea } from "./androidSafeArea.js";
 import AdmZip from "adm-zip";
 import {
   promises as fs
@@ -728,6 +729,13 @@ export async function prepareUnityAndroidSource({
       );
     }
   }
+
+  await installUnityAndroidSafeArea(
+    {
+      projectRoot:
+        found.projectRoot
+    }
+  );
 
   if (
     onLog

@@ -1,3 +1,4 @@
+import { installGradleAndroidSafeArea } from "./androidSafeArea.js";
 import AdmZip from "adm-zip";
 import {
   promises as fs
@@ -1487,6 +1488,13 @@ export async function buildReactNativeArtifacts({
       "React Native projesinde build edilebilir android/ klasörü bulunamadı."
     );
   }
+
+  await installGradleAndroidSafeArea(
+    {
+      androidProjectDir:
+        nativePrepared.androidDir
+    }
+  );
 
   await configureAndroidOverrides(
     nativePrepared,

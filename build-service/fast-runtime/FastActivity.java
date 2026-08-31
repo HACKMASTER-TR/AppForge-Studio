@@ -121,7 +121,9 @@ public final class FastActivity extends Activity {
 
         setContentView(root);
 
-        requestConfiguredPermissions();
+
+        applyAppForgeSystemBarInsets();
+requestConfiguredPermissions();
 
         if (splashView != null) {
             splashView.postDelayed(
@@ -2755,4 +2757,53 @@ public final class FastActivity extends Activity {
 
         super.onDestroy();
     }
+
+    private void applyAppForgeSystemBarInsets() {
+        final android.view.View content =
+            getWindow()
+                .getDecorView()
+                .findViewById(
+                    android.R.id.content
+                );
+
+        if (content == null) {
+            return;
+        }
+
+        final int baseLeft =
+            content.getPaddingLeft();
+        final int baseTop =
+            content.getPaddingTop();
+        final int baseRight =
+            content.getPaddingRight();
+        final int baseBottom =
+            content.getPaddingBottom();
+
+        content.setOnApplyWindowInsetsListener(
+            (
+                view,
+                insets
+            ) -> {
+                if (insets == null) {
+                    return null;
+                }
+
+                view.setPadding(
+                    baseLeft +
+                        insets.getSystemWindowInsetLeft(),
+                    baseTop +
+                        insets.getSystemWindowInsetTop(),
+                    baseRight +
+                        insets.getSystemWindowInsetRight(),
+                    baseBottom +
+                        insets.getSystemWindowInsetBottom()
+                );
+
+                return insets;
+            }
+        );
+
+        content.requestApplyInsets();
+    }
+
 }
