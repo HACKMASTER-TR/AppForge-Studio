@@ -344,6 +344,281 @@ export async function enqueueJob({
   return admission;
 }
 
+
+export async function buildQueuePosition(
+  buildId
+) {
+  const targetResult =
+    await query(
+      `SELECT
+         j.id,
+         j.status,
+         j.priority,
+         j.created_at,
+         j.available_at,
+         j.required_capabilities,
+         b.output_type
+       FROM appforge_build_jobs j
+       JOIN appforge_builds b
+         ON b.id = j.build_id
+       WHERE j.build_id = $1
+       LIMIT 1`,
+      [
+        buildId
+      ]
+    );
+
+  const target =
+    targetResult.rows[0];
+
+  /*
+   * Cache HIT gibi doğrudan tamamlanan build'lerde
+   * queue job kaydı bulunmayabilir.
+   */
+  if (!target) {
+    return null;
+  }
+
+  const workerResult =
+    await query(
+      `SELECT
+         COUNT(*)::int AS count
+       FROM appforge_workers
+       WHERE last_seen_at >
+         NOW() -
+         ($1 || ' milliseconds')::interval
+         AND toolchain_ok = TRUE
+         AND $2::jsonb <@
+             capabilities`,
+      [
+        String(
+          config.workerStaleAfterMs *
+          2
+        ),
+        JSON.stringify(
+          target.required_capabilities ||
+          []
+        )
+      ]
+    );
+
+  const compatibleWorkerSlots =
+    Number(
+      workerResult.rows[0]
+        ?.count || 0
+    );
+
+  const durationResult =
+    await query(
+      `SELECT
+         COALESCE(
+           AVG(duration_ms),
+           0
+         )::bigint AS average_ms
+       FROM (
+         SELECT
+           duration_ms
+         FROM appforge_builds
+         WHERE status = 'success'
+           AND duration_ms IS NOT NULL
+           AND duration_ms > 0
+           AND output_type = $1
+         ORDER BY
+           completed_at DESC
+           NULLS LAST
+         LIMIT 30
+       ) recent`,
+      [
+        target.output_type
+      ]
+    );
+
+  const averageMs =
+    Number(
+      durationResult.rows[0]
+        ?.average_ms || 0
+    );
+
+  const averageBuildSeconds =
+    averageMs > 0
+      ? Math.max(
+          1,
+          Math.round(
+            averageMs /
+            1000
+          )
+        )
+      : null;
+
+  /*
+   * Çalışmaya başlamış build artık kuyrukta değildir.
+   */
+  if (
+    target.status ===
+    "running"
+  ) {
+    return {
+      status:
+        "running",
+      position: 0,
+      ahead: 0,
+      compatibleWorkerSlots,
+      averageBuildSeconds,
+      estimatedWaitSeconds: 0,
+      estimate:
+        "running"
+    };
+  }
+
+  if (
+    target.status !==
+    "queued"
+  ) {
+    return {
+      status:
+        target.status,
+      position: null,
+      ahead: null,
+      compatibleWorkerSlots,
+      averageBuildSeconds,
+      estimatedWaitSeconds: null,
+      estimate:
+        "not_queued"
+    };
+  }
+
+  /*
+   * Worker'ın kullandığı gerçek sıra:
+   *
+   * priority ASC
+   * created_at ASC
+   *
+   * Yalnız şu anda claim edilebilir queued job'lar
+   * önümüzde sayılır.
+   */
+  const aheadResult =
+    await query(
+      `SELECT
+         COUNT(*)::int AS count
+       FROM appforge_build_jobs q
+       WHERE q.status = 'queued'
+         AND q.available_at <= NOW()
+         AND (
+           q.priority < $1
+           OR (
+             q.priority = $1
+             AND q.created_at < $2
+           )
+         )
+         AND EXISTS (
+           SELECT 1
+           FROM appforge_workers w
+           WHERE w.last_seen_at >
+             NOW() -
+             ($3 || ' milliseconds')::interval
+             AND w.toolchain_ok = TRUE
+
+             -- Worker hedef build'i çalıştırabilmeli.
+             AND $4::jsonb <@
+                 w.capabilities
+
+             -- Aynı worker öndeki işi de
+             -- çalıştırabiliyorsa gerçekten
+             -- hedef build'in önündedir.
+             AND q.required_capabilities <@
+                 w.capabilities
+         )`,
+      [
+        target.priority,
+        target.created_at,
+        String(
+          config.workerStaleAfterMs *
+          2
+        ),
+        JSON.stringify(
+          target.required_capabilities ||
+          []
+        )
+      ]
+    );
+
+  const ahead =
+    Number(
+      aheadResult.rows[0]
+        ?.count || 0
+    );
+
+  const position =
+    ahead + 1;
+
+  const availableAtMs =
+    new Date(
+      target.available_at
+    ).getTime();
+
+  const availableInSeconds =
+    Number.isFinite(
+      availableAtMs
+    )
+      ? Math.max(
+          0,
+          Math.ceil(
+            (
+              availableAtMs -
+              Date.now()
+            ) /
+            1000
+          )
+        )
+      : 0;
+
+  let estimatedWaitSeconds =
+    null;
+
+  if (
+    compatibleWorkerSlots > 0 &&
+    averageBuildSeconds
+  ) {
+    const batchesAhead =
+      Math.ceil(
+        ahead /
+        compatibleWorkerSlots
+      );
+
+    estimatedWaitSeconds =
+      availableInSeconds +
+      (
+        batchesAhead *
+        averageBuildSeconds
+      );
+  }
+
+  return {
+    status:
+      "queued",
+    position,
+    ahead,
+    priority:
+      Number(
+        target.priority
+      ),
+    compatibleWorkerSlots,
+    averageBuildSeconds,
+    availableInSeconds,
+    estimatedWaitSeconds,
+
+    /*
+     * Build türleri farklı sürelerde çalışabildiği ve
+     * daha yüksek öncelikli yeni işler gelebileceği için
+     * bu değer tahmindir.
+     */
+    estimate:
+      estimatedWaitSeconds == null
+        ? "unavailable"
+        : "approximate"
+  };
+}
+
 export async function registerWorker(
   workerId,
   capabilities,

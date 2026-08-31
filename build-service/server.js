@@ -38,6 +38,7 @@ import {
 import {
   enqueueJob,
   queueStats,
+  buildQueuePosition,
   requestBuildCancellation,
   setQueuedPriority
 } from "./src/jobQueue.js";
@@ -2410,6 +2411,20 @@ app.get(
     }
 
     delete build.userId;
+
+    /*
+     * UI bu alanı kullanarak:
+     *
+     * "Sırada 247."
+     * "Önünde 246 build var."
+     * "Tahmini bekleme: 18 dk."
+     *
+     * gibi bilgileri gösterebilir.
+     */
+    build.queue =
+      await buildQueuePosition(
+        build.buildId
+      );
 
     res.json(build);
   }
