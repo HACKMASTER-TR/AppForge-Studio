@@ -1,0 +1,25 @@
+FROM electronuserland/builder:wine
+
+ENV NODE_ENV=production
+ENV ELECTRON_CACHE=/root/.cache/electron
+ENV ELECTRON_BUILDER_CACHE=/root/.cache/electron-builder
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install --omit=dev \
+    && npm install \
+       --no-save \
+       --omit=dev \
+       electron-builder@26.15.3 \
+    && ./node_modules/.bin/electron-builder --version
+
+COPY . .
+
+RUN node --check src/windowsBuild.js \
+    && node --check src/workerRuntime.js \
+    && node --check windows-worker.js \
+    && node --check server.js
+
+CMD ["node", "--import", "./instrument.mjs", "windows-worker.js"]

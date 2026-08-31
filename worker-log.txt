@@ -1,0 +1,742 @@
+
+> appforge-build-service@3.0.0 worker
+> node worker.js
+
+Starting Container
+{
+  "type": "worker_toolchain",
+  "ok": true,
+  "detected": {
+    "javaMajor": 17,
+    "gradleVersion": "9.3.1",
+    "sdkRoot": "/opt/android-sdk",
+    "sdkManager": true,
+    "platformJar": "/opt/android-sdk/platforms/android-37.0/android.jar",
+    "buildToolsDir": "/opt/android-sdk/build-tools/37.0.0"
+  },
+  "errors": []
+}
+AppForge v1.6 worker starting with capabilities: android-api-37, build-tools-37.0.0, java-17, gradle, gradle-9.3.1
+Worker slot started: railway-worker-1@fdece19ac6b0#1 [android-api-37, build-tools-37.0.0, java-17, gradle, gradle-9.3.1]
+Worker railway-worker-1@fdece19ac6b0#1 claimed job 1acc8cf2-fc81-491c-bf91-e2ad804f5670 build 130ee4f0-36dd-449e-a448-7722b1f9645d
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Android proje şablonu oluşturuluyor...
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Gradle derlemesi başlatılıyor...
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Welcome to Gradle 9.3.1!
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Here are the highlights of this release:
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d]  - Test reporting improvements
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d]  - Error and warning improvements
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d]  - Build authoring improvements
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] For more details see https://docs.gradle.org/9.3.1/release-notes.html
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.3.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Daemon will be stopped at the end of the build 
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Checking the license for package Android SDK Build-Tools 36 in /opt/android-sdk/licenses
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] License for package Android SDK Build-Tools 36 accepted.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Preparing "Install Android SDK Build-Tools 36 v.36.0.0".
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] "Install Android SDK Build-Tools 36 v.36.0.0" ready.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Installing Android SDK Build-Tools 36 in /opt/android-sdk/build-tools/36.0.0
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] "Install Android SDK Build-Tools 36 v.36.0.0" complete.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] "Install Android SDK Build-Tools 36 v.36.0.0" finished.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] [=========                              ] 25%                                   
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:preBuild UP-TO-DATE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:preReleaseBuild UP-TO-DATE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeReleaseJniLibFolders
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeReleaseNativeLibs NO-SOURCE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:stripReleaseDebugSymbols
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d]  NO-SOURCE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:extractReleaseNativeSymbolTables NO-SOURCE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:checkReleaseDuplicateClasses
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:generateReleaseResources
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:packageReleaseResources
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:processReleaseNavigationResources
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:parseReleaseLocalResources
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:generateReleaseRFile
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] The message received from the daemon indicates that the daemon has disappeared.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Build request sent: Build{id=aba08711-2b50-4944-9e72-69a73ada11b7, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Attempting to read last messages from the daemon log...
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Daemon pid: 140
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d]   log file: /app/gradle-cache/daemon/9.3.1/daemon-140.out.log
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] ----- Last 20 lines from daemon log file - daemon-140.out.log -----
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:35:19.573+0000 [INFO] [org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy] Daemon is about to start building Build{id=aba08711-2b50-4944-9e72-69a73ada11b7, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}. Dispatching build started information...
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:35:19.573+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 21: dispatching org.gradle.launcher.daemon.protocol.BuildStarted@10e18e60
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:35:19.574+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment] Configuring env variables: [PATH, npm_config_npm_version, RAILWAY_GIT_BRANCH, GRADLE_OPTS, S3_REGION, npm_lifecycle_script, NODE_VERSION, ANDROID_HOME, RAILWAY_SERVICE_NAME, WORKER_ID, RAILWAY_PROJECT_NAME, RAILWAY_BETA_ENABLE_RUNTIME_V2, JWT_SECRET, COLOR, npm_lifecycle_event, INIT_CWD, PWD, S3_BUCKET, APPFORGE_STORE_PASSWORD, npm_package_version, PORT, npm_config_noproxy, NODE, RAILWAY_REPLICA_REGION, npm_config_prefix, RAILWAY_SERVICE_APPFORGE_STUDIO_URL, npm_node_execpath, S3_ENDPOINT, npm_config_init_module, BUILD_CONCURRENCY, RAILWAY_DEPLOYMENT_ID, ANDROID_SDK_LICENSE_ACCEPTED, DEBIAN_FRONTEND, YARN_VERSION, NODE_ENV, npm_config_cache, npm_package_json, npm_config_node_gyp, RAILWAY_GIT_COMMIT_SHA, npm_command, RAILWAY_REPLICA_ID, RAILWAY_SNAPSHOT_ID, GRADLE_HOME, DATABASE_URL, GRADLE_USER_HOME, S3_SECRET_ACCESS_KEY, RAILWAY_ENVIRONMENT, npm_config_userconfig, npm_execpath, S3_FORCE_PATH_STYLE, S3_ACCESS_KEY_ID, npm_config_local_prefix, RAILWAY_ENVIRONMENT_ID, npm_config_globalconfig, STORAGE_DRIVER, RAILWAY_DOCKERFILE_PATH, RAILWAY_PRIVATE_DOMAIN, APPFORGE_KEY_PASSWORD, npm_config_user_agent, RAILWAY_GIT_AUTHOR, ANDROID_SDK_ROOT, npm_package_name, RAILWAY_GIT_COMMIT_MESSAGE, EDITOR, npm_config_global_prefix, RAILWAY_ENVIRONMENT_NAME, HOSTNAME, APPFORGE_KEY_ALIAS, RAILWAY_GIT_REPO_NAME, RAILWAY_PROJECT_ID, RAILWAY_GIT_REPO_OWNER, RAILWAY_SERVICE_ID, HOME]
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:35:19.577+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.LogToClient] About to start relaying all logs to the client via the connection.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:35:19.577+0000 [INFO] [org.gradle.launcher.daemon.server.exec.LogToClient] The client will now receive all logging from the daemon (pid: 140). The daemon log file: /app/gradle-cache/daemon/9.3.1/daemon-140.out.log
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:35:19.578+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.RequestStopIfSingleUsedDaemon] Requesting daemon stop after processing Build{id=aba08711-2b50-4944-9e72-69a73ada11b7, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:35:19.578+0000 [LIFECYCLE] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Daemon will be stopped at the end of the build 
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:35:19.578+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Stop as soon as idle requested. The daemon is busy
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:35:19.578+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon stop has been requested. Sleeping until state changes.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:35:19.580+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] The daemon has started executing the build.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:35:19.580+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] Executing build with daemon context: DefaultDaemonContext[uid=44cd21d3-b0d6-47f7-8148-1c0c1b3dfd82,javaHome=/usr/lib/jvm/java-17-openjdk-amd64,javaVersion=17,javaVendor=Debian,daemonRegistryDir=/app/gradle-cache/daemon,pid=140,idleTimeout=120000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=US,-Duser.language=en,-Duser.variant]
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Checking the license for package Android SDK Build-Tools 36 in /opt/android-sdk/licenses
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] License for package Android SDK Build-Tools 36 accepted.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Preparing "Install Android SDK Build-Tools 36 v.36.0.0".
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] "Install Android SDK Build-Tools 36 v.36.0.0" ready.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Installing Android SDK Build-Tools 36 in /opt/android-sdk/build-tools/36.0.0
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] "Install Android SDK Build-Tools 36 v.36.0.0" complete.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] "Install Android SDK Build-Tools 36 v.36.0.0" finished.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] [=========                              ] 25%                                   ----- End of the daemon log -----
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] FAILURE: Build failed with an exception.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] * What went wrong:
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] * Try:
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Run with --info or --debug option to get more log output.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Run with --scan to get full insights from a Build Scan (powered by Develocity).
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Get more help at https://help.gradle.org.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] * Exception is:
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] org.gradle.launcher.daemon.client.DaemonDisappearedException: Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.daemon.client.DaemonClient.handleDaemonDisappearance(DaemonClient.java:283)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.daemon.client.DaemonClient.monitorBuild(DaemonClient.java:256)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.daemon.client.DaemonClient.executeBuild(DaemonClient.java:209)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:63)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:37)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.RunBuildAction.run(RunBuildAction.java:56)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.internal.Actions$RunnableActionAdapter.execute(Actions.java:167)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:377)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:341)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:74)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:30)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:97)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:40)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:50)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:27)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:41)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:26)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.DefaultCommandLineActionFactory$WithLogging.execute(DefaultCommandLineActionFactory.java:489)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.Main.doAction(Main.java:35)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.bootstrap.EntryPoint.run(EntryPoint.java:53)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.bootstrap.ProcessBootstrap.runNoExit(ProcessBootstrap.java:72)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.bootstrap.ProcessBootstrap.run(ProcessBootstrap.java:39)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.GradleMain.main(GradleMain.java:26)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:compileReleaseKotlin
+[GRADLE FAILURE 130ee4f0-36dd-449e-a448-7722b1f9645d]
+"Install Android SDK Build-Tools 36 v.36.0.0" complete.
+"Install Android SDK Build-Tools 36 v.36.0.0" finished.
+[=========                              ] 25%
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:mergeReleaseJniLibFolders
+> Task :app:mergeReleaseNativeLibs NO-SOURCE
+> Task :app:stripReleaseDebugSymbols
+NO-SOURCE
+> Task :app:extractReleaseNativeSymbolTables NO-SOURCE
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:generateReleaseResources
+> Task :app:packageReleaseResources
+> Task :app:processReleaseNavigationResources
+> Task :app:parseReleaseLocalResources
+> Task :app:generateReleaseRFile
+The message received from the daemon indicates that the daemon has disappeared.
+Build request sent: Build{id=aba08711-2b50-4944-9e72-69a73ada11b7, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+Attempting to read last messages from the daemon log...
+Daemon pid: 140
+log file: /app/gradle-cache/daemon/9.3.1/daemon-140.out.log
+----- Last 20 lines from daemon log file - daemon-140.out.log -----
+2026-08-23T01:35:19.573+0000 [INFO] [org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy] Daemon is about to start building Build{id=aba08711-2b50-4944-9e72-69a73ada11b7, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}. Dispatching build started information...
+2026-08-23T01:35:19.573+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 21: dispatching org.gradle.launcher.daemon.protocol.BuildStarted@10e18e60
+2026-08-23T01:35:19.574+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment] Configuring env variables: [PATH, npm_config_npm_version, RAILWAY_GIT_BRANCH, GRADLE_OPTS, S3_REGION, npm_lifecycle_script, NODE_VERSION, ANDROID_HOME, RAILWAY_SERVICE_NAME, WORKER_ID, RAILWAY_PROJECT_NAME, RAILWAY_BETA_ENABLE_RUNTIME_V2, JWT_SECRET, COLOR, npm_lifecycle_event, INIT_CWD, PWD, S3_BUCKET, APPFORGE_STORE_PASSWORD, npm_package_version, PORT, npm_config_noproxy, NODE, RAILWAY_REPLICA_REGION, npm_config_prefix, RAILWAY_SERVICE_APPFORGE_STUDIO_URL, npm_node_execpath, S3_ENDPOINT, npm_config_init_module, BUILD_CONCURRENCY, RAILWAY_DEPLOYMENT_ID, ANDROID_SDK_LICENSE_ACCEPTED, DEBIAN_FRONTEND, YARN_VERSION, NODE_ENV, npm_config_cache, npm_package_json, npm_config_node_gyp, RAILWAY_GIT_COMMIT_SHA, npm_command, RAILWAY_REPLICA_ID, RAILWAY_SNAPSHOT_ID, GRADLE_HOME, DATABASE_URL, GRADLE_USER_HOME, S3_SECRET_ACCESS_KEY, RAILWAY_ENVIRONMENT, npm_config_userconfig, npm_execpath, S3_FORCE_PATH_STYLE, S3_ACCESS_KEY_ID, npm_config_local_prefix, RAILWAY_ENVIRONMENT_ID, npm_config_globalconfig, STORAGE_DRIVER, RAILWAY_DOCKERFILE_PATH, RAILWAY_PRIVATE_DOMAIN, APPFORGE_KEY_PASSWORD, npm_config_user_agent, RAILWAY_GIT_AUTHOR, ANDROID_SDK_ROOT, npm_package_name, RAILWAY_GIT_COMMIT_MESSAGE, EDITOR, npm_config_global_prefix, RAILWAY_ENVIRONMENT_NAME, HOSTNAME, APPFORGE_KEY_ALIAS, RAILWAY_GIT_REPO_NAME, RAILWAY_PROJECT_ID, RAILWAY_GIT_REPO_OWNER, RAILWAY_SERVICE_ID, HOME]
+2026-08-23T01:35:19.577+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.LogToClient] About to start relaying all logs to the client via the connection.
+2026-08-23T01:35:19.577+0000 [INFO] [org.gradle.launcher.daemon.server.exec.LogToClient] The client will now receive all logging from the daemon (pid: 140). The daemon log file: /app/gradle-cache/daemon/9.3.1/daemon-140.out.log
+2026-08-23T01:35:19.578+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.RequestStopIfSingleUsedDaemon] Requesting daemon stop after processing Build{id=aba08711-2b50-4944-9e72-69a73ada11b7, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+2026-08-23T01:35:19.578+0000 [LIFECYCLE] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Daemon will be stopped at the end of the build
+2026-08-23T01:35:19.578+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Stop as soon as idle requested. The daemon is busy
+2026-08-23T01:35:19.578+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon stop has been requested. Sleeping until state changes.
+2026-08-23T01:35:19.580+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] The daemon has started executing the build.
+2026-08-23T01:35:19.580+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] Executing build with daemon context: DefaultDaemonContext[uid=44cd21d3-b0d6-47f7-8148-1c0c1b3dfd82,javaHome=/usr/lib/jvm/java-17-openjdk-amd64,javaVersion=17,javaVendor=Debian,daemonRegistryDir=/app/gradle-cache/daemon,pid=140,idleTimeout=120000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=US,-Duser.language=en,-Duser.variant]
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+Checking the license for package Android SDK Build-Tools 36 in /opt/android-sdk/licenses
+License for package Android SDK Build-Tools 36 accepted.
+Preparing "Install Android SDK Build-Tools 36 v.36.0.0".
+"Install Android SDK Build-Tools 36 v.36.0.0" ready.
+Installing Android SDK Build-Tools 36 in /opt/android-sdk/build-tools/36.0.0
+"Install Android SDK Build-Tools 36 v.36.0.0" complete.
+"Install Android SDK Build-Tools 36 v.36.0.0" finished.
+[=========                              ] 25%                                   ----- End of the daemon log -----
+FAILURE: Build failed with an exception.
+* What went wrong:
+Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+* Try:
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+* Exception is:
+org.gradle.launcher.daemon.client.DaemonDisappearedException: Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+at org.gradle.launcher.daemon.client.DaemonClient.handleDaemonDisappearance(DaemonClient.java:283)
+at org.gradle.launcher.daemon.client.DaemonClient.monitorBuild(DaemonClient.java:256)
+at org.gradle.launcher.daemon.client.DaemonClient.executeBuild(DaemonClient.java:209)
+at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:63)
+at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:37)
+at org.gradle.launcher.cli.RunBuildAction.run(RunBuildAction.java:56)
+at org.gradle.internal.Actions$RunnableActionAdapter.execute(Actions.java:167)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:377)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:341)
+at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:74)
+at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:30)
+at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:97)
+at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:40)
+at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:50)
+at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:27)
+at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:41)
+at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:26)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$WithLogging.execute(DefaultCommandLineActionFactory.java:489)
+at org.gradle.launcher.Main.doAction(Main.java:35)
+at org.gradle.launcher.bootstrap.EntryPoint.run(EntryPoint.java:53)
+at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+at org.gradle.launcher.bootstrap.ProcessBootstrap.runNoExit(ProcessBootstrap.java:72)
+at org.gradle.launcher.bootstrap.ProcessBootstrap.run(ProcessBootstrap.java:39)
+at org.gradle.launcher.GradleMain.main(GradleMain.java:26)
+> Task :app:compileReleaseKotlin
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] HATA: Gradle başarısız. Çıkış kodu: 1
+
+--- GRADLE SON ÇIKTI ---
+"Install Android SDK Build-Tools 36 v.36.0.0" complete.
+"Install Android SDK Build-Tools 36 v.36.0.0" finished.
+[=========                              ] 25%
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:mergeReleaseJniLibFolders
+> Task :app:mergeReleaseNativeLibs NO-SOURCE
+> Task :app:stripReleaseDebugSymbols
+NO-SOURCE
+> Task :app:extractReleaseNativeSymbolTables NO-SOURCE
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:generateReleaseResources
+> Task :app:packageReleaseResources
+> Task :app:processReleaseNavigationResources
+> Task :app:parseReleaseLocalResources
+> Task :app:generateReleaseRFile
+The message received from the daemon indicates that the daemon has disappeared.
+Build request sent: Build{id=aba08711-2b50-4944-9e72-69a73ada11b7, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+Attempting to read last messages from the daemon log...
+Daemon pid: 140
+log file: /app/gradle-cache/daemon/9.3.1/daemon-140.out.log
+----- Last 20 lines from daemon log file - daemon-140.out.log -----
+2026-08-23T01:35:19.573+0000 [INFO] [org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy] Daemon is about to start building Build{id=aba08711-2b50-4944-9e72-69a73ada11b7, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}. Dispatching build started information...
+2026-08-23T01:35:19.573+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 21: dispatching org.gradle.launcher.daemon.protocol.BuildStarted@10e18e60
+2026-08-23T01:35:19.574+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment] Configuring env variables: [PATH, npm_config_npm_version, RAILWAY_GIT_BRANCH, GRADLE_OPTS, S3_REGION, npm_lifecycle_script, NODE_VERSION, ANDROID_HOME, RAILWAY_SERVICE_NAME, WORKER_ID, RAILWAY_PROJECT_NAME, RAILWAY_BETA_ENABLE_RUNTIME_V2, JWT_SECRET, COLOR, npm_lifecycle_event, INIT_CWD, PWD, S3_BUCKET, APPFORGE_STORE_PASSWORD, npm_package_version, PORT, npm_config_noproxy, NODE, RAILWAY_REPLICA_REGION, npm_config_prefix, RAILWAY_SERVICE_APPFORGE_STUDIO_URL, npm_node_execpath, S3_ENDPOINT, npm_config_init_module, BUILD_CONCURRENCY, RAILWAY_DEPLOYMENT_ID, ANDROID_SDK_LICENSE_ACCEPTED, DEBIAN_FRONTEND, YARN_VERSION, NODE_ENV, npm_config_cache, npm_package_json, npm_config_node_gyp, RAILWAY_GIT_COMMIT_SHA, npm_command, RAILWAY_REPLICA_ID, RAILWAY_SNAPSHOT_ID, GRADLE_HOME, DATABASE_URL, GRADLE_USER_HOME, S3_SECRET_ACCESS_KEY, RAILWAY_ENVIRONMENT, npm_config_userconfig, npm_execpath, S3_FORCE_PATH_STYLE, S3_ACCESS_KEY_ID, npm_config_local_prefix, RAILWAY_ENVIRONMENT_ID, npm_config_globalconfig, STORAGE_DRIVER, RAILWAY_DOCKERFILE_PATH, RAILWAY_PRIVATE_DOMAIN, APPFORGE_KEY_PASSWORD, npm_config_user_agent, RAILWAY_GIT_AUTHOR, ANDROID_SDK_ROOT, npm_package_name, RAILWAY_GIT_COMMIT_MESSAGE, EDITOR, npm_config_global_prefix, RAILWAY_ENVIRONMENT_NAME, HOSTNAME, APPFORGE_KEY_ALIAS, RAILWAY_GIT_REPO_NAME, RAILWAY_PROJECT_ID, RAILWAY_GIT_REPO_OWNER, RAILWAY_SERVICE_ID, HOME]
+2026-08-23T01:35:19.577+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.LogToClient] About to start relaying all logs to the client via the connection.
+2026-08-23T01:35:19.577+0000 [INFO] [org.gradle.launcher.daemon.server.exec.LogToClient] The client will now receive all logging from the daemon (pid: 140). The daemon log file: /app/gradle-cache/daemon/9.3.1/daemon-140.out.log
+2026-08-23T01:35:19.578+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.RequestStopIfSingleUsedDaemon] Requesting daemon stop after processing Build{id=aba08711-2b50-4944-9e72-69a73ada11b7, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+2026-08-23T01:35:19.578+0000 [LIFECYCLE] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Daemon will be stopped at the end of the build
+2026-08-23T01:35:19.578+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Stop as soon as idle requested. The daemon is busy
+2026-08-23T01:35:19.578+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon stop has been requested. Sleeping until state changes.
+2026-08-23T01:35:19.580+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] The daemon has started executing the build.
+2026-08-23T01:35:19.580+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] Executing build with daemon context: DefaultDaemonContext[uid=44cd21d3-b0d6-47f7-8148-1c0c1b3dfd82,javaHome=/usr/lib/jvm/java-17-openjdk-amd64,javaVersion=17,javaVendor=Debian,daemonRegistryDir=/app/gradle-cache/daemon,pid=140,idleTimeout=120000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=US,-Duser.language=en,-Duser.variant]
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+Checking the license for package Android SDK Build-Tools 36 in /opt/android-sdk/licenses
+License for package Android SDK Build-Tools 36 accepted.
+Preparing "Install Android SDK Build-Tools 36 v.36.0.0".
+"Install Android SDK Build-Tools 36 v.36.0.0" ready.
+Installing Android SDK Build-Tools 36 in /opt/android-sdk/build-tools/36.0.0
+"Install Android SDK Build-Tools 36 v.36.0.0" complete.
+"Install Android SDK Build-Tools 36 v.36.0.0" finished.
+[=========                              ] 25%                                   ----- End of the daemon log -----
+FAILURE: Build failed with an exception.
+* What went wrong:
+Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+* Try:
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+* Exception is:
+org.gradle.launcher.daemon.client.DaemonDisappearedException: Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+at org.gradle.launcher.daemon.client.DaemonClient.handleDaemonDisappearance(DaemonClient.java:283)
+at org.gradle.launcher.daemon.client.DaemonClient.monitorBuild(DaemonClient.java:256)
+at org.gradle.launcher.daemon.client.DaemonClient.executeBuild(DaemonClient.java:209)
+at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:63)
+at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:37)
+at org.gradle.launcher.cli.RunBuildAction.run(RunBuildAction.java:56)
+at org.gradle.internal.Actions$RunnableActionAdapter.execute(Actions.java:167)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:377)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:341)
+at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:74)
+at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:30)
+at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:97)
+at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:40)
+at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:50)
+at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:27)
+at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:41)
+at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:26)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$WithLogging.execute(DefaultCommandLineActionFactory.java:489)
+at org.gradle.launcher.Main.doAction(Main.java:35)
+at org.gradle.launcher.bootstrap.EntryPoint.run(EntryPoint.java:53)
+at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+at org.gradle.launcher.bootstrap.ProcessBootstrap.runNoExit(ProcessBootstrap.java:72)
+at org.gradle.launcher.bootstrap.ProcessBootstrap.run(ProcessBootstrap.java:39)
+at org.gradle.launcher.GradleMain.main(GradleMain.java:26)
+> Task :app:compileReleaseKotlin
+[WORKER BUILD ERROR] job=1acc8cf2-fc81-491c-bf91-e2ad804f5670 build=130ee4f0-36dd-449e-a448-7722b1f9645d Error: Gradle başarısız. Çıkış kodu: 1
+
+--- GRADLE SON ÇIKTI ---
+"Install Android SDK Build-Tools 36 v.36.0.0" complete.
+"Install Android SDK Build-Tools 36 v.36.0.0" finished.
+[=========                              ] 25%
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:mergeReleaseJniLibFolders
+> Task :app:mergeReleaseNativeLibs NO-SOURCE
+> Task :app:stripReleaseDebugSymbols
+NO-SOURCE
+> Task :app:extractReleaseNativeSymbolTables NO-SOURCE
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:generateReleaseResources
+> Task :app:packageReleaseResources
+> Task :app:processReleaseNavigationResources
+> Task :app:parseReleaseLocalResources
+> Task :app:generateReleaseRFile
+The message received from the daemon indicates that the daemon has disappeared.
+Build request sent: Build{id=aba08711-2b50-4944-9e72-69a73ada11b7, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+Attempting to read last messages from the daemon log...
+Daemon pid: 140
+log file: /app/gradle-cache/daemon/9.3.1/daemon-140.out.log
+----- Last 20 lines from daemon log file - daemon-140.out.log -----
+2026-08-23T01:35:19.573+0000 [INFO] [org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy] Daemon is about to start building Build{id=aba08711-2b50-4944-9e72-69a73ada11b7, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}. Dispatching build started information...
+2026-08-23T01:35:19.573+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 21: dispatching org.gradle.launcher.daemon.protocol.BuildStarted@10e18e60
+2026-08-23T01:35:19.574+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment] Configuring env variables: [PATH, npm_config_npm_version, RAILWAY_GIT_BRANCH, GRADLE_OPTS, S3_REGION, npm_lifecycle_script, NODE_VERSION, ANDROID_HOME, RAILWAY_SERVICE_NAME, WORKER_ID, RAILWAY_PROJECT_NAME, RAILWAY_BETA_ENABLE_RUNTIME_V2, JWT_SECRET, COLOR, npm_lifecycle_event, INIT_CWD, PWD, S3_BUCKET, APPFORGE_STORE_PASSWORD, npm_package_version, PORT, npm_config_noproxy, NODE, RAILWAY_REPLICA_REGION, npm_config_prefix, RAILWAY_SERVICE_APPFORGE_STUDIO_URL, npm_node_execpath, S3_ENDPOINT, npm_config_init_module, BUILD_CONCURRENCY, RAILWAY_DEPLOYMENT_ID, ANDROID_SDK_LICENSE_ACCEPTED, DEBIAN_FRONTEND, YARN_VERSION, NODE_ENV, npm_config_cache, npm_package_json, npm_config_node_gyp, RAILWAY_GIT_COMMIT_SHA, npm_command, RAILWAY_REPLICA_ID, RAILWAY_SNAPSHOT_ID, GRADLE_HOME, DATABASE_URL, GRADLE_USER_HOME, S3_SECRET_ACCESS_KEY, RAILWAY_ENVIRONMENT, npm_config_userconfig, npm_execpath, S3_FORCE_PATH_STYLE, S3_ACCESS_KEY_ID, npm_config_local_prefix, RAILWAY_ENVIRONMENT_ID, npm_config_globalconfig, STORAGE_DRIVER, RAILWAY_DOCKERFILE_PATH, RAILWAY_PRIVATE_DOMAIN, APPFORGE_KEY_PASSWORD, npm_config_user_agent, RAILWAY_GIT_AUTHOR, ANDROID_SDK_ROOT, npm_package_name, RAILWAY_GIT_COMMIT_MESSAGE, EDITOR, npm_config_global_prefix, RAILWAY_ENVIRONMENT_NAME, HOSTNAME, APPFORGE_KEY_ALIAS, RAILWAY_GIT_REPO_NAME, RAILWAY_PROJECT_ID, RAILWAY_GIT_REPO_OWNER, RAILWAY_SERVICE_ID, HOME]
+2026-08-23T01:35:19.577+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.LogToClient] About to start relaying all logs to the client via the connection.
+2026-08-23T01:35:19.577+0000 [INFO] [org.gradle.launcher.daemon.server.exec.LogToClient] The client will now receive all logging from the daemon (pid: 140). The daemon log file: /app/gradle-cache/daemon/9.3.1/daemon-140.out.log
+2026-08-23T01:35:19.578+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.RequestStopIfSingleUsedDaemon] Requesting daemon stop after processing Build{id=aba08711-2b50-4944-9e72-69a73ada11b7, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+2026-08-23T01:35:19.578+0000 [LIFECYCLE] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Daemon will be stopped at the end of the build
+2026-08-23T01:35:19.578+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Stop as soon as idle requested. The daemon is busy
+2026-08-23T01:35:19.578+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon stop has been requested. Sleeping until state changes.
+2026-08-23T01:35:19.580+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] The daemon has started executing the build.
+2026-08-23T01:35:19.580+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] Executing build with daemon context: DefaultDaemonContext[uid=44cd21d3-b0d6-47f7-8148-1c0c1b3dfd82,javaHome=/usr/lib/jvm/java-17-openjdk-amd64,javaVersion=17,javaVendor=Debian,daemonRegistryDir=/app/gradle-cache/daemon,pid=140,idleTimeout=120000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=US,-Duser.language=en,-Duser.variant]
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+Checking the license for package Android SDK Build-Tools 36 in /opt/android-sdk/licenses
+License for package Android SDK Build-Tools 36 accepted.
+Preparing "Install Android SDK Build-Tools 36 v.36.0.0".
+"Install Android SDK Build-Tools 36 v.36.0.0" ready.
+Installing Android SDK Build-Tools 36 in /opt/android-sdk/build-tools/36.0.0
+"Install Android SDK Build-Tools 36 v.36.0.0" complete.
+"Install Android SDK Build-Tools 36 v.36.0.0" finished.
+[=========                              ] 25%                                   ----- End of the daemon log -----
+FAILURE: Build failed with an exception.
+* What went wrong:
+Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+* Try:
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+* Exception is:
+org.gradle.launcher.daemon.client.DaemonDisappearedException: Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+at org.gradle.launcher.daemon.client.DaemonClient.handleDaemonDisappearance(DaemonClient.java:283)
+at org.gradle.launcher.daemon.client.DaemonClient.monitorBuild(DaemonClient.java:256)
+at org.gradle.launcher.daemon.client.DaemonClient.executeBuild(DaemonClient.java:209)
+at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:63)
+at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:37)
+at org.gradle.launcher.cli.RunBuildAction.run(RunBuildAction.java:56)
+at org.gradle.internal.Actions$RunnableActionAdapter.execute(Actions.java:167)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:377)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:341)
+at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:74)
+at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:30)
+at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:97)
+at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:40)
+at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:50)
+at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:27)
+at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:41)
+    at ChildProcess._handle.onexit (node:internal/child_process:304:5)
+at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:26)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$WithLogging.execute(DefaultCommandLineActionFactory.java:489)
+at org.gradle.launcher.bootstrap.ProcessBootstrap.run(ProcessBootstrap.java:39)
+at org.gradle.launcher.Main.doAction(Main.java:35)
+at org.gradle.launcher.bootstrap.EntryPoint.run(EntryPoint.java:53)
+at org.gradle.launcher.GradleMain.main(GradleMain.java:26)
+at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+> Task :app:compileReleaseKotlin
+at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+    at ChildProcess.<anonymous> (file:///app/src/buildEngine.js:3455:15)
+at org.gradle.launcher.bootstrap.ProcessBootstrap.runNoExit(ProcessBootstrap.java:72)
+    at ChildProcess.emit (node:events:519:28)
+    at maybeClose (node:internal/child_process:1101:16)
+Worker railway-worker-1@fdece19ac6b0#1 claimed job 1acc8cf2-fc81-491c-bf91-e2ad804f5670 build 130ee4f0-36dd-449e-a448-7722b1f9645d
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Android proje şablonu oluşturuluyor...
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Gradle derlemesi başlatılıyor...
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.3.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Daemon will be stopped at the end of the build 
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:preBuild UP-TO-DATE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:preReleaseBuild UP-TO-DATE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeReleaseJniLibFolders
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeReleaseNativeLibs NO-SOURCE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:stripReleaseDebugSymbols
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d]  NO-SOURCE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:extractReleaseNativeSymbolTables NO-SOURCE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:checkReleaseDuplicateClasses
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:generateReleaseResources
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:packageReleaseResources
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:processReleaseNavigationResources
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:parseReleaseLocalResources
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:generateReleaseRFile
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:compileReleaseKotlin
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] w: file:///app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android/app/src/main/java/com/example/myapp/MainActivity.kt:259:33 'static field VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] w: file:///app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android/app/src/main/java/com/example/myapp/MainActivity.kt:737:20 'fun onBackPressed(): Unit' is deprecated. Deprecated in Java.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:javaPreCompileRelease
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:compileReleaseJavaWithJavac NO-SOURCE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:checkReleaseAarMetadata
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mapReleaseSourceSetPaths
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:compileReleaseNavigationResources
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeReleaseResources
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:createReleaseCompatibleScreenManifests
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:extractDeepLinksRelease
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:processReleaseMainManifest
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:processReleaseManifest
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:processReleaseManifestForPackage
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:processReleaseResources
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:dexBuilderRelease
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:desugarReleaseFileDependencies
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeReleaseStartupProfile
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeExtDexRelease
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeDexRelease
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeReleaseArtProfile
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeReleaseGlobalSynthetics
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:compileReleaseArtProfile
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:generateReleaseAssets UP-TO-DATE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeReleaseAssets
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:compressReleaseAssets
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:extractReleaseVersionControlInfo
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:processReleaseJavaRes
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:mergeReleaseJavaResource
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:optimizeReleaseResources
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:collectReleaseDependencies
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:sdkReleaseDependencyData
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:validateSigningRelease
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:writeReleaseAppMetadata
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:writeReleaseSigningConfigVersions
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] The message received from the daemon indicates that the daemon has disappeared.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Build request sent: Build{id=714a5726-7ba2-41bd-841a-72c234bc6c7e, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Attempting to read last messages from the daemon log...
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Daemon pid: 268
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d]   log file: /app/gradle-cache/daemon/9.3.1/daemon-268.out.log
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] ----- Last 20 lines from daemon log file - daemon-268.out.log -----
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.948+0000 [DEBUG] [org.gradle.launcher.daemon.registry.PersistentDaemonRegistry] Marking busy by address: [c44d9e1c-b356-4a9c-8ecf-cc450c9f36af port:34185, addresses:[localhost/127.0.0.1]]
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.948+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Waiting to acquire exclusive lock on daemon addresses registry.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.949+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Lock acquired on daemon addresses registry.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.949+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Releasing lock on daemon addresses registry.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.949+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] resetting idle timer
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.950+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon is running. Sleeping until state changes.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.950+0000 [INFO] [org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy] Daemon is about to start building Build{id=714a5726-7ba2-41bd-841a-72c234bc6c7e, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}. Dispatching build started information...
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.951+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 21: dispatching org.gradle.launcher.daemon.protocol.BuildStarted@da7c38c
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.952+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment] Configuring env variables: [PATH, npm_config_npm_version, RAILWAY_GIT_BRANCH, GRADLE_OPTS, S3_REGION, npm_lifecycle_script, NODE_VERSION, ANDROID_HOME, RAILWAY_SERVICE_NAME, WORKER_ID, RAILWAY_PROJECT_NAME, RAILWAY_BETA_ENABLE_RUNTIME_V2, JWT_SECRET, COLOR, npm_lifecycle_event, INIT_CWD, PWD, S3_BUCKET, APPFORGE_STORE_PASSWORD, npm_package_version, PORT, npm_config_noproxy, NODE, RAILWAY_REPLICA_REGION, npm_config_prefix, RAILWAY_SERVICE_APPFORGE_STUDIO_URL, npm_node_execpath, S3_ENDPOINT, npm_config_init_module, BUILD_CONCURRENCY, RAILWAY_DEPLOYMENT_ID, ANDROID_SDK_LICENSE_ACCEPTED, DEBIAN_FRONTEND, YARN_VERSION, NODE_ENV, npm_config_cache, npm_package_json, npm_config_node_gyp, RAILWAY_GIT_COMMIT_SHA, npm_command, RAILWAY_REPLICA_ID, RAILWAY_SNAPSHOT_ID, GRADLE_HOME, DATABASE_URL, GRADLE_USER_HOME, S3_SECRET_ACCESS_KEY, RAILWAY_ENVIRONMENT, npm_config_userconfig, npm_execpath, S3_FORCE_PATH_STYLE, S3_ACCESS_KEY_ID, npm_config_local_prefix, RAILWAY_ENVIRONMENT_ID, npm_config_globalconfig, STORAGE_DRIVER, RAILWAY_DOCKERFILE_PATH, RAILWAY_PRIVATE_DOMAIN, APPFORGE_KEY_PASSWORD, npm_config_user_agent, RAILWAY_GIT_AUTHOR, ANDROID_SDK_ROOT, npm_package_name, RAILWAY_GIT_COMMIT_MESSAGE, EDITOR, npm_config_global_prefix, RAILWAY_ENVIRONMENT_NAME, HOSTNAME, APPFORGE_KEY_ALIAS, RAILWAY_GIT_REPO_NAME, RAILWAY_PROJECT_ID, RAILWAY_GIT_REPO_OWNER, RAILWAY_SERVICE_ID, HOME]
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.955+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.LogToClient] About to start relaying all logs to the client via the connection.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.955+0000 [INFO] [org.gradle.launcher.daemon.server.exec.LogToClient] The client will now receive all logging from the daemon (pid: 268). The daemon log file: /app/gradle-cache/daemon/9.3.1/daemon-268.out.log
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.957+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.RequestStopIfSingleUsedDaemon] Requesting daemon stop after processing Build{id=714a5726-7ba2-41bd-841a-72c234bc6c7e, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.957+0000 [LIFECYCLE] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Daemon will be stopped at the end of the build 
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.957+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Stop as soon as idle requested. The daemon is busy
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.957+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon stop has been requested. Sleeping until state changes.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.959+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] The daemon has started executing the build.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 2026-08-23T01:36:24.959+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] Executing build with daemon context: DefaultDaemonContext[uid=542c48d3-9b9b-4f15-9c3e-c8ddd5fa2d3d,javaHome=/usr/lib/jvm/java-17-openjdk-amd64,javaVersion=17,javaVendor=Debian,daemonRegistryDir=/app/gradle-cache/daemon,pid=268,idleTimeout=120000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=US,-Duser.language=en,-Duser.variant]
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] w: file:///app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android/app/src/main/java/com/example/myapp/MainActivity.kt:259:33 'static field VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] w: file:///app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android/app/src/main/java/com/example/myapp/MainActivity.kt:737:20 'fun onBackPressed(): Unit' is deprecated. Deprecated in Java.----- End of the daemon log -----
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] FAILURE: Build failed with an exception.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] * What went wrong:
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] * Try:
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > 
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Run with --info or --debug option to get more log output.
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > 
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Run with --scan
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d]  to get full insights from a Build Scan (powered by Develocity).
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > 
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] Get more help at https://help.gradle.org
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] .
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] * Exception is:
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] org.gradle.launcher.daemon.client.DaemonDisappearedException: Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.daemon.client.DaemonClient.handleDaemonDisappearance(DaemonClient.java:283)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.daemon.client.DaemonClient.monitorBuild(DaemonClient.java:256)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.daemon.client.DaemonClient.executeBuild(DaemonClient.java:209)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:63)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:37)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.RunBuildAction.run(RunBuildAction.java:56)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.internal.Actions$RunnableActionAdapter.execute(Actions.java:167)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:377)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:341)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:74)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:30)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:97)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:40)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:50)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:27)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:41)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:26)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.cli.DefaultCommandLineActionFactory$WithLogging.execute(DefaultCommandLineActionFactory.java:489)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.Main.doAction(Main.java:35)
+> Task :app:extractReleaseVersionControlInfo
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.bootstrap.EntryPoint.run(EntryPoint.java:53)
+> Task :app:processReleaseJavaRes
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+> Task :app:mergeReleaseJavaResource
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.bootstrap.ProcessBootstrap.runNoExit(ProcessBootstrap.java:72)
+[GRADLE FAILURE 130ee4f0-36dd-449e-a448-7722b1f9645d]
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.bootstrap.ProcessBootstrap.run(ProcessBootstrap.java:39)
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] 	at org.gradle.launcher.GradleMain.main(GradleMain.java:26)
+> Task :app:generateReleaseAssets UP-TO-DATE
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] > Task :app:packageRelease
+> Task :app:mergeReleaseAssets
+> Task :app:compressReleaseAssets
+> Task :app:optimizeReleaseResources
+> Task :app:collectReleaseDependencies
+> Task :app:sdkReleaseDependencyData
+> Task :app:validateSigningRelease
+> Task :app:writeReleaseAppMetadata
+> Task :app:writeReleaseSigningConfigVersions
+The message received from the daemon indicates that the daemon has disappeared.
+Build request sent: Build{id=714a5726-7ba2-41bd-841a-72c234bc6c7e, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+Attempting to read last messages from the daemon log...
+Daemon pid: 268
+log file: /app/gradle-cache/daemon/9.3.1/daemon-268.out.log
+----- Last 20 lines from daemon log file - daemon-268.out.log -----
+2026-08-23T01:36:24.948+0000 [DEBUG] [org.gradle.launcher.daemon.registry.PersistentDaemonRegistry] Marking busy by address: [c44d9e1c-b356-4a9c-8ecf-cc450c9f36af port:34185, addresses:[localhost/127.0.0.1]]
+2026-08-23T01:36:24.948+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Waiting to acquire exclusive lock on daemon addresses registry.
+2026-08-23T01:36:24.949+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Lock acquired on daemon addresses registry.
+2026-08-23T01:36:24.949+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Releasing lock on daemon addresses registry.
+2026-08-23T01:36:24.949+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] resetting idle timer
+2026-08-23T01:36:24.950+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon is running. Sleeping until state changes.
+2026-08-23T01:36:24.950+0000 [INFO] [org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy] Daemon is about to start building Build{id=714a5726-7ba2-41bd-841a-72c234bc6c7e, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}. Dispatching build started information...
+2026-08-23T01:36:24.951+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 21: dispatching org.gradle.launcher.daemon.protocol.BuildStarted@da7c38c
+2026-08-23T01:36:24.952+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment] Configuring env variables: [PATH, npm_config_npm_version, RAILWAY_GIT_BRANCH, GRADLE_OPTS, S3_REGION, npm_lifecycle_script, NODE_VERSION, ANDROID_HOME, RAILWAY_SERVICE_NAME, WORKER_ID, RAILWAY_PROJECT_NAME, RAILWAY_BETA_ENABLE_RUNTIME_V2, JWT_SECRET, COLOR, npm_lifecycle_event, INIT_CWD, PWD, S3_BUCKET, APPFORGE_STORE_PASSWORD, npm_package_version, PORT, npm_config_noproxy, NODE, RAILWAY_REPLICA_REGION, npm_config_prefix, RAILWAY_SERVICE_APPFORGE_STUDIO_URL, npm_node_execpath, S3_ENDPOINT, npm_config_init_module, BUILD_CONCURRENCY, RAILWAY_DEPLOYMENT_ID, ANDROID_SDK_LICENSE_ACCEPTED, DEBIAN_FRONTEND, YARN_VERSION, NODE_ENV, npm_config_cache, npm_package_json, npm_config_node_gyp, RAILWAY_GIT_COMMIT_SHA, npm_command, RAILWAY_REPLICA_ID, RAILWAY_SNAPSHOT_ID, GRADLE_HOME, DATABASE_URL, GRADLE_USER_HOME, S3_SECRET_ACCESS_KEY, RAILWAY_ENVIRONMENT, npm_config_userconfig, npm_execpath, S3_FORCE_PATH_STYLE, S3_ACCESS_KEY_ID, npm_config_local_prefix, RAILWAY_ENVIRONMENT_ID, npm_config_globalconfig, STORAGE_DRIVER, RAILWAY_DOCKERFILE_PATH, RAILWAY_PRIVATE_DOMAIN, APPFORGE_KEY_PASSWORD, npm_config_user_agent, RAILWAY_GIT_AUTHOR, ANDROID_SDK_ROOT, npm_package_name, RAILWAY_GIT_COMMIT_MESSAGE, EDITOR, npm_config_global_prefix, RAILWAY_ENVIRONMENT_NAME, HOSTNAME, APPFORGE_KEY_ALIAS, RAILWAY_GIT_REPO_NAME, RAILWAY_PROJECT_ID, RAILWAY_GIT_REPO_OWNER, RAILWAY_SERVICE_ID, HOME]
+2026-08-23T01:36:24.955+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.LogToClient] About to start relaying all logs to the client via the connection.
+2026-08-23T01:36:24.955+0000 [INFO] [org.gradle.launcher.daemon.server.exec.LogToClient] The client will now receive all logging from the daemon (pid: 268). The daemon log file: /app/gradle-cache/daemon/9.3.1/daemon-268.out.log
+2026-08-23T01:36:24.957+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.RequestStopIfSingleUsedDaemon] Requesting daemon stop after processing Build{id=714a5726-7ba2-41bd-841a-72c234bc6c7e, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+2026-08-23T01:36:24.957+0000 [LIFECYCLE] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Daemon will be stopped at the end of the build
+2026-08-23T01:36:24.957+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Stop as soon as idle requested. The daemon is busy
+2026-08-23T01:36:24.957+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon stop has been requested. Sleeping until state changes.
+2026-08-23T01:36:24.959+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] The daemon has started executing the build.
+2026-08-23T01:36:24.959+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] Executing build with daemon context: DefaultDaemonContext[uid=542c48d3-9b9b-4f15-9c3e-c8ddd5fa2d3d,javaHome=/usr/lib/jvm/java-17-openjdk-amd64,javaVersion=17,javaVendor=Debian,daemonRegistryDir=/app/gradle-cache/daemon,pid=268,idleTimeout=120000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=US,-Duser.language=en,-Duser.variant]
+Get more help at https://help.gradle.org
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+.
+* Exception is:
+w: file:///app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android/app/src/main/java/com/example/myapp/MainActivity.kt:259:33 'static field VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java.
+org.gradle.launcher.daemon.client.DaemonDisappearedException: Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+w: file:///app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android/app/src/main/java/com/example/myapp/MainActivity.kt:737:20 'fun onBackPressed(): Unit' is deprecated. Deprecated in Java.----- End of the daemon log -----
+at org.gradle.launcher.daemon.client.DaemonClient.handleDaemonDisappearance(DaemonClient.java:283)
+FAILURE: Build failed with an exception.
+* What went wrong:
+Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+* Try:
+>
+Run with --info or --debug option to get more log output.
+>
+Run with --scan
+to get full insights from a Build Scan (powered by Develocity).
+>
+at org.gradle.launcher.daemon.client.DaemonClient.monitorBuild(DaemonClient.java:256)
+at org.gradle.launcher.daemon.client.DaemonClient.executeBuild(DaemonClient.java:209)
+at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:63)
+at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:37)
+at org.gradle.launcher.cli.RunBuildAction.run(RunBuildAction.java:56)
+at org.gradle.internal.Actions$RunnableActionAdapter.execute(Actions.java:167)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:377)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:341)
+at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:74)
+at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:30)
+at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:97)
+at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:40)
+at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:50)
+at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:27)
+at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:41)
+at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:26)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$WithLogging.execute(DefaultCommandLineActionFactory.java:489)
+at org.gradle.launcher.Main.doAction(Main.java:35)
+at org.gradle.launcher.bootstrap.EntryPoint.run(EntryPoint.java:53)
+at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+at org.gradle.launcher.bootstrap.ProcessBootstrap.runNoExit(ProcessBootstrap.java:72)
+at org.gradle.launcher.bootstrap.ProcessBootstrap.run(ProcessBootstrap.java:39)
+at org.gradle.launcher.GradleMain.main(GradleMain.java:26)
+> Task :app:packageRelease
+[BUILD-LOG 130ee4f0-36dd-449e-a448-7722b1f9645d] HATA: Gradle başarısız. Çıkış kodu: 1
+
+--- GRADLE SON ÇIKTI ---
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :app:mergeReleaseAssets
+> Task :app:compressReleaseAssets
+> Task :app:extractReleaseVersionControlInfo
+> Task :app:processReleaseJavaRes
+----- Last 20 lines from daemon log file - daemon-268.out.log -----
+> Task :app:mergeReleaseJavaResource
+> Task :app:optimizeReleaseResources
+2026-08-23T01:36:24.948+0000 [DEBUG] [org.gradle.launcher.daemon.registry.PersistentDaemonRegistry] Marking busy by address: [c44d9e1c-b356-4a9c-8ecf-cc450c9f36af port:34185, addresses:[localhost/127.0.0.1]]
+> Task :app:collectReleaseDependencies
+2026-08-23T01:36:24.948+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Waiting to acquire exclusive lock on daemon addresses registry.
+> Task :app:sdkReleaseDependencyData
+2026-08-23T01:36:24.949+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Lock acquired on daemon addresses registry.
+> Task :app:validateSigningRelease
+2026-08-23T01:36:24.949+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Releasing lock on daemon addresses registry.
+> Task :app:writeReleaseAppMetadata
+> Task :app:writeReleaseSigningConfigVersions
+The message received from the daemon indicates that the daemon has disappeared.
+Build request sent: Build{id=714a5726-7ba2-41bd-841a-72c234bc6c7e, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+2026-08-23T01:36:24.949+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] resetting idle timer
+Attempting to read last messages from the daemon log...
+2026-08-23T01:36:24.950+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon is running. Sleeping until state changes.
+Daemon pid: 268
+log file: /app/gradle-cache/daemon/9.3.1/daemon-268.out.log
+2026-08-23T01:36:24.950+0000 [INFO] [org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy] Daemon is about to start building Build{id=714a5726-7ba2-41bd-841a-72c234bc6c7e, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}. Dispatching build started information...
+2026-08-23T01:36:24.951+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 21: dispatching org.gradle.launcher.daemon.protocol.BuildStarted@da7c38c
+2026-08-23T01:36:24.952+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment] Configuring env variables: [PATH, npm_config_npm_version, RAILWAY_GIT_BRANCH, GRADLE_OPTS, S3_REGION, npm_lifecycle_script, NODE_VERSION, ANDROID_HOME, RAILWAY_SERVICE_NAME, WORKER_ID, RAILWAY_PROJECT_NAME, RAILWAY_BETA_ENABLE_RUNTIME_V2, JWT_SECRET, COLOR, npm_lifecycle_event, INIT_CWD, PWD, S3_BUCKET, APPFORGE_STORE_PASSWORD, npm_package_version, PORT, npm_config_noproxy, NODE, RAILWAY_REPLICA_REGION, npm_config_prefix, RAILWAY_SERVICE_APPFORGE_STUDIO_URL, npm_node_execpath, S3_ENDPOINT, npm_config_init_module, BUILD_CONCURRENCY, RAILWAY_DEPLOYMENT_ID, ANDROID_SDK_LICENSE_ACCEPTED, DEBIAN_FRONTEND, YARN_VERSION, NODE_ENV, npm_config_cache, npm_package_json, npm_config_node_gyp, RAILWAY_GIT_COMMIT_SHA, npm_command, RAILWAY_REPLICA_ID, RAILWAY_SNAPSHOT_ID, GRADLE_HOME, DATABASE_URL, GRADLE_USER_HOME, S3_SECRET_ACCESS_KEY, RAILWAY_ENVIRONMENT, npm_config_userconfig, npm_execpath, S3_FORCE_PATH_STYLE, S3_ACCESS_KEY_ID, npm_config_local_prefix, RAILWAY_ENVIRONMENT_ID, npm_config_globalconfig, STORAGE_DRIVER, RAILWAY_DOCKERFILE_PATH, RAILWAY_PRIVATE_DOMAIN, APPFORGE_KEY_PASSWORD, npm_config_user_agent, RAILWAY_GIT_AUTHOR, ANDROID_SDK_ROOT, npm_package_name, RAILWAY_GIT_COMMIT_MESSAGE, EDITOR, npm_config_global_prefix, RAILWAY_ENVIRONMENT_NAME, HOSTNAME, APPFORGE_KEY_ALIAS, RAILWAY_GIT_REPO_NAME, RAILWAY_PROJECT_ID, RAILWAY_GIT_REPO_OWNER, RAILWAY_SERVICE_ID, HOME]
+2026-08-23T01:36:24.955+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.LogToClient] About to start relaying all logs to the client via the connection.
+2026-08-23T01:36:24.955+0000 [INFO] [org.gradle.launcher.daemon.server.exec.LogToClient] The client will now receive all logging from the daemon (pid: 268). The daemon log file: /app/gradle-cache/daemon/9.3.1/daemon-268.out.log
+2026-08-23T01:36:24.957+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.RequestStopIfSingleUsedDaemon] Requesting daemon stop after processing Build{id=714a5726-7ba2-41bd-841a-72c234bc6c7e, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+2026-08-23T01:36:24.957+0000 [LIFECYCLE] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Daemon will be stopped at the end of the build
+2026-08-23T01:36:24.957+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Stop as soon as idle requested. The daemon is busy
+2026-08-23T01:36:24.957+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon stop has been requested. Sleeping until state changes.
+2026-08-23T01:36:24.959+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] The daemon has started executing the build.
+2026-08-23T01:36:24.959+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] Executing build with daemon context: DefaultDaemonContext[uid=542c48d3-9b9b-4f15-9c3e-c8ddd5fa2d3d,javaHome=/usr/lib/jvm/java-17-openjdk-amd64,javaVersion=17,javaVendor=Debian,daemonRegistryDir=/app/gradle-cache/daemon,pid=268,idleTimeout=120000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=US,-Duser.language=en,-Duser.variant]
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+w: file:///app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android/app/src/main/java/com/example/myapp/MainActivity.kt:259:33 'static field VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java.
+w: file:///app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android/app/src/main/java/com/example/myapp/MainActivity.kt:737:20 'fun onBackPressed(): Unit' is deprecated. Deprecated in Java.----- End of the daemon log -----
+FAILURE: Build failed with an exception.
+* What went wrong:
+Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+* Try:
+>
+Run with --info or --debug option to get more log output.
+at org.gradle.launcher.daemon.client.DaemonClient.executeBuild(DaemonClient.java:209)
+>
+Run with --scan
+to get full insights from a Build Scan (powered by Develocity).
+>
+Get more help at https://help.gradle.org
+.
+* Exception is:
+org.gradle.launcher.daemon.client.DaemonDisappearedException: Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+at org.gradle.launcher.daemon.client.DaemonClient.handleDaemonDisappearance(DaemonClient.java:283)
+at org.gradle.launcher.daemon.client.DaemonClient.monitorBuild(DaemonClient.java:256)
+at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:27)
+at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:41)
+at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:63)
+at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:37)
+at org.gradle.launcher.cli.RunBuildAction.run(RunBuildAction.java:56)
+at org.gradle.internal.Actions$RunnableActionAdapter.execute(Actions.java:167)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:377)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:341)
+at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:40)
+at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:74)
+at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:50)
+at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:30)
+at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:97)
+at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:26)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$WithLogging.execute(DefaultCommandLineActionFactory.java:489)
+at org.gradle.launcher.Main.doAction(Main.java:35)
+at org.gradle.launcher.bootstrap.EntryPoint.run(EntryPoint.java:53)
+at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+at org.gradle.launcher.bootstrap.ProcessBootstrap.runNoExit(ProcessBootstrap.java:72)
+at org.gradle.launcher.bootstrap.ProcessBootstrap.run(ProcessBootstrap.java:39)
+at org.gradle.launcher.GradleMain.main(GradleMain.java:26)
+> Task :app:packageRelease
+[WORKER BUILD ERROR] job=1acc8cf2-fc81-491c-bf91-e2ad804f5670 build=130ee4f0-36dd-449e-a448-7722b1f9645d Error: Gradle başarısız. Çıkış kodu: 1
+
+--- GRADLE SON ÇIKTI ---
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :app:mergeReleaseAssets
+> Task :app:compressReleaseAssets
+> Task :app:extractReleaseVersionControlInfo
+> Task :app:processReleaseJavaRes
+> Task :app:mergeReleaseJavaResource
+> Task :app:optimizeReleaseResources
+> Task :app:collectReleaseDependencies
+> Task :app:sdkReleaseDependencyData
+> Task :app:validateSigningRelease
+> Task :app:writeReleaseAppMetadata
+> Task :app:writeReleaseSigningConfigVersions
+The message received from the daemon indicates that the daemon has disappeared.
+Build request sent: Build{id=714a5726-7ba2-41bd-841a-72c234bc6c7e, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+Attempting to read last messages from the daemon log...
+Daemon pid: 268
+log file: /app/gradle-cache/daemon/9.3.1/daemon-268.out.log
+----- Last 20 lines from daemon log file - daemon-268.out.log -----
+2026-08-23T01:36:24.948+0000 [DEBUG] [org.gradle.launcher.daemon.registry.PersistentDaemonRegistry] Marking busy by address: [c44d9e1c-b356-4a9c-8ecf-cc450c9f36af port:34185, addresses:[localhost/127.0.0.1]]
+2026-08-23T01:36:24.948+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Waiting to acquire exclusive lock on daemon addresses registry.
+2026-08-23T01:36:24.949+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Lock acquired on daemon addresses registry.
+2026-08-23T01:36:24.949+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Releasing lock on daemon addresses registry.
+2026-08-23T01:36:24.949+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] resetting idle timer
+2026-08-23T01:36:24.950+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon is running. Sleeping until state changes.
+2026-08-23T01:36:24.950+0000 [INFO] [org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy] Daemon is about to start building Build{id=714a5726-7ba2-41bd-841a-72c234bc6c7e, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}. Dispatching build started information...
+2026-08-23T01:36:24.951+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 21: dispatching org.gradle.launcher.daemon.protocol.BuildStarted@da7c38c
+2026-08-23T01:36:24.952+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment] Configuring env variables: [PATH, npm_config_npm_version, RAILWAY_GIT_BRANCH, GRADLE_OPTS, S3_REGION, npm_lifecycle_script, NODE_VERSION, ANDROID_HOME, RAILWAY_SERVICE_NAME, WORKER_ID, RAILWAY_PROJECT_NAME, RAILWAY_BETA_ENABLE_RUNTIME_V2, JWT_SECRET, COLOR, npm_lifecycle_event, INIT_CWD, PWD, S3_BUCKET, APPFORGE_STORE_PASSWORD, npm_package_version, PORT, npm_config_noproxy, NODE, RAILWAY_REPLICA_REGION, npm_config_prefix, RAILWAY_SERVICE_APPFORGE_STUDIO_URL, npm_node_execpath, S3_ENDPOINT, npm_config_init_module, BUILD_CONCURRENCY, RAILWAY_DEPLOYMENT_ID, ANDROID_SDK_LICENSE_ACCEPTED, DEBIAN_FRONTEND, YARN_VERSION, NODE_ENV, npm_config_cache, npm_package_json, npm_config_node_gyp, RAILWAY_GIT_COMMIT_SHA, npm_command, RAILWAY_REPLICA_ID, RAILWAY_SNAPSHOT_ID, GRADLE_HOME, DATABASE_URL, GRADLE_USER_HOME, S3_SECRET_ACCESS_KEY, RAILWAY_ENVIRONMENT, npm_config_userconfig, npm_execpath, S3_FORCE_PATH_STYLE, S3_ACCESS_KEY_ID, npm_config_local_prefix, RAILWAY_ENVIRONMENT_ID, npm_config_globalconfig, STORAGE_DRIVER, RAILWAY_DOCKERFILE_PATH, RAILWAY_PRIVATE_DOMAIN, APPFORGE_KEY_PASSWORD, npm_config_user_agent, RAILWAY_GIT_AUTHOR, ANDROID_SDK_ROOT, npm_package_name, RAILWAY_GIT_COMMIT_MESSAGE, EDITOR, npm_config_global_prefix, RAILWAY_ENVIRONMENT_NAME, HOSTNAME, APPFORGE_KEY_ALIAS, RAILWAY_GIT_REPO_NAME, RAILWAY_PROJECT_ID, RAILWAY_GIT_REPO_OWNER, RAILWAY_SERVICE_ID, HOME]
+2026-08-23T01:36:24.955+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.LogToClient] About to start relaying all logs to the client via the connection.
+2026-08-23T01:36:24.955+0000 [INFO] [org.gradle.launcher.daemon.server.exec.LogToClient] The client will now receive all logging from the daemon (pid: 268). The daemon log file: /app/gradle-cache/daemon/9.3.1/daemon-268.out.log
+2026-08-23T01:36:24.957+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.RequestStopIfSingleUsedDaemon] Requesting daemon stop after processing Build{id=714a5726-7ba2-41bd-841a-72c234bc6c7e, currentDir=/app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android}
+2026-08-23T01:36:24.957+0000 [LIFECYCLE] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Daemon will be stopped at the end of the build
+2026-08-23T01:36:24.957+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] Stop as soon as idle requested. The daemon is busy
+2026-08-23T01:36:24.957+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon stop has been requested. Sleeping until state changes.
+2026-08-23T01:36:24.959+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] The daemon has started executing the build.
+2026-08-23T01:36:24.959+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] Executing build with daemon context: DefaultDaemonContext[uid=542c48d3-9b9b-4f15-9c3e-c8ddd5fa2d3d,javaHome=/usr/lib/jvm/java-17-openjdk-amd64,javaVersion=17,javaVendor=Debian,daemonRegistryDir=/app/gradle-cache/daemon,pid=268,idleTimeout=120000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=US,-Duser.language=en,-Duser.variant]
+Warning: SDK processing. This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.
+w: file:///app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android/app/src/main/java/com/example/myapp/MainActivity.kt:259:33 'static field VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java.
+w: file:///app/work/130ee4f0-36dd-449e-a448-7722b1f9645d/android/app/src/main/java/com/example/myapp/MainActivity.kt:737:20 'fun onBackPressed(): Unit' is deprecated. Deprecated in Java.----- End of the daemon log -----
+FAILURE: Build failed with an exception.
+* What went wrong:
+Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+* Try:
+>
+Run with --info or --debug option to get more log output.
+>
+Run with --scan
+to get full insights from a Build Scan (powered by Develocity).
+>
+Get more help at https://help.gradle.org
+.
+* Exception is:
+org.gradle.launcher.daemon.client.DaemonDisappearedException: Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+at org.gradle.launcher.daemon.client.DaemonClient.handleDaemonDisappearance(DaemonClient.java:283)
+at org.gradle.launcher.daemon.client.DaemonClient.monitorBuild(DaemonClient.java:256)
+at org.gradle.launcher.daemon.client.DaemonClient.executeBuild(DaemonClient.java:209)
+at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:63)
+at org.gradle.launcher.daemon.client.SingleUseDaemonClient.execute(SingleUseDaemonClient.java:37)
+at org.gradle.launcher.cli.RunBuildAction.run(RunBuildAction.java:56)
+at org.gradle.internal.Actions$RunnableActionAdapter.execute(Actions.java:167)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:377)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$ParseAndBuildAction.execute(DefaultCommandLineActionFactory.java:341)
+at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:74)
+at org.gradle.launcher.cli.DebugLoggerWarningAction.execute(DebugLoggerWarningAction.java:30)
+at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:97)
+at org.gradle.launcher.cli.WelcomeMessageAction.execute(WelcomeMessageAction.java:40)
+at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:50)
+at org.gradle.launcher.cli.NativeServicesInitializingAction.execute(NativeServicesInitializingAction.java:27)
+at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:41)
+at org.gradle.launcher.cli.ExceptionReportingAction.execute(ExceptionReportingAction.java:26)
+at org.gradle.launcher.cli.DefaultCommandLineActionFactory$WithLogging.execute(DefaultCommandLineActionFactory.java:489)
+at org.gradle.launcher.Main.doAction(Main.java:35)
+at org.gradle.launcher.bootstrap.EntryPoint.run(EntryPoint.java:53)
+at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+at org.gradle.launcher.bootstrap.ProcessBootstrap.runNoExit(ProcessBootstrap.java:72)
+at org.gradle.launcher.bootstrap.ProcessBootstrap.run(ProcessBootstrap.java:39)
+at org.gradle.launcher.GradleMain.main(GradleMain.java:26)
+> Task :app:packageRelease
+    at ChildProcess.<anonymous> (file:///app/src/buildEngine.js:3455:15)
+    at ChildProcess.emit (node:events:519:28)
+    at maybeClose (node:internal/child_process:1101:16)
+    at ChildProcess._handle.onexit (node:internal/child_process:304:5)

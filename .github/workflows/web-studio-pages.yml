@@ -1,0 +1,64 @@
+name: AppForge Studio Web
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "build-service/public/studio/**"
+      - ".github/workflows/web-studio-pages.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: appforge-studio-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Install Studio browser assets
+        working-directory: build-service
+        run: npm install --no-save --ignore-scripts monaco-editor@0.52.2 fflate@0.8.2
+
+      - name: Assemble standalone web studio
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _site/vendor/monaco _site/vendor/fflate
+          cp -R build-service/public/studio/. _site/
+          cp -R build-service/node_modules/monaco-editor/min/vs/. _site/vendor/monaco/
+          cp -R build-service/node_modules/fflate/umd/. _site/vendor/fflate/
+          test -s _site/index.html
+          test -s _site/v4.js
+          test -s _site/v4.css
+          test -f _site/vendor/monaco/loader.js
+          test -f _site/vendor/fflate/index.js
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
