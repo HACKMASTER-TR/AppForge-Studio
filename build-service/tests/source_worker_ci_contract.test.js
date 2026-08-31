@@ -445,5 +445,18 @@ test(
       ),
       "Salt-okunur runtime smoke gerçek flutter pub get çalıştırmalı."
     );
+
+    for (
+      const marker of [
+        "Flutter failed to write",
+        "Read-only file system",
+        "TOOL_OK: flutter_pub_get_readonly_cache"
+      ]
+    ) {
+      assert.ok(
+        smoke.includes(marker),
+        marker
+      );
+    }
   }
 );

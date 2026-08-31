@@ -246,7 +246,26 @@ printf '%s\n' \
 
 (
   cd "$flutter_smoke_dir"
-  run_tool flutter_pub_get flutter --no-version-check pub get --offline
+
+  set +e
+  flutter_pub_output="$(flutter --no-version-check pub get --offline 2>&1)"
+  flutter_pub_code=$?
+  set -e
+
+  printf '%s\n' "$flutter_pub_output"
+
+  if printf '%s\n' "$flutter_pub_output" |
+    grep -E 'Flutter failed to write|Read-only file system|/opt/flutter/bin/cache.*(failed|Cannot open)' >/dev/null; then
+    fail "flutter pub get salt-okunur SDK cache'ine yazmaya çalıştı"
+  fi
+
+  if test "$flutter_pub_code" -ne 0 &&
+    ! printf '%s\n' "$flutter_pub_output" |
+      grep -F 'Got socket error trying to find package' >/dev/null; then
+    fail "flutter pub get beklenmeyen hatayla durdu (exit=$flutter_pub_code)"
+  fi
+
+  echo "TOOL_OK: flutter_pub_get_readonly_cache"
 )
 
 if ! node --input-type=module <<'NODE'
