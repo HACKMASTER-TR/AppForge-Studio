@@ -680,8 +680,45 @@ app.post(
       const user = await loginUser(req.body || {});
 
       if (!user.emailVerified) {
-        const error = new Error("Cihaz değiştirmek için e-posta doğrulaması gerekli.");
+        let verificationSent = false;
+
+        if (mailDeliveryConfigured()) {
+          try {
+            const verificationToken =
+              await createOneTimeToken(
+                user.id,
+                "email_verify",
+                60 * 24
+              );
+
+            await sendVerificationEmail(
+              user.email,
+              verificationToken
+            );
+
+            verificationSent = true;
+          } catch (mailError) {
+            console.error(
+              "[auth] device-transfer verification delivery failed:",
+              String(
+                mailError?.message ||
+                mailError
+              ).slice(0, 500)
+            );
+          }
+        }
+
+        const error =
+          new Error(
+            verificationSent
+              ? "E-posta doğrulaması gerekli. Doğrulama e-postası gönderildi."
+              : "Cihaz değiştirmek için e-posta doğrulaması gerekli."
+          );
+
         error.statusCode = 403;
+        error.code =
+          "EMAIL_VERIFICATION_REQUIRED";
+
         throw error;
       }
 

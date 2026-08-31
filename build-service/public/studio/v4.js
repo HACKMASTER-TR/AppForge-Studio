@@ -388,6 +388,158 @@ window.forgotPassword=async function forgotPassword(){
   }catch(e){setText("authMsg",e.message)}
 };
 
+
+function setupEmailVerificationFromUrl(){
+  const params =
+    new URLSearchParams(
+      location.search
+    );
+
+  const verificationToken =
+    String(
+      params.get("verify") || ""
+    ).trim();
+
+  if(!verificationToken){
+    return false;
+  }
+
+  // Doğrulama tokenını adres çubuğunda bırakma.
+  try{
+    history.replaceState(
+      {},
+      document.title,
+      location.pathname
+    );
+  }catch{}
+
+  const card =
+    $("authCard");
+
+  if(!card){
+    return false;
+  }
+
+  const normalForm =
+    qs(".form-grid", card);
+
+  const normalActions =
+    qs(".row", card);
+
+  if(normalForm){
+    normalForm.classList.add(
+      "hidden"
+    );
+  }
+
+  if(normalActions){
+    normalActions.classList.add(
+      "hidden"
+    );
+  }
+
+  $("twoFactorBox")
+    ?.classList
+    .add("hidden");
+
+  $("deviceTransferBox")
+    ?.classList
+    .add("hidden");
+
+  const heading =
+    qs("h1", card);
+
+  const description =
+    qs("p.muted", card);
+
+  if(heading){
+    heading.textContent =
+      "E-posta doğrulanıyor";
+  }
+
+  if(description){
+    description.textContent =
+      "AppForge hesabınızın e-posta adresi doğrulanıyor.";
+  }
+
+  setText(
+    "authMsg",
+    "Doğrulama işlemi yapılıyor..."
+  );
+
+  (async()=>{
+    try{
+      await api(
+        "/api/auth/verify-email",
+        {
+          method: "POST",
+          body: {
+            token:
+              verificationToken
+          }
+        }
+      );
+
+      if(heading){
+        heading.textContent =
+          "E-posta doğrulandı";
+      }
+
+      if(description){
+        description.textContent =
+          "E-posta adresiniz başarıyla doğrulandı.";
+      }
+
+      if(normalForm){
+        normalForm.classList.remove(
+          "hidden"
+        );
+      }
+
+      if(normalActions){
+        normalActions.classList.remove(
+          "hidden"
+        );
+      }
+
+      setText(
+        "authMsg",
+        "E-posta adresiniz doğrulandı. Şimdi Cihazı değiştir seçeneğiyle bu cihazı bağlayabilirsiniz."
+      );
+    }catch(error){
+      if(heading){
+        heading.textContent =
+          "Doğrulama başarısız";
+      }
+
+      if(description){
+        description.textContent =
+          "Doğrulama bağlantısı geçersiz veya süresi dolmuş olabilir.";
+      }
+
+      if(normalForm){
+        normalForm.classList.remove(
+          "hidden"
+        );
+      }
+
+      if(normalActions){
+        normalActions.classList.remove(
+          "hidden"
+        );
+      }
+
+      setText(
+        "authMsg",
+        error?.message ||
+        "E-posta doğrulanamadı."
+      );
+    }
+  })();
+
+  return true;
+}
+
 let passwordResetToken = "";
 
 function setupPasswordResetFromUrl(){
@@ -1981,7 +2133,9 @@ loadMonacoLoader()
     renderTree();preview();
   });
 
-if(setupPasswordResetFromUrl()){
+if(setupEmailVerificationFromUrl()){
+  loadSettings().catch(()=>{});
+}else if(setupPasswordResetFromUrl()){
   loadSettings().catch(()=>{});
 }else{
   resumeSession().then(loadTrashAndAi);
