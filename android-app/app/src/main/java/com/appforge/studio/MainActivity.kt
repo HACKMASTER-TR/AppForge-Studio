@@ -15198,17 +15198,38 @@ private fun BuildSettingsStep(
                     "exe"
                 ).forEach {
                     output ->
+                    val windowsExeCompatible =
+                        draft.sourceMode ==
+                            SourceMode.URL ||
+                        draft.sourceBuildEngine
+                            .trim()
+                            .lowercase() in
+                            setOf(
+                                "webview-static",
+                                "node-web"
+                            )
+
+                    val outputEnabled =
+                        output != "exe" ||
+                            windowsExeCompatible
+
                     FilterChip(
                         selected =
                             draft.buildOutput ==
                                 output,
+                        enabled =
+                            outputEnabled,
                         onClick = {
-                            update(
-                                draft.copy(
-                                    buildOutput =
-                                        output
+                            if (
+                                outputEnabled
+                            ) {
+                                update(
+                                    draft.copy(
+                                        buildOutput =
+                                            output
+                                    )
                                 )
-                            )
+                            }
                         },
                         label = {
                             Text(
@@ -15342,6 +15363,27 @@ private fun BuildSettingsStep(
                         }
                     }
                 }
+            }
+        }
+
+        if (
+            draft.buildOutput == "exe" &&
+            draft.sourceMode !=
+                SourceMode.URL &&
+            draft.sourceBuildEngine
+                .trim()
+                .lowercase() !in
+                setOf(
+                    "webview-static",
+                    "node-web"
+                )
+        ) {
+            item {
+                NoteCard(
+                    "Windows EXE bu proje türüyle uyumlu değil. " +
+                    "Native Android/Flutter/React Native kaynakları için APK/AAB kullan. " +
+                    "EXE için web tabanlı veya HTTPS URL kaynağı seç."
+                )
             }
         }
 

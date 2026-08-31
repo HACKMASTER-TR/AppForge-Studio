@@ -2619,6 +2619,51 @@ app.post(
           )
       };
 
+      /*
+       * Windows EXE motoru Electron tabanlıdır.
+       * LOCAL native Android/Flutter/React Native vb. projeleri
+       * doğrudan Windows EXE olarak paketleyemez.
+       *
+       * URL modu ise HTTPS sayfayı Electron içinde açabildiği
+       * için build engine'den bağımsız olarak kullanılabilir.
+       */
+      if (
+        c.buildOutput === "exe" &&
+        c.sourceMode !== "URL"
+      ) {
+        const windowsCompatibleEngines =
+          new Set([
+            "webview-static",
+            "node-web"
+          ]);
+
+        const sourceEngine =
+          String(
+            c.sourceBuildEngine || ""
+          )
+            .trim()
+            .toLowerCase();
+
+        if (
+          sourceEngine &&
+          !windowsCompatibleEngines.has(
+            sourceEngine
+          )
+        ) {
+          const error =
+            new Error(
+              `Windows EXE çıktısı ${sourceEngine} proje motoruyla uyumlu değil. ` +
+              "Bu proje için APK/AAB kullan veya Windows uyumlu web/URL kaynağı seç."
+            );
+
+          error.statusCode = 400;
+          error.code =
+            "WINDOWS_EXE_SOURCE_INCOMPATIBLE";
+
+          throw error;
+        }
+      }
+
       const report =
         c.buildOutput ===
           "exe"

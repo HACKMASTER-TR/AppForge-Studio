@@ -31,7 +31,9 @@ object AppForgeBuildErrorAdvisor {
                     "güvenli bir build motoru seçilemedi",
                     "webview build motoruna yanlışlıkla gönderilmedi",
                     "projede html başlangıç dosyası bulunamadı",
-                    "html başlangıç dosyası bulunamadı"
+                    "html başlangıç dosyası bulunamadı",
+                    "windows exe çıktısı",
+                    "windows_exe_source_incompatible"
                 ),
                 reason = "Seçilen ZIP içinde desteklenen proje imzası veya HTML başlangıç sayfası bulunamadı.",
                 solution = "ZIP içinde index.html, main.html ya da desteklenen Android/Flutter/React Native proje dosyalarının bulunduğunu kontrol et. Geçerli HTML sayfası varsa AppForge onu artık otomatik başlangıç sayfasına dönüştürür.",
