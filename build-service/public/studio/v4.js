@@ -216,6 +216,192 @@ window.forgotPassword=async function forgotPassword(){
     setText("authMsg",j.message || "İstek gönderildi.");
   }catch(e){setText("authMsg",e.message)}
 };
+
+let passwordResetToken = "";
+
+function setupPasswordResetFromUrl(){
+  const params = new URLSearchParams(location.search);
+  const rawToken = String(params.get("reset") || "").trim();
+
+  if(!rawToken)return false;
+
+  passwordResetToken = rawToken;
+
+  // Token URL'de kalmasın.
+  try{
+    history.replaceState(
+      {},
+      document.title,
+      location.pathname
+    );
+  }catch{}
+
+  const card = $("authCard");
+  if(!card)return false;
+
+  const normalForm = qs(".form-grid", card);
+  const normalActions = qs(".row", card);
+
+  if(normalForm)normalForm.classList.add("hidden");
+  if(normalActions)normalActions.classList.add("hidden");
+  if($("twoFactorBox"))$("twoFactorBox").classList.add("hidden");
+
+  const heading = qs("h1", card);
+  const description = qs("p.muted", card);
+
+  if(heading)heading.textContent = "Yeni parola belirle";
+  if(description){
+    description.textContent =
+      "AppForge hesabınız için yeni parolanızı oluşturun.";
+  }
+
+  if(!$("passwordResetBox")){
+    const box = document.createElement("div");
+    box.id = "passwordResetBox";
+
+    box.innerHTML = `
+      <div class="form-grid cols-2">
+        <label>
+          Yeni parola
+          <input
+            id="resetNewPassword"
+            type="password"
+            minlength="8"
+            autocomplete="new-password"
+            placeholder="En az 8 karakter"
+          />
+        </label>
+
+        <label>
+          Yeni parola tekrar
+          <input
+            id="resetConfirmPassword"
+            type="password"
+            minlength="8"
+            autocomplete="new-password"
+            placeholder="Parolayı tekrar yaz"
+          />
+        </label>
+      </div>
+
+      <div class="row">
+        <button onclick="resetPasswordFromLink()">
+          Parolayı değiştir
+        </button>
+      </div>
+    `;
+
+    card.insertBefore(
+      box,
+      $("authMsg")
+    );
+  }
+
+  setText(
+    "authMsg",
+    "Yeni parolanızı belirleyin."
+  );
+
+  $("resetNewPassword")?.focus();
+
+  return true;
+}
+
+window.resetPasswordFromLink =
+async function resetPasswordFromLink(){
+  const nextPassword =
+    val("resetNewPassword");
+
+  const confirmPassword =
+    val("resetConfirmPassword");
+
+  if(!passwordResetToken){
+    setText(
+      "authMsg",
+      "Parola sıfırlama bağlantısı geçersiz."
+    );
+    return;
+  }
+
+  if(nextPassword.length < 8){
+    setText(
+      "authMsg",
+      "Yeni parola en az 8 karakter olmalı."
+    );
+    return;
+  }
+
+  if(nextPassword !== confirmPassword){
+    setText(
+      "authMsg",
+      "Parolalar birbiriyle eşleşmiyor."
+    );
+    return;
+  }
+
+  try{
+    await api(
+      "/api/auth/reset-password",
+      {
+        method: "POST",
+        body: {
+          token: passwordResetToken,
+          password: nextPassword
+        }
+      }
+    );
+
+    passwordResetToken = "";
+
+    // Bu cihazdaki eski oturumu da temizle.
+    await clearAuthToken();
+
+    const card = $("authCard");
+    $("passwordResetBox")?.remove();
+
+    const normalForm =
+      qs(".form-grid", card);
+
+    const normalActions =
+      qs(".row", card);
+
+    if(normalForm)
+      normalForm.classList.remove("hidden");
+
+    if(normalActions)
+      normalActions.classList.remove("hidden");
+
+    const heading =
+      qs("h1", card);
+
+    const description =
+      qs("p.muted", card);
+
+    if(heading)
+      heading.textContent =
+        "AppForge Studio";
+
+    if(description){
+      description.textContent =
+        "Tek hesapla Android, Windows ve Web projelerini yönet.";
+    }
+
+    if($("password"))
+      $("password").value = "";
+
+    setText(
+      "authMsg",
+      "Parolanız başarıyla değiştirildi. Yeni parolanızla giriş yapabilirsiniz."
+    );
+  }catch(error){
+    setText(
+      "authMsg",
+      error?.message ||
+      "Parola değiştirilemedi."
+    );
+  }
+};
+
 async function finishLogin(j){
   const persisted=j?.token ? await persistAuthToken(j.token) : true;
   currentUser=j.user || null;
@@ -1624,5 +1810,9 @@ loadMonacoLoader()
     renderTree();preview();
   });
 
-resumeSession().then(loadTrashAndAi);
+if(setupPasswordResetFromUrl()){
+  loadSettings().catch(()=>{});
+}else{
+  resumeSession().then(loadTrashAndAi);
+}
 })();
