@@ -6,6 +6,12 @@ on:
       - main
     paths:
       - "build-service/**"
+      - "!build-service/Dockerfile.source-worker"
+      - "!build-service/source-worker.js"
+      - "!build-service/scripts/patch-flutter-readonly-sdk.sh"
+      - "!build-service/scripts/source-worker-runtime-smoke.sh"
+      - "!build-service/tests/source_build_isolation.test.js"
+      - "!build-service/tests/source_worker_*.test.js"
       - ".github/workflows/worker-image.yml"
   workflow_dispatch:
 

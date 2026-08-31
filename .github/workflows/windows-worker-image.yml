@@ -5,7 +5,13 @@ on:
     branches:
       - main
     paths:
-      - "build-service/**"
+      - "build-service/Dockerfile.windows-worker"
+      - "build-service/package.json"
+      - "build-service/package-lock.json"
+      - "build-service/instrument.mjs"
+      - "build-service/windows-worker.js"
+      - "build-service/src/**"
+      - "build-service/sql/**"
       - ".github/workflows/windows-worker-image.yml"
 
   workflow_dispatch:

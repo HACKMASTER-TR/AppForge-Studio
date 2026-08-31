@@ -1,9 +1,0 @@
-node_modules
-work
-outputs
-shared-inputs
-gradle-cache
-.env
-*.log
-.git
-.gitignore

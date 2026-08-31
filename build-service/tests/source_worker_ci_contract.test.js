@@ -51,7 +51,10 @@ test(
         "--pids-limit 256",
         "source-worker-runtime-smoke.sh",
         "ghcr.io/hackmaster-tr/appforge-source-worker",
-        "docker push"
+        "Resolve immutable image tag",
+        "push: true",
+        "provenance: false",
+        "cache-from: type=gha,scope=source-worker"
       ]
     ) {
       assert.ok(

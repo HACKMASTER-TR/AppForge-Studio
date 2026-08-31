@@ -116,26 +116,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish verified source Worker image
+      - name: Resolve immutable image tag
+        id: image-tag
         shell: bash
-        run: |
-          set -euo pipefail
+        run: echo "sha_tag=sha-${GITHUB_SHA::12}" >> "${GITHUB_OUTPUT}"
 
-          sha_tag="sha-${GITHUB_SHA::12}"
-
-          docker tag \
-            "${LOCAL_IMAGE}" \
-            "${IMAGE_NAME}:latest"
-
-          docker tag \
-            "${LOCAL_IMAGE}" \
-            "${IMAGE_NAME}:${sha_tag}"
-
-          docker push \
-            "${IMAGE_NAME}:latest"
-
-          docker push \
-            "${IMAGE_NAME}:${sha_tag}"
-
-          echo "Published ${IMAGE_NAME}:latest"
-          echo "Published ${IMAGE_NAME}:${sha_tag}"
+      - name: Publish verified source Worker image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./build-service
+          file: ./build-service/Dockerfile.source-worker
+          push: true
+          provenance: false
+          build-args: |
+            ANDROID_SDK_LICENSE_ACCEPTED=true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.sha_tag }}
+          cache-from: type=gha,scope=source-worker
