@@ -53,6 +53,81 @@ const desktopApiBase = desktop?.apiBaseUrl || "";
 if (desktopApiBase) $("baseUrl").value = desktopApiBase;
 else if (standaloneWeb || desktopLoopback) $("baseUrl").value = "https://appforge-studio-production.up.railway.app";
 
+
+const DEVICE_ID_STORAGE_KEY = "afs_device_id";
+
+function getOrCreateStudioDeviceId(){
+  try{
+    const existing =
+      String(
+        localStorage.getItem(
+          DEVICE_ID_STORAGE_KEY
+        ) || ""
+      )
+      .trim()
+      .toLowerCase();
+
+    if(/^[a-f0-9]{64}$/.test(existing)){
+      return existing;
+    }
+
+    if(
+      !globalThis.crypto ||
+      typeof globalThis.crypto.getRandomValues !== "function"
+    ){
+      throw new Error(
+        "Güvenli cihaz kimliği oluşturulamıyor."
+      );
+    }
+
+    const bytes =
+      new Uint8Array(32);
+
+    globalThis.crypto.getRandomValues(
+      bytes
+    );
+
+    const generated =
+      [...bytes]
+        .map(
+          value =>
+            value
+              .toString(16)
+              .padStart(2, "0")
+        )
+        .join("");
+
+    localStorage.setItem(
+      DEVICE_ID_STORAGE_KEY,
+      generated
+    );
+
+    return generated;
+  }catch(error){
+    console.error(
+      "AppForge device ID error",
+      error
+    );
+    return "";
+  }
+}
+
+const studioDeviceId =
+  getOrCreateStudioDeviceId();
+
+function withDeviceHeader(headers={}){
+  const result = {
+    ...headers
+  };
+
+  if(studioDeviceId){
+    result["X-AppForge-Device-ID"] =
+      studioDeviceId;
+  }
+
+  return result;
+}
+
 function esc(v){
   return String(v ?? "")
     .replaceAll("&","&amp;")
@@ -162,7 +237,10 @@ async function resumeSession(){
 }
 
 async function api(path, opts={}){
-  const headers={...(opts.headers||{}),Accept:"application/json"};
+  const headers=withDeviceHeader({
+    ...(opts.headers||{}),
+    Accept:"application/json"
+  });
   if(token)headers.Authorization="Bearer "+token;
   const request={...opts,headers};
   if(request.body && typeof request.body!=="string" && !(request.body instanceof FormData) && !(request.body instanceof Blob)){
@@ -177,7 +255,10 @@ async function api(path, opts={}){
   return data;
 }
 async function apiForm(path, form, opts={}){
-  const headers={...(opts.headers||{}),Accept:"application/json"};
+  const headers=withDeviceHeader({
+    ...(opts.headers||{}),
+    Accept:"application/json"
+  });
   if(token)headers.Authorization="Bearer "+token;
   const r=await fetch(base()+path,{method:opts.method||"POST",headers,body:form});
   const text=await r.text();
