@@ -88,6 +88,11 @@ test(
       docker,
       /GRADLE_USER_HOME=\/app\/user-cache\/10001\/gradle/
     );
+
+    assert.match(
+      docker,
+      /GRADLE_CACHE_ROOT=\/app\/user-cache\/10001\/gradle-cache/
+    );
   }
 );
 

@@ -352,6 +352,7 @@ RUN groupadd --gid 10001 appforge \
 
 ENV HOME=/home/appforge
 ENV APPFORGE_USER_CACHE_ROOT=/app/user-cache/10001
+ENV GRADLE_CACHE_ROOT=/app/user-cache/10001/gradle-cache
 ENV GRADLE_USER_HOME=/app/user-cache/10001/gradle
 ENV XDG_CACHE_HOME=/app/user-cache/10001/xdg-cache
 ENV XDG_DATA_HOME=/app/user-cache/10001/xdg-data
