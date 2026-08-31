@@ -575,13 +575,19 @@ app.post(
       });
     } catch (error) {
       res
-        .status(401)
+        .status(
+          error.statusCode ||
+          401
+        )
         .json({
           error:
             String(
               error.message ||
               error
-            )
+            ),
+          code:
+            error.code ||
+            null
         });
     }
   }

@@ -42,101 +42,253 @@ export function requestDeviceId(req) {
   return normalizeDeviceId(req.get("X-AppForge-Device-ID"));
 }
 
-async function bindDeviceWithClient(client, userId, deviceId) {
-  const deviceHash = sha256(normalizeDeviceId(deviceId));
+const MAX_ACCOUNT_DEVICES = Math.max(
+  1,
+  Math.min(
+    20,
+    Number(
+      process.env.APPFORGE_MAX_ACCOUNT_DEVICES ||
+      5
+    ) || 5
+  )
+);
 
+async function lockDeviceScope(
+  client,
+  userId,
+  deviceHash
+) {
+  // Aynı hesaba eşzamanlı cihaz ekleme yarışlarını önle.
+  await client.query(
+    `SELECT pg_advisory_xact_lock(hashtext($1))`,
+    [`appforge-user:${userId}`]
+  );
+
+  // Aynı cihazın iki hesaba eşzamanlı bağlanmasını önle.
   await client.query(
     `SELECT pg_advisory_xact_lock(hashtext($1))`,
     [`appforge-device:${deviceHash}`]
   );
-
-  const existing = await client.query(
-    `SELECT user_id, device_hash
-     FROM appforge_account_devices
-     WHERE user_id = $1 OR device_hash = $2
-     FOR UPDATE`,
-    [userId, deviceHash]
-  );
-
-  const accountDevice = existing.rows.find(row => row.user_id === userId);
-  const deviceOwner = existing.rows.find(row => row.device_hash === deviceHash);
-
-  if (deviceOwner && deviceOwner.user_id !== userId) {
-    const error = new Error("Bu cihaz daha önce başka bir AppForge hesabına bağlanmış.");
-    error.statusCode = 409;
-    error.code = "DEVICE_ALREADY_BOUND";
-    throw error;
-  }
-
-  if (accountDevice && accountDevice.device_hash !== deviceHash) {
-    const error = new Error("Bu hesap başka bir cihaza bağlı. Hesap ekranından cihaz değişikliği yapmalısın.");
-    error.statusCode = 403;
-    error.code = "ACCOUNT_BOUND_TO_ANOTHER_DEVICE";
-    throw error;
-  }
-
-  await client.query(
-    `INSERT INTO appforge_account_devices(user_id, device_hash)
-     VALUES($1,$2)
-     ON CONFLICT(device_hash)
-     DO UPDATE SET last_seen_at = NOW()`,
-    [userId, deviceHash]
-  );
 }
 
-export async function bindAccountDevice(userId, deviceId) {
-  return tx(client => bindDeviceWithClient(client, userId, deviceId));
-}
-
-export async function transferAccountDevice(userId, deviceId) {
-  const deviceHash = sha256(normalizeDeviceId(deviceId));
-
-  return tx(async client => {
-    await client.query(
-      `SELECT pg_advisory_xact_lock(hashtext($1))`,
-      [`appforge-device:${deviceHash}`]
+async function bindDeviceWithClient(
+  client,
+  userId,
+  deviceId
+) {
+  const deviceHash =
+    sha256(
+      normalizeDeviceId(deviceId)
     );
 
-    const current = await client.query(
-      `SELECT device_hash, bound_at, transferred_at
+  await lockDeviceScope(
+    client,
+    userId,
+    deviceHash
+  );
+
+  const device =
+    await client.query(
+      `SELECT
+         user_id,
+         device_hash
+       FROM appforge_account_devices
+       WHERE device_hash = $1
+       FOR UPDATE`,
+      [deviceHash]
+    );
+
+  const deviceOwner =
+    device.rows[0];
+
+  if (deviceOwner) {
+    if (
+      deviceOwner.user_id !==
+      userId
+    ) {
+      const error =
+        new Error(
+          "Bu cihaz başka bir AppForge hesabına bağlı."
+        );
+
+      error.statusCode = 409;
+      error.code =
+        "DEVICE_ALREADY_BOUND";
+
+      throw error;
+    }
+
+    await client.query(
+      `UPDATE appforge_account_devices
+       SET last_seen_at = NOW()
+       WHERE device_hash = $1`,
+      [deviceHash]
+    );
+
+    return;
+  }
+
+  const accountDevices =
+    await client.query(
+      `SELECT device_hash
        FROM appforge_account_devices
        WHERE user_id = $1
        FOR UPDATE`,
       [userId]
     );
 
-    const row = current.rows[0];
-    const lastChange = row?.transferred_at || row?.bound_at;
-    if (lastChange && Date.now() - new Date(lastChange).getTime() < 30 * 24 * 60 * 60 * 1000) {
-      const error = new Error("Cihaz yalnızca 30 günde bir değiştirilebilir.");
-      error.statusCode = 429;
-      error.code = "DEVICE_TRANSFER_COOLDOWN";
-      throw error;
-    }
-
-    const owner = await client.query(
-      `SELECT user_id FROM appforge_account_devices
-       WHERE device_hash = $1 AND user_id <> $2
-       LIMIT 1`,
-      [deviceHash, userId]
-    );
-    if (owner.rowCount) {
-      const error = new Error("Bu cihaz başka bir AppForge hesabına bağlı.");
-      error.statusCode = 409;
-      error.code = "DEVICE_ALREADY_BOUND";
-      throw error;
-    }
-
+  // İlk cihaz kayıt/giriş sırasında otomatik bağlanabilir.
+  if (accountDevices.rowCount === 0) {
     await client.query(
-      `INSERT INTO appforge_account_devices(user_id, device_hash, transferred_at)
-       VALUES($1,$2,NOW())
-       ON CONFLICT(user_id)
-       DO UPDATE SET device_hash = EXCLUDED.device_hash,
-                     transferred_at = NOW(),
-                     last_seen_at = NOW()`,
-      [userId, deviceHash]
+      `INSERT INTO appforge_account_devices(
+         user_id,
+         device_hash
+       )
+       VALUES($1,$2)`,
+      [
+        userId,
+        deviceHash
+      ]
     );
-  });
+
+    return;
+  }
+
+  // Hesabın zaten cihazı varsa yeni cihaz açık şekilde
+  // doğrulanmış cihaz-ekleme akışından geçirilmelidir.
+  const error =
+    new Error(
+      "Bu cihaz henüz hesaba bağlı değil. Cihaz ekle seçeneğini kullan."
+    );
+
+  error.statusCode = 403;
+  error.code =
+    "DEVICE_ADD_REQUIRED";
+
+  throw error;
+}
+
+export async function bindAccountDevice(
+  userId,
+  deviceId
+) {
+  return tx(
+    client =>
+      bindDeviceWithClient(
+        client,
+        userId,
+        deviceId
+      )
+  );
+}
+
+export async function transferAccountDevice(
+  userId,
+  deviceId
+) {
+  const deviceHash =
+    sha256(
+      normalizeDeviceId(deviceId)
+    );
+
+  return tx(
+    async client => {
+      await lockDeviceScope(
+        client,
+        userId,
+        deviceHash
+      );
+
+      const device =
+        await client.query(
+          `SELECT
+             user_id,
+             device_hash
+           FROM appforge_account_devices
+           WHERE device_hash = $1
+           FOR UPDATE`,
+          [deviceHash]
+        );
+
+      const deviceOwner =
+        device.rows[0];
+
+      if (deviceOwner) {
+        if (
+          deviceOwner.user_id !==
+          userId
+        ) {
+          const error =
+            new Error(
+              "Bu cihaz başka bir AppForge hesabına bağlı."
+            );
+
+          error.statusCode = 409;
+          error.code =
+            "DEVICE_ALREADY_BOUND";
+
+          throw error;
+        }
+
+        await client.query(
+          `UPDATE appforge_account_devices
+           SET last_seen_at = NOW()
+           WHERE device_hash = $1`,
+          [deviceHash]
+        );
+
+        return {
+          added: false
+        };
+      }
+
+      const current =
+        await client.query(
+          `SELECT device_hash
+           FROM appforge_account_devices
+           WHERE user_id = $1
+           FOR UPDATE`,
+          [userId]
+        );
+
+      if (
+        current.rowCount >=
+        MAX_ACCOUNT_DEVICES
+      ) {
+        const error =
+          new Error(
+            `Bu hesaba en fazla ${MAX_ACCOUNT_DEVICES} cihaz bağlanabilir.`
+          );
+
+        error.statusCode = 429;
+        error.code =
+          "DEVICE_LIMIT_REACHED";
+
+        throw error;
+      }
+
+      await client.query(
+        `INSERT INTO appforge_account_devices(
+           user_id,
+           device_hash,
+           transferred_at
+         )
+         VALUES($1,$2,NOW())`,
+        [
+          userId,
+          deviceHash
+        ]
+      );
+
+      return {
+        added: true,
+        deviceCount:
+          current.rowCount + 1,
+        maxDevices:
+          MAX_ACCOUNT_DEVICES
+      };
+    }
+  );
 }
 
 export async function assertAccountDevice(userId, deviceId) {

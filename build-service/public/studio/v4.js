@@ -251,7 +251,24 @@ async function api(path, opts={}){
   const text=await r.text();
   let data={};
   try{data=text?JSON.parse(text):{}}catch{data={raw:text}}
-  if(!r.ok)throw new Error(data.error || data.detail || text || `HTTP ${r.status}`);
+  if(!r.ok){
+    const error =
+      new Error(
+        data.error ||
+        data.detail ||
+        text ||
+        `HTTP ${r.status}`
+      );
+
+    error.code =
+      data.code || null;
+
+    error.status =
+      r.status;
+
+    throw error;
+  }
+
   return data;
 }
 async function apiForm(path, form, opts={}){
@@ -281,9 +298,13 @@ window.login=async function login(){
     setText("authMsg",e.message);
 
     if(
+      e?.code === "DEVICE_ADD_REQUIRED" ||
       String(e?.message || "")
         .toLocaleLowerCase("tr-TR")
-        .includes("başka bir cihaza bağlı")
+        .includes("başka bir cihaza bağlı") ||
+      String(e?.message || "")
+        .toLocaleLowerCase("tr-TR")
+        .includes("cihaz henüz hesaba bağlı değil")
     ){
       $("deviceTransferBox")
         ?.classList
@@ -309,7 +330,7 @@ window.toggleDeviceTransfer=function toggleDeviceTransfer(force){
   if(shouldShow){
     setText(
       "authMsg",
-      "E-posta ve parolanızla bu cihazı hesabınıza bağlayabilirsiniz."
+      "E-posta ve parolanızla bu cihazı hesabınıza ekleyebilirsiniz."
     );
   }
 };
