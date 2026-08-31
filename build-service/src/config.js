@@ -236,6 +236,27 @@ export const config = {
     "AppForge <no-reply@appforge.local>"
   ),
 
+  mailjetApiKey:
+    String(
+      process.env.MAILJET_API_KEY ||
+      ""
+    ).trim(),
+  mailjetSecretKey:
+    String(
+      process.env.MAILJET_SECRET_KEY ||
+      ""
+    ).trim(),
+  mailjetSenderEmail:
+    String(
+      process.env.MAILJET_SENDER_EMAIL ||
+      ""
+    ).trim(),
+  mailjetSenderName:
+    String(
+      process.env.MAILJET_SENDER_NAME ||
+      "AppForge Studio"
+    ).trim() || "AppForge Studio",
+
   sentryDsn:
     String(process.env.SENTRY_DSN || "").trim(),
   sentryEnvironment:
@@ -375,6 +396,29 @@ export function assertCriticalConfig() {
   ) {
     throw new Error(
       "SMTP_USER tanımlıysa SMTP_PASS gerekli."
+    );
+  }
+
+  const mailjetAnyConfigured =
+    Boolean(
+      config.mailjetApiKey ||
+      config.mailjetSecretKey ||
+      config.mailjetSenderEmail
+    );
+
+  const mailjetFullyConfigured =
+    Boolean(
+      config.mailjetApiKey &&
+      config.mailjetSecretKey &&
+      config.mailjetSenderEmail
+    );
+
+  if (
+    mailjetAnyConfigured &&
+    !mailjetFullyConfigured
+  ) {
+    throw new Error(
+      "Mailjet için MAILJET_API_KEY, MAILJET_SECRET_KEY ve MAILJET_SENDER_EMAIL birlikte gerekli."
     );
   }
 
