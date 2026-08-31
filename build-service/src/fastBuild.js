@@ -5,6 +5,9 @@ import { spawn } from "child_process";
 import {
   androidAppCategoryAttribute
 } from "./androidAppCategory.js";
+import {
+  resolveFastDebugKeystorePath
+} from "./fastSigningKey.js";
 
 const ANDROID_HOME =
   process.env.ANDROID_HOME ||
@@ -58,8 +61,7 @@ const FAST_QR_DEX =
   "/opt/appforge-fast-features/qr/classes.dex";
 
 const FAST_DEBUG_KEYSTORE =
-  process.env.APPFORGE_FAST_DEBUG_KEYSTORE ||
-  "/data/gradle-cache/appforge-signing/debug.keystore";
+  resolveFastDebugKeystorePath();
 
 function xml(value) {
   return String(value ?? "")

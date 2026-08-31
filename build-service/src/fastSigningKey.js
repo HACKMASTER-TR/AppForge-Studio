@@ -1,12 +1,21 @@
 import { promises as fs } from "fs";
 import path from "path";
 
+export const DEFAULT_FAST_DEBUG_KEYSTORE =
+  "/tmp/appforge-signing/debug.keystore";
+
+export function resolveFastDebugKeystorePath() {
+  return (
+    process.env.APPFORGE_FAST_DEBUG_KEYSTORE ||
+    DEFAULT_FAST_DEBUG_KEYSTORE
+  );
+}
+
 export async function materializeFastDebugKeystore({
   base64 =
     process.env.APPFORGE_FAST_DEBUG_KEYSTORE_B64 || "",
   targetPath =
-    process.env.APPFORGE_FAST_DEBUG_KEYSTORE ||
-    "/tmp/appforge-signing/debug.keystore"
+    resolveFastDebugKeystorePath()
 } = {}) {
   const encoded = String(base64).trim();
 

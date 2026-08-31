@@ -5,7 +5,9 @@ import os from "os";
 import path from "path";
 
 import {
-  materializeFastDebugKeystore
+  DEFAULT_FAST_DEBUG_KEYSTORE,
+  materializeFastDebugKeystore,
+  resolveFastDebugKeystorePath
 } from "../src/fastSigningKey.js";
 
 test(
@@ -80,5 +82,35 @@ test(
       result.materialized,
       false
     );
+  }
+);
+
+
+test(
+  "FAST signing fallback is volume independent",
+  () => {
+    assert.equal(
+      DEFAULT_FAST_DEBUG_KEYSTORE,
+      "/tmp/appforge-signing/debug.keystore"
+    );
+
+    const previous =
+      process.env.APPFORGE_FAST_DEBUG_KEYSTORE;
+
+    delete process.env.APPFORGE_FAST_DEBUG_KEYSTORE;
+
+    try {
+      assert.equal(
+        resolveFastDebugKeystorePath(),
+        DEFAULT_FAST_DEBUG_KEYSTORE
+      );
+    } finally {
+      if (previous === undefined) {
+        delete process.env.APPFORGE_FAST_DEBUG_KEYSTORE;
+      } else {
+        process.env.APPFORGE_FAST_DEBUG_KEYSTORE =
+          previous;
+      }
+    }
   }
 );
