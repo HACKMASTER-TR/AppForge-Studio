@@ -130,6 +130,28 @@ export async function registerWorker(
   );
 }
 
+
+export async function touchWorker(
+  workerId,
+  capabilities =
+    config.workerCapabilities
+) {
+  await query(
+    `UPDATE appforge_workers
+     SET
+       capabilities = $2::jsonb,
+       last_seen_at = NOW()
+     WHERE worker_id = $1`,
+    [
+      workerId,
+      JSON.stringify(
+        capabilities
+      )
+    ]
+  );
+}
+
+
 export async function claimNextJob(workerId, capabilities) {
   return tx(async client => {
     const result = await client.query(
@@ -409,27 +431,40 @@ export async function requestBuildCancellation(
       [buildId]
     );
 
-    if (
-      build.status ===
-      "queued"
-    ) {
+    const queuedCancellation =
       await client.query(
         `UPDATE appforge_build_jobs
          SET
            status = 'cancelled',
            updated_at = NOW()
          WHERE build_id = $1
-           AND status = 'queued'`,
+           AND status = 'queued'
+         RETURNING id`,
         [buildId]
       );
 
+    // Build daha önce "building" durumuna geçmiş olsa bile
+    // Worker ölümü/retry sonrasında job tekrar queued olabilir.
+    // Böyle bir durumda iptal talebi orphan job bırakmamalıdır.
+    if (
+      queuedCancellation.rowCount > 0 ||
+      build.status === "queued"
+    ) {
       await client.query(
         `UPDATE appforge_builds
          SET
            status = 'cancelled',
            progress = 0,
-           cancelled_at = NOW(),
-           completed_at = NOW()
+           cancelled_at =
+             COALESCE(
+               cancelled_at,
+               NOW()
+             ),
+           completed_at =
+             COALESCE(
+               completed_at,
+               NOW()
+             )
          WHERE id = $1`,
         [buildId]
       );

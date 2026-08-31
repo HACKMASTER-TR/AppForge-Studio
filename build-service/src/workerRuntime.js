@@ -13,13 +13,17 @@ import {
   markCancelledJob,
   heartbeat,
   registerWorker,
-  requeueStaleJobs
+  requeueStaleJobs,
+  touchWorker
 } from "./jobQueue.js";
 import { executeBuild } from "./buildEngine.js";
 import { executeWindowsBuild } from "./windowsBuild.js";
 import { executeUnityBuild } from "./unityLicensedBuild.js";
 
 let stopping = false;
+
+const presenceTimers =
+  new Set();
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -56,6 +60,47 @@ export async function startWorker({
     );
   }
 
+  const presenceEveryMs =
+    Math.max(
+      2000,
+      Math.min(
+        config.workerHeartbeatMs,
+        Math.floor(
+          config.workerStaleAfterMs /
+          3
+        )
+      )
+    );
+
+  for (
+    const slotId of slotIds
+  ) {
+    const timer =
+      setInterval(
+        () => {
+          touchWorker(
+            slotId,
+            capabilities
+          ).catch(
+            error => {
+              console.error(
+                `Worker presence heartbeat failed: ${slotId}`,
+                error?.message ||
+                error
+              );
+            }
+          );
+        },
+        presenceEveryMs
+      );
+
+    timer.unref();
+
+    presenceTimers.add(
+      timer
+    );
+  }
+
   const slots =
     slotIds.map(
       slotId =>
@@ -76,6 +121,17 @@ export async function startWorker({
 
 export function stopWorker() {
   stopping = true;
+
+  for (
+    const timer of
+    presenceTimers
+  ) {
+    clearInterval(
+      timer
+    );
+  }
+
+  presenceTimers.clear();
 }
 
 async function staleReaper() {
