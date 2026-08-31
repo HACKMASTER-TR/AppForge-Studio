@@ -257,6 +257,22 @@ export const config = {
       "AppForge Studio"
     ).trim() || "AppForge Studio",
 
+  sendgridApiKey:
+    String(
+      process.env.SENDGRID_API_KEY ||
+      ""
+    ).trim(),
+  sendgridSenderEmail:
+    String(
+      process.env.SENDGRID_SENDER_EMAIL ||
+      ""
+    ).trim(),
+  sendgridSenderName:
+    String(
+      process.env.SENDGRID_SENDER_NAME ||
+      "AppForge Studio"
+    ).trim() || "AppForge Studio",
+
   sentryDsn:
     String(process.env.SENTRY_DSN || "").trim(),
   sentryEnvironment:
@@ -419,6 +435,27 @@ export function assertCriticalConfig() {
   ) {
     throw new Error(
       "Mailjet için MAILJET_API_KEY, MAILJET_SECRET_KEY ve MAILJET_SENDER_EMAIL birlikte gerekli."
+    );
+  }
+
+  const sendgridAnyConfigured =
+    Boolean(
+      config.sendgridApiKey ||
+      config.sendgridSenderEmail
+    );
+
+  const sendgridFullyConfigured =
+    Boolean(
+      config.sendgridApiKey &&
+      config.sendgridSenderEmail
+    );
+
+  if (
+    sendgridAnyConfigured &&
+    !sendgridFullyConfigured
+  ) {
+    throw new Error(
+      "SendGrid için SENDGRID_API_KEY ve SENDGRID_SENDER_EMAIL birlikte gerekli."
     );
   }
 

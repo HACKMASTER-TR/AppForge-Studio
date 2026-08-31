@@ -355,6 +355,8 @@ app.get(
           config.storageDriver,
         smtpConfigured:
           Boolean(config.smtpHost),
+        mailConfigured:
+          mailDeliveryConfigured(),
         buildCache:
           config.buildCacheEnabled,
         buildCacheTtlHours:
@@ -452,6 +454,21 @@ app.get(
   }
 );
 
+function mailDeliveryConfigured() {
+  return Boolean(
+    (
+      config.sendgridApiKey &&
+      config.sendgridSenderEmail
+    ) ||
+    (
+      config.mailjetApiKey &&
+      config.mailjetSecretKey &&
+      config.mailjetSenderEmail
+    ) ||
+    config.smtpHost
+  );
+}
+
 // -----------------------------------------------------------------------------
 // Auth
 // -----------------------------------------------------------------------------
@@ -478,7 +495,7 @@ app.post(
           }
         );
 
-      if (config.smtpHost) {
+      if (mailDeliveryConfigured()) {
         const token =
           await createOneTimeToken(
             user.id,
@@ -502,9 +519,7 @@ app.post(
               { deviceBound: true }
             ),
           verificationEmailSent:
-            Boolean(
-              config.smtpHost
-            )
+            mailDeliveryConfigured()
         });
     } catch (error) {
       res
@@ -915,19 +930,9 @@ app.post(
           req.body?.email
         );
 
-      const mailDeliveryConfigured =
-        Boolean(
-          (
-            config.mailjetApiKey &&
-            config.mailjetSecretKey &&
-            config.mailjetSenderEmail
-          ) ||
-          config.smtpHost
-        );
-
       if (
         user &&
-        mailDeliveryConfigured
+        mailDeliveryConfigured()
       ) {
         const token =
           await createOneTimeToken(

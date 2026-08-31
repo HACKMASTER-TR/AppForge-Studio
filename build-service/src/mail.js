@@ -3,6 +3,28 @@ import { config } from "./config.js";
 
 let transport = null;
 
+const HTML_ESCAPE = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;"
+};
+
+function escapeHtml(value) {
+  return String(value).replace(
+    /[&<>"']/g,
+    char => HTML_ESCAPE[char]
+  );
+}
+
+function sendgridConfigured() {
+  return Boolean(
+    config.sendgridApiKey &&
+    config.sendgridSenderEmail
+  );
+}
+
 function mailjetConfigured() {
   return Boolean(
     config.mailjetApiKey &&
@@ -35,6 +57,126 @@ function transporter() {
     });
 
   return transport;
+}
+
+async function sendViaSendGrid({
+  email,
+  subject,
+  text,
+  html
+}) {
+  if (!sendgridConfigured()) {
+    throw new Error(
+      "SendGrid yapılandırılmamış."
+    );
+  }
+
+  const controller =
+    new AbortController();
+
+  const timeout =
+    setTimeout(
+      () => controller.abort(),
+      15000
+    );
+
+  try {
+    const response =
+      await fetch(
+        "https://api.sendgrid.com/v3/mail/send",
+        {
+          method: "POST",
+          headers: {
+            Authorization:
+              `Bearer ${config.sendgridApiKey}`,
+            "Content-Type":
+              "application/json",
+            Accept:
+              "application/json"
+          },
+          body:
+            JSON.stringify({
+              personalizations: [
+                {
+                  to: [
+                    {
+                      email
+                    }
+                  ]
+                }
+              ],
+              from: {
+                email:
+                  config.sendgridSenderEmail,
+                name:
+                  config.sendgridSenderName
+              },
+              subject,
+              content: [
+                {
+                  type: "text/plain",
+                  value: text
+                },
+                ...(html
+                  ? [
+                      {
+                        type: "text/html",
+                        value: html
+                      }
+                    ]
+                  : [])
+              ]
+            }),
+          signal:
+            controller.signal
+        }
+      );
+
+    const raw =
+      await response.text();
+
+    if (!response.ok) {
+      let detail = raw;
+
+      try {
+        const parsed =
+          raw ? JSON.parse(raw) : {};
+
+        detail =
+          parsed?.errors
+            ?.map(item => item?.message)
+            .filter(Boolean)
+            .join("; ") ||
+          raw;
+      } catch {
+        // Ham yanıt kullanılacak.
+      }
+
+      throw new Error(
+        `SendGrid gönderim hatası: ${
+          String(
+            detail ||
+            `HTTP ${response.status}`
+          ).slice(0, 500)
+        }`
+      );
+    }
+
+    return {
+      ok: true,
+      status: response.status
+    };
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error(
+        "SendGrid isteği zaman aşımına uğradı."
+      );
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function mailjetAuthorization() {
@@ -126,9 +268,7 @@ async function sendViaMailjet({
           ? JSON.parse(raw)
           : {};
     } catch {
-      result = {
-        raw
-      };
+      result = { raw };
     }
 
     const status =
@@ -143,23 +283,19 @@ async function sendViaMailjet({
         result?.Messages?.[0]
           ?.Errors?.[0]
           ?.ErrorMessage ||
-        result?.Messages?.[0]
-          ?.Errors?.[0]
-          ?.ErrorIdentifier ||
         raw ||
         `HTTP ${response.status}`;
 
       throw new Error(
-        `Mailjet gönderim hatası: ${String(detail).slice(0, 500)}`
+        `Mailjet gönderim hatası: ${
+          String(detail).slice(0, 500)
+        }`
       );
     }
 
     return result;
   } catch (error) {
-    if (
-      error?.name ===
-      "AbortError"
-    ) {
+    if (error?.name === "AbortError") {
       throw new Error(
         "Mailjet isteği zaman aşımına uğradı."
       );
@@ -177,8 +313,16 @@ async function sendMessage({
   text,
   html
 }) {
-  // Railway SMTP kısıtlamalarına takılmamak için
-  // Mailjet HTTPS API varsa öncelikle onu kullan.
+  // Railway üzerinde HTTPS sağlayıcısı öncelikli.
+  if (sendgridConfigured()) {
+    return sendViaSendGrid({
+      email,
+      subject,
+      text,
+      html
+    });
+  }
+
   if (mailjetConfigured()) {
     return sendViaMailjet({
       email,
@@ -193,9 +337,7 @@ async function sendMessage({
     to: email,
     subject,
     text,
-    ...(html
-      ? { html }
-      : {})
+    ...(html ? { html } : {})
   });
 }
 
@@ -205,6 +347,9 @@ export async function sendVerificationEmail(
 ) {
   const url =
     `${config.publicBaseUrl}/studio/?verify=${encodeURIComponent(token)}`;
+
+  const safeUrl =
+    escapeHtml(url);
 
   await sendMessage({
     email,
@@ -216,7 +361,7 @@ export async function sendVerificationEmail(
       `Bu bağlantı süreli olarak geçerlidir.`,
     html:
       `<p>AppForge hesabınızı doğrulamak için aşağıdaki bağlantıyı açın.</p>` +
-      `<p><a href="${url}">E-posta adresimi doğrula</a></p>` +
+      `<p><a href="${safeUrl}">E-posta adresimi doğrula</a></p>` +
       `<p>Bu bağlantı süreli olarak geçerlidir.</p>`
   });
 }
@@ -228,6 +373,9 @@ export async function sendPasswordResetEmail(
   const url =
     `${config.publicBaseUrl}/studio/?reset=${encodeURIComponent(token)}`;
 
+  const safeUrl =
+    escapeHtml(url);
+
   await sendMessage({
     email,
     subject:
@@ -238,7 +386,7 @@ export async function sendPasswordResetEmail(
       `Bu isteği siz yapmadıysanız işlemi yok sayabilirsiniz.`,
     html:
       `<p>AppForge parolanızı sıfırlamak için aşağıdaki bağlantıyı açın.</p>` +
-      `<p><a href="${url}">Parolamı sıfırla</a></p>` +
+      `<p><a href="${safeUrl}">Parolamı sıfırla</a></p>` +
       `<p>Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz.</p>`
   });
 }
@@ -252,6 +400,9 @@ export async function sendTeamInviteEmail({
   const url =
     `${config.publicBaseUrl}/studio/?teamInvite=${encodeURIComponent(token)}`;
 
+  const safeUrl =
+    escapeHtml(url);
+
   await sendMessage({
     email,
     subject:
@@ -264,16 +415,26 @@ export async function sendTeamInviteEmail({
       `Bağlantı süreli olarak geçerlidir.`,
     html:
       `<p><strong>AppForge takım daveti</strong></p>` +
-      `<p>Takım: ${teamName}<br>Rol: ${role}</p>` +
-      `<p><a href="${url}">Takım davetini aç</a></p>` +
+      `<p>Takım: ${escapeHtml(teamName)}<br>` +
+      `Rol: ${escapeHtml(role)}</p>` +
+      `<p><a href="${safeUrl}">Takım davetini aç</a></p>` +
       `<p>Bağlantı süreli olarak geçerlidir.</p>`
   });
 }
 
 export async function verifyMailTransport() {
+  if (sendgridConfigured()) {
+    return {
+      ok: true,
+      configured: true,
+      provider: "sendgrid",
+      required: false,
+      latencyMs: 0,
+      error: null
+    };
+  }
+
   if (mailjetConfigured()) {
-    // /ready endpoint'ini harici mail sağlayıcısının
-    // gecikmesine bağlamıyoruz. Gerçek gönderim ayrıca test edilir.
     return {
       ok: true,
       configured: true,
