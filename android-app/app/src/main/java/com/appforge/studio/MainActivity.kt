@@ -1023,7 +1023,7 @@ private fun AppForgeApp() {
                 AssistantDestination.PROJECTS -> AppScreen.HOME
                 AssistantDestination.QUICK_CREATE -> AppScreen.MODE_SELECT
                 AssistantDestination.CONVERSION -> AppScreen.CONVERSION
-                AssistantDestination.PREVIEW -> AppScreen.PREVIEW
+                AssistantDestination.PREVIEW -> AppScreen.PRODUCTION
                 AssistantDestination.PRODUCTION -> AppScreen.PRODUCTION
                 AssistantDestination.TEST_LAB -> AppScreen.TEST_LAB
                 AssistantDestination.TEMPLATES -> AppScreen.TEMPLATES
@@ -3632,34 +3632,6 @@ private fun AppForgeApp() {
                                     }
                                 )
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                openWorkspaceScreen(
-                                    AppScreen.PREVIEW
-                                )
-                            },
-                            modifier =
-                                Modifier
-                                    .weight(
-                                        1f
-                                    )
-                        ) {
-                            Text(
-                                if (builderCompact) {
-                                    "Önizle"
-                                } else {
-                                    "👁 Önizleme"
-                                },
-                                fontSize =
-                                    if (builderCompact) {
-                                        12.sp
-                                    } else {
-                                        14.sp
-                                    },
-                                maxLines = 1
-                            )
-                        }
-
                         Button(
                             onClick = {
                                 openWorkspaceScreen(
@@ -4552,17 +4524,6 @@ private fun QuickCreateScreen(
                 }
             },
             actions = {
-                TextButton(
-                    onClick =
-                        onPreview
-                ) {
-                    Text(
-                        "Önizle",
-                        fontSize =
-                            if (quickCompact) 12.sp else 14.sp
-                    )
-                }
-
                 TextButton(
                     onClick =
                         onAdvanced
@@ -6092,8 +6053,11 @@ private fun AppPreviewScreen(
             SourceMode.LOCAL ->
                 draft.startPage
                     ?.takeIf {
-                        File(it)
-                            .exists()
+                        val file = File(it)
+                        file.exists() &&
+                            file.isFile &&
+                            file.extension.lowercase() in
+                                setOf("html", "htm")
                     }
                     ?.let {
                         Uri.fromFile(
@@ -6399,7 +6363,14 @@ private fun AppPreviewScreen(
                         null
                     ) {
                         NoteCard(
-                            "Önizlenecek kaynak hazır değil. Yerel modda HTML/ZIP seç veya URL modunda HTTPS adresi gir."
+                            if (
+                                draft.sourceMode == SourceMode.LOCAL &&
+                                !draft.startPage.isNullOrBlank()
+                            ) {
+                                "Bu proje ${draft.sourceTechnologyLabel} olarak algılandı. Native Android/Kotlin ve diğer native kaynaklar WebView ile önizlenmez. Üretim Merkezi ve Test Laboratuvarı'nı kullan."
+                            } else {
+                                "Önizlenecek web kaynağı hazır değil. HTML/HTM seç veya URL modunda HTTPS adresi gir."
+                            }
                         )
                     } else {
                         val ratio =
@@ -6973,7 +6944,7 @@ private fun ProductionCenterScreen(
 
                     if (!productionCompact) {
                         Text(
-                            "Önizleme, yayın kontrolü, sürümleme ve proje yedekleri",
+                            "Yayın kontrolü, sürümleme, test ve proje yedekleri",
                             color = TextSecondary,
                             fontSize = 12.sp
                         )
@@ -7127,23 +7098,6 @@ private fun ProductionCenterScreen(
                                 .weight(
                                     1f
                                 )
-                    )
-                }
-            }
-
-            item {
-                Button(
-                    onClick =
-                        onPreview,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(if (productionCompact) 50.dp else 56.dp)
-                ) {
-                    Text(
-                        "👁  ${t(languageCode, "preview")}",
-                        fontWeight =
-                            FontWeight.Bold
                     )
                 }
             }
@@ -20404,7 +20358,7 @@ private fun LegalCenterScreen(
                             context.startActivity(
                                 Intent(
                                     Intent.ACTION_VIEW,
-                                    Uri.parse("https://example.com/privacy")
+                                    Uri.parse("https://hackmaster-tr.github.io/AppForge-Studio/privacy.html")
                                 )
                             )
                         }

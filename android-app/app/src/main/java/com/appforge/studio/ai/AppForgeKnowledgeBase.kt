@@ -66,7 +66,7 @@ object AppForgeKnowledgeBase {
         listOf(
             KnowledgeChunk(
                 "AppForge Studio nedir?",
-                "AppForge Studio; HTML, ZIP veya web projelerini Android uygulamasına dönüştürmek, APK/AAB üretmek, önizlemek, imzalamak, test etmek ve proje ayarlarını yönetmek için kullanılan bir mobil geliştirme aracıdır.",
+                "AppForge Studio; HTML, ZIP veya web projelerini Android uygulamasına dönüştürmek, APK/AAB üretmek, imzalamak, test etmek ve proje ayarlarını yönetmek için kullanılan bir mobil geliştirme aracıdır.",
                 setOf("appforge", "studio", "nedir", "html", "zip", "apk", "aab")
             ),
             KnowledgeChunk(
