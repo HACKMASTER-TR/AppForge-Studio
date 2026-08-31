@@ -96,7 +96,7 @@ test(
 
     assert.ok(
       text.includes(
-        "uygun worker aktif"
+        "uygun build slotu aktif"
       )
     );
 

@@ -16319,7 +16319,7 @@ private fun BuildStep(
                                     queueWorkerSlots >
                                     0
                                 ) {
-                                    "⚙ $queueWorkerSlots uygun worker aktif"
+                                    "⚙ $queueWorkerSlots uygun build slotu aktif"
                                 } else {
                                     "⚙ Uygun worker bekleniyor"
                                 },

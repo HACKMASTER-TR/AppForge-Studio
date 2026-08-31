@@ -2,6 +2,9 @@ import os from "os";
 import { query, tx } from "./db.js";
 import { config } from "./config.js";
 import {
+  estimateQueueWaitSeconds
+} from "./queueEstimate.js";
+import {
   getProEntitlement
 } from "./proEntitlements.js";
 import { signalBuildQueue } from "./redis.js";
@@ -379,17 +382,37 @@ export async function buildQueuePosition(
     return null;
   }
 
-  const workerResult =
+  const workerStatsResult =
     await query(
       `SELECT
-         COUNT(*)::int AS count
-       FROM appforge_workers
-       WHERE last_seen_at >
+         COALESCE(
+           SUM(w.slots),
+           0
+         )::int AS slots,
+         COALESCE(
+           (
+             SELECT
+               COUNT(*)::int
+             FROM appforge_build_jobs r
+             JOIN appforge_workers rw
+               ON rw.worker_id = r.worker_id
+             WHERE r.status = 'running'
+               AND rw.last_seen_at >
+                 NOW() -
+                 ($1 || ' milliseconds')::interval
+               AND rw.toolchain_ok = TRUE
+               AND $2::jsonb <@
+                   rw.capabilities
+           ),
+           0
+         )::int AS running
+       FROM appforge_workers w
+       WHERE w.last_seen_at >
          NOW() -
          ($1 || ' milliseconds')::interval
-         AND toolchain_ok = TRUE
+         AND w.toolchain_ok = TRUE
          AND $2::jsonb <@
-             capabilities`,
+             w.capabilities`,
       [
         String(
           config.workerStaleAfterMs *
@@ -404,8 +427,30 @@ export async function buildQueuePosition(
 
   const compatibleWorkerSlots =
     Number(
-      workerResult.rows[0]
-        ?.count || 0
+      workerStatsResult.rows[0]
+        ?.slots || 0
+    );
+
+  const runningCompatibleJobs =
+    Number(
+      workerStatsResult.rows[0]
+        ?.running || 0
+    );
+
+  const busyWorkerSlots =
+    Math.min(
+      compatibleWorkerSlots,
+      Math.max(
+        0,
+        runningCompatibleJobs
+      )
+    );
+
+  const availableWorkerSlots =
+    Math.max(
+      0,
+      compatibleWorkerSlots -
+      busyWorkerSlots
     );
 
   const durationResult =
@@ -463,6 +508,8 @@ export async function buildQueuePosition(
       position: 0,
       ahead: 0,
       compatibleWorkerSlots,
+      busyWorkerSlots,
+      availableWorkerSlots,
       averageBuildSeconds,
       estimatedWaitSeconds: 0,
       estimate:
@@ -480,6 +527,8 @@ export async function buildQueuePosition(
       position: null,
       ahead: null,
       compatibleWorkerSlots,
+      busyWorkerSlots,
+      availableWorkerSlots,
       averageBuildSeconds,
       estimatedWaitSeconds: null,
       estimate:
@@ -572,26 +621,14 @@ export async function buildQueuePosition(
         )
       : 0;
 
-  let estimatedWaitSeconds =
-    null;
-
-  if (
-    compatibleWorkerSlots > 0 &&
-    averageBuildSeconds
-  ) {
-    const batchesAhead =
-      Math.ceil(
-        ahead /
-        compatibleWorkerSlots
-      );
-
-    estimatedWaitSeconds =
-      availableInSeconds +
-      (
-        batchesAhead *
-        averageBuildSeconds
-      );
-  }
+  const estimatedWaitSeconds =
+    estimateQueueWaitSeconds({
+      ahead,
+      compatibleWorkerSlots,
+      runningCompatibleJobs,
+      averageBuildSeconds,
+      availableInSeconds
+    });
 
   return {
     status:
@@ -603,6 +640,8 @@ export async function buildQueuePosition(
         target.priority
       ),
     compatibleWorkerSlots,
+    busyWorkerSlots,
+    availableWorkerSlots,
     averageBuildSeconds,
     availableInSeconds,
     estimatedWaitSeconds,
