@@ -2,6 +2,7 @@
 set -eu
 
 target="${FLUTTER_HOME:-/opt/flutter}/bin/internal/update_engine_version.sh"
+flutter_root="${FLUTTER_HOME:-/opt/flutter}"
 
 if [ ! -f "$target" ]; then
   echo "APPFORGE_FLUTTER_READONLY_PATCH_FAIL: $target bulunamadı" >&2
@@ -85,3 +86,32 @@ grep -F \
   "$target" >/dev/null
 
 echo "APPFORGE_FLUTTER_READONLY_GUARD_OK"
+
+# Flutter 3.44.9 registers the macOS-only libimobiledevice bundle as a
+# universal artifact. On Linux its updater intentionally downloads nothing,
+# but its freshness check still requires these two executables. Without the
+# harmless placeholders every command tries to rewrite
+# bin/cache/libimobiledevice.stamp. That fails when the dedicated Source
+# Worker runs with a read-only root filesystem.
+libimobiledevice_dir="$flutter_root/bin/cache/artifacts/libimobiledevice"
+mkdir -p "$libimobiledevice_dir"
+
+for executable in idevicescreenshot idevicesyslog; do
+  placeholder="$libimobiledevice_dir/$executable"
+  if [ ! -e "$placeholder" ]; then
+    : >"$placeholder"
+  fi
+  chmod 0755 "$placeholder"
+done
+
+libimobiledevice_version="$flutter_root/bin/internal/libimobiledevice.version"
+libimobiledevice_stamp="$flutter_root/bin/cache/libimobiledevice.stamp"
+
+if [ ! -s "$libimobiledevice_version" ]; then
+  echo "APPFORGE_FLUTTER_READONLY_PATCH_FAIL: $libimobiledevice_version bulunamadı" >&2
+  exit 1
+fi
+
+cp "$libimobiledevice_version" "$libimobiledevice_stamp"
+
+echo "APPFORGE_FLUTTER_READONLY_UNIVERSAL_CACHE_OK"

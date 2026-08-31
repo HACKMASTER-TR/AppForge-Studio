@@ -410,7 +410,12 @@ test(
         'desired_realm="${FLUTTER_REALM:-}"',
         "engine.stamp",
         "engine.realm",
-        "APPFORGE_FLUTTER_READONLY_GUARD_OK"
+        "APPFORGE_FLUTTER_READONLY_GUARD_OK",
+        "libimobiledevice.stamp",
+        "libimobiledevice.version",
+        "idevicescreenshot",
+        "idevicesyslog",
+        "APPFORGE_FLUTTER_READONLY_UNIVERSAL_CACHE_OK"
       ]
     ) {
       assert.ok(
@@ -418,5 +423,23 @@ test(
         marker
       );
     }
+
+    const smoke =
+      await fs.readFile(
+        path.join(
+          repoRoot,
+          "build-service",
+          "scripts",
+          "source-worker-runtime-smoke.sh"
+        ),
+        "utf8"
+      );
+
+    assert.ok(
+      smoke.includes(
+        "flutter --no-version-check pub get --offline"
+      ),
+      "Salt-okunur runtime smoke gerçek flutter pub get çalıştırmalı."
+    );
   }
 );

@@ -233,6 +233,26 @@ run_tool dart dart --version
 run_tool cmake cmake --version
 run_tool ninja ninja --version
 
+flutter_smoke_dir="/app/work/flutter-readonly-smoke"
+mkdir -p "$flutter_smoke_dir/lib"
+printf '%s\n' \
+  'name: appforge_flutter_readonly_smoke' \
+  'environment:' \
+  "  sdk: '>=3.0.0 <4.0.0'" \
+  'dependencies:' \
+  '  flutter:' \
+  '    sdk: flutter' \
+  >"$flutter_smoke_dir/pubspec.yaml"
+printf '%s\n' \
+  "import 'package:flutter/widgets.dart';" \
+  'void main() => runApp(const SizedBox.shrink());' \
+  >"$flutter_smoke_dir/lib/main.dart"
+
+(
+  cd "$flutter_smoke_dir"
+  run_tool flutter_pub_get flutter --no-version-check pub get --offline
+)
+
 if ! node --input-type=module <<'NODE'
 import {
   assertSourceBuildIsolation
