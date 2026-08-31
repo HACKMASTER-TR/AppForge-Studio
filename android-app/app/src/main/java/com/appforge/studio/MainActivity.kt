@@ -715,6 +715,41 @@ private fun AppForgeApp() {
     var aabUrl by remember { mutableStateOf<String?>(null) }
     var exeUrl by remember { mutableStateOf<String?>(null) }
 
+    var queuePosition by
+        remember {
+            mutableStateOf<Int?>(
+                null
+            )
+        }
+
+    var queueAhead by
+        remember {
+            mutableStateOf<Int?>(
+                null
+            )
+        }
+
+    var queueWorkerSlots by
+        remember {
+            mutableIntStateOf(
+                0
+            )
+        }
+
+    var queueEtaSeconds by
+        remember {
+            mutableStateOf<Int?>(
+                null
+            )
+        }
+
+    var queueEstimate by
+        remember {
+            mutableStateOf<String?>(
+                null
+            )
+        }
+
     /*
      * Build süresi:
      * Başlatıldığı andan itibaren canlı sayar.
@@ -918,6 +953,21 @@ private fun AppForgeApp() {
                 progress = s.progress
                 logs = s.logs
                 preflight = s.preflight
+
+                queuePosition =
+                    s.queuePosition
+
+                queueAhead =
+                    s.queueAhead
+
+                queueWorkerSlots =
+                    s.queueCompatibleWorkerSlots
+
+                queueEtaSeconds =
+                    s.queueEstimatedWaitSeconds
+
+                queueEstimate =
+                    s.queueEstimate
 
                 apkUrl =
                     if (s.apkAvailable) {
@@ -2006,6 +2056,21 @@ private fun AppForgeApp() {
             aabUrl = null
             exeUrl = null
 
+            queuePosition =
+                null
+
+            queueAhead =
+                null
+
+            queueWorkerSlots =
+                0
+
+            queueEtaSeconds =
+                null
+
+            queueEstimate =
+                null
+
             try {
                 validateDraft(
                     effectiveBuildDraft,
@@ -2224,6 +2289,21 @@ private fun AppForgeApp() {
 
                     preflight =
                         s.preflight
+
+                    queuePosition =
+                        s.queuePosition
+
+                    queueAhead =
+                        s.queueAhead
+
+                    queueWorkerSlots =
+                        s.queueCompatibleWorkerSlots
+
+                    queueEtaSeconds =
+                        s.queueEstimatedWaitSeconds
+
+                    queueEstimate =
+                        s.queueEstimate
 
                     apkUrl =
                         if (
@@ -3830,7 +3910,17 @@ private fun AppForgeApp() {
                                 aabUrl = aabUrl,
                                 exeUrl = exeUrl,
                                 buildOutput =
-                                    draft.buildOutput
+                                    draft.buildOutput,
+                                queuePosition =
+                                    queuePosition,
+                                queueAhead =
+                                    queueAhead,
+                                queueWorkerSlots =
+                                    queueWorkerSlots,
+                                queueEtaSeconds =
+                                    queueEtaSeconds,
+                                queueEstimate =
+                                    queueEstimate
                             )
                         }
                     }
@@ -15558,7 +15648,12 @@ private fun BuildStep(
     apkUrl: String?,
     aabUrl: String?,
     exeUrl: String?,
-    buildOutput: String
+    buildOutput: String,
+    queuePosition: Int?,
+    queueAhead: Int?,
+    queueWorkerSlots: Int,
+    queueEtaSeconds: Int?,
+    queueEstimate: String?
 ) {
     val formCompact =
         LocalConfiguration.current
@@ -15685,6 +15780,50 @@ private fun BuildStep(
         status
             .trim()
             .lowercase()
+
+    val queueWaitLabel =
+        when {
+            queueEtaSeconds == null ->
+                null
+
+            queueEtaSeconds <= 0 ->
+                "Çok yakında"
+
+            queueEtaSeconds < 60 ->
+                "< 1 dk"
+
+            queueEtaSeconds < 3600 ->
+                "${
+                    (
+                        queueEtaSeconds +
+                        59
+                    ) / 60
+                } dk"
+
+            else -> {
+                val totalMinutes =
+                    (
+                        queueEtaSeconds +
+                        59
+                    ) / 60
+
+                val hours =
+                    totalMinutes /
+                        60
+
+                val minutes =
+                    totalMinutes %
+                        60
+
+                if (
+                    minutes == 0
+                ) {
+                    "$hours sa"
+                } else {
+                    "$hours sa $minutes dk"
+                }
+            }
+        }
 
     val statusLabel =
         when (
@@ -16119,6 +16258,104 @@ private fun BuildStep(
                             fontSize =
                                 13.sp
                         )
+                    }
+
+                    if (
+                        normalizedStatus ==
+                            "queued"
+                    ) {
+                        Spacer(
+                            Modifier.height(
+                                4.dp
+                            )
+                        )
+
+                        HorizontalDivider()
+
+                        Spacer(
+                            Modifier.height(
+                                4.dp
+                            )
+                        )
+
+                        Text(
+                            text =
+                                queuePosition
+                                    ?.let {
+                                        "⏳ Sırada $it. build"
+                                    }
+                                    ?: "⏳ Kuyruk sırası hesaplanıyor...",
+                            color =
+                                Accent,
+                            fontWeight =
+                                FontWeight.Bold,
+                            fontSize =
+                                14.sp
+                        )
+
+                        queueAhead
+                            ?.let {
+                                ahead ->
+
+                                Text(
+                                    text =
+                                        if (
+                                            ahead == 0
+                                        ) {
+                                            "Önünde başka build yok."
+                                        } else {
+                                            "Önünde $ahead build var."
+                                        },
+                                    color =
+                                        TextSecondary,
+                                    fontSize =
+                                        12.sp
+                                )
+                            }
+
+                        Text(
+                            text =
+                                if (
+                                    queueWorkerSlots >
+                                    0
+                                ) {
+                                    "⚙ $queueWorkerSlots uygun worker aktif"
+                                } else {
+                                    "⚙ Uygun worker bekleniyor"
+                                },
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+
+                        queueWaitLabel
+                            ?.let {
+                                wait ->
+
+                                Text(
+                                    "≈ Tahmini bekleme: $wait",
+                                    color =
+                                        TextSecondary,
+                                    fontSize =
+                                        12.sp
+                                )
+                            }
+
+                        if (
+                            queueEstimate ==
+                                "approximate"
+                        ) {
+                            Text(
+                                "Süre worker yüküne ve daha yüksek öncelikli build'lere göre değişebilir.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    10.sp,
+                                lineHeight =
+                                    14.sp
+                            )
+                        }
                     }
 
                     if (

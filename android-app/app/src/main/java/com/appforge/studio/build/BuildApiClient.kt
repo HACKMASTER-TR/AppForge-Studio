@@ -36,7 +36,12 @@ data class BuildStatusResult(
     val preflight: List<String>,
     val apkAvailable: Boolean,
     val aabAvailable: Boolean,
-    val exeAvailable: Boolean
+    val exeAvailable: Boolean,
+    val queuePosition: Int? = null,
+    val queueAhead: Int? = null,
+    val queueCompatibleWorkerSlots: Int = 0,
+    val queueEstimatedWaitSeconds: Int? = null,
+    val queueEstimate: String? = null
 )
 
 data class DownloadTicketResult(
@@ -514,7 +519,32 @@ class BuildApiClient(
             }
         }
 
-        val outputs = json.optJSONObject("outputs")
+        val outputs =
+            json.optJSONObject(
+                "outputs"
+            )
+
+        val queue =
+            json.optJSONObject(
+                "queue"
+            )
+
+        fun optionalQueueInt(
+            name: String
+        ): Int? {
+            val q =
+                queue
+                    ?: return null
+
+            return if (
+                q.has(name) &&
+                !q.isNull(name)
+            ) {
+                q.optInt(name)
+            } else {
+                null
+            }
+        }
 
         return BuildStatusResult(
             buildId = buildId,
@@ -531,7 +561,40 @@ class BuildApiClient(
             preflight = array("preflight"),
             apkAvailable = outputs?.has("apk") == true,
             aabAvailable = outputs?.has("aab") == true,
-            exeAvailable = outputs?.has("exe") == true
+            exeAvailable =
+                outputs?.has(
+                    "exe"
+                ) == true,
+
+            queuePosition =
+                optionalQueueInt(
+                    "position"
+                ),
+
+            queueAhead =
+                optionalQueueInt(
+                    "ahead"
+                ),
+
+            queueCompatibleWorkerSlots =
+                optionalQueueInt(
+                    "compatibleWorkerSlots"
+                ) ?: 0,
+
+            queueEstimatedWaitSeconds =
+                optionalQueueInt(
+                    "estimatedWaitSeconds"
+                ),
+
+            queueEstimate =
+                queue
+                    ?.optString(
+                        "estimate",
+                        ""
+                    )
+                    ?.takeIf {
+                        it.isNotBlank()
+                    }
         )
     }
 
