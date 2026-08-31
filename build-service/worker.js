@@ -15,8 +15,20 @@ import {
   runToolchainDoctor,
   assertToolchain
 } from "./src/toolchain.js";
+import {
+  materializeFastDebugKeystore
+} from "./src/fastSigningKey.js";
 
 assertCriticalConfig();
+
+const signingKey =
+  await materializeFastDebugKeystore();
+
+if (signingKey.materialized) {
+  console.log(
+    `FAST signing keystore hazır: ${signingKey.path}`
+  );
+}
 
 await fs.mkdir(
   config.workRoot,
