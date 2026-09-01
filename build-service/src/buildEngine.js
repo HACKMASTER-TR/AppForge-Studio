@@ -4992,9 +4992,9 @@ function generatedMainActivity(c, pkg) {
     c.admob?.enabled ? "com.google.android.gms.ads.AdSize" : "",
     c.admob?.enabled ? "com.google.android.gms.ads.AdView" : "",
     c.admob?.enabled ? "com.google.android.gms.ads.MobileAds" : "",
-    c.admob?.enabled && c.admob?.interstitialUnitId ? "com.google.android.gms.ads.interstitial.InterstitialAd" : "",
+    c.admob?.enabled ? "com.google.android.gms.ads.interstitial.InterstitialAd" : "",
     c.admob?.enabled && c.admob?.interstitialUnitId ? "com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback" : "",
-    c.admob?.enabled && c.admob?.rewardedUnitId ? "com.google.android.gms.ads.rewarded.RewardedAd" : "",
+    c.admob?.enabled ? "com.google.android.gms.ads.rewarded.RewardedAd" : "",
     c.admob?.enabled && c.admob?.rewardedUnitId ? "com.google.android.gms.ads.rewarded.RewardedAdLoadCallback" : "",
     c.admob?.enabled ? "com.google.android.gms.ads.LoadAdError" : "",
     c.admob?.enabled && c.admob?.umpConsent ? "com.google.android.ump.ConsentInformation" : "",
@@ -5010,6 +5010,7 @@ function generatedMainActivity(c, pkg) {
     c.billing?.enabled ? "com.android.billingclient.api.ProductDetails" : "",
     c.billing?.enabled ? "com.android.billingclient.api.Purchase" : "",
     c.billing?.enabled ? "com.android.billingclient.api.QueryProductDetailsParams" : "",
+    c.billing?.enabled ? "com.android.billingclient.api.QueryProductDetailsResult" : "",
     c.billing?.enabled ? "com.android.billingclient.api.QueryPurchasesParams" : "",
     c.nativeBridge?.clipboard ? "android.content.ClipboardManager" : "",
     (c.nativeBridge?.clipboard || c.features?.camera) ? "android.content.ClipData" : "",
@@ -7396,7 +7397,7 @@ function generatedMainActivity(c, pkg) {
             QueryProductDetailsParams.newBuilder()
                 .setProductList(products)
                 .build()
-        ) { result, detailsResult ->
+        ) { result: BillingResult, detailsResult: QueryProductDetailsResult ->
             if (result.responseCode != BillingClient.BillingResponseCode.OK) {
                 return@queryProductDetailsAsync
             }

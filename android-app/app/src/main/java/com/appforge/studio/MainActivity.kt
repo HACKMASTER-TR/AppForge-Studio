@@ -3956,19 +3956,27 @@ private fun AppForgeApp() {
                                 onClick = {
                                     if (
                                         step == 10 &&
-                                        buildId == null &&
-                                        status
-                                            .trim()
-                                            .lowercase()
-                                            .startsWith(
-                                                "hata:"
-                                            )
+                                        (
+                                            status
+                                                .trim()
+                                                .lowercase()
+                                                .startsWith(
+                                                    "hata:"
+                                                ) ||
+                                            status
+                                                .trim()
+                                                .lowercase() ==
+                                                "failed"
+                                        )
                                     ) {
                                         status =
                                             "Hazır"
 
                                         progress =
                                             0
+
+                                        buildId =
+                                            null
 
                                         logs =
                                             emptyList()
