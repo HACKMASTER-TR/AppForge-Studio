@@ -121,8 +121,7 @@ jobs:
           import json
           import os
           import time
-          import urllib.request
-          import urllib.error
+          import subprocess
 
           API = "https://backboard.railway.com/graphql/v2"
 
@@ -143,60 +142,70 @@ jobs:
               query,
               variables=None
           ):
-              body = json.dumps(
+              payload = json.dumps(
                   {
                       "query": query,
                       "variables": variables or {}
                   }
-              ).encode("utf-8")
-
-              request = urllib.request.Request(
-                  API,
-                  data=body,
-                  headers={
-                      "Project-Access-Token": TOKEN,
-                      "Content-Type": "application/json"
-                  },
-                  method="POST"
               )
 
-              try:
-                  with urllib.request.urlopen(
-                      request,
-                      timeout=30
-                  ) as response:
-                      result = json.loads(
-                          response.read()
-                          .decode("utf-8")
-                      )
+              result = subprocess.run(
+                  [
+                      "curl",
+                      "--silent",
+                      "--show-error",
+                      "--fail-with-body",
+                      "--request",
+                      "POST",
+                      "--url",
+                      API,
+                      "--header",
+                      f"Project-Access-Token: {TOKEN}",
+                      "--header",
+                      "Content-Type: application/json",
+                      "--header",
+                      "Accept: application/json",
+                      "--header",
+                      "User-Agent: AppForge-Maintenance/1.0",
+                      "--data-binary",
+                      payload
+                  ],
+                  capture_output=True,
+                  text=True
+              )
 
-              except urllib.error.HTTPError as exc:
-                  body = (
-                      exc.read()
-                      .decode(
-                          "utf-8",
-                          errors="replace"
-                      )
-                  )
-
+              if result.returncode != 0:
                   raise RuntimeError(
-                      f"Railway HTTP {exc.code}: {body}"
+                      "Railway API hatası: " +
+                      (
+                          result.stderr.strip() or
+                          result.stdout.strip()
+                      )
                   )
 
-              if result.get("errors"):
+              try:
+                  response = json.loads(
+                      result.stdout
+                  )
+              except Exception:
+                  raise RuntimeError(
+                      "Railway geçersiz yanıt verdi: " +
+                      result.stdout[:500]
+                  )
+
+              if response.get("errors"):
                   raise RuntimeError(
                       "Railway GraphQL hatası: " +
                       json.dumps(
-                          result["errors"],
+                          response["errors"],
                           ensure_ascii=False
                       )
                   )
 
-              return result.get(
+              return response.get(
                   "data",
                   {}
               )
-
 
           context = graphql(
               """
