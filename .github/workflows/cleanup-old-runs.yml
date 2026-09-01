@@ -118,7 +118,7 @@ jobs:
 
 
   cleanup-railway:
-    name: Keep last 5 Railway deployments
+    name: Keep last 5 + latest Railway success
     runs-on: ubuntu-latest
 
     env:
@@ -307,14 +307,14 @@ jobs:
               f"Servis sayısı: {len(services)}"
           )
 
-          SAFE_OLD_STATUSES = {
+          CLEANABLE_OLD_STATUSES = {
+              "SUCCESS",
               "FAILED",
               "CRASHED",
               "SKIPPED"
           }
 
-          PROTECTED_STATUSES = {
-              "SUCCESS",
+          ACTIVE_STATUSES = {
               "BUILDING",
               "DEPLOYING",
               "INITIALIZING",
@@ -424,6 +424,49 @@ jobs:
               newest = deployments[:5]
               old = deployments[5:]
 
+              newest_ids = {
+                  item["id"]
+                  for item in newest
+              }
+
+              latest_success = next(
+                  (
+                      item
+                      for item in deployments
+                      if (
+                          item.get(
+                              "status",
+                              ""
+                          ).upper()
+                          == "SUCCESS"
+                      )
+                  ),
+                  None
+              )
+
+              backup_success_id = None
+
+              if latest_success:
+                  success_id = latest_success["id"]
+
+                  if success_id not in newest_ids:
+                      backup_success_id = success_id
+
+                      print(
+                          "Ek yedek SUCCESS korunuyor:",
+                          backup_success_id
+                      )
+                  else:
+                      print(
+                          "En güncel SUCCESS zaten son 5 içinde:",
+                          success_id
+                      )
+              else:
+                  print(
+                      "SUCCESS deployment bulunamadı; "
+                      "ek yedek yok."
+                  )
+
               print(
                   "Korunan son deployment:",
                   len(newest)
@@ -445,22 +488,44 @@ jobs:
                   )
 
                   #
+                  # Son 5'in dışında olsa bile en güncel
+                  # başarılı deployment yedek olarak korunur.
+                  #
+                  if (
+                      backup_success_id
+                      and
+                      deployment_id == backup_success_id
+                  ):
+                      print(
+                          "  YEDEK SUCCESS KORUNDU:",
+                          deployment_id
+                      )
+                      continue
+
+                  #
                   # Çalışan veya potansiyel olarak
                   # aktif deploylara asla dokunma.
                   #
-                  if status in PROTECTED_STATUSES:
+                  if status in ACTIVE_STATUSES:
                       print(
-                          "  KORUNDU:",
+                          "  AKTİF KORUNDU:",
                           deployment_id,
                           status
                       )
 
                       continue
 
+                  if status == "REMOVED":
+                      print(
+                          "  REMOVED - ATLANDI:",
+                          deployment_id
+                      )
+                      continue
+
                   if (
                       status
                       not in
-                      SAFE_OLD_STATUSES
+                      CLEANABLE_OLD_STATUSES
                   ):
                       print(
                           "  BİLİNMEYEN DURUM - ATLANDI:",
@@ -574,9 +639,48 @@ jobs:
                   reverse=True
               )
 
+              verify_newest = (
+                  verify_deployments[:5]
+              )
+
               old_verify = (
                   verify_deployments[5:]
               )
+
+              verify_newest_ids = {
+                  item["id"]
+                  for item in verify_newest
+              }
+
+              verify_latest_success = next(
+                  (
+                      item
+                      for item in verify_deployments
+                      if (
+                          item.get(
+                              "status",
+                              ""
+                          ).upper()
+                          == "SUCCESS"
+                      )
+                  ),
+                  None
+              )
+
+              verify_backup_success_id = None
+
+              if verify_latest_success:
+                  verify_success_id = (
+                      verify_latest_success["id"]
+                  )
+
+                  if (
+                      verify_success_id
+                      not in verify_newest_ids
+                  ):
+                      verify_backup_success_id = (
+                          verify_success_id
+                      )
 
               remaining_old = []
 
@@ -591,7 +695,21 @@ jobs:
                       .upper()
                   )
 
-                  if status in SAFE_OLD_STATUSES:
+                  deployment_id = (
+                      deployment["id"]
+                  )
+
+                  if (
+                      verify_backup_success_id
+                      and
+                      deployment_id
+                      == verify_backup_success_id
+                      and
+                      status == "SUCCESS"
+                  ):
+                      continue
+
+                  if status in CLEANABLE_OLD_STATUSES:
                       remaining_old.append(
                           deployment
                       )
