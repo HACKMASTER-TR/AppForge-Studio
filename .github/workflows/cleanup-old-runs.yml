@@ -308,6 +308,7 @@ jobs:
           )
 
           SAFE_OLD_STATUSES = {
+              "SUCCESS",
               "REMOVED",
               "FAILED",
               "CRASHED",
@@ -315,7 +316,6 @@ jobs:
           }
 
           PROTECTED_STATUSES = {
-              "SUCCESS",
               "BUILDING",
               "DEPLOYING",
               "INITIALIZING",
