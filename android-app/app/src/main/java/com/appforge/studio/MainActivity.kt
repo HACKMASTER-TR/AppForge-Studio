@@ -3953,7 +3953,68 @@ private fun AppForgeApp() {
                     ) {
                         if (step > 1) {
                             OutlinedButton(
-                                onClick = { step-- },
+                                onClick = {
+                                    if (
+                                        step == 10 &&
+                                        buildId == null &&
+                                        status
+                                            .trim()
+                                            .lowercase()
+                                            .startsWith(
+                                                "hata:"
+                                            )
+                                    ) {
+                                        status =
+                                            "Hazır"
+
+                                        progress =
+                                            0
+
+                                        logs =
+                                            emptyList()
+
+                                        preflight =
+                                            emptyList()
+
+                                        buildNo =
+                                            null
+
+                                        apkUrl =
+                                            null
+
+                                        aabUrl =
+                                            null
+
+                                        exeUrl =
+                                            null
+
+                                        buildStartedAtMs =
+                                            null
+
+                                        buildElapsedMs =
+                                            0L
+
+                                        buildTimerRunning =
+                                            false
+
+                                        queuePosition =
+                                            null
+
+                                        queueAhead =
+                                            null
+
+                                        queueWorkerSlots =
+                                            0
+
+                                        queueEtaSeconds =
+                                            null
+
+                                        queueEstimate =
+                                            null
+                                    }
+
+                                    step--
+                                },
                                 modifier =
                                     Modifier
                                         .weight(1f)
@@ -15818,12 +15879,25 @@ private fun BuildStep(
             buildId
         ) {
             mutableIntStateOf(
-                if (
-                    backendProgress > 0
-                ) {
-                    1
-                } else {
-                    0
+                when {
+                    normalizedStatus ==
+                        "success" ||
+                    backendProgress >=
+                        100 ->
+                        100
+
+                    progressTerminalFailure ->
+                        backendProgress
+
+                    backendProgress >
+                        0 ->
+                        backendProgress
+                            .coerceAtMost(
+                                99
+                            )
+
+                    else ->
+                        0
                 }
             )
         }
@@ -15862,17 +15936,8 @@ private fun BuildStep(
             normalizedStatus ==
                 "success"
         ) {
-            while (
-                flowingProgress <
-                    100
-            ) {
-                delay(
-                    18L
-                )
-
-                flowingProgress +=
-                    1
-            }
+            flowingProgress =
+                100
 
             return@LaunchedEffect
         }
