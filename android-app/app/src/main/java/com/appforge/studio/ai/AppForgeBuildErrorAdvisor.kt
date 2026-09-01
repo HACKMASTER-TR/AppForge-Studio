@@ -50,7 +50,12 @@ object AppForgeBuildErrorAdvisor {
                     "keystore file",
                     "no key with alias",
                     "alias does not exist",
-                    "signingconfig"
+                    "signingconfig",
+                    "keystore seç",
+                    "key alias gerekli",
+                    "store password gerekli",
+                    "key password gerekli",
+                    "özel keystore ile imzalama için build service https olmalı"
                 ),
                 reason = "Release keystore, alias veya parola bilgilerinden biri derleme sırasında doğrulanamadı.",
                 solution = "İmzalama adımında doğru JKS/keystore dosyasını, key alias, store password ve key password bilgilerini kontrol et. Parolaları loga veya AI bağlamına kopyalama."
@@ -84,6 +89,9 @@ object AppForgeBuildErrorAdvisor {
                 category = "Package",
                 title = "Package name / namespace hatası",
                 needles = listOf(
+                    "geçerli package name gir",
+                    "package name geçersiz",
+                    "geçersiz package name",
                     "namespace",
                     "package name is not valid",
                     "invalid package",
@@ -170,7 +178,10 @@ object AppForgeBuildErrorAdvisor {
                     "build tools revision",
                     "sdk location not found",
                     "license for package android sdk",
-                    "failed to install the following android sdk packages"
+                    "failed to install the following android sdk packages",
+                    "min sdk 26 ile 37 arasında olmalı",
+                    "hedef sdk 26 ile 37 arasında olmalı",
+                    "min sdk, hedef sdk değerinden büyük olamaz"
                 ),
                 reason = "Derleme ortamında gereken Android SDK platformu, Build Tools veya lisans kabulü eksik.",
                 solution = "Worker imajında projenin compileSdk/targetSdk gereksinimine uygun Android SDK paketlerini kur ve lisansları kabul et."
@@ -343,6 +354,77 @@ object AppForgeBuildErrorAdvisor {
                         )
                 )
             }
+        }
+
+        /*
+         * Android Studio tarafındaki validateDraft() gibi
+         * yerel kontroller API çağrısından önce hata verebilir.
+         *
+         * Böyle bir kullanıcı doğrulama hatası henüz özel bir
+         * kuralla eşleşmediyse "bilinmeyen build hatası" demek
+         * yerine gerçek mesajı tek seferde kullanıcıya açıkla.
+         */
+        val localValidationEvidence =
+            combinedLines
+                .asReversed()
+                .firstOrNull {
+                    line ->
+                    val lower =
+                        line
+                            .trim()
+                            .lowercase()
+
+                    lower.startsWith(
+                        "hata:"
+                    ) ||
+                        lower.contains(
+                            " gerekli."
+                        ) ||
+                        lower.contains(
+                            " gerekli"
+                        ) ||
+                        lower.contains(
+                            " olmalı."
+                        ) ||
+                        lower.contains(
+                            " olamaz."
+                        ) ||
+                        lower.contains(
+                            " geçersiz"
+                        )
+                }
+
+        if (
+            localValidationEvidence !=
+            null
+        ) {
+            val cleanReason =
+                localValidationEvidence
+                    .replaceFirst(
+                        Regex(
+                            "^\\s*Hata:\\s*",
+                            RegexOption.IGNORE_CASE
+                        ),
+                        ""
+                    )
+                    .trim()
+
+            return BuildErrorDiagnosis(
+                category =
+                    "Doğrulama",
+                title =
+                    "Girilen bilgiler geçersiz veya eksik",
+                reason =
+                    cleanReason.ifBlank {
+                        "Bir proje ayarı AppForge doğrulamasından geçemedi."
+                    },
+                solution =
+                    "Hata mesajında belirtilen alanı düzelt ve aynı ayarlarla tekrar dene.",
+                confidence =
+                    90,
+                evidence =
+                    localValidationEvidence
+            )
         }
 
         val fallbackEvidence =
