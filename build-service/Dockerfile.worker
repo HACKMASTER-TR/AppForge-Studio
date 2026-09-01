@@ -14,6 +14,7 @@ ENV GRADLE_HOME=/opt/gradle/gradle-9.3.1
 ENV FLUTTER_HOME=/opt/flutter
 ENV PATH=/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:/opt/gradle/gradle-9.3.1/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/cmdline-tools/latest/bin:$PATH
 ENV NODE_ENV=production
+ENV APPFORGE_FAST_DEBUG_KEYSTORE=/opt/appforge-fast-runtime/debug.keystore
 
 # AppForge Gradle cache:
 # Worker image prewarm ve gerçek kullanıcı build'leri
