@@ -3874,10 +3874,6 @@ private fun AppForgeApp() {
                                                 currentProjectId
                                             )
 
-                                        // Build zaten başarıyla tamamlandı.
-                                        // Kütüphane kaydı terminal build durumunu ezmemeli.
-                                        status = "success"
-                                        progress = 100
                                     }
                                 }
                             )
@@ -16047,6 +16043,7 @@ private fun BuildStep(
         }
 
     val buildSucceeded =
+        buildId != null &&
         normalizedStatus ==
             "success"
 
