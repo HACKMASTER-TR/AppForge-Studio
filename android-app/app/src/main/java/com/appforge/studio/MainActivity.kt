@@ -950,7 +950,7 @@ private fun AppForgeApp() {
                 buildId = s.buildId
                 buildNo = s.buildNo
                 status = s.status
-                progress = s.progress
+                progress = if (s.status == "success") 100 else s.progress
                 logs = s.logs
                 preflight = s.preflight
 
@@ -2277,9 +2277,7 @@ private fun AppForgeApp() {
                     status =
                         s.status
 
-                    progress =
-                        s.progress
-
+                    progress = if (s.status == "success") 100 else s.progress
                     buildNo =
                         s.buildNo
                             ?: buildNo
@@ -3876,8 +3874,10 @@ private fun AppForgeApp() {
                                                 currentProjectId
                                             )
 
-                                        status =
-                                            "Proje kütüphaneye kaydedildi."
+                                        // Build zaten başarıyla tamamlandı.
+                                        // Kütüphane kaydı terminal build durumunu ezmemeli.
+                                        status = "success"
+                                        progress = 100
                                     }
                                 }
                             )
