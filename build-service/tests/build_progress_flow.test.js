@@ -5,7 +5,7 @@ import {
 } from "node:fs/promises";
 
 test(
-  "Studio build progress flows from 1 to 99 and reaches 100 only on success",
+  "Studio build progress resumes from backend state and completed success stays at 100",
   async () => {
     const source =
       await readFile(
@@ -33,17 +33,22 @@ test(
 
     assert.match(
       source,
-      /flowingProgress\s*<\s*100/
+      /flowingProgress\s*=\s*100/
     );
 
     assert.match(
       source,
-      /flowingProgress \+=\s*1/
+      /backendProgress\s*>=\s*100/
     );
 
     assert.match(
       source,
-      /backendProgress/
+      /backendProgress[\s\S]*?coerceAtMost\(\s*99\s*\)/
+    );
+
+    assert.match(
+      source,
+      /flowingProgress\s*\+=\s*1/
     );
   }
 );
