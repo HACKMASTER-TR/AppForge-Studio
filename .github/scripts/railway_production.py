@@ -161,12 +161,7 @@ def railway_cli(
         "npx",
         "-y",
         "@railway/cli@latest",
-        *args,
-        "--project",
-        project_id,
-        "--environment",
-        environment_id,
-        "--json"
+        *args
     ]
 
     print(
@@ -205,28 +200,24 @@ def railway_cli(
     return result.stdout
 
 
-def connect_image(
+def redeploy_service(
     service_name,
-    image,
     project_id,
     environment_id
 ):
     print(
-        "Railway image source:",
+        "Railway redeploy:",
         service_name,
-        "=>",
-        image
+        flush=True
     )
 
     railway_cli(
         [
-            "service",
-            "source",
-            "connect",
-            "--image",
-            image,
+            "redeploy",
             "--service",
-            service_name
+            service_name,
+            "--yes",
+            "--json"
         ],
         project_id,
         environment_id
@@ -689,20 +680,60 @@ def deploy(args):
     deployment_id = None
 
     try:
-        # Docker image kaynağını resmi Railway CLI ile
-        # immutable SHA tag'ine geçir.
-        connect_image(
+        before_ids = {
+            item.get("id")
+            for item in before_rows
+            if item.get("id")
+        }
+
+        # Servis kalıcı olarak :latest image'a bağlıdır.
+        # Image workflow latest digest'i güncelledikten sonra
+        # Project Token ile yalnız redeploy yapılır.
+        redeploy_service(
             args.service,
-            args.image,
             project_id,
             environment_id
         )
 
-        # Yeni deployment'ı resmi API mutation ile başlat.
-        deployment_id = start_deploy(
-            service_id,
-            environment_id
-        )
+        deployment_id = None
+        discover_deadline = time.time() + 120
+
+        while time.time() < discover_deadline:
+            current_rows = deployments(
+                project_id,
+                service_id,
+                environment_id,
+                first=10
+            )
+
+            new_deployment = next(
+                (
+                    item
+                    for item in current_rows
+                    if (
+                        item.get("id")
+                        and
+                        item.get("id") not in before_ids
+                    )
+                ),
+                None
+            )
+
+            if new_deployment:
+                deployment_id = new_deployment["id"]
+                break
+
+            print(
+                "Yeni Railway deployment bekleniyor...",
+                flush=True
+            )
+
+            time.sleep(5)
+
+        if not deployment_id:
+            raise RuntimeError(
+                "Redeploy başladı ancak yeni deployment bulunamadı."
+            )
 
         print(
             "Deployment ID:",
