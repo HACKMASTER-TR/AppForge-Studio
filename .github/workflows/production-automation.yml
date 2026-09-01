@@ -1,0 +1,365 @@
+name: AppForge Production Automation
+
+on:
+  workflow_run:
+    workflows:
+      - "Build AppForge Worker Image"
+      - "Build AppForge Source Worker Image"
+      - "Build AppForge Windows Worker Image"
+    types:
+      - completed
+
+  schedule:
+    - cron: "41 2 * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+  issues: write
+  packages: read
+
+concurrency:
+  group: appforge-production-${{ github.event.workflow_run.name || github.event_name }}
+  cancel-in-progress: false
+
+env:
+  STUDIO_URL: https://appforge-studio-production.up.railway.app
+
+jobs:
+
+  deploy:
+    name: Verified Worker deploy
+    if: >
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success'
+
+    runs-on: ubuntu-latest
+
+    env:
+      RAILWAY_PROJECT_TOKEN: ${{ secrets.RAILWAY_PROJECT_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Resolve immutable image
+        id: target
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          WF="${{ github.event.workflow_run.name }}"
+          SHA="${{ github.event.workflow_run.head_sha }}"
+
+          case "$WF" in
+
+            "Build AppForge Worker Image")
+              echo "service=AppForge-Worker" >> "$GITHUB_OUTPUT"
+              echo "image=ghcr.io/hackmaster-tr/appforge-worker:sha-${SHA:0:7}" >> "$GITHUB_OUTPUT"
+              echo "heartbeat=railway-worker" >> "$GITHUB_OUTPUT"
+              echo "kind=android" >> "$GITHUB_OUTPUT"
+              ;;
+
+            "Build AppForge Source Worker Image")
+              echo "service=AppForge-Source-Worker" >> "$GITHUB_OUTPUT"
+              echo "image=ghcr.io/hackmaster-tr/appforge-source-worker:sha-${SHA:0:12}" >> "$GITHUB_OUTPUT"
+              echo "heartbeat=source-worker" >> "$GITHUB_OUTPUT"
+              echo "kind=source" >> "$GITHUB_OUTPUT"
+              ;;
+
+            "Build AppForge Windows Worker Image")
+              echo "service=AppForge-Windows-Worker" >> "$GITHUB_OUTPUT"
+              echo "image=ghcr.io/hackmaster-tr/appforge-windows-worker:sha-${SHA:0:7}" >> "$GITHUB_OUTPUT"
+              echo "heartbeat=windows-worker" >> "$GITHUB_OUTPUT"
+              echo "kind=windows" >> "$GITHUB_OUTPUT"
+              ;;
+
+            *)
+              echo "Unknown workflow: $WF"
+              exit 1
+              ;;
+          esac
+
+      - name: Login GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull candidate image
+        run: |
+          docker pull "${{ steps.target.outputs.image }}"
+
+      - name: Android Worker production gate
+        if: steps.target.outputs.kind == 'android'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE="${{ steps.target.outputs.image }}"
+
+          echo "=== FAST APK REAL SMOKE ==="
+
+          docker run \
+            --rm \
+            --entrypoint node \
+            "$IMAGE" \
+            /app/scripts/fast-apk-runtime-smoke.js
+
+          echo "=== SIGNING SELF TEST ==="
+
+          docker run \
+            --rm \
+            --entrypoint bash \
+            "$IMAGE" \
+            -lc '
+              set -euo pipefail
+
+              test -s "$APPFORGE_FAST_DEBUG_KEYSTORE"
+
+              keytool \
+                -list \
+                -keystore "$APPFORGE_FAST_DEBUG_KEYSTORE" \
+                -storepass android \
+                -alias androiddebugkey \
+                >/dev/null
+
+              echo "FAST debug signing key OK."
+            '
+
+          echo "=== REAL AAB SMOKE ==="
+
+          docker run \
+            --rm \
+            --entrypoint bash \
+            "$IMAGE" \
+            -lc '
+              set -euo pipefail
+
+              gradle \
+                -p /app/fast-extended-template \
+                --no-daemon \
+                --build-cache \
+                --max-workers=1 \
+                :app:bundleRelease
+
+              test -s \
+                /app/fast-extended-template/app/build/outputs/bundle/release/app-release.aab
+
+              ls -lh \
+                /app/fast-extended-template/app/build/outputs/bundle/release/app-release.aab
+            '
+
+      - name: Source Worker image gate
+        if: steps.target.outputs.kind == 'source'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE="${{ steps.target.outputs.image }}"
+
+          USER="$(
+            docker image inspect \
+              --format '{{.Config.User}}' \
+              "$IMAGE"
+          )"
+
+          echo "Runtime user: $USER"
+
+          test "$USER" = "10001:10001"
+
+          docker run \
+            --rm \
+            --entrypoint sh \
+            "$IMAGE" \
+            -lc '
+              node --check /app/source-worker.js
+              node --check /app/src/workerRuntime.js
+            '
+
+      - name: Windows Worker image gate
+        if: steps.target.outputs.kind == 'windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE="${{ steps.target.outputs.image }}"
+
+          docker run \
+            --rm \
+            --entrypoint bash \
+            "$IMAGE" \
+            -lc '
+              node --check /app/windows-worker.js
+              node --check /app/src/windowsBuild.js
+              ./node_modules/.bin/electron-builder --version
+            '
+
+      - name: Railway deploy + health + automatic rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 \
+            .github/scripts/railway_production.py \
+            deploy \
+            --service "${{ steps.target.outputs.service }}" \
+            --image "${{ steps.target.outputs.image }}" \
+            --heartbeat "${{ steps.target.outputs.heartbeat }}" \
+            --studio-url "$STUDIO_URL"
+
+  failed-image:
+    name: Failed image build detector
+    if: >
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion != 'success'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Report failed image workflow
+        shell: bash
+        run: |
+          echo "::error::Worker image workflow failed."
+          echo "Workflow: ${{ github.event.workflow_run.name }}"
+          echo "SHA: ${{ github.event.workflow_run.head_sha }}"
+          exit 1
+
+  nightly:
+    name: Nightly regression and maintenance
+    if: >
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      RAILWAY_PROJECT_TOKEN: ${{ secrets.RAILWAY_PROJECT_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        working-directory: ./build-service
+        run: npm ci
+
+      - name: Full AppForge regression
+        working-directory: ./build-service
+        run: npm test
+
+      - name: Login GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Nightly production FAST APK smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE="ghcr.io/hackmaster-tr/appforge-worker:latest"
+
+          docker pull "$IMAGE"
+
+          docker run \
+            --rm \
+            --entrypoint node \
+            "$IMAGE" \
+            /app/scripts/fast-apk-runtime-smoke.js
+
+      - name: Railway health storage and Postgres backup
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 \
+            .github/scripts/railway_production.py \
+            maintenance \
+            --studio-url "$STUDIO_URL" \
+            --backup-postgres
+
+      - name: Trigger normal cleanup
+        shell: bash
+        run: |
+          gh workflow run \
+            cleanup-old-runs.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            || true
+
+  auto-issue:
+    name: Automatic infrastructure issue
+    needs:
+      - deploy
+      - failed-image
+      - nightly
+
+    if: >
+      always() &&
+      (
+        needs.deploy.result == 'failure' ||
+        needs.failed-image.result == 'failure' ||
+        needs.nightly.result == 'failure'
+      )
+
+    runs-on: ubuntu-latest
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Create or update automatic issue
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TITLE="[AUTO] AppForge production automation failure"
+
+          BODY="$(cat <<EOF
+          AppForge production automation detected a failure.
+
+          Run:
+          https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+
+          Event:
+          ${GITHUB_EVENT_NAME}
+
+          Commit:
+          ${GITHUB_SHA}
+
+          The production gate keeps the previous successful Railway deployment when a new candidate fails.
+          EOF
+          )"
+
+          EXISTING="$(
+            gh issue list \
+              --repo "$GITHUB_REPOSITORY" \
+              --state open \
+              --search "\"$TITLE\" in:title" \
+              --json number \
+              --jq '.[0].number // empty'
+          )"
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment \
+              "$EXISTING" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "$BODY"
+          else
+            gh issue create \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$TITLE" \
+              --body "$BODY"
+          fi

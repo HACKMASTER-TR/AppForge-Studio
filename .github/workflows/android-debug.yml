@@ -111,6 +111,58 @@ jobs:
           echo "APK hazır:"
           ls -lh AppForgeStudio-latest.apk
 
+      - name: Verify APK package SDK and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APK="AppForgeStudio-latest.apk"
+
+          AAPT="$(
+            find "$ANDROID_HOME/build-tools" \
+              -type f \
+              -name aapt \
+              | sort -V \
+              | tail -n 1
+          )"
+
+          APKSIGNER="$(
+            find "$ANDROID_HOME/build-tools" \
+              -type f \
+              -name apksigner \
+              | sort -V \
+              | tail -n 1
+          )"
+
+          test -x "$AAPT"
+          test -x "$APKSIGNER"
+
+          "$APKSIGNER" \
+            verify \
+            --verbose \
+            --print-certs \
+            "$APK"
+
+          BADGING="$(
+            "$AAPT" \
+              dump badging \
+              "$APK"
+          )"
+
+          echo "$BADGING" \
+            | grep -F \
+              "package: name='com.appforge.studio'"
+
+          echo "$BADGING" \
+            | grep -F \
+              "sdkVersion:'26'"
+
+          echo "$BADGING" \
+            | grep -F \
+              "targetSdkVersion:'37'"
+
+          echo "APK metadata + signature verified."
+
       - name: Publish latest APK release
         if: github.ref == 'refs/heads/main'
         shell: bash

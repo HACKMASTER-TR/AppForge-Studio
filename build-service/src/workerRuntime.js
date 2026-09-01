@@ -19,14 +19,81 @@ import {
 import { executeBuild } from "./buildEngine.js";
 import { executeWindowsBuild } from "./windowsBuild.js";
 import { executeUnityBuild } from "./unityLicensedBuild.js";
+import {
+  classifyBuildError
+} from "./buildErrorClassifier.js";
 
 let stopping = false;
 
 const presenceTimers =
   new Set();
 
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function failClassifiedJob(
+  job,
+  error
+) {
+  const classification =
+    classifyBuildError(
+      error
+    );
+
+  const message =
+    String(
+      error?.message ||
+      error ||
+      "Build hatası"
+    );
+
+  const classifiedError =
+    new Error(
+      `[${classification.category}] ${message}`
+    );
+
+  classifiedError.code =
+    error?.code ||
+    classification.code;
+
+  console.error(
+    "[WORKER ERROR CLASSIFICATION]",
+    JSON.stringify({
+      buildId:
+        job?.build_id || null,
+      jobId:
+        job?.id || null,
+      category:
+        classification.category,
+      code:
+        classification.code,
+      retryable:
+        classification.retryable
+    })
+  );
+
+  /*
+   * Yalnız geçici altyapı/ağ hataları retry edilir.
+   * Kotlin, Gradle, Firebase, signing vb. gerçek hatalar
+   * aynı pahalı build'i ikinci kez çalıştırmaz.
+   */
+  const effectiveJob =
+    classification.retryable
+      ? job
+      : {
+          ...job,
+          attempts:
+            job?.max_attempts ||
+            job?.attempts ||
+            1
+        };
+
+  await failOrRequeueJob(
+    effectiveJob,
+    classifiedError
+  );
 }
 
 export async function startWorker({
@@ -251,7 +318,7 @@ async function workerLoop(workerSlotId, capabilities) {
             )
           );
         } else {
-          await failOrRequeueJob(
+          await failClassifiedJob(
             job,
             error
           );
