@@ -9,7 +9,8 @@ import AdmZip from "adm-zip";
 
 import {
   prepareFlutterSource,
-  extractFlutterFailureDiagnostics
+  extractFlutterFailureDiagnostics,
+  appendFlutterOutputTail
 } from "../src/flutterBuildEngine.js";
 
 test(
@@ -172,6 +173,42 @@ Gradle task assembleRelease failed with exit code 1`;
     assert.match(
       joined,
       /TEST_ROOT_CAUSE/
+    );
+  }
+);
+
+
+test(
+  "Flutter verbose output keeps final failure tail",
+  () => {
+    const prefix =
+      "OLD_DATA_".repeat(
+        20
+      );
+
+    const rootCause =
+      "FINAL_GRADLE_ROOT_CAUSE";
+
+    const retained =
+      appendFlutterOutputTail(
+        prefix,
+        rootCause,
+        64
+      );
+
+    assert.ok(
+      retained.length <=
+        64
+    );
+
+    assert.match(
+      retained,
+      /FINAL_GRADLE_ROOT_CAUSE/
+    );
+
+    assert.doesNotMatch(
+      retained,
+      /^OLD_DATA_OLD_DATA_/
     );
   }
 );

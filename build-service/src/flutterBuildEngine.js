@@ -489,7 +489,32 @@ const FLUTTER_COMMAND_TIMEOUT_MS =
   15 * 60 * 1000;
 
 const FLUTTER_LOG_LIMIT =
-  250_000;
+  500_000;
+
+export function appendFlutterOutputTail(
+  current,
+  chunk,
+  limit = FLUTTER_LOG_LIMIT
+) {
+  const merged =
+    String(
+      current ?? ""
+    ) +
+    String(
+      chunk ?? ""
+    );
+
+  if (
+    merged.length <=
+      limit
+  ) {
+    return merged;
+  }
+
+  return merged.slice(
+    -limit
+  );
+}
 
 export function extractFlutterFailureDiagnostics(
   rawOutput
@@ -576,6 +601,7 @@ async function runFlutterCommand({
   args,
   onLog = null,
   cancelled = null,
+  verbose = false,
   timeoutMs = FLUTTER_COMMAND_TIMEOUT_MS
 }) {
   if (
@@ -598,6 +624,13 @@ async function runFlutterCommand({
 
   const flutterArgs = [
     "--no-version-check",
+    ...(
+      verbose
+        ? [
+            "--verbose"
+          ]
+        : []
+    ),
     ...args
   ];
 
@@ -634,17 +667,11 @@ async function runFlutterCommand({
               chunk
             );
 
-          if (
-            output.length <
-              FLUTTER_LOG_LIMIT
-          ) {
-            output +=
-              text.slice(
-                0,
-                FLUTTER_LOG_LIMIT -
-                  output.length
-              );
-          }
+          output =
+            appendFlutterOutputTail(
+              output,
+              text
+            );
 
           if (
             onLog
@@ -660,15 +687,29 @@ async function runFlutterCommand({
                 )
                 .filter(
                   Boolean
-                )
-                .slice(
-                  0,
-                  16
                 );
+
+            const visibleLines =
+              verbose
+                ? lines
+                    .filter(
+                      line =>
+                        /Running Gradle task|Built |FAILURE:|What went wrong|Where:|Execution failed|Could not|Caused by:|Exception|error:|A problem occurred|Gradle task .*failed|Android Gradle plugin|Kotlin|KGP|permission denied|read-only/i.test(
+                          line
+                        )
+                    )
+                    .slice(
+                      0,
+                      24
+                    )
+                : lines.slice(
+                    0,
+                    16
+                  );
 
             for (
               const line of
-              lines
+              visibleLines
             ) {
               Promise.resolve(
                 onLog(
@@ -1161,7 +1202,8 @@ export async function buildFlutterArtifacts({
           )
         ],
         onLog,
-        cancelled
+        cancelled,
+        verbose: true
       }
     );
 
