@@ -17241,16 +17241,6 @@ private fun BuildStep(
             }
         }
 
-        if (
-            buildFailed
-        ) {
-            item {
-                NoteCard(
-                    "Teknik derleme ayrıntıları kullanıcı görünümünde gizlendi. " +
-                        "Sorunu çözmek için yukarıdaki Derleme Hatası Asistanı önerilerini kullan."
-                )
-            }
-        }
 
     }
 }
