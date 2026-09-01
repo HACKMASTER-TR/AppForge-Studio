@@ -5040,8 +5040,8 @@ function generatedMainActivity(c, pkg) {
     ${c.features?.camera ? "private var pendingCameraFilePath: String? = null" : ""}
     ${c.billing?.enabled ? "private var billingClient: BillingClient? = null" : ""}
     ${c.billing?.enabled ? "private val productDetailsCache = mutableMapOf<String, ProductDetails>()" : ""}
-    ${c.admob?.enabled && c.admob?.interstitialUnitId ? "private var interstitialAd: InterstitialAd? = null" : ""}
-    ${c.admob?.enabled && c.admob?.rewardedUnitId ? "private var rewardedAd: RewardedAd? = null" : ""}
+    ${c.admob?.enabled ? "private var interstitialAd: InterstitialAd? = null" : ""}
+    ${c.admob?.enabled ? "private var rewardedAd: RewardedAd? = null" : ""}
     ${c.admob?.enabled ? "private var bannerAdView: AdView? = null" : ""}
 `;
 
