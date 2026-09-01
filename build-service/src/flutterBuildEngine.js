@@ -6,6 +6,7 @@ import {
 import path from "path";
 import { spawn } from "child_process";
 import { createSourceBuildEnv } from "./sourceBuildEnv.js";
+import { prepareWritableFlutterGradlePlugin } from "./flutterGradleMirror.js";
 
 const MAX_ZIP_ENTRIES =
   10_000;
@@ -1109,6 +1110,14 @@ export async function buildFlutterArtifacts({
       "Flutter proje hazırlığı eksik."
     );
   }
+
+  await prepareWritableFlutterGradlePlugin(
+    {
+      projectRoot:
+        prepared.projectRoot,
+      onLog
+    }
+  );
 
   await installGradleAndroidSafeArea(
     {
