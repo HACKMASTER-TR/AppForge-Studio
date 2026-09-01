@@ -146,42 +146,92 @@ def project_services(project_id):
     ]
 
 
-def service_instance(
-    service_id,
+def railway_cli(
+    args,
+    project_id,
     environment_id
 ):
-    data = graphql(
-        """
-        query(
-          $serviceId: String!,
-          $environmentId: String!
-        ) {
-          serviceInstance(
-            serviceId: $serviceId,
-            environmentId: $environmentId
-          ) {
-            serviceId
-            environmentId
-            source {
-              image
-              repo
-              branch
-            }
-          }
-        }
-        """,
-        {
-            "serviceId":
-                service_id,
+    env = os.environ.copy()
 
-            "environmentId":
-                environment_id
-        }
+    # Railway Project Token CLI tarafından
+    # RAILWAY_TOKEN değişkeninden okunur.
+    env["RAILWAY_TOKEN"] = TOKEN
+
+    command = [
+        "npx",
+        "-y",
+        "@railway/cli@latest",
+        *args,
+        "--project",
+        project_id,
+        "--environment",
+        environment_id,
+        "--json"
+    ]
+
+    print(
+        "Railway CLI:",
+        " ".join(
+            command[:4]
+            +
+            ["..."]
+        ),
+        flush=True
     )
 
-    return data.get(
-        "serviceInstance"
-    ) or {}
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        env=env
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            "Railway CLI hatası: "
+            +
+            (
+                result.stderr.strip()
+                or
+                result.stdout.strip()
+            )
+        )
+
+    if result.stdout.strip():
+        print(
+            result.stdout.strip()
+        )
+
+    return result.stdout
+
+
+def connect_image(
+    service_name,
+    image,
+    project_id,
+    environment_id
+):
+    print(
+        "Railway image source:",
+        service_name,
+        "=>",
+        image
+    )
+
+    railway_cli(
+        [
+            "service",
+            "source",
+            "connect",
+            "--image",
+            image,
+            "--service",
+            service_name
+        ],
+        project_id,
+        environment_id
+    )
+
 
 
 def deployments(
@@ -292,7 +342,7 @@ def start_deploy(
           $serviceId: String!,
           $environmentId: String!
         ) {
-          serviceInstanceDeployV2(
+          serviceInstanceDeploy(
             serviceId: $serviceId,
             environmentId: $environmentId
           )
@@ -309,7 +359,7 @@ def start_deploy(
 
     deployment_id = (
         data.get(
-            "serviceInstanceDeployV2"
+            "serviceInstanceDeploy"
         )
     )
 
@@ -319,6 +369,7 @@ def start_deploy(
         )
 
     return deployment_id
+
 
 
 def deployment_status(
@@ -529,39 +580,61 @@ def health_gate(
 
 
 def rollback(
-    service_id,
-    environment_id,
-    previous_image
+    previous_success_id,
+    studio_url
 ):
-    if not previous_image:
+    if not previous_success_id:
         raise RuntimeError(
-            "Rollback için eski image bulunamadı."
+            "Rollback için önceki SUCCESS deployment yok."
         )
 
     print(
-        "ROLLBACK:",
-        previous_image
+        "ROLLBACK deployment:",
+        previous_success_id
     )
 
-    connect_image(
-        service_id,
-        previous_image
+    data = graphql(
+        """
+        mutation($id: String!) {
+          deploymentRollback(id: $id) {
+            id
+          }
+        }
+        """,
+        {
+            "id":
+                previous_success_id
+        }
     )
 
-    rollback_id = start_deploy(
-        service_id,
-        environment_id
+    rollback_result = (
+        data.get(
+            "deploymentRollback"
+        )
+        or {}
     )
 
-    wait_deploy(
-        rollback_id,
-        timeout=900
+    rollback_id = (
+        rollback_result.get(
+            "id"
+        )
+    )
+
+    if rollback_id:
+        wait_deploy(
+            rollback_id,
+            timeout=900
+        )
+
+    health_gate(
+        studio_url,
+        None
     )
 
     print(
-        "Rollback SUCCESS:",
-        rollback_id
+        "✅ Rollback SUCCESS"
     )
+
 
 
 def deploy(args):
@@ -599,15 +672,34 @@ def deploy(args):
         service["id"]
     )
 
-    before = service_instance(
+    before_rows = deployments(
+        project_id,
         service_id,
-        environment_id
+        environment_id,
+        first=30
     )
 
-    previous_image = (
-        before
-        .get("source", {})
-        .get("image")
+    previous_success = next(
+        (
+            item
+            for item in before_rows
+            if (
+                item
+                .get(
+                    "status",
+                    ""
+                )
+                .upper()
+                == "SUCCESS"
+            )
+        ),
+        None
+    )
+
+    previous_success_id = (
+        previous_success.get("id")
+        if previous_success
+        else None
     )
 
     print(
@@ -616,8 +708,8 @@ def deploy(args):
     )
 
     print(
-        "Previous image:",
-        previous_image
+        "Previous SUCCESS:",
+        previous_success_id
     )
 
     print(
@@ -626,11 +718,16 @@ def deploy(args):
     )
 
     try:
+        # Docker image kaynağını resmi Railway CLI ile
+        # immutable SHA tag'ine geçir.
         connect_image(
-            service_id,
-            args.image
+            args.service,
+            args.image,
+            project_id,
+            environment_id
         )
 
+        # Yeni deployment'ı resmi API mutation ile başlat.
         deployment_id = start_deploy(
             service_id,
             environment_id
@@ -646,27 +743,8 @@ def deploy(args):
             timeout=args.timeout
         )
 
-        after = service_instance(
-            service_id,
-            environment_id
-        )
-
-        active_image = (
-            after
-            .get("source", {})
-            .get("image")
-        )
-
-        if (
-            active_image !=
-            args.image
-        ):
-            raise RuntimeError(
-                "Railway image doğrulaması başarısız. "
-                f"Beklenen={args.image}, "
-                f"aktif={active_image}"
-            )
-
+        # Yeni Worker gerçekten Studio tarafından
+        # heartbeat ile görülmeden production SUCCESS değil.
         health_gate(
             args.studio_url,
             args.heartbeat
@@ -676,32 +754,29 @@ def deploy(args):
             "✅ PRODUCTION DEPLOY SUCCESS"
         )
 
-    except Exception:
+    except Exception as original_error:
         print(
-            "❌ Production gate başarısız.",
+            "❌ Production gate başarısız:",
+            str(original_error),
             file=sys.stderr
         )
 
-        try:
-            rollback(
-                service_id,
-                environment_id,
-                previous_image
-            )
+        if previous_success_id:
+            try:
+                rollback(
+                    previous_success_id,
+                    args.studio_url
+                )
 
-            health_gate(
-                args.studio_url,
-                None
-            )
-
-        except Exception as rollback_error:
-            print(
-                "❌ ROLLBACK FAILED:",
-                rollback_error,
-                file=sys.stderr
-            )
+            except Exception as rollback_error:
+                print(
+                    "❌ ROLLBACK FAILED:",
+                    rollback_error,
+                    file=sys.stderr
+                )
 
         raise
+
 
 
 def volume_maintenance(

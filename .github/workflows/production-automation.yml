@@ -44,6 +44,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Setup Node.js for Railway CLI
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
       - name: Resolve immutable image
         id: target
         shell: bash
@@ -115,7 +120,7 @@ jobs:
             --rm \
             --entrypoint bash \
             "$IMAGE" \
-            -lc '
+            -c '
               set -euo pipefail
 
               test -s "$APPFORGE_FAST_DEBUG_KEYSTORE"
@@ -136,10 +141,10 @@ jobs:
             --rm \
             --entrypoint bash \
             "$IMAGE" \
-            -lc '
+            -c '
               set -euo pipefail
 
-              gradle \
+              /opt/gradle/gradle-9.3.1/bin/gradle \
                 -p /app/fast-extended-template \
                 --no-daemon \
                 --build-cache \
@@ -175,7 +180,7 @@ jobs:
             --rm \
             --entrypoint sh \
             "$IMAGE" \
-            -lc '
+            -c '
               node --check /app/source-worker.js
               node --check /app/src/workerRuntime.js
             '
@@ -192,7 +197,7 @@ jobs:
             --rm \
             --entrypoint bash \
             "$IMAGE" \
-            -lc '
+            -c '
               node --check /app/windows-worker.js
               node --check /app/src/windowsBuild.js
               ./node_modules/.bin/electron-builder --version
