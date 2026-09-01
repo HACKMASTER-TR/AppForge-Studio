@@ -1,7 +1,10 @@
-name: Cleanup Old Workflow Runs
+name: Maintenance Cleanup
 
 on:
   workflow_dispatch:
+
+  schedule:
+    - cron: "17 3 * * *"
 
   workflow_run:
     workflows:
@@ -15,75 +18,475 @@ permissions:
   actions: write
 
 jobs:
-  cleanup:
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
 
+  cleanup-github:
+    name: Keep last 5 GitHub runs
     runs-on: ubuntu-latest
 
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - name: Keep last 5 Android Debug runs
+      - name: Cleanup all GitHub workflows
         shell: bash
         run: |
           set -euo pipefail
 
-          echo "Android Debug eski çalışmaları kontrol ediliyor..."
+          echo "======================================"
+          echo " GitHub Actions otomatik temizlik"
+          echo " Her workflow için son 5 tamamlanan run"
+          echo "======================================"
+
+          WORKFLOWS_FILE="$(mktemp)"
 
           gh api --paginate \
-            "/repos/${GITHUB_REPOSITORY}/actions/workflows/android-debug.yml/runs?per_page=100" \
-            --jq '.workflow_runs[].id' \
-            > /tmp/android-runs.txt
+            "/repos/${GITHUB_REPOSITORY}/actions/workflows?per_page=100" \
+            --jq '.workflows[] | [.id, .name] | @tsv' \
+            > "$WORKFLOWS_FILE"
 
-          TOTAL=$(wc -l < /tmp/android-runs.txt | tr -d ' ')
+          while IFS=$'\t' read -r WORKFLOW_ID WORKFLOW_NAME
+          do
+              [ -z "$WORKFLOW_ID" ] && continue
 
-          echo "Toplam Android Debug run: $TOTAL"
+              echo
+              echo "▶ $WORKFLOW_NAME"
 
-          if [ "$TOTAL" -gt 5 ]; then
-            tail -n +6 /tmp/android-runs.txt |
-            while read -r RUN_ID; do
-              [ -z "$RUN_ID" ] && continue
+              RUNS_FILE="$(mktemp)"
 
-              echo "Android Debug run siliniyor: $RUN_ID"
+              gh api --paginate \
+                "/repos/${GITHUB_REPOSITORY}/actions/workflows/${WORKFLOW_ID}/runs?per_page=100" \
+                --jq '.workflow_runs[] | select(.status == "completed") | .id' \
+                > "$RUNS_FILE"
 
-              gh api \
-                --method DELETE \
-                "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
-            done
-          else
-            echo "Silinecek eski Android Debug run yok."
-          fi
+              TOTAL="$(
+                wc -l < "$RUNS_FILE" |
+                tr -d ' '
+              )"
 
-      - name: Keep last 5 Conversion Smoke runs
+              echo "Tamamlanan run sayısı: $TOTAL"
+
+              if [ "$TOTAL" -gt 5 ]
+              then
+                  DELETE_COUNT=$((TOTAL - 5))
+
+                  echo "Silinecek: $DELETE_COUNT"
+                  echo "Korunacak: 5"
+
+                  tail -n +6 "$RUNS_FILE" |
+                  while read -r RUN_ID
+                  do
+                      [ -z "$RUN_ID" ] && continue
+
+                      echo "  Siliniyor: $RUN_ID"
+
+                      gh api \
+                        --method DELETE \
+                        "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
+                  done
+              else
+                  echo "Temizlik gerekmiyor."
+              fi
+
+              rm -f "$RUNS_FILE"
+
+          done < "$WORKFLOWS_FILE"
+
+          rm -f "$WORKFLOWS_FILE"
+
+          echo
+          echo "GitHub Actions temizliği tamamlandı."
+
+
+  cleanup-railway:
+    name: Keep last 5 Railway deployments
+    runs-on: ubuntu-latest
+
+    env:
+      RAILWAY_PROJECT_TOKEN: ${{ secrets.RAILWAY_PROJECT_TOKEN }}
+
+    steps:
+      - name: Cleanup Railway deployment history
         shell: bash
         run: |
           set -euo pipefail
 
-          echo "Conversion Smoke eski çalışmaları kontrol ediliyor..."
-
-          gh api --paginate \
-            "/repos/${GITHUB_REPOSITORY}/actions/workflows/conversion-smoke.yml/runs?per_page=100" \
-            --jq '.workflow_runs[].id' \
-            > /tmp/conversion-runs.txt
-
-          TOTAL=$(wc -l < /tmp/conversion-runs.txt | tr -d ' ')
-
-          echo "Toplam Conversion Smoke run: $TOTAL"
-
-          if [ "$TOTAL" -gt 5 ]; then
-            tail -n +6 /tmp/conversion-runs.txt |
-            while read -r RUN_ID; do
-              [ -z "$RUN_ID" ] && continue
-
-              echo "Conversion Smoke run siliniyor: $RUN_ID"
-
-              gh api \
-                --method DELETE \
-                "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
-            done
-          else
-            echo "Silinecek eski Conversion Smoke run yok."
+          if [ -z "${RAILWAY_PROJECT_TOKEN:-}" ]
+          then
+              echo "RAILWAY_PROJECT_TOKEN tanımlı değil."
+              echo "Railway temizliği atlandı."
+              exit 0
           fi
+
+          python3 - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.request
+          import urllib.error
+
+          API = "https://backboard.railway.com/graphql/v2"
+
+          TOKEN = os.environ.get(
+              "RAILWAY_PROJECT_TOKEN",
+              ""
+          ).strip()
+
+          if not TOKEN:
+              print(
+                  "RAILWAY_PROJECT_TOKEN yok. "
+                  "Railway temizliği atlandı."
+              )
+              raise SystemExit(0)
+
+
+          def graphql(
+              query,
+              variables=None
+          ):
+              body = json.dumps(
+                  {
+                      "query": query,
+                      "variables": variables or {}
+                  }
+              ).encode("utf-8")
+
+              request = urllib.request.Request(
+                  API,
+                  data=body,
+                  headers={
+                      "Project-Access-Token": TOKEN,
+                      "Content-Type": "application/json"
+                  },
+                  method="POST"
+              )
+
+              try:
+                  with urllib.request.urlopen(
+                      request,
+                      timeout=30
+                  ) as response:
+                      result = json.loads(
+                          response.read()
+                          .decode("utf-8")
+                      )
+
+              except urllib.error.HTTPError as exc:
+                  body = (
+                      exc.read()
+                      .decode(
+                          "utf-8",
+                          errors="replace"
+                      )
+                  )
+
+                  raise RuntimeError(
+                      f"Railway HTTP {exc.code}: {body}"
+                  )
+
+              if result.get("errors"):
+                  raise RuntimeError(
+                      "Railway GraphQL hatası: " +
+                      json.dumps(
+                          result["errors"],
+                          ensure_ascii=False
+                      )
+                  )
+
+              return result.get(
+                  "data",
+                  {}
+              )
+
+
+          context = graphql(
+              """
+              query {
+                projectToken {
+                  projectId
+                  environmentId
+                }
+              }
+              """
+          ).get(
+              "projectToken"
+          )
+
+          if not context:
+              raise RuntimeError(
+                  "Railway Project Token bilgileri alınamadı."
+              )
+
+          project_id = context["projectId"]
+          environment_id = context["environmentId"]
+
+          project_data = graphql(
+              """
+              query ProjectServices(
+                $id: String!
+              ) {
+                project(
+                  id: $id
+                ) {
+                  id
+                  name
+
+                  services {
+                    edges {
+                      node {
+                        id
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+              """,
+              {
+                  "id": project_id
+              }
+          )
+
+          project = project_data.get(
+              "project"
+          )
+
+          if not project:
+              raise RuntimeError(
+                  "Railway projesi bulunamadı."
+              )
+
+          services = [
+              edge["node"]
+              for edge
+              in project
+                  .get(
+                      "services",
+                      {}
+                  )
+                  .get(
+                      "edges",
+                      []
+                  )
+          ]
+
+          print(
+              f"Railway proje: "
+              f"{project.get('name', project_id)}"
+          )
+
+          print(
+              f"Servis sayısı: {len(services)}"
+          )
+
+          SAFE_OLD_STATUSES = {
+              "REMOVED",
+              "FAILED",
+              "CRASHED",
+              "SKIPPED"
+          }
+
+          PROTECTED_STATUSES = {
+              "SUCCESS",
+              "BUILDING",
+              "DEPLOYING",
+              "INITIALIZING",
+              "WAITING",
+              "QUEUED",
+              "SLEEPING"
+          }
+
+          deployments_query = """
+          query Deployments(
+            $projectId: String!,
+            $serviceId: String!,
+            $environmentId: String!
+          ) {
+            deployments(
+              first: 100,
+              input: {
+                projectId: $projectId,
+                serviceId: $serviceId,
+                environmentId: $environmentId
+              }
+            ) {
+              edges {
+                node {
+                  id
+                  status
+                  createdAt
+                }
+              }
+            }
+          }
+          """
+
+          remove_mutation = """
+          mutation RemoveDeployment(
+            $id: String!
+          ) {
+            deploymentRemove(
+              id: $id
+            )
+          }
+          """
+
+          total_removed = 0
+
+          for service in services:
+
+              service_id = service["id"]
+
+              service_name = service.get(
+                  "name",
+                  service_id
+              )
+
+              print()
+              print(
+                  f"▶ Railway servis: "
+                  f"{service_name}"
+              )
+
+              data = graphql(
+                  deployments_query,
+                  {
+                      "projectId":
+                          project_id,
+
+                      "serviceId":
+                          service_id,
+
+                      "environmentId":
+                          environment_id
+                  }
+              )
+
+              deployments = [
+                  edge["node"]
+                  for edge
+                  in data
+                      .get(
+                          "deployments",
+                          {}
+                      )
+                      .get(
+                          "edges",
+                          []
+                      )
+              ]
+
+              deployments.sort(
+                  key=lambda item:
+                      item.get(
+                          "createdAt",
+                          ""
+                      ),
+                  reverse=True
+              )
+
+              print(
+                  "Deployment sayısı:",
+                  len(deployments)
+              )
+
+              #
+              # En yeni 5 deployment
+              # kesinlikle korunur.
+              #
+              newest = deployments[:5]
+              old = deployments[5:]
+
+              print(
+                  "Korunan son deployment:",
+                  len(newest)
+              )
+
+              for deployment in old:
+
+                  deployment_id = (
+                      deployment["id"]
+                  )
+
+                  status = (
+                      deployment
+                      .get(
+                          "status",
+                          ""
+                      )
+                      .upper()
+                  )
+
+                  #
+                  # Çalışan veya potansiyel olarak
+                  # aktif deploylara asla dokunma.
+                  #
+                  if status in PROTECTED_STATUSES:
+                      print(
+                          "  KORUNDU:",
+                          deployment_id,
+                          status
+                      )
+
+                      continue
+
+                  if (
+                      status
+                      not in
+                      SAFE_OLD_STATUSES
+                  ):
+                      print(
+                          "  BİLİNMEYEN DURUM - ATLANDI:",
+                          deployment_id,
+                          status
+                      )
+
+                      continue
+
+                  try:
+                      graphql(
+                          remove_mutation,
+                          {
+                              "id":
+                                  deployment_id
+                          }
+                      )
+
+                      total_removed += 1
+
+                      print(
+                          "  TEMİZLENDİ:",
+                          deployment_id,
+                          status
+                      )
+
+                      #
+                      # API'ye gereksiz yük bindirme.
+                      #
+                      time.sleep(
+                          0.20
+                      )
+
+                  except Exception as exc:
+
+                      #
+                      # Tek bir eski deploy temizlenemezse
+                      # diğer servislerin bakımını bozma.
+                      #
+                      print(
+                          "  UYARI:",
+                          deployment_id,
+                          status,
+                          str(exc)
+                      )
+
+
+          print()
+          print(
+              "Railway temizliği tamamlandı."
+          )
+
+          print(
+              "Temizlenen eski deployment:",
+              total_removed
+          )
+          PY
