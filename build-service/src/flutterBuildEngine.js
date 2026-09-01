@@ -491,6 +491,70 @@ const FLUTTER_COMMAND_TIMEOUT_MS =
 const FLUTTER_LOG_LIMIT =
   250_000;
 
+export function extractFlutterFailureDiagnostics(
+  rawOutput
+) {
+  const lines =
+    String(
+      rawOutput ??
+        ""
+    )
+      .split(
+        /\r?\n/
+      )
+      .map(
+        line =>
+          line.trim()
+      )
+      .filter(
+        Boolean
+      );
+
+  const importantPattern =
+    /FAILURE:|What went wrong|Where:|Execution failed|Could not|Caused by:|Exception|error:|A problem occurred|Gradle task|Android Gradle plugin|Kotlin|KGP|requires|unsupported|permission denied|read-only file system|failed/i;
+
+  const important =
+    lines
+      .filter(
+        line =>
+          importantPattern.test(
+            line
+          )
+      )
+      .slice(
+        -100
+      );
+
+  const tail =
+    lines.slice(
+      -80
+    );
+
+  const merged =
+    [];
+
+  for (
+    const line of [
+      ...important,
+      ...tail
+    ]
+  ) {
+    if (
+      !merged.includes(
+        line
+      )
+    ) {
+      merged.push(
+        line
+      );
+    }
+  }
+
+  return merged.slice(
+    -120
+  );
+}
+
 function groovyQuote(
   value
 ) {
@@ -655,7 +719,7 @@ async function runFlutterCommand({
 
       child.on(
         "close",
-        code => {
+        async code => {
           clearTimeout(
             timer
           );
@@ -668,11 +732,42 @@ async function runFlutterCommand({
               output
             );
           } else {
+            const diagnostics =
+              extractFlutterFailureDiagnostics(
+                output
+              );
+
+            if (
+              onLog &&
+              diagnostics.length
+            ) {
+              await Promise.resolve(
+                onLog(
+                  "🔎 Flutter/Gradle hata ayrıntıları:"
+                )
+              ).catch(
+                () => {}
+              );
+
+              for (
+                const line of
+                diagnostics
+              ) {
+                await Promise.resolve(
+                  onLog(
+                    `🔎 ${line.slice(0, 800)}`
+                  )
+                ).catch(
+                  () => {}
+                );
+              }
+            }
+
             reject(
               new Error(
                 `flutter ${flutterArgs.join(" ")} başarısız (exit=${code}).\n` +
                 output.slice(
-                  -14_000
+                  -40_000
                 )
               )
             );

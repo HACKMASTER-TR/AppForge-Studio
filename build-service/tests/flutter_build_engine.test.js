@@ -8,7 +8,8 @@ import path from "path";
 import AdmZip from "adm-zip";
 
 import {
-  prepareFlutterSource
+  prepareFlutterSource,
+  extractFlutterFailureDiagnostics
 } from "../src/flutterBuildEngine.js";
 
 test(
@@ -131,5 +132,46 @@ void main() {
         }
       );
     }
+  }
+);
+
+
+test(
+  "Flutter Gradle failure diagnostics preserve root cause",
+  () => {
+    const output =
+`Running Gradle task 'assembleRelease'...
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileReleaseJavaWithJavac'.
+> Could not resolve dependency.
+Caused by: java.lang.IllegalStateException: TEST_ROOT_CAUSE
+Gradle task assembleRelease failed with exit code 1`;
+
+    const diagnostics =
+      extractFlutterFailureDiagnostics(
+        output
+      );
+
+    const joined =
+      diagnostics.join(
+        "\n"
+      );
+
+    assert.match(
+      joined,
+      /What went wrong/
+    );
+
+    assert.match(
+      joined,
+      /Execution failed/
+    );
+
+    assert.match(
+      joined,
+      /TEST_ROOT_CAUSE/
+    );
   }
 );
