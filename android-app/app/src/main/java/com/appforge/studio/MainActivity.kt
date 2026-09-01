@@ -16767,50 +16767,6 @@ private fun BuildStep(
                                     19.sp
                             )
 
-                            if (
-                                !diagnosis
-                                    .evidence
-                                    .isNullOrBlank()
-                            ) {
-                                Card(
-                                    colors =
-                                        CardDefaults.cardColors(
-                                            containerColor =
-                                                Color(0xFF171A21)
-                                        ),
-                                    shape =
-                                        RoundedCornerShape(
-                                            14.dp
-                                        )
-                                ) {
-                                    Column(
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .padding(
-                                                    12.dp
-                                                )
-                                    ) {
-                                        Text(
-                                            "Teknik ayrıntı",
-                                            fontWeight =
-                                                FontWeight.Bold,
-                                            fontSize =
-                                                12.sp
-                                        )
-
-                                        Text(
-                                            "Teknik hata ayrıntıları kullanıcı görünümünde gizlendi.",
-                                            color =
-                                                TextSecondary,
-                                            fontSize =
-                                                11.sp,
-                                            lineHeight =
-                                                16.sp
-                                        )
-                                    }
-                                }
-                            }
                         } else {
                             Text(
                                 "Derleme tamamlanamadı. Canlı log ayrıntıları aşağıda gösteriliyor.",
