@@ -10934,10 +10934,7 @@ private fun SourceStep(
                                     it.isDigit()
                                 }
                                 .toIntOrNull()
-                                ?.takeIf {
-                                    it in 26..37 &&
-                                    it <= d.targetSdk
-                                }
+                                
                                 ?.let {
                                     update(
                                         d.copy(
@@ -10970,10 +10967,7 @@ private fun SourceStep(
                                     it.isDigit()
                                 }
                                 .toIntOrNull()
-                                ?.takeIf {
-                                    it in 26..37 &&
-                                    it >= d.minSdk
-                                }
+                                
                                 ?.let {
                                     update(
                                         d.copy(
