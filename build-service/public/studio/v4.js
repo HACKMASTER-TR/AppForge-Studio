@@ -266,6 +266,14 @@ async function api(path, opts={}){
     error.status =
       r.status;
 
+    error.problem =
+      data.problem || null;
+
+    error.userMessage =
+      data.userMessage ||
+      data.error ||
+      null;
+
     throw error;
   }
 
@@ -281,7 +289,27 @@ async function apiForm(path, form, opts={}){
   const text=await r.text();
   let data={};
   try{data=text?JSON.parse(text):{}}catch{data={raw:text}}
-  if(!r.ok)throw new Error(data.error || data.detail || text || `HTTP ${r.status}`);
+  if(!r.ok){
+    const error =
+      new Error(
+        data.userMessage ||
+        data.error ||
+        data.detail ||
+        text ||
+        `HTTP ${r.status}`
+      );
+
+    error.code =
+      data.code || null;
+
+    error.status =
+      r.status;
+
+    error.problem =
+      data.problem || null;
+
+    throw error;
+  }
   return data;
 }
 

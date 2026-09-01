@@ -163,6 +163,10 @@ import {
   createV5Scaffold
 } from "./src/v5Studio.js";
 
+import {
+  appForgeProblemEnvelope
+} from "./src/problemExplainer.js";
+
 assertCriticalConfig();
 
 await fs.mkdir(
@@ -224,6 +228,46 @@ app.use(
   express.json({
     limit: "2mb"
   })
+);
+
+app.use(
+  "/api",
+  (req, res, next) => {
+    const originalJson =
+      res.json.bind(res);
+
+    res.json = body => {
+      if (
+        res.statusCode >= 400 &&
+        body &&
+        typeof body === "object" &&
+        !Array.isArray(body) &&
+        !body.problem &&
+        (
+          body.error ||
+          body.detail
+        )
+      ) {
+        return originalJson(
+          appForgeProblemEnvelope(
+            body,
+            {
+              status:
+                res.statusCode,
+              path:
+                req.path
+            }
+          )
+        );
+      }
+
+      return originalJson(
+        body
+      );
+    };
+
+    next();
+  }
 );
 
 app.use(

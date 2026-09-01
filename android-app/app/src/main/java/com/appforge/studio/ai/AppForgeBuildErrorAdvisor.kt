@@ -190,15 +190,26 @@ object AppForgeBuildErrorAdvisor {
                 solution = "Logdaki ilk Kotlin hata satırını esas al. 'Unresolved reference', 'Type mismatch' veya dosya:satır bilgisini düzelt; sonraki hatalar çoğu zaman ilk hatanın devamıdır."
             ),
             Rule(
+                category = "Gradle",
+                title = "Gradle proje dizini kullanılamıyor",
+                needles = listOf(
+                    "configuring project with invalid directory",
+                    "without an existing directory is not allowed",
+                    "does not exist, can't be written to or is not a directory",
+                    "configured projectdirectory",
+                    "error resolving plugin [id: 'dev.flutter.flutter-plugin-loader'"
+                ),
+                reason = "Gradle'ın dahil etmeye çalıştığı projectDirectory mevcut değil veya yazılabilir değil.",
+                solution = "Hata satırındaki included-build/projectDirectory yolunu kontrol et. Flutter build'lerinde AppForge writable workspace mirror kullanmalıdır.",
+                confidence = 100
+            ),
+            Rule(
                 category = "Java",
                 title = "Java derleme / sürüm uyumsuzluğu",
                 needles = listOf(
                     "invalid source release",
                     "unsupported class file major version",
                     "requires java runtime",
-                    "javac",
-                    "compiledebugjavawithjavac",
-                    "compilereleasejavawithjavac"
                 ),
                 reason = "JDK sürümü ile Gradle/Android Gradle Plugin veya kaynak kod hedefi uyuşmuyor.",
                 solution = "AppForge Worker'ın kullandığı JDK sürümünü AGP/Gradle gereksinimiyle eşleştir. Gerekirse toolchain/sourceCompatibility ayarını düzelt."
