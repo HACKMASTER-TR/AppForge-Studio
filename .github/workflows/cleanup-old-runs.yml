@@ -17,6 +17,10 @@ permissions:
   contents: read
   actions: write
 
+concurrency:
+  group: appforge-maintenance-cleanup
+  cancel-in-progress: false
+
 jobs:
 
   cleanup-github:
@@ -79,9 +83,25 @@ jobs:
 
                       echo "  Siliniyor: $RUN_ID"
 
-                      gh api \
+                      DELETE_ERR="$(mktemp)"
+
+                      if ! gh api \
                         --method DELETE \
-                        "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
+                        "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
+                        2>"$DELETE_ERR"
+                      then
+                          if grep -q "HTTP 404" "$DELETE_ERR"
+                          then
+                              echo "  Zaten silinmiş: $RUN_ID"
+                          else
+                              echo "  Silme hatası: $RUN_ID"
+                              cat "$DELETE_ERR" >&2
+                              rm -f "$DELETE_ERR"
+                              exit 1
+                          fi
+                      fi
+
+                      rm -f "$DELETE_ERR"
                   done
               else
                   echo "Temizlik gerekmiyor."
