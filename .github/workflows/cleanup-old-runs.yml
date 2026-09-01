@@ -309,7 +309,6 @@ jobs:
 
           SAFE_OLD_STATUSES = {
               "SUCCESS",
-              "REMOVED",
               "FAILED",
               "CRASHED",
               "SKIPPED"
@@ -517,5 +516,125 @@ jobs:
           print(
               "Temizlenen eski deployment:",
               total_removed
+          )
+
+          #
+          # İkinci doğrulama:
+          # En yeni 5 dışındaki deploymentlar artık
+          # tamamlanmış/temizlenebilir durumda kalmamalı.
+          #
+          print()
+          print("Railway son kontrol başlıyor...")
+
+          verification_failed = False
+
+          for service in services:
+
+              service_id = service["id"]
+
+              service_name = service.get(
+                  "name",
+                  service_id
+              )
+
+              verify_data = graphql(
+                  deployments_query,
+                  {
+                      "projectId":
+                          project_id,
+
+                      "serviceId":
+                          service_id,
+
+                      "environmentId":
+                          environment_id
+                  }
+              )
+
+              verify_deployments = [
+                  edge["node"]
+                  for edge
+                  in verify_data
+                      .get(
+                          "deployments",
+                          {}
+                      )
+                      .get(
+                          "edges",
+                          []
+                      )
+              ]
+
+              verify_deployments.sort(
+                  key=lambda item:
+                      item.get(
+                          "createdAt",
+                          ""
+                      ),
+                  reverse=True
+              )
+
+              old_verify = (
+                  verify_deployments[5:]
+              )
+
+              remaining_old = []
+
+              for deployment in old_verify:
+
+                  status = (
+                      deployment
+                      .get(
+                          "status",
+                          ""
+                      )
+                      .upper()
+                  )
+
+                  if status in SAFE_OLD_STATUSES:
+                      remaining_old.append(
+                          deployment
+                      )
+
+              if remaining_old:
+
+                  verification_failed = True
+
+                  print(
+                      f"❌ {service_name}: "
+                      f"{len(remaining_old)} eski "
+                      "deployment temizlenmemiş."
+                  )
+
+                  for deployment in remaining_old[:10]:
+                      print(
+                          "   ",
+                          deployment.get("id"),
+                          deployment.get("status")
+                      )
+
+              else:
+
+                  recent_count = min(
+                      5,
+                      len(verify_deployments)
+                  )
+
+                  print(
+                      f"✅ {service_name}: "
+                      f"son {recent_count} korunuyor, "
+                      "eski tamamlanmış deployment kalmadı."
+                  )
+
+
+          if verification_failed:
+              raise RuntimeError(
+                  "Railway doğrulaması başarısız: "
+                  "temizlenmemiş eski deployment var."
+              )
+
+          print()
+          print(
+              "✅ Railway doğrulaması başarılı."
           )
           PY
