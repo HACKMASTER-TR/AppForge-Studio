@@ -409,10 +409,14 @@ test(
 
     for (
       const marker of [
+        "mkdir -p /opt/appforge-flutter-tool-pub-cache",
         "cd /opt/flutter/packages/flutter_tools",
-        "dart pub get",
+        "PUB_CACHE=/opt/appforge-flutter-tool-pub-cache dart pub get",
         "test -s .dart_tool/package_config.json",
-        "chmod -R a+rX .dart_tool"
+        "! grep -F '/root/' .dart_tool/package_config.json",
+        "file:///opt/appforge-flutter-tool-pub-cache/",
+        "chmod -R a+rX",
+        "chmod -R a-w /opt/appforge-flutter-tool-pub-cache"
       ]
     ) {
       assert.ok(
@@ -469,6 +473,9 @@ test(
         "Read-only file system",
         "Permission denied",
         "flutter_tool_package_config_readable",
+        "flutter_tool_package_config_immutable_cache",
+        "/opt/appforge-flutter-tool-pub-cache",
+        "/root/.pub-cache",
         "TOOL_OK: flutter_pub_get_readonly_cache"
       ]
     ) {

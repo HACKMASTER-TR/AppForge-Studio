@@ -234,12 +234,32 @@ run_tool cmake cmake --version
 run_tool ninja ninja --version
 
 flutter_tool_package_config="/opt/flutter/packages/flutter_tools/.dart_tool/package_config.json"
+flutter_tool_pub_cache="/opt/appforge-flutter-tool-pub-cache"
 
 if ! test -r "$flutter_tool_package_config"; then
   fail "Flutter tool package_config.json non-root Worker tarafından okunamıyor"
 fi
 
 echo "TOOL_OK: flutter_tool_package_config_readable"
+
+if ! test -d "$flutter_tool_pub_cache"; then
+  fail "Flutter tool immutable pub cache bulunamadı"
+fi
+
+if test -w "$flutter_tool_pub_cache"; then
+  fail "Flutter tool immutable pub cache runtime Worker tarafından yazılabilir olmamalı"
+fi
+
+if grep -F '/root/' "$flutter_tool_package_config" >/dev/null; then
+  fail "Flutter tool package_config.json /root/.pub-cache bağımlılığı içeriyor"
+fi
+
+if ! grep -F "file://${flutter_tool_pub_cache}/" \
+  "$flutter_tool_package_config" >/dev/null; then
+  fail "Flutter tool package_config.json immutable AppForge pub cache kullanmıyor"
+fi
+
+echo "TOOL_OK: flutter_tool_package_config_immutable_cache"
 
 flutter_smoke_dir="/app/work/flutter-readonly-smoke"
 mkdir -p "$flutter_smoke_dir/lib"

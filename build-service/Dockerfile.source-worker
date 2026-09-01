@@ -160,10 +160,16 @@ RUN curl -fL --retry 4 \
     && flutter --version \
     && dart --version \
     && flutter precache --android \
+    && mkdir -p /opt/appforge-flutter-tool-pub-cache \
     && cd /opt/flutter/packages/flutter_tools \
-    && dart pub get \
+    && PUB_CACHE=/opt/appforge-flutter-tool-pub-cache dart pub get \
     && test -s .dart_tool/package_config.json \
-    && chmod -R a+rX .dart_tool
+    && ! grep -F '/root/' .dart_tool/package_config.json \
+    && grep -F 'file:///opt/appforge-flutter-tool-pub-cache/' .dart_tool/package_config.json >/dev/null \
+    && chmod -R a+rX \
+       .dart_tool \
+       /opt/appforge-flutter-tool-pub-cache \
+    && chmod -R a-w /opt/appforge-flutter-tool-pub-cache
 
 WORKDIR /app
 
