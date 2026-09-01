@@ -13,6 +13,8 @@ on:
       - "!build-service/tests/source_build_isolation.test.js"
       - "!build-service/tests/source_worker_*.test.js"
       - ".github/workflows/worker-image.yml"
+      - ".github/scripts/railway_production.py"
+      - ".github/workflows/production-automation.yml"
   workflow_dispatch:
 
 permissions:
