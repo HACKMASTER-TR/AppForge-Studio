@@ -5011,6 +5011,7 @@ function generatedMainActivity(c, pkg) {
     c.billing?.enabled ? "com.android.billingclient.api.Purchase" : "",
     c.billing?.enabled ? "com.android.billingclient.api.QueryProductDetailsParams" : "",
     c.billing?.enabled ? "com.android.billingclient.api.QueryProductDetailsResult" : "",
+    c.billing?.enabled ? "com.android.billingclient.api.ProductDetailsResponseListener" : "",
     c.billing?.enabled ? "com.android.billingclient.api.QueryPurchasesParams" : "",
     c.nativeBridge?.clipboard ? "android.content.ClipboardManager" : "",
     (c.nativeBridge?.clipboard || c.features?.camera) ? "android.content.ClipData" : "",
@@ -7396,11 +7397,18 @@ function generatedMainActivity(c, pkg) {
         client.queryProductDetailsAsync(
             QueryProductDetailsParams.newBuilder()
                 .setProductList(products)
-                .build()
-        ) { result: BillingResult, detailsResult: QueryProductDetailsResult ->
-            if (result.responseCode != BillingClient.BillingResponseCode.OK) {
-                return@queryProductDetailsAsync
-            }
+                .build(),
+            object : ProductDetailsResponseListener {
+                override fun onProductDetailsResponse(
+                    result: BillingResult,
+                    detailsResult: QueryProductDetailsResult
+                ) {
+                    if (
+                        result.responseCode !=
+                        BillingClient.BillingResponseCode.OK
+                    ) {
+                        return
+                    }
 
             val array = org.json.JSONArray()
 
@@ -7474,7 +7482,9 @@ function generatedMainActivity(c, pkg) {
                     .put("products", array)
                     .toString()
             )
-        }
+                }
+            }
+        )
     }
 
     private fun launchPurchase(productId: String, requestedOfferToken: String?) {

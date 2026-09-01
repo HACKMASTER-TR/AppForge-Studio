@@ -3960,13 +3960,21 @@ private fun AppForgeApp() {
                                             status
                                                 .trim()
                                                 .lowercase()
-                                                .startsWith(
-                                                    "hata:"
-                                                ) ||
-                                            status
-                                                .trim()
-                                                .lowercase() ==
-                                                "failed"
+                                                .let {
+                                                    terminalStatus ->
+                                                    terminalStatus
+                                                        .startsWith(
+                                                            "hata:"
+                                                        ) ||
+                                                    terminalStatus ==
+                                                        "success" ||
+                                                    terminalStatus ==
+                                                        "failed" ||
+                                                    terminalStatus ==
+                                                        "cancelled" ||
+                                                    terminalStatus ==
+                                                        "canceled"
+                                                }
                                         )
                                     ) {
                                         status =
