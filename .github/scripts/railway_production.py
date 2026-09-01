@@ -301,37 +301,6 @@ def deployments(
     return rows
 
 
-def connect_image(
-    service_id,
-    image
-):
-    graphql(
-        """
-        mutation(
-          $id: String!,
-          $input: ServiceSourceInput!
-        ) {
-          serviceConnect(
-            id: $id,
-            input: $input
-          ) {
-            id
-            name
-          }
-        }
-        """,
-        {
-            "id":
-                service_id,
-
-            "input": {
-                "image":
-                    image
-            }
-        }
-    )
-
-
 def start_deploy(
     service_id,
     environment_id
@@ -717,6 +686,8 @@ def deploy(args):
         args.image
     )
 
+    deployment_id = None
+
     try:
         # Docker image kaynağını resmi Railway CLI ile
         # immutable SHA tag'ine geçir.
@@ -761,7 +732,7 @@ def deploy(args):
             file=sys.stderr
         )
 
-        if previous_success_id:
+        if deployment_id and previous_success_id:
             try:
                 rollback(
                     previous_success_id,
