@@ -40,6 +40,59 @@ object AppForgeBuildErrorAdvisor {
                 confidence = 99
             ),
             Rule(
+                category = "Proje",
+                title = "Uygulama adı eksik",
+                needles = listOf(
+                    "uygulama adı gerekli"
+                ),
+                reason = "Projeye bir uygulama adı girilmemiş.",
+                solution = "Proje adımına dön ve uygulama için bir ad gir. Ardından aynı ayarlarla tekrar derle.",
+                confidence = 99
+            ),
+            Rule(
+                category = "Web URL",
+                title = "Web URL geçersiz",
+                needles = listOf(
+                    "url https:// ile başlamalı"
+                ),
+                reason = "Web URL modunda girilen adres güvenli HTTPS biçiminde değil.",
+                solution = "Web adresini https:// ile başlayan geçerli bir URL olarak gir. Örnek: https://example.com",
+                confidence = 99
+            ),
+            Rule(
+                category = "Deep Link",
+                title = "Deep Link bilgisi eksik",
+                needles = listOf(
+                    "deep link scheme gerekli",
+                    "deep link host gerekli"
+                ),
+                reason = "Deep Link etkinleştirilmiş ancak scheme veya host alanlarından biri boş.",
+                solution = "Deep Link ayarlarında scheme ve host alanlarını doldur. Örnek scheme: myapp, host: open",
+                confidence = 99
+            ),
+            Rule(
+                category = "AdMob",
+                title = "AdMob App ID eksik",
+                needles = listOf(
+                    "admob app id gerekli"
+                ),
+                reason = "AdMob etkinleştirilmiş ancak uygulamaya ait AdMob App ID girilmemiş.",
+                solution = "AdMob ayarına geç ve uygulamana ait geçerli App ID değerini gir. Ardından yeniden derle.",
+                confidence = 99
+            ),
+            Rule(
+                category = "Billing",
+                title = "Google Play Billing ayarı eksik veya geçersiz",
+                needles = listOf(
+                    "billing için https purchase verification url gerekli",
+                    "en az bir ürün veya abonelik id gerekli",
+                    "doğrulama url'si https olmalı"
+                ),
+                reason = "Google Play Billing etkin ancak doğrulama URL'si veya ürün/abonelik bilgileri eksik ya da geçersiz.",
+                solution = "En az bir ürün veya abonelik ID gir ve doğrulama URL'si kullanıyorsan https:// ile başlayan geçerli bir adres kullan.",
+                confidence = 99
+            ),
+            Rule(
                 category = "İmzalama",
                 title = "Keystore / imza bilgisi hatası",
                 needles = listOf(
@@ -171,6 +224,18 @@ object AppForgeBuildErrorAdvisor {
                 solution = "Worker belleğini artır, büyük kaynakları küçült ve gereksiz bağımlılıkları azalt. Gerekirse Gradle JVM heap değerini yükselt."
             ),
             Rule(
+                category = "SDK ayarı",
+                title = "Min / Hedef SDK ayarı geçersiz",
+                needles = listOf(
+                    "min sdk 26 ile 37 arasında olmalı",
+                    "hedef sdk 26 ile 37 arasında olmalı",
+                    "min sdk, hedef sdk değerinden büyük olamaz"
+                ),
+                reason = "Projede seçilen Min SDK veya Hedef SDK değeri AppForge tarafından desteklenen aralığın dışında ya da Min SDK, Hedef SDK değerinden büyük.",
+                solution = "Min SDK ve Hedef SDK değerlerini 26–37 arasında seç. Min SDK değeri Hedef SDK değerinden büyük olmamalı.",
+                confidence = 99
+            ),
+            Rule(
                 category = "SDK",
                 title = "Android SDK / Build Tools eksik",
                 needles = listOf(
@@ -179,9 +244,6 @@ object AppForgeBuildErrorAdvisor {
                     "sdk location not found",
                     "license for package android sdk",
                     "failed to install the following android sdk packages",
-                    "min sdk 26 ile 37 arasında olmalı",
-                    "hedef sdk 26 ile 37 arasında olmalı",
-                    "min sdk, hedef sdk değerinden büyük olamaz"
                 ),
                 reason = "Derleme ortamında gereken Android SDK platformu, Build Tools veya lisans kabulü eksik.",
                 solution = "Worker imajında projenin compileSdk/targetSdk gereksinimine uygun Android SDK paketlerini kur ve lisansları kabul et."

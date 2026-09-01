@@ -61,3 +61,38 @@ test(
     );
   }
 );
+
+
+test(
+  "Android advisor contains specialized local validation rules",
+  async () => {
+    const source =
+      await read(
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt"
+      );
+
+    const expected = [
+      "Min / Hedef SDK ayarı geçersiz",
+      "Uygulama adı eksik",
+      "Web URL geçersiz",
+      "Deep Link bilgisi eksik",
+      "AdMob App ID eksik",
+      "Google Play Billing ayarı eksik veya geçersiz",
+      "Keystore / imza bilgisi hatası",
+      "Firebase yapılandırması eksik veya uyumsuz",
+      "min sdk 26 ile 37 arasında olmalı",
+      "hedef sdk 26 ile 37 arasında olmalı",
+      "deep link scheme gerekli",
+      "deep link host gerekli",
+      "admob app id gerekli",
+      "en az bir ürün veya abonelik id gerekli"
+    ];
+
+    for (const value of expected) {
+      assert.ok(
+        source.toLowerCase().includes(value.toLowerCase()),
+        `Eksik Android hata açıklaması: ${value}`
+      );
+    }
+  }
+);
