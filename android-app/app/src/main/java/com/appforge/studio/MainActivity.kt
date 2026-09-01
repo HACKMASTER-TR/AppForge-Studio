@@ -10925,23 +10925,38 @@ private fun SourceStep(
 
                     OutlinedTextField(
                         value =
-                            d.minSdk.toString(),
+                            if (d.minSdk < 0) {
+                                ""
+                            } else {
+                                d.minSdk.toString()
+                            },
                         onValueChange = {
                             raw ->
 
-                            raw
-                                .filter {
+                            val digits =
+                                raw.filter {
                                     it.isDigit()
                                 }
-                                .toIntOrNull()
-                                
-                                ?.let {
-                                    update(
-                                        d.copy(
-                                            minSdk = it
-                                        )
+
+                            if (digits.isBlank()) {
+                                update(
+                                    d.copy(
+                                        minSdk = -1
                                     )
-                                }
+                                )
+                            } else {
+                                digits
+                                    .toIntOrNull()
+                                    ?.let {
+                                        value ->
+
+                                        update(
+                                            d.copy(
+                                                minSdk = value
+                                            )
+                                        )
+                                    }
+                            }
                         },
                         label = {
                             Text("Min SDK")
@@ -10958,23 +10973,38 @@ private fun SourceStep(
 
                     OutlinedTextField(
                         value =
-                            d.targetSdk.toString(),
+                            if (d.targetSdk < 0) {
+                                ""
+                            } else {
+                                d.targetSdk.toString()
+                            },
                         onValueChange = {
                             raw ->
 
-                            raw
-                                .filter {
+                            val digits =
+                                raw.filter {
                                     it.isDigit()
                                 }
-                                .toIntOrNull()
-                                
-                                ?.let {
-                                    update(
-                                        d.copy(
-                                            targetSdk = it
-                                        )
+
+                            if (digits.isBlank()) {
+                                update(
+                                    d.copy(
+                                        targetSdk = -1
                                     )
-                                }
+                                )
+                            } else {
+                                digits
+                                    .toIntOrNull()
+                                    ?.let {
+                                        value ->
+
+                                        update(
+                                            d.copy(
+                                                targetSdk = value
+                                            )
+                                        )
+                                    }
+                            }
                         },
                         label = {
                             Text("Hedef SDK")
@@ -11000,7 +11030,7 @@ private fun SourceStep(
                     )
 
                     Text(
-                        "SDK: min ${d.minSdk} • target ${d.targetSdk} • compile 37",
+                        "SDK: min ${if (d.minSdk < 0) "—" else d.minSdk} • target ${if (d.targetSdk < 0) "—" else d.targetSdk} • compile 37",
                         color =
                             Accent,
                         fontWeight =
