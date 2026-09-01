@@ -1,0 +1,89 @@
+name: Cleanup Old Workflow Runs
+
+on:
+  workflow_dispatch:
+
+  workflow_run:
+    workflows:
+      - "AppForge Android Debug"
+      - "AppForge Conversion Smoke"
+    types:
+      - completed
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  cleanup:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    runs-on: ubuntu-latest
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Keep last 5 Android Debug runs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Android Debug eski çalışmaları kontrol ediliyor..."
+
+          gh api --paginate \
+            "/repos/${GITHUB_REPOSITORY}/actions/workflows/android-debug.yml/runs?per_page=100" \
+            --jq '.workflow_runs[].id' \
+            > /tmp/android-runs.txt
+
+          TOTAL=$(wc -l < /tmp/android-runs.txt | tr -d ' ')
+
+          echo "Toplam Android Debug run: $TOTAL"
+
+          if [ "$TOTAL" -gt 5 ]; then
+            tail -n +6 /tmp/android-runs.txt |
+            while read -r RUN_ID; do
+              [ -z "$RUN_ID" ] && continue
+
+              echo "Android Debug run siliniyor: $RUN_ID"
+
+              gh api \
+                --method DELETE \
+                "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
+            done
+          else
+            echo "Silinecek eski Android Debug run yok."
+          fi
+
+      - name: Keep last 5 Conversion Smoke runs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Conversion Smoke eski çalışmaları kontrol ediliyor..."
+
+          gh api --paginate \
+            "/repos/${GITHUB_REPOSITORY}/actions/workflows/conversion-smoke.yml/runs?per_page=100" \
+            --jq '.workflow_runs[].id' \
+            > /tmp/conversion-runs.txt
+
+          TOTAL=$(wc -l < /tmp/conversion-runs.txt | tr -d ' ')
+
+          echo "Toplam Conversion Smoke run: $TOTAL"
+
+          if [ "$TOTAL" -gt 5 ]; then
+            tail -n +6 /tmp/conversion-runs.txt |
+            while read -r RUN_ID; do
+              [ -z "$RUN_ID" ] && continue
+
+              echo "Conversion Smoke run siliniyor: $RUN_ID"
+
+              gh api \
+                --method DELETE \
+                "/repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
+            done
+          else
+            echo "Silinecek eski Conversion Smoke run yok."
+          fi
