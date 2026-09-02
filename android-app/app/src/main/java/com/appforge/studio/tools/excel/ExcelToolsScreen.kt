@@ -194,13 +194,7 @@ fun ExcelToolsScreen(
                         Button(
                             onClick = {
                                 picker.launch(
-                                    arrayOf(
-                                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                        "application/vnd.ms-excel.sheet.macroEnabled.12",
-                                        "text/csv",
-                                        "application/csv",
-                                        "application/octet-stream"
-                                    )
+                                    arrayOf("*/*")
                                 )
                             },
                             enabled = !busy,
