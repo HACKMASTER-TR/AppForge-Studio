@@ -234,6 +234,9 @@ function startLocalStudio() {
     if (pathname === "/" || pathname === "/studio" || pathname === "/studio/") {
       root = staticAssets.studio;
       relativePath = "index.html";
+    } else if (pathname.startsWith("/studio/vendor/fflate/")) {
+      root = staticAssets.fflate;
+      relativePath = pathname.slice("/studio/vendor/fflate/".length);
     } else if (pathname.startsWith("/studio/")) {
       root = staticAssets.studio;
       relativePath = pathname.slice("/studio/".length);
