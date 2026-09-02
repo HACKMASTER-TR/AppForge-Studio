@@ -29,10 +29,19 @@ MAX_REPLICAS = min(
     )
 )
 
-TOKEN = os.environ.get(
+PROJECT_TOKEN = os.environ.get(
     "RAILWAY_PROJECT_TOKEN",
     ""
 ).strip()
+
+API_TOKEN = os.environ.get(
+    "RAILWAY_API_TOKEN",
+    ""
+).strip()
+
+RAILWAY_GRAPHQL = (
+    "https://backboard.railway.com/graphql/v2"
+)
 
 
 def run(command, env=None):
@@ -53,15 +62,130 @@ def run(command, env=None):
     return result.stdout.strip()
 
 
-def railway_env():
-    if not TOKEN:
+def railway_env(api=False):
+    env = os.environ.copy()
+
+    # Railway CLI aynı anda yalnız bir auth değişkeni
+    # kullanılmasını ister.
+    env.pop(
+        "RAILWAY_TOKEN",
+        None
+    )
+    env.pop(
+        "RAILWAY_API_TOKEN",
+        None
+    )
+
+    if api:
+        if not API_TOKEN:
+            raise RuntimeError(
+                "RAILWAY_API_TOKEN tanımlı değil."
+            )
+
+        env["RAILWAY_API_TOKEN"] = (
+            API_TOKEN
+        )
+
+    else:
+        if not PROJECT_TOKEN:
+            raise RuntimeError(
+                "RAILWAY_PROJECT_TOKEN tanımlı değil."
+            )
+
+        env["RAILWAY_TOKEN"] = (
+            PROJECT_TOKEN
+        )
+
+    return env
+
+
+def project_context():
+    if not PROJECT_TOKEN:
         raise RuntimeError(
             "RAILWAY_PROJECT_TOKEN tanımlı değil."
         )
 
-    env = os.environ.copy()
-    env["RAILWAY_TOKEN"] = TOKEN
-    return env
+    payload = json.dumps({
+        "query": """
+        query {
+          projectToken {
+            projectId
+            environmentId
+          }
+        }
+        """
+    })
+
+    raw = run([
+        "curl",
+        "--silent",
+        "--show-error",
+        "--fail-with-body",
+        "--request",
+        "POST",
+        "--url",
+        RAILWAY_GRAPHQL,
+        "--header",
+        (
+            "Project-Access-Token: "
+            + PROJECT_TOKEN
+        ),
+        "--header",
+        "Content-Type: application/json",
+        "--header",
+        "Accept: application/json",
+        "--data-binary",
+        payload
+    ])
+
+    response = json.loads(
+        raw
+    )
+
+    if response.get("errors"):
+        raise RuntimeError(
+            "Railway project context hatası: "
+            + json.dumps(
+                response["errors"],
+                ensure_ascii=False
+            )
+        )
+
+    ctx = (
+        response
+        .get("data", {})
+        .get("projectToken")
+    )
+
+    if not ctx:
+        raise RuntimeError(
+            "Railway project context bulunamadı."
+        )
+
+    project_id = str(
+        ctx.get("projectId")
+        or ""
+    ).strip()
+
+    environment_id = str(
+        ctx.get("environmentId")
+        or ""
+    ).strip()
+
+    if (
+        not project_id
+        or not environment_id
+    ):
+        raise RuntimeError(
+            "Railway project/environment ID eksik."
+        )
+
+    return {
+        "projectId":
+            project_id,
+        "environmentId":
+            environment_id
+    }
 
 
 def railway_json(*args):
@@ -300,7 +424,35 @@ def distribute(regions, desired):
     return result
 
 
-def scale(service_id, targets):
+def scale(
+    project_id,
+    environment_id,
+    service_id,
+    targets
+):
+    api_env = railway_env(
+        api=True
+    )
+
+    # Workspace API token project-scoped değildir.
+    # Önce hedef project/environment/service açıkça linklenir.
+    run(
+        [
+            "npx",
+            "-y",
+            "@railway/cli@latest",
+            "link",
+            "--project",
+            project_id,
+            "--environment",
+            environment_id,
+            "--service",
+            service_id,
+            "--json"
+        ],
+        env=api_env
+    )
+
     args = [
         "npx",
         "-y",
@@ -308,6 +460,8 @@ def scale(service_id, targets):
         "scale",
         "--service",
         service_id,
+        "--environment",
+        environment_id,
         "--json"
     ]
 
@@ -319,7 +473,7 @@ def scale(service_id, targets):
     print(
         run(
             args,
-            env=railway_env()
+            env=api_env
         )
     )
 
@@ -337,6 +491,8 @@ def main():
     )
 
     service_id = resolve_service_id()
+
+    ctx = project_context()
 
     regions = region_config(
         service_id
@@ -435,6 +591,8 @@ def main():
     )
 
     scale(
+        ctx["projectId"],
+        ctx["environmentId"],
         service_id,
         targets
     )
