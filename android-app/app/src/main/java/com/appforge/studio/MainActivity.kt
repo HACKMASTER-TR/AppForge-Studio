@@ -2620,6 +2620,18 @@ private fun AppForgeApp() {
             status =
                 "5 paralel build testi hazırlanıyor..."
 
+            /*
+             * Kullanıcı uygulamayı arka plana atarsa
+             * onStop -> BuildProgressService.startPending()
+             * bu batch'i foreground service'e aktarır.
+             */
+            BuildProgressService.trackBatch(
+                context = context,
+                serverUrl = serverUrl,
+                apiKey = apiKey,
+                totalBuilds = 5
+            )
+
             scope.launch {
                 try {
                     validateDraft(
@@ -2740,6 +2752,12 @@ private fun AppForgeApp() {
                                             )
                                         }
                                     }
+
+                                BuildProgressService.addBatchBuild(
+                                    context = context,
+                                    buildId =
+                                        created.buildId
+                                )
 
                                 updateFiveParallelBuildSlot(
                                     slot
@@ -2890,6 +2908,14 @@ private fun AppForgeApp() {
                                     fiveParallelBuildRunning =
                                         false
 
+                                    BuildProgressService.stop(
+                                        context
+                                    )
+
+                                    BuildProgressService.clear(
+                                        context
+                                    )
+
                                     val successCount =
                                         fiveParallelBuildItems.count {
                                             item ->
@@ -2920,6 +2946,14 @@ private fun AppForgeApp() {
                 } catch (
                     t: Throwable
                 ) {
+                    BuildProgressService.stop(
+                        context
+                    )
+
+                    BuildProgressService.clear(
+                        context
+                    )
+
                     fiveParallelBuildItems =
                         fiveParallelBuildItems.map {
                             item ->
