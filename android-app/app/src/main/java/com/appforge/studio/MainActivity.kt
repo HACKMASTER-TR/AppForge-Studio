@@ -4436,12 +4436,24 @@ private fun AppForgeApp() {
 
                             7 -> DeepLinkStep(draft) { draft = it }
 
-                            8 -> SigningStep(draft, { draft = it }) {
-                                keystorePicker.launch(arrayOf(
-                                    "application/octet-stream",
-                                    "application/x-java-keystore"
-                                ))
-                            }
+                            8 -> SigningStep(
+                                d = draft,
+                                update = { draft = it },
+                                isPro =
+                                    proStatus?.active == true,
+                                onOpenPro = {
+                                    screen =
+                                        AppScreen.PRO
+                                },
+                                onPickKeystore = {
+                                    keystorePicker.launch(
+                                        arrayOf(
+                                            "application/octet-stream",
+                                            "application/x-java-keystore"
+                                        )
+                                    )
+                                }
+                            )
 
                             9 -> BuildSettingsStep(
                                 draft = draft,
@@ -15475,8 +15487,61 @@ private fun DeepLinkStep(
 private fun SigningStep(
     d: ProjectDraft,
     update: (ProjectDraft) -> Unit,
+    isPro: Boolean,
+    onOpenPro: () -> Unit,
     onPickKeystore: () -> Unit
 ) {
+    var showProRequired by
+        remember {
+            mutableStateOf(false)
+        }
+
+    if (
+        showProRequired
+    ) {
+        AlertDialog(
+            onDismissRequest = {
+                showProRequired =
+                    false
+            },
+            title = {
+                Text(
+                    "PRO özelliği"
+                )
+            },
+            text = {
+                Text(
+                    "Release Keystore ile kendi imzalama anahtarını kullanmak için AppForge PRO gereklidir."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showProRequired =
+                            false
+
+                        onOpenPro()
+                    }
+                ) {
+                    Text(
+                        "PRO'YU GÖR"
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showProRequired =
+                            false
+                    }
+                ) {
+                    Text(
+                        "İPTAL"
+                    )
+                }
+            }
+        )
+    }
     val formCompact =
         LocalConfiguration.current
             .screenWidthDp < 380
@@ -15640,16 +15705,29 @@ private fun SigningStep(
                         d.signingMode ==
                             SigningMode.CUSTOM,
                     onClick = {
-                        update(
-                            d.copy(
-                                signingMode =
-                                    SigningMode.CUSTOM
+                        if (
+                            isPro
+                        ) {
+                            update(
+                                d.copy(
+                                    signingMode =
+                                        SigningMode.CUSTOM
+                                )
                             )
-                        )
+                        } else {
+                            showProRequired =
+                                true
+                        }
                     },
                     label = {
                         Text(
-                            "Release Keystore"
+                            if (
+                                isPro
+                            ) {
+                                "Release Keystore"
+                            } else {
+                                "Release Keystore • PRO"
+                            }
                         )
                     }
                 )
