@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -645,7 +644,7 @@ private data class ExcelProcessOutput(
     val message: String
 )
 
-private data class ExcelHistoryItem(
+private data class ExcelMediaHistoryItem(
     val uri: Uri,
     val name: String,
     val createdAtSeconds: Long
@@ -937,13 +936,13 @@ private fun openExcelOutput(
 
 private fun loadExcelHistory(
     context: Context
-): List<ExcelHistoryItem> {
+): List<ExcelMediaHistoryItem> {
 
     val resolver =
         context.contentResolver
 
     val result =
-        mutableListOf<ExcelHistoryItem>()
+        mutableListOf<ExcelMediaHistoryItem>()
 
     val projection =
         arrayOf(
@@ -1002,7 +1001,7 @@ private fun loadExcelHistory(
                 )
 
             result +=
-                ExcelHistoryItem(
+                ExcelMediaHistoryItem(
                     uri =
                         Uri.withAppendedPath(
                             MediaStore.Downloads.EXTERNAL_CONTENT_URI,
@@ -1041,7 +1040,7 @@ private fun deleteExcelOutput(
 
 private fun clearExcelHistory(
     context: Context,
-    history: List<ExcelHistoryItem>
+    history: List<ExcelMediaHistoryItem>
 ): Int {
 
     var deleted =
