@@ -2,6 +2,7 @@ package com.hackmaster.videoforge
 
 import android.Manifest
 import android.app.AlertDialog
+import android.app.DownloadManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -10,6 +11,7 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.view.View
@@ -28,6 +30,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -168,171 +172,1105 @@ class VideoForgeActivity : AppCompatActivity() {
         val white = Color.rgb(245, 248, 255)
         val muted = Color.rgb(159, 176, 200)
         val accent = Color.rgb(103, 179, 255)
+        val darkText = Color.rgb(5, 17, 28)
 
-        val root = ScrollView(this).apply { setBackgroundColor(bg) }
+        val root = ScrollView(this).apply {
+            setBackgroundColor(bg)
+        }
+
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18))
         }
+
         root.addView(body)
 
-        fun text(value: String, size: Float, color: Int = white, bold: Boolean = false): TextView = TextView(this).apply {
-            text = value
-            textSize = size
-            setTextColor(color)
-            if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
+        /*
+         * Android 15+ edge-to-edge davranışında içeriğin
+         * durum ve gezinme çubuklarının altında kalmasını önler.
+         */
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val bars =
+                insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars()
+                )
+
+            body.setPadding(
+                dp(18) + bars.left,
+                dp(18) + bars.top,
+                dp(18) + bars.right,
+                dp(18) + bars.bottom
+            )
+
+            insets
         }
 
-        fun section(title: String): LinearLayout {
-            body.addView(text(title, 18f, white, true).apply { setPadding(0, dp(18), 0, dp(8)) })
+        ViewCompat.requestApplyInsets(root)
+
+        fun text(
+            value: String,
+            size: Float,
+            color: Int = white,
+            bold: Boolean = false
+        ): TextView =
+            TextView(this).apply {
+                text = value
+                textSize = size
+                setTextColor(color)
+
+                if (bold) {
+                    setTypeface(
+                        typeface,
+                        android.graphics.Typeface.BOLD
+                    )
+                }
+            }
+
+        fun section(
+            title: String
+        ): LinearLayout {
+            body.addView(
+                text(
+                    title,
+                    18f,
+                    white,
+                    true
+                ).apply {
+                    setPadding(
+                        0,
+                        dp(18),
+                        0,
+                        dp(8)
+                    )
+                }
+            )
+
             return LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(16))
-                background = rounded(panel, 22f)
-                body.addView(this, LinearLayout.LayoutParams(-1, -2))
+                orientation =
+                    LinearLayout.VERTICAL
+
+                setPadding(
+                    dp(16)
+                )
+
+                background =
+                    rounded(
+                        panel,
+                        22f
+                    )
+
+                body.addView(
+                    this,
+                    LinearLayout.LayoutParams(
+                        -1,
+                        -2
+                    )
+                )
             }
         }
 
-        body.addView(text("VideoForge Studio", 30f, white, true))
-        body.addView(text("V4.1.2 • cihaz-içi çok dilli dublaj stüdyosu", 14f, muted).apply {
-            setPadding(0, dp(4), 0, dp(8))
-        })
-        body.addView(text("API kredisi yok • sabit 5 dk sınırı yok • uzun işlerde devam kaydı ve arka plan servisi", 12f, muted))
+        // -------------------------------------------------
+        // BAŞLIK
+        // -------------------------------------------------
+        body.addView(
+            text(
+                "VideoForge",
+                30f,
+                white,
+                true
+            )
+        )
 
-        val inputCard = section("1. Video")
-        urlInput = EditText(this).apply {
-            hint = "https://.../video.mp4"
-            setHintTextColor(muted)
-            setTextColor(white)
-            setSingleLine(true)
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
-            background = rounded(panel2, 14f)
-            setPadding(dp(12))
+        body.addView(
+            text(
+                "Videonu seç, farklı bir dile dublaj yap veya doğrudan video bağlantısını indir.",
+                14f,
+                muted
+            ).apply {
+                setPadding(
+                    0,
+                    dp(4),
+                    0,
+                    dp(4)
+                )
+            }
+        )
+
+        body.addView(
+            text(
+                "Temel ayarlar önde, teknik seçenekler Gelişmiş Ayarlar bölümünde.",
+                12f,
+                muted
+            )
+        )
+
+        // -------------------------------------------------
+        // 1 - TELEFONDAN VIDEO
+        // -------------------------------------------------
+        val videoCard =
+            section(
+                "1. Video seç"
+            )
+
+        videoCard.addView(
+            text(
+                "Dublaj yapmak istediğin videoyu telefonundan seç.",
+                12f,
+                muted
+            ).apply {
+                setPadding(
+                    0,
+                    0,
+                    0,
+                    dp(10)
+                )
+            }
+        )
+
+        videoCard.addView(
+            button(
+                "📁 VİDEO SEÇ",
+                accent,
+                darkText
+            ) {
+                pickVideo.launch(
+                    arrayOf(
+                        "video/*"
+                    )
+                )
+            }
+        )
+
+        fileText =
+            text(
+                "Henüz video seçilmedi.",
+                13f,
+                muted
+            ).apply {
+                setPadding(
+                    0,
+                    dp(10),
+                    0,
+                    0
+                )
+            }
+
+        videoCard.addView(
+            fileText
+        )
+
+        // -------------------------------------------------
+        // 2 - TEMEL DUBLAJ AYARLARI
+        // -------------------------------------------------
+        val dubCard =
+            section(
+                "2. Dublaj ayarları"
+            )
+
+        dubCard.addView(
+            text(
+                "Hedef dil",
+                13f,
+                white,
+                true
+            )
+        )
+
+        targetSpinner =
+            spinner(
+                StudioOptions.TARGETS.map {
+                    it.label
+                }
+            )
+
+        dubCard.addView(
+            targetSpinner
+        )
+
+        dubCard.addView(
+            text(
+                "Kalite",
+                13f,
+                white,
+                true
+            ).apply {
+                setPadding(
+                    0,
+                    dp(12),
+                    0,
+                    0
+                )
+            }
+        )
+
+        qualitySpinner =
+            spinner(
+                listOf(
+                    "Hızlı",
+                    "Dengeli",
+                    "Yüksek kalite"
+                )
+            )
+
+        qualitySpinner.setSelection(
+            1
+        )
+
+        dubCard.addView(
+            qualitySpinner
+        )
+
+        dubCard.addView(
+            text(
+                "Dengeli, çoğu video için önerilen seçenektir.",
+                11f,
+                muted
+            ).apply {
+                setPadding(
+                    0,
+                    dp(5),
+                    0,
+                    dp(12)
+                )
+            }
+        )
+
+        modelText =
+            text(
+                "AI modelleri kontrol ediliyor…",
+                13f,
+                muted
+            )
+
+        dubCard.addView(
+            modelText
+        )
+
+        dubCard.addView(
+            button(
+                "⬇ AI MODELLERİNİ HAZIRLA",
+                panel2,
+                white
+            ) {
+                val i =
+                    baseServiceIntent(
+                        DubForegroundService.MODE_MODELS,
+                        StudioOptions()
+                    )
+
+                startService(
+                    i
+                )
+
+                setWorking(
+                    true
+                )
+            },
+            LinearLayout.LayoutParams(
+                -1,
+                -2
+            ).apply {
+                topMargin =
+                    dp(8)
+            }
+        )
+
+        previewButton =
+            button(
+                "⚡ İLK 30 SANİYEYİ ÖNİZLE",
+                panel2,
+                white
+            ) {
+                val uri =
+                    selectedVideo
+
+                if (uri == null) {
+                    status(
+                        "Önce bir video seç."
+                    )
+                } else {
+                    startSingle(
+                        uri,
+                        true
+                    )
+                }
+            }
+
+        dubCard.addView(
+            previewButton,
+            LinearLayout.LayoutParams(
+                -1,
+                -2
+            ).apply {
+                topMargin =
+                    dp(12)
+            }
+        )
+
+        startButton =
+            button(
+                "🎙 DUBLAJ OLUŞTUR",
+                accent,
+                darkText
+            ) {
+                val uri =
+                    selectedVideo
+
+                if (uri == null) {
+                    status(
+                        "Önce bir video seç."
+                    )
+                } else {
+                    startSingle(
+                        uri,
+                        false
+                    )
+                }
+            }
+
+        dubCard.addView(
+            startButton,
+            LinearLayout.LayoutParams(
+                -1,
+                -2
+            ).apply {
+                topMargin =
+                    dp(8)
+            }
+        )
+
+        // -------------------------------------------------
+        // 3 - LİNK İLE VIDEO
+        // -------------------------------------------------
+        val downloadCard =
+            section(
+                "3. Linkten video"
+            )
+
+        downloadCard.addView(
+            text(
+                "Doğrudan video dosyası bağlantısını yapıştır.",
+                12f,
+                muted
+            ).apply {
+                setPadding(
+                    0,
+                    0,
+                    0,
+                    dp(8)
+                )
+            }
+        )
+
+        urlInput =
+            EditText(this).apply {
+                hint =
+                    "https://site.com/video.mp4"
+
+                setHintTextColor(
+                    muted
+                )
+
+                setTextColor(
+                    white
+                )
+
+                setSingleLine(
+                    true
+                )
+
+                inputType =
+                    android.text.InputType.TYPE_CLASS_TEXT or
+                        android.text.InputType.TYPE_TEXT_VARIATION_URI
+
+                background =
+                    rounded(
+                        panel2,
+                        14f
+                    )
+
+                setPadding(
+                    dp(12)
+                )
+            }
+
+        downloadCard.addView(
+            urlInput
+        )
+
+        downloadCard.addView(
+            button(
+                "⬇ VİDEOYU İNDİR",
+                accent,
+                darkText
+            ) {
+                val url =
+                    urlInput.text
+                        ?.toString()
+                        ?.trim()
+                        .orEmpty()
+
+                downloadVideoOnly(
+                    url
+                )
+            },
+            LinearLayout.LayoutParams(
+                -1,
+                -2
+            ).apply {
+                topMargin =
+                    dp(8)
+            }
+        )
+
+        downloadCard.addView(
+            button(
+                "🎙 BU LİNKİ DUBLAJ ET",
+                panel2,
+                white
+            ) {
+                val url =
+                    urlInput.text
+                        ?.toString()
+                        ?.trim()
+                        .orEmpty()
+
+                when {
+                    url.isBlank() ->
+                        status(
+                            "Önce video bağlantısını gir."
+                        )
+
+                    !ModelManager(
+                        this
+                    ).isReady() ->
+                        status(
+                            "Dublaj için önce AI modellerini hazırla."
+                        )
+
+                    else ->
+                        startUrl(
+                            url,
+                            false
+                        )
+                }
+            },
+            LinearLayout.LayoutParams(
+                -1,
+                -2
+            ).apply {
+                topMargin =
+                    dp(8)
+            }
+        )
+
+        downloadCard.addView(
+            text(
+                "İndirme için AI modeli gerekmez. DRM, üyelik veya giriş koruması aşılmaz; bağlantının doğrudan video dosyasına gitmesi gerekir.",
+                11f,
+                muted
+            ).apply {
+                setPadding(
+                    0,
+                    dp(8),
+                    0,
+                    0
+                )
+            }
+        )
+
+        // -------------------------------------------------
+        // DURUM
+        // -------------------------------------------------
+        val statusCard =
+            section(
+                "Durum"
+            )
+
+        progress =
+            ProgressBar(
+                this,
+                null,
+                android.R.attr.progressBarStyleHorizontal
+            ).apply {
+                max =
+                    100
+            }
+
+        statusCard.addView(
+            progress,
+            LinearLayout.LayoutParams(
+                -1,
+                dp(12)
+            )
+        )
+
+        statusText =
+            text(
+                "Hazır. Bir video seçebilir veya video bağlantısı girebilirsin.",
+                13f,
+                muted
+            ).apply {
+                setPadding(
+                    0,
+                    dp(10),
+                    0,
+                    0
+                )
+            }
+
+        statusCard.addView(
+            statusText
+        )
+
+        openButton =
+            button(
+                "▶ SONUCU AÇ",
+                panel2,
+                white
+            ) {
+                lastOutput?.let {
+                    openVideo(
+                        it
+                    )
+                }
+            }.apply {
+                visibility =
+                    View.GONE
+            }
+
+        originalButton =
+            button(
+                "◀ ORİJİNALİ AÇ",
+                panel2,
+                white
+            ) {
+                lastInput?.let {
+                    openVideo(
+                        it
+                    )
+                }
+            }.apply {
+                visibility =
+                    View.GONE
+            }
+
+        shareButton =
+            button(
+                "↗ SONUCU PAYLAŞ",
+                panel2,
+                white
+            ) {
+                shareLast()
+            }.apply {
+                visibility =
+                    View.GONE
+            }
+
+        subtitleEditButton =
+            button(
+                "✏ ALTYAZIYI DÜZENLE",
+                panel2,
+                white
+            ) {
+                editSubtitle()
+            }.apply {
+                visibility =
+                    View.GONE
+            }
+
+        listOf(
+            originalButton,
+            openButton,
+            shareButton,
+            subtitleEditButton
+        ).forEach {
+            statusCard.addView(
+                it,
+                LinearLayout.LayoutParams(
+                    -1,
+                    -2
+                ).apply {
+                    topMargin =
+                        dp(8)
+                }
+            )
         }
-        inputCard.addView(urlInput)
-        inputCard.addView(button("🔗 URL'DEN İŞLE", panel2, white) {
-            val url = urlInput.text?.toString()?.trim().orEmpty()
-            if (url.isBlank()) status("Önce doğrudan video dosyası URL'sini gir.")
-            else if (!ModelManager(this).isReady()) status("Önce AI modellerini hazırla.")
-            else startUrl(url, false)
-        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-        inputCard.addView(text("Doğrudan video dosyası bağlantıları içindir; DRM, üyelik veya giriş koruması aşılmaz.", 11f, muted).apply { setPadding(0, dp(8), 0, dp(10)) })
-        inputCard.addView(button("📁 TELEFONDAN VİDEO SEÇ", accent, Color.rgb(5, 17, 28)) {
-            pickVideo.launch(arrayOf("video/*"))
-        })
-        fileText = text("Video: seçilmedi", 13f, muted).apply { setPadding(0, dp(10), 0, dp(6)) }
-        inputCard.addView(fileText)
-        inputCard.addView(button("🗂 BİRDEN FAZLA VİDEO SEÇ", panel2, white) {
-            pickQueue.launch(arrayOf("video/*"))
-        })
-        queueText = text("Kuyruk: boş", 13f, muted).apply { setPadding(0, dp(8), 0, 0) }
-        inputCard.addView(queueText)
 
-        val optionsCard = section("2. Studio ayarları")
-        optionsCard.addView(text("Kaynak dil", 13f, white, true))
-        sourceSpinner = spinner(StudioOptions.SOURCES.map { it.label })
-        sourceSpinner.setSelection(0)
-        optionsCard.addView(sourceSpinner)
-        optionsCard.addView(text("Otomatik yanlış algılarsa videonun dilini buradan seçebilirsin.", 11f, muted).apply { setPadding(0, dp(4), 0, dp(10)) })
-        optionsCard.addView(text("Hedef dil", 13f, white, true))
-        targetSpinner = spinner(StudioOptions.TARGETS.map { it.label })
-        optionsCard.addView(targetSpinner)
-        optionsCard.addView(text("İşlem modu", 13f, white, true).apply { setPadding(0, dp(12), 0, 0) })
-        qualitySpinner = spinner(listOf("Hızlı", "Dengeli", "Yüksek kalite"))
-        qualitySpinner.setSelection(1)
-        optionsCard.addView(qualitySpinner)
-        optionsCard.addView(text("Konuşmacı modu", 13f, white, true).apply { setPadding(0, dp(12), 0, 0) })
-        speakerModeSpinner = spinner(listOf("Otomatik", "Tek konuşmacı", "Çok konuşmacı"))
-        speakerModeSpinner.setSelection(0)
-        optionsCard.addView(speakerModeSpinner)
-        optionsCard.addView(text("Tek kişinin konuştuğu videolarda 'Tek konuşmacı' seçmek çift ses oluşmasını kesin olarak önler.", 11f, muted).apply { setPadding(0, dp(4), 0, dp(8)) })
+        // -------------------------------------------------
+        // GELİŞMİŞ
+        // -------------------------------------------------
+        val advancedCard =
+            section(
+                "Gelişmiş ayarlar"
+            )
 
-        subtitleSwitch = switch("Altyazı (.srt) da kaydet", true, white)
-        backgroundSwitch = switch("Deneysel arka plan koruma", false, white)
-        timeSyncSwitch = switch("Konuşmayı zaman aralığına otomatik uydur", true, white)
-        resumeSwitch = switch("Yarım kalan işi kaldığı aşamadan sürdür", true, white)
-        optionsCard.addView(subtitleSwitch)
-        optionsCard.addView(backgroundSwitch)
-        optionsCard.addView(timeSyncSwitch)
-        optionsCard.addView(resumeSwitch)
-        optionsCard.addView(text("Arka plan koruma, gerçek stem ayırma değildir; konuşma aralıklarını temizlerken kenar ambiyansını deneysel olarak korur.", 11f, muted))
+        var advancedVisible =
+            false
 
-        optionsCard.addView(text("Dublaj sesi", 12f, muted).apply { setPadding(0, dp(12), 0, 0) })
-        ttsSeek = seek(80, 20, 150)
-        optionsCard.addView(ttsSeek)
-        optionsCard.addView(text("Arka plan sesi", 12f, muted))
-        bgSeek = seek(100, 0, 125)
-        optionsCard.addView(bgSeek)
+        val advancedContainer =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
 
-        optionsCard.addView(text("Konuşmacı ses profilleri", 13f, white, true).apply { setPadding(0, dp(10), 0, dp(4)) })
-        val profiles = listOf("Otomatik", "Derin", "Doğal", "Parlak")
-        repeat(4) { i ->
-            optionsCard.addView(text("Konuşmacı ${i + 1}", 11f, muted))
-            val sp = spinner(profiles)
-            sp.setSelection(if (i == 0) 0 else minOf(i, 3))
-            speakerSpinners += sp
-            optionsCard.addView(sp)
+                visibility =
+                    View.GONE
+            }
+
+        val advancedButton =
+            button(
+                "⚙ GELİŞMİŞ AYARLARI GÖSTER",
+                panel2,
+                white
+            ) {
+                advancedVisible =
+                    !advancedVisible
+
+                advancedContainer.visibility =
+                    if (advancedVisible) {
+                        View.VISIBLE
+                    } else {
+                        View.GONE
+                    }
+            }
+
+        advancedButton.setOnClickListener {
+            advancedVisible =
+                !advancedVisible
+
+            advancedContainer.visibility =
+                if (advancedVisible) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
+                }
+
+            advancedButton.text =
+                if (advancedVisible) {
+                    "▲ GELİŞMİŞ AYARLARI GİZLE"
+                } else {
+                    "⚙ GELİŞMİŞ AYARLARI GÖSTER"
+                }
         }
 
-        val modelCard = section("3. AI modelleri")
-        modelText = text("AI modelleri kontrol ediliyor…", 13f, muted)
-        modelCard.addView(modelText)
-        modelCard.addView(button("⬇ AI MODELLERİNİ HAZIRLA", panel2, white) {
-            val i = baseServiceIntent(DubForegroundService.MODE_MODELS, StudioOptions())
-            startService(i)
-            setWorking(true)
-        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-        modelCard.addView(button("🗑 MODELLERİ SİL", panel2, white) {
-            AlertDialog.Builder(this)
-                .setTitle("AI modelleri silinsin mi?")
-                .setMessage("Sonraki kullanımda tekrar indirilmeleri gerekir.")
-                .setNegativeButton("Vazgeç", null)
-                .setPositiveButton("Sil") { _, _ ->
-                    ModelManager(this).clearAll()
-                    refreshModelStatus()
-                }.show()
-        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        advancedCard.addView(
+            advancedButton
+        )
 
-        val actionCard = section("4. İşlem")
-        previewButton = button("⚡ İLK 30 SN ÖNİZLEME", panel2, white) {
-            val uri = selectedVideo
-            if (uri == null) status("Önce bir video seç.") else startSingle(uri, true)
+        advancedCard.addView(
+            advancedContainer
+        )
+
+        advancedContainer.addView(
+            text(
+                "Kaynak dil",
+                13f,
+                white,
+                true
+            ).apply {
+                setPadding(
+                    0,
+                    dp(14),
+                    0,
+                    0
+                )
+            }
+        )
+
+        sourceSpinner =
+            spinner(
+                StudioOptions.SOURCES.map {
+                    it.label
+                }
+            )
+
+        sourceSpinner.setSelection(
+            0
+        )
+
+        advancedContainer.addView(
+            sourceSpinner
+        )
+
+        advancedContainer.addView(
+            text(
+                "Otomatik algılama yanlış sonuç verirse videonun konuşma dilini buradan seç.",
+                11f,
+                muted
+            ).apply {
+                setPadding(
+                    0,
+                    dp(4),
+                    0,
+                    dp(10)
+                )
+            }
+        )
+
+        advancedContainer.addView(
+            text(
+                "Konuşmacı modu",
+                13f,
+                white,
+                true
+            )
+        )
+
+        speakerModeSpinner =
+            spinner(
+                listOf(
+                    "Otomatik",
+                    "Tek konuşmacı",
+                    "Çok konuşmacı"
+                )
+            )
+
+        speakerModeSpinner.setSelection(
+            0
+        )
+
+        advancedContainer.addView(
+            speakerModeSpinner
+        )
+
+        subtitleSwitch =
+            switch(
+                "Altyazı (.srt) dosyası da oluştur",
+                true,
+                white
+            )
+
+        backgroundSwitch =
+            switch(
+                "Arka plan sesini korumayı dene",
+                false,
+                white
+            )
+
+        timeSyncSwitch =
+            switch(
+                "Dublajı konuşma süresine otomatik uydur",
+                true,
+                white
+            )
+
+        resumeSwitch =
+            switch(
+                "Yarım kalan işlemi devam ettir",
+                true,
+                white
+            )
+
+        advancedContainer.addView(
+            subtitleSwitch
+        )
+
+        advancedContainer.addView(
+            backgroundSwitch
+        )
+
+        advancedContainer.addView(
+            timeSyncSwitch
+        )
+
+        advancedContainer.addView(
+            resumeSwitch
+        )
+
+        advancedContainer.addView(
+            text(
+                "Dublaj sesi",
+                12f,
+                muted
+            ).apply {
+                setPadding(
+                    0,
+                    dp(12),
+                    0,
+                    0
+                )
+            }
+        )
+
+        ttsSeek =
+            seek(
+                80,
+                20,
+                150
+            )
+
+        advancedContainer.addView(
+            ttsSeek
+        )
+
+        advancedContainer.addView(
+            text(
+                "Arka plan sesi",
+                12f,
+                muted
+            )
+        )
+
+        bgSeek =
+            seek(
+                100,
+                0,
+                125
+            )
+
+        advancedContainer.addView(
+            bgSeek
+        )
+
+        advancedContainer.addView(
+            text(
+                "Konuşmacı ses profilleri",
+                13f,
+                white,
+                true
+            ).apply {
+                setPadding(
+                    0,
+                    dp(10),
+                    0,
+                    dp(4)
+                )
+            }
+        )
+
+        val profiles =
+            listOf(
+                "Otomatik",
+                "Derin",
+                "Doğal",
+                "Parlak"
+            )
+
+        repeat(
+            4
+        ) { i ->
+            advancedContainer.addView(
+                text(
+                    "Konuşmacı ${i + 1}",
+                    11f,
+                    muted
+                )
+            )
+
+            val sp =
+                spinner(
+                    profiles
+                )
+
+            sp.setSelection(
+                if (i == 0) {
+                    0
+                } else {
+                    minOf(
+                        i,
+                        3
+                    )
+                }
+            )
+
+            speakerSpinners +=
+                sp
+
+            advancedContainer.addView(
+                sp
+            )
         }
-        actionCard.addView(previewButton)
-        startButton = button("🎙 DUBLAJ OLUŞTUR", accent, Color.rgb(5, 17, 28)) {
-            val uri = selectedVideo
-            if (uri == null) status("Önce bir video seç.") else startSingle(uri, false)
-        }
-        actionCard.addView(startButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-        queueStartButton = button("▶ KUYRUĞU BAŞLAT", panel2, white) { startQueue() }
-        actionCard.addView(queueStartButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
 
-        progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 100 }
-        actionCard.addView(progress, LinearLayout.LayoutParams(-1, dp(12)).apply { topMargin = dp(16) })
-        statusText = text("Hazır.", 13f, muted).apply { setPadding(0, dp(10), 0, 0) }
-        actionCard.addView(statusText)
+        advancedContainer.addView(
+            text(
+                "Birden fazla video",
+                13f,
+                white,
+                true
+            ).apply {
+                setPadding(
+                    0,
+                    dp(14),
+                    0,
+                    dp(4)
+                )
+            }
+        )
 
-        openButton = button("▶ SONUCU AÇ", panel2, white) { lastOutput?.let { openVideo(it) } }.apply { visibility = View.GONE }
-        originalButton = button("◀ ORİJİNALİ AÇ", panel2, white) { lastInput?.let { openVideo(it) } }.apply { visibility = View.GONE }
-        shareButton = button("↗ SONUCU PAYLAŞ", panel2, white) { shareLast() }.apply { visibility = View.GONE }
-        subtitleEditButton = button("✏ ALTYAZIYI DÜZENLE", panel2, white) { editSubtitle() }.apply { visibility = View.GONE }
-        listOf(originalButton, openButton, shareButton, subtitleEditButton).forEach {
-            actionCard.addView(it, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-        }
+        advancedContainer.addView(
+            button(
+                "🗂 BİRDEN FAZLA VİDEO SEÇ",
+                panel2,
+                white
+            ) {
+                pickQueue.launch(
+                    arrayOf(
+                        "video/*"
+                    )
+                )
+            }
+        )
 
-        val historyCard = section("5. Geçmiş")
-        historyText = text("Geçmiş boş.", 12f, muted)
-        historyCard.addView(historyText)
-        historyCard.addView(button("⟳ GEÇMİŞİ YENİLE", panel2, white) { refreshHistory() }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-        historyCard.addView(button("🗑 GEÇMİŞİ TEMİZLE", panel2, white) {
-            HistoryStore(this).clear(); refreshHistory()
-        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        queueText =
+            text(
+                "Kuyruk boş.",
+                13f,
+                muted
+            ).apply {
+                setPadding(
+                    0,
+                    dp(8),
+                    0,
+                    0
+                )
+            }
 
-        body.addView(text("Not: Görüntü parçası kalite kaybı olmadan orijinal çözünürlükte kopyalanır. 'Kalite' modu AI iş yükü ve AAC ses kalitesini ayarlar. Gerçek yüz/ağız değiştiren lip-sync bu sürümde yapılmaz; konuşma süresi ses zamanlamasına otomatik uydurulur.", 11f, muted).apply {
-            setPadding(0, dp(16), 0, dp(20))
-        })
+        advancedContainer.addView(
+            queueText
+        )
 
-        setContentView(root)
+        queueStartButton =
+            button(
+                "▶ KUYRUĞU BAŞLAT",
+                panel2,
+                white
+            ) {
+                startQueue()
+            }
+
+        advancedContainer.addView(
+            queueStartButton,
+            LinearLayout.LayoutParams(
+                -1,
+                -2
+            ).apply {
+                topMargin =
+                    dp(8)
+            }
+        )
+
+        advancedContainer.addView(
+            button(
+                "🗑 AI MODELLERİNİ SİL",
+                panel2,
+                white
+            ) {
+                AlertDialog.Builder(
+                    this
+                )
+                    .setTitle(
+                        "AI modelleri silinsin mi?"
+                    )
+                    .setMessage(
+                        "Dublajı tekrar kullanmak istediğinde modellerin yeniden indirilmesi gerekir."
+                    )
+                    .setNegativeButton(
+                        "Vazgeç",
+                        null
+                    )
+                    .setPositiveButton(
+                        "Sil"
+                    ) { _, _ ->
+                        ModelManager(
+                            this
+                        ).clearAll()
+
+                        refreshModelStatus()
+                    }
+                    .show()
+            },
+            LinearLayout.LayoutParams(
+                -1,
+                -2
+            ).apply {
+                topMargin =
+                    dp(12)
+            }
+        )
+
+        advancedContainer.addView(
+            text(
+                "Geçmiş",
+                13f,
+                white,
+                true
+            ).apply {
+                setPadding(
+                    0,
+                    dp(16),
+                    0,
+                    dp(4)
+                )
+            }
+        )
+
+        historyText =
+            text(
+                "Geçmiş boş.",
+                12f,
+                muted
+            )
+
+        advancedContainer.addView(
+            historyText
+        )
+
+        advancedContainer.addView(
+            button(
+                "⟳ GEÇMİŞİ YENİLE",
+                panel2,
+                white
+            ) {
+                refreshHistory()
+            },
+            LinearLayout.LayoutParams(
+                -1,
+                -2
+            ).apply {
+                topMargin =
+                    dp(8)
+            }
+        )
+
+        advancedContainer.addView(
+            button(
+                "🗑 GEÇMİŞİ TEMİZLE",
+                panel2,
+                white
+            ) {
+                HistoryStore(
+                    this
+                ).clear()
+
+                refreshHistory()
+            },
+            LinearLayout.LayoutParams(
+                -1,
+                -2
+            ).apply {
+                topMargin =
+                    dp(8)
+            }
+        )
+
+        body.addView(
+            text(
+                "VideoForge işlemleri cihaz üzerinde çalışır. Linkten indirme yalnız doğrudan ve erişilebilir video dosyaları içindir.",
+                11f,
+                muted
+            ).apply {
+                setPadding(
+                    0,
+                    dp(16),
+                    0,
+                    dp(20)
+                )
+            }
+        )
+
+        setContentView(
+            root
+        )
+
         refreshButtons()
     }
 
@@ -404,6 +1342,148 @@ class VideoForgeActivity : AppCompatActivity() {
         }
         startService(i)
         setWorking(true)
+    }
+
+    private fun downloadVideoOnly(
+        url: String
+    ) {
+        val trimmed =
+            url.trim()
+
+        if (trimmed.isBlank()) {
+            status(
+                "Önce video bağlantısını gir."
+            )
+            return
+        }
+
+        val uri =
+            runCatching {
+                Uri.parse(
+                    trimmed
+                )
+            }.getOrNull()
+
+        if (
+            uri == null ||
+            (
+                !uri.scheme.equals(
+                    "https",
+                    true
+                ) &&
+                !uri.scheme.equals(
+                    "http",
+                    true
+                )
+            ) ||
+            uri.host.isNullOrBlank()
+        ) {
+            status(
+                "Geçerli bir http:// veya https:// video bağlantısı gir."
+            )
+            return
+        }
+
+        val host =
+            uri.host
+                .orEmpty()
+                .lowercase(
+                    Locale.US
+                )
+
+        if (
+            host == "localhost" ||
+            host == "127.0.0.1" ||
+            host == "::1"
+        ) {
+            status(
+                "Yerel cihaz bağlantıları desteklenmiyor."
+            )
+            return
+        }
+
+        val rawName =
+            uri.lastPathSegment
+                .orEmpty()
+
+        val detectedExtension =
+            rawName
+                .substringAfterLast(
+                    '.',
+                    ""
+                )
+                .lowercase(
+                    Locale.US
+                )
+
+        val extension =
+            detectedExtension.takeIf {
+                it in setOf(
+                    "mp4",
+                    "webm",
+                    "mov",
+                    "mkv",
+                    "m4v",
+                    "3gp"
+                )
+            } ?: "mp4"
+
+        val stamp =
+            SimpleDateFormat(
+                "yyyyMMdd_HHmmss",
+                Locale.US
+            ).format(
+                Date()
+            )
+
+        val fileName =
+            "VideoForge_$stamp.$extension"
+
+        runCatching {
+            val request =
+                DownloadManager.Request(
+                    uri
+                )
+                    .setTitle(
+                        fileName
+                    )
+                    .setDescription(
+                        "Video indiriliyor"
+                    )
+                    .setMimeType(
+                        "video/*"
+                    )
+                    .setAllowedOverMetered(
+                        true
+                    )
+                    .setAllowedOverRoaming(
+                        false
+                    )
+                    .setNotificationVisibility(
+                        DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                    )
+                    .setDestinationInExternalPublicDir(
+                        Environment.DIRECTORY_DOWNLOADS,
+                        "VideoForge/$fileName"
+                    )
+
+            val manager =
+                getSystemService(
+                    DOWNLOAD_SERVICE
+                ) as DownloadManager
+
+            manager.enqueue(
+                request
+            )
+        }.onSuccess {
+            status(
+                "İndirme başlatıldı. Dosya İndirilenler/VideoForge klasörüne kaydedilecek."
+            )
+        }.onFailure {
+            status(
+                "İndirme başlatılamadı: ${it.message ?: "Bilinmeyen hata"}"
+            )
+        }
     }
 
     private fun baseServiceIntent(mode: String, options: StudioOptions): Intent = Intent(this, DubForegroundService::class.java).apply {

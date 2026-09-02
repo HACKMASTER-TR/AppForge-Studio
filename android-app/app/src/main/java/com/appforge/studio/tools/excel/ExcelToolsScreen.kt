@@ -65,8 +65,8 @@ fun ExcelToolsScreen(
     var statusTitle by remember { mutableStateOf("Hazır") }
     var statusText by remember {
         mutableStateOf(
-            "XLSX, XLSM veya CSV dosyanı seç.\n" +
-                "Dosya işlemleri cihaz üzerinde gerçekleştirilir."
+            "Dönüştürmek istediğin XLSX, XLSM veya CSV dosyasını seç.\n" +
+                "İşlem tamamen cihazında gerçekleştirilir."
         )
     }
 
@@ -78,8 +78,8 @@ fun ExcelToolsScreen(
 
             scope.launch {
                 busy = true
-                statusTitle = "İşleniyor"
-                statusText = "Seçilen dosya analiz ediliyor…"
+                statusTitle = "Dosya hazırlanıyor"
+                statusText = "Dosya kontrol ediliyor ve düzenlenebilir kopya hazırlanıyor…"
 
                 try {
                     val message =
@@ -90,10 +90,10 @@ fun ExcelToolsScreen(
                             )
                         }
 
-                    statusTitle = "İşlem tamamlandı"
+                    statusTitle = "Dosya hazır"
                     statusText = message
                 } catch (t: Throwable) {
-                    statusTitle = "İşlem başarısız"
+                    statusTitle = "Dosya işlenemedi"
                     statusText =
                         t.message
                             ?: t.toString()
@@ -115,7 +115,7 @@ fun ExcelToolsScreen(
                             fontWeight = FontWeight.Black
                         )
                         Text(
-                            "Excel dosya araçları",
+                            "Excel dosyalarını düzenleme ve dönüştürme araçları",
                             color = ExcelMuted,
                             fontSize = 11.sp
                         )
@@ -168,14 +168,14 @@ fun ExcelToolsScreen(
                             Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            "▦  Excel dosyanı düzenlenebilir kopyaya dönüştür",
+                            "▦  Excel dosyanı düzenlenebilir bir kopyaya dönüştür",
                             color = ExcelText,
                             fontWeight = FontWeight.Black,
                             fontSize = 20.sp
                         )
 
                         Text(
-                            "XLSX ve XLSM paketlerindeki çalışma kitabı ve sayfa koruma etiketlerini kaldırılmış yeni bir kopya oluşturur. CSV dosyalarında orijinale dokunmadan yeni kopya oluşturur.",
+                            "XLSX ve XLSM dosyalarındaki çalışma kitabı ve sayfa korumalarını kaldırarak düzenlenebilir yeni bir kopya oluşturur. CSV dosyalarında ise orijinal dosyaya dokunmadan yeni bir kopya oluşturulur.",
                             color = ExcelMuted,
                             fontSize = 13.sp,
                             lineHeight = 19.sp
@@ -183,9 +183,9 @@ fun ExcelToolsScreen(
 
                         Text(
                             "✓ Formüller ve biçimlendirme korunur\n" +
-                                "✓ XLSM makro projesi paket içinde kalır\n" +
+                                "✓ XLSM dosyalarında makrolar korunur\n" +
                                 "✓ XLSX, XLSM ve CSV desteği\n" +
-                                "✓ En fazla 80 MB",
+                                "✓ Maksimum dosya boyutu: 80 MB",
                             color = ExcelText,
                             fontSize = 13.sp,
                             lineHeight = 20.sp
@@ -257,7 +257,7 @@ fun ExcelToolsScreen(
 
             item {
                 Text(
-                    "Açılış parolasıyla şifrelenmiş dosyalar, eski XLS biçimi, bozuk dosyalar ve kurumsal IRM koruması desteklenmez.",
+                    "Parola ile şifrelenmiş dosyalar, eski XLS biçimi, bozuk dosyalar ve kurumsal IRM korumalı dosyalar desteklenmez.",
                     color = ExcelMuted,
                     fontSize = 11.sp
                 )
@@ -306,13 +306,13 @@ private fun processExcelFile(
 
     return buildString {
         append(outputName)
-        append("\nDownload/AppForge Excel Tools klasörüne kaydedildi.")
+        append("\nİndirilenler/AppForge Excel Tools klasörüne kaydedildi.")
 
         if (result.csvCopy) {
             append("\nCSV kopyası oluşturuldu.")
         } else {
             append(
-                "\nDeğiştirilen paket bölümü: ${result.changedParts}"
+                "\nKoruma bilgileri kaldırıldı. Düzenlenebilir kopya hazır."
             )
         }
     }
