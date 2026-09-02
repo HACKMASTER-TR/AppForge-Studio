@@ -278,22 +278,6 @@ app.use(
   )
 );
 
-app.use(
-  "/studio",
-  express.static(
-    path.resolve("./public/studio")
-  )
-);
-
-app.use(
-  "/vendor/monaco",
-  express.static(
-    path.resolve(
-      "./node_modules/monaco-editor/min/vs"
-    )
-  )
-);
-
 const upload =
   multer({
     dest:

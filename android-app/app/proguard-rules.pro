@@ -6,3 +6,9 @@
 # LiteRT-LM JNI/API
 -keep class com.google.ai.edge.litertlm.** { *; }
 -dontwarn com.google.ai.edge.litertlm.**
+
+# VideoForge / sherpa-onnx
+-keep class com.k2fsa.sherpa.onnx.** { *; }
+-keepclasseswithmembernames class * {
+    native <methods>;
+}

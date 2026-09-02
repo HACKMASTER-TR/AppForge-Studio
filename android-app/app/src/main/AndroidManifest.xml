@@ -7,7 +7,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
-    <application
+        <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+<application
+        android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:allowBackup="false"
@@ -22,10 +25,20 @@
             android:required="false" />
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="appforge-studio"
+                    android:host="auth" />
             </intent-filter>
         </activity>
         <service
@@ -49,5 +62,18 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/apk_file_paths" />
         </provider>
+
+        <!-- AppForge > Diğer Uygulamalar > VideoForge -->
+        <activity
+            android:name="com.hackmaster.videoforge.VideoForgeActivity"
+            android:exported="false"
+            android:screenOrientation="unspecified"
+            android:theme="@style/VideoForgeTheme" />
+
+        <service
+            android:name="com.hackmaster.videoforge.DubForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
     </application>
 </manifest>

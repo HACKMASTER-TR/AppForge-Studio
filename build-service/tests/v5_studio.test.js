@@ -8,7 +8,6 @@ const androidMain = new URL(
   "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
   import.meta.url
 );
-const webStudio = new URL("../public/studio/index.html", import.meta.url);
 const server = new URL("../server.js", import.meta.url);
 const buildProgressService = new URL(
   "../../android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt",
@@ -66,14 +65,9 @@ test("V5 scaffold safely imports HTML ZIP sources", () => {
   assert.equal(result.files["../unsafe.js"], undefined);
 });
 
-test("Quick and Advanced HTML or ZIP screens expose automatic version increment", async () => {
+test("Android Quick and Advanced screens expose automatic version increment", async () => {
   const android = await readFile(androidMain, "utf8");
-  const web = await readFile(webStudio, "utf8");
   assert.ok(android.match(/Otomatik sürüm arttır/g).length >= 2);
-  assert.match(web, /Quick Create/);
-  assert.match(web, /Advanced Create/);
-  assert.match(web, /accept="\.html,\.htm,\.zip/);
-  assert.ok(web.match(/Otomatik sürüm arttır/g).length >= 2);
 });
 
 test("V5 scaffold API is authenticated and wired into the service", async () => {

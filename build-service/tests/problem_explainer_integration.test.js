@@ -49,28 +49,6 @@ test(
 );
 
 test(
-  "Web and Windows Studio retain structured API problem",
-  async () => {
-    const source =
-      await read(
-        "build-service/public/studio/v4.js"
-      );
-
-    assert.ok(
-      source.includes(
-        "error.problem ="
-      )
-    );
-
-    assert.ok(
-      source.includes(
-        "data.userMessage ||"
-      )
-    );
-  }
-);
-
-test(
   "Android build advisor no longer uses generic javac task match",
   async () => {
     const source =

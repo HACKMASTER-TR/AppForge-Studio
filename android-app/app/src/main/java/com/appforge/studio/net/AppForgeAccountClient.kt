@@ -83,6 +83,40 @@ class AppForgeAccountClient(
         )
     }
 
+    fun verifyEmail(
+        token: String
+    ) {
+        request(
+            "/api/auth/verify-email",
+            JSONObject().apply {
+                put(
+                    "token",
+                    token
+                )
+            }
+        )
+    }
+
+    fun resetPassword(
+        token: String,
+        password: String
+    ) {
+        request(
+            "/api/auth/reset-password",
+            JSONObject().apply {
+                put(
+                    "token",
+                    token
+                )
+
+                put(
+                    "password",
+                    password
+                )
+            }
+        )
+    }
+
     fun verifyTwoFactor(
         challengeToken: String,
         code: String

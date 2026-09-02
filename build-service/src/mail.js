@@ -346,7 +346,7 @@ export async function sendVerificationEmail(
   token
 ) {
   const url =
-    `${config.publicBaseUrl}/studio/?verify=${encodeURIComponent(token)}`;
+    `appforge-studio://auth?verify=${encodeURIComponent(token)}`;
 
   const safeUrl =
     escapeHtml(url);
@@ -371,7 +371,7 @@ export async function sendPasswordResetEmail(
   token
 ) {
   const url =
-    `${config.publicBaseUrl}/studio/?reset=${encodeURIComponent(token)}`;
+    `appforge-studio://auth?reset=${encodeURIComponent(token)}`;
 
   const safeUrl =
     escapeHtml(url);
@@ -398,7 +398,7 @@ export async function sendTeamInviteEmail({
   role
 }) {
   const url =
-    `${config.publicBaseUrl}/studio/?teamInvite=${encodeURIComponent(token)}`;
+    `appforge-studio://auth?teamInvite=${encodeURIComponent(token)}`;
 
   const safeUrl =
     escapeHtml(url);

@@ -78,6 +78,7 @@ private object CopyV2 {
         "no_projects" to "Henüz proje yok",
         "no_projects_body" to "İlk uygulamanı Hızlı Oluştur ile birkaç adımda başlatabilirsin.",
         "tools" to "Studio araçları",
+        "other_apps" to "Diğer Uygulamalar",
         "templates" to "Şablonlar",
         "history" to "Derleme Geçmişi",
         "account" to "Hesabım",
@@ -109,6 +110,7 @@ private object CopyV2 {
         "no_projects" to "No projects yet",
         "no_projects_body" to "Start your first app in a few steps with Quick Create.",
         "tools" to "Studio tools",
+        "other_apps" to "Other Apps",
         "templates" to "Templates",
         "history" to "Build History",
         "account" to "Account",
@@ -140,6 +142,7 @@ private object CopyV2 {
         "no_projects" to "Noch keine Projekte",
         "no_projects_body" to "Starte deine erste App in wenigen Schritten mit Schnell erstellen.",
         "tools" to "Studio-Werkzeuge",
+        "other_apps" to "Weitere Apps",
         "templates" to "Vorlagen",
         "history" to "Build-Verlauf",
         "account" to "Konto",
@@ -171,6 +174,7 @@ private object CopyV2 {
         "no_projects" to "لا توجد مشاريع بعد",
         "no_projects_body" to "ابدأ تطبيقك الأول بخطوات قليلة عبر الإنشاء السريع.",
         "tools" to "أدوات Studio",
+        "other_apps" to "تطبيقات أخرى",
         "templates" to "القوالب",
         "history" to "سجل البناء",
         "account" to "الحساب",
@@ -210,6 +214,7 @@ fun StudioHomeV2(
     onOpenAi: () -> Unit,
     onOpenTemplates: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenOtherApps: () -> Unit,
     onImportProject: () -> Unit,
     onExportAllProjects: () -> Unit,
     onExportAllAndroidProjects: () -> Unit,
@@ -436,6 +441,12 @@ fun StudioHomeV2(
                         ToolCard("⌫", t("trash"), onOpenTrash, Modifier.weight(1f))
                         ToolCard("⇄", t("convert"), onCreateConversion, Modifier.weight(1f))
                     }
+                    ToolCard(
+                        "▦",
+                        t("other_apps"),
+                        onOpenOtherApps,
+                        Modifier.fillMaxWidth()
+                    )
                 }
             }
 

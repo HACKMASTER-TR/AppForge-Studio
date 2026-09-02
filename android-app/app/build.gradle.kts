@@ -138,6 +138,17 @@ android {
         }
     }
 
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1",
+                "META-INF/LICENSE*",
+                "META-INF/NOTICE*"
+            )
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -178,6 +189,16 @@ dependencies {
     implementation(
         "com.google.ai.edge.litertlm:litertlm-android:0.11.0"
     )
+
+
+    // VideoForge V4.1.2
+    implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("androidx.activity:activity-ktx:1.13.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    implementation("com.google.mlkit:language-id:17.0.6")
+    implementation("com.google.mlkit:translate:17.0.3")
+    implementation("com.github.k2-fsa:sherpa-onnx:v1.13.4")
+    implementation("org.apache.commons:commons-compress:1.27.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

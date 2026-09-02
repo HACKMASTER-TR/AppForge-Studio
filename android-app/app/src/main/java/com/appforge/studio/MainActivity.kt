@@ -100,6 +100,7 @@ import com.appforge.studio.security.StudioSecurityClient
 import com.appforge.studio.security.StudioBillingManager
 import com.appforge.studio.security.SecureAccountStore
 import com.appforge.studio.security.StudioPlanPrice
+import com.hackmaster.videoforge.AppVisibility
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -111,6 +112,16 @@ import java.util.Date
 import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
+    override fun onStart() {
+        super.onStart()
+        AppVisibility.activityStarted()
+    }
+
+    override fun onStop() {
+        AppVisibility.activityStopped()
+        super.onStop()
+    }
+
     var openBuildFromNotification by mutableStateOf(false)
         private set
 
@@ -123,11 +134,52 @@ class MainActivity : ComponentActivity() {
     var buildNotificationSequence by mutableIntStateOf(0)
         private set
 
+    var accountActionUri by mutableStateOf<Uri?>(null)
+        private set
+
+    var accountActionSequence by mutableIntStateOf(0)
+        private set
+
+    private fun captureAccountAction(
+        sourceIntent: Intent?
+    ) {
+        val data =
+            sourceIntent?.data
+                ?: return
+
+        if (
+            data.scheme.equals(
+                "appforge-studio",
+                ignoreCase = true
+            ) &&
+            data.host.equals(
+                "auth",
+                ignoreCase = true
+            )
+        ) {
+            accountActionUri =
+                data
+
+            accountActionSequence +=
+                1
+        }
+    }
+
+    fun consumeAccountAction() {
+        accountActionUri =
+            null
+    }
+
 
     override fun onCreate(
         savedInstanceState: Bundle?
     ) {
         super.onCreate(savedInstanceState)
+
+        captureAccountAction(
+            intent
+        )
+
         openBuildFromNotification =
             intent?.getBooleanExtra("appforge_open_builds", false) == true
 
@@ -191,6 +243,22 @@ class MainActivity : ComponentActivity() {
         setContent {
             AppForgeApp()
         }
+    }
+
+    override fun onNewIntent(
+        intent: Intent
+    ) {
+        super.onNewIntent(
+            intent
+        )
+
+        setIntent(
+            intent
+        )
+
+        captureAccountAction(
+            intent
+        )
     }
 
     override fun onResume() {
@@ -504,7 +572,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { ONBOARDING, HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 @Composable
 private fun AppForgeApp() {
@@ -590,6 +658,18 @@ private fun AppForgeApp() {
         }
     }
 
+    LaunchedEffect(
+        hostActivity?.accountActionSequence
+    ) {
+        if (
+            hostActivity?.accountActionUri !=
+                null
+        ) {
+            screen =
+                AppScreen.ACCOUNT
+        }
+    }
+
     /*
      * Önizleme / Production / AI gibi yardımcı ekranlardan
      * geri dönerken proje ve mevcut builder adımı korunur.
@@ -640,6 +720,10 @@ private fun AppForgeApp() {
     BackHandler(
         enabled =
             screen ==
+                AppScreen.OTHER_APPS ||
+            screen ==
+                AppScreen.EXCEL_TOOLS ||
+            screen ==
                 AppScreen.CONVERSION ||
             screen ==
                 AppScreen.PREVIEW ||
@@ -658,7 +742,18 @@ private fun AppForgeApp() {
             screen ==
                 AppScreen.ACCOUNT
     ) {
-        returnFromWorkspace()
+        when (screen) {
+            AppScreen.EXCEL_TOOLS ->
+                screen =
+                    AppScreen.OTHER_APPS
+
+            AppScreen.OTHER_APPS ->
+                screen =
+                    AppScreen.HOME
+
+            else ->
+                returnFromWorkspace()
+        }
     }
 
     var serverUrl by remember { mutableStateOf(draft.buildServiceUrl) }
@@ -2899,6 +2994,11 @@ private fun AppForgeApp() {
                             )
                         },
 
+                        onOpenOtherApps = {
+                            screen =
+                                AppScreen.OTHER_APPS
+                        },
+
                         onImportProject = {
                             backupImportLauncher
                                 .launch(
@@ -3145,6 +3245,13 @@ private fun AppForgeApp() {
                 AppScreen.ACCOUNT -> AccountScreen(
                     serverUrl = serverUrl,
                     session = session,
+                    actionUri =
+                        hostActivity
+                            ?.accountActionUri,
+                    onActionConsumed = {
+                        hostActivity
+                            ?.consumeAccountAction()
+                    },
                     onSession = {
                         session = it
 
@@ -18593,6 +18700,8 @@ private fun BuildHistoryScreen(onBack: () -> Unit) {
 private fun AccountScreen(
     serverUrl: String,
     session: Session?,
+    actionUri: Uri?,
+    onActionConsumed: () -> Unit,
     onSession: (Session?) -> Unit,
     onApiKeyCreated: (String) -> Unit,
     onBack: () -> Unit
@@ -18637,6 +18746,24 @@ private fun AccountScreen(
     var displayName by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+
+    var resetToken by
+        remember {
+            mutableStateOf<String?>(
+                null
+            )
+        }
+
+    var newPassword by
+        remember {
+            mutableStateOf("")
+        }
+
+    var newPasswordAgain by
+        remember {
+            mutableStateOf("")
+        }
+
     var transferTwoFactorCode by remember { mutableStateOf("") }
 
     var showForgotPasswordDialog by
@@ -18668,6 +18795,305 @@ private fun AccountScreen(
         remember {
             mutableStateOf("")
         }
+
+    LaunchedEffect(
+        actionUri?.toString(),
+        session?.token
+    ) {
+        val uri =
+            actionUri
+                ?: return@LaunchedEffect
+
+        val verifyToken =
+            uri.getQueryParameter(
+                "verify"
+            )
+                ?.takeIf {
+                    it.isNotBlank()
+                }
+
+        val passwordResetToken =
+            uri.getQueryParameter(
+                "reset"
+            )
+                ?.takeIf {
+                    it.isNotBlank()
+                }
+
+        val teamInviteToken =
+            uri.getQueryParameter(
+                "teamInvite"
+            )
+                ?.takeIf {
+                    it.isNotBlank()
+                }
+
+        when {
+            verifyToken != null -> {
+                busy =
+                    true
+
+                try {
+                    withContext(
+                        Dispatchers.IO
+                    ) {
+                        AppForgeAccountClient(
+                            context,
+                            serverUrl
+                        ).verifyEmail(
+                            verifyToken
+                        )
+                    }
+
+                    message =
+                        "✅ E-posta adresin başarıyla doğrulandı."
+                } catch (
+                    t: Throwable
+                ) {
+                    message =
+                        "E-posta doğrulanamadı: ${t.message}"
+                } finally {
+                    busy =
+                        false
+
+                    onActionConsumed()
+                }
+            }
+
+            passwordResetToken != null -> {
+                resetToken =
+                    passwordResetToken
+
+                newPassword =
+                    ""
+
+                newPasswordAgain =
+                    ""
+            }
+
+            teamInviteToken != null -> {
+                val currentSession =
+                    session
+
+                if (
+                    currentSession ==
+                        null
+                ) {
+                    message =
+                        "Takım davetini kabul etmek için önce hesabına giriş yap."
+                } else {
+                    busy =
+                        true
+
+                    try {
+                        withContext(
+                            Dispatchers.IO
+                        ) {
+                            WorkspaceClient(
+                                context,
+                                serverUrl,
+                                currentSession.token
+                            ).acceptTeamInvite(
+                                teamInviteToken
+                            )
+                        }
+
+                        message =
+                            "✅ Takım daveti başarıyla kabul edildi."
+                    } catch (
+                        t: Throwable
+                    ) {
+                        message =
+                            "Takım daveti kabul edilemedi: ${t.message}"
+                    } finally {
+                        busy =
+                            false
+
+                        onActionConsumed()
+                    }
+                }
+            }
+
+            else -> {
+                onActionConsumed()
+            }
+        }
+    }
+
+    if (
+        resetToken !=
+            null
+    ) {
+        AlertDialog(
+            onDismissRequest = {
+                if (
+                    !busy
+                ) {
+                    resetToken =
+                        null
+
+                    newPassword =
+                        ""
+
+                    newPasswordAgain =
+                        ""
+
+                    onActionConsumed()
+                }
+            },
+
+            title = {
+                Text(
+                    "Yeni Parola"
+                )
+            },
+
+            text = {
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            10.dp
+                        )
+                ) {
+                    Text(
+                        "AppForge hesabın için yeni parolanı belirle.",
+                        color =
+                            TextSecondary
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            newPassword,
+                        onValueChange = {
+                            newPassword =
+                                it
+                        },
+                        label = {
+                            Text(
+                                "Yeni parola"
+                            )
+                        },
+                        visualTransformation =
+                            PasswordVisualTransformation(),
+                        singleLine =
+                            true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            newPasswordAgain,
+                        onValueChange = {
+                            newPasswordAgain =
+                                it
+                        },
+                        label = {
+                            Text(
+                                "Yeni parola tekrar"
+                            )
+                        },
+                        visualTransformation =
+                            PasswordVisualTransformation(),
+                        singleLine =
+                            true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+                }
+            },
+
+            confirmButton = {
+                TextButton(
+                    enabled =
+                        !busy &&
+                        newPassword.length >=
+                            8 &&
+                        newPassword ==
+                            newPasswordAgain,
+                    onClick = {
+                        val token =
+                            resetToken
+                                ?: return@TextButton
+
+                        busy =
+                            true
+
+                        scope.launch {
+                            try {
+                                withContext(
+                                    Dispatchers.IO
+                                ) {
+                                    AppForgeAccountClient(
+                                        context,
+                                        serverUrl
+                                    ).resetPassword(
+                                        token,
+                                        newPassword
+                                    )
+                                }
+
+                                message =
+                                    "✅ Parolan başarıyla güncellendi. Yeni parolanla giriş yapabilirsin."
+
+                                resetToken =
+                                    null
+
+                                newPassword =
+                                    ""
+
+                                newPasswordAgain =
+                                    ""
+
+                                onActionConsumed()
+                            } catch (
+                                t: Throwable
+                            ) {
+                                message =
+                                    "Parola güncellenemedi: ${t.message}"
+                            } finally {
+                                busy =
+                                    false
+                            }
+                        }
+                    }
+                ) {
+                    Text(
+                        if (
+                            busy
+                        ) {
+                            "Güncelleniyor..."
+                        } else {
+                            "PAROLAYI GÜNCELLE"
+                        }
+                    )
+                }
+            },
+
+            dismissButton = {
+                TextButton(
+                    enabled =
+                        !busy,
+                    onClick = {
+                        resetToken =
+                            null
+
+                        newPassword =
+                            ""
+
+                        newPasswordAgain =
+                            ""
+
+                        onActionConsumed()
+                    }
+                ) {
+                    Text(
+                        "İptal"
+                    )
+                }
+            }
+        )
+    }
 
     if (
         showForgotPasswordDialog
@@ -20822,23 +21248,6 @@ private fun LegalCenterScreen(
                     title = t(languageCode, "privacy_policy"),
                     body = "1. Kişisel veri toplamıyoruz.\n2. Tüm proje verileri cihazınızda yerel olarak saklanır.\n3. İnternet izni yalnız sizin isteğiniz üzerine URL içeriği getirmek veya Build Service ile iletişim kurmak için kullanılır.\n4. Verilerinizi üçüncü taraflarla paylaşmayız."
                 )
-            }
-            item {
-                OutlinedButton(
-                    onClick = {
-                        runCatching {
-                            context.startActivity(
-                                Intent(
-                                    Intent.ACTION_VIEW,
-                                    Uri.parse("https://hackmaster-tr.github.io/AppForge-Studio/privacy.html")
-                                )
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(if (legalCompact) 48.dp else 52.dp)
-                ) {
-                    Text("Gizlilik politikasını tarayıcıda aç")
-                }
             }
         }
     }

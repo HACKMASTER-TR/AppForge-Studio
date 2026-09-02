@@ -65,6 +65,20 @@ class WorkspaceClient(
         )
     }
 
+    fun acceptTeamInvite(
+        token: String
+    ): JSONObject =
+        request(
+            "POST",
+            "/api/team-invites/accept",
+            JSONObject().apply {
+                put(
+                    "token",
+                    token
+                )
+            }
+        )
+
     private fun get(path: String) =
         request("GET", path, null)
 
