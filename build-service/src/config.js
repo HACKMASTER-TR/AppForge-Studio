@@ -178,6 +178,30 @@ export const config = {
     )
   ),
 
+  /*
+   * Admin hesapları production yönetimi ve kontrollü
+   * yük testleri için daha geniş aktif build kapasitesine
+   * sahiptir. Global MAX_QUEUE_SIZE korunmaya devam eder.
+   */
+  adminActiveBuildLimit: Math.max(
+    1,
+    Number(
+      process.env.ADMIN_ACTIVE_BUILD_LIMIT ||
+      100
+    )
+  ),
+
+  adminBuildPriority: Math.max(
+    1,
+    Math.min(
+      1000,
+      Number(
+        process.env.ADMIN_BUILD_PRIORITY ||
+        1
+      )
+    )
+  ),
+
   freeBuildPriority: Math.max(
     1,
     Math.min(
@@ -294,6 +318,27 @@ export const config = {
     Number(
       process.env.AUTOSCALE_DISPATCH_QUEUE_THRESHOLD ||
       6
+    )
+  ),
+
+  /*
+   * API içindeki Admin Sistem Durumu ekranı için
+   * autoscaler hedef aralığı.
+   * GitHub workflow ile aynı varsayılanlar kullanılır.
+   */
+  autoscaleMinReplicas: Math.max(
+    1,
+    Number(
+      process.env.AUTOSCALE_MIN_REPLICAS ||
+      3
+    )
+  ),
+
+  autoscaleMaxReplicas: Math.max(
+    1,
+    Number(
+      process.env.AUTOSCALE_MAX_REPLICAS ||
+      50
     )
   ),
 

@@ -157,6 +157,9 @@ import {
   redisStatus
 } from "./src/redis.js";
 import {
+  triggerWorkerAutoscale
+} from "./src/autoscaleDispatch.js";
+import {
   observabilityStatus,
   setupExpressErrorHandling
 } from "./src/observability.js";
@@ -506,6 +509,391 @@ function mailDeliveryConfigured() {
     config.smtpHost
   );
 }
+
+// -----------------------------------------------------------------------------
+// Admin operations / production status
+// -----------------------------------------------------------------------------
+
+app.get(
+  "/api/admin/system-status",
+  authRequired,
+  adminRequired,
+  async (req, res) => {
+    try {
+      const queue =
+        await queueStats();
+
+      const workers =
+        Array.isArray(
+          queue.workers
+        )
+          ? queue.workers
+          : [];
+
+      const normalAndroidWorkers =
+        workers.filter(worker => {
+          const capabilities =
+            Array.isArray(
+              worker.capabilities
+            )
+              ? worker.capabilities
+              : [];
+
+          return (
+            worker.toolchain_ok !== false &&
+            capabilities.includes(
+              "android-api-37"
+            ) &&
+            !capabilities.includes(
+              config.sourceBuildIsolationCapability
+            )
+          );
+        });
+
+      const liveSlots =
+        normalAndroidWorkers.reduce(
+          (
+            total,
+            worker
+          ) =>
+            total +
+            Number(
+              worker.slots ||
+              0
+            ),
+          0
+        );
+
+      const replicaIds =
+        new Set(
+          normalAndroidWorkers.map(
+            worker =>
+              String(
+                worker.worker_id ||
+                worker.workerId ||
+                ""
+              )
+                .replace(
+                  /#\d+$/,
+                  ""
+                )
+          )
+          .filter(Boolean)
+        );
+
+      const liveReplicas =
+        replicaIds.size;
+
+      const slotsPerReplica =
+        liveReplicas > 0
+          ? Math.max(
+              1,
+              Math.round(
+                liveSlots /
+                liveReplicas
+              )
+            )
+          : 2;
+
+      const duration =
+        await query(
+          `SELECT
+             COALESCE(
+               AVG(duration_ms),
+               0
+             )::bigint AS average_ms
+           FROM (
+             SELECT duration_ms
+             FROM appforge_builds
+             WHERE status = 'success'
+               AND duration_ms IS NOT NULL
+               AND duration_ms > 0
+             ORDER BY
+               completed_at DESC
+               NULLS LAST
+             LIMIT 30
+           ) recent`
+        );
+
+      const averageMs =
+        Number(
+          duration.rows[0]
+            ?.average_ms ||
+          0
+        );
+
+      const averageBuildSeconds =
+        averageMs > 0
+          ? Math.max(
+              1,
+              Math.round(
+                averageMs /
+                1000
+              )
+            )
+          : null;
+
+      const queued =
+        Number(
+          queue.queued ||
+          0
+        );
+
+      const running =
+        Number(
+          queue.running ||
+          0
+        );
+
+      const pressure =
+        queued +
+        running;
+
+      const desiredReplicas =
+        Math.max(
+          config.autoscaleMinReplicas,
+          Math.min(
+            config.autoscaleMaxReplicas,
+            Math.ceil(
+              pressure /
+              Math.max(
+                1,
+                slotsPerReplica
+              )
+            )
+          )
+        );
+
+      const estimatedDrainSeconds =
+        (
+          averageBuildSeconds &&
+          liveSlots > 0 &&
+          pressure > 0
+        )
+          ? Math.ceil(
+              pressure /
+              liveSlots
+            ) *
+            averageBuildSeconds
+          : (
+              pressure === 0
+                ? 0
+                : null
+            );
+
+      let autoscaleAction =
+        "hold";
+
+      if (
+        desiredReplicas >
+        liveReplicas
+      ) {
+        autoscaleAction =
+          "scale_up_needed";
+      } else if (
+        pressure === 0 &&
+        liveReplicas >
+        config.autoscaleMinReplicas
+      ) {
+        autoscaleAction =
+          "scale_down_pending";
+      }
+
+      res.json({
+        ok: true,
+
+        account: {
+          email:
+            req.user.email,
+          role:
+            req.user.role,
+          fullAccess:
+            req.user.role ===
+            "admin"
+        },
+
+        queue: {
+          queued,
+          running,
+          maxQueueSize:
+            Number(
+              queue.maxQueueSize ||
+              config.maxQueueSize
+            )
+        },
+
+        capacity: {
+          liveReplicas,
+          liveSlots,
+          slotsPerReplica
+        },
+
+        performance: {
+          averageBuildSeconds,
+          estimatedDrainSeconds
+        },
+
+        autoscale: {
+          enabled:
+            config.autoscaleDispatchEnabled,
+          queueThreshold:
+            config.autoscaleDispatchQueueThreshold,
+          minReplicas:
+            config.autoscaleMinReplicas,
+          maxReplicas:
+            config.autoscaleMaxReplicas,
+          desiredReplicas,
+          action:
+            autoscaleAction
+        }
+      });
+    } catch (error) {
+      res
+        .status(500)
+        .json({
+          error:
+            String(
+              error?.message ||
+              error
+            )
+        });
+    }
+  }
+);
+
+
+app.post(
+  "/api/admin/autoscale/dispatch",
+  authRequired,
+  adminRequired,
+  async (req, res) => {
+    try {
+      const reason =
+        String(
+          req.body?.reason ||
+          "admin_manual"
+        )
+          .replace(
+            /[^a-zA-Z0-9_.-]/g,
+            "_"
+          )
+          .slice(
+            0,
+            100
+          );
+
+      const result =
+        await triggerWorkerAutoscale({
+          reason
+        });
+
+      res
+        .status(202)
+        .json({
+          ok: true,
+          reason,
+          result
+        });
+    } catch (error) {
+      res
+        .status(500)
+        .json({
+          error:
+            String(
+              error?.message ||
+              error
+            )
+        });
+    }
+  }
+);
+
+
+app.post(
+  "/api/admin/build-statuses",
+  authRequired,
+  adminRequired,
+  async (req, res) => {
+    try {
+      const rawIds =
+        Array.isArray(
+          req.body?.ids
+        )
+          ? req.body.ids
+          : [];
+
+      const uuidPattern =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      const ids =
+        [
+          ...new Set(
+            rawIds
+              .map(
+                value =>
+                  String(
+                    value ||
+                    ""
+                  ).trim()
+              )
+              .filter(
+                value =>
+                  uuidPattern.test(
+                    value
+                  )
+              )
+          )
+        ]
+          .slice(
+            0,
+            100
+          );
+
+      if (
+        ids.length ===
+        0
+      ) {
+        return res.json({
+          builds: []
+        });
+      }
+
+      const result =
+        await query(
+          `SELECT
+             id,
+             status,
+             progress,
+             error,
+             build_no AS "buildNo"
+           FROM appforge_builds
+           WHERE user_id = $1
+             AND id = ANY($2::uuid[])
+           ORDER BY created_at ASC`,
+          [
+            req.user.id,
+            ids
+          ]
+        );
+
+      res.json({
+        builds:
+          result.rows
+      });
+    } catch (error) {
+      res
+        .status(500)
+        .json({
+          error:
+            String(
+              error?.message ||
+              error
+            )
+        });
+    }
+  }
+);
+
 
 // -----------------------------------------------------------------------------
 // Auth

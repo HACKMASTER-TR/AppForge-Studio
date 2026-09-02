@@ -566,7 +566,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 private data class ParallelBuildTestItem(
     val slot: Int,
@@ -4029,6 +4029,22 @@ private fun AppForgeApp() {
                 )
 
 
+                AppScreen.ADMIN_OPS -> AdminOpsScreen(
+                    serverUrl =
+                        serverUrl,
+                    apiKey =
+                        apiKey,
+                    accountEmail =
+                        session
+                            ?.email
+                            .orEmpty(),
+                    onBack = {
+                        screen =
+                            AppScreen.BUILDER
+                    }
+                )
+
+
                 AppScreen.AI_ASSISTANT -> LocalAiAssistantScreen(
                     draft =
                         draft,
@@ -4593,6 +4609,26 @@ private fun AppForgeApp() {
                                         } else {
                                             "5 BUILD TESTİNİ BAŞLAT"
                                         }
+                                    )
+                                }
+
+                                Spacer(
+                                    modifier =
+                                        Modifier.height(
+                                            8.dp
+                                        )
+                                )
+
+                                OutlinedButton(
+                                    modifier =
+                                        Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        screen =
+                                            AppScreen.ADMIN_OPS
+                                    }
+                                ) {
+                                    Text(
+                                        "YÖNETİCİ SİSTEM DURUMU / AUTOSCALE"
                                     )
                                 }
 

@@ -48,6 +48,25 @@ export async function enqueueJob({
    * Priority istemciden güvenilir kabul edilmez.
    * Free / Pro önceliğini resmi sunucu belirler.
    */
+  /*
+   * Rol istemciden alınmaz; DB'deki güncel kullanıcı
+   * kaydı sunucu tarafından okunur.
+   */
+  const roleResult =
+    await query(
+      `SELECT role
+       FROM appforge_users
+       WHERE id = $1
+         AND is_active = TRUE
+       LIMIT 1`,
+      [userId]
+    );
+
+  const isAdmin =
+    roleResult.rows[0]
+      ?.role ===
+      "admin";
+
   const entitlement =
     await getProEntitlement(
       userId
@@ -59,19 +78,31 @@ export async function enqueueJob({
     );
 
   const plan =
-    isPro
-      ? "pro"
-      : "free";
+    isAdmin
+      ? "admin"
+      : (
+          isPro
+            ? "pro"
+            : "free"
+        );
 
   const queuePriority =
-    isPro
-      ? config.proBuildPriority
-      : config.freeBuildPriority;
+    isAdmin
+      ? config.adminBuildPriority
+      : (
+          isPro
+            ? config.proBuildPriority
+            : config.freeBuildPriority
+        );
 
   const activeLimit =
-    isPro
-      ? config.proActiveBuildLimit
-      : config.freeActiveBuildLimit;
+    isAdmin
+      ? config.adminActiveBuildLimit
+      : (
+          isPro
+            ? config.proActiveBuildLimit
+            : config.freeActiveBuildLimit
+        );
 
   /*
    * Global advisory transaction lock:
@@ -193,9 +224,13 @@ export async function enqueueJob({
           activeLimit
         ) {
           const message =
-            plan === "pro"
-              ? `Aynı anda en fazla ${activeLimit} aktif Pro build kullanılabilir.`
-              : `Free hesapta aynı anda en fazla ${activeLimit} aktif build kullanılabilir.`;
+            plan === "admin"
+              ? `Admin hesabında aynı anda en fazla ${activeLimit} aktif build kullanılabilir.`
+              : (
+                  plan === "pro"
+                    ? `Aynı anda en fazla ${activeLimit} aktif Pro build kullanılabilir.`
+                    : `Free hesapta aynı anda en fazla ${activeLimit} aktif build kullanılabilir.`
+                );
 
           await client.query(
             `UPDATE appforge_builds

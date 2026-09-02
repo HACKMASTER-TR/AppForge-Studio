@@ -86,7 +86,7 @@ test("Android keeps a remote build visible as a background notification", async 
   assert.match(main, /BuildProgressService\.stop/);
   assert.match(service, /startForeground/);
   assert.match(service, /appforge_open_builds/);
-  assert.match(service, /client\.getBuild\(buildId\)/);
+  assert.match(service, /client\.getBuild\(\s*buildId\s*\)/);
   assert.match(service, /"AppForge derlemeleri"/);
 });
 

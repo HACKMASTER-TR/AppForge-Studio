@@ -111,6 +111,23 @@ export async function buildRateLimit(
   next
 ) {
   try {
+    /*
+     * Admin production/yük testleri normal kullanıcı
+     * saatlik build kotasına tabi değildir.
+     * Global queue ve worker korumaları devam eder.
+     */
+    if (
+      req.user?.role ===
+      "admin"
+    ) {
+      res.set(
+        "X-AppForge-RateLimit-Bypass",
+        "admin"
+      );
+
+      return next();
+    }
+
     const identity =
       req.user?.id ||
       req.ip ||
