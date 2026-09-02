@@ -1,0 +1,95 @@
+name: AppForge Worker Autoscale
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appforge-worker-autoscale
+  cancel-in-progress: false
+
+env:
+  STUDIO_URL: https://appforge-studio-production.up.railway.app
+  RAILWAY_SERVICE: AppForge-Worker
+
+  # Production tabanı:
+  # 3 replica x yaklaşık 2 slot = 6 Android build slotu
+  AUTOSCALE_MIN_REPLICAS: "3"
+
+  # Railway toplam replica üst sınırı.
+  # 50 replica x yaklaşık 2 slot = 100 build slotu.
+  AUTOSCALE_MAX_REPLICAS: "50"
+
+jobs:
+  autoscale:
+    name: Scale Android Workers
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+
+    env:
+      RAILWAY_PROJECT_TOKEN: ${{ secrets.RAILWAY_PROJECT_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Validate autoscaler
+        run: |
+          set -euo pipefail
+          python3 -m py_compile \
+            .github/scripts/worker_autoscale.py
+
+      - name: Production worker autoscale
+        run: |
+          set -euo pipefail
+
+          python3 \
+            .github/scripts/worker_autoscale.py
+
+      - name: Show production capacity
+        if: always()
+        run: |
+          set -euo pipefail
+
+          sleep 5
+
+          curl \
+            --silent \
+            --show-error \
+            --fail \
+            --retry 4 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            "$STUDIO_URL/health" \
+          | python3 -c '
+          import json,sys
+
+          d=json.load(sys.stdin)
+          q=d.get("queue",{})
+
+          workers=[
+              x for x in q.get("workers",[])
+              if x.get("toolchain_ok")
+              and "android-api-37" in x.get("capabilities",[])
+              and "source-isolation-dedicated"
+                  not in x.get("capabilities",[])
+          ]
+
+          print("Queued:",q.get("queued",0))
+          print("Running:",q.get("running",0))
+          print("Android workers:",len(workers))
+          print(
+              "Android slots:",
+              sum(int(x.get("slots",0)) for x in workers)
+          )
+          '
