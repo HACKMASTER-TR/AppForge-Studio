@@ -424,14 +424,98 @@ def distribute(regions, desired):
     return result
 
 
+def verify_api_token_access(
+    project_id
+):
+    if not API_TOKEN:
+        raise RuntimeError(
+            "RAILWAY_API_TOKEN tanımlı değil."
+        )
+
+    payload = json.dumps({
+        "query": """
+        query($id: String!) {
+          project(id: $id) {
+            id
+            name
+          }
+        }
+        """,
+        "variables": {
+            "id": project_id
+        }
+    })
+
+    raw = run([
+        "curl",
+        "--silent",
+        "--show-error",
+        "--fail-with-body",
+        "--request",
+        "POST",
+        "--url",
+        RAILWAY_GRAPHQL,
+        "--header",
+        (
+            "Authorization: Bearer "
+            + API_TOKEN
+        ),
+        "--header",
+        "Content-Type: application/json",
+        "--header",
+        "Accept: application/json",
+        "--data-binary",
+        payload
+    ])
+
+    response = json.loads(raw)
+
+    if response.get("errors"):
+        raise RuntimeError(
+            "Workspace token proje erişimi başarısız: "
+            + json.dumps(
+                response["errors"],
+                ensure_ascii=False
+            )
+        )
+
+    project = (
+        response
+        .get("data", {})
+        .get("project")
+    )
+
+    if not project:
+        raise RuntimeError(
+            "Workspace token hedef AppForge projesini göremiyor."
+        )
+
+    print(
+        "Workspace token project access OK:",
+        project.get("name")
+    )
+
+
 def scale(
     project_id,
     environment_id,
     service_id,
     targets
 ):
+    print(
+        "API token proje erişimi kontrol ediliyor..."
+    )
+
+    verify_api_token_access(
+        project_id
+    )
+
     api_env = railway_env(
         api=True
+    )
+
+    print(
+        "Railway CLI link başlatılıyor..."
     )
 
     # Workspace API token project-scoped değildir.
@@ -451,6 +535,14 @@ def scale(
             "--json"
         ],
         env=api_env
+    )
+
+    print(
+        "Railway CLI link SUCCESS."
+    )
+
+    print(
+        "Railway scale başlatılıyor..."
     )
 
     args = [
