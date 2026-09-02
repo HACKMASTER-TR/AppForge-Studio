@@ -2608,7 +2608,12 @@ private fun AppForgeApp() {
                     slot ->
                     ParallelBuildTestItem(
                         slot = slot,
-                        status = "Hazırlanıyor"
+                        status =
+                            if (slot <= 3) {
+                                "Hazırlanıyor"
+                            } else {
+                                "Kuyrukta"
+                            }
                     )
                 }
 
@@ -2664,6 +2669,11 @@ private fun AppForgeApp() {
                     val batchId =
                         System.currentTimeMillis()
 
+                    val parallelGate =
+                        kotlinx.coroutines.sync.Semaphore(
+                            permits = 3
+                        )
+
                     repeat(5) {
                         index ->
 
@@ -2671,6 +2681,8 @@ private fun AppForgeApp() {
                             index + 1
 
                         scope.launch {
+                            parallelGate.acquire()
+
                             try {
                                 updateFiveParallelBuildSlot(
                                     slot
@@ -2744,14 +2756,53 @@ private fun AppForgeApp() {
                                         1_500L
                                     )
 
-                                    val remote =
-                                        withContext(
-                                            Dispatchers.IO
+                                    var remoteAttempt =
+                                        1
+
+                                    var remoteResult =
+                                        runCatching {
+                                            withContext(
+                                                Dispatchers.IO
+                                            ) {
+                                                client.getBuild(
+                                                    created.buildId
+                                                )
+                                            }
+                                        }
+
+                                    while (
+                                        remoteResult.isFailure &&
+                                        remoteAttempt < 5
+                                    ) {
+                                        remoteAttempt += 1
+
+                                        updateFiveParallelBuildSlot(
+                                            slot
                                         ) {
-                                            client.getBuild(
-                                                created.buildId
+                                            it.copy(
+                                                status =
+                                                    "Bağlantı yeniden deneniyor $remoteAttempt/5"
                                             )
                                         }
+
+                                        delay(
+                                            1_500L
+                                        )
+
+                                        remoteResult =
+                                            runCatching {
+                                                withContext(
+                                                    Dispatchers.IO
+                                                ) {
+                                                    client.getBuild(
+                                                        created.buildId
+                                                    )
+                                                }
+                                            }
+                                    }
+
+                                    val remote =
+                                        remoteResult.getOrThrow()
 
                                     val remoteProgress =
                                         if (
@@ -2805,6 +2856,8 @@ private fun AppForgeApp() {
                                 }
 
                             } finally {
+                                parallelGate.release()
+
                                 val allFinished =
                                     fiveParallelBuildItems
                                         .all {
@@ -2834,8 +2887,28 @@ private fun AppForgeApp() {
                                     fiveParallelBuildRunning =
                                         false
 
+                                    val successCount =
+                                        fiveParallelBuildItems.count {
+                                            item ->
+                                            item.status
+                                                .trim()
+                                                .equals(
+                                                    "success",
+                                                    ignoreCase = true
+                                                )
+                                        }
+
+                                    val failedCount =
+                                        fiveParallelBuildItems.size -
+                                            successCount
+
                                     status =
-                                        "5 paralel build testi tamamlandı."
+                                        if (successCount == 5) {
+                                            "5/5 build başarılı."
+                                        } else {
+                                            "$successCount/5 build başarılı • " +
+                                                "$failedCount başarısız."
+                                        }
                                 }
                             }
                         }
@@ -4447,7 +4520,7 @@ private fun AppForgeApp() {
                                     )
                             ) {
                                 Text(
-                                    "5 Paralel Build Testi",
+                                    "5 Build Testi • Maks. 3 Paralel",
                                     fontWeight =
                                         FontWeight.Bold,
                                     color =
@@ -4481,7 +4554,7 @@ private fun AppForgeApp() {
                                         ) {
                                             "5 BUILD ÇALIŞIYOR"
                                         } else {
-                                            "5 BUILD AYNI ANDA BAŞLAT"
+                                            "5 BUILD TESTİNİ BAŞLAT"
                                         }
                                     )
                                 }
