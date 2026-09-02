@@ -106,6 +106,39 @@ async function bindDeviceWithClient(
       deviceOwner.user_id !==
       userId
     ) {
+      /*
+       * Normal cihazlarda tek-hesap koruması devam eder.
+       * Ancak cihazın sahibi aktif bir ADMIN ise aynı fiziksel
+       * cihaz AppForge test hesapları için de kullanılabilir.
+       *
+       * İkinci hesaba yeni device row yazmıyoruz; dolayısıyla
+       * Free kullanım korumasını normal kullanıcılar aşamaz.
+       */
+      const deviceOwnerAccount =
+        await client.query(
+          `SELECT
+             role,
+             is_active
+           FROM appforge_users
+           WHERE id = $1
+           LIMIT 1`,
+          [
+            deviceOwner.user_id
+          ]
+        );
+
+      const adminOwnedDevice =
+        deviceOwnerAccount.rows[0]
+          ?.role ===
+          "admin" &&
+        deviceOwnerAccount.rows[0]
+          ?.is_active ===
+          true;
+
+      if (adminOwnedDevice) {
+        return;
+      }
+
       const error =
         new Error(
           "Bu cihaz başka bir AppForge hesabına bağlı."

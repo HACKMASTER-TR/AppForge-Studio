@@ -147,6 +147,30 @@ fun AdminOpsScreen(
             )
         }
 
+    var showAccountManagement by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+    if (
+        showAccountManagement
+    ) {
+        AdminAccountsScreen(
+            serverUrl =
+                serverUrl,
+            apiKey =
+                apiKey,
+            onBack = {
+                showAccountManagement =
+                    false
+            }
+        )
+
+        return
+    }
+
     var loadItems by
         remember {
             mutableStateOf(
@@ -675,7 +699,7 @@ fun AdminOpsScreen(
                     )
 
                     Text(
-                        "AppForge Studio 5.0.9 • Production RC",
+                        "AppForge Studio 5.0.11 • Admin Console",
                         style =
                             MaterialTheme
                                 .typography
@@ -752,6 +776,21 @@ fun AdminOpsScreen(
                         }
                     )
                 }
+            }
+        }
+
+        item {
+            Button(
+                modifier =
+                    Modifier.fillMaxWidth(),
+                onClick = {
+                    showAccountManagement =
+                        true
+                }
+            ) {
+                Text(
+                    "HESAP YÖNETİMİ"
+                )
             }
         }
 

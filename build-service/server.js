@@ -762,6 +762,372 @@ app.get(
 );
 
 
+// -----------------------------------------------------------------------------
+// Admin account management
+// -----------------------------------------------------------------------------
+
+app.get(
+  "/api/admin/users",
+  authRequired,
+  adminRequired,
+  async (req, res) => {
+    try {
+      const search =
+        String(
+          req.query?.search ||
+          ""
+        )
+          .trim()
+          .slice(0, 120);
+
+      const like =
+        `%${search}%`;
+
+      const result =
+        await query(
+          `SELECT
+             u.id,
+             u.email,
+             u.display_name AS "displayName",
+             u.role,
+             u.is_active AS "isActive",
+             u.created_at AS "createdAt",
+
+             CASE
+               WHEN p.status = 'active'
+                 AND (
+                   p.expires_at IS NULL
+                   OR p.expires_at > NOW()
+                 )
+               THEN TRUE
+               ELSE FALSE
+             END AS "proActive",
+
+             p.source AS "proSource",
+             p.expires_at AS "proExpiresAt"
+
+           FROM appforge_users u
+
+           LEFT JOIN appforge_pro_entitlements p
+             ON p.user_id = u.id
+
+           WHERE (
+             $1 = ''
+             OR u.email ILIKE $2
+             OR u.display_name ILIKE $2
+           )
+
+           ORDER BY
+             CASE
+               WHEN u.role = 'admin' THEN 0
+               ELSE 1
+             END,
+             u.created_at DESC
+
+           LIMIT 100`,
+          [
+            search,
+            like
+          ]
+        );
+
+      res.json({
+        users:
+          result.rows
+      });
+
+    } catch (error) {
+      res
+        .status(500)
+        .json({
+          error:
+            String(
+              error?.message ||
+              error
+            )
+        });
+    }
+  }
+);
+
+
+app.post(
+  "/api/admin/users",
+  authRequired,
+  adminRequired,
+  async (req, res) => {
+    try {
+      const email =
+        String(
+          req.body?.email ||
+          ""
+        )
+          .trim()
+          .toLowerCase();
+
+      const displayName =
+        String(
+          req.body?.displayName ||
+          ""
+        )
+          .trim()
+          .slice(0, 120);
+
+      const password =
+        String(
+          req.body?.password ||
+          ""
+        );
+
+      const givePro =
+        req.body?.pro ===
+        true;
+
+      if (
+        !email ||
+        !email.includes("@")
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Geçerli e-posta gerekli."
+          });
+      }
+
+      if (
+        password.length <
+        8
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Parola en az 8 karakter olmalı."
+          });
+      }
+
+      const existing =
+        await findUserByEmail(
+          email
+        );
+
+      if (existing) {
+        return res
+          .status(409)
+          .json({
+            error:
+              "Bu e-posta ile hesap zaten var."
+          });
+      }
+
+      const created =
+        await createUser({
+          email,
+          password,
+          displayName,
+          deviceId:
+            null
+        });
+
+      /*
+       * Yönetici tarafından açılan hesap kullanılmaya hazır gelsin.
+       */
+      await query(
+        `UPDATE appforge_users
+         SET
+           email_verified_at =
+             COALESCE(
+               email_verified_at,
+               NOW()
+             ),
+           updated_at = NOW()
+         WHERE id = $1`,
+        [
+          created.id
+        ]
+      );
+
+      if (givePro) {
+        await grantPro({
+          userId:
+            created.id,
+          source:
+            "admin_panel",
+          productId:
+            "appforge_admin_grant",
+          expiresAt:
+            null
+        });
+      }
+
+      res
+        .status(201)
+        .json({
+          ok:
+            true,
+          user: {
+            id:
+              created.id,
+            email:
+              created.email,
+            displayName:
+              created.displayName,
+            role:
+              created.role,
+            proActive:
+              givePro
+          }
+        });
+
+    } catch (error) {
+      if (
+        String(
+          error?.code ||
+          ""
+        ) ===
+        "23505"
+      ) {
+        return res
+          .status(409)
+          .json({
+            error:
+              "Bu e-posta ile hesap zaten var."
+          });
+      }
+
+      res
+        .status(
+          Number(
+            error?.statusCode ||
+            500
+          )
+        )
+        .json({
+          error:
+            String(
+              error?.message ||
+              error
+            )
+        });
+    }
+  }
+);
+
+
+app.post(
+  "/api/admin/users/:userId/pro",
+  authRequired,
+  adminRequired,
+  async (req, res) => {
+    try {
+      const userId =
+        String(
+          req.params.userId ||
+          ""
+        )
+          .trim();
+
+      const active =
+        req.body?.active ===
+        true;
+
+      const result =
+        await query(
+          `SELECT
+             id,
+             email,
+             role
+           FROM appforge_users
+           WHERE id = $1
+             AND is_active = TRUE
+           LIMIT 1`,
+          [
+            userId
+          ]
+        );
+
+      const target =
+        result.rows[0];
+
+      if (!target) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Hesap bulunamadı."
+          });
+      }
+
+      if (
+        target.role ===
+          "admin" &&
+        !active
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "ADMIN hesabının PRO yetkisi kaldırılamaz."
+          });
+      }
+
+      if (active) {
+        await grantPro({
+          userId:
+            target.id,
+          source:
+            "admin_panel",
+          productId:
+            "appforge_admin_grant",
+          expiresAt:
+            null
+        });
+
+      } else {
+        await revokePro(
+          target.id
+        );
+      }
+
+      const entitlement =
+        await getProEntitlement(
+          target.id
+        );
+
+      res.json({
+        ok:
+          true,
+        id:
+          target.id,
+        email:
+          target.email,
+        proActive:
+          Boolean(
+            entitlement?.active
+          )
+      });
+
+    } catch (error) {
+      res
+        .status(
+          Number(
+            error?.statusCode ||
+            500
+          )
+        )
+        .json({
+          error:
+            String(
+              error?.message ||
+              error
+            )
+        });
+    }
+  }
+);
+
+
 app.post(
   "/api/admin/autoscale/dispatch",
   authRequired,
