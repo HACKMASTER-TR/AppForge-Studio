@@ -56,7 +56,7 @@ class VideoForgeActivity : AppCompatActivity() {
     private lateinit var fileText: TextView
     private lateinit var queueText: TextView
     private lateinit var modelText: TextView
-    private lateinit var historyText: TextView
+    private lateinit var historyContainer: LinearLayout
     private lateinit var statusText: TextView
     private lateinit var progress: ProgressBar
     private lateinit var startButton: Button
@@ -834,6 +834,76 @@ class VideoForgeActivity : AppCompatActivity() {
         }
 
         // -------------------------------------------------
+        // İŞLEM GEÇMİŞİ
+        // -------------------------------------------------
+        val historyCard =
+            section(
+                "İşlem geçmişi"
+            )
+
+        historyContainer =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
+            }
+
+        historyCard.addView(
+            historyContainer
+        )
+
+        historyCard.addView(
+            button(
+                "⟳ GEÇMİŞİ YENİLE",
+                panel2,
+                white
+            ) {
+                refreshHistory()
+            },
+            LinearLayout.LayoutParams(
+                -1,
+                -2
+            ).apply {
+                topMargin =
+                    dp(10)
+            }
+        )
+
+        historyCard.addView(
+            button(
+                "🗑 TÜM GEÇMİŞİ TEMİZLE",
+                panel2,
+                white
+            ) {
+                AlertDialog.Builder(
+                    this
+                )
+                    .setTitle(
+                        "VideoForge geçmişi silinsin mi?"
+                    )
+                    .setMessage(
+                        "VideoForge tarafından oluşturulan video ve altyazı çıktıları silinecek. Orijinal videolarına dokunulmayacak."
+                    )
+                    .setNegativeButton(
+                        "Vazgeç",
+                        null
+                    )
+                    .setPositiveButton(
+                        "Sil"
+                    ) { _, _ ->
+                        clearVideoHistory()
+                    }
+                    .show()
+            },
+            LinearLayout.LayoutParams(
+                -1,
+                -2
+            ).apply {
+                topMargin =
+                    dp(8)
+            }
+        )
+
+        // -------------------------------------------------
         // GELİŞMİŞ
         // -------------------------------------------------
         val advancedCard =
@@ -1224,71 +1294,6 @@ class VideoForgeActivity : AppCompatActivity() {
             }
         )
 
-        advancedContainer.addView(
-            text(
-                "Geçmiş",
-                13f,
-                white,
-                true
-            ).apply {
-                setPadding(
-                    0,
-                    dp(16),
-                    0,
-                    dp(4)
-                )
-            }
-        )
-
-        historyText =
-            text(
-                "Geçmiş boş.",
-                12f,
-                muted
-            )
-
-        advancedContainer.addView(
-            historyText
-        )
-
-        advancedContainer.addView(
-            button(
-                "⟳ GEÇMİŞİ YENİLE",
-                panel2,
-                white
-            ) {
-                refreshHistory()
-            },
-            LinearLayout.LayoutParams(
-                -1,
-                -2
-            ).apply {
-                topMargin =
-                    dp(8)
-            }
-        )
-
-        advancedContainer.addView(
-            button(
-                "🗑 GEÇMİŞİ TEMİZLE",
-                panel2,
-                white
-            ) {
-                HistoryStore(
-                    this
-                ).clear()
-
-                refreshHistory()
-            },
-            LinearLayout.LayoutParams(
-                -1,
-                -2
-            ).apply {
-                topMargin =
-                    dp(8)
-            }
-        )
-
         body.addView(
             text(
                 "VideoForge işlemleri cihaz üzerinde çalışır. Linkten indirme yalnız doğrudan ve erişilebilir video dosyaları içindir.",
@@ -1631,16 +1636,475 @@ class VideoForgeActivity : AppCompatActivity() {
     }
 
     private fun refreshHistory() {
-        val items = HistoryStore(this).read().take(6)
-        historyText.text = if (items.isEmpty()) "Geçmiş boş." else items.joinToString("\n\n") { e ->
-            val time = SimpleDateFormat("dd.MM HH:mm", Locale.getDefault()).format(Date(e.timestamp))
-            val target = StudioOptions.TARGETS.firstOrNull { it.code == e.targetLanguage }?.label ?: e.targetLanguage
-            "$time • ${if (e.preview) "Önizleme" else "Dublaj"} • $target\n${e.sourceLabel}\n${e.speakers} konuşmacı • ${e.turns} bölüm"
+
+        val white =
+            Color.rgb(
+                245,
+                248,
+                255
+            )
+
+        val muted =
+            Color.rgb(
+                159,
+                176,
+                200
+            )
+
+        val accent =
+            Color.rgb(
+                103,
+                179,
+                255
+            )
+
+        val panel2 =
+            Color.rgb(
+                19,
+                35,
+                58
+            )
+
+        val darkText =
+            Color.rgb(
+                5,
+                17,
+                28
+            )
+
+        val items =
+            HistoryStore(
+                this
+            )
+                .read()
+                .take(
+                    30
+                )
+
+        historyContainer
+            .removeAllViews()
+
+        if (
+            items.isEmpty()
+        ) {
+            historyContainer.addView(
+                TextView(
+                    this
+                ).apply {
+                    text =
+                        "Henüz işlem geçmişi yok."
+
+                    textSize =
+                        13f
+
+                    setTextColor(
+                        muted
+                    )
+
+                    setPadding(
+                        0,
+                        dp(8),
+                        0,
+                        dp(8)
+                    )
+                }
+            )
+
+            return
         }
-        items.firstOrNull()?.let { e ->
-            if (lastOutput == null) lastOutput = Uri.parse(e.outputUri)
-            if (lastSubtitle == null && !e.subtitleUri.isNullOrBlank()) lastSubtitle = Uri.parse(e.subtitleUri)
+
+        items.forEach {
+            entry ->
+
+            val time =
+                SimpleDateFormat(
+                    "dd.MM.yyyy HH:mm",
+                    Locale.getDefault()
+                ).format(
+                    Date(
+                        entry.timestamp
+                    )
+                )
+
+            val target =
+                StudioOptions
+                    .TARGETS
+                    .firstOrNull {
+                        it.code ==
+                            entry.targetLanguage
+                    }
+                    ?.label
+                    ?: entry.targetLanguage
+
+            val itemCard =
+                LinearLayout(
+                    this
+                ).apply {
+                    orientation =
+                        LinearLayout.VERTICAL
+
+                    setPadding(
+                        dp(12)
+                    )
+
+                    background =
+                        rounded(
+                            panel2,
+                            16f
+                        )
+                }
+
+            itemCard.addView(
+                TextView(
+                    this
+                ).apply {
+                    text =
+                        entry.sourceLabel
+
+                    textSize =
+                        14f
+
+                    setTextColor(
+                        white
+                    )
+
+                    setTypeface(
+                        typeface,
+                        android.graphics.Typeface.BOLD
+                    )
+                }
+            )
+
+            itemCard.addView(
+                TextView(
+                    this
+                ).apply {
+                    text =
+                        "$time • " +
+                            if (
+                                entry.preview
+                            ) {
+                                "Önizleme"
+                            } else {
+                                "Dublaj"
+                            } +
+                            " • $target"
+
+                    textSize =
+                        11f
+
+                    setTextColor(
+                        muted
+                    )
+
+                    setPadding(
+                        0,
+                        dp(4),
+                        0,
+                        0
+                    )
+                }
+            )
+
+            itemCard.addView(
+                TextView(
+                    this
+                ).apply {
+                    text =
+                        "${entry.speakers} konuşmacı • ${entry.turns} bölüm"
+
+                    textSize =
+                        11f
+
+                    setTextColor(
+                        muted
+                    )
+
+                    setPadding(
+                        0,
+                        dp(3),
+                        0,
+                        dp(8)
+                    )
+                }
+            )
+
+            val actions =
+                LinearLayout(
+                    this
+                ).apply {
+                    orientation =
+                        LinearLayout.HORIZONTAL
+                }
+
+            actions.addView(
+                button(
+                    "▶ AÇ",
+                    accent,
+                    darkText
+                ) {
+                    if (
+                        entry.outputUri
+                            .isBlank()
+                    ) {
+                        status(
+                            "Video çıktısı bulunamadı."
+                        )
+                    } else {
+                        openVideo(
+                            Uri.parse(
+                                entry.outputUri
+                            )
+                        )
+                    }
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    -2,
+                    1f
+                ).apply {
+                    marginEnd =
+                        dp(4)
+                }
+            )
+
+            actions.addView(
+                button(
+                    "🗑 SİL",
+                    Color.rgb(
+                        13,
+                        26,
+                        44
+                    ),
+                    white
+                ) {
+                    AlertDialog.Builder(
+                        this
+                    )
+                        .setTitle(
+                            "Çıktı silinsin mi?"
+                        )
+                        .setMessage(
+                            "${entry.sourceLabel}\n\nVideoForge çıktısı ve varsa altyazı dosyası silinecek. Orijinal video korunacak."
+                        )
+                        .setNegativeButton(
+                            "Vazgeç",
+                            null
+                        )
+                        .setPositiveButton(
+                            "Sil"
+                        ) { _, _ ->
+                            deleteHistoryEntry(
+                                entry
+                            )
+                        }
+                        .show()
+                },
+                LinearLayout.LayoutParams(
+                    0,
+                    -2,
+                    1f
+                ).apply {
+                    marginStart =
+                        dp(4)
+                }
+            )
+
+            itemCard.addView(
+                actions
+            )
+
+            historyContainer.addView(
+                itemCard,
+                LinearLayout.LayoutParams(
+                    -1,
+                    -2
+                ).apply {
+                    topMargin =
+                        dp(8)
+                }
+            )
         }
+
+        items
+            .firstOrNull()
+            ?.let {
+                entry ->
+
+                if (
+                    lastOutput ==
+                    null &&
+                    entry.outputUri
+                        .isNotBlank()
+                ) {
+                    lastOutput =
+                        Uri.parse(
+                            entry.outputUri
+                        )
+                }
+
+                if (
+                    lastSubtitle ==
+                    null &&
+                    !entry.subtitleUri
+                        .isNullOrBlank()
+                ) {
+                    lastSubtitle =
+                        Uri.parse(
+                            entry.subtitleUri
+                        )
+                }
+
+                if (
+                    lastOutput !=
+                    null
+                ) {
+                    openButton.visibility =
+                        View.VISIBLE
+
+                    shareButton.visibility =
+                        View.VISIBLE
+                }
+
+                if (
+                    lastSubtitle !=
+                    null
+                ) {
+                    subtitleEditButton.visibility =
+                        View.VISIBLE
+                }
+            }
+    }
+
+    private fun deleteStoredVideoForgeUri(
+        rawUri: String?
+    ): Boolean {
+
+        if (
+            rawUri.isNullOrBlank()
+        ) {
+            return false
+        }
+
+        return runCatching {
+
+            val uri =
+                Uri.parse(
+                    rawUri
+                )
+
+            when (
+                uri.scheme
+            ) {
+                "content" ->
+                    contentResolver.delete(
+                        uri,
+                        null,
+                        null
+                    ) > 0
+
+                "file" ->
+                    java.io.File(
+                        uri.path
+                            ?: return@runCatching false
+                    ).delete()
+
+                else ->
+                    false
+            }
+
+        }.getOrDefault(
+            false
+        )
+    }
+
+    private fun deleteHistoryEntry(
+        entry: HistoryEntry
+    ) {
+
+        deleteStoredVideoForgeUri(
+            entry.outputUri
+        )
+
+        deleteStoredVideoForgeUri(
+            entry.subtitleUri
+        )
+
+        HistoryStore(
+            this
+        ).remove(
+            entry
+        )
+
+        if (
+            lastOutput
+                ?.toString() ==
+            entry.outputUri
+        ) {
+            lastOutput =
+                null
+        }
+
+        if (
+            lastSubtitle
+                ?.toString() ==
+            entry.subtitleUri
+        ) {
+            lastSubtitle =
+                null
+        }
+
+        refreshHistory()
+
+        status(
+            "VideoForge çıktısı silindi."
+        )
+    }
+
+    private fun clearVideoHistory() {
+
+        val store =
+            HistoryStore(
+                this
+            )
+
+        val items =
+            store.read()
+
+        items.forEach {
+            entry ->
+
+            deleteStoredVideoForgeUri(
+                entry.outputUri
+            )
+
+            deleteStoredVideoForgeUri(
+                entry.subtitleUri
+            )
+        }
+
+        store.clear()
+
+        lastOutput =
+            null
+
+        lastSubtitle =
+            null
+
+        openButton.visibility =
+            View.GONE
+
+        shareButton.visibility =
+            View.GONE
+
+        subtitleEditButton.visibility =
+            View.GONE
+
+        refreshHistory()
+
+        status(
+            "${items.size} VideoForge geçmiş kaydı temizlendi."
+        )
     }
 
     private fun editSubtitle() {

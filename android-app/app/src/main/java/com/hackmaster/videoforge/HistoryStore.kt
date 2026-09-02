@@ -65,5 +65,69 @@ class HistoryStore(context: Context) {
         }.getOrDefault(emptyList())
     }
 
+    fun remove(
+        entry: HistoryEntry
+    ) {
+        val remaining =
+            read().filterNot {
+                it == entry
+            }
+
+        val array =
+            JSONArray()
+
+        remaining.forEach { item ->
+            array.put(
+                JSONObject().apply {
+                    put(
+                        "timestamp",
+                        item.timestamp
+                    )
+                    put(
+                        "sourceLabel",
+                        item.sourceLabel
+                    )
+                    put(
+                        "inputUri",
+                        item.inputUri
+                    )
+                    put(
+                        "outputUri",
+                        item.outputUri
+                    )
+                    put(
+                        "subtitleUri",
+                        item.subtitleUri
+                            ?: JSONObject.NULL
+                    )
+                    put(
+                        "targetLanguage",
+                        item.targetLanguage
+                    )
+                    put(
+                        "preview",
+                        item.preview
+                    )
+                    put(
+                        "turns",
+                        item.turns
+                    )
+                    put(
+                        "speakers",
+                        item.speakers
+                    )
+                }
+            )
+        }
+
+        prefs
+            .edit()
+            .putString(
+                "items",
+                array.toString()
+            )
+            .apply()
+    }
+
     fun clear() = prefs.edit().clear().apply()
 }

@@ -6,6 +6,7 @@ import com.appforge.studio.tools.OtherAppsUsageGate
 
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
@@ -15,16 +16,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -74,6 +79,29 @@ fun ExcelToolsScreen(
         )
     }
 
+    var lastOutputUri by
+        remember {
+            mutableStateOf<Uri?>(
+                null
+            )
+        }
+
+    var lastOutputName by
+        remember {
+            mutableStateOf(
+                ""
+            )
+        }
+
+    var history by
+        remember {
+            mutableStateOf(
+                loadExcelHistory(
+                    context
+                )
+            )
+        }
+
     val picker =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.OpenDocument()
@@ -103,16 +131,36 @@ fun ExcelToolsScreen(
                 statusText = "Dosya kontrol ediliyor ve düzenlenebilir kopya hazırlanıyor…"
 
                 try {
-                    val message =
-                        withContext(Dispatchers.IO) {
+                    val output =
+                        withContext(
+                            Dispatchers.IO
+                        ) {
                             processExcelFile(
                                 context,
                                 uri
                             )
                         }
 
-                    statusTitle = "Dosya hazır"
-                    statusText = message
+                    lastOutputUri =
+                        output.uri
+
+                    lastOutputName =
+                        output.fileName
+
+                    history =
+                        withContext(
+                            Dispatchers.IO
+                        ) {
+                            loadExcelHistory(
+                                context
+                            )
+                        }
+
+                    statusTitle =
+                        "Dosya hazır"
+
+                    statusText =
+                        output.message
                 } catch (t: Throwable) {
                     statusTitle = "Dosya işlenemedi"
                     statusText =
@@ -293,6 +341,289 @@ fun ExcelToolsScreen(
                             fontSize = 13.sp,
                             lineHeight = 18.sp
                         )
+
+                        if (
+                            lastOutputUri != null &&
+                            lastOutputName.isNotBlank()
+                        ) {
+                            Button(
+                                onClick = {
+                                    val outputUri =
+                                        lastOutputUri
+
+                                    if (
+                                        outputUri != null &&
+                                        !openExcelOutput(
+                                            context,
+                                            outputUri,
+                                            lastOutputName
+                                        )
+                                    ) {
+                                        statusTitle =
+                                            "Dosya açılamadı"
+
+                                        statusText =
+                                            "Bu dosya türünü açabilecek bir uygulama bulunamadı."
+                                    }
+                                },
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    "📂 DOSYAYI AÇ"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Text(
+                    "İşlem geçmişi",
+                    color = ExcelText,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 19.sp
+                )
+            }
+
+            if (
+                history.isEmpty()
+            ) {
+                item {
+                    Card(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .widthIn(
+                                    max = 850.dp
+                                ),
+                        shape =
+                            RoundedCornerShape(
+                                22.dp
+                            ),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor =
+                                    ExcelCard
+                            )
+                    ) {
+                        Text(
+                            "Henüz işlem geçmişi yok.",
+                            modifier =
+                                Modifier.padding(
+                                    18.dp
+                                ),
+                            color =
+                                ExcelMuted,
+                            fontSize =
+                                13.sp
+                        )
+                    }
+                }
+            } else {
+                items(
+                    items = history,
+                    key = {
+                        it.uri.toString()
+                    }
+                ) { output ->
+                    Card(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .widthIn(
+                                    max = 850.dp
+                                ),
+                        shape =
+                            RoundedCornerShape(
+                                22.dp
+                            ),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor =
+                                    ExcelCard
+                            )
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        18.dp
+                                    ),
+                            verticalArrangement =
+                                Arrangement.spacedBy(
+                                    9.dp
+                                )
+                        ) {
+                            Text(
+                                output.name,
+                                color =
+                                    ExcelText,
+                                fontWeight =
+                                    FontWeight.Bold,
+                                fontSize =
+                                    14.sp
+                            )
+
+                            Text(
+                                formatExcelHistoryDate(
+                                    output.createdAtSeconds
+                                ),
+                                color =
+                                    ExcelMuted,
+                                fontSize =
+                                    11.sp
+                            )
+
+                            Row(
+                                modifier =
+                                    Modifier.fillMaxWidth(),
+                                horizontalArrangement =
+                                    Arrangement.spacedBy(
+                                        8.dp
+                                    )
+                            ) {
+                                Button(
+                                    onClick = {
+                                        if (
+                                            !openExcelOutput(
+                                                context,
+                                                output.uri,
+                                                output.name
+                                            )
+                                        ) {
+                                            statusTitle =
+                                                "Dosya açılamadı"
+
+                                            statusText =
+                                                "Bu dosya türünü açabilecek bir uygulama bulunamadı."
+                                        }
+                                    },
+                                    modifier =
+                                        Modifier.weight(
+                                            1f
+                                        )
+                                ) {
+                                    Text(
+                                        "📂 AÇ"
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        scope.launch {
+                                            val deleted =
+                                                withContext(
+                                                    Dispatchers.IO
+                                                ) {
+                                                    deleteExcelOutput(
+                                                        context,
+                                                        output.uri
+                                                    )
+                                                }
+
+                                            history =
+                                                withContext(
+                                                    Dispatchers.IO
+                                                ) {
+                                                    loadExcelHistory(
+                                                        context
+                                                    )
+                                                }
+
+                                            if (
+                                                deleted
+                                            ) {
+                                                if (
+                                                    lastOutputUri ==
+                                                    output.uri
+                                                ) {
+                                                    lastOutputUri =
+                                                        null
+
+                                                    lastOutputName =
+                                                        ""
+                                                }
+
+                                                statusTitle =
+                                                    "Çöp kutusu"
+
+                                                statusText =
+                                                    "${output.name} silindi."
+                                            } else {
+                                                statusTitle =
+                                                    "Silinemedi"
+
+                                                statusText =
+                                                    "Dosya silinemedi veya daha önce kaldırılmış."
+                                            }
+                                        }
+                                    },
+                                    modifier =
+                                        Modifier.weight(
+                                            1f
+                                        )
+                                ) {
+                                    Text(
+                                        "🗑 SİL"
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                val currentHistory =
+                                    history
+
+                                val deletedCount =
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        clearExcelHistory(
+                                            context,
+                                            currentHistory
+                                        )
+                                    }
+
+                                history =
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        loadExcelHistory(
+                                            context
+                                        )
+                                    }
+
+                                lastOutputUri =
+                                    null
+
+                                lastOutputName =
+                                    ""
+
+                                statusTitle =
+                                    "Çöp kutusu temizlendi"
+
+                                statusText =
+                                    "$deletedCount Excel çıktısı silindi."
+                            }
+                        },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .widthIn(
+                                    max = 850.dp
+                                )
+                    ) {
+                        Text(
+                            "🗑 TÜM GEÇMİŞİ TEMİZLE"
+                        )
                     }
                 }
             }
@@ -308,10 +639,22 @@ fun ExcelToolsScreen(
     }
 }
 
+private data class ExcelProcessOutput(
+    val uri: Uri,
+    val fileName: String,
+    val message: String
+)
+
+private data class ExcelHistoryItem(
+    val uri: Uri,
+    val name: String,
+    val createdAtSeconds: Long
+)
+
 private fun processExcelFile(
     context: Context,
     uri: Uri
-): String {
+): ExcelProcessOutput {
     val resolver =
         context.contentResolver
 
@@ -339,25 +682,44 @@ private fun processExcelFile(
             fileName
         )
 
-    saveExcelToDownloads(
-        context,
-        outputName,
-        mimeForExcelName(outputName),
-        result.data
-    )
+    val outputUri =
+        saveExcelToDownloads(
+            context,
+            outputName,
+            mimeForExcelName(
+                outputName
+            ),
+            result.data
+        )
 
-    return buildString {
-        append(outputName)
-        append("\nİndirilenler/AppForge Excel Tools klasörüne kaydedildi.")
-
-        if (result.csvCopy) {
-            append("\nCSV kopyası oluşturuldu.")
-        } else {
+    val message =
+        buildString {
             append(
-                "\nKoruma bilgileri kaldırıldı. Düzenlenebilir kopya hazır."
+                outputName
             )
+
+            append(
+                "\nİndirilenler/AppForge Excel Tools klasörüne kaydedildi."
+            )
+
+            if (
+                result.csvCopy
+            ) {
+                append(
+                    "\nCSV kopyası oluşturuldu."
+                )
+            } else {
+                append(
+                    "\nKoruma bilgileri kaldırıldı. Düzenlenebilir kopya hazır."
+                )
+            }
         }
-    }
+
+    return ExcelProcessOutput(
+        uri = outputUri,
+        fileName = outputName,
+        message = message
+    )
 }
 
 private fun resolveExcelDisplayName(
@@ -455,7 +817,7 @@ private fun saveExcelToDownloads(
     fileName: String,
     mimeType: String,
     data: ByteArray
-) {
+): Uri {
     val resolver =
         context.contentResolver
 
@@ -529,4 +891,196 @@ private fun saveExcelToDownloads(
 
         throw t
     }
+
+    return outputUri
+}
+
+private fun openExcelOutput(
+    context: Context,
+    uri: Uri,
+    fileName: String
+): Boolean {
+
+    return runCatching {
+        val intent =
+            Intent(
+                Intent.ACTION_VIEW
+            ).apply {
+                setDataAndType(
+                    uri,
+                    mimeForExcelName(
+                        fileName
+                    )
+                )
+
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+
+                addFlags(
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            }
+
+        context.startActivity(
+            Intent.createChooser(
+                intent,
+                "Dosyayı aç"
+            )
+        )
+
+        true
+    }.getOrElse {
+        false
+    }
+}
+
+private fun loadExcelHistory(
+    context: Context
+): List<ExcelHistoryItem> {
+
+    val resolver =
+        context.contentResolver
+
+    val result =
+        mutableListOf<ExcelHistoryItem>()
+
+    val projection =
+        arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.DATE_ADDED
+        )
+
+    val selection =
+        "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
+
+    val selectionArgs =
+        arrayOf(
+            "%AppForge Excel Tools%"
+        )
+
+    resolver.query(
+        MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+        projection,
+        selection,
+        selectionArgs,
+        "${MediaStore.MediaColumns.DATE_ADDED} DESC"
+    )?.use { cursor ->
+
+        val idIndex =
+            cursor.getColumnIndexOrThrow(
+                MediaStore.MediaColumns._ID
+            )
+
+        val nameIndex =
+            cursor.getColumnIndexOrThrow(
+                MediaStore.MediaColumns.DISPLAY_NAME
+            )
+
+        val dateIndex =
+            cursor.getColumnIndexOrThrow(
+                MediaStore.MediaColumns.DATE_ADDED
+            )
+
+        while (
+            cursor.moveToNext()
+        ) {
+            val id =
+                cursor.getLong(
+                    idIndex
+                )
+
+            val name =
+                cursor.getString(
+                    nameIndex
+                ) ?: "Excel çıktısı"
+
+            val createdAt =
+                cursor.getLong(
+                    dateIndex
+                )
+
+            result +=
+                ExcelHistoryItem(
+                    uri =
+                        Uri.withAppendedPath(
+                            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                            id.toString()
+                        ),
+                    name =
+                        name,
+                    createdAtSeconds =
+                        createdAt
+                )
+        }
+    }
+
+    return result.take(
+        50
+    )
+}
+
+private fun deleteExcelOutput(
+    context: Context,
+    uri: Uri
+): Boolean {
+
+    return runCatching {
+        context
+            .contentResolver
+            .delete(
+                uri,
+                null,
+                null
+            ) > 0
+    }.getOrDefault(
+        false
+    )
+}
+
+private fun clearExcelHistory(
+    context: Context,
+    history: List<ExcelHistoryItem>
+): Int {
+
+    var deleted =
+        0
+
+    history.forEach {
+        item ->
+
+        if (
+            deleteExcelOutput(
+                context,
+                item.uri
+            )
+        ) {
+            deleted +=
+                1
+        }
+    }
+
+    return deleted
+}
+
+private fun formatExcelHistoryDate(
+    createdAtSeconds: Long
+): String {
+
+    if (
+        createdAtSeconds <= 0L
+    ) {
+        return "Tarih bilinmiyor"
+    }
+
+    return SimpleDateFormat(
+        "dd.MM.yyyy HH:mm",
+        Locale.getDefault()
+    ).format(
+        Date(
+            createdAtSeconds *
+                1000L
+        )
+    )
 }
