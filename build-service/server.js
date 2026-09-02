@@ -1059,6 +1059,37 @@ app.post(
           });
       }
 
+      const currentEntitlement =
+        await getProEntitlement(
+          target.id
+        );
+
+      const currentSource =
+        String(
+          currentEntitlement?.source ||
+          ""
+        )
+          .trim()
+          .toLowerCase();
+
+      /*
+       * Google Play kaynaklı yetkiler admin panelinden
+       * değiştirilemez. Satın alma / abonelik doğrulaması
+       * yalnız Google Play akışı tarafından yönetilir.
+       */
+      if (
+        currentSource.startsWith(
+          "google_play"
+        )
+      ) {
+        return res
+          .status(409)
+          .json({
+            error:
+              "Google Play PRO satın alma tarafından yönetilir. Admin panelinden değiştirilemez."
+          });
+      }
+
       if (
         target.role ===
           "admin" &&

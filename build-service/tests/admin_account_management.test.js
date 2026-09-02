@@ -83,3 +83,39 @@ test(
     );
   }
 );
+
+
+test(
+  "Google Play Pro cannot be changed from admin panel",
+  () => {
+    assert.match(
+      server,
+      /currentSource\.startsWith\(\s*"google_play"\s*\)/
+    );
+
+    assert.match(
+      server,
+      /Google Play PRO satın alma tarafından yönetilir/
+    );
+
+    assert.match(
+      admin,
+      /GOOGLE PLAY PRO/
+    );
+
+    assert.match(
+      admin,
+      /SATIN ALMA İLE YÖNETİLİR/
+    );
+
+    assert.match(
+      admin,
+      /!googlePlayManaged/
+    );
+
+    assert.match(
+      admin,
+      /Admin paneli bu PRO yetkisini değiştiremez/
+    );
+  }
+);

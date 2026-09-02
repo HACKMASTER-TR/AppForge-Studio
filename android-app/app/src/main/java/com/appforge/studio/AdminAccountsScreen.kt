@@ -43,7 +43,8 @@ private data class ManagedAppForgeAccount(
     val email: String,
     val displayName: String,
     val role: String,
-    val proActive: Boolean
+    val proActive: Boolean,
+    val proSource: String?
 )
 
 
@@ -458,14 +459,29 @@ fun AdminAccountsScreen(
                         account.email
                     )
 
+                    val googlePlayManaged =
+                        account.proSource
+                            ?.trim()
+                            ?.lowercase()
+                            ?.startsWith(
+                                "google_play"
+                            ) == true
+
                     Text(
                         when {
                             account.role ==
                                 "admin" ->
                                 "ADMIN + PRO"
 
+                            googlePlayManaged &&
                             account.proActive ->
-                                "PRO"
+                                "GOOGLE PLAY PRO"
+
+                            googlePlayManaged ->
+                                "GOOGLE PLAY • SATIN ALMA İLE YÖNETİLİR"
+
+                            account.proActive ->
+                                "PRO • ADMIN"
 
                             else ->
                                 "FREE"
@@ -474,7 +490,8 @@ fun AdminAccountsScreen(
 
                     if (
                         account.role !=
-                        "admin"
+                            "admin" &&
+                        !googlePlayManaged
                     ) {
                         OutlinedButton(
                             modifier =
@@ -497,6 +514,18 @@ fun AdminAccountsScreen(
                                 }
                             )
                         }
+
+                    } else if (
+                        googlePlayManaged
+                    ) {
+                        Text(
+                            "Satın alma Google Play tarafından yönetilir. " +
+                                "Admin paneli bu PRO yetkisini değiştiremez.",
+                            style =
+                                MaterialTheme
+                                    .typography
+                                    .bodySmall
+                        )
                     }
                 }
             }
@@ -558,7 +587,16 @@ private class AdminAccountsApi(
                             item.optBoolean(
                                 "proActive",
                                 false
+                            ),
+                        proSource =
+                            item.optString(
+                                "proSource",
+                                ""
                             )
+                                .trim()
+                                .takeIf {
+                                    it.isNotBlank()
+                                }
                     )
                 )
             }
