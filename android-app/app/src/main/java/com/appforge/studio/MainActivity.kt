@@ -506,7 +506,7 @@ private fun isTransientBuildNetworkError(
 
 
 private suspend fun <T> retryInitialBuildRequest(
-    maxAttempts: Int = 5,
+    maxAttempts: Int = 8,
     initialDelayMs: Long = 1_500L,
     onRetry: (
         attempt: Int,
@@ -559,7 +559,7 @@ private suspend fun <T> retryInitialBuildRequest(
                     waitMs *
                         2
                 ).coerceAtMost(
-                    6_000L
+                    8_000L
                 )
         }
     }
@@ -2275,7 +2275,7 @@ private fun AppForgeApp() {
                 val created =
                     retryInitialBuildRequest(
                         maxAttempts =
-                            5,
+                            8,
                         onRetry = {
                             attempt,
                             maxAttempts,
@@ -2710,7 +2710,7 @@ private fun AppForgeApp() {
                                 val created =
                                     retryInitialBuildRequest(
                                         maxAttempts =
-                                            5,
+                                            8,
                                         onRetry = {
                                             attempt,
                                             maxAttempts,
@@ -2775,7 +2775,7 @@ private fun AppForgeApp() {
 
                                     while (
                                         remoteResult.isFailure &&
-                                        remoteAttempt < 5
+                                        remoteAttempt < 8
                                     ) {
                                         remoteAttempt += 1
 
@@ -2784,7 +2784,7 @@ private fun AppForgeApp() {
                                         ) {
                                             it.copy(
                                                 status =
-                                                    "Bağlantı yeniden deneniyor $remoteAttempt/5"
+                                                    "Bağlantı yeniden deneniyor $remoteAttempt/8"
                                             )
                                         }
 
