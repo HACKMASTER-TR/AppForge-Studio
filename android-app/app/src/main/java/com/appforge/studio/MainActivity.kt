@@ -3339,6 +3339,10 @@ private fun AppForgeApp() {
                         proUnlocked =
                             proStatus?.active == true,
 
+                        accountEmail =
+                            session
+                                ?.email,
+
                         onCreateQuick = {
                             val fresh =
                                 createQuickDraft(

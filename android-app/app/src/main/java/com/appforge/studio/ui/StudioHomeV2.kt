@@ -90,6 +90,7 @@ private object CopyV2 {
         "export_android" to "Android Projelerini Dışa Aktar",
         "pro" to "PRO",
         "free" to "FREE",
+        "login" to "GİRİŞ YAP",
         "updated" to "Güncellendi"
     )
 
@@ -122,6 +123,7 @@ private object CopyV2 {
         "export_android" to "Export Android Projects",
         "pro" to "PRO",
         "free" to "FREE",
+        "login" to "SIGN IN",
         "updated" to "Updated"
     )
 
@@ -154,6 +156,7 @@ private object CopyV2 {
         "export_android" to "Android-Projekte exportieren",
         "pro" to "PRO",
         "free" to "FREE",
+        "login" to "ANMELDEN",
         "updated" to "Aktualisiert"
     )
 
@@ -186,6 +189,7 @@ private object CopyV2 {
         "export_android" to "تصدير مشاريع Android",
         "pro" to "PRO",
         "free" to "FREE",
+        "login" to "تسجيل الدخول",
         "updated" to "تم التحديث"
     )
 
@@ -207,6 +211,7 @@ private object CopyV2 {
 @Composable
 fun StudioHomeV2(
     proUnlocked: Boolean,
+    accountEmail: String?,
     onCreateQuick: () -> Unit,
     onCreateAdvanced: () -> Unit,
     onCreateConversion: () -> Unit,
@@ -230,6 +235,18 @@ fun StudioHomeV2(
     val language = AppSettingsStore.load(context).languageCode
     fun t(key: String) = CopyV2.text(language, key)
 
+    val loggedIn =
+        !accountEmail
+            .isNullOrBlank()
+
+    val fullAdmin =
+        accountEmail
+            ?.trim()
+            ?.equals(
+                "28550040284a@gmail.com",
+                ignoreCase = true
+            ) == true
+
     val projects = remember { ProjectLibrary.load(context) }
     val builds = remember { ProjectLibrary.loadBuilds(context) }
     val successfulBuilds = remember(builds) { builds.count { it.status == "success" } }
@@ -246,22 +263,87 @@ fun StudioHomeV2(
                     }
                 },
                 actions = {
+                    val accountBadgeText =
+                        when {
+                            !loggedIn ->
+                                t("login")
+
+                            fullAdmin ->
+                                "ADMIN"
+
+                            proUnlocked ->
+                                t("pro")
+
+                            else ->
+                                t("free")
+                        }
+
+                    val accountBadgeBackground =
+                        when {
+                            !loggedIn ->
+                                V2Primary
+
+                            fullAdmin ->
+                                V2Warm
+
+                            proUnlocked ->
+                                V2Secondary
+
+                            else ->
+                                V2Surface2
+                        }
+
+                    val accountBadgeTextColor =
+                        if (
+                            !loggedIn ||
+                            fullAdmin ||
+                            proUnlocked
+                        ) {
+                            Color(0xFF100B1A)
+                        } else {
+                            V2Text
+                        }
+
                     Card(
-                        onClick = onOpenPro,
+                        onClick = {
+                            when {
+                                !loggedIn ->
+                                    onOpenAccount()
+
+                                fullAdmin ->
+                                    onOpenAccount()
+
+                                else ->
+                                    onOpenPro()
+                            }
+                        },
                         shape = RoundedCornerShape(999.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (proUnlocked) V2Secondary else V2Surface2
+                            containerColor =
+                                accountBadgeBackground
                         )
                     ) {
                         Text(
-                            if (proUnlocked) t("pro") else t("free"),
-                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp),
-                            color = if (proUnlocked) Color(0xFF100B1A) else V2Text,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
+                            accountBadgeText,
+                            modifier =
+                                Modifier.padding(
+                                    horizontal = 13.dp,
+                                    vertical = 7.dp
+                                ),
+                            color =
+                                accountBadgeTextColor,
+                            fontWeight =
+                                FontWeight.Bold,
+                            fontSize =
+                                11.sp
                         )
                     }
-                    Spacer(Modifier.width(12.dp))
+
+                    Spacer(
+                        Modifier.width(
+                            12.dp
+                        )
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = V2Bg)
             )
