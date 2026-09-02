@@ -397,6 +397,17 @@ fun StudioHomeV2(
                 }
             }
 
+            item {
+                ToolCard(
+                    "▦",
+                    t("other_apps"),
+                    onOpenOtherApps,
+                    Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 980.dp)
+                )
+            }
+
             item { V2Section(t("recent_projects"), Modifier.widthIn(max = 980.dp)) }
 
             if (projects.isEmpty()) {
@@ -441,12 +452,6 @@ fun StudioHomeV2(
                         ToolCard("⌫", t("trash"), onOpenTrash, Modifier.weight(1f))
                         ToolCard("⇄", t("convert"), onCreateConversion, Modifier.weight(1f))
                     }
-                    ToolCard(
-                        "▦",
-                        t("other_apps"),
-                        onOpenOtherApps,
-                        Modifier.fillMaxWidth()
-                    )
                 }
             }
 
