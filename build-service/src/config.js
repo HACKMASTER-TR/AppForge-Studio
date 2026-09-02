@@ -179,7 +179,7 @@ export const config = {
     1,
     Number(
       process.env.PRO_ACTIVE_BUILD_LIMIT ||
-      3
+      5
     )
   ),
 
