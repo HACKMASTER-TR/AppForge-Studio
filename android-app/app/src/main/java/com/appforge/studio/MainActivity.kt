@@ -119,6 +119,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         AppVisibility.activityStopped()
+        BuildProgressService.startPending(this)
         super.onStop()
     }
 
@@ -248,17 +249,30 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(
         intent: Intent
     ) {
-        super.onNewIntent(
-            intent
-        )
+        super.onNewIntent(intent)
+        setIntent(intent)
 
-        setIntent(
-            intent
-        )
+        captureAccountAction(intent)
 
-        captureAccountAction(
-            intent
-        )
+        if (
+            intent.getBooleanExtra(
+                "appforge_open_builds",
+                false
+            )
+        ) {
+            buildIdFromNotification =
+                intent.getStringExtra(
+                    "appforge_build_id"
+                )
+
+            buildServerUrlFromNotification =
+                intent.getStringExtra(
+                    "appforge_build_server_url"
+                )
+
+            openBuildFromNotification = true
+            buildNotificationSequence += 1
+        }
     }
 
     override fun onResume() {
@@ -332,26 +346,6 @@ class MainActivity : ComponentActivity() {
                 context = this,
                 downloadId = pendingDownloadId
             )
-        }
-    }
-
-    override fun onStop() {
-        BuildProgressService.startPending(this)
-        super.onStop()
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        if (intent.getBooleanExtra("appforge_open_builds", false)) {
-            buildIdFromNotification =
-                intent.getStringExtra("appforge_build_id")
-
-            buildServerUrlFromNotification =
-                intent.getStringExtra("appforge_build_server_url")
-
-            openBuildFromNotification = true
-            buildNotificationSequence += 1
         }
     }
 
@@ -3069,6 +3063,26 @@ private fun AppForgeApp() {
                         }
                     )
                     }
+
+                AppScreen.OTHER_APPS ->
+                    com.appforge.studio.ui.OtherAppsScreen(
+                        onBack = {
+                            screen =
+                                AppScreen.HOME
+                        },
+                        onOpenExcelTools = {
+                            screen =
+                                AppScreen.EXCEL_TOOLS
+                        }
+                    )
+
+                AppScreen.EXCEL_TOOLS ->
+                    com.appforge.studio.tools.excel.ExcelToolsScreen(
+                        onBack = {
+                            screen =
+                                AppScreen.OTHER_APPS
+                        }
+                    )
 
                 AppScreen.MODE_SELECT ->
                     CreateModeSelectionScreen(
