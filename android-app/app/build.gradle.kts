@@ -18,8 +18,8 @@ android {
         applicationId = "com.appforge.studio"
         minSdk = 26
         targetSdk = 37
-        versionCode = 513
-        versionName = "5.0.13"
+        versionCode = 514
+        versionName = "5.0.14"
     }
 
     val releaseCertSha256 =

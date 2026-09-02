@@ -741,6 +741,8 @@ private fun AppForgeApp() {
             screen ==
                 AppScreen.SETTINGS ||
             screen ==
+                AppScreen.ADMIN_OPS ||
+            screen ==
                 AppScreen.ACCOUNT
     ) {
         when (screen) {
@@ -749,6 +751,10 @@ private fun AppForgeApp() {
                     AppScreen.OTHER_APPS
 
             AppScreen.OTHER_APPS ->
+                screen =
+                    AppScreen.HOME
+
+            AppScreen.ADMIN_OPS ->
                 screen =
                     AppScreen.HOME
 
@@ -3520,9 +3526,8 @@ private fun AppForgeApp() {
                         },
 
                         onOpenAdmin = {
-                            openWorkspaceScreen(
+                            screen =
                                 AppScreen.ADMIN_OPS
-                            )
                         },
 
                         onOpenPro = {
@@ -4050,7 +4055,7 @@ private fun AppForgeApp() {
                             .orEmpty(),
                     onBack = {
                         screen =
-                            AppScreen.BUILDER
+                            AppScreen.HOME
                     }
                 )
 
