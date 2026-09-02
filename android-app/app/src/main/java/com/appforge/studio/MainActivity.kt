@@ -568,6 +568,13 @@ private suspend fun <T> retryInitialBuildRequest(
 
 private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, AI_ASSISTANT, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
+private data class ParallelBuildTestItem(
+    val slot: Int,
+    val buildId: String? = null,
+    val status: String = "Bekliyor",
+    val progress: Int = 0
+)
+
 @Composable
 private fun AppForgeApp() {
     val context = LocalContext.current
@@ -1190,6 +1197,50 @@ private fun AppForgeApp() {
         remember {
             mutableStateOf(false)
         }
+
+    val isFiveParallelBuildTester =
+        session
+            ?.email
+            ?.trim()
+            ?.equals(
+                "28550040284a@gmail.com",
+                ignoreCase = true
+            ) == true
+
+    var fiveParallelBuildRunning by
+        remember {
+            mutableStateOf(false)
+        }
+
+    var fiveParallelBuildItems by
+        remember {
+            mutableStateOf(
+                (1..5).map {
+                    slot ->
+                    ParallelBuildTestItem(
+                        slot = slot
+                    )
+                }
+            )
+        }
+
+    fun updateFiveParallelBuildSlot(
+        slot: Int,
+        update: (ParallelBuildTestItem) -> ParallelBuildTestItem
+    ) {
+        fiveParallelBuildItems =
+            fiveParallelBuildItems.map {
+                item ->
+                if (
+                    item.slot ==
+                    slot
+                ) {
+                    update(item)
+                } else {
+                    item
+                }
+            }
+    }
 
     val conversionApkPicker =
         rememberLauncherForActivityResult(
@@ -2515,6 +2566,303 @@ private fun AppForgeApp() {
             }
         }
     }
+
+    val startFiveParallelBuildTest: (ProjectDraft) -> Unit =
+        parallelTest@{
+            testDraft ->
+
+            if (
+                !isFiveParallelBuildTester
+            ) {
+                status =
+                    "Bu test hesabın için yetkili değil."
+
+                return@parallelTest
+            }
+
+            if (
+                session ==
+                null
+            ) {
+                status =
+                    "5 paralel test için giriş yap."
+
+                return@parallelTest
+            }
+
+            if (
+                fiveParallelBuildRunning ||
+                buildBusy
+            ) {
+                status =
+                    "Devam eden build/test tamamlanmalı."
+
+                return@parallelTest
+            }
+
+            fiveParallelBuildRunning =
+                true
+
+            fiveParallelBuildItems =
+                (1..5).map {
+                    slot ->
+                    ParallelBuildTestItem(
+                        slot = slot,
+                        status = "Hazırlanıyor"
+                    )
+                }
+
+            status =
+                "5 paralel build testi hazırlanıyor..."
+
+            scope.launch {
+                try {
+                    validateDraft(
+                        testDraft,
+                        serverUrl
+                    )
+
+                    val zip =
+                        withContext(
+                            Dispatchers.IO
+                        ) {
+                            if (
+                                testDraft.sourceMode ==
+                                SourceMode.LOCAL
+                            ) {
+                                val sourceDir =
+                                    testDraft
+                                        .importedFolder
+                                        ?.let(::File)
+                                        ?: error(
+                                            "Önce HTML/ZIP kaynağı seç."
+                                        )
+
+                                ZipUtils
+                                    .cachedZipDirectory(
+                                        sourceDir =
+                                            sourceDir,
+                                        cacheDir =
+                                            File(
+                                                context.cacheDir,
+                                                "build-upload-cache"
+                                            )
+                                    )
+                                    .file
+                            } else {
+                                null
+                            }
+                        }
+
+                    val client =
+                        BuildApiClient(
+                            context = context,
+                            baseUrl = serverUrl,
+                            apiKey = apiKey
+                        )
+
+                    val batchId =
+                        System.currentTimeMillis()
+
+                    repeat(5) {
+                        index ->
+
+                        val slot =
+                            index + 1
+
+                        scope.launch {
+                            try {
+                                updateFiveParallelBuildSlot(
+                                    slot
+                                ) {
+                                    it.copy(
+                                        status =
+                                            "Gönderiliyor"
+                                    )
+                                }
+
+                                /*
+                                 * Her slotun key'i farklıdır.
+                                 * Retry sırasında aynı slot kendi
+                                 * key'ini korur.
+                                 */
+                                val idempotencyKey =
+                                    "android-parallel5-" +
+                                        "${testDraft.packageName}-" +
+                                        "$batchId-" +
+                                        "$slot-" +
+                                        java.util.UUID
+                                            .randomUUID()
+                                            .toString()
+
+                                val created =
+                                    retryInitialBuildRequest(
+                                        maxAttempts =
+                                            5,
+                                        onRetry = {
+                                            attempt,
+                                            maxAttempts,
+                                            _ ->
+
+                                            updateFiveParallelBuildSlot(
+                                                slot
+                                            ) {
+                                                it.copy(
+                                                    status =
+                                                        "Bağlanıyor $attempt/$maxAttempts"
+                                                )
+                                            }
+                                        }
+                                    ) {
+                                        withContext(
+                                            Dispatchers.IO
+                                        ) {
+                                            client.createBuild(
+                                                testDraft,
+                                                zip,
+                                                idempotencyKey =
+                                                    idempotencyKey
+                                            )
+                                        }
+                                    }
+
+                                updateFiveParallelBuildSlot(
+                                    slot
+                                ) {
+                                    it.copy(
+                                        buildId =
+                                            created.buildId,
+                                        status =
+                                            created.status,
+                                        progress =
+                                            0
+                                    )
+                                }
+
+                                while (true) {
+                                    delay(
+                                        1_500L
+                                    )
+
+                                    val remote =
+                                        withContext(
+                                            Dispatchers.IO
+                                        ) {
+                                            client.getBuild(
+                                                created.buildId
+                                            )
+                                        }
+
+                                    val remoteProgress =
+                                        if (
+                                            remote.status ==
+                                            "success"
+                                        ) {
+                                            100
+                                        } else {
+                                            remote.progress
+                                        }
+
+                                    updateFiveParallelBuildSlot(
+                                        slot
+                                    ) {
+                                        it.copy(
+                                            buildId =
+                                                created.buildId,
+                                            status =
+                                                remote.status,
+                                            progress =
+                                                remoteProgress
+                                        )
+                                    }
+
+                                    if (
+                                        remote.status ==
+                                            "success" ||
+                                        remote.status ==
+                                            "failed" ||
+                                        remote.status ==
+                                            "cancelled" ||
+                                        remote.status ==
+                                            "canceled"
+                                    ) {
+                                        break
+                                    }
+                                }
+
+                            } catch (
+                                t: Throwable
+                            ) {
+                                updateFiveParallelBuildSlot(
+                                    slot
+                                ) {
+                                    it.copy(
+                                        status =
+                                            "Hata: ${t.message.orEmpty()}",
+                                        progress =
+                                            0
+                                    )
+                                }
+
+                            } finally {
+                                val allFinished =
+                                    fiveParallelBuildItems
+                                        .all {
+                                            item ->
+
+                                            val state =
+                                                item.status
+                                                    .trim()
+                                                    .lowercase()
+
+                                            state ==
+                                                "success" ||
+                                            state ==
+                                                "failed" ||
+                                            state ==
+                                                "cancelled" ||
+                                            state ==
+                                                "canceled" ||
+                                            state.startsWith(
+                                                "hata:"
+                                            )
+                                        }
+
+                                if (
+                                    allFinished
+                                ) {
+                                    fiveParallelBuildRunning =
+                                        false
+
+                                    status =
+                                        "5 paralel build testi tamamlandı."
+                                }
+                            }
+                        }
+                    }
+
+                } catch (
+                    t: Throwable
+                ) {
+                    fiveParallelBuildItems =
+                        fiveParallelBuildItems.map {
+                            item ->
+                            item.copy(
+                                status =
+                                    "Hata: ${t.message.orEmpty()}",
+                                progress =
+                                    0
+                            )
+                        }
+
+                    fiveParallelBuildRunning =
+                        false
+
+                    status =
+                        "5 paralel test hazırlanamadı: ${t.message.orEmpty()}"
+                }
+            }
+        }
 
     LaunchedEffect(
         conversionApkUri
@@ -4042,6 +4390,119 @@ private fun AppForgeApp() {
                         }
                     }
 
+                    if (
+                        step == 10 &&
+                        isFiveParallelBuildTester
+                    ) {
+                        Card(
+                            modifier =
+                                Modifier
+                                    .align(
+                                        Alignment.CenterHorizontally
+                                    )
+                                    .widthIn(
+                                        max =
+                                            builderContentMaxWidth
+                                    )
+                                    .fillMaxWidth()
+                                    .padding(
+                                        horizontal =
+                                            builderHorizontalPadding,
+                                        vertical =
+                                            6.dp
+                                    ),
+                            shape =
+                                RoundedCornerShape(
+                                    20.dp
+                                ),
+                            colors =
+                                CardDefaults
+                                    .cardColors(
+                                        containerColor =
+                                            Card2
+                                    )
+                        ) {
+                            Column(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(
+                                            16.dp
+                                        ),
+                                verticalArrangement =
+                                    Arrangement.spacedBy(
+                                        8.dp
+                                    )
+                            ) {
+                                Text(
+                                    "5 Paralel Build Testi",
+                                    fontWeight =
+                                        FontWeight.Bold,
+                                    color =
+                                        Accent
+                                )
+
+                                Text(
+                                    "Yetkili test hesabı • 28550040284a@gmail.com",
+                                    color =
+                                        TextSecondary,
+                                    fontSize =
+                                        11.sp
+                                )
+
+                                Button(
+                                    enabled =
+                                        !fiveParallelBuildRunning &&
+                                        !buildBusy,
+                                    onClick = {
+                                        startFiveParallelBuildTest(
+                                            draft
+                                        )
+                                    },
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                ) {
+                                    Text(
+                                        if (
+                                            fiveParallelBuildRunning
+                                        ) {
+                                            "5 BUILD ÇALIŞIYOR"
+                                        } else {
+                                            "5 BUILD AYNI ANDA BAŞLAT"
+                                        }
+                                    )
+                                }
+
+                                fiveParallelBuildItems
+                                    .forEach {
+                                        item ->
+
+                                        val shortId =
+                                            item.buildId
+                                                ?.take(
+                                                    8
+                                                )
+                                                ?.let {
+                                                    id ->
+                                                    " • $id"
+                                                }
+                                                .orEmpty()
+
+                                        Text(
+                                            "#${item.slot} • " +
+                                                "${item.status} • " +
+                                                "${item.progress}%$shortId",
+                                            color =
+                                                TextSecondary,
+                                            fontSize =
+                                                12.sp
+                                        )
+                                    }
+                            }
+                        }
+                    }
+
                     Row(
                         modifier =
                             Modifier
@@ -4171,7 +4632,10 @@ private fun AppForgeApp() {
                             enabled =
                                 !(
                                     step == 10 &&
-                                    buildBusy
+                                    (
+                                        buildBusy ||
+                                        fiveParallelBuildRunning
+                                    )
                                 ),
                             onClick = {
                                 if (step < 10) {
