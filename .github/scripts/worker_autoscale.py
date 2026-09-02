@@ -432,6 +432,65 @@ def verify_api_token_access(
             "RAILWAY_API_TOKEN tanımlı değil."
         )
 
+    me_payload = json.dumps({
+        "query": """
+        query {
+          me {
+            id
+            name
+          }
+        }
+        """
+    })
+
+    me_raw = run([
+        "curl",
+        "--silent",
+        "--show-error",
+        "--fail-with-body",
+        "--request",
+        "POST",
+        "--url",
+        RAILWAY_GRAPHQL,
+        "--header",
+        (
+            "Authorization: Bearer "
+            + API_TOKEN
+        ),
+        "--header",
+        "Content-Type: application/json",
+        "--data-binary",
+        me_payload
+    ])
+
+    me_response = json.loads(me_raw)
+
+    if me_response.get("errors"):
+        raise RuntimeError(
+            "Account token doğrulaması başarısız: "
+            + json.dumps(
+                me_response["errors"],
+                ensure_ascii=False
+            )
+        )
+
+    me = (
+        me_response
+        .get("data", {})
+        .get("me")
+    )
+
+    if not me:
+        raise RuntimeError(
+            "Account token geçerli kullanıcı döndürmedi."
+        )
+
+    print(
+        "Account token authentication OK:",
+        me.get("name")
+        or me.get("id")
+    )
+
     payload = json.dumps({
         "query": """
         query($id: String!) {
