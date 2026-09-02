@@ -2733,7 +2733,10 @@ private fun AppForgeApp() {
                                                 testDraft,
                                                 zip,
                                                 idempotencyKey =
-                                                    idempotencyKey
+                                                    idempotencyKey,
+                                                cacheIdentityNonce =
+                                                    "parallel5-" +
+                                                        idempotencyKey
                                             )
                                         }
                                     }

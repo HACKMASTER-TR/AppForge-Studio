@@ -108,7 +108,8 @@ class BuildApiClient(
     fun createBuild(
         draft: ProjectDraft,
         projectZip: File?,
-        idempotencyKey: String? = null
+        idempotencyKey: String? = null,
+        cacheIdentityNonce: String? = null
     ): BuildCreateResult {
         if (
             draft.signingMode == SigningMode.CUSTOM &&
@@ -222,6 +223,18 @@ class BuildApiClient(
             put("buildOutput", draft.buildOutput)
             put("minSdk", draft.minSdk)
             put("targetSdk", draft.targetSdk)
+
+            /*
+             * Yalnız kontrollü test buildlerinde kullanılır.
+             * Normal buildlerde null olduğu için mevcut
+             * artifact cache davranışı değişmez.
+             */
+            if (!cacheIdentityNonce.isNullOrBlank()) {
+                put(
+                    "_cacheIdentityNonce",
+                    cacheIdentityNonce
+                )
+            }
 
             put("orientation", draft.orientation)
             put("primaryColor", draft.primaryColor)
