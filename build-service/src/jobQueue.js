@@ -9,6 +9,9 @@ import {
 } from "./proEntitlements.js";
 import { signalBuildQueue } from "./redis.js";
 import {
+  triggerWorkerAutoscale
+} from "./autoscaleDispatch.js";
+import {
   requiredSourceWorkerCapabilities
 } from "./sourceBuildIsolation.js";
 
@@ -343,6 +346,36 @@ export async function enqueueJob({
    * Redis yalnız worker'ı beklemeden uyandırır.
    */
   await signalBuildQueue();
+
+  /*
+   * Normal trafik GitHub workflow üretmesin.
+   * Queue burst eşik değerine ulaşırsa autoscaler
+   * hemen tetiklenir. Workflow gerçek replica
+   * ihtiyacını kendisi hesaplar.
+   */
+  const queuedAfter =
+    Number(
+      admission.queuedBefore ||
+      0
+    ) + 1;
+
+  if (
+    queuedAfter >=
+    config.autoscaleDispatchQueueThreshold
+  ) {
+    void triggerWorkerAutoscale({
+      reason:
+        `queue_burst_${queuedAfter}`
+    }).catch(error => {
+      console.warn(
+        "AUTOSCALE_DISPATCH ERROR:",
+        String(
+          error?.message ||
+          error
+        ).slice(0, 300)
+      );
+    });
+  }
 
   return admission;
 }

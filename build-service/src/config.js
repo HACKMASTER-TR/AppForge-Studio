@@ -254,6 +254,49 @@ export const config = {
     )
   ),
 
+  /*
+   * Queue burst -> GitHub Actions autoscale tetiklemesi.
+   * Railway Account Token build-service içine konmaz.
+   */
+  autoscaleDispatchEnabled: boolEnv(
+    "AUTOSCALE_DISPATCH_ENABLED",
+    false
+  ),
+  autoscaleDispatchToken:
+    String(
+      process.env.GITHUB_AUTOSCALE_TOKEN ||
+      ""
+    ).trim(),
+  autoscaleDispatchRepository:
+    String(
+      process.env.AUTOSCALE_DISPATCH_REPOSITORY ||
+      "HACKMASTER-TR/AppForge-Studio"
+    ).trim(),
+  autoscaleDispatchWorkflow:
+    String(
+      process.env.AUTOSCALE_DISPATCH_WORKFLOW ||
+      "worker-autoscale.yml"
+    ).trim(),
+  autoscaleDispatchRef:
+    String(
+      process.env.AUTOSCALE_DISPATCH_REF ||
+      "main"
+    ).trim(),
+  autoscaleDispatchCooldownSeconds: Math.max(
+    5,
+    Number(
+      process.env.AUTOSCALE_DISPATCH_COOLDOWN_SECONDS ||
+      60
+    )
+  ),
+  autoscaleDispatchQueueThreshold: Math.max(
+    1,
+    Number(
+      process.env.AUTOSCALE_DISPATCH_QUEUE_THRESHOLD ||
+      6
+    )
+  ),
+
   storageDriver:
     String(process.env.STORAGE_DRIVER || "local").toLowerCase(),
   s3Endpoint: String(process.env.S3_ENDPOINT || ""),

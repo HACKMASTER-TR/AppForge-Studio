@@ -209,6 +209,36 @@ export async function cacheSetJson(
   );
 }
 
+export async function acquireLease(
+  namespace,
+  identity,
+  ttlSeconds
+) {
+  return bestEffort(
+    async active => {
+      const result =
+        await active.set(
+          key(
+            "lease",
+            namespace,
+            identity
+          ),
+          String(Date.now()),
+          {
+            NX: true,
+            EX: Math.max(
+              1,
+              Math.floor(ttlSeconds)
+            )
+          }
+        );
+
+      return result === "OK";
+    },
+    null
+  );
+}
+
 function queueSignalKey() {
   return key("queue", "build-wakeup");
 }
