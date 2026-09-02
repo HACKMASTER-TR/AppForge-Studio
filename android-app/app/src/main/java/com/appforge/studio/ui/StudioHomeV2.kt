@@ -226,6 +226,7 @@ fun StudioHomeV2(
     onOpenAccount: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenTrash: () -> Unit,
+    onOpenAdmin: () -> Unit,
     onOpenPro: () -> Unit
 ) {
     val context = LocalContext.current
@@ -311,7 +312,7 @@ fun StudioHomeV2(
                                     onOpenAccount()
 
                                 fullAdmin ->
-                                    onOpenAccount()
+                                    onOpenAdmin()
 
                                 else ->
                                     onOpenPro()
@@ -362,6 +363,93 @@ fun StudioHomeV2(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (
+                fullAdmin
+            ) {
+                item {
+                    Card(
+                        onClick =
+                            onOpenAdmin,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .widthIn(
+                                    max = 980.dp
+                                ),
+                        shape =
+                            RoundedCornerShape(
+                                22.dp
+                            ),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor =
+                                    V2Warm
+                            )
+                    ) {
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        horizontal = 18.dp,
+                                        vertical = 16.dp
+                                    ),
+                            verticalAlignment =
+                                Alignment.CenterVertically,
+                            horizontalArrangement =
+                                Arrangement.SpaceBetween
+                        ) {
+                            Column(
+                                modifier =
+                                    Modifier.weight(
+                                        1f
+                                    ),
+                                verticalArrangement =
+                                    Arrangement.spacedBy(
+                                        4.dp
+                                    )
+                            ) {
+                                Text(
+                                    "⚙ YÖNETİCİ PANELİ",
+                                    color =
+                                        Color(
+                                            0xFF18100A
+                                        ),
+                                    fontWeight =
+                                        FontWeight.Black,
+                                    fontSize =
+                                        16.sp
+                                )
+
+                                Text(
+                                    "Hesap yönetimi • PRO yetkileri • Sistem durumu • Autoscale",
+                                    color =
+                                        Color(
+                                            0xFF382614
+                                        ),
+                                    fontSize =
+                                        12.sp,
+                                    lineHeight =
+                                        16.sp
+                                )
+                            }
+
+                            Text(
+                                "›",
+                                color =
+                                    Color(
+                                        0xFF18100A
+                                    ),
+                                fontWeight =
+                                    FontWeight.Black,
+                                fontSize =
+                                    28.sp
+                            )
+                        }
+                    }
+                }
+            }
+
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth().widthIn(max = 980.dp),

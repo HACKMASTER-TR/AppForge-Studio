@@ -699,7 +699,7 @@ fun AdminOpsScreen(
                     )
 
                     Text(
-                        "AppForge Studio 5.0.12 • Admin Console",
+                        "AppForge Studio 5.0.13 • Admin Console",
                         style =
                             MaterialTheme
                                 .typography

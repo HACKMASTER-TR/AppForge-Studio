@@ -3519,6 +3519,12 @@ private fun AppForgeApp() {
                             )
                         },
 
+                        onOpenAdmin = {
+                            openWorkspaceScreen(
+                                AppScreen.ADMIN_OPS
+                            )
+                        },
+
                         onOpenPro = {
                             screen =
                                 AppScreen.PRO
