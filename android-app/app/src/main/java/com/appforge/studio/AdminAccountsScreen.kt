@@ -485,7 +485,7 @@ fun AdminAccountsScreen(
                                 "GOOGLE PLAY • SATIN ALMA İLE YÖNETİLİR"
 
                             account.proActive ->
-                                "PRO • ADMIN"
+                                "PRO • YÖNETİCİ TARAFINDAN VERİLDİ"
 
                             else ->
                                 "FREE"

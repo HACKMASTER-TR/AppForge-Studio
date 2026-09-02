@@ -299,64 +299,119 @@ class StudioSecurityClient(
     suspend fun proStatus(
         userId: String
     ): ProStatus {
-        val cfg = config()
+
+        fun parseStatus(
+            json: JSONObject
+        ): ProStatus {
+            return ProStatus(
+                active =
+                    json.optBoolean(
+                        "active",
+                        false
+                    ),
+                source =
+                    json.optString(
+                        "source"
+                    ).takeIf {
+                        it.isNotBlank() &&
+                        it != "null"
+                    },
+                productId =
+                    json.optString(
+                        "productId"
+                    ).takeIf {
+                        it.isNotBlank() &&
+                        it != "null"
+                    },
+                expiresAt =
+                    json.optString(
+                        "expiresAt"
+                    ).takeIf {
+                        it.isNotBlank() &&
+                        it != "null"
+                    },
+                integrityRequired =
+                    json.optBoolean(
+                        "integrityRequired",
+                        true
+                    )
+            )
+        }
+
+        /*
+         * Önce doğrudan sunucu durumunu sor.
+         * admin_panel / admin_full_access gibi sunucu tarafından
+         * yönetilen PRO entitlement'lar burada doğrudan doğrulanır.
+         */
+        var directError: Throwable? =
+            null
+
+        try {
+            val direct =
+                request(
+                    path =
+                        "/api/pro/status",
+                    method =
+                        "GET",
+                    body =
+                        null,
+                    integritySession =
+                        null
+                )
+
+            return parseStatus(
+                direct
+            )
+
+        } catch (
+            error: Throwable
+        ) {
+            directError =
+                error
+        }
+
+        /*
+         * Sunucu direct isteği kabul etmediyse Google Play PRO
+         * olasılığı için mevcut Integrity akışına geç.
+         */
+        val cfg =
+            config()
+
+        if (
+            !cfg.integrityEnabled ||
+            !cfg.strictProIntegrity
+        ) {
+            throw (
+                directError
+                    ?: IllegalStateException(
+                        "Pro durumu doğrulanamadı."
+                    )
+            )
+        }
 
         val integritySession =
-            if (
-                cfg.integrityEnabled &&
-                cfg.strictProIntegrity
-            ) {
-                attest(
-                    userId,
-                    "pro_status"
-                )
-            } else {
-                null
-            }
+            attest(
+                userId,
+                "pro_status"
+            )
 
-        val json =
+        val verified =
             request(
-                path = "/api/pro/status",
-                method = "GET",
-                body = null,
+                path =
+                    "/api/pro/status",
+                method =
+                    "GET",
+                body =
+                    null,
                 integritySession =
                     integritySession
             )
 
-        return ProStatus(
-            active =
-                json.optBoolean(
-                    "active",
-                    false
-                ),
-            source =
-                json.optString(
-                    "source"
-                ).takeIf {
-                    it.isNotBlank() &&
-                    it != "null"
-                },
-            productId =
-                json.optString(
-                    "productId"
-                ).takeIf {
-                    it.isNotBlank() &&
-                    it != "null"
-                },
-            expiresAt =
-                json.optString(
-                    "expiresAt"
-                ).takeIf {
-                    it.isNotBlank() &&
-                    it != "null"
-                },
-            integrityRequired =
-                json.optBoolean(
-                    "integrityRequired",
-                    true
-                )
+        return parseStatus(
+            verified
         )
     }
+
 
     private fun request(
         path: String,

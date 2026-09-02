@@ -4948,26 +4948,50 @@ app.get(
   authRequired,
   async (req, res) => {
     try {
-      // Yönetici hesapları manuel/admin Pro yetkisini
-      // Play Integrity gerektirmeden doğrulayabilir.
+      const entitlement =
+        await getProEntitlement(
+          req.user.id
+        );
+
+      const entitlementSource =
+        String(
+          entitlement?.source ||
+          ""
+        )
+          .trim()
+          .toLowerCase();
+
+      const adminManagedEntitlement =
+        req.user.role === "admin" ||
+        [
+          "admin",
+          "admin_panel",
+          "admin_full_access"
+        ].includes(
+          entitlementSource
+        );
+
+      /*
+       * Admin tarafından verilen PRO Google Play satın alımı değildir.
+       * Bu entitlement Play Integrity olmadan doğrulanabilir.
+       *
+       * google_play / google_play_subscription kaynakları bu listeye
+       * dahil değildir; Google Play koruması aynen devam eder.
+       */
       if (
         config.proRequireIntegrity &&
-        req.user.role !== "admin"
+        !adminManagedEntitlement
       ) {
         requireIntegrityHeader(
           req
         );
       }
 
-      const entitlement =
-        await getProEntitlement(
-          req.user.id
-        );
-
       res.json({
         ...entitlement,
         integrityRequired:
-          config.proRequireIntegrity
+          config.proRequireIntegrity &&
+          !adminManagedEntitlement
       });
     } catch (error) {
       res
