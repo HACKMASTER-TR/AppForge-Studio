@@ -32,11 +32,21 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.appforge.studio.tools.OtherAppsUsageGate
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class VideoForgeActivity : AppCompatActivity() {
+
+    companion object {
+        const val EXTRA_PRO_UNLOCKED =
+            "appforge_pro_unlocked"
+    }
+
+    private var proUnlocked =
+        false
+
     private var selectedVideo: Uri? = null
     private val selectedQueue = mutableListOf<Uri>()
     private var lastOutput: Uri? = null
@@ -125,6 +135,13 @@ class VideoForgeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        proUnlocked =
+            intent.getBooleanExtra(
+                EXTRA_PRO_UNLOCKED,
+                false
+            )
+
         window.statusBarColor = Color.rgb(7, 17, 31)
         window.navigationBarColor = Color.rgb(7, 17, 31)
         buildUi()
@@ -301,6 +318,26 @@ class VideoForgeActivity : AppCompatActivity() {
                 12f,
                 muted
             )
+        )
+
+        body.addView(
+            text(
+                if (proUnlocked) {
+                    "PRO • Sınırsız kullanım"
+                } else {
+                    "Ücretsiz ortak hak: ${OtherAppsUsageGate.remaining(this)}/5"
+                },
+                12f,
+                accent,
+                true
+            ).apply {
+                setPadding(
+                    0,
+                    dp(6),
+                    0,
+                    0
+                )
+            }
         )
 
         // -------------------------------------------------
@@ -1274,6 +1311,45 @@ class VideoForgeActivity : AppCompatActivity() {
         refreshButtons()
     }
 
+    private fun claimUsage(
+        amount: Int = 1
+    ): Boolean {
+
+        if (
+            OtherAppsUsageGate.consume(
+                this,
+                proUnlocked,
+                amount
+            )
+        ) {
+            return true
+        }
+
+        status(
+            "5 ücretsiz ortak kullanım hakkın bitti. Devam etmek için PRO gerekli."
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle(
+                "PRO gerekli"
+            )
+            .setMessage(
+                "Excel Tools ve VideoForge için toplam 5 ücretsiz kullanım hakkını kullandın. PRO ile sınırsız devam edebilirsin."
+            )
+            .setNegativeButton(
+                "Kapat",
+                null
+            )
+            .setPositiveButton(
+                "PRO'YA GEÇ"
+            ) { _, _ ->
+                finish()
+            }
+            .show()
+
+        return false
+    }
+
     private fun currentOptions(preview: Boolean = false): StudioOptions {
         val target = StudioOptions.TARGETS.getOrElse(targetSpinner.selectedItemPosition) { StudioOptions.TARGETS.first() }.code
         val quality = when (qualitySpinner.selectedItemPosition) {
@@ -1314,8 +1390,25 @@ class VideoForgeActivity : AppCompatActivity() {
 
     private fun startSingle(uri: Uri, preview: Boolean) {
         if (!ModelManager(this).isReady()) { status("Önce AI modellerini hazırla."); return }
-        runCatching { StorageGuard.requireEnough(this, uri, if (preview) 30 else null) }
-            .onFailure { status(it.message ?: "Depolama kontrolü başarısız."); return }
+
+        runCatching {
+            StorageGuard.requireEnough(
+                this,
+                uri,
+                if (preview) 30 else null
+            )
+        }.onFailure {
+            status(
+                it.message
+                    ?: "Depolama kontrolü başarısız."
+            )
+            return
+        }
+
+        if (!claimUsage()) {
+            return
+        }
+
         val options = currentOptions(preview)
         val i = baseServiceIntent(DubForegroundService.MODE_DUB, options).apply {
             putExtra(DubForegroundService.EXTRA_VIDEO_URI, uri.toString())
@@ -1326,8 +1419,24 @@ class VideoForgeActivity : AppCompatActivity() {
     }
 
     private fun startQueue() {
-        if (selectedQueue.isEmpty()) { status("Önce kuyruğa video seç."); return }
-        if (!ModelManager(this).isReady()) { status("Önce AI modellerini hazırla."); return }
+        if (selectedQueue.isEmpty()) {
+            status("Önce kuyruğa video seç.")
+            return
+        }
+
+        if (!ModelManager(this).isReady()) {
+            status("Önce AI modellerini hazırla.")
+            return
+        }
+
+        if (
+            !claimUsage(
+                selectedQueue.size
+            )
+        ) {
+            return
+        }
+
         val i = baseServiceIntent(DubForegroundService.MODE_QUEUE, currentOptions(false)).apply {
             putStringArrayListExtra(DubForegroundService.EXTRA_VIDEO_URIS, ArrayList(selectedQueue.map { it.toString() }))
         }
@@ -1336,6 +1445,11 @@ class VideoForgeActivity : AppCompatActivity() {
     }
 
     private fun startUrl(url: String, preview: Boolean) {
+
+        if (!claimUsage()) {
+            return
+        }
+
         val i = baseServiceIntent(DubForegroundService.MODE_URL_DUB, currentOptions(preview)).apply {
             putExtra(DubForegroundService.EXTRA_VIDEO_URL, url)
             putExtra(DubForegroundService.EXTRA_SOURCE_LABEL, "URL videosu")
@@ -1399,6 +1513,10 @@ class VideoForgeActivity : AppCompatActivity() {
             status(
                 "Yerel cihaz bağlantıları desteklenmiyor."
             )
+            return
+        }
+
+        if (!claimUsage()) {
             return
         }
 

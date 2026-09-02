@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hackmaster.videoforge.VideoForgeActivity
+import com.appforge.studio.tools.OtherAppsUsageGate
 
 private val OtherAppsBg = Color(0xFF060711)
 private val OtherAppsCard = Color(0xFF101426)
@@ -39,7 +40,9 @@ private val OtherAppsAccent = Color(0xFF63D9FF)
 @Composable
 fun OtherAppsScreen(
     onBack: () -> Unit,
-    onOpenExcelTools: () -> Unit
+    onOpenExcelTools: () -> Unit,
+    proUnlocked: Boolean,
+    onOpenPro: () -> Unit
 ) {
     val context = LocalContext.current
     val videoForgeAndroidSupported =
@@ -93,8 +96,25 @@ fun OtherAppsScreen(
                     title = "AppForge Excel Tools",
                     description =
                         "XLSX, XLSM ve CSV dosyaları için cihaz üzerinde çalışan Excel araçları.",
-                    status = "Kullanıma hazır",
-                    onClick = onOpenExcelTools
+                    status =
+                        if (proUnlocked) {
+                            "PRO • Sınırsız kullanım"
+                        } else {
+                            "Ücretsiz ortak hak: ${OtherAppsUsageGate.remaining(context)}/5"
+                        },
+                    onClick = {
+                        if (
+                            proUnlocked ||
+                            OtherAppsUsageGate.canUse(
+                                context,
+                                false
+                            )
+                        ) {
+                            onOpenExcelTools()
+                        } else {
+                            onOpenPro()
+                        }
+                    }
                 )
             }
 
@@ -106,22 +126,40 @@ fun OtherAppsScreen(
                         "Cihaz üzerinde çok dilli video dublajı, konuşmacı ayırma, altyazı, önizleme, kuyruk ve doğrudan video URL işleme.",
                     status =
                         when {
-                            videoForgeSupported ->
-                                "Kullanıma hazır • V4.1.2"
                             !videoForgeAndroidSupported ->
                                 "Android 10 veya üzeri gerekli"
-                            else ->
+
+                            !videoForgeAbiSupported ->
                                 "64-bit ARM cihaz gerekli"
+
+                            proUnlocked ->
+                                "PRO • Sınırsız kullanım • V4.1.2"
+
+                            else ->
+                                "Ücretsiz ortak hak: ${OtherAppsUsageGate.remaining(context)}/5 • V4.1.2"
                         },
                     onClick =
                         if (videoForgeSupported) {
                             {
-                                context.startActivity(
-                                    Intent(
+                                if (
+                                    proUnlocked ||
+                                    OtherAppsUsageGate.canUse(
                                         context,
-                                        VideoForgeActivity::class.java
+                                        false
                                     )
-                                )
+                                ) {
+                                    context.startActivity(
+                                        Intent(
+                                            context,
+                                            VideoForgeActivity::class.java
+                                        ).putExtra(
+                                            VideoForgeActivity.EXTRA_PRO_UNLOCKED,
+                                            proUnlocked
+                                        )
+                                    )
+                                } else {
+                                    onOpenPro()
+                                }
                             }
                         } else {
                             null

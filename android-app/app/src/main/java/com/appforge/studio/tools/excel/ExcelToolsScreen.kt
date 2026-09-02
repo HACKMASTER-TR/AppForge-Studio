@@ -2,6 +2,8 @@
 
 package com.appforge.studio.tools.excel
 
+import com.appforge.studio.tools.OtherAppsUsageGate
+
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
@@ -56,7 +58,9 @@ private val ExcelAccent = Color(0xFF63D9FF)
 
 @Composable
 fun ExcelToolsScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    proUnlocked: Boolean,
+    onOpenPro: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -75,6 +79,23 @@ fun ExcelToolsScreen(
             contract = ActivityResultContracts.OpenDocument()
         ) { uri ->
             if (uri == null) return@rememberLauncherForActivityResult
+
+            if (
+                !OtherAppsUsageGate.consume(
+                    context,
+                    proUnlocked
+                )
+            ) {
+                statusTitle =
+                    "PRO gerekli"
+
+                statusText =
+                    "Excel Tools ve VideoForge için toplam 5 ücretsiz kullanım hakkın bitti."
+
+                onOpenPro()
+
+                return@rememberLauncherForActivityResult
+            }
 
             scope.launch {
                 busy = true
@@ -185,7 +206,12 @@ fun ExcelToolsScreen(
                             "✓ Formüller ve biçimlendirme korunur\n" +
                                 "✓ XLSM dosyalarında makrolar korunur\n" +
                                 "✓ XLSX, XLSM ve CSV desteği\n" +
-                                "✓ Maksimum dosya boyutu: 80 MB",
+                                "✓ Maksimum dosya boyutu: 80 MB\n" +
+                                if (proUnlocked) {
+                                    "✓ PRO: Sınırsız kullanım"
+                                } else {
+                                    "✓ Ücretsiz ortak hak: ${OtherAppsUsageGate.remaining(context)}/5"
+                                },
                             color = ExcelText,
                             fontSize = 13.sp,
                             lineHeight = 20.sp
@@ -193,9 +219,25 @@ fun ExcelToolsScreen(
 
                         Button(
                             onClick = {
-                                picker.launch(
-                                    arrayOf("*/*")
-                                )
+                                if (
+                                    proUnlocked ||
+                                    OtherAppsUsageGate.canUse(
+                                        context,
+                                        false
+                                    )
+                                ) {
+                                    picker.launch(
+                                        arrayOf("*/*")
+                                    )
+                                } else {
+                                    statusTitle =
+                                        "PRO gerekli"
+
+                                    statusText =
+                                        "5 ücretsiz ortak kullanım hakkın bitti. Devam etmek için PRO gerekli."
+
+                                    onOpenPro()
+                                }
                             },
                             enabled = !busy,
                             modifier =

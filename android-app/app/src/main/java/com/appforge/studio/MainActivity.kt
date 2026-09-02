@@ -3421,6 +3421,12 @@ private fun AppForgeApp() {
                         onOpenExcelTools = {
                             screen =
                                 AppScreen.EXCEL_TOOLS
+                        },
+                        proUnlocked =
+                            proStatus?.active == true,
+                        onOpenPro = {
+                            screen =
+                                AppScreen.PRO
                         }
                     )
 
@@ -3429,6 +3435,12 @@ private fun AppForgeApp() {
                         onBack = {
                             screen =
                                 AppScreen.OTHER_APPS
+                        },
+                        proUnlocked =
+                            proStatus?.active == true,
+                        onOpenPro = {
+                            screen =
+                                AppScreen.PRO
                         }
                     )
 
