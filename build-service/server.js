@@ -213,7 +213,7 @@ app.use("/api", (req, res, next) => {
 
   if (origin && isAllowedWebStudioOrigin(origin)) {
     res.set("Access-Control-Allow-Origin", origin);
-    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, X-AppForge-Device-ID");
+    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, X-AppForge-Device-ID, Idempotency-Key");
     res.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
     res.set("Vary", "Origin");
 

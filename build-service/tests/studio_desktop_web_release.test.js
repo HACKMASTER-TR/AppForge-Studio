@@ -24,6 +24,7 @@ test("Studio web release bundles V4, Monaco, ZIP runtime and trusted API CORS", 
   assert.ok(v4.includes("standaloneWeb || desktopLoopback"));
   assert.ok(v4.includes(".then(()=>initMonaco())"));
   assert.ok(server.includes("isAllowedWebStudioOrigin"));
+  assert.ok(server.includes("Idempotency-Key"));
   assert.ok(server.includes("127\\.0\\.0\\.1"));
   assert.ok(config.includes("WEB_STUDIO_ALLOWED_ORIGINS"));
   assert.ok(workflow.includes("actions/deploy-pages@v4"));
