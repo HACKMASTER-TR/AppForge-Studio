@@ -5,6 +5,11 @@ on:
     - cron: "*/5 * * * *"
 
   workflow_dispatch:
+    inputs:
+      min_replicas:
+        description: "Manual test minimum replica count"
+        required: false
+        default: "3"
 
 permissions:
   contents: read
@@ -19,7 +24,7 @@ env:
 
   # Production tabanı:
   # 3 replica x yaklaşık 2 slot = 6 Android build slotu
-  AUTOSCALE_MIN_REPLICAS: "3"
+  AUTOSCALE_MIN_REPLICAS: ${{ github.event_name == 'workflow_dispatch' && inputs.min_replicas || '3' }}
 
   # Railway toplam replica üst sınırı.
   # 50 replica x yaklaşık 2 slot = 100 build slotu.
