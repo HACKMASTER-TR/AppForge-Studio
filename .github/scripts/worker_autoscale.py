@@ -424,136 +424,6 @@ def distribute(regions, desired):
     return result
 
 
-def verify_api_token_access(
-    project_id
-):
-    if not API_TOKEN:
-        raise RuntimeError(
-            "RAILWAY_API_TOKEN tanımlı değil."
-        )
-
-    me_payload = json.dumps({
-        "query": """
-        query {
-          me {
-            id
-            name
-          }
-        }
-        """
-    })
-
-    me_raw = run([
-        "curl",
-        "--silent",
-        "--show-error",
-        "--fail-with-body",
-        "--request",
-        "POST",
-        "--url",
-        RAILWAY_GRAPHQL,
-        "--header",
-        (
-            "Authorization: Bearer "
-            + API_TOKEN
-        ),
-        "--header",
-        "Content-Type: application/json",
-        "--data-binary",
-        me_payload
-    ])
-
-    me_response = json.loads(me_raw)
-
-    if me_response.get("errors"):
-        raise RuntimeError(
-            "Account token doğrulaması başarısız: "
-            + json.dumps(
-                me_response["errors"],
-                ensure_ascii=False
-            )
-        )
-
-    me = (
-        me_response
-        .get("data", {})
-        .get("me")
-    )
-
-    if not me:
-        raise RuntimeError(
-            "Account token geçerli kullanıcı döndürmedi."
-        )
-
-    print(
-        "Account token authentication OK:",
-        me.get("name")
-        or me.get("id")
-    )
-
-    payload = json.dumps({
-        "query": """
-        query($id: String!) {
-          project(id: $id) {
-            id
-            name
-          }
-        }
-        """,
-        "variables": {
-            "id": project_id
-        }
-    })
-
-    raw = run([
-        "curl",
-        "--silent",
-        "--show-error",
-        "--fail-with-body",
-        "--request",
-        "POST",
-        "--url",
-        RAILWAY_GRAPHQL,
-        "--header",
-        (
-            "Authorization: Bearer "
-            + API_TOKEN
-        ),
-        "--header",
-        "Content-Type: application/json",
-        "--header",
-        "Accept: application/json",
-        "--data-binary",
-        payload
-    ])
-
-    response = json.loads(raw)
-
-    if response.get("errors"):
-        raise RuntimeError(
-            "Workspace token proje erişimi başarısız: "
-            + json.dumps(
-                response["errors"],
-                ensure_ascii=False
-            )
-        )
-
-    project = (
-        response
-        .get("data", {})
-        .get("project")
-    )
-
-    if not project:
-        raise RuntimeError(
-            "Workspace token hedef AppForge projesini göremiyor."
-        )
-
-    print(
-        "Workspace token project access OK:",
-        project.get("name")
-    )
-
 
 def scale(
     project_id,
@@ -561,14 +431,6 @@ def scale(
     service_id,
     targets
 ):
-    print(
-        "API token proje erişimi kontrol ediliyor..."
-    )
-
-    verify_api_token_access(
-        project_id
-    )
-
     api_env = railway_env(
         api=True
     )
@@ -577,7 +439,7 @@ def scale(
         "Railway CLI link başlatılıyor..."
     )
 
-    # Workspace API token project-scoped değildir.
+    # Account token project-scoped değildir.
     # Önce hedef project/environment/service açıkça linklenir.
     run(
         [
