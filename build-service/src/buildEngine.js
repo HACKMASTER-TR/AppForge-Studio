@@ -7370,7 +7370,9 @@ function generatedMainActivity(c, pkg) {
         ${kotlinList(subIds)}
 
     private fun consumableProductIds(): Set<String> =
-        ${kotlinList(consumableIds)}.toSet()
+        ${consumableIds.length
+          ? `${kotlinList(consumableIds)}.toSet()`
+          : "emptySet()"}
 
     private fun queryBillingProducts() {
         queryProductType(

@@ -46,6 +46,18 @@ test("Billing 9 query uses explicit ProductDetailsResponseListener", async () =>
   );
 });
 
+test("Billing empty consumable ids generate a typed empty set", async () => {
+  const source = await readFile(
+    new URL("../src/buildEngine.js", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(
+    source,
+    /consumableIds\.length[\s\S]*?"emptySet\(\)"/
+  );
+});
+
 test("all terminal build states are cleared when leaving build step", async () => {
   const source = await readFile(
     new URL(
