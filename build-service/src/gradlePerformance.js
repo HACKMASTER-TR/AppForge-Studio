@@ -101,8 +101,9 @@ export function gradlePerformanceProfile(
       name:
         "low-memory",
       maxWorkers: 1,
-      heapMb: 320,
-      metaspaceMb: 256,
+      heapMb: 1536,
+      metaspaceMb: 512,
+      codeCacheMb: 128,
       parallel: false,
       incremental: false,
       gc:

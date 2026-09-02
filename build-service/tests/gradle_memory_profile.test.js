@@ -31,6 +31,21 @@ test(
       false
     );
 
+    assert.equal(
+      profile.heapMb,
+      1536
+    );
+
+    assert.equal(
+      profile.metaspaceMb,
+      512
+    );
+
+    assert.equal(
+      profile.codeCacheMb,
+      128
+    );
+
     assert.ok(
       args.includes(
         `-Dorg.gradle.jvmargs=${gradleJvmOptions(profile)}`

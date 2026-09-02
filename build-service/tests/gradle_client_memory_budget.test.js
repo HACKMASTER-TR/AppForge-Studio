@@ -38,12 +38,12 @@ test(
 
     assert.match(
       daemon,
-      /-Xmx320m/
+      /-Xmx1536m/
     );
 
     assert.match(
       daemon,
-      /MaxMetaspaceSize=256m/
+      /MaxMetaspaceSize=512m/
     );
 
     assert.notEqual(
