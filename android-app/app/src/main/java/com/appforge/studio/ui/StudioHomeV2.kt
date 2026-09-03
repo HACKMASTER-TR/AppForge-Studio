@@ -248,8 +248,23 @@ fun StudioHomeV2(
                 ignoreCase = true
             ) == true
 
-    val projects = remember { ProjectLibrary.load(context) }
-    val builds = remember { ProjectLibrary.loadBuilds(context) }
+    val projects =
+        remember(
+            accountEmail
+        ) {
+            ProjectLibrary.load(
+                context
+            )
+        }
+
+    val builds =
+        remember(
+            accountEmail
+        ) {
+            ProjectLibrary.loadBuilds(
+                context
+            )
+        }
     val successfulBuilds = remember(builds) { builds.count { it.status == "success" } }
     val latestBuild = remember(builds) { builds.maxByOrNull { it.createdAt } }
 

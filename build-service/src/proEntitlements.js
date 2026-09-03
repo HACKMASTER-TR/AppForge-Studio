@@ -362,11 +362,28 @@ export function configNeedsPro(
   }
 
   if (
+    c?.admob?.enabled
+  ) {
+    reasons.push(
+      "admob"
+    );
+  }
+
+  if (
     c?.firebase?.crashlytics ||
-    c?.firebase?.analytics
+    c?.firebase?.analytics ||
+    c?.firebase?.messaging
   ) {
     reasons.push(
       "firebase"
+    );
+  }
+
+  if (
+    c?.deepLink?.enabled
+  ) {
+    reasons.push(
+      "deep_link"
     );
   }
 

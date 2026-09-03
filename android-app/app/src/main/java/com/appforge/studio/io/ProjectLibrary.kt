@@ -43,21 +43,169 @@ object ProjectLibrary {
     private const val TRASH_RETENTION_MS =
         30L * 24L * 60L * 60L * 1000L
 
-    private fun projectFile(context: Context) =
-        File(context.filesDir, "project_library.json")
+    @Volatile
+    private var activeAccountScope =
+        "guest"
 
-    private fun trashFile(context: Context) =
-        File(context.filesDir, "project_trash.json")
+    private fun safeAccountScope(
+        userId: String?
+    ): String {
+        val value =
+            userId
+                ?.trim()
+                ?.lowercase()
+                .orEmpty()
 
-    private fun buildFile(context: Context) =
-        File(context.filesDir, "build_history.json")
+        if (
+            value.isBlank()
+        ) {
+            return "guest"
+        }
 
+        return value
+            .replace(
+                Regex(
+                    "[^a-z0-9_-]"
+                ),
+                "_"
+            )
+            .take(
+                96
+            )
+            .ifBlank {
+                "guest"
+            }
+    }
+
+    fun setAccountScope(
+        context: Context,
+        userId: String?
+    ) {
+        val next =
+            safeAccountScope(
+                userId
+            )
+
+        if (
+            activeAccountScope ==
+            next
+        ) {
+            return
+        }
+
+        activeAccountScope =
+            next
+
+        if (
+            !userId
+                .isNullOrBlank()
+        ) {
+            migrateLegacyFilesOnce(
+                context
+            )
+        }
+    }
+
+    private fun scopedFile(
+        context: Context,
+        baseName: String
+    ): File {
+        val stem =
+            baseName
+                .removeSuffix(
+                    ".json"
+                )
+
+        return File(
+            context.filesDir,
+            "${stem}_${activeAccountScope}.json"
+        )
+    }
+
+    private fun migrateLegacyFilesOnce(
+        context: Context
+    ) {
+        val marker =
+            File(
+                context.filesDir,
+                "account_scoped_library_v1.done"
+            )
+
+        if (
+            marker.exists()
+        ) {
+            return
+        }
+
+        listOf(
+            "project_library.json",
+            "project_trash.json",
+            "build_history.json",
+            "free_project_slots.json"
+        ).forEach {
+            baseName ->
+
+            val legacy =
+                File(
+                    context.filesDir,
+                    baseName
+                )
+
+            val target =
+                scopedFile(
+                    context,
+                    baseName
+                )
+
+            if (
+                legacy.isFile &&
+                !target.exists()
+            ) {
+                runCatching {
+                    legacy.copyTo(
+                        target,
+                        overwrite = false
+                    )
+
+                    legacy.delete()
+                }
+            }
+        }
+
+        marker.writeText(
+            activeAccountScope
+        )
+    }
+
+    private fun projectFile(
+        context: Context
+    ) =
+        scopedFile(
+            context,
+            "project_library.json"
+        )
+
+    private fun trashFile(
+        context: Context
+    ) =
+        scopedFile(
+            context,
+            "project_trash.json"
+        )
+
+    private fun buildFile(
+        context: Context
+    ) =
+        scopedFile(
+            context,
+            "build_history.json"
+        )
 
     private fun slotFile(
         context: Context
     ) =
-        File(
-            context.filesDir,
+        scopedFile(
+            context,
             "free_project_slots.json"
         )
 

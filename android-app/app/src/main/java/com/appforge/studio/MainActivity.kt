@@ -780,6 +780,35 @@ private fun AppForgeApp() {
                 .loadSession(context)
         )
     }
+
+    ProjectLibrary.setAccountScope(
+        context,
+        session?.userId
+    )
+
+    LaunchedEffect(
+        session?.userId
+    ) {
+        /*
+         * Hesap değiştiğinde önceki hesabın açık projesini
+         * yeni hesaba taşımıyoruz.
+         */
+        currentProjectId =
+            null
+
+        autosaveBaseline =
+            null
+
+        sourceAnalysis =
+            null
+
+        draft =
+            ProjectDraft()
+
+        serverUrl =
+            draft.buildServiceUrl
+    }
+
     var prefs by remember { mutableStateOf(AppSettingsStore.load(context)) }
     var proStatus by remember { mutableStateOf<ProStatus?>(null) }
     var proSecurityMessage by remember { mutableStateOf("") }
@@ -3638,6 +3667,12 @@ private fun AppForgeApp() {
                     QuickCreateScreen(
                         draft = draft,
                         status = status,
+                        isPro =
+                            proStatus?.active == true,
+                        onOpenPro = {
+                            screen =
+                                AppScreen.PRO
+                        },
                         onDraftChange = {
                             draft = it
                         },
@@ -4422,19 +4457,57 @@ private fun AppForgeApp() {
                             }
 
                             5 -> NativeBridgeStep(
-                                draft,
-                                sourceAnalysis
-                            ) { draft = it }
-
-                            6 -> MonetizationStep(
-                                draft = draft,
-                                update = { draft = it },
-                                onPickFirebase = {
-                                    firebasePicker.launch(arrayOf("application/json", "text/json", "text/plain"))
+                                d = draft,
+                                analysis =
+                                    sourceAnalysis,
+                                isPro =
+                                    proStatus?.active == true,
+                                onOpenPro = {
+                                    screen =
+                                        AppScreen.PRO
+                                },
+                                update = {
+                                    draft =
+                                        it
                                 }
                             )
 
-                            7 -> DeepLinkStep(draft) { draft = it }
+                            6 -> MonetizationStep(
+                                draft = draft,
+                                update = {
+                                    draft =
+                                        it
+                                },
+                                isPro =
+                                    proStatus?.active == true,
+                                onOpenPro = {
+                                    screen =
+                                        AppScreen.PRO
+                                },
+                                onPickFirebase = {
+                                    firebasePicker.launch(
+                                        arrayOf(
+                                            "application/json",
+                                            "text/json",
+                                            "text/plain"
+                                        )
+                                    )
+                                }
+                            )
+
+                            7 -> DeepLinkStep(
+                                d = draft,
+                                update = {
+                                    draft =
+                                        it
+                                },
+                                isPro =
+                                    proStatus?.active == true,
+                                onOpenPro = {
+                                    screen =
+                                        AppScreen.PRO
+                                }
+                            )
 
                             8 -> SigningStep(
                                 d = draft,
@@ -5379,6 +5452,77 @@ private fun CreateModeCard(
     }
 }
 
+private fun handleProFeatureToggle(
+    isPro: Boolean,
+    feature: String,
+    enabled: Boolean,
+    onRequirePro: (String) -> Unit,
+    apply: (Boolean) -> Unit
+) {
+    if (
+        enabled &&
+        !isPro
+    ) {
+        onRequirePro(
+            feature
+        )
+    } else {
+        apply(
+            enabled
+        )
+    }
+}
+
+@Composable
+private fun ProFeatureRequiredDialog(
+    feature: String?,
+    onDismiss: () -> Unit,
+    onOpenPro: () -> Unit
+) {
+    if (
+        feature == null
+    ) {
+        return
+    }
+
+    AlertDialog(
+        onDismissRequest =
+            onDismiss,
+        title = {
+            Text(
+                "PRO özelliği"
+            )
+        },
+        text = {
+            Text(
+                "$feature özelliğini kullanmak için AppForge PRO gereklidir."
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onDismiss()
+                    onOpenPro()
+                }
+            ) {
+                Text(
+                    "PRO'YU GÖR"
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick =
+                    onDismiss
+            ) {
+                Text(
+                    "İPTAL"
+                )
+            }
+        }
+    )
+}
+
 @Composable
 private fun QuickCreateScreen(
     draft: ProjectDraft,
@@ -5390,8 +5534,28 @@ private fun QuickCreateScreen(
     onPickFirebase: () -> Unit,
     onAdvanced: () -> Unit,
     onPreview: () -> Unit,
-    onBuild: () -> Unit
+    onBuild: () -> Unit,
+    isPro: Boolean,
+    onOpenPro: () -> Unit
 ) {
+    var proFeatureRequest by
+        remember {
+            mutableStateOf<String?>(
+                null
+            )
+        }
+
+    ProFeatureRequiredDialog(
+        feature =
+            proFeatureRequest,
+        onDismiss = {
+            proFeatureRequest =
+                null
+        },
+        onOpenPro =
+            onOpenPro
+    )
+
     val quickConfiguration =
         LocalConfiguration.current
 
@@ -6046,27 +6210,42 @@ private fun QuickCreateScreen(
                             onCheckedChange = {
                                 enabled ->
 
-                                onDraftChange(
-                                    draft.copy(
-                                        deepLinkEnabled =
-                                            enabled,
-                                        deepLinkScheme =
-                                            if (enabled) {
-                                                "appforge"
-                                            } else {
-                                                draft.deepLinkScheme
-                                            },
-                                        deepLinkHost =
-                                            if (enabled) {
-                                                draft.packageName
-                                                    .lowercase()
-                                            } else {
-                                                draft.deepLinkHost
-                                            },
-                                        deepLinkPathPrefix =
-                                            "/"
+                                handleProFeatureToggle(
+                                    isPro =
+                                        isPro,
+                                    feature =
+                                        "Deep Link",
+                                    enabled =
+                                        enabled,
+                                    onRequirePro = {
+                                        proFeatureRequest =
+                                            it
+                                    }
+                                ) {
+                                    allowed ->
+
+                                    onDraftChange(
+                                        draft.copy(
+                                            deepLinkEnabled =
+                                                allowed,
+                                            deepLinkScheme =
+                                                if (allowed) {
+                                                    "appforge"
+                                                } else {
+                                                    draft.deepLinkScheme
+                                                },
+                                            deepLinkHost =
+                                                if (allowed) {
+                                                    draft.packageName
+                                                        .lowercase()
+                                                } else {
+                                                    draft.deepLinkHost
+                                                },
+                                            deepLinkPathPrefix =
+                                                "/"
+                                        )
                                     )
-                                )
+                                }
                             }
                         )
                     }
@@ -6206,15 +6385,38 @@ private fun QuickCreateScreen(
                                     SourceMode.URL
                             ) {
                                 Toggle(
-                                    "🌐 Uzak site Native Bridge",
+                                    if (
+                                        isPro
+                                    ) {
+                                        "🌐 Uzak site Native Bridge"
+                                    } else {
+                                        "🌐 Uzak site Native Bridge • PRO"
+                                    },
                                     draft.remoteBridgeAllowed
                                 ) {
-                                    onDraftChange(
-                                        draft.copy(
-                                            remoteBridgeAllowed =
+                                    enabled ->
+
+                                    handleProFeatureToggle(
+                                        isPro =
+                                            isPro,
+                                        feature =
+                                            "Uzak site Native Bridge",
+                                        enabled =
+                                            enabled,
+                                        onRequirePro = {
+                                            proFeatureRequest =
                                                 it
+                                        }
+                                    ) {
+                                        allowed ->
+
+                                        onDraftChange(
+                                            draft.copy(
+                                                remoteBridgeAllowed =
+                                                    allowed
+                                            )
                                         )
-                                    )
+                                    }
                                 }
 
                                 Text(
@@ -6238,22 +6440,45 @@ private fun QuickCreateScreen(
                         // ==========================================
 
                         Toggle(
-                            "💰 AdMob",
+                            if (
+                                isPro
+                            ) {
+                                "💰 AdMob"
+                            } else {
+                                "💰 AdMob • PRO"
+                            },
                             draft.admobEnabled
                         ) {
-                            onDraftChange(
-                                draft.copy(
-                                    admobEnabled =
-                                        it,
+                            enabled ->
 
-                                    umpConsentEnabled =
-                                        if (it) {
-                                            draft.umpConsentEnabled
-                                        } else {
-                                            false
-                                        }
+                            handleProFeatureToggle(
+                                isPro =
+                                    isPro,
+                                feature =
+                                    "Google AdMob",
+                                enabled =
+                                    enabled,
+                                onRequirePro = {
+                                    proFeatureRequest =
+                                        it
+                                }
+                            ) {
+                                allowed ->
+
+                                onDraftChange(
+                                    draft.copy(
+                                        admobEnabled =
+                                            allowed,
+
+                                        umpConsentEnabled =
+                                            if (allowed) {
+                                                draft.umpConsentEnabled
+                                            } else {
+                                                false
+                                            }
+                                    )
                                 )
-                            )
+                            }
                         }
 
                         if (
@@ -6377,15 +6602,38 @@ private fun QuickCreateScreen(
                         // ==========================================
 
                         Toggle(
-                            "🛒 Google Play Billing",
+                            if (
+                                isPro
+                            ) {
+                                "🛒 Google Play Billing"
+                            } else {
+                                "🛒 Google Play Billing • PRO"
+                            },
                             draft.billingEnabled
                         ) {
-                            onDraftChange(
-                                draft.copy(
-                                    billingEnabled =
+                            enabled ->
+
+                            handleProFeatureToggle(
+                                isPro =
+                                    isPro,
+                                feature =
+                                    "Google Play Billing",
+                                enabled =
+                                    enabled,
+                                onRequirePro = {
+                                    proFeatureRequest =
                                         it
+                                }
+                            ) {
+                                allowed ->
+
+                                onDraftChange(
+                                    draft.copy(
+                                        billingEnabled =
+                                            allowed
+                                    )
                                 )
-                            )
+                            }
                         }
 
                         if (
@@ -6471,45 +6719,114 @@ private fun QuickCreateScreen(
                         // ==========================================
 
                         Toggle(
-                            "📊 Firebase Analytics",
+                            if (
+                                isPro
+                            ) {
+                                "📊 Firebase Analytics"
+                            } else {
+                                "📊 Firebase Analytics • PRO"
+                            },
                             draft.firebaseAnalyticsEnabled
                         ) {
-                            onDraftChange(
-                                draft.copy(
-                                    firebaseAnalyticsEnabled =
+                            enabled ->
+
+                            handleProFeatureToggle(
+                                isPro =
+                                    isPro,
+                                feature =
+                                    "Firebase Analytics",
+                                enabled =
+                                    enabled,
+                                onRequirePro = {
+                                    proFeatureRequest =
                                         it
+                                }
+                            ) {
+                                allowed ->
+
+                                onDraftChange(
+                                    draft.copy(
+                                        firebaseAnalyticsEnabled =
+                                            allowed
+                                    )
                                 )
-                            )
+                            }
                         }
 
                         Toggle(
-                            "💥 Firebase Crashlytics",
+                            if (
+                                isPro
+                            ) {
+                                "💥 Firebase Crashlytics"
+                            } else {
+                                "💥 Firebase Crashlytics • PRO"
+                            },
                             draft.firebaseCrashlyticsEnabled
                         ) {
-                            onDraftChange(
-                                draft.copy(
-                                    firebaseCrashlyticsEnabled =
+                            enabled ->
+
+                            handleProFeatureToggle(
+                                isPro =
+                                    isPro,
+                                feature =
+                                    "Firebase Crashlytics",
+                                enabled =
+                                    enabled,
+                                onRequirePro = {
+                                    proFeatureRequest =
                                         it
+                                }
+                            ) {
+                                allowed ->
+
+                                onDraftChange(
+                                    draft.copy(
+                                        firebaseCrashlyticsEnabled =
+                                            allowed
+                                    )
                                 )
-                            )
+                            }
                         }
 
                         Toggle(
-                            "🔔 Firebase Cloud Messaging",
+                            if (
+                                isPro
+                            ) {
+                                "🔔 Firebase Cloud Messaging"
+                            } else {
+                                "🔔 Firebase Cloud Messaging • PRO"
+                            },
                             draft.firebaseMessagingEnabled
                         ) {
-                            onDraftChange(
-                                draft.copy(
-                                    firebaseMessagingEnabled =
-                                        it,
-                                    notifications =
-                                        if (it) {
-                                            true
-                                        } else {
-                                            draft.notifications
-                                        }
+                            enabled ->
+
+                            handleProFeatureToggle(
+                                isPro =
+                                    isPro,
+                                feature =
+                                    "Firebase Cloud Messaging",
+                                enabled =
+                                    enabled,
+                                onRequirePro = {
+                                    proFeatureRequest =
+                                        it
+                                }
+                            ) {
+                                allowed ->
+
+                                onDraftChange(
+                                    draft.copy(
+                                        firebaseMessagingEnabled =
+                                            allowed,
+                                        notifications =
+                                            if (allowed) {
+                                                true
+                                            } else {
+                                                draft.notifications
+                                            }
+                                    )
                                 )
-                            )
+                            }
                         }
 
                         if (
@@ -13733,8 +14050,28 @@ private fun AppearanceStep(
 private fun NativeBridgeStep(
     d: ProjectDraft,
     analysis: SourceCapabilityAnalysis?,
+    isPro: Boolean,
+    onOpenPro: () -> Unit,
     update: (ProjectDraft) -> Unit
 ) {
+    var proFeatureRequest by
+        remember {
+            mutableStateOf<String?>(
+                null
+            )
+        }
+
+    ProFeatureRequiredDialog(
+        feature =
+            proFeatureRequest,
+        onDismiss = {
+            proFeatureRequest =
+                null
+        },
+        onOpenPro =
+            onOpenPro
+    )
+
     val formCompact =
         LocalConfiguration.current
             .screenWidthDp < 380
@@ -13955,18 +14292,41 @@ private fun NativeBridgeStep(
                 item {
                     FeatureToggleCard(
                         title =
-                            "Uzak URL'de Native Bridge",
+                            if (
+                                isPro
+                            ) {
+                                "Uzak URL'de Native Bridge"
+                            } else {
+                                "Uzak URL'de Native Bridge • PRO"
+                            },
                         description =
                             "Bridge yalnız seçtiğin HTTPS web kaynağında kullanılabilir.",
                         checked =
                             d.remoteBridgeAllowed
                     ) {
-                        update(
-                            d.copy(
-                                remoteBridgeAllowed =
+                        enabled ->
+
+                        handleProFeatureToggle(
+                            isPro =
+                                isPro,
+                            feature =
+                                "Uzak URL'de Native Bridge",
+                            enabled =
+                                enabled,
+                            onRequirePro = {
+                                proFeatureRequest =
                                     it
+                            }
+                        ) {
+                            allowed ->
+
+                            update(
+                                d.copy(
+                                    remoteBridgeAllowed =
+                                        allowed
+                                )
                             )
-                        )
+                        }
                     }
                 }
 
@@ -14344,8 +14704,28 @@ private fun NativeBridgeStep(
 private fun MonetizationStep(
     draft: ProjectDraft,
     update: (ProjectDraft) -> Unit,
+    isPro: Boolean,
+    onOpenPro: () -> Unit,
     onPickFirebase: () -> Unit
 ) {
+    var proFeatureRequest by
+        remember {
+            mutableStateOf<String?>(
+                null
+            )
+        }
+
+    ProFeatureRequiredDialog(
+        feature =
+            proFeatureRequest,
+        onDismiss = {
+            proFeatureRequest =
+                null
+        },
+        onOpenPro =
+            onOpenPro
+    )
+
     val formCompact =
         LocalConfiguration.current
             .screenWidthDp < 380
@@ -14491,18 +14871,41 @@ private fun MonetizationStep(
         item {
             FeatureToggleCard(
                 title =
-                    "Google AdMob",
+                    if (
+                        isPro
+                    ) {
+                        "Google AdMob"
+                    } else {
+                        "Google AdMob • PRO"
+                    },
                 description =
                     "Banner, geçiş ve ödüllü reklam SDK'sını uygulamaya ekler.",
                 checked =
                     draft.admobEnabled
             ) {
-                update(
-                    draft.copy(
-                        admobEnabled =
+                enabled ->
+
+                handleProFeatureToggle(
+                    isPro =
+                        isPro,
+                    feature =
+                        "Google AdMob",
+                    enabled =
+                        enabled,
+                    onRequirePro = {
+                        proFeatureRequest =
                             it
+                    }
+                ) {
+                    allowed ->
+
+                    update(
+                        draft.copy(
+                            admobEnabled =
+                                allowed
+                        )
                     )
-                )
+                }
             }
         }
 
@@ -14688,18 +15091,41 @@ private fun MonetizationStep(
         item {
             FeatureToggleCard(
                 title =
-                    "Google Play Billing",
+                    if (
+                        isPro
+                    ) {
+                        "Google Play Billing"
+                    } else {
+                        "Google Play Billing • PRO"
+                    },
                 description =
                     "Tek seferlik ürünler, abonelikler ve uygulama içi satın almaları etkinleştirir.",
                 checked =
                     draft.billingEnabled
             ) {
-                update(
-                    draft.copy(
-                        billingEnabled =
+                enabled ->
+
+                handleProFeatureToggle(
+                    isPro =
+                        isPro,
+                    feature =
+                        "Google Play Billing",
+                    enabled =
+                        enabled,
+                    onRequirePro = {
+                        proFeatureRequest =
                             it
+                    }
+                ) {
+                    allowed ->
+
+                    update(
+                        draft.copy(
+                            billingEnabled =
+                                allowed
+                        )
                     )
-                )
+                }
             }
         }
 
@@ -14936,60 +15362,129 @@ private fun MonetizationStep(
         item {
             FeatureToggleCard(
                 title =
-                    "Firebase Analytics",
+                    if (
+                        isPro
+                    ) {
+                        "Firebase Analytics"
+                    } else {
+                        "Firebase Analytics • PRO"
+                    },
                 description =
                     "Uygulama kullanım olaylarını Firebase Analytics ile ölçer.",
                 checked =
                     draft.firebaseAnalyticsEnabled
             ) {
-                update(
-                    draft.copy(
-                        firebaseAnalyticsEnabled =
+                enabled ->
+
+                handleProFeatureToggle(
+                    isPro =
+                        isPro,
+                    feature =
+                        "Firebase Analytics",
+                    enabled =
+                        enabled,
+                    onRequirePro = {
+                        proFeatureRequest =
                             it
+                    }
+                ) {
+                    allowed ->
+
+                    update(
+                        draft.copy(
+                            firebaseAnalyticsEnabled =
+                                allowed
+                        )
                     )
-                )
+                }
             }
         }
 
         item {
             FeatureToggleCard(
                 title =
-                    "Firebase Crashlytics",
+                    if (
+                        isPro
+                    ) {
+                        "Firebase Crashlytics"
+                    } else {
+                        "Firebase Crashlytics • PRO"
+                    },
                 description =
                     "Uygulama çökmelerini ve hata raporlarını Firebase Crashlytics'e gönderir.",
                 checked =
                     draft.firebaseCrashlyticsEnabled
             ) {
-                update(
-                    draft.copy(
-                        firebaseCrashlyticsEnabled =
+                enabled ->
+
+                handleProFeatureToggle(
+                    isPro =
+                        isPro,
+                    feature =
+                        "Firebase Crashlytics",
+                    enabled =
+                        enabled,
+                    onRequirePro = {
+                        proFeatureRequest =
                             it
+                    }
+                ) {
+                    allowed ->
+
+                    update(
+                        draft.copy(
+                            firebaseCrashlyticsEnabled =
+                                allowed
+                        )
                     )
-                )
+                }
             }
         }
 
         item {
             FeatureToggleCard(
                 title =
-                    "Firebase Cloud Messaging",
+                    if (
+                        isPro
+                    ) {
+                        "Firebase Cloud Messaging"
+                    } else {
+                        "Firebase Cloud Messaging • PRO"
+                    },
                 description =
                     "Push bildirimlerini, foreground mesajlarını ve data mesajlarını FCM ile alır.",
                 checked =
                     draft.firebaseMessagingEnabled
             ) {
-                update(
-                    draft.copy(
-                        firebaseMessagingEnabled =
-                            it,
-                        notifications =
-                            if (it) {
-                                true
-                            } else {
-                                draft.notifications
-                            }
+                enabled ->
+
+                handleProFeatureToggle(
+                    isPro =
+                        isPro,
+                    feature =
+                        "Firebase Cloud Messaging",
+                    enabled =
+                        enabled,
+                    onRequirePro = {
+                        proFeatureRequest =
+                            it
+                    }
+                ) {
+                    allowed ->
+
+                    update(
+                        draft.copy(
+                            firebaseMessagingEnabled =
+                                allowed,
+                            notifications =
+                                if (allowed) {
+                                    true
+                                } else {
+                                    draft.notifications
+                                }
+                        )
                     )
-                )
+                }
             }
         }
 
@@ -15119,8 +15614,28 @@ private fun MonetizationStep(
 @Composable
 private fun DeepLinkStep(
     d: ProjectDraft,
-    update: (ProjectDraft) -> Unit
+    update: (ProjectDraft) -> Unit,
+    isPro: Boolean,
+    onOpenPro: () -> Unit
 ) {
+    var proFeatureRequest by
+        remember {
+            mutableStateOf<String?>(
+                null
+            )
+        }
+
+    ProFeatureRequiredDialog(
+        feature =
+            proFeatureRequest,
+        onDismiss = {
+            proFeatureRequest =
+                null
+        },
+        onOpenPro =
+            onOpenPro
+    )
+
     val formCompact =
         LocalConfiguration.current
             .screenWidthDp < 380
@@ -15191,18 +15706,41 @@ private fun DeepLinkStep(
         item {
             FeatureToggleCard(
                 title =
-                    "Deep Link aktif",
+                    if (
+                        isPro
+                    ) {
+                        "Deep Link aktif"
+                    } else {
+                        "Deep Link aktif • PRO"
+                    },
                 description =
                     "Belirlediğin bağlantılar açıldığında Android uygulamasının çalışmasını sağlar.",
                 checked =
                     d.deepLinkEnabled
             ) {
-                update(
-                    d.copy(
-                        deepLinkEnabled =
+                enabled ->
+
+                handleProFeatureToggle(
+                    isPro =
+                        isPro,
+                    feature =
+                        "Deep Link",
+                    enabled =
+                        enabled,
+                    onRequirePro = {
+                        proFeatureRequest =
                             it
+                    }
+                ) {
+                    allowed ->
+
+                    update(
+                        d.copy(
+                            deepLinkEnabled =
+                                allowed
+                        )
                     )
-                )
+                }
             }
         }
 
