@@ -68,7 +68,8 @@ private enum class TerminalWorkspaceTab(
     GIT("Git", "⑂"),
     CONNECTIONS("Bağlantılar", "◎"),
     SSH("SSH", "⌁"),
-    TOOLS("Araçlar", "◆")
+    TOOLS("Araçlar", "◆"),
+    ULTIMATE("Ultimate", "★")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -277,7 +278,11 @@ fun TerminalWorkspaceScreen(
         kind: TerminalLineKind
     ) {
         val clean =
-            TerminalTextSanitizer.clean(text)
+            TerminalSecretMasker.redact(
+                TerminalTextSanitizer.clean(
+                    text
+                )
+            )
 
         val lines =
             clean
@@ -384,7 +389,9 @@ fun TerminalWorkspaceScreen(
                     it.lines
                         .plus(
                             TerminalLine(
-                                "\$ $command",
+                                "\$ ${
+                                    TerminalSecretMasker.redact(command)
+                                }",
                                 TerminalLineKind.PROMPT
                             )
                         )
@@ -1022,6 +1029,50 @@ fun TerminalWorkspaceScreen(
                             onOpenSsh = {
                                 selectedTab =
                                     TerminalWorkspaceTab.SSH
+                            }
+                        )
+
+                    TerminalWorkspaceTab.ULTIMATE ->
+                        TerminalUltimatePanel(
+                            workspace = workspace,
+                            onRunCommand = { command ->
+                                selectedTab =
+                                    TerminalWorkspaceTab.TERMINAL
+
+                                runCommand(
+                                    activeSessionId,
+                                    command
+                                )
+                            },
+                            onOpenTerminal = {
+                                selectedTab =
+                                    TerminalWorkspaceTab.TERMINAL
+                            },
+                            onOpenFiles = {
+                                selectedTab =
+                                    TerminalWorkspaceTab.FILES
+                            },
+                            onOpenGit = {
+                                selectedTab =
+                                    TerminalWorkspaceTab.GIT
+                            },
+                            onOpenConnections = {
+                                selectedTab =
+                                    TerminalWorkspaceTab.CONNECTIONS
+                            },
+                            onOpenSsh = {
+                                selectedTab =
+                                    TerminalWorkspaceTab.SSH
+                            },
+                            onOpenBuilder = {
+                                onOpenBuilder(
+                                    selectedProjectId
+                                )
+                            },
+                            onOpenAi = {
+                                onOpenAi(
+                                    selectedProjectId
+                                )
                             }
                         )
                 }
