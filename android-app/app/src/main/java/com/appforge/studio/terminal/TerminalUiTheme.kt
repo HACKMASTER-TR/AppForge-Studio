@@ -20,6 +20,9 @@ internal val TerminalSecondary =
 internal val TerminalWarning =
     Color(0xFFFFC66D)
 
+internal val TerminalSuccess =
+    Color(0xFF68E4C2)
+
 internal val TerminalError =
     Color(0xFFFF7A90)
 

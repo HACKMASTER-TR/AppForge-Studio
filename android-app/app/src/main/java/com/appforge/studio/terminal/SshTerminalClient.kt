@@ -34,7 +34,6 @@ class SshTerminalClient(
     ): SshHostProbe =
         withContext(Dispatchers.IO) {
             validate(profile)
-            validate(auth, command, timeoutMs)
 
             // Do not present user credentials before the server fingerprint
             // has been verified. Authentication is intentionally allowed to
@@ -170,6 +169,7 @@ class SshTerminalClient(
     ): TerminalCommandResult =
         withContext(Dispatchers.IO) {
             validate(profile)
+            validate(auth, command, timeoutMs)
 
             require(
                 isTrusted(profile)
