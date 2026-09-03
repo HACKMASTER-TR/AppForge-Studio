@@ -91,9 +91,12 @@ jobs:
           APPFORGE_DEBUG_STORE_PASSWORD: ${{ secrets.APPFORGE_DEBUG_STORE_PASSWORD }}
           APPFORGE_DEBUG_KEY_ALIAS: appforge-debug
           APPFORGE_DEBUG_KEY_PASSWORD: ${{ secrets.APPFORGE_DEBUG_STORE_PASSWORD }}
+          APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
+          APPFORGE_RAILWAY_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_RAILWAY_OAUTH_CLIENT_ID }}
         run: |
           gradle \
             -p android-app \
+            :app:testDebugUnitTest \
             :app:signingReport \
             :app:assembleDebug \
             --stacktrace

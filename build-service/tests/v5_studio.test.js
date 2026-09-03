@@ -98,6 +98,8 @@ test("local AI describes the current AppForge feature set", async () => {
   assert.match(knowledge, /otomatik sürüm artırma/);
   assert.match(knowledge, /Firebase Analytics\/Crashlytics\/Cloud Messaging/);
   assert.match(knowledge, /GitHub ve takım akışları/);
+  assert.match(knowledge, /AppForge Terminal/);
+  assert.match(knowledge, /GitHub\/Railway/);
   assert.match(knowledge, /arka planda.*bildirimi/);
   assert.match(knowledge, /Yerel AI/);
 });

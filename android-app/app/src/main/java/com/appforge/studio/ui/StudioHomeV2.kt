@@ -78,6 +78,8 @@ private object CopyV2 {
         "no_projects" to "Henüz proje yok",
         "no_projects_body" to "İlk uygulamanı Hızlı Oluştur ile birkaç adımda başlatabilirsin.",
         "tools" to "Studio araçları",
+        "terminal" to "AppForge Terminal",
+        "terminal_body" to "Proje dosyaları, Git, SSH ve komutlar tek çalışma alanında.",
         "other_apps" to "Diğer Uygulamalar",
         "templates" to "Şablonlar",
         "history" to "Derleme Geçmişi",
@@ -111,6 +113,8 @@ private object CopyV2 {
         "no_projects" to "No projects yet",
         "no_projects_body" to "Start your first app in a few steps with Quick Create.",
         "tools" to "Studio tools",
+        "terminal" to "AppForge Terminal",
+        "terminal_body" to "Project files, Git, SSH and commands in one workspace.",
         "other_apps" to "Other Apps",
         "templates" to "Templates",
         "history" to "Build History",
@@ -144,6 +148,8 @@ private object CopyV2 {
         "no_projects" to "Noch keine Projekte",
         "no_projects_body" to "Starte deine erste App in wenigen Schritten mit Schnell erstellen.",
         "tools" to "Studio-Werkzeuge",
+        "terminal" to "AppForge Terminal",
+        "terminal_body" to "Projektdateien, Git, SSH und Befehle in einem Arbeitsbereich.",
         "other_apps" to "Weitere Apps",
         "templates" to "Vorlagen",
         "history" to "Build-Verlauf",
@@ -177,6 +183,8 @@ private object CopyV2 {
         "no_projects" to "لا توجد مشاريع بعد",
         "no_projects_body" to "ابدأ تطبيقك الأول بخطوات قليلة عبر الإنشاء السريع.",
         "tools" to "أدوات Studio",
+        "terminal" to "AppForge Terminal",
+        "terminal_body" to "ملفات المشروع وGit وSSH والأوامر في مساحة عمل واحدة.",
         "other_apps" to "تطبيقات أخرى",
         "templates" to "القوالب",
         "history" to "سجل البناء",
@@ -219,6 +227,7 @@ fun StudioHomeV2(
     onOpenAi: () -> Unit,
     onOpenTemplates: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenTerminal: () -> Unit,
     onOpenOtherApps: () -> Unit,
     onImportProject: () -> Unit,
     onExportAllProjects: () -> Unit,
@@ -578,6 +587,38 @@ fun StudioHomeV2(
                             Text(t("ai_body"), color = V2Muted, fontSize = 12.sp, lineHeight = 17.sp)
                         }
                         Text("›", color = V2Primary, fontSize = 28.sp)
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    onClick = onOpenTerminal,
+                    modifier = Modifier.fillMaxWidth().widthIn(max = 980.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0D2430))
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(if (compact) 15.dp else 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(if (compact) 52.dp else 62.dp)
+                                .background(
+                                    Brush.linearGradient(listOf(Color(0xFF62F5B0), V2Primary)),
+                                    RoundedCornerShape(18.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(">_", color = Color(0xFF041018), fontWeight = FontWeight.Black)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(t("terminal"), color = V2Text, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                            Text(t("terminal_body"), color = V2Muted, fontSize = 12.sp, lineHeight = 17.sp)
+                        }
+                        Text("›", color = Color(0xFF62F5B0), fontSize = 28.sp)
                     }
                 }
             }

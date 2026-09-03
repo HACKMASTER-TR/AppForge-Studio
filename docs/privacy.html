@@ -29,7 +29,7 @@
 
 <body>
   <h1>AppForge Studio Gizlilik Politikası</h1>
-  <p class="muted">Son güncelleme: 25 Ağustos 2026</p>
+  <p class="muted">Son güncelleme: 3 Eylül 2026</p>
 
   <div class="card">
     <p>
@@ -52,11 +52,14 @@
     <li>Kullanıcının seçtiği uygulama ikonu ve yapılandırma dosyaları.</li>
     <li>Build işlemlerine ait durum, günlük ve çıktı bilgileri.</li>
     <li>Google Play satın alma ve abonelik durum bilgileri.</li>
+    <li>Kullanıcı isteğiyle bağlanan GitHub veya Railway hesabının görünen kimliği, verilen kapsamlar ve erişim/yenileme tokenları.</li>
   </ul>
 
   <h2>2. Yerel olarak saklanan veriler</h2>
   <p>
-    Hesap oturumu ve Build API anahtarı gibi hassas uygulama verileri,
+    Hesap oturumu, Build API anahtarı ve isteğe bağlı GitHub/Railway
+    bağlantı tokenları ile kısa ömürlü Railway PKCE doğrulayıcısı gibi
+    hassas uygulama verileri,
     desteklenen Android cihazlarda Android Keystore kullanılarak şifreli
     biçimde cihazda saklanır.
   </p>
@@ -81,7 +84,24 @@
     HTTPS bağlantısını zorunlu tutar.
   </p>
 
-  <h2>4. Google Play hizmetleri</h2>
+  <h2>4. GitHub ve Railway bağlantıları</h2>
+  <p>
+    Kullanıcı Bağlantılar ekranından açıkça yetki verdiğinde AppForge Studio,
+    GitHub veya Railway'in kendi HTTPS yetkilendirme ve API uç noktalarıyla
+    iletişim kurabilir. Sağlayıcı parolası AppForge Studio tarafından alınmaz.
+    Railway mobil yetkilendirmesi Authorization Code + PKCE kullanır ve
+    uygulama paketine client secret eklenmez.
+    Erişim tokenları bağlantıyı doğrulamak ve kullanıcının başlattığı Git,
+    hesap veya proje işlemlerini gerçekleştirmek için ilgili sağlayıcıya
+    gönderilir; bu bağlantı özelliği tokenı AppForge Build Service'e göndermez.
+  </p>
+  <p>
+    Kullanıcı bağlantıyı uygulamadan kaldırabilir. Bu işlem cihazdaki şifreli
+    kaydı siler; sağlayıcı tarafındaki uygulama izni GitHub veya Railway hesap
+    ayarlarından ayrıca iptal edilebilir.
+  </p>
+
+  <h2>5. Google Play hizmetleri</h2>
   <p>
     AppForge Studio aşağıdaki Google Play hizmetlerini kullanabilir:
   </p>
@@ -96,7 +116,7 @@
     Ödeme işlemleri Google Play tarafından gerçekleştirilir.
   </p>
 
-  <h2>5. İzinler</h2>
+  <h2>6. İzinler</h2>
   <p>
     Google Play sürümü internet erişimi, ağ durumunu kontrol etme ve kullanıcı
     tarafından izin verilmesi halinde bildirim gönderme yetkilerini
@@ -109,7 +129,7 @@
     belirler.
   </p>
 
-  <h2>6. Verilerin kullanım amaçları</h2>
+  <h2>7. Verilerin kullanım amaçları</h2>
   <ul>
     <li>APK, AAB ve desteklenen diğer uygulama çıktılarının oluşturulması.</li>
     <li>Kullanıcı hesabının ve oturumunun yönetilmesi.</li>
@@ -119,7 +139,7 @@
     <li>Uygulamanın çalışması ve teknik sorunların giderilmesi.</li>
   </ul>
 
-  <h2>7. Veri saklama</h2>
+  <h2>8. Veri saklama</h2>
   <p>
     Cihazda saklanan veriler kullanıcı tarafından silinene, uygulama verileri
     temizlenene veya uygulama kaldırılana kadar cihazda kalabilir.
@@ -132,14 +152,14 @@
     dolabilir.
   </p>
 
-  <h2>8. Veri güvenliği</h2>
+  <h2>9. Veri güvenliği</h2>
   <p>
     AppForge Studio hassas yerel hesap bilgilerinin korunması için Android
     Keystore tabanlı şifreleme kullanır. Ağ üzerinden hassas özel imzalama
     işlemlerinde HTTPS bağlantısı zorunludur.
   </p>
 
-  <h2>9. Kullanıcı kontrolü</h2>
+  <h2>10. Kullanıcı kontrolü</h2>
   <p>
     Kullanıcı uygulama içindeki hesabından çıkabilir, yerel proje ve
     dosyalarını silebilir, Android ayarlarından uygulama izinlerini
@@ -150,14 +170,14 @@
     olarak silinebilir.
   </p>
 
-  <h2>10. Politika değişiklikleri</h2>
+  <h2>11. Politika değişiklikleri</h2>
   <p>
     AppForge Studio'nun özellikleri veya veri işleme yöntemleri değiştiğinde
     bu Gizlilik Politikası güncellenebilir. Güncel sürüm her zaman bu sayfada
     yayınlanır.
   </p>
 
-  <h2>11. İletişim</h2>
+  <h2>12. İletişim</h2>
   <p>
     Gizlilik veya AppForge Studio ile ilgili sorular için:
   </p>

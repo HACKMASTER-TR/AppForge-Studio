@@ -141,6 +141,14 @@ class MainActivity : ComponentActivity() {
     var accountActionSequence by mutableIntStateOf(0)
         private set
 
+    var externalAuthorizationUri by
+        mutableStateOf<Uri?>(null)
+        private set
+
+    var externalAuthorizationSequence by
+        mutableIntStateOf(0)
+        private set
+
     private fun captureAccountAction(
         sourceIntent: Intent?
     ) {
@@ -158,16 +166,29 @@ class MainActivity : ComponentActivity() {
                 ignoreCase = true
             )
         ) {
-            accountActionUri =
-                data
+            if (data.path == "/railway") {
+                externalAuthorizationUri =
+                    data
 
-            accountActionSequence +=
-                1
+                externalAuthorizationSequence +=
+                    1
+            } else {
+                accountActionUri =
+                    data
+
+                accountActionSequence +=
+                    1
+            }
         }
     }
 
     fun consumeAccountAction() {
         accountActionUri =
+            null
+    }
+
+    fun consumeExternalAuthorization() {
+        externalAuthorizationUri =
             null
     }
 
@@ -566,7 +587,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, TERMINAL, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 private data class ParallelBuildTestItem(
     val slot: Int,
@@ -671,6 +692,18 @@ private fun AppForgeApp() {
         }
     }
 
+    LaunchedEffect(
+        hostActivity?.externalAuthorizationSequence
+    ) {
+        if (
+            hostActivity?.externalAuthorizationUri !=
+                null
+        ) {
+            screen =
+                AppScreen.TERMINAL
+        }
+    }
+
     /*
      * Önizleme / Production / AI gibi yardımcı ekranlardan
      * geri dönerken proje ve mevcut builder adımı korunur.
@@ -683,6 +716,20 @@ private fun AppForgeApp() {
         }
 
     var workspaceReturnStep by
+        remember {
+            mutableIntStateOf(
+                1
+            )
+        }
+
+    var terminalReturnScreen by
+        remember {
+            mutableStateOf(
+                AppScreen.HOME
+            )
+        }
+
+    var terminalReturnStep by
         remember {
             mutableIntStateOf(
                 1
@@ -733,6 +780,8 @@ private fun AppForgeApp() {
             screen ==
                 AppScreen.AI_ASSISTANT ||
             screen ==
+                AppScreen.TERMINAL ||
+            screen ==
                 AppScreen.HISTORY ||
             screen ==
                 AppScreen.TRASH ||
@@ -757,6 +806,19 @@ private fun AppForgeApp() {
             AppScreen.ADMIN_OPS ->
                 screen =
                     AppScreen.HOME
+
+            AppScreen.TERMINAL -> {
+                screen =
+                    terminalReturnScreen
+
+                if (
+                    terminalReturnScreen ==
+                    AppScreen.BUILDER
+                ) {
+                    step =
+                        terminalReturnStep
+                }
+            }
 
             else ->
                 returnFromWorkspace()
@@ -3552,6 +3614,18 @@ private fun AppForgeApp() {
                             )
                         },
 
+                        onOpenTerminal = {
+                            terminalReturnScreen =
+                                screen
+
+                            terminalReturnStep =
+                                step
+
+                            openWorkspaceScreen(
+                                AppScreen.TERMINAL
+                            )
+                        },
+
                         onOpenTemplates = {
                             openWorkspaceScreen(
                                 AppScreen.TEMPLATES
@@ -4176,6 +4250,91 @@ private fun AppForgeApp() {
                             AppScreen.HOME
                     }
                 )
+
+
+                AppScreen.TERMINAL ->
+                    com.appforge.studio.terminal.TerminalWorkspaceScreen(
+                        activeProjectId =
+                            currentProjectId,
+                        activeDraft =
+                            draft,
+                        railwayAuthorizationUri =
+                            hostActivity
+                                ?.externalAuthorizationUri,
+                        railwayAuthorizationSequence =
+                            hostActivity
+                                ?.externalAuthorizationSequence
+                                ?: 0,
+                        onRailwayAuthorizationConsumed = {
+                            hostActivity
+                                ?.consumeExternalAuthorization()
+                        },
+                        onBack = {
+                            screen =
+                                terminalReturnScreen
+
+                            if (
+                                terminalReturnScreen ==
+                                AppScreen.BUILDER
+                            ) {
+                                step =
+                                    terminalReturnStep
+                            }
+                        },
+                        onOpenBuilder = {
+                            projectId ->
+
+                            projectId
+                                ?.let {
+                                    ProjectLibrary.restore(
+                                        context,
+                                        it
+                                    )
+                                }
+                                ?.let {
+                                    restored ->
+
+                                    draft = restored
+                                    currentProjectId =
+                                        projectId
+                                    serverUrl =
+                                        restored.buildServiceUrl
+                                    apiKey =
+                                        SecureAccountStore
+                                            .loadBuildApiKey(
+                                                context
+                                            )
+                                            .orEmpty()
+                                }
+
+                            step = 1
+                            screen = AppScreen.BUILDER
+                        },
+                        onOpenAi = {
+                            projectId ->
+
+                            projectId
+                                ?.let {
+                                    ProjectLibrary.restore(
+                                        context,
+                                        it
+                                    )
+                                }
+                                ?.let {
+                                    restored ->
+
+                                    draft = restored
+                                    currentProjectId =
+                                        projectId
+                                    serverUrl =
+                                        restored.buildServiceUrl
+                                }
+
+                            openWorkspaceScreen(
+                                AppScreen.AI_ASSISTANT
+                            )
+                        }
+                    )
 
 
                 AppScreen.AI_ASSISTANT -> LocalAiAssistantScreen(

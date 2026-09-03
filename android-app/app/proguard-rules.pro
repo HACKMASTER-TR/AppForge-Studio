@@ -12,3 +12,7 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
+
+# AppForge Terminal: JSch can discover optional crypto providers at runtime.
+-dontwarn org.bouncycastle.**
+-dontwarn net.i2p.crypto.eddsa.**

@@ -22,6 +22,32 @@ android {
         versionName = "5.0.20"
     }
 
+    fun oauthClientId(name: String): String {
+        val value =
+            providers.gradleProperty(name)
+                .orElse(
+                    providers.environmentVariable(name)
+                )
+                .orElse("")
+                .get()
+                .trim()
+
+        require(
+            value.length <= 512 &&
+                value.none {
+                    it == '\n' ||
+                        it == '\r' ||
+                        it == '\u0000'
+                }
+        ) {
+            "$name geçersiz bir OAuth istemci kimliği içeriyor."
+        }
+
+        return value
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+    }
+
     val releaseCertSha256 =
         providers.gradleProperty("APPFORGE_RELEASE_CERT_SHA256")
             .orElse("")
@@ -112,6 +138,18 @@ android {
             "RELEASE_CERT_SHA256",
             "\"${releaseCertSha256}\""
         )
+
+        buildConfigField(
+            "String",
+            "APPFORGE_GITHUB_OAUTH_CLIENT_ID",
+            "\"${oauthClientId("APPFORGE_GITHUB_OAUTH_CLIENT_ID")}\""
+        )
+
+        buildConfigField(
+            "String",
+            "APPFORGE_RAILWAY_OAUTH_CLIENT_ID",
+            "\"${oauthClientId("APPFORGE_RAILWAY_OAUTH_CLIENT_ID")}\""
+        )
     }
 
     buildTypes {
@@ -189,6 +227,20 @@ dependencies {
     implementation(
         "com.google.ai.edge.litertlm:litertlm-android:0.11.0"
     )
+    implementation(
+        "org.eclipse.jgit:org.eclipse.jgit:7.7.1.202607240634-r"
+    )
+    implementation(
+        "com.github.mwiede:jsch:2.28.7"
+    )
+    implementation(
+        "net.i2p.crypto:eddsa:0.3.0"
+    )
+    implementation(
+        "org.slf4j:slf4j-nop:2.0.17"
+    )
+
+    testImplementation("junit:junit:4.13.2")
 
 
     // VideoForge V4.1.2

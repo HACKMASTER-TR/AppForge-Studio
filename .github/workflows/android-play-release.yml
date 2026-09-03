@@ -95,6 +95,8 @@ jobs:
           APPFORGE_RELEASE_STORE_PASSWORD: ${{ secrets.APPFORGE_RELEASE_STORE_PASSWORD }}
           APPFORGE_RELEASE_KEY_ALIAS: appforge-release
           APPFORGE_RELEASE_KEY_PASSWORD: ${{ secrets.APPFORGE_RELEASE_KEY_PASSWORD }}
+          APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
+          APPFORGE_RAILWAY_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_RAILWAY_OAUTH_CLIENT_ID }}
         run: |
           set -euo pipefail
 
@@ -135,14 +137,14 @@ jobs:
           test -n "$AAB"
           test -s "$AAB"
 
-          cp "$AAB" AppForgeStudio-Play-3.0.1.aab
+          cp "$AAB" AppForgeStudio-Play-5.1.0.aab
 
-          ls -lh AppForgeStudio-Play-3.0.1.aab
+          ls -lh AppForgeStudio-Play-5.1.0.aab
 
       - name: Upload Play AAB
         uses: actions/upload-artifact@v7
         with:
           name: AppForgeStudio-Play-AAB
-          path: AppForgeStudio-Play-3.0.1.aab
+          path: AppForgeStudio-Play-5.1.0.aab
           if-no-files-found: error
           retention-days: 14
