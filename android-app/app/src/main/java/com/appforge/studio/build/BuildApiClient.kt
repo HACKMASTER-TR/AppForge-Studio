@@ -60,6 +60,16 @@ data class RemoteBuildHistoryItem(
 )
 
 
+data class ProjectQuotaResult(
+    val plan: String,
+    val used: Int,
+    val limit: Int?,
+    val remaining: Int?,
+    val unlimited: Boolean,
+    val customLimit: Int?
+)
+
+
 data class ArtifactTopFile(
     val path: String,
     val category: String,
@@ -716,6 +726,110 @@ class BuildApiClient(
             )
         )
     }
+
+    fun projectQuota(): ProjectQuotaResult {
+        val conn =
+            connection(
+                "/api/projects/quota"
+            ).apply {
+                requestMethod =
+                    "GET"
+
+                readTimeout =
+                    20_000
+            }
+
+        val json =
+            JSONObject(
+                readResponse(
+                    conn
+                )
+            )
+
+        val quota =
+            json.optJSONObject(
+                "quota"
+            )
+                ?: JSONObject()
+
+        val limit =
+            if (
+                quota.isNull(
+                    "limit"
+                )
+            ) {
+                null
+            } else {
+                quota.optInt(
+                    "limit",
+                    0
+                )
+                    .takeIf {
+                        it > 0
+                    }
+            }
+
+        val remaining =
+            if (
+                quota.isNull(
+                    "remaining"
+                )
+            ) {
+                null
+            } else {
+                quota.optInt(
+                    "remaining",
+                    0
+                )
+            }
+
+        val customLimit =
+            if (
+                quota.isNull(
+                    "customLimit"
+                )
+            ) {
+                null
+            } else {
+                quota.optInt(
+                    "customLimit",
+                    0
+                )
+                    .takeIf {
+                        it > 0
+                    }
+            }
+
+        return ProjectQuotaResult(
+            plan =
+                quota.optString(
+                    "plan",
+                    "free"
+                ),
+
+            used =
+                quota.optInt(
+                    "used",
+                    0
+                ),
+
+            limit =
+                limit,
+
+            remaining =
+                remaining,
+
+            unlimited =
+                quota.optBoolean(
+                    "unlimited",
+                    false
+                ),
+
+            customLimit =
+                customLimit
+        )
+    }
+
 
     fun history(): List<RemoteBuildHistoryItem> {
         val conn = connection("/api/builds").apply {

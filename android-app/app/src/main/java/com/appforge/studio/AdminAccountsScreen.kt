@@ -46,7 +46,10 @@ private data class ManagedAppForgeAccount(
     val displayName: String,
     val role: String,
     val proActive: Boolean,
-    val proSource: String?
+    val proSource: String?,
+    val freeProjectUsed: Int,
+    val freeProjectLimit: Int,
+    val customFreeProjectLimit: Int?
 )
 
 
@@ -111,14 +114,35 @@ fun AdminAccountsScreen(
             mutableStateOf("")
         }
 
+    var projectLimitInputs by
+        remember {
+            mutableStateOf(
+                emptyMap<
+                    String,
+                    String
+                >()
+            )
+        }
+
     suspend fun refresh() {
-        accounts =
+        val loaded =
             withContext(
                 Dispatchers.IO
             ) {
                 api.listAccounts(
                     search
                 )
+            }
+
+        accounts =
+            loaded
+
+        projectLimitInputs =
+            loaded.associate {
+                account ->
+                account.id to
+                    account.freeProjectLimit
+                        .toString()
             }
     }
 
@@ -229,6 +253,82 @@ fun AdminAccountsScreen(
             }
         }
     }
+
+    fun updateProjectLimit(
+        account: ManagedAppForgeAccount,
+        resetToDefault: Boolean
+    ) {
+        if (busy) return
+
+        val requestedLimit =
+            if (
+                resetToDefault
+            ) {
+                null
+            } else {
+                projectLimitInputs[
+                    account.id
+                ]
+                    ?.trim()
+                    ?.toIntOrNull()
+            }
+
+        if (
+            !resetToDefault &&
+            (
+                requestedLimit ==
+                    null ||
+                requestedLimit <
+                    1 ||
+                requestedLimit >
+                    100000
+            )
+        ) {
+            message =
+                "FREE proje hakkı 1 ile 100000 arasında olmalı."
+
+            return
+        }
+
+        busy =
+            true
+
+        scope.launch {
+            try {
+                withContext(
+                    Dispatchers.IO
+                ) {
+                    api.setProjectLimit(
+                        account.id,
+                        requestedLimit
+                    )
+                }
+
+                message =
+                    if (
+                        resetToDefault
+                    ) {
+                        "${account.email} → varsayılan FREE proje limitine döndürüldü."
+                    } else {
+                        "${account.email} → FREE proje hakkı $requestedLimit olarak ayarlandı."
+                    }
+
+                refresh()
+
+            } catch (
+                error: Throwable
+            ) {
+                message =
+                    error.message
+                        .orEmpty()
+
+            } finally {
+                busy =
+                    false
+            }
+        }
+    }
+
 
     LaunchedEffect(Unit) {
         runCatching {
@@ -494,6 +594,118 @@ fun AdminAccountsScreen(
 
                     if (
                         account.role !=
+                            "admin"
+                    ) {
+                        Text(
+                            "FREE proje hakkı: ${account.freeProjectUsed} / ${account.freeProjectLimit}",
+                            style =
+                                MaterialTheme
+                                    .typography
+                                    .bodyMedium
+                        )
+
+                        Text(
+                            if (
+                                account.customFreeProjectLimit !=
+                                    null
+                            ) {
+                                "Özel kullanıcı limiti aktif."
+                            } else {
+                                "Varsayılan FREE limiti kullanılıyor."
+                            },
+                            style =
+                                MaterialTheme
+                                    .typography
+                                    .bodySmall
+                        )
+
+                        if (
+                            account.proActive
+                        ) {
+                            Text(
+                                "PRO aktifken proje sayısı sınırsızdır. Bu değer hesap tekrar FREE olursa uygulanır.",
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .bodySmall
+                            )
+                        }
+
+                        OutlinedTextField(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            value =
+                                projectLimitInputs[
+                                    account.id
+                                ]
+                                    ?: account
+                                        .freeProjectLimit
+                                        .toString(),
+                            onValueChange = {
+                                value ->
+
+                                val filtered =
+                                    value
+                                        .filter {
+                                            it.isDigit()
+                                        }
+                                        .take(
+                                            6
+                                        )
+
+                                projectLimitInputs =
+                                    projectLimitInputs +
+                                        (
+                                            account.id to
+                                                filtered
+                                        )
+                            },
+                            label = {
+                                Text(
+                                    "FREE proje hakkı"
+                                )
+                            },
+                            singleLine =
+                                true
+                        )
+
+                        Button(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            enabled =
+                                !busy,
+                            onClick = {
+                                updateProjectLimit(
+                                    account,
+                                    false
+                                )
+                            }
+                        ) {
+                            Text(
+                                "PROJE HAKKINI UYGULA"
+                            )
+                        }
+
+                        OutlinedButton(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            enabled =
+                                !busy,
+                            onClick = {
+                                updateProjectLimit(
+                                    account,
+                                    true
+                                )
+                            }
+                        ) {
+                            Text(
+                                "VARSAYILAN LİMİTE DÖN"
+                            )
+                        }
+                    }
+
+                    if (
+                        account.role !=
                             "admin" &&
                         !googlePlayManaged
                     ) {
@@ -600,7 +812,39 @@ private class AdminAccountsApi(
                                 .trim()
                                 .takeIf {
                                     it.isNotBlank()
-                                }
+                                },
+
+                        freeProjectUsed =
+                            item.optInt(
+                                "freeProjectUsed",
+                                0
+                            ),
+
+                        freeProjectLimit =
+                            item.optInt(
+                                "freeProjectLimit",
+                                5
+                            )
+                                .coerceAtLeast(
+                                    1
+                                ),
+
+                        customFreeProjectLimit =
+                            if (
+                                item.isNull(
+                                    "customFreeProjectLimit"
+                                )
+                            ) {
+                                null
+                            } else {
+                                item.optInt(
+                                    "customFreeProjectLimit",
+                                    0
+                                )
+                                    .takeIf {
+                                        it > 0
+                                    }
+                            }
                     )
                 )
             }
@@ -649,6 +893,23 @@ private class AdminAccountsApi(
                 .put(
                     "active",
                     active
+                )
+        )
+    }
+
+
+    fun setProjectLimit(
+        userId: String,
+        limit: Int?
+    ) {
+        request(
+            "/api/admin/users/$userId/project-limit",
+            "POST",
+            JSONObject()
+                .put(
+                    "limit",
+                    limit
+                        ?: JSONObject.NULL
                 )
         )
     }

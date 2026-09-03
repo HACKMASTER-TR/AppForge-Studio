@@ -9,7 +9,8 @@ async function projectQuotaFromClient(
 ) {
   const [
     countResult,
-    proResult
+    proResult,
+    limitResult
   ] =
     await Promise.all([
       client.query(
@@ -29,6 +30,16 @@ async function projectQuotaFromClient(
         [
           userId
         ]
+      ),
+      client.query(
+        `SELECT
+           free_project_limit
+         FROM appforge_user_project_limits
+         WHERE user_id = $1
+         LIMIT 1`,
+        [
+          userId
+        ]
       )
     ]);
 
@@ -38,6 +49,21 @@ async function projectQuotaFromClient(
         ?.count ||
       0
     );
+
+  const customLimit =
+    Number(
+      limitResult.rows[0]
+        ?.free_project_limit ||
+      0
+    );
+
+  const effectiveFreeLimit =
+    Number.isFinite(
+      customLimit
+    ) &&
+    customLimit > 0
+      ? customLimit
+      : config.freeProjectLimit;
 
   const pro =
     proResult.rows[0];
@@ -59,23 +85,34 @@ async function projectQuotaFromClient(
       isPro
         ? "pro"
         : "free",
+
     used,
+
     limit:
       isPro
         ? null
-        : config.freeProjectLimit,
+        : effectiveFreeLimit,
+
+    customLimit:
+      customLimit > 0
+        ? customLimit
+        : null,
+
     remaining:
       isPro
         ? null
         : Math.max(
             0,
-            config.freeProjectLimit -
+            effectiveFreeLimit -
               used
           ),
+
     unlimited:
       isPro,
+
     lifetimeTrial:
       !isPro,
+
     deletionRestoresSlot:
       false
   };

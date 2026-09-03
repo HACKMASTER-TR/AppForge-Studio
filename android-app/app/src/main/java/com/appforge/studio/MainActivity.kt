@@ -814,6 +814,68 @@ private fun AppForgeApp() {
     var proSecurityMessage by remember { mutableStateOf("") }
     var keystoreRefresh by remember { mutableIntStateOf(0) }
 
+    var projectQuota by
+        remember {
+            mutableStateOf<
+                com.appforge.studio.build.ProjectQuotaResult?
+            >(
+                null
+            )
+        }
+
+    LaunchedEffect(
+        session?.userId,
+        serverUrl,
+        apiKey,
+        screen
+    ) {
+        if (
+            session ==
+            null
+        ) {
+            projectQuota =
+                null
+
+            return@LaunchedEffect
+        }
+
+        /*
+         * Hesap açılışında ve Proje Kütüphanesi açıldığında
+         * sunucudaki gerçek kullanıcı kotasını yenile.
+         */
+        if (
+            projectQuota !=
+                null &&
+            screen !=
+                AppScreen.LIBRARY
+        ) {
+            return@LaunchedEffect
+        }
+
+        projectQuota =
+            withContext(
+                Dispatchers.IO
+            ) {
+                runCatching {
+                    BuildApiClient(
+                        context =
+                            context,
+                        baseUrl =
+                            serverUrl,
+                        apiKey =
+                            apiKey
+                    )
+                        .projectQuota()
+                }
+                    .getOrNull()
+            }
+    }
+
+    val effectiveFreeProjectLimit =
+        projectQuota
+            ?.limit
+            ?: 5
+
     var status by remember { mutableStateOf("Hazır") }
     var progress by remember { mutableIntStateOf(0) }
 
@@ -1012,12 +1074,12 @@ private fun AppForgeApp() {
                     context,
                     draft.packageName
                         .trim(),
-                    5
+                    effectiveFreeProjectLimit
                 )
 
         if (!canSaveProject) {
             status =
-                "Ücretsiz denemede toplam 5 farklı proje hakkın doldu. " +
+                "Ücretsiz denemede toplam $effectiveFreeProjectLimit farklı proje hakkın doldu. " +
                 "Bu projedeki ilk değişikliği kaydetmek için Pro veya Pro Aylık gerekli."
             return@LaunchedEffect
         }
@@ -2527,7 +2589,7 @@ private fun AppForgeApp() {
                                         effectiveBuildDraft
                                             .packageName
                                             .trim(),
-                                        5
+                                        effectiveFreeProjectLimit
                                     )
 
                             if (canSaveProject) {
@@ -3732,6 +3794,10 @@ private fun AppForgeApp() {
 
                 AppScreen.LIBRARY -> ProjectLibraryScreen(
                     proUnlocked = proStatus?.active == true,
+                    freeProjectLimit =
+                        effectiveFreeProjectLimit,
+                    serverFreeProjectUsed =
+                        projectQuota?.used,
                     onBack = { screen = AppScreen.HOME },
                     onLoad = { saved ->
                         ProjectLibrary.restore(context, saved.id)?.let {
@@ -4567,12 +4633,12 @@ private fun AppForgeApp() {
                                             .claimFreeProjectSlot(
                                                 context,
                                                 packageName,
-                                                5
+                                                effectiveFreeProjectLimit
                                             )
 
                                     if (!canUseSlot) {
                                         status =
-                                            "Ücretsiz denemede toplam 5 farklı proje hakkın doldu. Proje silmek yeni hak açmaz. Yeni proje için Pro veya Pro Aylık gerekli."
+                                            "Ücretsiz denemede toplam $effectiveFreeProjectLimit farklı proje hakkın doldu. Proje silmek yeni hak açmaz. Yeni proje için Pro veya Pro Aylık gerekli."
                                     } else {
                                         currentProjectId =
                                             ProjectLibrary.save(
@@ -19597,6 +19663,8 @@ private fun installDownloadedApk(
 @Composable
 private fun ProjectLibraryScreen(
     proUnlocked: Boolean,
+    freeProjectLimit: Int,
+    serverFreeProjectUsed: Int?,
     onBack: () -> Unit,
     onLoad: (SavedProject) -> Unit
 ) {
@@ -19651,6 +19719,13 @@ private fun ProjectLibraryScreen(
                     )
             )
         }
+
+    val effectiveTrialSlotsUsed =
+        maxOf(
+            trialSlotsUsed,
+            serverFreeProjectUsed
+                ?: 0
+        )
 
     Column(
         Modifier.fillMaxSize()
@@ -19730,7 +19805,7 @@ private fun ProjectLibraryScreen(
                             ) {
                                 "Proje Hakkı • SINIRSIZ"
                             } else {
-                                "Deneme Hakkı • $trialSlotsUsed / 5"
+                                "Deneme Hakkı • $effectiveTrialSlotsUsed / $freeProjectLimit"
                             },
                             fontWeight =
                                 FontWeight.Bold,
@@ -19744,7 +19819,7 @@ private fun ProjectLibraryScreen(
                             ) {
                                 "${projects.size} kayıtlı proje • Pro ve Pro Aylık'ta proje sınırı yok."
                             } else {
-                                "${(5 - trialSlotsUsed).coerceAtLeast(0)} yeni proje hakkın kaldı. Proje silmek hakkı geri getirmez."
+                                "${(freeProjectLimit - effectiveTrialSlotsUsed).coerceAtLeast(0)} yeni proje hakkın kaldı. Proje silmek hakkı geri getirmez."
                             },
                             color =
                                 TextSecondary

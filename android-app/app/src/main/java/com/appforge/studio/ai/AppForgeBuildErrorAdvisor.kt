@@ -23,6 +23,32 @@ object AppForgeBuildErrorAdvisor {
     private val rules =
         listOf(
             Rule(
+                category = "Plan / Kota",
+                title = "FREE proje hakkı doldu",
+                needles = listOf(
+                    "free_project_limit_reached",
+                    "farklı proje hakkın vardır",
+                    "farklı proje hakkın doldu",
+                    "silinen proje hakkı geri gelmez"
+                ),
+                reason = "FREE hesabın bu kullanıcı için tanımlanan toplam farklı proje kotasına ulaştı.",
+                solution = "Daha önce hak kullanmış mevcut bir package name ile devam et, yöneticiden FREE proje limitini artırmasını iste veya Pro / Pro Aylık kullan.",
+                confidence = 99
+            ),
+            Rule(
+                category = "Plan / Eşzamanlı Build",
+                title = "Aktif build sınırına ulaşıldı",
+                needles = listOf(
+                    "active_build_limit",
+                    "free hesapta aynı anda en fazla",
+                    "aynı anda en fazla 1 aktif build",
+                    "aktif pro build kullanılabilir"
+                ),
+                reason = "Hesabın için izin verilen eşzamanlı aktif build sayısı dolu.",
+                solution = "Çalışan build tamamlanınca yeniden dene. FREE hesapta aynı anda 1 build çalışabilir; daha yüksek planlarda sunucunun tanımladığı limit uygulanır.",
+                confidence = 99
+            ),
+            Rule(
                 category = "Proje türü",
                 title = "Proje başlangıç sayfası algılanamadı",
                 needles = listOf(

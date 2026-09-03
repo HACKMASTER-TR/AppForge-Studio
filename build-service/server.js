@@ -804,12 +804,29 @@ app.get(
              END AS "proActive",
 
              p.source AS "proSource",
-             p.expires_at AS "proExpiresAt"
+             p.expires_at AS "proExpiresAt",
+
+             (
+               SELECT
+                 COUNT(*)::int
+               FROM appforge_free_project_slots s
+               WHERE s.user_id = u.id
+             ) AS "freeProjectUsed",
+
+             l.free_project_limit AS "customFreeProjectLimit",
+
+             COALESCE(
+               l.free_project_limit,
+               $3::int
+             )::int AS "freeProjectLimit"
 
            FROM appforge_users u
 
            LEFT JOIN appforge_pro_entitlements p
              ON p.user_id = u.id
+
+           LEFT JOIN appforge_user_project_limits l
+             ON l.user_id = u.id
 
            WHERE (
              $1 = ''
@@ -827,7 +844,8 @@ app.get(
            LIMIT 100`,
           [
             search,
-            like
+            like,
+            config.freeProjectLimit
           ]
         );
 
@@ -1137,6 +1155,188 @@ app.post(
           Boolean(
             entitlement?.active
           )
+      });
+
+    } catch (error) {
+      res
+        .status(
+          Number(
+            error?.statusCode ||
+            500
+          )
+        )
+        .json({
+          error:
+            String(
+              error?.message ||
+              error
+            )
+        });
+    }
+  }
+);
+
+
+app.post(
+  "/api/admin/users/:userId/project-limit",
+  authRequired,
+  adminRequired,
+  async (req, res) => {
+    try {
+      const userId =
+        String(
+          req.params.userId ||
+          ""
+        ).trim();
+
+      const targetResult =
+        await query(
+          `SELECT
+             id,
+             email,
+             role
+           FROM appforge_users
+           WHERE id = $1
+             AND is_active = TRUE
+           LIMIT 1`,
+          [
+            userId
+          ]
+        );
+
+      const target =
+        targetResult.rows[0];
+
+      if (!target) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Hesap bulunamadı."
+          });
+      }
+
+      if (
+        target.role ===
+        "admin"
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "ADMIN hesabı PRO ve sınırsızdır. FREE proje limiti uygulanmaz."
+          });
+      }
+
+      const resetToDefault =
+        req.body?.limit ==
+        null;
+
+      let effectiveLimit =
+        config.freeProjectLimit;
+
+      if (
+        resetToDefault
+      ) {
+        await query(
+          `DELETE FROM appforge_user_project_limits
+           WHERE user_id = $1`,
+          [
+            target.id
+          ]
+        );
+      } else {
+        const requestedLimit =
+          Number(
+            req.body?.limit
+          );
+
+        if (
+          !Number.isInteger(
+            requestedLimit
+          ) ||
+          requestedLimit < 1 ||
+          requestedLimit > 100000
+        ) {
+          return res
+            .status(400)
+            .json({
+              error:
+                "FREE proje limiti 1 ile 100000 arasında tam sayı olmalı."
+            });
+        }
+
+        effectiveLimit =
+          requestedLimit;
+
+        await query(
+          `INSERT INTO appforge_user_project_limits(
+             user_id,
+             free_project_limit,
+             updated_by,
+             updated_at
+           )
+           VALUES(
+             $1,$2,$3,NOW()
+           )
+           ON CONFLICT(user_id)
+           DO UPDATE SET
+             free_project_limit =
+               EXCLUDED.free_project_limit,
+             updated_by =
+               EXCLUDED.updated_by,
+             updated_at =
+               NOW()`,
+          [
+            target.id,
+            requestedLimit,
+            req.user.id
+          ]
+        );
+      }
+
+      const usedResult =
+        await query(
+          `SELECT
+             COUNT(*)::int AS used
+           FROM appforge_free_project_slots
+           WHERE user_id = $1`,
+          [
+            target.id
+          ]
+        );
+
+      const used =
+        Number(
+          usedResult.rows[0]
+            ?.used ||
+          0
+        );
+
+      res.json({
+        ok: true,
+
+        id:
+          target.id,
+
+        email:
+          target.email,
+
+        freeProjectUsed:
+          used,
+
+        freeProjectLimit:
+          effectiveLimit,
+
+        remaining:
+          Math.max(
+            0,
+            effectiveLimit -
+              used
+          ),
+
+        custom:
+          !resetToDefault
       });
 
     } catch (error) {
