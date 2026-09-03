@@ -1295,14 +1295,22 @@ private fun AppForgeApp() {
             mutableStateOf(false)
         }
 
+    val fiveParallelBuildTesterEmails =
+        setOf(
+            "28550040284a@gmail.com",
+            "heyomert@gmail.com"
+        )
+
     val isFiveParallelBuildTester =
         session
             ?.email
             ?.trim()
-            ?.equals(
-                "28550040284a@gmail.com",
-                ignoreCase = true
-            ) == true
+            ?.lowercase()
+            ?.let {
+                email ->
+                email in
+                    fiveParallelBuildTesterEmails
+            } == true
 
     var fiveParallelBuildRunning by
         remember {
@@ -4747,7 +4755,7 @@ private fun AppForgeApp() {
                                 )
 
                                 Text(
-                                    "Yetkili test hesabı • 28550040284a@gmail.com",
+                                    "Yetkili 5'li Build Test hesabı",
                                     color =
                                         TextSecondary,
                                     fontSize =
