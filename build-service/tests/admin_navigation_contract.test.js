@@ -13,19 +13,30 @@ const main = fs.readFileSync(
 test(
   "admin panel always returns to Studio home",
   () => {
-    const routeStart =
-      main.indexOf(
-        "AppScreen.ADMIN_OPS -> AdminOpsScreen("
-      );
+    const routeHeader =
+      "AppScreen.ADMIN_OPS -> AdminOpsScreen(";
 
-    const routeEnd =
-      main.indexOf(
-        "AppScreen.AI_ASSISTANT",
-        routeStart
-      );
+    const routeStart =
+      main.indexOf(routeHeader);
 
     assert.ok(routeStart >= 0);
-    assert.ok(routeEnd > routeStart);
+
+    const routeTail =
+      main.slice(
+        routeStart + routeHeader.length
+      );
+
+    const nextRouteOffset =
+      routeTail.search(
+        /^\s*AppScreen\.[A-Z0-9_]+\s*->/m
+      );
+
+    assert.ok(nextRouteOffset >= 0);
+
+    const routeEnd =
+      routeStart +
+      routeHeader.length +
+      nextRouteOffset;
 
     const route =
       main.slice(routeStart, routeEnd);
