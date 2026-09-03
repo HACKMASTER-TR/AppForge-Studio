@@ -13,7 +13,7 @@ object TerminalCommandPolicy {
         listOf(
             Regex("(^|[\\n;&|]\\s*)(su|reboot|shutdown|halt|setenforce)(\\s|$)", RegexOption.IGNORE_CASE),
             Regex("(^|[\\n;&|]\\s*)pm\\s+uninstall(\\s|$)", RegexOption.IGNORE_CASE),
-            Regex("(^|[\\n;&|]\\s*)(mkfs|mkswap|fdisk|parted)(\\s|$)", RegexOption.IGNORE_CASE),
+            Regex("(^|[\\n;&|]\\s*)(mkfs(?:\\.[A-Za-z0-9_+-]+)?|mkswap|fdisk|parted)(\\s|$)", RegexOption.IGNORE_CASE),
             Regex("(^|[\\n;&|]\\s*)dd\\s+.*\\bof=/dev/", RegexOption.IGNORE_CASE)
         )
 

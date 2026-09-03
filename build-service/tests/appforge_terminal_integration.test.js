@@ -49,7 +49,8 @@ test("terminal commands are reviewed and execute inside the Android app process"
     readFile(new URL("../server.js", import.meta.url), "utf8")
   ]);
 
-  assert.match(policy, /mkfs\|mkswap\|fdisk\|parted/);
+  assert.match(policy, /mkfs/);
+  assert.match(policy, /mkswap\|fdisk\|parted/);
   assert.ok(policy.includes("git\\\\s+reset\\\\s+--hard"));
   assert.match(engine, /ProcessBuilder\(\s*"\/system\/bin\/sh"/);
   assert.doesNotMatch(server, /["']\/api\/(?:terminal|shell)["']/);
