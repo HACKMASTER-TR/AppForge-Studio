@@ -62,3 +62,28 @@ test(
     );
   }
 );
+
+test(
+  "secondary build tester does not receive admin ops UI",
+  () => {
+    const source =
+      read(
+        "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+      );
+
+    assert.match(
+      source,
+      /val isAdminOpsAccount/
+    );
+
+    assert.match(
+      source,
+      /isAdminOpsAccount[\s\S]{0,1200}YÖNETİCİ SİSTEM DURUMU \/ AUTOSCALE/
+    );
+
+    assert.match(
+      source,
+      /28550040284a@gmail\.com/
+    );
+  }
+);

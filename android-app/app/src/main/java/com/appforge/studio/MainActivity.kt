@@ -1312,6 +1312,15 @@ private fun AppForgeApp() {
                     fiveParallelBuildTesterEmails
             } == true
 
+    val isAdminOpsAccount =
+        session
+            ?.email
+            ?.trim()
+            ?.equals(
+                "28550040284a@gmail.com",
+                ignoreCase = true
+            ) == true
+
     var fiveParallelBuildRunning by
         remember {
             mutableStateOf(false)
@@ -4786,24 +4795,28 @@ private fun AppForgeApp() {
                                     )
                                 }
 
-                                Spacer(
-                                    modifier =
-                                        Modifier.height(
-                                            8.dp
-                                        )
-                                )
-
-                                OutlinedButton(
-                                    modifier =
-                                        Modifier.fillMaxWidth(),
-                                    onClick = {
-                                        screen =
-                                            AppScreen.ADMIN_OPS
-                                    }
+                                if (
+                                    isAdminOpsAccount
                                 ) {
-                                    Text(
-                                        "YÖNETİCİ SİSTEM DURUMU / AUTOSCALE"
+                                    Spacer(
+                                        modifier =
+                                            Modifier.height(
+                                                8.dp
+                                            )
                                     )
+
+                                    OutlinedButton(
+                                        modifier =
+                                            Modifier.fillMaxWidth(),
+                                        onClick = {
+                                            screen =
+                                                AppScreen.ADMIN_OPS
+                                        }
+                                    ) {
+                                        Text(
+                                            "YÖNETİCİ SİSTEM DURUMU / AUTOSCALE"
+                                        )
+                                    }
                                 }
 
                                 fiveParallelBuildItems
