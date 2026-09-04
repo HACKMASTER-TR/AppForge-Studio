@@ -905,7 +905,7 @@ fun TerminalWorkspaceScreen(
             ) {
                 when (selectedTab) {
                     TerminalWorkspaceTab.TERMINAL ->
-                        LocalTerminalPanel(
+                        LocalPtyTerminalPanel(
                             sessions = sessions,
                             activeSession =
                                 activeSession,
