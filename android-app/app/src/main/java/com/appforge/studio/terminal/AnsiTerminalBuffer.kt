@@ -86,6 +86,13 @@ internal class AnsiTerminalBuffer(
     private val csiBuffer =
         StringBuilder()
 
+    private var alternateScreen = false
+    private var savedMainScreen:
+        MutableList<MutableList<MutableCell>>? = null
+    private var savedMainCursorRow = 0
+    private var savedMainCursorColumn = 0
+    private var savedMainCursorVisible = true
+
     fun reset() {
         screen =
             newScreen(
@@ -103,6 +110,17 @@ internal class AnsiTerminalBuffer(
         parserState =
             ParserState.TEXT
         csiBuffer.clear()
+        alternateScreen = false
+        savedMainScreen = null
+    }
+
+    fun clear() {
+        scrollback.clear()
+        for (row in 0 until rows) {
+            clearRange(row, 0, columns)
+        }
+        cursorRow = 0
+        cursorColumn = 0
     }
 
     fun resize(
@@ -179,7 +197,7 @@ internal class AnsiTerminalBuffer(
         includeScrollback: Boolean = true
     ): AnsiTerminalSnapshot {
         val history =
-            if (includeScrollback) {
+            if (includeScrollback && !alternateScreen) {
                 scrollback.toList()
             } else {
                 emptyList()
@@ -248,7 +266,7 @@ internal class AnsiTerminalBuffer(
                     '\u0007' -> Unit
 
                     '\u000c' ->
-                        clearScreen()
+                        clear()
 
                     else ->
                         if (
@@ -380,15 +398,17 @@ internal class AnsiTerminalBuffer(
                         )
                     }
 
-            scrollback.add(
-                removed
-            )
+            if (!alternateScreen) {
+                scrollback.add(
+                    removed
+                )
 
-            while (
-                scrollback.size >
-                maxScrollbackLines
-            ) {
-                scrollback.removeFirst()
+                while (
+                    scrollback.size >
+                    maxScrollbackLines
+                ) {
+                    scrollback.removeFirst()
+                }
             }
 
             screen.add(
@@ -573,21 +593,64 @@ internal class AnsiTerminalBuffer(
                 restoreCursor()
 
             'h' ->
-                if (
-                    privateMode &&
-                    parameter(0, 0) == 25
-                ) {
-                    cursorVisible = true
+                if (privateMode) {
+                    parameters
+                        .filterNotNull()
+                        .forEach { mode ->
+                            when (mode) {
+                                25 -> cursorVisible = true
+                                47, 1047, 1049 ->
+                                    enterAlternateScreen()
+                            }
+                        }
                 }
 
             'l' ->
-                if (
-                    privateMode &&
-                    parameter(0, 0) == 25
-                ) {
-                    cursorVisible = false
+                if (privateMode) {
+                    parameters
+                        .filterNotNull()
+                        .forEach { mode ->
+                            when (mode) {
+                                25 -> cursorVisible = false
+                                47, 1047, 1049 ->
+                                    leaveAlternateScreen()
+                            }
+                        }
                 }
         }
+    }
+
+    private fun enterAlternateScreen() {
+        if (alternateScreen) return
+
+        savedMainScreen =
+            screen.map { row ->
+                row.map { it.copy() }
+                    .toMutableList()
+            }.toMutableList()
+        savedMainCursorRow = cursorRow
+        savedMainCursorColumn = cursorColumn
+        savedMainCursorVisible = cursorVisible
+
+        alternateScreen = true
+        screen = newScreen(rows, columns)
+        cursorRow = 0
+        cursorColumn = 0
+    }
+
+    private fun leaveAlternateScreen() {
+        if (!alternateScreen) return
+
+        savedMainScreen?.let { restored ->
+            screen = restored
+        }
+        cursorRow =
+            savedMainCursorRow.coerceIn(0, rows - 1)
+        cursorColumn =
+            savedMainCursorColumn.coerceIn(0, columns - 1)
+        cursorVisible = savedMainCursorVisible
+        savedMainScreen = null
+        alternateScreen = false
     }
 
     private fun eraseDisplay(
@@ -632,9 +695,11 @@ internal class AnsiTerminalBuffer(
                 )
             }
 
-            2,
-            3 ->
+            2 ->
                 clearScreen()
+
+            3 ->
+                clear()
         }
     }
 

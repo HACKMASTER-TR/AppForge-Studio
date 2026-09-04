@@ -38,6 +38,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -119,6 +120,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         AppVisibility.activityStopped()
+        com.appforge.studio.terminal.LocalPtySessionRegistry.persistNow()
         BuildProgressService.startPending(this)
         super.onStop()
     }
@@ -646,14 +648,14 @@ private fun AppForgeApp() {
             )
         }
 
-    var currentProjectId by remember { mutableStateOf<String?>(null) }
+    var currentProjectId by rememberSaveable { mutableStateOf<String?>(null) }
     var autosaveBaseline by
         remember {
             mutableStateOf<Pair<String, ProjectDraft>?>(
                 null
             )
         }
-    var screen by remember {
+    var screen by rememberSaveable {
         mutableStateOf(
             if (
                 context.getSharedPreferences(
@@ -671,7 +673,7 @@ private fun AppForgeApp() {
         )
     }
 
-    var step by remember { mutableIntStateOf(1) }
+    var step by rememberSaveable { mutableIntStateOf(1) }
 
     LaunchedEffect(hostActivity?.buildNotificationSequence) {
         if (hostActivity?.consumeBuildNotificationNavigation() == true) {
@@ -709,28 +711,28 @@ private fun AppForgeApp() {
      * geri dönerken proje ve mevcut builder adımı korunur.
      */
     var workspaceReturnScreen by
-        remember {
+        rememberSaveable {
             mutableStateOf(
                 AppScreen.HOME
             )
         }
 
     var workspaceReturnStep by
-        remember {
+        rememberSaveable {
             mutableIntStateOf(
                 1
             )
         }
 
     var terminalReturnScreen by
-        remember {
+        rememberSaveable {
             mutableStateOf(
                 AppScreen.HOME
             )
         }
 
     var terminalReturnStep by
-        remember {
+        rememberSaveable {
             mutableIntStateOf(
                 1
             )
@@ -848,12 +850,63 @@ private fun AppForgeApp() {
         session?.userId
     )
 
+    var rememberedAccountUserId by
+        rememberSaveable {
+            mutableStateOf(session?.userId)
+        }
+
+    LaunchedEffect(
+        currentProjectId,
+        session?.userId
+    ) {
+        val projectId =
+            currentProjectId
+
+        if (
+            projectId != null &&
+            autosaveBaseline == null
+        ) {
+            val restoredDraft =
+                ProjectLibrary.restore(
+                    context,
+                    projectId
+                )
+
+            if (restoredDraft != null) {
+                draft = restoredDraft
+                autosaveBaseline =
+                    projectId to restoredDraft
+                serverUrl =
+                    restoredDraft.buildServiceUrl
+                sourceAnalysis =
+                    restoredDraft.importedFolder
+                        ?.let { folderPath ->
+                            runCatching {
+                                SourceCapabilityAnalyzer.analyze(
+                                    File(folderPath)
+                                )
+                            }.getOrNull()
+                        }
+            }
+        }
+    }
+
     LaunchedEffect(
         session?.userId
     ) {
+        val nextUserId =
+            session?.userId
+
+        if (rememberedAccountUserId == nextUserId) {
+            return@LaunchedEffect
+        }
+
+        rememberedAccountUserId =
+            nextUserId
+
         /*
-         * Hesap değiştiğinde önceki hesabın açık projesini
-         * yeni hesaba taşımıyoruz.
+         * Yalnız gerçek hesap değişiminde önceki hesabın açık projesini
+         * yeni hesaba taşımıyoruz. İlk composition restore'u silmez.
          */
         currentProjectId =
             null

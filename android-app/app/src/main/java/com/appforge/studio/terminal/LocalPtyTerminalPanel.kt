@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -43,9 +44,14 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.io.File
@@ -64,6 +70,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 
 internal data class LocalPtyTerminalState(
     val id: String,
@@ -75,6 +83,7 @@ internal data class LocalPtyTerminalState(
     val rows: Int,
     val columns: Int,
     val lastActivatedAt: Long,
+    val restored: Boolean,
     val snapshot: AnsiTerminalSnapshot
 )
 
@@ -83,6 +92,7 @@ internal object LocalPtySessionRegistry {
         val id: String,
         val title: String,
         val workspace: File,
+        var workingDirectory: File,
         val session: LocalInteractivePtySession,
         val buffer: AnsiTerminalBuffer,
         var running: Boolean,
@@ -90,7 +100,8 @@ internal object LocalPtySessionRegistry {
         var exitCode: Int?,
         var rows: Int,
         var columns: Int,
-        var lastActivatedAt: Long
+        var lastActivatedAt: Long,
+        var restored: Boolean
     )
 
     private val lock = Any()
@@ -122,6 +133,7 @@ internal object LocalPtySessionRegistry {
 
             appContext =
                 context.applicationContext
+            restoreLocked()
             initialized = true
             publishLocked()
         }
@@ -199,10 +211,9 @@ internal object LocalPtySessionRegistry {
                     .toString()
 
             val index =
-                records.values.count {
-                    it.workspace ==
-                        safeWorkspace
-                } + 1
+                nextTerminalIndexLocked(
+                    safeWorkspace
+                )
 
             records[id] =
                 Record(
@@ -216,6 +227,8 @@ internal object LocalPtySessionRegistry {
                             }
                             ?: "Terminal $index",
                     workspace =
+                        safeWorkspace,
+                    workingDirectory =
                         safeWorkspace,
                     session =
                         LocalInteractivePtySession(
@@ -232,9 +245,11 @@ internal object LocalPtySessionRegistry {
                     rows = 24,
                     columns = 80,
                     lastActivatedAt =
-                        System.currentTimeMillis()
+                        System.currentTimeMillis(),
+                    restored = false
                 )
 
+            persistLocked()
             publishLocked()
             return id
         }
@@ -286,7 +301,13 @@ internal object LocalPtySessionRegistry {
 
                 current.starting = true
                 current.exitCode = null
-                current.buffer.reset()
+                if (!current.restored) {
+                    current.buffer.reset()
+                } else {
+                    current.buffer.feed(
+                        "\n[AppForge] PTY geri yüklendi • yeni shell başlatılıyor.\n"
+                    )
+                }
                 publishLocked()
                 current
             }
@@ -294,7 +315,12 @@ internal object LocalPtySessionRegistry {
         try {
             record.session.start(
                 workspace =
-                    record.workspace,
+                    record.workingDirectory
+                        .takeIf {
+                            it.isDirectory &&
+                                it.canRead()
+                        }
+                        ?: record.workspace,
                 rows = record.rows,
                 columns = record.columns,
                 onOutput = { chunk ->
@@ -308,6 +334,15 @@ internal object LocalPtySessionRegistry {
                                 chunk
                             )
                         )
+                        current.session
+                            .currentWorkingDirectory()
+                            ?.takeIf {
+                                it.isDirectory &&
+                                    it.canRead()
+                            }
+                            ?.let {
+                                current.workingDirectory = it
+                            }
                         publishLocked()
                     }
                 },
@@ -318,6 +353,8 @@ internal object LocalPtySessionRegistry {
                             it.starting = false
                             it.exitCode =
                                 exitCode
+                            it.restored = false
+                            persistLocked()
                             publishLocked()
                         }
                     }
@@ -329,6 +366,8 @@ internal object LocalPtySessionRegistry {
                     it.starting = false
                     it.running =
                         it.exitCode == null
+                    it.restored = false
+                    persistLocked()
                     publishLocked()
                 }
             }
@@ -398,6 +437,7 @@ internal object LocalPtySessionRegistry {
                     safeRows,
                     safeColumns
                 )
+                persistLocked()
                 publishLocked()
 
                 current.session
@@ -417,6 +457,15 @@ internal object LocalPtySessionRegistry {
             records[id]?.let {
                 it.lastActivatedAt =
                     System.currentTimeMillis()
+                it.session
+                    .currentWorkingDirectory()
+                    ?.takeIf { cwd ->
+                        cwd.isDirectory && cwd.canRead()
+                    }
+                    ?.let { cwd ->
+                        it.workingDirectory = cwd
+                    }
+                persistLocked()
                 publishLocked()
             }
         }
@@ -435,6 +484,7 @@ internal object LocalPtySessionRegistry {
             synchronized(lock) {
                 records.remove(id)
                     .also {
+                        persistLocked()
                         publishLocked()
                     }
             }
@@ -461,6 +511,179 @@ internal object LocalPtySessionRegistry {
         )
     }
 
+    fun clearBuffer(id: String) {
+        synchronized(lock) {
+            records[id]?.let { record ->
+                record.buffer.clear()
+                persistLocked()
+                publishLocked()
+            }
+        }
+    }
+
+    fun persistNow() {
+        if (!initialized) return
+
+        synchronized(lock) {
+            records.values.forEach { record ->
+                record.session
+                    .currentWorkingDirectory()
+                    ?.takeIf {
+                        it.isDirectory && it.canRead()
+                    }
+                    ?.let {
+                        record.workingDirectory = it
+                    }
+            }
+            persistLocked()
+        }
+    }
+
+    private fun restoreLocked() {
+        val raw =
+            appContext
+                .getSharedPreferences(
+                    PREFS_NAME,
+                    Context.MODE_PRIVATE
+                )
+                .getString(KEY_SESSIONS, null)
+                ?: return
+
+        val array =
+            runCatching { JSONArray(raw) }
+                .getOrNull()
+                ?: return
+
+        for (index in 0 until minOf(array.length(), MAX_LOCAL_PTY_SESSIONS)) {
+            val item =
+                array.optJSONObject(index)
+                    ?: continue
+
+            val id =
+                item.optString("id")
+                    .takeIf {
+                        runCatching { UUID.fromString(it) }.isSuccess
+                    }
+                    ?: continue
+
+            val workspace =
+                runCatching {
+                    File(item.optString("workspace"))
+                        .canonicalFile
+                }.getOrNull()
+                    ?.takeIf {
+                        it.isDirectory && it.canRead()
+                    }
+                    ?: continue
+
+            val cwd =
+                runCatching {
+                    File(item.optString("cwd", workspace.absolutePath))
+                        .canonicalFile
+                }.getOrNull()
+                    ?.takeIf {
+                        it.isDirectory && it.canRead()
+                    }
+                    ?: workspace
+
+            val rows =
+                item.optInt("rows", 24)
+                    .coerceIn(8, 80)
+            val columns =
+                item.optInt("columns", 80)
+                    .coerceIn(20, 240)
+            val buffer =
+                AnsiTerminalBuffer(
+                    initialRows = rows,
+                    initialColumns = columns
+                )
+
+            item.optString("snapshot")
+                .takeIf { it.isNotBlank() }
+                ?.let { buffer.feed(it) }
+
+            records[id] =
+                Record(
+                    id = id,
+                    title =
+                        item.optString("title", "Terminal 1")
+                            .trim()
+                            .take(40)
+                            .ifBlank { "Terminal 1" },
+                    workspace = workspace,
+                    workingDirectory = cwd,
+                    session =
+                        LocalInteractivePtySession(appContext),
+                    buffer = buffer,
+                    running = false,
+                    starting = false,
+                    exitCode = null,
+                    rows = rows,
+                    columns = columns,
+                    lastActivatedAt =
+                        item.optLong("lastActive", 0L)
+                            .coerceAtLeast(0L),
+                    restored = true
+                )
+        }
+    }
+
+    private fun persistLocked() {
+        if (!::appContext.isInitialized) return
+
+        val array = JSONArray()
+        records.values
+            .take(MAX_LOCAL_PTY_SESSIONS)
+            .forEach { record ->
+                val snapshot =
+                    record.buffer
+                        .snapshot()
+                        .plainText()
+                        .takeLast(MAX_PERSISTED_SNAPSHOT_CHARS)
+
+                array.put(
+                    JSONObject()
+                        .put("id", record.id)
+                        .put("title", record.title)
+                        .put("workspace", record.workspace.absolutePath)
+                        .put("cwd", record.workingDirectory.absolutePath)
+                        .put("rows", record.rows)
+                        .put("columns", record.columns)
+                        .put("lastActive", record.lastActivatedAt)
+                        .put("snapshot", snapshot)
+                )
+            }
+
+        appContext
+            .getSharedPreferences(
+                PREFS_NAME,
+                Context.MODE_PRIVATE
+            )
+            .edit()
+            .putString(KEY_SESSIONS, array.toString())
+            .apply()
+    }
+
+    private fun nextTerminalIndexLocked(
+        workspace: File
+    ): Int {
+        val used =
+            records.values
+                .filter { it.workspace == workspace }
+                .mapNotNull { record ->
+                    Regex("^Terminal (\\d+)$")
+                        .matchEntire(record.title)
+                        ?.groupValues
+                        ?.getOrNull(1)
+                        ?.toIntOrNull()
+                }
+                .toSet()
+
+        return (1..MAX_LOCAL_PTY_SESSIONS)
+            .firstOrNull { it !in used }
+            ?: (used.maxOrNull() ?: 0) + 1
+    }
+
     private fun publishLocked() {
         mutableStates.value =
             records.values
@@ -477,14 +700,17 @@ internal object LocalPtySessionRegistry {
                         columns = it.columns,
                         lastActivatedAt =
                             it.lastActivatedAt,
+                        restored = it.restored,
                         snapshot =
                             it.buffer.snapshot()
                     )
                 }
     }
 
-    private const val MAX_LOCAL_PTY_SESSIONS =
-        6
+    private const val MAX_LOCAL_PTY_SESSIONS = 6
+    private const val MAX_PERSISTED_SNAPSHOT_CHARS = 32_768
+    private const val PREFS_NAME = "appforge_local_pty_sessions"
+    private const val KEY_SESSIONS = "session_descriptors_v2"
 }
 
 private class LocalInteractivePtySession(
@@ -632,34 +858,39 @@ private class LocalInteractivePtySession(
 
                 readerJob =
                     scope.launch {
-                        InputStreamReader(
-                            input,
-                            Charsets.UTF_8
-                        ).use { reader ->
-                            val buffer =
-                                CharArray(2_048)
+                        runCatching {
+                            InputStreamReader(
+                                input,
+                                Charsets.UTF_8
+                            ).use { reader ->
+                                val buffer =
+                                    CharArray(2_048)
 
-                            while (
-                                running.get()
-                            ) {
-                                val count =
-                                    reader.read(
-                                        buffer
-                                    )
+                                while (running.get()) {
+                                    val count =
+                                        reader.read(buffer)
 
-                                if (count < 0) {
-                                    break
-                                }
+                                    if (count < 0) break
 
-                                if (count > 0) {
-                                    onOutput(
-                                        String(
-                                            buffer,
-                                            0,
-                                            count
+                                    if (count > 0) {
+                                        onOutput(
+                                            String(
+                                                buffer,
+                                                0,
+                                                count
+                                            )
                                         )
-                                    )
+                                    }
                                 }
+                            }
+                        }.onFailure { error ->
+                            /*
+                             * exit/close closes the PTY descriptor while the reader may
+                             * still be blocked. That IOException is an expected shutdown
+                             * path and must never escape a root coroutine and crash Android.
+                             */
+                            if (running.get()) {
+                                running.set(false)
                             }
                         }
                     }
@@ -723,6 +954,16 @@ private class LocalInteractivePtySession(
                 columns = columns
             )
         }
+
+    fun currentWorkingDirectory(): File? {
+        val pid = processId
+            ?: return null
+
+        return runCatching {
+            File("/proc/$pid/cwd")
+                .canonicalFile
+        }.getOrNull()
+    }
 
     fun terminate() {
         processId?.let {
@@ -811,6 +1052,20 @@ internal fun LocalPtyTerminalPanel(
             workspaceRoot.absolutePath
         ) {
             mutableStateOf<String?>(null)
+        }
+
+    val initialUxPreferences =
+        remember(context.applicationContext) {
+            TerminalUxPreferences.load(
+                context.applicationContext
+            )
+        }
+
+    var terminalFontSizeSp by
+        remember(workspaceRoot.absolutePath) {
+            mutableStateOf(
+                initialUxPreferences.fontSizeSp
+            )
         }
 
     LaunchedEffect(
@@ -1078,156 +1333,108 @@ internal fun LocalPtyTerminalPanel(
         } else {
             LocalPtySurface(
                 state = active,
+                fontSizeSp = terminalFontSizeSp,
                 modifier =
                     Modifier.weight(1f)
             )
         }
 
         active?.let { state ->
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(
-                            rememberScrollState()
-                        ),
-                horizontalArrangement =
-                    Arrangement.spacedBy(5.dp)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                PtyKey("ESC", state.running) {
-                    scope.launch {
-                        LocalPtySessionRegistry
-                            .write(
-                                state.id,
-                                "\u001b"
-                            )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    PtyKey("ESC", state.running, Modifier.weight(1f)) {
+                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b") }
+                    }
+                    PtyKey("TAB", state.running, Modifier.weight(1f)) {
+                        scope.launch { LocalPtySessionRegistry.write(state.id, "\t") }
+                    }
+                    PtyKey("CTRL+C", state.running, Modifier.weight(1f)) {
+                        scope.launch { LocalPtySessionRegistry.sendControlC(state.id) }
+                    }
+                    PtyKey("⌫", state.running, Modifier.weight(1f)) {
+                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u007f") }
+                    }
+                    PtyKey("↵", state.running, Modifier.weight(1f)) {
+                        scope.launch { LocalPtySessionRegistry.write(state.id, "\r") }
                     }
                 }
 
-                PtyKey("TAB", state.running) {
-                    scope.launch {
-                        LocalPtySessionRegistry
-                            .write(
-                                state.id,
-                                "\t"
-                            )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    PtyKey("↑", state.running, Modifier.weight(1f)) {
+                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b[A") }
+                    }
+                    PtyKey("↓", state.running, Modifier.weight(1f)) {
+                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b[B") }
+                    }
+                    PtyKey("←", state.running, Modifier.weight(1f)) {
+                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b[D") }
+                    }
+                    PtyKey("→", state.running, Modifier.weight(1f)) {
+                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b[C") }
                     }
                 }
 
-                PtyKey("CTRL+C", state.running) {
-                    scope.launch {
-                        LocalPtySessionRegistry
-                            .sendControlC(
-                                state.id
-                            )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    PtyKey("pwd", state.running, Modifier.weight(1f)) {
+                        scope.launch { LocalPtySessionRegistry.write(state.id, "pwd\r") }
                     }
-                }
-
-                PtyKey("⌫", state.running) {
-                    scope.launch {
-                        LocalPtySessionRegistry
-                            .write(
-                                state.id,
-                                "\u007f"
-                            )
+                    PtyKey("ls", state.running, Modifier.weight(1f)) {
+                        scope.launch { LocalPtySessionRegistry.write(state.id, "ls -la\r") }
                     }
-                }
-
-                PtyKey("↵", state.running) {
-                    scope.launch {
-                        LocalPtySessionRegistry
-                            .write(
-                                state.id,
-                                "\r"
-                            )
+                    PtyKey("clear", state.running, Modifier.weight(1f)) {
+                        LocalPtySessionRegistry.clearBuffer(state.id)
+                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u000c") }
                     }
-                }
-
-                PtyKey("↑", state.running) {
-                    scope.launch {
-                        LocalPtySessionRegistry
-                            .write(
-                                state.id,
-                                "\u001b[A"
-                            )
+                    PtyKey("A−", terminalFontSizeSp > 8f, Modifier.weight(1f)) {
+                        terminalFontSizeSp =
+                            (terminalFontSizeSp - 1f).coerceAtLeast(8f)
+                        TerminalUxPreferences.saveFontSize(
+                            context.applicationContext,
+                            terminalFontSizeSp
+                        )
                     }
-                }
-
-                PtyKey("↓", state.running) {
-                    scope.launch {
-                        LocalPtySessionRegistry
-                            .write(
-                                state.id,
-                                "\u001b[B"
-                            )
+                    PtyKey("A+", terminalFontSizeSp < 18f, Modifier.weight(1f)) {
+                        terminalFontSizeSp =
+                            (terminalFontSizeSp + 1f).coerceAtMost(18f)
+                        TerminalUxPreferences.saveFontSize(
+                            context.applicationContext,
+                            terminalFontSizeSp
+                        )
                     }
-                }
-
-                PtyKey("←", state.running) {
-                    scope.launch {
-                        LocalPtySessionRegistry
-                            .write(
+                    PtyKey("Tanıla", state.running, Modifier.weight(1f)) {
+                        scope.launch {
+                            LocalPtySessionRegistry.write(
                                 state.id,
-                                "\u001b[D"
+                                "printf '=== APPFORGE PTY SELF TEST ===\\n'; " +
+                                    "printf 'TERM=%s\\n' \"\$TERM\"; stty size; pwd; " +
+                                    "for c in sh curl unzip tar gzip sed awk grep find xargs git ssh; do " +
+                                    "p=\$(command -v \$c 2>/dev/null); " +
+                                    "if [ -n \"\$p\" ]; then printf '%-8s PASS %s\\n' \$c \$p; " +
+                                    "else printf '%-8s FAIL\\n' \$c; fi; done\\r"
                             )
-                    }
-                }
-
-                PtyKey("→", state.running) {
-                    scope.launch {
-                        LocalPtySessionRegistry
-                            .write(
-                                state.id,
-                                "\u001b[C"
-                            )
-                    }
-                }
-
-                PtyKey("pwd", state.running) {
-                    scope.launch {
-                        LocalPtySessionRegistry
-                            .write(
-                                state.id,
-                                "pwd\r"
-                            )
-                    }
-                }
-
-                PtyKey("ls", state.running) {
-                    scope.launch {
-                        LocalPtySessionRegistry
-                            .write(
-                                state.id,
-                                "ls -la\r"
-                            )
-                    }
-                }
-
-                PtyKey("clear", state.running) {
-                    scope.launch {
-                        LocalPtySessionRegistry
-                            .write(
-                                state.id,
-                                "\u000c"
-                            )
+                        }
                     }
                 }
 
                 if (!state.running) {
-                    PtyKey(
-                        "Yeniden Başlat",
-                        !state.starting
-                    ) {
+                    PtyKey("Yeniden Başlat", !state.starting, Modifier.fillMaxWidth()) {
                         scope.launch {
                             runCatching {
-                                LocalPtySessionRegistry
-                                    .start(
-                                        state.id
-                                    )
+                                LocalPtySessionRegistry.start(state.id)
                             }.onFailure {
-                                message =
-                                    it.message
-                                        ?: "PTY yeniden başlatılamadı."
+                                message = it.message ?: "PTY yeniden başlatılamadı."
                             }
                         }
                     }
@@ -1240,6 +1447,7 @@ internal fun LocalPtyTerminalPanel(
 @Composable
 private fun LocalPtySurface(
     state: LocalPtyTerminalState,
+    fontSizeSp: Float,
     modifier: Modifier = Modifier
 ) {
     val scope =
@@ -1259,10 +1467,10 @@ private fun LocalPtySurface(
         }
 
     val fontSize =
-        11.sp
+        fontSizeSp.sp
 
     val lineHeight =
-        15.sp
+        (fontSizeSp * 1.4f).sp
 
     val charWidthPx =
         with(density) {
@@ -1397,23 +1605,28 @@ private fun LocalPtySurface(
                         .fillMaxSize()
                         .padding(12.dp)
             ) {
-                Text(
-                    rendered,
-                    color =
-                        TerminalText,
-                    fontFamily =
-                        FontFamily.Monospace,
-                    fontSize =
-                        fontSize,
-                    lineHeight =
-                        lineHeight,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .verticalScroll(
-                                outputScroll
-                            )
-                )
+                CompositionLocalProvider(
+                    LocalTextSelectionColors provides
+                        TextSelectionColors(
+                            handleColor = TerminalPrimary,
+                            backgroundColor =
+                                TerminalPrimary.copy(alpha = 0.28f)
+                        )
+                ) {
+                    SelectionContainer {
+                        Text(
+                            rendered,
+                            color = TerminalText,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = fontSize,
+                            lineHeight = lineHeight,
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(outputScroll)
+                        )
+                    }
+                }
 
                 Box(
                     modifier =
@@ -1432,75 +1645,100 @@ private fun LocalPtySurface(
 private fun renderLocalPtySnapshot(
     snapshot: AnsiTerminalSnapshot,
     showCursor: Boolean
-): String {
-    val lines =
-        snapshot.lines
-            .map { line ->
-                line.joinToString("") {
-                    it.character
-                        .toString()
-                }.trimEnd()
+): AnnotatedString =
+    buildAnnotatedString {
+        snapshot.lines.forEachIndexed { lineIndex, line ->
+            val cursorColumn =
+                if (
+                    showCursor &&
+                    snapshot.cursorVisible &&
+                    lineIndex == snapshot.cursorLine
+                ) {
+                    snapshot.cursorColumn.coerceAtLeast(0)
+                } else {
+                    -1
+                }
+
+            val lastContentColumn =
+                line.indexOfLast {
+                    it.character != ' '
+                }
+
+            val lastColumn =
+                maxOf(
+                    lastContentColumn,
+                    cursorColumn
+                )
+
+            if (lastColumn >= 0) {
+                for (column in 0..lastColumn) {
+                    if (column == cursorColumn) {
+                        append('▌')
+                    }
+
+                    if (column < line.size) {
+                        val cell = line[column]
+                        val style = cell.style
+
+                        val defaultFg = TerminalText
+                        val defaultBg = Color(0xFF030609)
+                        val explicitFg =
+                            style.foregroundRgb
+                                ?.let(::localAnsiColor)
+                        val explicitBg =
+                            style.backgroundRgb
+                                ?.let(::localAnsiColor)
+
+                        val fg =
+                            if (style.inverse) {
+                                explicitBg ?: defaultBg
+                            } else {
+                                explicitFg ?: defaultFg
+                            }
+
+                        val bg =
+                            if (style.inverse) {
+                                explicitFg ?: defaultFg
+                            } else {
+                                explicitBg
+                            }
+
+                        withStyle(
+                            SpanStyle(
+                                color = fg,
+                                background =
+                                    bg ?: Color.Unspecified,
+                                fontWeight =
+                                    if (style.bold) {
+                                        FontWeight.Bold
+                                    } else {
+                                        FontWeight.Normal
+                                    },
+                                textDecoration =
+                                    if (style.underline) {
+                                        TextDecoration.Underline
+                                    } else {
+                                        TextDecoration.None
+                                    }
+                            )
+                        ) {
+                            append(cell.character)
+                        }
+                    }
+                }
             }
-            .toMutableList()
 
-    if (
-        showCursor &&
-        snapshot.cursorVisible
-    ) {
-        while (
-            lines.size <=
-            snapshot.cursorLine
-        ) {
-            lines.add("")
+            if (lineIndex < snapshot.lines.lastIndex) {
+                append('\n')
+            }
         }
-
-        val lineIndex =
-            snapshot.cursorLine
-                .coerceIn(
-                    0,
-                    lines.lastIndex
-                )
-
-        val original =
-            lines[lineIndex]
-
-        val column =
-            snapshot.cursorColumn
-                .coerceAtLeast(0)
-
-        val padded =
-            original.padEnd(
-                column,
-                ' '
-            )
-
-        val safeColumn =
-            column.coerceAtMost(
-                padded.length
-            )
-
-        lines[lineIndex] =
-            padded.substring(
-                0,
-                safeColumn
-            ) +
-                "▌" +
-                padded.substring(
-                    safeColumn
-                )
     }
 
-    return lines
-        .joinToString("\n")
-        .trimEnd()
-        .ifEmpty {
-            if (showCursor) {
-                "▌"
-            } else {
-                " "
-            }
-        }
-}
+private fun localAnsiColor(rgb: Int): Color =
+    Color(
+        0xFF000000L or
+            (rgb.toLong() and 0x00FFFFFFL)
+    )
 
 private fun localPtyImeDeltaWithSentinel(
     previous: String,
@@ -1514,15 +1752,21 @@ private fun localPtyImeDeltaWithSentinel(
         return "\u007f"
     }
 
+    val nextPayload =
+        next.removePrefix(
+            LOCAL_PTY_IME_SENTINEL
+        )
+
+    if (nextPayload.lastOrNull()?.isHighSurrogate() == true) {
+        return ""
+    }
+
     return localPtyImeDelta(
         previous =
             previous.removePrefix(
                 LOCAL_PTY_IME_SENTINEL
             ),
-        next =
-            next.removePrefix(
-                LOCAL_PTY_IME_SENTINEL
-            )
+        next = nextPayload
     )
 }
 
@@ -1534,6 +1778,13 @@ private fun localPtyImeShadow(
             LOCAL_PTY_IME_SENTINEL
         )
 
+    val safePayload =
+        if (payload.lastOrNull()?.isHighSurrogate() == true) {
+            payload.dropLast(1)
+        } else {
+            payload
+        }
+
     return if (
         payload.contains('\n') ||
         payload.contains('\r') ||
@@ -1543,7 +1794,7 @@ private fun localPtyImeShadow(
         LOCAL_PTY_IME_SENTINEL
     } else {
         LOCAL_PTY_IME_SENTINEL +
-            payload
+            safePayload
     }
 }
 
@@ -1565,6 +1816,15 @@ private fun localPtyImeDelta(
             next[prefix]
     ) {
         prefix += 1
+    }
+
+    if (
+        prefix > 0 &&
+        prefix < previous.length &&
+        previous[prefix - 1].isHighSurrogate() &&
+        previous[prefix].isLowSurrogate()
+    ) {
+        prefix -= 1
     }
 
     val removed =
@@ -1594,17 +1854,20 @@ private fun localPtyImeDelta(
 private fun PtyKey(
     label: String,
     enabled: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     OutlinedButton(
         enabled = enabled,
-        onClick = onClick
+        onClick = onClick,
+        modifier =
+            modifier.heightIn(min = 44.dp)
     ) {
         Text(
             label,
             fontFamily =
                 FontFamily.Monospace,
-            fontSize = 10.sp
+            fontSize = 12.sp
         )
     }
 }
