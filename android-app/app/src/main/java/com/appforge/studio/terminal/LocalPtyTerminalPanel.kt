@@ -10,12 +10,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -24,6 +27,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -876,6 +880,7 @@ internal fun LocalPtyTerminalPanel(
         modifier =
             Modifier
                 .fillMaxSize()
+                .imePadding()
                 .padding(10.dp),
         verticalArrangement =
             Arrangement.spacedBy(8.dp)
@@ -1290,7 +1295,16 @@ private fun LocalPtySurface(
         )
     }
 
-    BasicTextField(
+    CompositionLocalProvider(
+        LocalTextSelectionColors provides
+            TextSelectionColors(
+                handleColor =
+                    Color.Transparent,
+                backgroundColor =
+                    Color.Transparent
+            )
+    ) {
+        BasicTextField(
         value = imeShadow,
         onValueChange = { next ->
             if (!state.running) {
@@ -1412,6 +1426,7 @@ private fun LocalPtySurface(
             }
         }
     )
+    }
 }
 
 private fun renderLocalPtySnapshot(
