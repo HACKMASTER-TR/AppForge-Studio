@@ -28,7 +28,7 @@ test("Stage 10E routes the main Terminal tab through a persistent native PTY", a
   assert.match(pty, /LocalPtySessionRegistry\s*\.write\(/);
   assert.match(pty, /BasicTextField\(/);
   assert.match(pty, /Color\.Transparent/);
-  assert.match(pty, /innerTextField\(\)/);
+  assert.match(pty, /focusRequester\(/);
   assert.match(pty, /localPtyImeDeltaWithSentinel/);
   assert.match(pty, /sendControlC/);
   assert.match(pty, /"\\u001b\[A"/);

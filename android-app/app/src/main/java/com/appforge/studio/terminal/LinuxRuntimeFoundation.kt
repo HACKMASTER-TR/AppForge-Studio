@@ -455,7 +455,8 @@ internal enum class LinuxToolchainId {
     PHP,
     GO,
     RUST,
-    C_CPP
+    C_CPP,
+    ANDROID
 }
 
 internal data class LinuxToolchainSpec(
@@ -477,8 +478,18 @@ internal object LinuxToolchainCatalog {
                 "openssh-client",
                 "curl",
                 "wget",
+                "rsync",
                 "zip",
-                "unzip"
+                "unzip",
+                "xz-utils",
+                "bzip2",
+                "gzip",
+                "tar",
+                "jq",
+                "sqlite3",
+                "openssl",
+                "bash",
+                "zsh"
             ),
             spec(
                 LinuxToolchainId.PYTHON,
@@ -486,7 +497,9 @@ internal object LinuxToolchainCatalog {
                 "Python 3, pip ve sanal ortam desteği.",
                 "python3",
                 "python3-pip",
-                "python3-venv"
+                "python3-venv",
+                "python-is-python3",
+                "pipx"
             ),
             spec(
                 LinuxToolchainId.NODE,
@@ -500,7 +513,8 @@ internal object LinuxToolchainCatalog {
                 "Java",
                 "Dağıtımın varsayılan JDK ve Maven araç zinciri.",
                 "default-jdk",
-                "maven"
+                "maven",
+                "gradle"
             ),
             spec(
                 LinuxToolchainId.PHP,
@@ -527,8 +541,19 @@ internal object LinuxToolchainCatalog {
                 "C / C++",
                 "GCC/G++, make, CMake ve pkg-config.",
                 "build-essential",
+                "clang",
+                "lld",
                 "cmake",
-                "pkg-config"
+                "ninja-build",
+                "pkg-config",
+                "gdb"
+            ),
+            spec(
+                LinuxToolchainId.ANDROID,
+                "Android CLI",
+                "ADB ve Fastboot istemci araçları. USB erişimi Android izinlerine bağlıdır.",
+                "adb",
+                "fastboot"
             )
         )
 
@@ -536,6 +561,22 @@ internal object LinuxToolchainCatalog {
         specs.first {
             it.id == id
         }
+
+    val developmentProfileIds:
+        List<LinuxToolchainId> =
+        listOf(
+            LinuxToolchainId.BASE,
+            LinuxToolchainId.PYTHON,
+            LinuxToolchainId.NODE,
+            LinuxToolchainId.JAVA,
+            LinuxToolchainId.C_CPP,
+            LinuxToolchainId.ANDROID
+        )
+
+    fun developmentProfileCommand(): String =
+        installCommand(
+            developmentProfileIds
+        )
 
     fun packagesFor(
         ids: Collection<LinuxToolchainId>

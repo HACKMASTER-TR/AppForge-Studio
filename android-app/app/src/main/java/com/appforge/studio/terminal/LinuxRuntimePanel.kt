@@ -70,6 +70,16 @@ internal fun LinuxRuntimePanel(
             mutableStateOf(false)
         }
 
+    var devSetupRunning by
+        remember {
+            mutableStateOf(false)
+        }
+
+    var devSetupMessage by
+        remember {
+            mutableStateOf<String?>(null)
+        }
+
     var distribution by
         remember {
             mutableStateOf(
@@ -239,6 +249,117 @@ internal fun LinuxRuntimePanel(
                 Text(
                     "Gerçek PTY terminali yalnız native engine ve doğrulanmış rootfs birlikte Hazır olduğunda açılır.",
                     color = TerminalWarning,
+                    fontSize = 10.sp,
+                    lineHeight = 15.sp
+                )
+            }
+
+            Text(
+                "AppForge Dev Suite",
+                color = TerminalText,
+                fontWeight = FontWeight.Black,
+                fontSize = 12.sp
+            )
+
+            Text(
+                "Termux gerektirmeyen geliştirme profili: bash/zsh, Git/SSH, Python/pip, Node/npm/npx, Java/Maven/Gradle, GCC/G++, Clang, CMake/Ninja, jq/sqlite/openssl ve Android ADB/Fastboot istemcileri.",
+                color = TerminalMuted,
+                fontSize = 10.sp,
+                lineHeight = 15.sp
+            )
+
+            Button(
+                enabled =
+                    !installing &&
+                        !devSetupRunning &&
+                        installableManifest != null,
+                onClick = {
+                    devSetupRunning = true
+                    installing = true
+                    installError = null
+                    devSetupMessage = null
+
+                    scope.launch {
+                        runCatching {
+                            var currentStatus =
+                                manager.inspect(distribution)
+
+                            if (!currentStatus.ready) {
+                                manager.installVerifiedRootfs(
+                                    distribution
+                                ) { progress ->
+                                    scope.launch {
+                                        installProgress = progress
+                                    }
+                                }
+
+                                refreshNonce += 1
+                                currentStatus = manager.inspect(distribution)
+                            }
+
+                            check(currentStatus.ready) {
+                                currentStatus.detail
+                            }
+
+                            val rootfs =
+                                manager.requireReadyRootfs(distribution)
+
+                            val result =
+                                LinuxShellEngine(
+                                    context.applicationContext
+                                ).execute(
+                                    sessionId = "appforge-dev-suite",
+                                    rootfs = rootfs,
+                                    workspace = workspace,
+                                    command =
+                                        LinuxToolchainCatalog
+                                            .developmentProfileCommand(),
+                                    confirmed = true,
+                                    timeoutMs = 1_800_000L
+                                )
+
+                            check(!result.timedOut) {
+                                "Dev Suite kurulumu zaman aşımına uğradı."
+                            }
+
+                            check(result.exitCode == 0) {
+                                result.output
+                                    .takeLast(4_000)
+                                    .ifBlank {
+                                        "APT exit=${result.exitCode}"
+                                    }
+                            }
+                        }.onSuccess {
+                            devSetupMessage =
+                                "AppForge Dev Suite hazır. Linux terminalinde git, ssh, python, pip, node, npm, npx, java, gradle, gcc/g++, clang, cmake, ninja, adb ve fastboot komutlarını doğrudan kullanabilirsin."
+                            refreshNonce += 1
+                        }.onFailure { error ->
+                            installError =
+                                error.message
+                                    ?: "AppForge Dev Suite kurulumu başarısız."
+                        }
+
+                        installing = false
+                        devSetupRunning = false
+                    }
+                }
+            ) {
+                Text(
+                    if (devSetupRunning) {
+                        "Dev Suite hazırlanıyor…"
+                    } else if (status.ready) {
+                        "Dev Suite'i Kur / Güncelle"
+                    } else {
+                        "Rootfs + Dev Suite Tek Seferde Kur"
+                    }
+                )
+            }
+
+            devSetupMessage?.let { readyMessage ->
+                Text(
+                    readyMessage,
+                    color = TerminalPrimary,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 10.sp,
                     lineHeight = 15.sp
                 )

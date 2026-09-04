@@ -3,13 +3,20 @@ package com.appforge.studio.terminal
 import android.content.Context
 import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.getBottom
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -36,14 +43,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -84,6 +96,7 @@ internal data class LocalPtyTerminalState(
     val columns: Int,
     val lastActivatedAt: Long,
     val restored: Boolean,
+    val outputRevision: Long,
     val snapshot: AnsiTerminalSnapshot
 )
 
@@ -101,7 +114,8 @@ internal object LocalPtySessionRegistry {
         var rows: Int,
         var columns: Int,
         var lastActivatedAt: Long,
-        var restored: Boolean
+        var restored: Boolean,
+        var outputRevision: Long
     )
 
     private val lock = Any()
@@ -246,7 +260,8 @@ internal object LocalPtySessionRegistry {
                     columns = 80,
                     lastActivatedAt =
                         System.currentTimeMillis(),
-                    restored = false
+                    restored = false,
+                    outputRevision = 0L
                 )
 
             persistLocked()
@@ -308,6 +323,7 @@ internal object LocalPtySessionRegistry {
                         "\n[AppForge] PTY geri yüklendi • yeni shell başlatılıyor.\n"
                     )
                 }
+                current.outputRevision += 1L
                 publishLocked()
                 current
             }
@@ -334,6 +350,7 @@ internal object LocalPtySessionRegistry {
                                 chunk
                             )
                         )
+                        current.outputRevision += 1L
                         current.session
                             .currentWorkingDirectory()
                             ?.takeIf {
@@ -515,6 +532,7 @@ internal object LocalPtySessionRegistry {
         synchronized(lock) {
             records[id]?.let { record ->
                 record.buffer.clear()
+                record.outputRevision += 1L
                 persistLocked()
                 publishLocked()
             }
@@ -623,7 +641,8 @@ internal object LocalPtySessionRegistry {
                     lastActivatedAt =
                         item.optLong("lastActive", 0L)
                             .coerceAtLeast(0L),
-                    restored = true
+                    restored = true,
+                    outputRevision = 1L
                 )
         }
     }
@@ -701,6 +720,7 @@ internal object LocalPtySessionRegistry {
                         lastActivatedAt =
                             it.lastActivatedAt,
                         restored = it.restored,
+                        outputRevision = it.outputRevision,
                         snapshot =
                             it.buffer.snapshot()
                     )
@@ -1131,6 +1151,13 @@ internal fun LocalPtyTerminalPanel(
                 it.id == activePtyId
             }
 
+    val panelDensity =
+        LocalDensity.current
+
+    val imeVisible =
+        WindowInsets.ime
+            .getBottom(panelDensity) > 0
+
     Column(
         modifier =
             Modifier
@@ -1153,10 +1180,28 @@ internal fun LocalPtyTerminalPanel(
                 Alignment.CenterVertically
         ) {
             ptySessions.forEach { session ->
-                if (
+                val selected =
                     session.id ==
-                    activePtyId
-                ) {
+                        activePtyId
+
+                val closeThisSession: () -> Unit = {
+                    val closing =
+                        session.id
+
+                    LocalPtySessionRegistry
+                        .closeSession(
+                            closing
+                        )
+
+                    activePtyId =
+                        ptySessions
+                            .firstOrNull {
+                                it.id != closing
+                            }
+                            ?.id
+                }
+
+                if (selected) {
                     Button(
                         onClick = {
                             activePtyId =
@@ -1167,10 +1212,30 @@ internal fun LocalPtyTerminalPanel(
                                 )
                         }
                     ) {
-                        Text(
-                            session.title,
-                            fontSize = 11.sp
-                        )
+                        Row(
+                            verticalAlignment =
+                                Alignment.CenterVertically
+                        ) {
+                            Text(
+                                session.title,
+                                fontSize = 12.sp
+                            )
+
+                            if (ptySessions.size > 1) {
+                                Text(
+                                    "×",
+                                    modifier =
+                                        Modifier
+                                            .padding(start = 8.dp)
+                                            .clickable {
+                                                closeThisSession()
+                                            },
+                                    fontSize = 18.sp,
+                                    fontWeight =
+                                        FontWeight.Black
+                                )
+                            }
+                        }
                     }
                 } else {
                     OutlinedButton(
@@ -1185,36 +1250,8 @@ internal fun LocalPtyTerminalPanel(
                     ) {
                         Text(
                             session.title,
-                            fontSize = 11.sp
+                            fontSize = 12.sp
                         )
-                    }
-                }
-
-                if (
-                    ptySessions.size > 1 &&
-                    session.id ==
-                        activePtyId
-                ) {
-                    TextButton(
-                        onClick = {
-                            val closing =
-                                session.id
-
-                            LocalPtySessionRegistry
-                                .closeSession(
-                                    closing
-                                )
-
-                            activePtyId =
-                                ptySessions
-                                    .firstOrNull {
-                                        it.id !=
-                                            closing
-                                    }
-                                    ?.id
-                        }
-                    ) {
-                        Text("×")
                     }
                 }
             }
@@ -1334,108 +1371,129 @@ internal fun LocalPtyTerminalPanel(
             LocalPtySurface(
                 state = active,
                 fontSizeSp = terminalFontSizeSp,
+                onFontSizeSpChange = { next ->
+                    terminalFontSizeSp =
+                        next.coerceIn(
+                            8f,
+                            18f
+                        )
+
+                    TerminalUxPreferences.saveFontSize(
+                        context.applicationContext,
+                        terminalFontSizeSp
+                    )
+                },
                 modifier =
                     Modifier.weight(1f)
             )
         }
 
         active?.let { state ->
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            if (
+                imeVisible &&
+                state.running
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                Column(
+                    modifier =
+                        Modifier.fillMaxWidth(),
+                    verticalArrangement =
+                        Arrangement.spacedBy(4.dp)
                 ) {
-                    PtyKey("ESC", state.running, Modifier.weight(1f)) {
-                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b") }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        PtyKey("ESC", true, Modifier.weight(1f)) {
+                            scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b") }
+                        }
+                        PtyKey("TAB", true, Modifier.weight(1f)) {
+                            scope.launch { LocalPtySessionRegistry.write(state.id, "\t") }
+                        }
+                        PtyKey("CTRL+C", true, Modifier.weight(1f)) {
+                            scope.launch { LocalPtySessionRegistry.sendControlC(state.id) }
+                        }
+                        PtyKey("⌫", true, Modifier.weight(1f)) {
+                            scope.launch { LocalPtySessionRegistry.write(state.id, "\u007f") }
+                        }
+                        PtyKey("↵", true, Modifier.weight(1f)) {
+                            scope.launch { LocalPtySessionRegistry.write(state.id, "\r") }
+                        }
                     }
-                    PtyKey("TAB", state.running, Modifier.weight(1f)) {
-                        scope.launch { LocalPtySessionRegistry.write(state.id, "\t") }
-                    }
-                    PtyKey("CTRL+C", state.running, Modifier.weight(1f)) {
-                        scope.launch { LocalPtySessionRegistry.sendControlC(state.id) }
-                    }
-                    PtyKey("⌫", state.running, Modifier.weight(1f)) {
-                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u007f") }
-                    }
-                    PtyKey("↵", state.running, Modifier.weight(1f)) {
-                        scope.launch { LocalPtySessionRegistry.write(state.id, "\r") }
-                    }
-                }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    PtyKey("↑", state.running, Modifier.weight(1f)) {
-                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b[A") }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        PtyKey("↑", true, Modifier.weight(1f)) {
+                            scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b[A") }
+                        }
+                        PtyKey("↓", true, Modifier.weight(1f)) {
+                            scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b[B") }
+                        }
+                        PtyKey("←", true, Modifier.weight(1f)) {
+                            scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b[D") }
+                        }
+                        PtyKey("→", true, Modifier.weight(1f)) {
+                            scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b[C") }
+                        }
                     }
-                    PtyKey("↓", state.running, Modifier.weight(1f)) {
-                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b[B") }
-                    }
-                    PtyKey("←", state.running, Modifier.weight(1f)) {
-                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b[D") }
-                    }
-                    PtyKey("→", state.running, Modifier.weight(1f)) {
-                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u001b[C") }
-                    }
-                }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    PtyKey("pwd", state.running, Modifier.weight(1f)) {
-                        scope.launch { LocalPtySessionRegistry.write(state.id, "pwd\r") }
-                    }
-                    PtyKey("ls", state.running, Modifier.weight(1f)) {
-                        scope.launch { LocalPtySessionRegistry.write(state.id, "ls -la\r") }
-                    }
-                    PtyKey("clear", state.running, Modifier.weight(1f)) {
-                        LocalPtySessionRegistry.clearBuffer(state.id)
-                        scope.launch { LocalPtySessionRegistry.write(state.id, "\u000c") }
-                    }
-                    PtyKey("A−", terminalFontSizeSp > 8f, Modifier.weight(1f)) {
-                        terminalFontSizeSp =
-                            (terminalFontSizeSp - 1f).coerceAtLeast(8f)
-                        TerminalUxPreferences.saveFontSize(
-                            context.applicationContext,
-                            terminalFontSizeSp
-                        )
-                    }
-                    PtyKey("A+", terminalFontSizeSp < 18f, Modifier.weight(1f)) {
-                        terminalFontSizeSp =
-                            (terminalFontSizeSp + 1f).coerceAtMost(18f)
-                        TerminalUxPreferences.saveFontSize(
-                            context.applicationContext,
-                            terminalFontSizeSp
-                        )
-                    }
-                    PtyKey("Tanıla", state.running, Modifier.weight(1f)) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "printf '=== APPFORGE PTY SELF TEST ===\\n'; " +
-                                    "printf 'TERM=%s\\n' \"\$TERM\"; stty size; pwd; " +
-                                    "for c in sh curl unzip tar gzip sed awk grep find xargs git ssh; do " +
-                                    "p=\$(command -v \$c 2>/dev/null); " +
-                                    "if [ -n \"\$p\" ]; then printf '%-8s PASS %s\\n' \$c \$p; " +
-                                    "else printf '%-8s FAIL\\n' \$c; fi; done\\r"
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        PtyKey("pwd", true, Modifier.weight(1f)) {
+                            scope.launch { LocalPtySessionRegistry.write(state.id, "pwd\r") }
+                        }
+                        PtyKey("ls", true, Modifier.weight(1f)) {
+                            scope.launch { LocalPtySessionRegistry.write(state.id, "ls -la\r") }
+                        }
+                        PtyKey("clear", true, Modifier.weight(1f)) {
+                            LocalPtySessionRegistry.clearBuffer(state.id)
+                            scope.launch { LocalPtySessionRegistry.write(state.id, "\u000c") }
+                        }
+                        PtyKey("A−", terminalFontSizeSp > 8f, Modifier.weight(1f)) {
+                            terminalFontSizeSp = (terminalFontSizeSp - 1f).coerceAtLeast(8f)
+                            TerminalUxPreferences.saveFontSize(
+                                context.applicationContext,
+                                terminalFontSizeSp
                             )
+                        }
+                        PtyKey("A+", terminalFontSizeSp < 18f, Modifier.weight(1f)) {
+                            terminalFontSizeSp = (terminalFontSizeSp + 1f).coerceAtMost(18f)
+                            TerminalUxPreferences.saveFontSize(
+                                context.applicationContext,
+                                terminalFontSizeSp
+                            )
+                        }
+                        PtyKey("Tanıla", true, Modifier.weight(1f)) {
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    "printf '=== APPFORGE PTY SELF TEST ===\\n'; " +
+                                        "printf 'TERM=%s\\n' \"\$TERM\"; stty size; pwd; " +
+                                        "for c in sh curl unzip tar gzip sed awk grep find xargs git ssh; do " +
+                                        "command -v \"\$c\" >/dev/null 2>&1 && " +
+                                        "printf '%-8s PASS\\n' \"\$c\" || " +
+                                        "printf '%-8s MISS\\n' \"\$c\"; done\r"
+                                )
+                            }
                         }
                     }
                 }
+            }
 
-                if (!state.running) {
-                    PtyKey("Yeniden Başlat", !state.starting, Modifier.fillMaxWidth()) {
-                        scope.launch {
-                            runCatching {
-                                LocalPtySessionRegistry.start(state.id)
-                            }.onFailure {
-                                message = it.message ?: "PTY yeniden başlatılamadı."
-                            }
+            if (!state.running) {
+                PtyKey(
+                    "Yeniden Başlat",
+                    !state.starting,
+                    Modifier.fillMaxWidth()
+                ) {
+                    scope.launch {
+                        runCatching {
+                            LocalPtySessionRegistry.start(state.id)
+                        }.onFailure {
+                            message = it.message ?: "PTY yeniden başlatılamadı."
                         }
                     }
                 }
@@ -1448,109 +1506,44 @@ internal fun LocalPtyTerminalPanel(
 private fun LocalPtySurface(
     state: LocalPtyTerminalState,
     fontSizeSp: Float,
+    onFontSizeSpChange: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scope =
-        rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val inputFocusRequester = remember(state.id) { FocusRequester() }
+    val tapInteraction = remember(state.id) { MutableInteractionSource() }
+    val outputScroll = rememberScrollState()
 
-    val density =
-        LocalDensity.current
+    var selectionEpoch by remember(state.id) { mutableStateOf(0) }
+    var imeShadow by remember(state.id) { mutableStateOf(LOCAL_PTY_IME_SENTINEL) }
+    var pendingHighSurrogate by remember(state.id) { mutableStateOf<Char?>(null) }
+    var pinchFontSizeSp by remember(state.id) { mutableStateOf(fontSizeSp) }
 
-    val outputScroll =
-        rememberScrollState()
+    LaunchedEffect(fontSizeSp) {
+        pinchFontSizeSp = fontSizeSp
+    }
 
-    var imeShadow by
-        remember(state.id) {
-            mutableStateOf(
-                LOCAL_PTY_IME_SENTINEL
-            )
-        }
-
-    val fontSize =
-        fontSizeSp.sp
-
-    val lineHeight =
-        (fontSizeSp * 1.4f).sp
-
-    val charWidthPx =
-        with(density) {
-            fontSize.toPx() *
-                0.72f
-        }
-
-    val lineHeightPx =
-        with(density) {
-            lineHeight.toPx()
-        }
+    val fontSize = fontSizeSp.sp
+    val lineHeight = (fontSizeSp * 1.4f).sp
+    val charWidthPx = with(density) { fontSize.toPx() * 0.72f }
+    val lineHeightPx = with(density) { lineHeight.toPx() }
 
     val rendered =
-        remember(
-            state.snapshot,
-            state.running
-        ) {
+        remember(state.snapshot, state.running) {
             renderLocalPtySnapshot(
                 state.snapshot,
                 state.running
             )
         }
 
-    LaunchedEffect(
-        rendered.length,
-        outputScroll.maxValue
-    ) {
-        outputScroll.scrollTo(
-            outputScroll.maxValue
-        )
+    /* IME/viewport resize must not force old history to jump. */
+    LaunchedEffect(state.outputRevision) {
+        outputScroll.scrollTo(outputScroll.maxValue)
     }
 
-    CompositionLocalProvider(
-        LocalTextSelectionColors provides
-            TextSelectionColors(
-                handleColor =
-                    Color.Transparent,
-                backgroundColor =
-                    Color.Transparent
-            )
-    ) {
-        BasicTextField(
-        value = imeShadow,
-        onValueChange = { next ->
-            if (!state.running) {
-                imeShadow =
-                    LOCAL_PTY_IME_SENTINEL
-                return@BasicTextField
-            }
-
-            val delta =
-                localPtyImeDeltaWithSentinel(
-                    previous = imeShadow,
-                    next = next
-                )
-
-            imeShadow =
-                localPtyImeShadow(next)
-
-            if (delta.isNotEmpty()) {
-                scope.launch {
-                    LocalPtySessionRegistry
-                        .write(
-                            state.id,
-                            delta
-                        )
-                }
-            }
-        },
-        enabled = state.running,
-        textStyle =
-            TextStyle(
-                color =
-                    Color.Transparent,
-                fontSize = 1.sp
-            ),
-        cursorBrush =
-            SolidColor(
-                Color.Transparent
-            ),
+    Box(
         modifier =
             modifier
                 .fillMaxWidth()
@@ -1561,84 +1554,161 @@ private fun LocalPtySurface(
                 )
                 .onSizeChanged { size ->
                     val columns =
-                        (
-                            size.width /
-                                charWidthPx
-                            )
+                        (size.width / charWidthPx)
                             .toInt()
-                            .coerceIn(
-                                20,
-                                240
-                            )
-
+                            .coerceIn(20, 240)
                     val rows =
-                        (
-                            size.height /
-                                lineHeightPx
-                            )
+                        (size.height / lineHeightPx)
                             .toInt()
-                            .coerceIn(
-                                8,
-                                80
-                            )
+                            .coerceIn(8, 80)
 
-                    if (
-                        columns !=
-                            state.columns ||
-                        rows !=
-                            state.rows
-                    ) {
+                    if (columns != state.columns || rows != state.rows) {
                         scope.launch {
-                            LocalPtySessionRegistry
-                                .resize(
-                                    state.id,
-                                    rows,
-                                    columns
-                                )
+                            LocalPtySessionRegistry.resize(
+                                state.id,
+                                rows,
+                                columns
+                            )
                         }
                     }
-                },
-        decorationBox = { innerTextField ->
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(12.dp)
-            ) {
-                CompositionLocalProvider(
-                    LocalTextSelectionColors provides
-                        TextSelectionColors(
-                            handleColor = TerminalPrimary,
-                            backgroundColor =
-                                TerminalPrimary.copy(alpha = 0.28f)
-                        )
-                ) {
-                    SelectionContainer {
-                        Text(
-                            rendered,
-                            color = TerminalText,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = fontSize,
-                            lineHeight = lineHeight,
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(outputScroll)
-                        )
+                }
+                .pointerInput(state.id) {
+                    detectTransformGestures { _, _, zoom, _ ->
+                        if (zoom != 1f) {
+                            val next =
+                                (pinchFontSizeSp * zoom)
+                                    .coerceIn(8f, 18f)
+                            if (next != pinchFontSizeSp) {
+                                pinchFontSizeSp = next
+                                onFontSizeSpChange(next)
+                            }
+                        }
                     }
                 }
-
-                Box(
-                    modifier =
-                        Modifier
-                            .size(1.dp)
-                            .alpha(0f)
+                .clickable(
+                    interactionSource = tapInteraction,
+                    indication = null
                 ) {
-                    innerTextField()
+                    selectionEpoch += 1
+                    inputFocusRequester.requestFocus()
+                    keyboardController?.show()
+                }
+    ) {
+        CompositionLocalProvider(
+            LocalTextSelectionColors provides
+                TextSelectionColors(
+                    handleColor = TerminalPrimary,
+                    backgroundColor = TerminalPrimary.copy(alpha = 0.28f)
+                )
+        ) {
+            key(selectionEpoch) {
+                SelectionContainer {
+                    Text(
+                        rendered,
+                        color = TerminalText,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = fontSize,
+                        lineHeight = lineHeight,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(outputScroll)
+                                .padding(
+                                    start = 16.dp,
+                                    top = 12.dp,
+                                    end = 12.dp,
+                                    bottom = 12.dp
+                                )
+                    )
                 }
             }
         }
-    )
+
+        /* 1dp IME capture cannot steal long-press output selection. */
+        CompositionLocalProvider(
+            LocalTextSelectionColors provides
+                TextSelectionColors(
+                    handleColor = Color.Transparent,
+                    backgroundColor = Color.Transparent
+                )
+        ) {
+            BasicTextField(
+                value = imeShadow,
+                onValueChange = { next ->
+                    if (!state.running) {
+                        pendingHighSurrogate = null
+                        imeShadow = LOCAL_PTY_IME_SENTINEL
+                        return@BasicTextField
+                    }
+
+                    if (imeShadow == LOCAL_PTY_IME_SENTINEL && next.isEmpty()) {
+                        pendingHighSurrogate = null
+                        imeShadow = LOCAL_PTY_IME_SENTINEL
+                        scope.launch {
+                            LocalPtySessionRegistry.write(state.id, "\u007f")
+                        }
+                        return@BasicTextField
+                    }
+
+                    val previousPayload =
+                        imeShadow.removePrefix(LOCAL_PTY_IME_SENTINEL)
+                    val rawPayload =
+                        next.removePrefix(LOCAL_PTY_IME_SENTINEL)
+
+                    if (
+                        rawPayload.startsWith(previousPayload) &&
+                        rawPayload.length == previousPayload.length + 1 &&
+                        rawPayload.lastOrNull()?.isHighSurrogate() == true
+                    ) {
+                        pendingHighSurrogate = rawPayload.last()
+                        imeShadow = LOCAL_PTY_IME_SENTINEL + previousPayload
+                        return@BasicTextField
+                    }
+
+                    var normalizedPayload = rawPayload
+                    pendingHighSurrogate?.let { high ->
+                        if (
+                            rawPayload.startsWith(previousPayload) &&
+                            rawPayload.length == previousPayload.length + 1 &&
+                            rawPayload.lastOrNull()?.isLowSurrogate() == true
+                        ) {
+                            normalizedPayload =
+                                previousPayload + high + rawPayload.last()
+                        }
+                    }
+                    pendingHighSurrogate = null
+
+                    val delta =
+                        localPtyImeDelta(
+                            previous = previousPayload,
+                            next = normalizedPayload
+                        )
+
+                    imeShadow =
+                        localPtyImeShadow(
+                            LOCAL_PTY_IME_SENTINEL + normalizedPayload
+                        )
+
+                    if (delta.isNotEmpty()) {
+                        scope.launch {
+                            LocalPtySessionRegistry.write(state.id, delta)
+                        }
+                    }
+                },
+                enabled = state.running,
+                textStyle =
+                    TextStyle(
+                        color = Color.Transparent,
+                        fontSize = 1.sp
+                    ),
+                cursorBrush = SolidColor(Color.Transparent),
+                modifier =
+                    Modifier
+                        .size(1.dp)
+                        .alpha(0f)
+                        .focusRequester(inputFocusRequester)
+            )
+        }
     }
 }
 
@@ -1827,9 +1897,14 @@ private fun localPtyImeDelta(
         prefix -= 1
     }
 
+    val removedText =
+        previous.substring(prefix)
+
     val removed =
-        previous.length -
-            prefix
+        removedText.codePointCount(
+            0,
+            removedText.length
+        )
 
     return buildString {
         repeat(removed) {
@@ -1861,13 +1936,37 @@ private fun PtyKey(
         enabled = enabled,
         onClick = onClick,
         modifier =
-            modifier.heightIn(min = 44.dp)
+            modifier.heightIn(min = 48.dp),
+        contentPadding =
+            PaddingValues(
+                horizontal = 3.dp,
+                vertical = 4.dp
+            )
     ) {
         Text(
             label,
             fontFamily =
                 FontFamily.Monospace,
-            fontSize = 12.sp
+            fontWeight =
+                FontWeight.Bold,
+            fontSize =
+                when (label) {
+                    "⌫",
+                    "↵",
+                    "↑",
+                    "↓",
+                    "←",
+                    "→" -> 18.sp
+
+                    "ESC",
+                    "TAB",
+                    "pwd",
+                    "ls",
+                    "A−",
+                    "A+" -> 14.sp
+
+                    else -> 13.sp
+                }
         )
     }
 }
