@@ -576,6 +576,16 @@ internal fun GitWorkspacePanel(
                 }
             }
         }
+
+        item {
+            AdvancedGitPanel(
+                workspace = workspace,
+                githubToken =
+                    token.ifBlank {
+                        githubConnection?.accessToken.orEmpty()
+                    }
+            )
+        }
     }
 }
 

@@ -90,6 +90,24 @@ fun TerminalWorkspaceScreen(
     val scope =
         rememberCoroutineScope()
 
+    var startupAccessGranted by
+        remember {
+            mutableStateOf(
+                !TerminalStartupLockPreferences
+                    .isEnabled(context)
+            )
+        }
+
+    if (!startupAccessGranted) {
+        TerminalStartupBiometricGate(
+            onUnlocked = {
+                startupAccessGranted = true
+            },
+            onBack = onBack
+        )
+        return
+    }
+
     val projects =
         remember {
             ProjectLibrary.load(context)

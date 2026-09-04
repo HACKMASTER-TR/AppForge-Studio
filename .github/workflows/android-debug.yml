@@ -33,6 +33,30 @@ jobs:
         with:
           gradle-version: "9.3.1"
 
+      - name: Install deterministic Android native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SDKMANAGER="$(
+            find "$ANDROID_HOME/cmdline-tools" \
+              -type f \
+              -name sdkmanager \
+              | sort -V \
+              | tail -n 1
+          )"
+
+          test -x "$SDKMANAGER"
+
+          "$SDKMANAGER" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+          test -d "$ANDROID_HOME/ndk/28.2.13676358"
+          test -d "$ANDROID_HOME/cmake/3.22.1"
+
+          echo "Android native toolchain verified: NDK 28.2.13676358 / CMake 3.22.1"
+
       - name: Restore AppForge Firebase config
         shell: bash
         env:

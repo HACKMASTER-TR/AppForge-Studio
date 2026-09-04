@@ -55,6 +55,26 @@ internal fun TerminalUltimatePanel(
             )
         }
 
+    var editorVisible by
+        remember(workspace.absolutePath) {
+            mutableStateOf(false)
+        }
+
+    var automationVisible by
+        remember(workspace.absolutePath) {
+            mutableStateOf(false)
+        }
+
+    var securityVisible by
+        remember(workspace.absolutePath) {
+            mutableStateOf(false)
+        }
+
+    var aiHandoffRefresh by
+        remember(workspace.absolutePath) {
+            mutableStateOf(0)
+        }
+
     val detection =
         remember(
             workspace.absolutePath,
@@ -169,7 +189,7 @@ internal fun TerminalUltimatePanel(
                             UltimateActionTarget.LINUX
                         ) {
                             Text(
-                                "Bu görev gerçek Linux araç zinciri ister. Ultimate Linux motoru Aşama 2'de rootless Debian/Ubuntu olarak eklenecek. Şimdilik aynı komutu SSH ile kendi Linux sunucunda çalıştırabilirsin.",
+                                "Bu görev doğrulanmış AppForge rootless Linux ortamı ister. Linux Modu'na geçerek aynı proje kökünde gerçek PTY ve araç zincirleriyle çalıştırabilirsin.",
                                 color =
                                     TerminalSecondary,
                                 fontSize =
@@ -380,6 +400,70 @@ internal fun TerminalUltimatePanel(
             }
         }
 
+        item {
+            UltimateNavigationCard(
+                title =
+                    "Proje Otomasyonu + Paket Mağazası",
+                detail =
+                    "Proje türüne göre gerekli Linux araç zincirlerini, install/test/build adımlarını ve uygun deployment hedeflerini tek yerde yönet.",
+                button =
+                    if (automationVisible) {
+                        "Otomasyonu Gizle"
+                    } else {
+                        "Otomasyonu Aç"
+                    },
+                onClick = {
+                    automationVisible =
+                        !automationVisible
+                }
+            )
+        }
+
+        if (automationVisible) {
+            item {
+                UltimateProjectAutomationPanel(
+                    workspace = workspace,
+                    detection = detection,
+                    onOpenDeployment =
+                        onOpenConnections,
+                    onAiHandoff = { packet ->
+                        UltimateAiHandoffStore
+                            .publish(packet)
+                        aiHandoffRefresh += 1
+                        mode =
+                            TerminalUltimateMode.AI
+                    }
+                )
+            }
+        }
+
+        item {
+            UltimateNavigationCard(
+                title =
+                    "Güvenlik + Geri Yükleme",
+                detail =
+                    "Biyometrik onay, güvenli restore point ve gizli veri korumasını yönet.",
+                button =
+                    if (securityVisible) {
+                        "Güvenliği Gizle"
+                    } else {
+                        "Güvenliği Aç"
+                    },
+                onClick = {
+                    securityVisible =
+                        !securityVisible
+                }
+            )
+        }
+
+        if (securityVisible) {
+            item {
+                TerminalSecurityCenterPanel(
+                    workspace = workspace
+                )
+            }
+        }
+
         when (mode) {
             TerminalUltimateMode.EASY -> {
                 item {
@@ -454,9 +538,36 @@ internal fun TerminalUltimatePanel(
                 item {
                     UltimateNavigationCard(
                         title =
-                            "Kod ve Dosyalar",
+                            "Gelişmiş Kod Editörü",
                         detail =
-                            "Mevcut güvenli dosya editörünü aç. VS Code/LSP katmanı sonraki aşamada bu çalışma alanına bağlanacak.",
+                            "Çoklu dosya sekmeleri, arama/değiştir, undo/redo, diff ve güvenli geri yükleme noktaları. LSP sunucusu otomatik çalıştırılmaz.",
+                        button =
+                            if (editorVisible) {
+                                "Editörü Gizle"
+                            } else {
+                                "Editörü Aç"
+                            },
+                        onClick = {
+                            editorVisible =
+                                !editorVisible
+                        }
+                    )
+                }
+
+                if (editorVisible) {
+                    item {
+                        UltimateCodeEditorPanel(
+                            workspace = workspace
+                        )
+                    }
+                }
+
+                item {
+                    UltimateNavigationCard(
+                        title =
+                            "Dosya Yöneticisi",
+                        detail =
+                            "Mevcut güvenli dosya yöneticisi ve temel metin editörünü aç.",
                         button =
                             "Dosyaları Aç",
                         onClick =
@@ -500,6 +611,13 @@ internal fun TerminalUltimatePanel(
                 }
 
                 item {
+                    LinuxRuntimePanel(
+                        workspace = workspace,
+                        onOpenSsh = onOpenSsh
+                    )
+                }
+
+                item {
                     Card(
                         modifier =
                             Modifier.fillMaxWidth(),
@@ -516,7 +634,7 @@ internal fun TerminalUltimatePanel(
                                 Arrangement.spacedBy(7.dp)
                         ) {
                             Text(
-                                "Rootless Linux motoru: Aşama 2",
+                                "Native Linux engine: Aşama 2B",
                                 color =
                                     TerminalWarning,
                                 fontWeight =
@@ -594,6 +712,81 @@ internal fun TerminalUltimatePanel(
                         "AI Modu",
                         "Türkçe geliştirici, hata açıklaması ve güvenli komut hazırlama."
                     )
+                }
+
+                val pipelineHandoff =
+                    remember(
+                        aiHandoffRefresh
+                    ) {
+                        UltimateAiHandoffStore
+                            .peek()
+                    }
+
+                if (pipelineHandoff != null) {
+                    item {
+                        Card(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor =
+                                        TerminalSurface
+                                )
+                        ) {
+                            Column(
+                                modifier =
+                                    Modifier.padding(14.dp),
+                                verticalArrangement =
+                                    Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    "Pipeline hata aktarımı",
+                                    color =
+                                        TerminalWarning,
+                                    fontWeight =
+                                        FontWeight.Black
+                                )
+
+                                Text(
+                                    pipelineHandoff,
+                                    color =
+                                        TerminalMuted,
+                                    fontFamily =
+                                        FontFamily.Monospace,
+                                    fontSize =
+                                        9.sp,
+                                    lineHeight =
+                                        13.sp
+                                )
+
+                                Row(
+                                    horizontalArrangement =
+                                        Arrangement.spacedBy(7.dp)
+                                ) {
+                                    Button(
+                                        onClick =
+                                            onOpenAi
+                                    ) {
+                                        Text(
+                                            "AppForge AI Geliştiriciyi Aç"
+                                        )
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = {
+                                            UltimateAiHandoffStore
+                                                .clear()
+                                            aiHandoffRefresh += 1
+                                        }
+                                    ) {
+                                        Text(
+                                            "Aktarımı Temizle"
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 item {
