@@ -2,6 +2,9 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
 import java.security.MessageDigest
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.tasks.OutputDirectory
 
 plugins {
     id("com.android.application")
@@ -13,6 +16,11 @@ data class AppForgeProrootAsset(
     val size: Long,
     val sha256: String
 )
+
+abstract class AppForgeProrootPrepareTask : DefaultTask() {
+    @get:OutputDirectory
+    abstract val jniLibsDirectory: DirectoryProperty
+}
 
 val appForgeProrootVersion =
     "v1.2.8"
@@ -249,15 +257,17 @@ val appForgeProrootJniRoot =
         "generated/proroot/jniLibs"
     )
 
-val prepareAppForgeProrootRuntime by
-    tasks.registering {
+val prepareAppForgeProrootRuntime =
+    tasks.register<AppForgeProrootPrepareTask>(
+        "prepareAppForgeProrootRuntime"
+    ) {
         group =
             "appforge"
 
         description =
             "Downloads and verifies the pinned AppForge rootless Linux engine."
 
-        outputs.dir(
+        jniLibsDirectory.set(
             appForgeProrootJniRoot
         )
 
@@ -267,7 +277,7 @@ val prepareAppForgeProrootRuntime by
 
         doLast {
             val abiDirectory =
-                appForgeProrootJniRoot
+                jniLibsDirectory
                     .get()
                     .asFile
                     .resolve(
@@ -501,14 +511,6 @@ android {
         }
     }
 
-    sourceSets {
-        getByName("main") {
-            jniLibs.srcDir(
-                appForgeProrootJniRoot
-            )
-        }
-    }
-
     packaging {
         jniLibs {
             useLegacyPackaging = true
@@ -541,6 +543,15 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.jniLibs?.addGeneratedSourceDirectory(
+            prepareAppForgeProrootRuntime,
+            AppForgeProrootPrepareTask::jniLibsDirectory
+        )
     }
 }
 

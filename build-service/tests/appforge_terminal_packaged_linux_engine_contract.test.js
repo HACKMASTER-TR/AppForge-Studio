@@ -27,7 +27,14 @@ test("AppForge packages a pinned arm64 rootless Linux engine with SHA-256 verifi
   assert.match(buildFile, /expectedSha256/);
   assert.match(buildFile, /expectedSize/);
   assert.match(buildFile, /arm64-v8a/);
-  assert.match(buildFile, /jniLibs\.srcDir/);
+  assert.match(buildFile, /AppForgeProrootPrepareTask/);
+  assert.match(buildFile, /@get:OutputDirectory/);
+  assert.match(buildFile, /DirectoryProperty/);
+  assert.match(buildFile, /variant\.sources\.jniLibs/);
+  assert.match(buildFile, /addGeneratedSourceDirectory/);
+  assert.match(buildFile, /AppForgeProrootPrepareTask::jniLibsDirectory/);
+  assert.doesNotMatch(buildFile, /jniLibs\.srcDir/);
+  assert.doesNotMatch(buildFile, /android\.sourceset\.disallowProvider/);
   assert.match(buildFile, /dependsOn\(\s*prepareAppForgeProrootRuntime/);
   assert.match(manifest, /android:extractNativeLibs="true"/);
 
