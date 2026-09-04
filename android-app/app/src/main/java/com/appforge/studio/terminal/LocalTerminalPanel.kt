@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -242,6 +241,19 @@ internal fun LocalTerminalPanel(
 
         TerminalOutput(
             session = activeSession,
+            command = command,
+            inputEnabled =
+                !activeSession.running,
+            onCommandChange = {
+                command =
+                    it
+                        .replace("\n", "")
+                        .replace("\r", "")
+                        .take(16 * 1_024)
+            },
+            onSubmit = {
+                submitCommand()
+            },
             modifier =
                 Modifier.weight(1f)
         )
@@ -335,52 +347,131 @@ internal fun LocalTerminalPanel(
                 onRunCommand("clear")
             }
         }
+    }
+}
+@Composable
+private fun TerminalOutput(
+    session: TerminalSessionState,
+    command: String,
+    inputEnabled: Boolean,
+    onCommandChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val listState =
+        rememberLazyListState()
 
-        BasicTextField(
-            value = command,
-            onValueChange = {
-                command =
-                    it
-                        .replace("\n", "")
-                        .replace("\r", "")
-                        .take(16 * 1_024)
-            },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Color(0xFF030609),
-                        RoundedCornerShape(12.dp)
-                    )
-                    .padding(
-                        horizontal = 12.dp,
-                        vertical = 10.dp
-                    ),
-            enabled =
-                !activeSession.running,
-            singleLine = true,
-            textStyle =
-                TextStyle(
-                    color = TerminalText,
-                    fontFamily =
-                        FontFamily.Monospace,
-                    fontSize = 12.sp
+    LaunchedEffect(
+        session.id,
+        session.lines.size
+    ) {
+        if (session.lines.isNotEmpty()) {
+            listState.scrollToItem(
+                session.lines.lastIndex
+            )
+        }
+    }
+
+    BasicTextField(
+        value = command,
+        onValueChange =
+            onCommandChange,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .heightIn(min = 220.dp)
+                .background(
+                    Color(0xFF030609),
+                    RoundedCornerShape(16.dp)
                 ),
-            keyboardOptions =
-                KeyboardOptions(
-                    imeAction =
-                        ImeAction.Send
-                ),
-            keyboardActions =
-                KeyboardActions(
-                    onSend = {
-                        submitCommand()
+        enabled = inputEnabled,
+        singleLine = true,
+        textStyle =
+            TextStyle(
+                color = TerminalText,
+                fontFamily =
+                    FontFamily.Monospace,
+                fontSize = 12.sp
+            ),
+        keyboardOptions =
+            KeyboardOptions(
+                imeAction =
+                    ImeAction.Send
+            ),
+        keyboardActions =
+            KeyboardActions(
+                onSend = {
+                    onSubmit()
+                }
+            ),
+        decorationBox = { innerTextField ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+            ) {
+                LazyColumn(
+                    state = listState,
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(
+                                start = 12.dp,
+                                end = 12.dp,
+                                top = 12.dp
+                            ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(2.dp)
+                ) {
+                    itemsIndexed(
+                        session.lines,
+                        key = { index, _ ->
+                            "${session.id}-$index"
+                        }
+                    ) { _, line ->
+                        Text(
+                            line.text.ifEmpty {
+                                " "
+                            },
+                            color =
+                                when (line.kind) {
+                                    TerminalLineKind.PROMPT ->
+                                        TerminalPrimary
+
+                                    TerminalLineKind.INFO ->
+                                        TerminalSecondary
+
+                                    TerminalLineKind.SUCCESS ->
+                                        TerminalPrimary
+
+                                    TerminalLineKind.WARNING ->
+                                        TerminalWarning
+
+                                    TerminalLineKind.ERROR ->
+                                        TerminalError
+
+                                    TerminalLineKind.OUTPUT ->
+                                        TerminalText
+                                },
+                            fontFamily =
+                                FontFamily.Monospace,
+                            fontSize =
+                                12.sp,
+                            lineHeight =
+                                16.sp
+                        )
                     }
-                ),
-            decorationBox = { innerTextField ->
+                }
+
                 Row(
                     modifier =
-                        Modifier.fillMaxWidth(),
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = 12.dp,
+                                vertical = 10.dp
+                            ),
                     verticalAlignment =
                         Alignment.CenterVertically
                 ) {
@@ -398,10 +489,10 @@ internal fun LocalTerminalPanel(
                     ) {
                         if (command.isEmpty()) {
                             Text(
-                                if (activeSession.running) {
-                                    "Komut çalışıyor…"
-                                } else {
+                                if (inputEnabled) {
                                     "Terminale dokun ve yaz…"
+                                } else {
+                                    "Komut çalışıyor…"
                                 },
                                 color = TerminalMuted,
                                 fontFamily =
@@ -414,98 +505,8 @@ internal fun LocalTerminalPanel(
                     }
                 }
             }
-        )
-
-        Text(
-            "Terminal satırına dokun • doğrudan yaz • klavyeden Enter ile çalıştır",
-            color = TerminalMuted,
-            fontSize = 8.sp
-        )
-    }
-}
-@Composable
-private fun TerminalOutput(
-    session: TerminalSessionState,
-    modifier: Modifier = Modifier
-) {
-    val listState =
-        rememberLazyListState()
-
-    LaunchedEffect(
-        session.id,
-        session.lines.size
-    ) {
-        if (session.lines.isNotEmpty()) {
-            listState.scrollToItem(
-                session.lines.lastIndex
-            )
         }
-    }
-
-    Card(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .heightIn(min = 220.dp),
-        shape =
-            RoundedCornerShape(16.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    Color(0xFF030609)
-            )
-    ) {
-        SelectionContainer {
-            LazyColumn(
-                state = listState,
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(12.dp),
-                verticalArrangement =
-                    Arrangement.spacedBy(2.dp)
-            ) {
-                itemsIndexed(
-                    session.lines,
-                    key = { index, _ ->
-                        "${session.id}-$index"
-                    }
-                ) { _, line ->
-                    Text(
-                        line.text.ifEmpty {
-                            " "
-                        },
-                        color =
-                            when (line.kind) {
-                                TerminalLineKind.PROMPT ->
-                                    TerminalPrimary
-
-                                TerminalLineKind.INFO ->
-                                    TerminalSecondary
-
-                                TerminalLineKind.SUCCESS ->
-                                    TerminalPrimary
-
-                                TerminalLineKind.WARNING ->
-                                    TerminalWarning
-
-                                TerminalLineKind.ERROR ->
-                                    TerminalError
-
-                                TerminalLineKind.OUTPUT ->
-                                    TerminalText
-                            },
-                        fontFamily =
-                            FontFamily.Monospace,
-                        fontSize =
-                            12.sp,
-                        lineHeight =
-                            16.sp
-                    )
-                }
-            }
-        }
-    }
+    )
 }
 
 @Composable
