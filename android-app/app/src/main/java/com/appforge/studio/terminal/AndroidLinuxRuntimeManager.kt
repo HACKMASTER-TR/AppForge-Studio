@@ -2,8 +2,25 @@ package com.appforge.studio.terminal
 
 import android.content.Context
 import android.os.Build
+import android.net.ConnectivityManager
 import java.io.File
 import java.security.MessageDigest
+import java.nio.file.Files
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+internal enum class LinuxDevelopmentStage {
+    CHECKING,
+    ROOTFS,
+    TOOLCHAIN,
+    READY
+}
+
+internal data class LinuxDevelopmentProgress(
+    val stage: LinuxDevelopmentStage,
+    val percent: Int? = null,
+    val detail: String
+)
 
 internal class AndroidLinuxRuntimeManager(
     context: Context
@@ -215,6 +232,230 @@ internal class AndroidLinuxRuntimeManager(
         return rootfs
     }
 
+    suspend fun ensureDevelopmentEnvironment(
+        distribution: LinuxDistribution = LinuxDistribution.UBUNTU,
+        workspace: File,
+        onProgress: (LinuxDevelopmentProgress) -> Unit = {}
+    ): LinuxRuntimeStatus =
+        developmentEnvironmentMutex.withLock {
+            onProgress(
+                LinuxDevelopmentProgress(
+                    stage = LinuxDevelopmentStage.CHECKING,
+                    detail = "Geliştirme ortamı kontrol ediliyor…"
+                )
+            )
+
+            var status =
+                inspect(distribution)
+
+            if (!status.ready) {
+                status =
+                    installVerifiedRootfs(
+                        distribution
+                    ) { progress ->
+                        onProgress(
+                            LinuxDevelopmentProgress(
+                                stage = LinuxDevelopmentStage.ROOTFS,
+                                percent = progress.percent,
+                                detail =
+                                    when (progress.stage) {
+                                        LinuxInstallStage.PREPARING ->
+                                            "Geliştirme ortamı hazırlanıyor…"
+
+                                        LinuxInstallStage.DOWNLOADING ->
+                                            "Geliştirme ortamı indiriliyor…"
+
+                                        LinuxInstallStage.VERIFYING ->
+                                            "İndirilen ortam doğrulanıyor…"
+
+                                        LinuxInstallStage.EXTRACTING ->
+                                            "Geliştirme ortamı kuruluyor…"
+
+                                        LinuxInstallStage.FINALIZING ->
+                                            "Kurulum tamamlanıyor…"
+
+                                        LinuxInstallStage.COMPLETE ->
+                                            "Temel geliştirme ortamı hazır."
+                                    }
+                            )
+                        )
+                    }
+            }
+
+            check(status.ready) {
+                status.detail
+            }
+
+            val rootfs =
+                requireReadyRootfs(distribution)
+
+            configureResolver(rootfs)
+
+            if (!developmentProfileReady(distribution)) {
+                onProgress(
+                    LinuxDevelopmentProgress(
+                        stage = LinuxDevelopmentStage.TOOLCHAIN,
+                        detail = "Geliştirme araçları kuruluyor…"
+                    )
+                )
+
+                val result =
+                    LinuxShellEngine(
+                        appContext
+                    ).execute(
+                        sessionId =
+                            "appforge-terminal-bootstrap",
+                        rootfs = rootfs,
+                        workspace = workspace,
+                        command =
+                            LinuxToolchainCatalog
+                                .developmentProfileCommand(),
+                        confirmed = true,
+                        timeoutMs = 1_800_000L
+                    )
+
+                check(!result.timedOut) {
+                    "Geliştirme araçlarının kurulumu zaman aşımına uğradı."
+                }
+
+                check(result.exitCode == 0) {
+                    result.output
+                        .takeLast(2_000)
+                        .ifBlank {
+                            "Paket kurulumu exit=${result.exitCode}"
+                        }
+                }
+
+                writeDevelopmentProfileMarker(
+                    rootfs
+                )
+            }
+
+            onProgress(
+                LinuxDevelopmentProgress(
+                    stage = LinuxDevelopmentStage.READY,
+                    percent = 100,
+                    detail = "Terminal hazır."
+                )
+            )
+
+            inspect(distribution)
+        }
+
+    fun developmentProfileReady(
+        distribution: LinuxDistribution =
+            LinuxDistribution.UBUNTU
+    ): Boolean {
+        val status =
+            inspect(distribution)
+
+        if (!status.ready) {
+            return false
+        }
+
+        val architecture =
+            status.architecture
+                ?: return false
+
+        val rootfs =
+            layout(
+                distribution,
+                architecture
+            ).rootfsDirectory
+
+        val marker =
+            File(
+                rootfs,
+                DEV_SUITE_MARKER
+            )
+
+        return marker.isFile &&
+            marker.length() <= 128L &&
+            runCatching {
+                marker
+                    .readText(Charsets.UTF_8)
+                    .trim() ==
+                    DEV_SUITE_REVISION
+            }.getOrDefault(false)
+    }
+
+    private fun writeDevelopmentProfileMarker(
+        rootfs: File
+    ) {
+        val marker =
+            File(
+                rootfs,
+                DEV_SUITE_MARKER
+            )
+
+        marker.parentFile?.mkdirs()
+        marker.writeText(
+            DEV_SUITE_REVISION + "\n",
+            Charsets.UTF_8
+        )
+    }
+
+    private fun configureResolver(
+        rootfs: File
+    ) {
+        val connectivity =
+            appContext.getSystemService(
+                ConnectivityManager::class.java
+            ) ?: return
+
+        val activeNetwork =
+            connectivity.activeNetwork
+                ?: return
+
+        val dnsServers =
+            connectivity
+                .getLinkProperties(
+                    activeNetwork
+                )
+                ?.dnsServers
+                .orEmpty()
+                .mapNotNull {
+                    it.hostAddress
+                        ?.takeIf { address ->
+                            address.isNotBlank()
+                        }
+                }
+                .distinct()
+
+        if (dnsServers.isEmpty()) {
+            return
+        }
+
+        val resolv =
+            File(
+                rootfs,
+                "etc/resolv.conf"
+            )
+
+        runCatching {
+            if (
+                Files.isSymbolicLink(
+                    resolv.toPath()
+                )
+            ) {
+                Files.deleteIfExists(
+                    resolv.toPath()
+                )
+            }
+
+            resolv.parentFile?.mkdirs()
+            resolv.writeText(
+                dnsServers.joinToString(
+                    separator = "\n",
+                    postfix = "\n"
+                ) {
+                    "nameserver $it"
+                },
+                Charsets.UTF_8
+            )
+        }
+    }
+
     private fun rootfsLooksInstalled(
         rootfs: File
     ): Boolean =
@@ -269,4 +510,14 @@ internal class AndroidLinuxRuntimeManager(
                 "Native engine ve doğrulanmış rootfs hazır."
         }
 
+    companion object {
+        private val developmentEnvironmentMutex =
+            Mutex()
+
+        private const val DEV_SUITE_REVISION =
+            "appforge-dev-suite-v1"
+
+        private const val DEV_SUITE_MARKER =
+            "var/lib/appforge/dev-suite-v1"
+    }
 }

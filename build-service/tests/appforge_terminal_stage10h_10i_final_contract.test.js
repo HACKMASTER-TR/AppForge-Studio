@@ -13,20 +13,23 @@ test("Stage 10H fixes phone terminal UX without regressing native PTY", async ()
   assert.match(pty, /outputRevision/);
   assert.match(pty, /LaunchedEffect\(\s*state\.outputRevision\s*\)/);
   assert.doesNotMatch(pty, /LaunchedEffect\(\s*rendered\.length,\s*outputScroll\.maxValue/);
-  assert.match(pty, /WindowInsets\.ime\s*\.getBottom\(panelDensity\)/);
+  assert.match(pty, /WindowInsets\.ime\s*\.getBottom\(density\)/);
+  assert.match(pty, /imeBottomPx/);
   assert.doesNotMatch(
     pty,
     /import androidx\.compose\.foundation\.layout\.getBottom/
   );
-  assert.match(pty, /imeVisible\s*&&\s*state\.running/);
+  assert.match(pty, /RESIZE_DEBOUNCE_MS/);
+  assert.match(pty, /TerminalDevelopmentEnvironmentCoordinator/);
   assert.match(pty, /detectTransformGestures/);
   assert.match(pty, /onFontSizeSpChange/);
   assert.match(pty, /SelectionContainer/);
   assert.match(pty, /\.size\(1\.dp\)\s*\.alpha\(0f\)\s*\.focusRequester/);
   assert.match(pty, /selectionEpoch/);
-  assert.match(pty, /pendingHighSurrogate/);
+  assert.match(pty, /isHighSurrogate/);
+  assert.match(pty, /isLowSurrogate/);
   assert.match(pty, /codePointCount/);
-  assert.match(pty, /padding\(start = 8\.dp\)\s*\.clickable/);
+  assert.match(pty, /closeThisSession/);
   assert.match(pty, /contentPadding\s*=\s*PaddingValues/);
   assert.match(pty, /APPFORGE PTY SELF TEST/);
   assert.match(pty, /done\\r"/);

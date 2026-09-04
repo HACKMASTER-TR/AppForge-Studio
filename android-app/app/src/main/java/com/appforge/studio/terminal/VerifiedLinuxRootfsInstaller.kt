@@ -11,6 +11,7 @@ import java.io.File
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
 import java.util.UUID
 import javax.net.ssl.HttpsURLConnection
 import kotlin.coroutines.coroutineContext
@@ -495,8 +496,14 @@ internal object LinuxTarGzExtractor {
             "Rootfs çıkarma klasörü oluşturulamadı."
         }
 
+        data class HardLinkRequest(
+            val target: File,
+            val linkName: String,
+            val mode: Int
+        )
+
         val hardLinks =
-            mutableListOf<Pair<File, String>>()
+            mutableListOf<HardLinkRequest>()
 
         var entryCount = 0
         var totalExtracted = 0L
@@ -561,8 +568,11 @@ internal object LinuxTarGzExtractor {
 
                             entry.isLink -> {
                                 hardLinks +=
-                                    target to
-                                        entry.linkName
+                                    HardLinkRequest(
+                                        target = target,
+                                        linkName = entry.linkName,
+                                        mode = entry.mode
+                                    )
                             }
 
                             entry.isFile -> {
@@ -611,13 +621,16 @@ internal object LinuxTarGzExtractor {
             }
         }
 
-        for ((target, linkName) in hardLinks) {
+        for (request in hardLinks) {
             cancellationCheck()
+
+            val target =
+                request.target
 
             val source =
                 safeTarget(
                     destination,
-                    linkName
+                    request.linkName
                 )
 
             ensureNoSymlinkParents(
@@ -627,18 +640,55 @@ internal object LinuxTarGzExtractor {
 
             check(
                 source.exists() &&
-                    source.isFile
+                    source.isFile &&
+                    !Files.isSymbolicLink(
+                        source.toPath()
+                    )
             ) {
-                "Rootfs hard-link hedefi bulunamadı: $linkName"
+                "Rootfs hard-link hedefi bulunamadı: ${request.linkName}"
             }
 
             target.parentFile?.mkdirs()
             Files.deleteIfExists(
                 target.toPath()
             )
-            Files.createLink(
-                target.toPath(),
-                source.toPath()
+
+            val linked =
+                runCatching {
+                    Files.createLink(
+                        target.toPath(),
+                        source.toPath()
+                    )
+                    true
+                }.getOrDefault(false)
+
+            if (!linked) {
+                val copyBytes =
+                    source.length()
+
+                check(
+                    copyBytes in
+                        0L..MAX_SINGLE_FILE_BYTES &&
+                        totalExtracted <=
+                            MAX_TOTAL_EXTRACTED_BYTES -
+                                copyBytes
+                ) {
+                    "Rootfs hard-link kopyalama sınırı aşıldı."
+                }
+
+                Files.copy(
+                    source.toPath(),
+                    target.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING
+                )
+
+                totalExtracted +=
+                    copyBytes
+            }
+
+            applyMode(
+                target,
+                request.mode
             )
         }
     }
