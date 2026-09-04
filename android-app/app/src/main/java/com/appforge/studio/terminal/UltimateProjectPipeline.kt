@@ -237,6 +237,9 @@ internal object UltimateProjectHealthChecker {
 
                         LinuxToolchainId.C_CPP ->
                             setOf("gcc", "g++", "cmake", "make")
+
+                        LinuxToolchainId.ANDROID ->
+                            setOf("adb", "fastboot")
                     }
                 )
             }

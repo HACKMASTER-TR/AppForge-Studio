@@ -14,6 +14,10 @@ test("Stage 10H fixes phone terminal UX without regressing native PTY", async ()
   assert.match(pty, /LaunchedEffect\(\s*state\.outputRevision\s*\)/);
   assert.doesNotMatch(pty, /LaunchedEffect\(\s*rendered\.length,\s*outputScroll\.maxValue/);
   assert.match(pty, /WindowInsets\.ime\s*\.getBottom\(panelDensity\)/);
+  assert.doesNotMatch(
+    pty,
+    /import androidx\.compose\.foundation\.layout\.getBottom/
+  );
   assert.match(pty, /imeVisible\s*&&\s*state\.running/);
   assert.match(pty, /detectTransformGestures/);
   assert.match(pty, /onFontSizeSpChange/);
@@ -39,6 +43,9 @@ test("Stage 10I adds one-tap AppForge-owned Linux developer environment", async 
   const shell = await read(
     "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxShellEngine.kt"
   );
+  const pipeline = await read(
+    "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateProjectPipeline.kt"
+  );
 
   for (const pkg of [
     "git", "openssh-client", "bash", "zsh", "python3", "python3-pip",
@@ -58,4 +65,8 @@ test("Stage 10I adds one-tap AppForge-owned Linux developer environment", async 
   assert.match(panel, /\.developmentProfileCommand\(\)/);
   assert.match(panel, /timeoutMs\s*=\s*1_800_000L/);
   assert.match(shell, /1_000L\.\.1_800_000L/);
+  assert.match(
+    pipeline,
+    /LinuxToolchainId\.ANDROID\s*->\s*setOf\("adb", "fastboot"\)/
+  );
 });
