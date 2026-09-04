@@ -756,8 +756,7 @@ internal class UltimateProjectPipelineEngine(
     ): ProjectPipelineStatus =
         if (
             result.exitCode == 0 &&
-            !result.timedOut &&
-            !result.cancelled
+            !result.timedOut
         ) {
             ProjectPipelineStatus.PASSED
         } else {

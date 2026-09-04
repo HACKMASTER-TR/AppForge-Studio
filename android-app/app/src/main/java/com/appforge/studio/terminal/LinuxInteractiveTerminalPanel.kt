@@ -699,7 +699,7 @@ internal fun AnsiTerminalSnapshot
                         isCursor &&
                         cell.character == ' '
                     ) {
-                        " "
+                        ' '
                     } else {
                         cell.character
                     }

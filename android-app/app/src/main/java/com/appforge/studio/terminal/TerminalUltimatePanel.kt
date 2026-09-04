@@ -97,6 +97,15 @@ internal fun TerminalUltimatePanel(
             )
         }
 
+    val pipelineHandoff =
+        remember(
+            workspace.absolutePath,
+            aiHandoffRefresh
+        ) {
+            UltimateAiHandoffStore
+                .peek()
+        }
+
     pendingAction
         ?.let { action ->
             val explanation =
@@ -713,14 +722,6 @@ internal fun TerminalUltimatePanel(
                         "Türkçe geliştirici, hata açıklaması ve güvenli komut hazırlama."
                     )
                 }
-
-                val pipelineHandoff =
-                    remember(
-                        aiHandoffRefresh
-                    ) {
-                        UltimateAiHandoffStore
-                            .peek()
-                    }
 
                 if (pipelineHandoff != null) {
                     item {

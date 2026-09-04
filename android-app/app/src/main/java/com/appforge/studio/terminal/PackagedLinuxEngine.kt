@@ -56,8 +56,7 @@ internal class PackagedLinuxEngine(
                 ?.takeIf {
                     it.isDirectory
                 }
-                ?: return
-                    PackagedLinuxEngineInspection(
+                ?: return PackagedLinuxEngineInspection(
                         status =
                             PackagedLinuxEngineStatus
                                 .NATIVE_LIBRARY_DIR_MISSING,
@@ -84,8 +83,7 @@ internal class PackagedLinuxEngine(
                     nativeDirectory ||
                     !safeFile.isFile
                 ) {
-                    return
-                        PackagedLinuxEngineInspection(
+                    return PackagedLinuxEngineInspection(
                             status =
                                 PackagedLinuxEngineStatus
                                     .ASSET_MISSING,
@@ -106,8 +104,7 @@ internal class PackagedLinuxEngine(
                     sha256(safeFile) !=
                     asset.sha256
                 ) {
-                    return
-                        PackagedLinuxEngineInspection(
+                    return PackagedLinuxEngineInspection(
                             status =
                                 PackagedLinuxEngineStatus
                                     .ASSET_INVALID,
@@ -123,8 +120,7 @@ internal class PackagedLinuxEngine(
                 ProrootPinnedRuntime.launcherName
             ).canonicalFile
 
-        return
-            PackagedLinuxEngineInspection(
+        return PackagedLinuxEngineInspection(
                 status =
                     PackagedLinuxEngineStatus.READY,
                 detail =

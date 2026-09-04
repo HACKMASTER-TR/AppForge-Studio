@@ -10,6 +10,18 @@ internal enum class ProjectAutomationStepKind {
     BUILD
 }
 
+internal enum class DeploymentProvider(
+    val title: String
+) {
+    RAILWAY("Railway"),
+    VERCEL("Vercel"),
+    CLOUDFLARE("Cloudflare"),
+    FIREBASE("Firebase"),
+    SUPABASE("Supabase"),
+    RENDER("Render"),
+    VPS("VPS")
+}
+
 internal data class ProjectAutomationStep(
     val id: String,
     val kind: ProjectAutomationStepKind,
