@@ -16,16 +16,14 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,6 +63,21 @@ internal fun LocalTerminalPanel(
         ) {
             mutableStateOf("")
         }
+
+    fun submitCommand() {
+        if (
+            !activeSession.running &&
+            command.isNotBlank()
+        ) {
+            val submitted =
+                command
+
+            command =
+                ""
+
+            onRunCommand(submitted)
+        }
+    }
 
     Column(
         modifier =
@@ -243,17 +257,25 @@ internal fun LocalTerminalPanel(
                 Arrangement.spacedBy(6.dp)
         ) {
             ExtraKey("ESC") {
-                command += "\u001B"
+                if (!activeSession.running) {
+                    command += "\u001B"
+                }
             }
 
             ExtraKey("TAB") {
-                command += "\t"
+                if (!activeSession.running) {
+                    command += "\t"
+                }
             }
 
             ExtraKey("CTRL+C") {
                 if (activeSession.running) {
                     onCancel()
                 }
+            }
+
+            ExtraKey("↵") {
+                submitCommand()
             }
 
             ExtraKey("↑") {
@@ -314,86 +336,91 @@ internal fun LocalTerminalPanel(
             }
         }
 
-        Row(
+        BasicTextField(
+            value = command,
+            onValueChange = {
+                command =
+                    it
+                        .replace("\n", "")
+                        .replace("\r", "")
+                        .take(16 * 1_024)
+            },
             modifier =
-                Modifier.fillMaxWidth(),
-            horizontalArrangement =
-                Arrangement.spacedBy(8.dp),
-            verticalAlignment =
-                Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = command,
-                onValueChange = {
-                    command = it.take(16 * 1_024)
-                },
-                modifier =
-                    Modifier.weight(1f),
-                enabled =
-                    !activeSession.running,
-                label = {
-                    Text("Komut")
-                },
-                placeholder = {
-                    Text(
-                        "appforge help"
+                Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Color(0xFF030609),
+                        RoundedCornerShape(12.dp)
                     )
-                },
-                singleLine = true,
-                keyboardOptions =
-                    KeyboardOptions(
-                        imeAction =
-                            ImeAction.Send
+                    .padding(
+                        horizontal = 12.dp,
+                        vertical = 10.dp
                     ),
-                keyboardActions =
-                    KeyboardActions(
-                        onSend = {
-                            if (command.isNotBlank()) {
-                                val submitted =
-                                    command
-
-                                command =
-                                    ""
-
-                                onRunCommand(
-                                    submitted
-                                )
-                            }
-                        }
-                    )
-            )
-
-            if (activeSession.running) {
-                Button(
-                    onClick = onCancel,
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor =
-                                TerminalError
-                        )
+            enabled =
+                !activeSession.running,
+            singleLine = true,
+            textStyle =
+                TextStyle(
+                    color = TerminalText,
+                    fontFamily =
+                        FontFamily.Monospace,
+                    fontSize = 12.sp
+                ),
+            keyboardOptions =
+                KeyboardOptions(
+                    imeAction =
+                        ImeAction.Send
+                ),
+            keyboardActions =
+                KeyboardActions(
+                    onSend = {
+                        submitCommand()
+                    }
+                ),
+            decorationBox = { innerTextField ->
+                Row(
+                    modifier =
+                        Modifier.fillMaxWidth(),
+                    verticalAlignment =
+                        Alignment.CenterVertically
                 ) {
-                    Text("Durdur")
-                }
-            } else {
-                Button(
-                    onClick = {
-                        if (command.isNotBlank()) {
-                            val submitted =
-                                command
+                    Text(
+                        "$ ",
+                        color = TerminalPrimary,
+                        fontFamily =
+                            FontFamily.Monospace,
+                        fontSize = 12.sp
+                    )
 
-                            command =
-                                ""
-
-                            onRunCommand(
-                                submitted
+                    Box(
+                        modifier =
+                            Modifier.weight(1f)
+                    ) {
+                        if (command.isEmpty()) {
+                            Text(
+                                if (activeSession.running) {
+                                    "Komut çalışıyor…"
+                                } else {
+                                    "Terminale dokun ve yaz…"
+                                },
+                                color = TerminalMuted,
+                                fontFamily =
+                                    FontFamily.Monospace,
+                                fontSize = 12.sp
                             )
                         }
+
+                        innerTextField()
                     }
-                ) {
-                    Text("Çalıştır")
                 }
             }
-        }
+        )
+
+        Text(
+            "Terminal satırına dokun • doğrudan yaz • klavyeden Enter ile çalıştır",
+            color = TerminalMuted,
+            fontSize = 8.sp
+        )
     }
 }
 @Composable
