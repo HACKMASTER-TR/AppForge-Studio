@@ -111,6 +111,22 @@ class ProrootRuntimeContractTest {
             )
 
             assertTrue(
+                "/dev:/dev" in args
+            )
+
+            assertTrue(
+                "/proc:/proc" in args
+            )
+
+            assertFalse(
+                "/dev" in args
+            )
+
+            assertFalse(
+                "/proc" in args
+            )
+
+            assertTrue(
                 args.contains(
                     "${workspace.canonicalPath}:/workspace"
                 )
@@ -166,6 +182,22 @@ class ProrootRuntimeContractTest {
                         rootfs,
                         workspace
                     )
+
+            assertTrue(
+                "/dev:/dev" in args
+            )
+
+            assertTrue(
+                "/proc:/proc" in args
+            )
+
+            assertFalse(
+                "/dev" in args
+            )
+
+            assertFalse(
+                "/proc" in args
+            )
 
             assertEquals(
                 "/bin/bash",

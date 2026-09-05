@@ -974,14 +974,15 @@ private class LocalInteractivePtySession(
                                     }
                                 }
                             }
-                        }.onFailure { error ->
+                        }.onFailure {
                             /*
-                             * exit/close closes the PTY descriptor while the reader may
-                             * still be blocked. That IOException is an expected shutdown
-                             * path and must never escape a root coroutine and crash Android.
+                             * close() first marks the session inactive, so descriptor-close
+                             * errors during normal shutdown are ignored. An unexpected reader
+                             * failure while active terminates the PTY and lets waiterJob own
+                             * the final cleanup/onExit path.
                              */
                             if (running.get()) {
-                                running.set(false)
+                                terminate()
                             }
                         }
                     }
@@ -994,9 +995,14 @@ private class LocalInteractivePtySession(
                                     spawned.processId
                                 )
 
-                        running.set(false)
+                        val shouldNotifyExit =
+                            running.getAndSet(false)
+
                         closeDescriptors()
-                        onExit(exitCode)
+
+                        if (shouldNotifyExit) {
+                            onExit(exitCode)
+                        }
                     }
             }
         } catch (error: Throwable) {

@@ -105,6 +105,27 @@ static int set_close_on_exec(int fd) {
     return fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
 }
 
+static void terminate_and_reap_child(pid_t pid) {
+    if (pid <= 0) {
+        return;
+    }
+
+    /*
+     * nativeSpawn failure paths have no waiter coroutine because the
+     * process was never returned to Kotlin. Kill and reap it here so
+     * the AppForge process cannot accumulate zombie PTY children.
+     */
+    (void) kill(-pid, SIGKILL);
+    (void) kill(pid, SIGKILL);
+
+    int status = 0;
+    pid_t result;
+
+    do {
+        result = waitpid(pid, &status, 0);
+    } while (result == -1 && errno == EINTR);
+}
+
 JNIEXPORT jintArray JNICALL
 Java_com_appforge_studio_terminal_AppForgePtyBridge_nativeSpawn(
     JNIEnv *env,
@@ -216,8 +237,7 @@ Java_com_appforge_studio_terminal_AppForgePtyBridge_nativeSpawn(
         if (control_fd != -1) {
             close(control_fd);
         }
-        kill(-pid, SIGTERM);
-        kill(pid, SIGTERM);
+        terminate_and_reap_child(pid);
         throw_io_exception(env, "PTY dosya tanımlayıcıları hazırlanamadı.");
         return NULL;
     }
@@ -230,8 +250,7 @@ Java_com_appforge_studio_terminal_AppForgePtyBridge_nativeSpawn(
         close(input_fd);
         close(output_fd);
         close(control_fd);
-        kill(-pid, SIGTERM);
-        kill(pid, SIGTERM);
+        terminate_and_reap_child(pid);
         throw_io_exception(env, "PTY güvenlik bayrakları ayarlanamadı.");
         return NULL;
     }
@@ -247,8 +266,7 @@ Java_com_appforge_studio_terminal_AppForgePtyBridge_nativeSpawn(
         close(input_fd);
         close(output_fd);
         close(control_fd);
-        kill(-pid, SIGTERM);
-        kill(pid, SIGTERM);
+        terminate_and_reap_child(pid);
         return NULL;
     }
 

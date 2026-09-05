@@ -50,8 +50,8 @@ test("Stage 10J makes main Terminal AppForge-owned and Termux-like", async () =>
   assert.match(manager, /developmentProfileReady/);
   assert.match(manager, /DEV_SUITE_MARKER/);
   assert.match(manager, /ConnectivityManager/);
-  assert.match(proroot, /"-b",\s*"\/dev"/);
-  assert.match(proroot, /"-b",\s*"\/proc"/);
+  assert.match(proroot, /"-b",\s*"\/dev:\/dev"/);
+  assert.match(proroot, /"-b",\s*"\/proc:\/proc"/);
 });
 
 test("Stage 10J rootfs extraction survives Android hard-link limitations safely", async () => {

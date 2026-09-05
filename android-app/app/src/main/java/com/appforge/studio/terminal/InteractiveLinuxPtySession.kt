@@ -180,36 +180,42 @@ internal class InteractiveLinuxPtySession(
 
                 readerJob =
                     scope.launch {
-                        InputStreamReader(
-                            input,
-                            Charsets.UTF_8
-                        ).use { reader ->
-                            val buffer =
-                                CharArray(
-                                    2_048
-                                )
-
-                            while (
-                                running.get()
-                            ) {
-                                val count =
-                                    reader.read(
-                                        buffer
+                        runCatching {
+                            InputStreamReader(
+                                input,
+                                Charsets.UTF_8
+                            ).use { reader ->
+                                val buffer =
+                                    CharArray(
+                                        2_048
                                     )
 
-                                if (count < 0) {
-                                    break
-                                }
-
-                                if (count > 0) {
-                                    onOutput(
-                                        String(
-                                            buffer,
-                                            0,
-                                            count
+                                while (
+                                    running.get()
+                                ) {
+                                    val count =
+                                        reader.read(
+                                            buffer
                                         )
-                                    )
+
+                                    if (count < 0) {
+                                        break
+                                    }
+
+                                    if (count > 0) {
+                                        onOutput(
+                                            String(
+                                                buffer,
+                                                0,
+                                                count
+                                            )
+                                        )
+                                    }
                                 }
+                            }
+                        }.onFailure {
+                            if (running.get()) {
+                                terminate()
                             }
                         }
                     }
@@ -222,9 +228,14 @@ internal class InteractiveLinuxPtySession(
                                     spawned.processId
                                 )
 
-                        running.set(false)
+                        val shouldNotifyExit =
+                            running.getAndSet(false)
+
                         closeDescriptors()
-                        onExit(exitCode)
+
+                        if (shouldNotifyExit) {
+                            onExit(exitCode)
+                        }
                     }
             }
         } catch (error: Throwable) {
