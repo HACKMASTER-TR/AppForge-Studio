@@ -668,8 +668,32 @@ internal object LocalPtySessionRegistry {
                 ?.takeLast(
                     MAX_PERSISTED_SNAPSHOT_CHARS
                 )
-                ?.let {
-                    buffer.feed(it)
+                ?.let { persistedSnapshot ->
+                    /*
+                     * Persisted snapshots are plain text and therefore use LF.
+                     *
+                     * A real PTY normally emits CRLF for terminal line breaks.
+                     * Feeding LF alone advances the row but preserves the
+                     * current column, making restored lines appear diagonally.
+                     *
+                     * Normalize only persisted plain text here. Live PTY bytes
+                     * continue through the normal ANSI parser unchanged.
+                     */
+                    buffer.feed(
+                        persistedSnapshot
+                            .replace(
+                                "\r\n",
+                                "\n"
+                            )
+                            .replace(
+                                "\r",
+                                "\n"
+                            )
+                            .replace(
+                                "\n",
+                                "\r\n"
+                            )
+                    )
                 }
 
             records[id] =
