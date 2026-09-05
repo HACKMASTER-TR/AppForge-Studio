@@ -1,0 +1,75 @@
+#!/bin/sh
+set -eu
+
+printf '%s\n' "=== APPFORGE TOOLCHAIN REPAIR ==="
+
+apt-get update
+
+DEBIAN_FRONTEND=noninteractive \
+apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    openssh-client \
+    curl \
+    wget \
+    rsync \
+    zip \
+    unzip \
+    xz-utils \
+    bzip2 \
+    gzip \
+    tar \
+    jq \
+    sqlite3 \
+    openssl \
+    bash \
+    zsh \
+    less \
+    nano \
+    file \
+    procps \
+    python3 \
+    python3-pip \
+    python3-venv \
+    python-is-python3 \
+    pipx \
+    nodejs \
+    npm \
+    default-jdk \
+    maven \
+    gradle \
+    build-essential \
+    clang \
+    lld \
+    cmake \
+    ninja-build \
+    pkg-config \
+    gdb
+
+printf '\n%s\n' "=== RESULT ==="
+
+for c in \
+    git \
+    ssh \
+    curl \
+    wget \
+    python3 \
+    node \
+    npm \
+    java \
+    gradle \
+    clang \
+    cmake \
+    jq \
+    nano
+do
+    if command -v "$c" >/dev/null 2>&1; then
+        printf '%-18s PASS\n' "$c"
+    else
+        printf '%-18s MISS\n' "$c"
+        exit 1
+    fi
+done
+
+printf '%s\n' \
+    "APPFORGE CORE TOOLCHAIN READY"

@@ -288,7 +288,7 @@ test("Stage 10M keeps the Linux environment persistent and adds a shell editor",
 
   assert.match(
     manager,
-    /appforge-dev-suite-v2/
+    /appforge-dev-suite-v3/
   );
 
   assert.match(

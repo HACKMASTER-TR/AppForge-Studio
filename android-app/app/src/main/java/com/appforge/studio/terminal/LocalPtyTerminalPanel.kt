@@ -126,6 +126,21 @@ internal object LocalPtySessionRegistry {
     )
 
     private val lock = Any()
+
+    /*
+     * PTY output can arrive in many small chunks during paste/build output.
+     * Publishing a full terminal snapshot for every chunk makes Compose
+     * rebuild scrollback repeatedly. Coalesce output into short UI frames.
+     */
+    private val outputPublishScope =
+        CoroutineScope(
+            SupervisorJob() +
+                Dispatchers.Default
+        )
+
+    private val pendingOutputPublishes =
+        HashSet<String>()
+
     private val records =
         LinkedHashMap<String, Record>()
     private val mutableStates =
@@ -370,7 +385,10 @@ internal object LocalPtySessionRegistry {
                             ?.let {
                                 current.workingDirectory = it
                             }
-                        publishLocked()
+
+                        scheduleOutputPublishLocked(
+                            id
+                        )
                     }
                 },
                 onExit = { exitCode ->
@@ -711,6 +729,38 @@ internal object LocalPtySessionRegistry {
         return (used.maxOrNull() ?: 0) + 1
     }
 
+    private fun scheduleOutputPublishLocked(
+        id: String
+    ) {
+        if (
+            !pendingOutputPublishes.add(
+                id
+            )
+        ) {
+            return
+        }
+
+        outputPublishScope.launch {
+            delay(
+                OUTPUT_PUBLISH_INTERVAL_MS
+            )
+
+            synchronized(lock) {
+                pendingOutputPublishes.remove(
+                    id
+                )
+
+                if (
+                    records.containsKey(
+                        id
+                    )
+                ) {
+                    publishLocked()
+                }
+            }
+        }
+    }
+
     private fun publishLocked() {
         mutableStates.value =
             records.values
@@ -736,6 +786,14 @@ internal object LocalPtySessionRegistry {
     }
 
     private const val MAX_LOCAL_PTY_SESSIONS = 6
+
+    /*
+     * ~31 fps is enough for terminal output while avoiding hundreds of
+     * Compose snapshots during large paste/build bursts.
+     */
+    private const val OUTPUT_PUBLISH_INTERVAL_MS =
+        32L
+
     private const val MAX_PERSISTED_SNAPSHOT_CHARS = 32_768
     private const val PREFS_NAME = "appforge_local_pty_sessions"
     private const val KEY_SESSIONS = "session_descriptors_v2"
@@ -1028,7 +1086,7 @@ private class LocalInteractivePtySession(
                                 Charsets.UTF_8
                             ).use { reader ->
                                 val buffer =
-                                    CharArray(2_048)
+                                    CharArray(8_192)
 
                                 while (running.get()) {
                                     val count =

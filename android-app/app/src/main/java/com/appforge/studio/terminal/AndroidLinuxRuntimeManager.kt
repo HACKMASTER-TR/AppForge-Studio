@@ -326,10 +326,13 @@ internal class AndroidLinuxRuntimeManager(
                 )
             )
 
-            val result =
+            val shellEngine =
                 LinuxShellEngine(
                     appContext
-                ).execute(
+                )
+
+            val primaryResult =
+                shellEngine.execute(
                     sessionId =
                         "appforge-terminal-dev-tools",
                     rootfs = rootfs,
@@ -341,16 +344,70 @@ internal class AndroidLinuxRuntimeManager(
                     timeoutMs = 1_800_000L
                 )
 
-            check(!result.timedOut) {
+            /*
+             * One optional package must not leave npm/java/editor missing.
+             * If the complete suite fails, retry the essential standalone
+             * workstation profile without the optional Android CLI group.
+             */
+            val finalResult =
+                if (
+                    !primaryResult.timedOut &&
+                    primaryResult.exitCode == 0
+                ) {
+                    primaryResult
+                } else {
+                    onProgress(
+                        LinuxDevelopmentProgress(
+                            stage =
+                                LinuxDevelopmentStage.TOOLCHAIN,
+                            detail =
+                                "Temel geliştirme araçları onarılıyor…"
+                        )
+                    )
+
+                    shellEngine.execute(
+                        sessionId =
+                            "appforge-terminal-dev-tools-recovery",
+                        rootfs = rootfs,
+                        workspace = workspace,
+                        command =
+                            LinuxToolchainCatalog
+                                .standaloneRecoveryCommand(),
+                        confirmed = true,
+                        timeoutMs = 1_800_000L
+                    )
+                }
+
+            check(!finalResult.timedOut) {
                 "Geliştirme araçlarının kurulumu zaman aşımına uğradı."
             }
 
-            check(result.exitCode == 0) {
-                result.output
-                    .takeLast(2_000)
-                    .ifBlank {
-                        "Paket kurulumu exit=${result.exitCode}"
-                    }
+            check(finalResult.exitCode == 0) {
+                buildString {
+                    append(
+                        "Geliştirme araçları kurulamadı."
+                    )
+
+                    primaryResult.output
+                        .takeLast(1_000)
+                        .takeIf {
+                            it.isNotBlank()
+                        }
+                        ?.let {
+                            append("\nİlk deneme:\n")
+                            append(it)
+                        }
+
+                    finalResult.output
+                        .takeLast(1_500)
+                        .takeIf {
+                            it.isNotBlank()
+                        }
+                        ?.let {
+                            append("\nOnarım denemesi:\n")
+                            append(it)
+                        }
+                }
             }
 
             writeDevelopmentProfileMarker(
@@ -560,9 +617,9 @@ internal class AndroidLinuxRuntimeManager(
             Mutex()
 
         private const val DEV_SUITE_REVISION =
-            "appforge-dev-suite-v2"
+            "appforge-dev-suite-v3"
 
         private const val DEV_SUITE_MARKER =
-            "var/lib/appforge/dev-suite-v2"
+            "var/lib/appforge/dev-suite-v3"
     }
 }

@@ -239,6 +239,14 @@ internal object TerminalDevelopmentEnvironmentCoordinator {
                             "Developer tools background setup failed; base terminal remains available",
                             error
                         )
+
+                        /*
+                         * A temporary network/package error must not block all
+                         * future attempts for the rest of the app process.
+                         */
+                        synchronized(lock) {
+                            toolsAttempted = false
+                        }
                     } finally {
                         synchronized(lock) {
                             toolsJob = null

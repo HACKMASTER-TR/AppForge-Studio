@@ -250,7 +250,7 @@ internal object TerminalStandaloneDeveloperBootstrap {
         420
 
     private const val REVISION =
-        "appforge-standalone-workstation-v1"
+        "appforge-standalone-workstation-v2"
 
     private val executableAssets =
         listOf(
@@ -259,7 +259,9 @@ internal object TerminalStandaloneDeveloperBootstrap {
             "appforge-ready",
             "appforge-test",
             "appforge-ci",
-            "appforge-apk"
+            "appforge-apk",
+            "appforge-repair-tools",
+            "appforge-project"
         )
 
     fun install(
@@ -347,7 +349,7 @@ internal object TerminalStandaloneDeveloperBootstrap {
         val marker =
             File(
                 stateDirectory,
-                "standalone-workstation-v1"
+                "standalone-workstation-v2"
             ).canonicalFile
 
         check(

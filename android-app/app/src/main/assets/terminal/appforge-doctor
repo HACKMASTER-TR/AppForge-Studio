@@ -2,6 +2,7 @@
 set -u
 
 failed=0
+tool_failed=0
 
 pass_item() {
     printf '%-22s PASS\n' "$1"
@@ -12,7 +13,8 @@ miss_item() {
     failed=1
 }
 
-printf '%s\n' "=== APPFORGE STANDALONE DOCTOR ==="
+printf '%s\n' \
+    "=== APPFORGE STANDALONE DOCTOR ==="
 
 for command_name in \
     sh \
@@ -35,10 +37,18 @@ do
         pass_item "$command_name"
     else
         miss_item "$command_name"
+        tool_failed=1
     fi
 done
 
-if [ -d /workspace ] && [ -r /workspace ] && [ -w /workspace ]; then
+if [ "$tool_failed" -ne 0 ]; then
+    printf '\n%s\n' \
+        "Eksik araçları tamamlamak için: appforge-repair-tools"
+fi
+
+if [ -d /workspace ] &&
+   [ -r /workspace ] &&
+   [ -w /workspace ]; then
     pass_item "/workspace"
 else
     miss_item "/workspace"
@@ -49,19 +59,40 @@ if [ -x /usr/local/bin/appforge-git-askpass ] &&
     pass_item "github-auth-bridge"
 else
     miss_item "github-auth-bridge"
+
+    printf '%s\n' \
+        "GitHub için: Bağlantılar > GitHub hesabını bağla, ardından terminal oturumunu yeniden başlat."
 fi
 
-repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+repo_root="$(
+    git rev-parse \
+        --show-toplevel \
+        2>/dev/null ||
+        true
+)"
 
 if [ -n "$repo_root" ]; then
     pass_item "git-repository"
-    printf 'repo                   %s\n' "$repo_root"
+
+    printf 'repo                   %s\n' \
+        "$repo_root"
+
     printf 'branch                 %s\n' \
-        "$(git branch --show-current 2>/dev/null || printf 'HEAD')"
+        "$(
+            git branch \
+                --show-current \
+                2>/dev/null ||
+                printf 'HEAD'
+        )"
 else
-    printf '%-22s INFO\n' "git-repository"
+    printf '%-22s INFO\n' \
+        "git-repository"
+
+    printf '%s\n' \
+        "AppForge repo için: appforge-project"
 fi
 
-printf '%s\n' "=================================="
+printf '%s\n' \
+    "=================================="
 
 exit "$failed"

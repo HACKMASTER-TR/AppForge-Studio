@@ -1,0 +1,39 @@
+#!/bin/sh
+set -eu
+
+repo="/workspace/AppForge-Studio"
+url="https://github.com/HACKMASTER-TR/AppForge-Studio.git"
+
+if [ ! -d "$repo/.git" ]; then
+    if [ -e "$repo" ]; then
+        printf '%s\n' \
+            "Hedef var ama Git deposu değil: $repo" >&2
+        exit 2
+    fi
+
+    printf '%s\n' \
+        "AppForge Studio deposu indiriliyor…"
+
+    git clone \
+        "$url" \
+        "$repo"
+fi
+
+cd "$repo"
+
+printf '%s\n' \
+    "=== APPFORGE PROJECT READY ==="
+
+printf 'Repo:   %s\n' \
+    "$(git rev-parse --show-toplevel)"
+
+printf 'Branch: %s\n' \
+    "$(git branch --show-current)"
+
+printf 'HEAD:   %s\n' \
+    "$(git log -1 --oneline)"
+
+printf '\n%s\n' \
+    "Bu shell artık AppForge-Studio deposunda."
+
+exec /bin/bash

@@ -582,6 +582,26 @@ internal object LinuxToolchainCatalog {
             developmentProfileIds
         )
 
+    /*
+     * Android adb/fastboot are useful but must not prevent the core
+     * workstation from recovering. This profile contains everything needed
+     * for AppForge source development, tests and Git work.
+     */
+    val standaloneRecoveryIds:
+        List<LinuxToolchainId> =
+        listOf(
+            LinuxToolchainId.BASE,
+            LinuxToolchainId.PYTHON,
+            LinuxToolchainId.NODE,
+            LinuxToolchainId.JAVA,
+            LinuxToolchainId.C_CPP
+        )
+
+    fun standaloneRecoveryCommand(): String =
+        installCommand(
+            standaloneRecoveryIds
+        )
+
     fun packagesFor(
         ids: Collection<LinuxToolchainId>
     ): List<String> =

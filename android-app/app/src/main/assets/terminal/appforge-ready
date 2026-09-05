@@ -49,7 +49,7 @@ repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [ -z "$repo_root" ]; then
     miss_item "git-repository"
     printf '%s\n' \
-        "Bir Git deposuna cd ile girip appforge-ready komutunu tekrar çalıştır."
+        "AppForge Studio deposunu hazırlamak için: appforge-project"
     exit "$failed"
 fi
 
