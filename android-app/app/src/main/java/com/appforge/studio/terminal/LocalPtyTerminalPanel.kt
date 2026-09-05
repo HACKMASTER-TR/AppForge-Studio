@@ -299,11 +299,19 @@ internal object LocalPtySessionRegistry {
         context: Context,
         workspace: File
     ): String {
+        /*
+         * Registry restore reads persisted PTY snapshots and filesystem
+         * metadata. Never perform that work on the Compose/UI dispatcher.
+         */
         val id =
-            ensureSession(
-                context,
-                workspace
-            )
+            withContext(
+                Dispatchers.IO
+            ) {
+                ensureSession(
+                    context,
+                    workspace
+                )
+            }
 
         val shouldStart =
             synchronized(lock) {
@@ -319,7 +327,12 @@ internal object LocalPtySessionRegistry {
             start(id)
         }
 
-        markActivated(id)
+        withContext(
+            Dispatchers.IO
+        ) {
+            markActivated(id)
+        }
+
         return id
     }
 

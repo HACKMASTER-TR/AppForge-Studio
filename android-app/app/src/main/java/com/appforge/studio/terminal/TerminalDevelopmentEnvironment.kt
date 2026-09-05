@@ -59,21 +59,51 @@ internal object TerminalDevelopmentEnvironmentCoordinator {
         context: Context,
         workspace: File
     ) {
-        start(
-            context = context,
-            workspace = workspace,
-            force = false
-        )
+        val appContext =
+            context.applicationContext
+
+        /*
+         * Never inspect the Linux filesystem from the Compose/UI caller.
+         * Terminal entry must remain immediately responsive.
+         */
+        scope.launch {
+            start(
+                context = appContext,
+                workspace = workspace,
+                force = false
+            )
+        }
     }
 
     fun retry(
         context: Context,
         workspace: File
     ) {
-        start(
-            context = context,
-            workspace = workspace,
-            force = true
+        val appContext =
+            context.applicationContext
+
+        scope.launch {
+            start(
+                context = appContext,
+                workspace = workspace,
+                force = true
+            )
+        }
+    }
+
+    /*
+     * Heavy apt/dpkg toolchain setup is explicit.
+     * Opening Terminal must never trigger it automatically.
+     */
+    fun prepareTools(
+        context: Context,
+        workspace: File
+    ) {
+        startDevelopmentToolsInBackground(
+            context =
+                context.applicationContext,
+            workspace =
+                workspace
         )
     }
 
@@ -111,10 +141,10 @@ internal object TerminalDevelopmentEnvironmentCoordinator {
                         detail = "Terminal hazır."
                     )
 
-                startDevelopmentToolsInBackground(
-                    context = appContext,
-                    workspace = workspace
-                )
+                /*
+                 * Base Linux is enough to open the interactive terminal.
+                 * Do NOT launch apt/dpkg automatically here.
+                 */
                 return
             }
 
@@ -167,10 +197,11 @@ internal object TerminalDevelopmentEnvironmentCoordinator {
                                 detail = "Terminal hazır."
                             )
 
-                        startDevelopmentToolsInBackground(
-                            context = appContext,
-                            workspace = workspace
-                        )
+                        /*
+                         * Toolchains are intentionally not installed during
+                         * Terminal startup. Use appforge-repair-tools or an
+                         * explicit Tools action.
+                         */
                     } catch (error: Throwable) {
                         Log.e(
                             "AppForgeTerminal",
