@@ -11,7 +11,17 @@ test("PTY terminal does not re-layout the whole panel from IME padding", async (
   const source = await readFile(sourceUrl, "utf8");
 
   assert.doesNotMatch(source, /\.imePadding\(\)/);
-  assert.doesNotMatch(source, /WindowInsets\.ime/);
+  assert.match(
+    source,
+    /val imeInsets\s*=\s*WindowInsets\.ime/
+  );
+
+  assert.match(
+    source,
+    /\.offset\s*\{\s*IntOffset\(\s*x\s*=\s*0,\s*y\s*=\s*-imeInsets\.getBottom\(this\)\s*\)\s*\}/
+  );
+
+  assert.doesNotMatch(source, /imeBottomPx/);
 });
 
 test("PTY terminal lets the user dismiss the keyboard without forced focus restore", async () => {

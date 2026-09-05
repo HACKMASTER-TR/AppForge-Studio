@@ -15,6 +15,16 @@ test("Stage 10F keeps terminal extra keys above IME and hides text selection han
     /import androidx\.compose\.foundation\.layout\.imePadding/
   );
   assert.doesNotMatch(source, /\.imePadding\(\)/);
+
+  assert.match(
+    source,
+    /val imeInsets\s*=\s*WindowInsets\.ime/
+  );
+
+  assert.match(
+    source,
+    /\.offset\s*\{\s*IntOffset\(\s*x\s*=\s*0,\s*y\s*=\s*-imeInsets\.getBottom\(this\)\s*\)\s*\}/
+  );
   assert.match(
     source,
     /Row\([\s\S]*?PtyKey\("ESC"/

@@ -13,7 +13,10 @@ test("Stage 10H fixes phone terminal UX without regressing native PTY", async ()
   assert.match(pty, /outputRevision/);
   assert.match(pty, /LaunchedEffect\(\s*state\.outputRevision\s*\)/);
   assert.doesNotMatch(pty, /LaunchedEffect\(\s*rendered\.length,\s*outputScroll\.maxValue/);
-  assert.doesNotMatch(pty, /WindowInsets\.ime/);
+  assert.match(
+    pty,
+    /val imeInsets\s*=\s*WindowInsets\.ime/
+  );
   assert.doesNotMatch(pty, /imeBottomPx/);
   assert.doesNotMatch(
     pty,
