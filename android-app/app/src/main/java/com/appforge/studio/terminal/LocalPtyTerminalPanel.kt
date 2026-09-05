@@ -2101,6 +2101,23 @@ private fun LocalPtySurface(
     val copyScrollState =
         rememberScrollState()
 
+    /*
+     * Copy mode must never compose the complete multi-thousand-line
+     * terminal history as one selectable Text. Freeze a bounded window
+     * around the user's current scroll position instead.
+     */
+    var copySnapshot by
+        remember(state.id) {
+            mutableStateOf<AnsiTerminalSnapshot?>(
+                null
+            )
+        }
+
+    var copyRangeLabel by
+        remember(state.id) {
+            mutableStateOf("")
+        }
+
     var imeValue by
         remember(state.id) {
             mutableStateOf(
@@ -2143,18 +2160,111 @@ private fun LocalPtySurface(
 
     LaunchedEffect(copyMode) {
         if (copyMode) {
-            copyModeWasActive = true
+            copyModeWasActive =
+                true
+
             keyboardController?.hide()
-        } else if (copyModeWasActive) {
-            copyModeWasActive = false
 
-            delay(32L)
+            val totalLines =
+                state.snapshot.lines.size
 
-            inputFocusRequester
-                .requestFocus()
+            if (totalLines <= 0) {
+                copySnapshot =
+                    state.snapshot.copy(
+                        lines =
+                            emptyList(),
+                        cursorLine =
+                            0,
+                        cursorVisible =
+                            false
+                    )
 
-            keyboardController
-                ?.show()
+                copyRangeLabel =
+                    "Kopya modu • terminal boş"
+            } else {
+                val anchor =
+                    outputListState
+                        .firstVisibleItemIndex
+                        .coerceIn(
+                            0,
+                            totalLines - 1
+                        )
+
+                var start =
+                    (
+                        anchor -
+                            COPY_MODE_CONTEXT_BEFORE_LINES
+                        )
+                        .coerceAtLeast(0)
+
+                var end =
+                    (
+                        start +
+                            COPY_MODE_MAX_LINES
+                        )
+                        .coerceAtMost(
+                            totalLines
+                        )
+
+                /*
+                 * Near the end of history, shift the window backwards so
+                 * copy mode still exposes the full configured window.
+                 */
+                if (
+                    end - start <
+                        COPY_MODE_MAX_LINES
+                ) {
+                    start =
+                        (
+                            end -
+                                COPY_MODE_MAX_LINES
+                            )
+                            .coerceAtLeast(0)
+                }
+
+                val frozenLines =
+                    state.snapshot.lines
+                        .subList(
+                            start,
+                            end
+                        )
+
+                copySnapshot =
+                    state.snapshot.copy(
+                        lines =
+                            frozenLines,
+                        cursorLine =
+                            -1,
+                        cursorVisible =
+                            false
+                    )
+
+                copyRangeLabel =
+                    "Kopya modu • satır " +
+                        "${start + 1}–$end / $totalLines"
+            }
+
+            copyScrollState
+                .scrollTo(0)
+        } else {
+            copySnapshot =
+                null
+
+            copyRangeLabel =
+                ""
+
+            if (copyModeWasActive) {
+                copyModeWasActive =
+                    false
+
+                delay(32L)
+
+                inputFocusRequester
+                    .requestFocus()
+
+                keyboardController
+                    ?.show()
+            }
         }
     }
 
@@ -2349,57 +2459,110 @@ private fun LocalPtySurface(
         if (copyMode) {
             /*
              * Selection is intentionally isolated from the normal terminal.
-             * The heavy selectable tree exists only while the user explicitly
-             * requests copy mode; normal scrolling stays virtualized.
+             *
+             * Stage 11D freezes at most COPY_MODE_MAX_LINES around the
+             * current viewport. This prevents SelectionContainer/Text from
+             * laying out the complete 5000-line scrollback on the UI thread.
              */
-            val selectableOutput =
-                remember(
-                    state.snapshot
-                ) {
-                    renderLocalPtySnapshot(
-                        snapshot =
-                            state.snapshot,
-                        showCursor =
-                            false
-                    )
-                }
+            val frozenCopySnapshot =
+                copySnapshot
 
-            CompositionLocalProvider(
-                LocalTextSelectionColors provides
-                    TextSelectionColors(
-                        handleColor =
-                            TerminalPrimary,
-                        backgroundColor =
-                            TerminalPrimary
-                                .copy(
-                                    alpha = 0.28f
-                                )
-                    )
-            ) {
-                SelectionContainer {
+            if (frozenCopySnapshot == null) {
+                Box(
+                    modifier =
+                        Modifier.fillMaxSize(),
+                    contentAlignment =
+                        Alignment.Center
+                ) {
                     Text(
-                        selectableOutput,
+                        "Kopya görünümü hazırlanıyor…",
                         color =
-                            TerminalText,
+                            TerminalMuted,
                         fontFamily =
                             FontFamily.Monospace,
                         fontSize =
-                            fontSize,
-                        lineHeight =
-                            lineHeight,
+                            11.sp
+                    )
+                }
+            } else {
+                val selectableOutput =
+                    remember(
+                        frozenCopySnapshot
+                    ) {
+                        renderLocalPtySnapshot(
+                            snapshot =
+                                frozenCopySnapshot,
+                            showCursor =
+                                false
+                        )
+                    }
+
+                Column(
+                    modifier =
+                        Modifier.fillMaxSize()
+                ) {
+                    Text(
+                        copyRangeLabel,
+                        color =
+                            TerminalSecondary,
+                        fontFamily =
+                            FontFamily.Monospace,
+                        fontSize =
+                            10.sp,
+                        modifier =
+                            Modifier.padding(
+                                start = 16.dp,
+                                end = 12.dp,
+                                top = 8.dp,
+                                bottom = 4.dp
+                            )
+                    )
+
+                    Box(
                         modifier =
                             Modifier
-                                .fillMaxSize()
-                                .verticalScroll(
-                                    copyScrollState
+                                .weight(1f)
+                                .fillMaxWidth()
+                    ) {
+                        CompositionLocalProvider(
+                            LocalTextSelectionColors provides
+                                TextSelectionColors(
+                                    handleColor =
+                                        TerminalPrimary,
+                                    backgroundColor =
+                                        TerminalPrimary
+                                            .copy(
+                                                alpha = 0.28f
+                                            )
                                 )
-                                .padding(
-                                    start = 16.dp,
-                                    top = 12.dp,
-                                    end = 12.dp,
-                                    bottom = 12.dp
+                        ) {
+                            SelectionContainer {
+                                Text(
+                                    selectableOutput,
+                                    color =
+                                        TerminalText,
+                                    fontFamily =
+                                        FontFamily.Monospace,
+                                    fontSize =
+                                        fontSize,
+                                    lineHeight =
+                                        lineHeight,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxSize()
+                                            .verticalScroll(
+                                                copyScrollState
+                                            )
+                                            .padding(
+                                                start = 16.dp,
+                                                top = 8.dp,
+                                                end = 12.dp,
+                                                bottom = 12.dp
+                                            )
                                 )
-                    )
+                            }
+                        }
+                    }
                 }
             }
         } else {
@@ -3117,6 +3280,26 @@ private const val LOCAL_PTY_IME_SENTINEL =
 
 private const val MAX_LOCAL_PTY_IME_CHARS =
     2_048
+
+/*
+ * SelectionContainer is intentionally bounded. Full history remains
+ * available in normal virtualized terminal mode.
+ */
+private const val COPY_MODE_MAX_LINES =
+    500
+
+private const val COPY_MODE_CONTEXT_BEFORE_LINES =
+    80
+
+/*
+ * SelectionContainer is intentionally bounded. Full history remains
+ * available in normal virtualized terminal mode.
+ */
+private const val COPY_MODE_MAX_LINES =
+    500
+
+private const val COPY_MODE_CONTEXT_BEFORE_LINES =
+    80
 
 private const val AUTO_FOLLOW_MARGIN_LINES =
     2
