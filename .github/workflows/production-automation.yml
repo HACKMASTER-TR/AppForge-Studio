@@ -220,7 +220,11 @@ jobs:
     name: Failed image build detector
     if: >
       github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion != 'success'
+      (
+        github.event.workflow_run.conclusion == 'failure' ||
+        github.event.workflow_run.conclusion == 'timed_out' ||
+        github.event.workflow_run.conclusion == 'action_required'
+      )
 
     runs-on: ubuntu-latest
 
