@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.offset
@@ -2076,9 +2078,22 @@ private fun LocalPtySurface(
             )
         }
 
-    /* IME/viewport resize must not force old history to jump. */
-    LaunchedEffect(state.outputRevision) {
-        outputScroll.scrollTo(outputScroll.maxValue)
+    /*
+     * Follow the active terminal cursor.
+     *
+     * outputRevision arrives before Compose necessarily recalculates the
+     * scroll range. Give layout one frame, then move to the real bottom.
+     * Changing the accessory reserve must also reveal the prompt above
+     * the keyboard shortcut row.
+     */
+    LaunchedEffect(
+        state.outputRevision,
+        bottomContentPaddingPx
+    ) {
+        delay(16L)
+        outputScroll.scrollTo(
+            outputScroll.maxValue
+        )
     }
 
     LaunchedEffect(
@@ -2185,24 +2200,44 @@ private fun LocalPtySurface(
         ) {
             key(selectionEpoch) {
                 SelectionContainer {
-                    Text(
-                        rendered,
-                        color = TerminalText,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = fontSize,
-                        lineHeight = lineHeight,
+                    Column(
                         modifier =
                             Modifier
                                 .fillMaxSize()
-                                .verticalScroll(outputScroll)
+                                .verticalScroll(
+                                    outputScroll
+                                )
                                 .padding(
                                     start = 16.dp,
                                     top = 12.dp,
-                                    end = 12.dp,
-                                    bottom =
-                                        bottomContentPadding
+                                    end = 12.dp
                                 )
-                    )
+                    ) {
+                        Text(
+                            rendered,
+                            color = TerminalText,
+                            fontFamily =
+                                FontFamily.Monospace,
+                            fontSize = fontSize,
+                            lineHeight = lineHeight,
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        )
+
+                        /*
+                         * This is real scrollable content beneath the prompt.
+                         * When the IME accessory floats upward, the prompt can
+                         * therefore scroll completely above the shortcut row.
+                         */
+                        Spacer(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(
+                                        bottomContentPadding
+                                    )
+                        )
+                    }
                 }
             }
         }

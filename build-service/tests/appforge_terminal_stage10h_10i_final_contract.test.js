@@ -11,7 +11,15 @@ test("Stage 10H fixes phone terminal UX without regressing native PTY", async ()
   );
 
   assert.match(pty, /outputRevision/);
-  assert.match(pty, /LaunchedEffect\(\s*state\.outputRevision\s*\)/);
+  assert.match(
+    pty,
+    /LaunchedEffect\(\s*state\.outputRevision,\s*bottomContentPaddingPx\s*\)/
+  );
+
+  assert.match(
+    pty,
+    /outputScroll\.scrollTo\(\s*outputScroll\.maxValue\s*\)/
+  );
   assert.doesNotMatch(pty, /LaunchedEffect\(\s*rendered\.length,\s*outputScroll\.maxValue/);
   assert.match(
     pty,

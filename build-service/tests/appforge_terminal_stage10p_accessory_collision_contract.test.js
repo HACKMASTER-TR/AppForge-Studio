@@ -57,7 +57,7 @@ test("Stage 10P reserves the floating IME accessory height inside terminal scrol
 
   assert.match(
     source,
-    /bottom\s*=\s*bottomContentPadding/
+    /Spacer\([\s\S]*?\.height\(\s*bottomContentPadding\s*\)/
   );
 });
 
