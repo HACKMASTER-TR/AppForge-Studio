@@ -1,9 +1,11 @@
 #!/bin/sh
 set -eu
 
-printf '%s\n' "=== APPFORGE TOOLCHAIN REPAIR ==="
+printf '%s\n' \
+    "=== APPFORGE TOOLCHAIN REPAIR ==="
 
-printf '%s\n' "Yarım kalan dpkg işlemleri kontrol ediliyor…"
+printf '%s\n' \
+    "Yarım kalan dpkg işlemleri kontrol ediliyor…"
 
 DEBIAN_FRONTEND=noninteractive \
 dpkg --configure -a
@@ -13,12 +15,46 @@ apt-get -f install -y
 
 apt-get update
 
+# NodeSource kurulumu için gereken minimum araçlar.
 DEBIAN_FRONTEND=noninteractive \
 apt-get install -y --no-install-recommends \
     ca-certificates \
+    curl \
+    gnupg
+
+node_major="$(
+    node -p \
+        'process.versions.node.split(".")[0]' \
+        2>/dev/null ||
+        printf '0'
+)"
+
+if [ "$node_major" != "22" ]; then
+    printf '\n%s\n' \
+        "Node.js 22 CI sürümü hazırlanıyor…"
+
+    setup_file="/tmp/appforge-nodesource-22.sh"
+
+    curl -fsSL \
+        https://deb.nodesource.com/setup_22.x \
+        -o "$setup_file"
+
+    bash "$setup_file"
+
+    rm -f "$setup_file"
+
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y \
+        --allow-downgrades \
+        nodejs
+
+    hash -r
+fi
+
+DEBIAN_FRONTEND=noninteractive \
+apt-get install -y --no-install-recommends \
     git \
     openssh-client \
-    curl \
     wget \
     rsync \
     zip \
@@ -41,8 +77,6 @@ apt-get install -y --no-install-recommends \
     python3-venv \
     python-is-python3 \
     pipx \
-    nodejs \
-    npm \
     default-jdk \
     maven \
     gradle \
@@ -54,7 +88,8 @@ apt-get install -y --no-install-recommends \
     pkg-config \
     gdb
 
-printf '\n%s\n' "=== RESULT ==="
+printf '\n%s\n' \
+    "=== RESULT ==="
 
 for c in \
     git \
@@ -78,6 +113,30 @@ do
         exit 1
     fi
 done
+
+node_major="$(
+    node -p \
+        'process.versions.node.split(".")[0]'
+)"
+
+if [ "$node_major" = "22" ]; then
+    printf '%-18s PASS\n' \
+        "node-ci-22"
+else
+    printf '%-18s MISS\n' \
+        "node-ci-22"
+
+    printf 'Node: %s\n' \
+        "$(node --version)"
+
+    exit 1
+fi
+
+printf 'node-version       %s\n' \
+    "$(node --version)"
+
+printf 'npm-version        %s\n' \
+    "$(npm --version)"
 
 printf '%s\n' \
     "APPFORGE CORE TOOLCHAIN READY"

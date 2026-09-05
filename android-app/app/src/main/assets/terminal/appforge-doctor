@@ -42,9 +42,26 @@ do
     fi
 done
 
+node_major="$(
+    node -p \
+        'process.versions.node.split(".")[0]' \
+        2>/dev/null ||
+        printf '0'
+)"
+
+if [ "$node_major" = "22" ]; then
+    pass_item "node-ci-22"
+else
+    miss_item "node-ci-22"
+    tool_failed=1
+
+    printf '%s\n' \
+        "AppForge CI ile aynı ortam için Node.js 22 gerekli."
+fi
+
 if [ "$tool_failed" -ne 0 ]; then
     printf '\n%s\n' \
-        "Eksik araçları tamamlamak için: appforge-repair-tools"
+        "Eksik/uyumsuz araçları düzeltmek için: appforge-repair-tools"
 fi
 
 if [ -d /workspace ] &&

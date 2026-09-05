@@ -31,6 +31,44 @@ else
     exit 2
 fi
 
+node_major="$(
+    node -p \
+        'process.versions.node.split(".")[0]' \
+        2>/dev/null ||
+        printf '0'
+)"
+
+if [ "$node_major" != "22" ]; then
+    printf '%s\n' \
+        "AppForge testleri Node.js 22 gerektiriyor." >&2
+
+    printf '%s\n' \
+        "Önce appforge-repair-tools çalıştır." >&2
+
+    exit 3
+fi
+
+if [ -f package-lock.json ]; then
+    dependency_refresh=0
+
+    if [ ! -d node_modules ]; then
+        dependency_refresh=1
+    elif [ ! -f node_modules/.package-lock.json ]; then
+        dependency_refresh=1
+    elif [ package-lock.json -nt node_modules/.package-lock.json ]; then
+        dependency_refresh=1
+    fi
+
+    if [ "$dependency_refresh" -eq 1 ]; then
+        printf '%s\n' \
+            "Node bağımlılıkları hazırlanıyor…"
+
+        npm ci \
+            --no-audit \
+            --no-fund
+    fi
+fi
+
 if [ "$#" -eq 0 ]; then
     exec npm test
 fi
