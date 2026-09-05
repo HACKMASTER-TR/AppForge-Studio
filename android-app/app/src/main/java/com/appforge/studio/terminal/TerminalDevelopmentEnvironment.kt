@@ -49,6 +49,12 @@ internal object TerminalDevelopmentEnvironmentCoordinator {
     private var setupJob: Job? =
         null
 
+    private var toolsJob: Job? =
+        null
+
+    private var toolsAttempted =
+        false
+
     fun ensure(
         context: Context,
         workspace: File
@@ -95,10 +101,7 @@ internal object TerminalDevelopmentEnvironmentCoordinator {
             if (
                 manager.inspect(
                     LinuxDistribution.UBUNTU
-                ).ready &&
-                manager.developmentProfileReady(
-                    LinuxDistribution.UBUNTU
-                )
+                ).ready
             ) {
                 mutableState.value =
                     TerminalEnvironmentState(
@@ -107,6 +110,11 @@ internal object TerminalDevelopmentEnvironmentCoordinator {
                         percent = 100,
                         detail = "Terminal hazır."
                     )
+
+                startDevelopmentToolsInBackground(
+                    context = appContext,
+                    workspace = workspace
+                )
                 return
             }
 
@@ -129,11 +137,9 @@ internal object TerminalDevelopmentEnvironmentCoordinator {
             setupJob =
                 scope.launch {
                     try {
-                        manager.ensureDevelopmentEnvironment(
+                        manager.ensureBaseEnvironment(
                             distribution =
-                                LinuxDistribution.UBUNTU,
-                            workspace =
-                                workspace.canonicalFile
+                                LinuxDistribution.UBUNTU
                         ) { progress ->
                             mutableState.value =
                                 TerminalEnvironmentState(
@@ -160,6 +166,11 @@ internal object TerminalDevelopmentEnvironmentCoordinator {
                                 percent = 100,
                                 detail = "Terminal hazır."
                             )
+
+                        startDevelopmentToolsInBackground(
+                            context = appContext,
+                            workspace = workspace
+                        )
                     } catch (error: Throwable) {
                         Log.e(
                             "AppForgeTerminal",
@@ -179,6 +190,58 @@ internal object TerminalDevelopmentEnvironmentCoordinator {
                     } finally {
                         synchronized(lock) {
                             setupJob = null
+                        }
+                    }
+                }
+        }
+    }
+
+    private fun startDevelopmentToolsInBackground(
+        context: Context,
+        workspace: File
+    ) {
+        synchronized(lock) {
+            if (
+                toolsAttempted ||
+                toolsJob?.isActive == true
+            ) {
+                return
+            }
+
+            toolsAttempted = true
+
+            val appContext =
+                context.applicationContext
+
+            toolsJob =
+                scope.launch {
+                    try {
+                        val manager =
+                            AndroidLinuxRuntimeManager(
+                                appContext
+                            )
+
+                        if (
+                            !manager.developmentProfileReady(
+                                LinuxDistribution.UBUNTU
+                            )
+                        ) {
+                            manager.ensureDevelopmentTools(
+                                distribution =
+                                    LinuxDistribution.UBUNTU,
+                                workspace =
+                                    workspace.canonicalFile
+                            )
+                        }
+                    } catch (error: Throwable) {
+                        Log.w(
+                            "AppForgeTerminal",
+                            "Developer tools background setup failed; base terminal remains available",
+                            error
+                        )
+                    } finally {
+                        synchronized(lock) {
+                            toolsJob = null
                         }
                     }
                 }

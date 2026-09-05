@@ -232,12 +232,11 @@ internal class AndroidLinuxRuntimeManager(
         return rootfs
     }
 
-    suspend fun ensureDevelopmentEnvironment(
+    suspend fun ensureBaseEnvironment(
         distribution: LinuxDistribution = LinuxDistribution.UBUNTU,
-        workspace: File,
         onProgress: (LinuxDevelopmentProgress) -> Unit = {}
     ): LinuxRuntimeStatus =
-        developmentEnvironmentMutex.withLock {
+        baseEnvironmentMutex.withLock {
             onProgress(
                 LinuxDevelopmentProgress(
                     stage = LinuxDevelopmentStage.CHECKING,
@@ -286,50 +285,11 @@ internal class AndroidLinuxRuntimeManager(
                 status.detail
             }
 
-            val rootfs =
-                requireReadyRootfs(distribution)
-
-            configureResolver(rootfs)
-
-            if (!developmentProfileReady(distribution)) {
-                onProgress(
-                    LinuxDevelopmentProgress(
-                        stage = LinuxDevelopmentStage.TOOLCHAIN,
-                        detail = "Geliştirme araçları kuruluyor…"
-                    )
+            configureResolver(
+                requireReadyRootfs(
+                    distribution
                 )
-
-                val result =
-                    LinuxShellEngine(
-                        appContext
-                    ).execute(
-                        sessionId =
-                            "appforge-terminal-bootstrap",
-                        rootfs = rootfs,
-                        workspace = workspace,
-                        command =
-                            LinuxToolchainCatalog
-                                .developmentProfileCommand(),
-                        confirmed = true,
-                        timeoutMs = 1_800_000L
-                    )
-
-                check(!result.timedOut) {
-                    "Geliştirme araçlarının kurulumu zaman aşımına uğradı."
-                }
-
-                check(result.exitCode == 0) {
-                    result.output
-                        .takeLast(2_000)
-                        .ifBlank {
-                            "Paket kurulumu exit=${result.exitCode}"
-                        }
-                }
-
-                writeDevelopmentProfileMarker(
-                    rootfs
-                )
-            }
+            )
 
             onProgress(
                 LinuxDevelopmentProgress(
@@ -340,6 +300,85 @@ internal class AndroidLinuxRuntimeManager(
             )
 
             inspect(distribution)
+        }
+
+    suspend fun ensureDevelopmentTools(
+        distribution: LinuxDistribution = LinuxDistribution.UBUNTU,
+        workspace: File,
+        onProgress: (LinuxDevelopmentProgress) -> Unit = {}
+    ): Boolean =
+        developmentToolsMutex.withLock {
+            if (developmentProfileReady(distribution)) {
+                return@withLock true
+            }
+
+            val rootfs =
+                requireReadyRootfs(
+                    distribution
+                )
+
+            configureResolver(rootfs)
+
+            onProgress(
+                LinuxDevelopmentProgress(
+                    stage = LinuxDevelopmentStage.TOOLCHAIN,
+                    detail = "Geliştirme araçları kuruluyor…"
+                )
+            )
+
+            val result =
+                LinuxShellEngine(
+                    appContext
+                ).execute(
+                    sessionId =
+                        "appforge-terminal-dev-tools",
+                    rootfs = rootfs,
+                    workspace = workspace,
+                    command =
+                        LinuxToolchainCatalog
+                            .developmentProfileCommand(),
+                    confirmed = true,
+                    timeoutMs = 1_800_000L
+                )
+
+            check(!result.timedOut) {
+                "Geliştirme araçlarının kurulumu zaman aşımına uğradı."
+            }
+
+            check(result.exitCode == 0) {
+                result.output
+                    .takeLast(2_000)
+                    .ifBlank {
+                        "Paket kurulumu exit=${result.exitCode}"
+                    }
+            }
+
+            writeDevelopmentProfileMarker(
+                rootfs
+            )
+
+            true
+        }
+
+    suspend fun ensureDevelopmentEnvironment(
+        distribution: LinuxDistribution = LinuxDistribution.UBUNTU,
+        workspace: File,
+        onProgress: (LinuxDevelopmentProgress) -> Unit = {}
+    ): LinuxRuntimeStatus =
+        developmentEnvironmentMutex.withLock {
+            val status =
+                ensureBaseEnvironment(
+                    distribution = distribution,
+                    onProgress = onProgress
+                )
+
+            ensureDevelopmentTools(
+                distribution = distribution,
+                workspace = workspace,
+                onProgress = onProgress
+            )
+
+            status
         }
 
     fun developmentProfileReady(
@@ -511,6 +550,12 @@ internal class AndroidLinuxRuntimeManager(
         }
 
     companion object {
+        private val baseEnvironmentMutex =
+            Mutex()
+
+        private val developmentToolsMutex =
+            Mutex()
+
         private val developmentEnvironmentMutex =
             Mutex()
 

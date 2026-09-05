@@ -621,75 +621,107 @@ internal object LinuxTarGzExtractor {
             }
         }
 
-        for (request in hardLinks) {
+        val unresolvedHardLinks =
+            hardLinks.toMutableList()
+
+        while (unresolvedHardLinks.isNotEmpty()) {
             cancellationCheck()
 
-            val target =
-                request.target
+            var resolvedThisPass =
+                0
 
-            val source =
-                safeTarget(
+            val iterator =
+                unresolvedHardLinks.iterator()
+
+            while (iterator.hasNext()) {
+                cancellationCheck()
+
+                val request =
+                    iterator.next()
+
+                val target =
+                    request.target
+
+                val source =
+                    safeTarget(
+                        destination,
+                        request.linkName
+                    )
+
+                ensureNoSymlinkParents(
                     destination,
-                    request.linkName
+                    target.parentFile
                 )
 
-            ensureNoSymlinkParents(
-                destination,
-                target.parentFile
-            )
-
-            check(
-                source.exists() &&
-                    source.isFile &&
-                    !Files.isSymbolicLink(
-                        source.toPath()
-                    )
-            ) {
-                "Rootfs hard-link hedefi bulunamadı: ${request.linkName}"
-            }
-
-            target.parentFile?.mkdirs()
-            Files.deleteIfExists(
-                target.toPath()
-            )
-
-            val linked =
-                runCatching {
-                    Files.createLink(
-                        target.toPath(),
-                        source.toPath()
-                    )
-                    true
-                }.getOrDefault(false)
-
-            if (!linked) {
-                val copyBytes =
-                    source.length()
-
-                check(
-                    copyBytes in
-                        0L..MAX_SINGLE_FILE_BYTES &&
-                        totalExtracted <=
-                            MAX_TOTAL_EXTRACTED_BYTES -
-                                copyBytes
-                ) {
-                    "Rootfs hard-link kopyalama sınırı aşıldı."
+                if (!source.exists()) {
+                    continue
                 }
 
-                Files.copy(
-                    source.toPath(),
-                    target.toPath(),
-                    StandardCopyOption.REPLACE_EXISTING
+                check(
+                    source.isFile &&
+                        !Files.isSymbolicLink(
+                            source.toPath()
+                        )
+                ) {
+                    "Rootfs hard-link kaynağı güvenli bir dosya değil."
+                }
+
+                target.parentFile?.mkdirs()
+                Files.deleteIfExists(
+                    target.toPath()
                 )
 
-                totalExtracted +=
-                    copyBytes
+                val linked =
+                    runCatching {
+                        Files.createLink(
+                            target.toPath(),
+                            source.toPath()
+                        )
+                        true
+                    }.getOrDefault(false)
+
+                if (!linked) {
+                    val copyBytes =
+                        source.length()
+
+                    check(
+                        copyBytes in
+                            0L..MAX_SINGLE_FILE_BYTES &&
+                            totalExtracted <=
+                                MAX_TOTAL_EXTRACTED_BYTES -
+                                    copyBytes
+                    ) {
+                        "Rootfs hard-link kopyalama sınırı aşıldı."
+                    }
+
+                    Files.copy(
+                        source.toPath(),
+                        target.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING
+                    )
+
+                    totalExtracted +=
+                        copyBytes
+                }
+
+                applyMode(
+                    target,
+                    request.mode
+                )
+
+                iterator.remove()
+                resolvedThisPass += 1
             }
 
-            applyMode(
-                target,
-                request.mode
-            )
+            check(resolvedThisPass > 0) {
+                val unresolved =
+                    unresolvedHardLinks
+                        .firstOrNull()
+                        ?.linkName
+                        .orEmpty()
+
+                "Rootfs hard-link zinciri çözümlenemedi: $unresolved"
+            }
         }
     }
 
