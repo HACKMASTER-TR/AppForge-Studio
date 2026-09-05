@@ -8,7 +8,7 @@ const sourceUrl =
     import.meta.url
   );
 
-test("Stage 10U virtualizes terminal rows instead of laying out one huge Text", async () => {
+test("Stage 10V adds explicit terminal copy/write mode", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -17,7 +17,40 @@ test("Stage 10U virtualizes terminal rows instead of laying out one huge Text", 
 
   assert.match(
     source,
-    /LazyColumn\(/
+    /var terminalCopyMode by/
+  );
+
+  assert.match(
+    source,
+    /if\s*\(\s*terminalCopyMode\s*\)\s*\{\s*"YAZ"\s*\}\s*else\s*\{\s*"KOPYA"/
+  );
+
+  assert.match(
+    source,
+    /terminalCopyMode\s*=\s*!terminalCopyMode/
+  );
+
+  assert.match(
+    source,
+    /copyMode\s*=\s*terminalCopyMode/
+  );
+});
+
+test("Stage 10V keeps fast LazyColumn outside copy mode", async () => {
+  const source =
+    await readFile(
+      sourceUrl,
+      "utf8"
+    );
+
+  assert.match(
+    source,
+    /if\s*\(\s*copyMode\s*\)[\s\S]*?SelectionContainer/
+  );
+
+  assert.match(
+    source,
+    /else\s*\{[\s\S]*?LazyColumn\(/
   );
 
   assert.match(
@@ -27,26 +60,11 @@ test("Stage 10U virtualizes terminal rows instead of laying out one huge Text", 
 
   assert.match(
     source,
-    /items\([\s\S]*?state\.snapshot\.lines\.indices/
-  );
-
-  assert.match(
-    source,
     /renderLocalPtyLine\(/
   );
-
-  assert.match(
-    source,
-    /if\s*\(\s*copyMode\s*\)[\s\S]*?SelectionContainer/
-  );
-
-  assert.doesNotMatch(
-    source,
-    /\.verticalScroll\(\s*outputScroll\s*\)/
-  );
 });
 
-test("Stage 10U renders only individual visible PTY lines", async () => {
+test("Stage 10V makes copy mode selectable and hides the IME", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -55,21 +73,26 @@ test("Stage 10U renders only individual visible PTY lines", async () => {
 
   assert.match(
     source,
-    /private fun renderLocalPtyLine\(/
+    /renderLocalPtySnapshot\([\s\S]*?showCursor\s*=\s*false/
   );
 
   assert.match(
     source,
-    /snapshot\.lines[\s\S]*?getOrNull\(\s*lineIndex\s*\)/
+    /SelectionContainer/
   );
 
-  assert.doesNotMatch(
+  assert.match(
     source,
-    /val rendered\s*=\s*remember\(state\.snapshot/
+    /keyboardController\?\.hide\(\)/
+  );
+
+  assert.match(
+    source,
+    /if\s*\(\s*!copyMode\s*\)[\s\S]*?keyboardController[\s\S]*?\.show\(\)/
   );
 });
 
-test("Stage 10U follows new output with LazyListState", async () => {
+test("Stage 10V does not auto-follow while the user is selecting text", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -78,7 +101,7 @@ test("Stage 10U follows new output with LazyListState", async () => {
 
   assert.match(
     source,
-    /val lastIndex\s*=\s*state\.snapshot\.lines\.lastIndex/
+    /if\s*\(\s*copyMode\s*\)\s*\{\s*return@LaunchedEffect/
   );
 
   assert.match(
@@ -87,7 +110,7 @@ test("Stage 10U follows new output with LazyListState", async () => {
   );
 });
 
-test("Stage 10U preserves verified IME and shortcut behavior", async () => {
+test("Stage 10V preserves IME stability and matte productivity keys", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -101,17 +124,17 @@ test("Stage 10U preserves verified IME and shortcut behavior", async () => {
 
   assert.match(
     source,
+    /TerminalShortcutMatteGray/
+  );
+
+  assert.match(
+    source,
     /value\s*=\s*imeValue/
   );
 
   assert.match(
     source,
     /autoCorrectEnabled\s*=\s*false/
-  );
-
-  assert.match(
-    source,
-    /TerminalShortcutMatteGray/
   );
 
   for (const key of [

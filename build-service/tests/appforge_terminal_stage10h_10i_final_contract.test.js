@@ -35,7 +35,10 @@ test("Stage 10H fixes phone terminal UX without regressing native PTY", async ()
   assert.match(pty, /detectTransformGestures/);
   assert.match(pty, /onFontSizeSpChange/);
   assert.match(pty, /LazyColumn/);
-  assert.doesNotMatch(pty, /SelectionContainer/);
+  assert.match(
+    pty,
+    /if\s*\(\s*copyMode\s*\)[\s\S]*?SelectionContainer/
+  );
   assert.match(pty, /\.size\(1\.dp\)\s*\.alpha\(0f\)\s*\.focusRequester/);
   assert.doesNotMatch(pty, /selectionEpoch/);
   assert.match(pty, /isHighSurrogate/);

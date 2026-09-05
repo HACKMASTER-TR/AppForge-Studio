@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -1456,6 +1457,11 @@ internal fun LocalPtyTerminalPanel(
                 it.id == activePtyId
             }
 
+    var terminalCopyMode by
+        remember(activePtyId) {
+            mutableStateOf(false)
+        }
+
     /*
      * Keep the terminal viewport measured independently from the IME.
      * Only the extra-key accessory bar follows the keyboard.
@@ -1691,6 +1697,8 @@ internal fun LocalPtyTerminalPanel(
             LocalPtySurface(
                 state = active,
                 fontSizeSp = terminalFontSizeSp,
+                copyMode =
+                    terminalCopyMode,
                 onFontSizeSpChange = { next ->
                     terminalFontSizeSp =
                         next.coerceIn(
@@ -1796,6 +1804,17 @@ internal fun LocalPtyTerminalPanel(
                                 "\u0017"
                             )
                         }
+                    }
+                    PtyKey(
+                        if (terminalCopyMode) {
+                            "YAZ"
+                        } else {
+                            "KOPYA"
+                        },
+                        true
+                    ) {
+                        terminalCopyMode =
+                            !terminalCopyMode
                     }
                     PtyKey("⌫", true) {
                         scope.launch {
@@ -2027,6 +2046,7 @@ private fun TermuxEnvironmentGate(
 private fun LocalPtySurface(
     state: LocalPtyTerminalState,
     fontSizeSp: Float,
+    copyMode: Boolean,
     onFontSizeSpChange: (Float) -> Unit,
     bottomContentPaddingPx: Int = 0,
     modifier: Modifier = Modifier
@@ -2042,6 +2062,10 @@ private fun LocalPtySurface(
      */
     val outputListState =
         rememberLazyListState()
+
+    val copyScrollState =
+        rememberScrollState()
+
     var imeValue by
         remember(state.id) {
             mutableStateOf(
@@ -2060,6 +2084,28 @@ private fun LocalPtySurface(
 
     LaunchedEffect(fontSizeSp) {
         pinchFontSizeSp = fontSizeSp
+    }
+
+    var copyModeWasActive by
+        remember(state.id) {
+            mutableStateOf(false)
+        }
+
+    LaunchedEffect(copyMode) {
+        if (copyMode) {
+            copyModeWasActive = true
+            keyboardController?.hide()
+        } else if (copyModeWasActive) {
+            copyModeWasActive = false
+
+            delay(32L)
+
+            inputFocusRequester
+                .requestFocus()
+
+            keyboardController
+                ?.show()
+        }
     }
 
     val fontSize = fontSizeSp.sp
@@ -2091,6 +2137,10 @@ private fun LocalPtySurface(
         bottomContentPaddingPx,
         state.snapshot.lines.size
     ) {
+        if (copyMode) {
+            return@LaunchedEffect
+        }
+
         delay(16L)
 
         val lastIndex =
@@ -2193,62 +2243,123 @@ private fun LocalPtySurface(
                     interactionSource = tapInteraction,
                     indication = null
                 ) {
-                    inputFocusRequester.requestFocus()
-                    keyboardController?.show()
+                    if (!copyMode) {
+                        inputFocusRequester
+                            .requestFocus()
+
+                        keyboardController
+                            ?.show()
+                    }
                 }
     ) {
-        /*
-         * Do not render the whole scrollback as one giant Text.
-         *
-         * LazyColumn composes only the lines visible on screen. This keeps
-         * scroll gestures and command output independent from scrollback size.
-         */
-        LazyColumn(
-            state = outputListState,
-            modifier =
-                Modifier.fillMaxSize(),
-            contentPadding =
-                PaddingValues(
-                    start = 16.dp,
-                    top = 12.dp,
-                    end = 12.dp,
-                    bottom =
-                        bottomContentPadding
-                )
-        ) {
-            items(
-                items =
-                    state.snapshot.lines.indices
-                        .toList(),
-                key = { lineIndex ->
-                    lineIndex
-                }
-            ) { lineIndex ->
-                Text(
-                    renderLocalPtyLine(
+        if (copyMode) {
+            /*
+             * Selection is intentionally isolated from the normal terminal.
+             * The heavy selectable tree exists only while the user explicitly
+             * requests copy mode; normal scrolling stays virtualized.
+             */
+            val selectableOutput =
+                remember(
+                    state.snapshot
+                ) {
+                    renderLocalPtySnapshot(
                         snapshot =
                             state.snapshot,
-                        lineIndex =
-                            lineIndex,
                         showCursor =
-                            state.running
-                    ),
-                    color =
-                        TerminalText,
-                    fontFamily =
-                        FontFamily.Monospace,
-                    fontSize =
-                        fontSize,
-                    lineHeight =
-                        lineHeight,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(
-                                min =
-                                    terminalRowHeight
-                            )
-                )
+                            false
+                    )
+                }
+
+            CompositionLocalProvider(
+                LocalTextSelectionColors provides
+                    TextSelectionColors(
+                        handleColor =
+                            TerminalPrimary,
+                        backgroundColor =
+                            TerminalPrimary
+                                .copy(
+                                    alpha = 0.28f
+                                )
+                    )
+            ) {
+                SelectionContainer {
+                    Text(
+                        selectableOutput,
+                        color =
+                            TerminalText,
+                        fontFamily =
+                            FontFamily.Monospace,
+                        fontSize =
+                            fontSize,
+                        lineHeight =
+                            lineHeight,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(
+                                    copyScrollState
+                                )
+                                .padding(
+                                    start = 16.dp,
+                                    top = 12.dp,
+                                    end = 12.dp,
+                                    bottom = 12.dp
+                                )
+                    )
+                }
+            }
+        } else {
+            /*
+             * Normal terminal remains virtualized. Only visible rows are
+             * composed, preserving Stage 10U scroll/Enter performance.
+             */
+            LazyColumn(
+                state = outputListState,
+                modifier =
+                    Modifier.fillMaxSize(),
+                contentPadding =
+                    PaddingValues(
+                        start = 16.dp,
+                        top = 12.dp,
+                        end = 12.dp,
+                        bottom =
+                            bottomContentPadding
+                    )
+            ) {
+                items(
+                    items =
+                        state.snapshot.lines.indices
+                            .toList(),
+                    key = { lineIndex ->
+                        lineIndex
+                    }
+                ) { lineIndex ->
+                    Text(
+                        renderLocalPtyLine(
+                            snapshot =
+                                state.snapshot,
+                            lineIndex =
+                                lineIndex,
+                            showCursor =
+                                state.running
+                        ),
+                        color =
+                            TerminalText,
+                        fontFamily =
+                            FontFamily.Monospace,
+                        fontSize =
+                            fontSize,
+                        lineHeight =
+                            lineHeight,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(
+                                    min =
+                                        terminalRowHeight
+                                )
+                    )
+                }
             }
         }
 

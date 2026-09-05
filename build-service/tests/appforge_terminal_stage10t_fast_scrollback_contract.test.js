@@ -73,9 +73,9 @@ test("Stage 10T preserves virtualized output and verified keyboard controls", as
     /LazyColumn/
   );
 
-  assert.doesNotMatch(
+  assert.match(
     panel,
-    /SelectionContainer/
+    /if\s*\(\s*copyMode\s*\)[\s\S]*?SelectionContainer/
   );
 
   assert.match(

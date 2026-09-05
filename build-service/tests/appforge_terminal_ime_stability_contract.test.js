@@ -38,6 +38,6 @@ test("PTY terminal lets the user dismiss the keyboard without forced focus resto
 
   assert.match(
     source,
-    /keyboardController\?\.show\(\)/
+    /keyboardController\s*\?\.\s*show\(\)/
   );
 });

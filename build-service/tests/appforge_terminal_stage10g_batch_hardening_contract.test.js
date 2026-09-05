@@ -29,9 +29,9 @@ test("Stage 10G hardens local PTY lifecycle, state restore and UX", async () => 
     /LazyColumn/
   );
 
-  assert.doesNotMatch(
+  assert.match(
     pty,
-    /SelectionContainer/
+    /if\s*\(\s*copyMode\s*\)[\s\S]*?SelectionContainer/
   );
   assert.match(pty, /AnnotatedString/);
   assert.match(pty, /SpanStyle/);
