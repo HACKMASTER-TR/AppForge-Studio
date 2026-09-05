@@ -201,10 +201,10 @@ internal data class LinuxRootfsManifest(
  */
 internal object LinuxRuntimeManifestRegistry {
     private const val UBUNTU_RELEASE =
-        "26.04"
+        "24.04.4"
 
     private const val UBUNTU_BASE_URL =
-        "https://cdimage.ubuntu.com/ubuntu-base/releases/26.04/release"
+        "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release"
 
     private const val ROOTFS_LIMIT =
         96L * 1024L * 1024L
@@ -213,18 +213,18 @@ internal object LinuxRuntimeManifestRegistry {
         listOf(
             ubuntu(
                 LinuxArchitecture.ARM64,
-                "ubuntu-base-26.04-base-arm64.tar.gz",
-                "b2b46a37324ea1954e93f293fe6d7c2241daf2fc298c4022e6e4caceeed74cab"
+                "ubuntu-base-24.04.4-base-arm64.tar.gz",
+                "04207713ece899c3740823d33690441ad3a7f0ded1101aca744e2b0f37ac7ff2"
             ),
             ubuntu(
                 LinuxArchitecture.ARM32,
-                "ubuntu-base-26.04-base-armhf.tar.gz",
-                "414e9d5685ff8a6f4497149544e5aa76129f51aa2b97ccd94d845a9803725b46"
+                "ubuntu-base-24.04.4-base-armhf.tar.gz",
+                "991520b47f6586f38a78505cf016e300b6191bb8ff86a0723481ec23a37ab7f4"
             ),
             ubuntu(
                 LinuxArchitecture.X86_64,
-                "ubuntu-base-26.04-base-amd64.tar.gz",
-                "046fcabb7f16f45a80ae11824664f2a07e01386c6fb1ed9dc1e225a66a6553a2"
+                "ubuntu-base-24.04.4-base-amd64.tar.gz",
+                "c1e67ef7b17a6300e136118bd1dc04725009cb376c1aad10abcf8cd453628d58"
             )
         )
 

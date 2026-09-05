@@ -148,11 +148,11 @@ class LinuxRuntimeFoundationTest {
             manifest.sourceUri.host
         )
         assertEquals(
-            "26.04",
+            "24.04.4",
             manifest.release
         )
         assertEquals(
-            "b2b46a37324ea1954e93f293fe6d7c2241daf2fc298c4022e6e4caceeed74cab",
+            "04207713ece899c3740823d33690441ad3a7f0ded1101aca744e2b0f37ac7ff2",
             manifest.archiveSha256
         )
         assertTrue(
