@@ -31,6 +31,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
@@ -2608,6 +2609,17 @@ private fun PtyKey(
         onClick = onClick,
         modifier =
             modifier.heightIn(min = 48.dp),
+        colors =
+            ButtonDefaults.outlinedButtonColors(
+                containerColor =
+                    TerminalShortcutMatteGray,
+                contentColor =
+                    TerminalShortcutMatteText,
+                disabledContainerColor =
+                    TerminalShortcutMatteGrayDisabled,
+                disabledContentColor =
+                    TerminalShortcutMatteTextDisabled
+            ),
         contentPadding =
             PaddingValues(
                 horizontal = 3.dp,
@@ -2641,6 +2653,22 @@ private fun PtyKey(
         )
     }
 }
+
+/*
+ * Matte terminal shortcut palette.
+ * These colors affect only PtyKey buttons.
+ */
+private val TerminalShortcutMatteGray =
+    Color(0xFF4A4F55)
+
+private val TerminalShortcutMatteGrayDisabled =
+    Color(0xFF34383D)
+
+private val TerminalShortcutMatteText =
+    Color(0xFFF2F3F4)
+
+private val TerminalShortcutMatteTextDisabled =
+    Color(0xFF9DA2A8)
 
 private const val LOCAL_PTY_IME_SENTINEL =
     "\u2063"
