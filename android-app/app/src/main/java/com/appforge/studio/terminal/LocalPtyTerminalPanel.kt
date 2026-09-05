@@ -854,7 +854,7 @@ internal object LocalPtySessionRegistry {
 
 
     private const val MAX_RENDERED_PTY_HISTORY_LINES =
-        240
+        5_000
     /*
      * ~31 fps is enough for terminal output while avoiding hundreds of
      * Compose snapshots during large paste/build bursts.

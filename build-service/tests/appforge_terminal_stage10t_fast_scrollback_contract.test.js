@@ -21,7 +21,7 @@ test("Stage 10T limits live Compose terminal history without removing buffer scr
 
   assert.match(
     buffer,
-    /maxScrollbackLines:\s*Int\s*=\s*1_000/
+    /maxScrollbackLines:\s*Int\s*=\s*5_000/
   );
 
   assert.match(
@@ -36,7 +36,7 @@ test("Stage 10T limits live Compose terminal history without removing buffer scr
 
   assert.match(
     panel,
-    /MAX_RENDERED_PTY_HISTORY_LINES\s*=\s*240/
+    /MAX_RENDERED_PTY_HISTORY_LINES\s*=\s*5_000/
   );
 
   assert.match(
