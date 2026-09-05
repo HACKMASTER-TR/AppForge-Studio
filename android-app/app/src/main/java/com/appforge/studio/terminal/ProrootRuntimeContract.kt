@@ -12,6 +12,30 @@ internal object ProrootPinnedRuntime {
     const val version =
         "v1.2.8"
 
+    private fun ensureWorkspaceMountPoint(
+        rootfs: File
+    ) {
+        val mountPoint =
+            File(
+                rootfs,
+                "workspace"
+            )
+
+        if (!mountPoint.exists()) {
+            check(
+                mountPoint.mkdirs()
+            ) {
+                "Linux /workspace mount noktası oluşturulamadı."
+            }
+        }
+
+        check(
+            mountPoint.isDirectory
+        ) {
+            "Linux /workspace mount noktası geçersiz."
+        }
+    }
+
     const val supportedAbi =
         "arm64-v8a"
 
@@ -68,6 +92,10 @@ internal object ProrootPinnedRuntime {
             "Linux rootfs hazır değil."
         }
 
+        ensureWorkspaceMountPoint(
+            safeRootfs
+        )
+
         require(
             safeWorkspace.isDirectory &&
                 safeWorkspace.canRead()
@@ -122,6 +150,10 @@ internal object ProrootPinnedRuntime {
         ) {
             "Linux rootfs hazır değil."
         }
+
+        ensureWorkspaceMountPoint(
+            safeRootfs
+        )
 
         require(
             safeWorkspace.isDirectory &&

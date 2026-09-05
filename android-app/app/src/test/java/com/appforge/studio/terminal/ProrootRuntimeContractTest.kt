@@ -215,4 +215,89 @@ class ProrootRuntimeContractTest {
         }
     }
 
+
+    @Test
+    fun createsWorkspaceMountPointForShellAndInteractiveSessions() {
+        val root =
+            Files
+                .createTempDirectory(
+                    "appforge-proroot-workspace"
+                )
+                .toFile()
+
+        try {
+            val rootfs =
+                File(
+                    root,
+                    "rootfs"
+                ).apply {
+                    File(
+                        this,
+                        "bin"
+                    ).mkdirs()
+
+                    File(
+                        this,
+                        "bin/sh"
+                    ).writeText(
+                        "#!/bin/sh\n"
+                    )
+
+                    File(
+                        this,
+                        "bin/bash"
+                    ).writeText(
+                        "#!/bin/sh\n"
+                    )
+                }
+
+            val workspace =
+                File(
+                    root,
+                    "host-workspace"
+                ).apply {
+                    mkdirs()
+                }
+
+            val mountPoint =
+                File(
+                    rootfs,
+                    "workspace"
+                )
+
+            assertFalse(
+                mountPoint.exists()
+            )
+
+            ProrootPinnedRuntime
+                .buildShellArguments(
+                    rootfs = rootfs,
+                    workspace = workspace,
+                    command = "pwd"
+                )
+
+            assertTrue(
+                mountPoint.isDirectory
+            )
+
+            mountPoint.deleteRecursively()
+
+            assertFalse(
+                mountPoint.exists()
+            )
+
+            ProrootPinnedRuntime
+                .buildInteractiveShellArguments(
+                    rootfs = rootfs,
+                    workspace = workspace
+                )
+
+            assertTrue(
+                mountPoint.isDirectory
+            )
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
 }
