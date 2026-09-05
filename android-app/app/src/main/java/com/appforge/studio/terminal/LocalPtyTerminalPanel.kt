@@ -1447,6 +1447,34 @@ internal fun LocalPtyTerminalPanel(
     val imeInsets =
         WindowInsets.ime
 
+    val accessoryDensity =
+        LocalDensity.current
+
+    var accessoryBarHeightPx by
+        remember(active?.id) {
+            mutableStateOf(0)
+        }
+
+    val keyboardVisible =
+        imeInsets.getBottom(
+            accessoryDensity
+        ) > 0
+
+    /*
+     * The shortcut row is visually offset above the IME without changing
+     * terminal viewport measurement. Reserve only its own height inside
+     * terminal scroll content so output cannot render underneath it.
+     */
+    val accessoryReservePx =
+        if (
+            active?.running == true &&
+            keyboardVisible
+        ) {
+            accessoryBarHeightPx
+        } else {
+            0
+        }
+
     Column(
         modifier =
             Modifier
@@ -1657,6 +1685,8 @@ internal fun LocalPtyTerminalPanel(
                             18f
                         )
                 },
+                bottomContentPaddingPx =
+                    accessoryReservePx,
                 modifier =
                     Modifier.weight(1f)
             )
@@ -1668,6 +1698,15 @@ internal fun LocalPtyTerminalPanel(
                     modifier =
                         Modifier
                             .fillMaxWidth()
+                            .onSizeChanged { size ->
+                                if (
+                                    accessoryBarHeightPx !=
+                                        size.height
+                                ) {
+                                    accessoryBarHeightPx =
+                                        size.height
+                                }
+                            }
                             .offset {
                                 IntOffset(
                                     x = 0,
@@ -1985,6 +2024,7 @@ private fun LocalPtySurface(
     state: LocalPtyTerminalState,
     fontSizeSp: Float,
     onFontSizeSpChange: (Float) -> Unit,
+    bottomContentPaddingPx: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -2019,6 +2059,14 @@ private fun LocalPtySurface(
     val lineHeight = (fontSizeSp * 1.4f).sp
     val charWidthPx = with(density) { fontSize.toPx() * 0.72f }
     val lineHeightPx = with(density) { lineHeight.toPx() }
+
+    val bottomContentPadding =
+        12.dp +
+            with(density) {
+                bottomContentPaddingPx
+                    .coerceAtLeast(0)
+                    .toDp()
+            }
 
     val rendered =
         remember(state.snapshot, state.running) {
@@ -2151,7 +2199,8 @@ private fun LocalPtySurface(
                                     start = 16.dp,
                                     top = 12.dp,
                                     end = 12.dp,
-                                    bottom = 12.dp
+                                    bottom =
+                                        bottomContentPadding
                                 )
                     )
                 }
