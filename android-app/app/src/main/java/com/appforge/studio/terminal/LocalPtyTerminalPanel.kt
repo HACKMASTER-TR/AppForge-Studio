@@ -774,7 +774,21 @@ internal object LocalPtySessionRegistry {
                 }
                 .toSet()
 
-        return (used.maxOrNull() ?: 0) + 1
+        /*
+         * Reuse the lowest available terminal number.
+         *
+         * Example:
+         * Terminal 1 closed while Terminal 2 exists -> next = Terminal 1.
+         * All sessions closed -> next = Terminal 1.
+         */
+        return (1..MAX_LOCAL_PTY_SESSIONS)
+            .firstOrNull {
+                it !in used
+            }
+            ?: (
+                (used.maxOrNull() ?: 0) +
+                    1
+                )
     }
 
     private fun scheduleOutputPublishLocked(
@@ -1585,24 +1599,22 @@ internal fun LocalPtyTerminalPanel(
                                 fontSize = 12.sp
                             )
 
-                            if (ptySessions.size > 1) {
-                                Text(
-                                    "×",
-                                    modifier =
-                                        Modifier
-                                            .padding(start = 4.dp)
-                                            .clickable {
-                                                closeThisSession()
-                                            }
-                                            .padding(
-                                                horizontal = 8.dp,
-                                                vertical = 6.dp
-                                            ),
-                                    fontSize = 18.sp,
-                                    fontWeight =
-                                        FontWeight.Black
-                                )
-                            }
+                            Text(
+                                "×",
+                                modifier =
+                                    Modifier
+                                        .padding(start = 4.dp)
+                                        .clickable {
+                                            closeThisSession()
+                                        }
+                                        .padding(
+                                            horizontal = 8.dp,
+                                            vertical = 6.dp
+                                        ),
+                                fontSize = 18.sp,
+                                fontWeight =
+                                    FontWeight.Black
+                            )
                         }
                     }
                 } else {
@@ -1625,24 +1637,22 @@ internal fun LocalPtyTerminalPanel(
                                 fontSize = 12.sp
                             )
 
-                            if (ptySessions.size > 1) {
-                                Text(
-                                    "×",
-                                    modifier =
-                                        Modifier
-                                            .padding(start = 4.dp)
-                                            .clickable {
-                                                closeThisSession()
-                                            }
-                                            .padding(
-                                                horizontal = 8.dp,
-                                                vertical = 6.dp
-                                            ),
-                                    fontSize = 18.sp,
-                                    fontWeight =
-                                        FontWeight.Black
-                                )
-                            }
+                            Text(
+                                "×",
+                                modifier =
+                                    Modifier
+                                        .padding(start = 4.dp)
+                                        .clickable {
+                                            closeThisSession()
+                                        }
+                                        .padding(
+                                            horizontal = 8.dp,
+                                            vertical = 6.dp
+                                        ),
+                                fontSize = 18.sp,
+                                fontWeight =
+                                    FontWeight.Black
+                            )
                         }
                     }
                 }
@@ -1757,6 +1767,18 @@ internal fun LocalPtyTerminalPanel(
                     verticalAlignment =
                         Alignment.CenterVertically
                 ) {
+                    PtyKey(
+                        if (terminalCopyMode) {
+                            "YAZ"
+                        } else {
+                            "KOPYA"
+                        },
+                        true
+                    ) {
+                        terminalCopyMode =
+                            !terminalCopyMode
+                    }
+
                     PtyKey("ESC", true) {
                         scope.launch {
                             LocalPtySessionRegistry.write(
@@ -1828,17 +1850,6 @@ internal fun LocalPtyTerminalPanel(
                                 "\u0017"
                             )
                         }
-                    }
-                    PtyKey(
-                        if (terminalCopyMode) {
-                            "YAZ"
-                        } else {
-                            "KOPYA"
-                        },
-                        true
-                    ) {
-                        terminalCopyMode =
-                            !terminalCopyMode
                     }
                     PtyKey("⌫", true) {
                         scope.launch {
@@ -2250,20 +2261,30 @@ private fun LocalPtySurface(
                 .onSizeChanged { size ->
                     surfaceSize = size
                 }
-                .pointerInput(state.id) {
-                    detectTransformGestures { _, _, zoom, _ ->
-                        if (zoom != 1f) {
-                            val next =
-                                (pinchFontSizeSp * zoom)
-                                    .coerceIn(8f, 18f)
-                            if (next != pinchFontSizeSp) {
-                                pinchFontSizeSp = next
-                                onFontSizeSpChange(next)
+                .pointerInput(
+                    state.id,
+                    copyMode
+                ) {
+                    /*
+                     * SelectionContainer owns all gestures in copy mode.
+                     * Do not let pinch/tap handling steal long-press selection.
+                     */
+                    if (!copyMode) {
+                        detectTransformGestures { _, _, zoom, _ ->
+                            if (zoom != 1f) {
+                                val next =
+                                    (pinchFontSizeSp * zoom)
+                                        .coerceIn(8f, 18f)
+                                if (next != pinchFontSizeSp) {
+                                    pinchFontSizeSp = next
+                                    onFontSizeSpChange(next)
+                                }
                             }
                         }
                     }
                 }
                 .clickable(
+                    enabled = !copyMode,
                     interactionSource = tapInteraction,
                     indication = null
                 ) {
