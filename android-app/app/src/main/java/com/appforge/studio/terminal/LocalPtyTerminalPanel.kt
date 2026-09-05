@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.TextSelectionColors
@@ -58,7 +59,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -1796,7 +1800,19 @@ private fun LocalPtySurface(
     val outputScroll = rememberScrollState()
 
     var selectionEpoch by remember(state.id) { mutableStateOf(0) }
-    var imeShadow by remember(state.id) { mutableStateOf(LOCAL_PTY_IME_SENTINEL) }
+    var imeValue by
+        remember(state.id) {
+            mutableStateOf(
+                TextFieldValue(
+                    text =
+                        LOCAL_PTY_IME_SENTINEL,
+                    selection =
+                        TextRange(
+                            LOCAL_PTY_IME_SENTINEL.length
+                        )
+                )
+            )
+        }
     var pinchFontSizeSp by remember(state.id) { mutableStateOf(fontSizeSp) }
     var surfaceSize by remember(state.id) { mutableStateOf(IntSize.Zero) }
 
@@ -1956,22 +1972,31 @@ private fun LocalPtySurface(
                 )
         ) {
             BasicTextField(
-                value = imeShadow,
+                value = imeValue,
                 onValueChange = { next ->
                     if (!state.running) {
-                        imeShadow =
-                            LOCAL_PTY_IME_SENTINEL
+                        imeValue =
+                            TextFieldValue(
+                                text =
+                                    LOCAL_PTY_IME_SENTINEL,
+                                selection =
+                                    TextRange(
+                                        LOCAL_PTY_IME_SENTINEL.length
+                                    )
+                            )
                         return@BasicTextField
                     }
 
                     val delta =
                         localPtyImeDeltaWithSentinel(
-                            previous = imeShadow,
-                            next = next
+                            previous =
+                                imeValue.text,
+                            next =
+                                next.text
                         )
 
-                    imeShadow =
-                        localPtyImeShadow(
+                    imeValue =
+                        localPtyImeValue(
                             next
                         )
 
@@ -1985,6 +2010,12 @@ private fun LocalPtySurface(
                     }
                 },
                 enabled = state.running,
+                keyboardOptions =
+                    KeyboardOptions(
+                        autoCorrectEnabled = false,
+                        keyboardType =
+                            KeyboardType.Text
+                    ),
                 textStyle =
                     TextStyle(
                         color = Color.Transparent,
@@ -2171,6 +2202,35 @@ private fun localPtyImeDeltaWithSentinel(
     return localPtyImeDelta(
         previous = previousPayload,
         next = nextPayload
+    )
+}
+
+private fun localPtyImeValue(
+    next: TextFieldValue
+): TextFieldValue {
+    val shadow =
+        localPtyImeShadow(
+            next.text
+        )
+
+    /*
+     * Gboard composition/selection state must survive normal edits.
+     * Rebuilding a String-only field here can make Backspace replay
+     * the current composing character instead of deleting it.
+     */
+    if (
+        shadow ==
+            next.text
+    ) {
+        return next
+    }
+
+    return TextFieldValue(
+        text = shadow,
+        selection =
+            TextRange(
+                shadow.length
+            )
     )
 }
 
