@@ -29,6 +29,11 @@ test("Stage 10Q follows new terminal output to the real scroll bottom", async ()
     source,
     /outputScroll\.scrollTo\(\s*outputScroll\.maxValue\s*\)/
   );
+
+  assert.match(
+    source,
+    /LaunchedEffect\(\s*outputScroll\.maxValue\s*\)/
+  );
 });
 
 test("Stage 10Q creates physical scroll space beneath the active prompt", async () => {

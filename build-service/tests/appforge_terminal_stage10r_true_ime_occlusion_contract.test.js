@@ -8,7 +8,7 @@ const sourceUrl =
     import.meta.url
   );
 
-test("Stage 10P reserves the IME-occluded terminal area inside scroll content", async () => {
+test("Stage 10R reserves the same IME distance used by the floating shortcut row", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -22,41 +22,49 @@ test("Stage 10P reserves the IME-occluded terminal area inside scroll content", 
 
   assert.match(
     source,
-    /val accessoryReservePx[\s\S]*?active\?\.running == true[\s\S]*?imeOcclusionPx/
+    /val accessoryReservePx[\s\S]*?imeOcclusionPx/
+  );
+
+  assert.match(
+    source,
+    /\.offset\s*\{\s*IntOffset\([\s\S]*?y\s*=\s*-imeInsets\.getBottom\(this\)/
   );
 
   assert.doesNotMatch(
     source,
     /accessoryBarHeightPx/
   );
+});
 
-  assert.doesNotMatch(
+test("Stage 10R follows both output and the final recalculated scroll range", async () => {
+  const source =
+    await readFile(
+      sourceUrl,
+      "utf8"
+    );
+
+  assert.match(
     source,
-    /imeBottomPx/
+    /LaunchedEffect\(\s*state\.outputRevision,\s*bottomContentPaddingPx\s*\)/
   );
 
   assert.match(
     source,
-    /bottomContentPaddingPx\s*=\s*accessoryReservePx/
+    /LaunchedEffect\(\s*outputScroll\.maxValue\s*\)/
   );
 
-  assert.match(
-    source,
-    /bottomContentPaddingPx:\s*Int\s*=\s*0/
-  );
+  const scrollCalls =
+    source.match(
+      /outputScroll\.scrollTo\(\s*outputScroll\.maxValue\s*\)/g
+    ) ?? [];
 
-  assert.match(
-    source,
-    /val bottomContentPadding[\s\S]*?bottomContentPaddingPx[\s\S]*?\.toDp\(\)/
-  );
-
-  assert.match(
-    source,
-    /Spacer\([\s\S]*?\.height\(\s*bottomContentPadding\s*\)/
+  assert.ok(
+    scrollCalls.length >= 2,
+    "expected output follow and layout-range follow"
   );
 });
 
-test("Stage 10P keeps terminal viewport independent from IME measurement", async () => {
+test("Stage 10R does not resize the PTY from IME occlusion", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -68,23 +76,23 @@ test("Stage 10P keeps terminal viewport independent from IME measurement", async
     /\.imePadding\(\)/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     source,
-    /\.offset\s*\{\s*IntOffset\([\s\S]*?y\s*=\s*-imeInsets\.getBottom\(this\)/
-  );
-
-  assert.match(
-    source,
-    /Modifier\.weight\(1f\)/
+    /LaunchedEffect\([\s\S]{0,150}imeOcclusionPx[\s\S]{0,300}LocalPtySessionRegistry\.resize/
   );
 
   assert.match(
     source,
     /LaunchedEffect\(\s*surfaceSize,\s*fontSizeSp,\s*state\.id/
   );
+
+  assert.doesNotMatch(
+    source,
+    /imeBottomPx/
+  );
 });
 
-test("Stage 10P preserves verified IME and productivity controls", async () => {
+test("Stage 10R preserves verified keyboard and shell controls", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -112,7 +120,7 @@ test("Stage 10P preserves verified IME and productivity controls", async () => {
   ]) {
     assert.ok(
       source.includes(key),
-      `verified terminal key disappeared: ${key}`
+      `verified key disappeared: ${key}`
     );
   }
 });

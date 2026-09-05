@@ -1452,27 +1452,24 @@ internal fun LocalPtyTerminalPanel(
     val accessoryDensity =
         LocalDensity.current
 
-    var accessoryBarHeightPx by
-        remember(active?.id) {
-            mutableStateOf(0)
-        }
-
-    val keyboardVisible =
+    /*
+     * The terminal viewport deliberately stays full-size while Android's
+     * keyboard overlays its lower portion. The shortcut row is translated
+     * upward by this exact IME distance, so the scroll content must reserve
+     * the same occluded distance.
+     *
+     * This does NOT participate in PTY viewport measurement/resizing.
+     */
+    val imeOcclusionPx =
         imeInsets.getBottom(
             accessoryDensity
-        ) > 0
+        )
 
-    /*
-     * The shortcut row is visually offset above the IME without changing
-     * terminal viewport measurement. Reserve only its own height inside
-     * terminal scroll content so output cannot render underneath it.
-     */
     val accessoryReservePx =
         if (
-            active?.running == true &&
-            keyboardVisible
+            active?.running == true
         ) {
-            accessoryBarHeightPx
+            imeOcclusionPx
         } else {
             0
         }
@@ -1700,15 +1697,6 @@ internal fun LocalPtyTerminalPanel(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .onSizeChanged { size ->
-                                if (
-                                    accessoryBarHeightPx !=
-                                        size.height
-                                ) {
-                                    accessoryBarHeightPx =
-                                        size.height
-                                }
-                            }
                             .offset {
                                 IntOffset(
                                     x = 0,
@@ -2094,6 +2082,23 @@ private fun LocalPtySurface(
         outputScroll.scrollTo(
             outputScroll.maxValue
         )
+    }
+
+    /*
+     * IME/layout changes can update maxValue after the output effect above.
+     * Follow that final range as well so the cursor cannot remain inside
+     * the keyboard-occluded portion of the full-size terminal viewport.
+     */
+    LaunchedEffect(
+        outputScroll.maxValue
+    ) {
+        if (
+            outputScroll.maxValue > 0
+        ) {
+            outputScroll.scrollTo(
+                outputScroll.maxValue
+            )
+        }
     }
 
     LaunchedEffect(
