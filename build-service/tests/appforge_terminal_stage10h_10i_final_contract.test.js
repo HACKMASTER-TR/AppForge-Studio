@@ -13,12 +13,12 @@ test("Stage 10H fixes phone terminal UX without regressing native PTY", async ()
   assert.match(pty, /outputRevision/);
   assert.match(
     pty,
-    /LaunchedEffect\(\s*state\.outputRevision,\s*bottomContentPaddingPx\s*\)/
+    /LaunchedEffect\(\s*state\.outputRevision,\s*bottomContentPaddingPx,\s*state\.snapshot\.lines\.size\s*\)/
   );
 
   assert.match(
     pty,
-    /outputScroll\.scrollTo\(\s*outputScroll\.maxValue\s*\)/
+    /outputListState\.scrollToItem\(\s*lastIndex\s*\)/
   );
   assert.doesNotMatch(pty, /LaunchedEffect\(\s*rendered\.length,\s*outputScroll\.maxValue/);
   assert.match(
@@ -34,9 +34,10 @@ test("Stage 10H fixes phone terminal UX without regressing native PTY", async ()
   assert.match(pty, /TerminalDevelopmentEnvironmentCoordinator/);
   assert.match(pty, /detectTransformGestures/);
   assert.match(pty, /onFontSizeSpChange/);
-  assert.match(pty, /SelectionContainer/);
+  assert.match(pty, /LazyColumn/);
+  assert.doesNotMatch(pty, /SelectionContainer/);
   assert.match(pty, /\.size\(1\.dp\)\s*\.alpha\(0f\)\s*\.focusRequester/);
-  assert.match(pty, /selectionEpoch/);
+  assert.doesNotMatch(pty, /selectionEpoch/);
   assert.match(pty, /isHighSurrogate/);
   assert.match(pty, /isLowSurrogate/);
   assert.match(pty, /codePointCount/);

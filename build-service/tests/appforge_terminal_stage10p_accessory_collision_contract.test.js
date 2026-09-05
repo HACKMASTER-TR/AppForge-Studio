@@ -52,7 +52,7 @@ test("Stage 10P reserves the IME-occluded terminal area inside scroll content", 
 
   assert.match(
     source,
-    /Spacer\([\s\S]*?\.height\(\s*bottomContentPadding\s*\)/
+    /contentPadding\s*=\s*PaddingValues\([\s\S]*?bottom\s*=\s*bottomContentPadding/
   );
 });
 

@@ -8,7 +8,7 @@ const sourceUrl =
     import.meta.url
   );
 
-test("Stage 10R reserves the same IME distance used by the floating shortcut row", async () => {
+test("Stage 10U virtualizes terminal rows instead of laying out one huge Text", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -17,26 +17,36 @@ test("Stage 10R reserves the same IME distance used by the floating shortcut row
 
   assert.match(
     source,
-    /val imeOcclusionPx\s*=\s*imeInsets\.getBottom\(\s*accessoryDensity\s*\)/
+    /LazyColumn\(/
   );
 
   assert.match(
     source,
-    /val accessoryReservePx[\s\S]*?imeOcclusionPx/
+    /rememberLazyListState\(\)/
   );
 
   assert.match(
     source,
-    /\.offset\s*\{\s*IntOffset\([\s\S]*?y\s*=\s*-imeInsets\.getBottom\(this\)/
+    /items\([\s\S]*?state\.snapshot\.lines\.indices/
+  );
+
+  assert.match(
+    source,
+    /renderLocalPtyLine\(/
   );
 
   assert.doesNotMatch(
     source,
-    /accessoryBarHeightPx/
+    /SelectionContainer/
+  );
+
+  assert.doesNotMatch(
+    source,
+    /\.verticalScroll\(\s*outputScroll\s*\)/
   );
 });
 
-test("Stage 10R follows the active line with the virtualized renderer", async () => {
+test("Stage 10U renders only individual visible PTY lines", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -45,8 +55,26 @@ test("Stage 10R follows the active line with the virtualized renderer", async ()
 
   assert.match(
     source,
-    /LaunchedEffect\(\s*state\.outputRevision,\s*bottomContentPaddingPx,\s*state\.snapshot\.lines\.size\s*\)/
+    /private fun renderLocalPtyLine\(/
   );
+
+  assert.match(
+    source,
+    /snapshot\.lines[\s\S]*?getOrNull\(\s*lineIndex\s*\)/
+  );
+
+  assert.doesNotMatch(
+    source,
+    /val rendered\s*=\s*remember\(state\.snapshot/
+  );
+});
+
+test("Stage 10U follows new output with LazyListState", async () => {
+  const source =
+    await readFile(
+      sourceUrl,
+      "utf8"
+    );
 
   assert.match(
     source,
@@ -59,7 +87,7 @@ test("Stage 10R follows the active line with the virtualized renderer", async ()
   );
 });
 
-test("Stage 10R does not resize the PTY from IME occlusion", async () => {
+test("Stage 10U preserves verified IME and shortcut behavior", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -71,29 +99,6 @@ test("Stage 10R does not resize the PTY from IME occlusion", async () => {
     /\.imePadding\(\)/
   );
 
-  assert.doesNotMatch(
-    source,
-    /LaunchedEffect\([\s\S]{0,150}imeOcclusionPx[\s\S]{0,300}LocalPtySessionRegistry\.resize/
-  );
-
-  assert.match(
-    source,
-    /LaunchedEffect\(\s*surfaceSize,\s*fontSizeSp,\s*state\.id/
-  );
-
-  assert.doesNotMatch(
-    source,
-    /imeBottomPx/
-  );
-});
-
-test("Stage 10R preserves verified keyboard and shell controls", async () => {
-  const source =
-    await readFile(
-      sourceUrl,
-      "utf8"
-    );
-
   assert.match(
     source,
     /value\s*=\s*imeValue/
@@ -102,6 +107,11 @@ test("Stage 10R preserves verified keyboard and shell controls", async () => {
   assert.match(
     source,
     /autoCorrectEnabled\s*=\s*false/
+  );
+
+  assert.match(
+    source,
+    /TerminalShortcutMatteGray/
   );
 
   for (const key of [

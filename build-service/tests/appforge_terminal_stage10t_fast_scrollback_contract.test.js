@@ -62,13 +62,18 @@ test("Stage 10T keeps restored terminal state small", async () => {
   );
 });
 
-test("Stage 10T preserves selectable output and verified keyboard controls", async () => {
+test("Stage 10T preserves virtualized output and verified keyboard controls", async () => {
   const panel =
     await read(
       "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
     );
 
   assert.match(
+    panel,
+    /LazyColumn/
+  );
+
+  assert.doesNotMatch(
     panel,
     /SelectionContainer/
   );

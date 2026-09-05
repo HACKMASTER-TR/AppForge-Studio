@@ -8,7 +8,7 @@ const sourceUrl =
     import.meta.url
   );
 
-test("Stage 10Q follows new terminal output to the real scroll bottom", async () => {
+test("Stage 10Q follows new terminal output with virtualized scrolling", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -17,7 +17,12 @@ test("Stage 10Q follows new terminal output to the real scroll bottom", async ()
 
   assert.match(
     source,
-    /LaunchedEffect\(\s*state\.outputRevision,\s*bottomContentPaddingPx\s*\)/
+    /rememberLazyListState\(\)/
+  );
+
+  assert.match(
+    source,
+    /LaunchedEffect\(\s*state\.outputRevision,\s*bottomContentPaddingPx,\s*state\.snapshot\.lines\.size\s*\)/
   );
 
   assert.match(
@@ -27,16 +32,11 @@ test("Stage 10Q follows new terminal output to the real scroll bottom", async ()
 
   assert.match(
     source,
-    /outputScroll\.scrollTo\(\s*outputScroll\.maxValue\s*\)/
-  );
-
-  assert.match(
-    source,
-    /LaunchedEffect\(\s*outputScroll\.maxValue\s*\)/
+    /outputListState\.scrollToItem\(\s*lastIndex\s*\)/
   );
 });
 
-test("Stage 10Q creates physical scroll space beneath the active prompt", async () => {
+test("Stage 10Q keeps IME reserve inside lazy-list content padding", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -45,22 +45,22 @@ test("Stage 10Q creates physical scroll space beneath the active prompt", async 
 
   assert.match(
     source,
-    /SelectionContainer\s*\{\s*Column\(/
+    /LazyColumn\(/
   );
 
   assert.match(
     source,
-    /\.verticalScroll\(\s*outputScroll\s*\)/
+    /state\s*=\s*outputListState/
   );
 
   assert.match(
     source,
-    /Spacer\([\s\S]*?\.height\(\s*bottomContentPadding\s*\)/
+    /contentPadding\s*=\s*PaddingValues\([\s\S]*?bottom\s*=\s*bottomContentPadding/
   );
 
   assert.doesNotMatch(
     source,
-    /bottom\s*=\s*bottomContentPadding/
+    /\.verticalScroll\(\s*outputScroll\s*\)/
   );
 });
 

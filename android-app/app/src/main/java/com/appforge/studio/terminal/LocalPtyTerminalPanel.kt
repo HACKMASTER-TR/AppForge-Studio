@@ -7,6 +7,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -27,7 +30,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -2034,9 +2036,12 @@ private fun LocalPtySurface(
     val keyboardController = LocalSoftwareKeyboardController.current
     val inputFocusRequester = remember(state.id) { FocusRequester() }
     val tapInteraction = remember(state.id) { MutableInteractionSource() }
-    val outputScroll = rememberScrollState()
-
-    var selectionEpoch by remember(state.id) { mutableStateOf(0) }
+    /*
+     * Virtualized terminal output:
+     * only visible lines are composed while scrolling.
+     */
+    val outputListState =
+        rememberLazyListState()
     var imeValue by
         remember(state.id) {
             mutableStateOf(
@@ -2062,6 +2067,11 @@ private fun LocalPtySurface(
     val charWidthPx = with(density) { fontSize.toPx() * 0.72f }
     val lineHeightPx = with(density) { lineHeight.toPx() }
 
+    val terminalRowHeight =
+        with(density) {
+            lineHeight.toDp()
+        }
+
     val bottomContentPadding =
         12.dp +
             with(density) {
@@ -2070,45 +2080,25 @@ private fun LocalPtySurface(
                     .toDp()
             }
 
-    val rendered =
-        remember(state.snapshot, state.running) {
-            renderLocalPtySnapshot(
-                state.snapshot,
-                state.running
-            )
-        }
-
     /*
-     * Follow the active terminal cursor.
+     * Follow the active PTY line after new output.
      *
-     * outputRevision arrives before Compose necessarily recalculates the
-     * scroll range. Give layout one frame, then move to the real bottom.
-     * Changing the accessory reserve must also reveal the prompt above
-     * the keyboard shortcut row.
+     * LazyColumn never lays out off-screen history, so moving to the final
+     * line is cheap even after hundreds of terminal lines.
      */
     LaunchedEffect(
         state.outputRevision,
-        bottomContentPaddingPx
+        bottomContentPaddingPx,
+        state.snapshot.lines.size
     ) {
         delay(16L)
-        outputScroll.scrollTo(
-            outputScroll.maxValue
-        )
-    }
 
-    /*
-     * IME/layout changes can update maxValue after the output effect above.
-     * Follow that final range as well so the cursor cannot remain inside
-     * the keyboard-occluded portion of the full-size terminal viewport.
-     */
-    LaunchedEffect(
-        outputScroll.maxValue
-    ) {
-        if (
-            outputScroll.maxValue > 0
-        ) {
-            outputScroll.scrollTo(
-                outputScroll.maxValue
+        val lastIndex =
+            state.snapshot.lines.lastIndex
+
+        if (lastIndex >= 0) {
+            outputListState.scrollToItem(
+                lastIndex
             )
         }
     }
@@ -2203,59 +2193,62 @@ private fun LocalPtySurface(
                     interactionSource = tapInteraction,
                     indication = null
                 ) {
-                    selectionEpoch += 1
                     inputFocusRequester.requestFocus()
                     keyboardController?.show()
                 }
     ) {
-        CompositionLocalProvider(
-            LocalTextSelectionColors provides
-                TextSelectionColors(
-                    handleColor = TerminalPrimary,
-                    backgroundColor = TerminalPrimary.copy(alpha = 0.28f)
+        /*
+         * Do not render the whole scrollback as one giant Text.
+         *
+         * LazyColumn composes only the lines visible on screen. This keeps
+         * scroll gestures and command output independent from scrollback size.
+         */
+        LazyColumn(
+            state = outputListState,
+            modifier =
+                Modifier.fillMaxSize(),
+            contentPadding =
+                PaddingValues(
+                    start = 16.dp,
+                    top = 12.dp,
+                    end = 12.dp,
+                    bottom =
+                        bottomContentPadding
                 )
         ) {
-            key(selectionEpoch) {
-                SelectionContainer {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .verticalScroll(
-                                    outputScroll
-                                )
-                                .padding(
-                                    start = 16.dp,
-                                    top = 12.dp,
-                                    end = 12.dp
-                                )
-                    ) {
-                        Text(
-                            rendered,
-                            color = TerminalText,
-                            fontFamily =
-                                FontFamily.Monospace,
-                            fontSize = fontSize,
-                            lineHeight = lineHeight,
-                            modifier =
-                                Modifier.fillMaxWidth()
-                        )
-
-                        /*
-                         * This is real scrollable content beneath the prompt.
-                         * When the IME accessory floats upward, the prompt can
-                         * therefore scroll completely above the shortcut row.
-                         */
-                        Spacer(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(
-                                        bottomContentPadding
-                                    )
-                        )
-                    }
+            items(
+                items =
+                    state.snapshot.lines.indices
+                        .toList(),
+                key = { lineIndex ->
+                    lineIndex
                 }
+            ) { lineIndex ->
+                Text(
+                    renderLocalPtyLine(
+                        snapshot =
+                            state.snapshot,
+                        lineIndex =
+                            lineIndex,
+                        showCursor =
+                            state.running
+                    ),
+                    color =
+                        TerminalText,
+                    fontFamily =
+                        FontFamily.Monospace,
+                    fontSize =
+                        fontSize,
+                    lineHeight =
+                        lineHeight,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(
+                                min =
+                                    terminalRowHeight
+                            )
+                )
             }
         }
 
@@ -2329,6 +2322,140 @@ private fun LocalPtySurface(
         }
     }
 }
+
+private fun renderLocalPtyLine(
+    snapshot: AnsiTerminalSnapshot,
+    lineIndex: Int,
+    showCursor: Boolean
+): AnnotatedString =
+    buildAnnotatedString {
+        val line =
+            snapshot.lines
+                .getOrNull(
+                    lineIndex
+                )
+                ?: return@buildAnnotatedString
+
+        val cursorColumn =
+            if (
+                showCursor &&
+                snapshot.cursorVisible &&
+                lineIndex ==
+                    snapshot.cursorLine
+            ) {
+                snapshot.cursorColumn
+                    .coerceAtLeast(0)
+            } else {
+                -1
+            }
+
+        val lastContentColumn =
+            line.indexOfLast {
+                it.character != ' '
+            }
+
+        val lastColumn =
+            maxOf(
+                lastContentColumn,
+                cursorColumn
+            )
+
+        if (lastColumn >= 0) {
+            for (
+                column in
+                0..lastColumn
+            ) {
+                if (
+                    column ==
+                        cursorColumn
+                ) {
+                    append('▌')
+                }
+
+                if (
+                    column <
+                        line.size
+                ) {
+                    val cell =
+                        line[column]
+
+                    val style =
+                        cell.style
+
+                    val defaultFg =
+                        TerminalText
+
+                    val defaultBg =
+                        Color(
+                            0xFF030609
+                        )
+
+                    val explicitFg =
+                        style.foregroundRgb
+                            ?.let(
+                                ::localAnsiColor
+                            )
+
+                    val explicitBg =
+                        style.backgroundRgb
+                            ?.let(
+                                ::localAnsiColor
+                            )
+
+                    val fg =
+                        if (
+                            style.inverse
+                        ) {
+                            explicitBg
+                                ?: defaultBg
+                        } else {
+                            explicitFg
+                                ?: defaultFg
+                        }
+
+                    val bg =
+                        if (
+                            style.inverse
+                        ) {
+                            explicitFg
+                                ?: defaultFg
+                        } else {
+                            explicitBg
+                        }
+
+                    withStyle(
+                        SpanStyle(
+                            color =
+                                fg,
+                            background =
+                                bg
+                                    ?: Color.Unspecified,
+                            fontWeight =
+                                if (
+                                    style.bold
+                                ) {
+                                    FontWeight.Bold
+                                } else {
+                                    FontWeight.Normal
+                                },
+                            textDecoration =
+                                if (
+                                    style.underline
+                                ) {
+                                    TextDecoration.Underline
+                                } else {
+                                    TextDecoration.None
+                                }
+                        )
+                    ) {
+                        append(
+                            cell.character
+                        )
+                    }
+                }
+            }
+        }
+    }
 
 private fun renderLocalPtySnapshot(
     snapshot: AnsiTerminalSnapshot,

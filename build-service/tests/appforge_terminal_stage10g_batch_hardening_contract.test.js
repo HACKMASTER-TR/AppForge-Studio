@@ -24,7 +24,15 @@ test("Stage 10G hardens local PTY lifecycle, state restore and UX", async () => 
   assert.match(pty, /session_descriptors_v2/);
   assert.match(pty, /currentWorkingDirectory\(\)/);
   assert.match(pty, /nextTerminalIndexLocked/);
-  assert.match(pty, /SelectionContainer/);
+  assert.match(
+    pty,
+    /LazyColumn/
+  );
+
+  assert.doesNotMatch(
+    pty,
+    /SelectionContainer/
+  );
   assert.match(pty, /AnnotatedString/);
   assert.match(pty, /SpanStyle/);
   assert.match(pty, /fontSizeSp/);
