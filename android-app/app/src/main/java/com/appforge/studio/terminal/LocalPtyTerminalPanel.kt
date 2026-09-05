@@ -9,14 +9,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -51,7 +48,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -1285,7 +1281,6 @@ internal fun LocalPtyTerminalPanel(
         modifier =
             Modifier
                 .fillMaxSize()
-                .imePadding()
                 .padding(10.dp),
         verticalArrangement =
             Arrangement.spacedBy(8.dp)
@@ -1787,8 +1782,6 @@ private fun LocalPtySurface(
     var imeShadow by remember(state.id) { mutableStateOf(LOCAL_PTY_IME_SENTINEL) }
     var pinchFontSizeSp by remember(state.id) { mutableStateOf(fontSizeSp) }
     var surfaceSize by remember(state.id) { mutableStateOf(IntSize.Zero) }
-    var inputWasFocused by remember(state.id) { mutableStateOf(false) }
-    var lastFocusRestoreAt by remember(state.id) { mutableStateOf(0L) }
 
     LaunchedEffect(fontSizeSp) {
         pinchFontSizeSp = fontSizeSp
@@ -1872,10 +1865,6 @@ private fun LocalPtySurface(
             columns
         )
     }
-
-    val imeBottomPx =
-        WindowInsets.ime
-            .getBottom(density)
 
     Box(
         modifier =
@@ -1992,37 +1981,6 @@ private fun LocalPtySurface(
                         .focusRequester(
                             inputFocusRequester
                         )
-                        .onFocusChanged { focus ->
-                            if (focus.isFocused) {
-                                inputWasFocused = true
-                            } else if (
-                                inputWasFocused &&
-                                imeBottomPx > 0 &&
-                                state.running
-                            ) {
-                                val now =
-                                    System.currentTimeMillis()
-
-                                if (
-                                    now -
-                                        lastFocusRestoreAt >
-                                        FOCUS_RESTORE_GUARD_MS
-                                ) {
-                                    lastFocusRestoreAt =
-                                        now
-
-                                    scope.launch {
-                                        delay(
-                                            FOCUS_RESTORE_DELAY_MS
-                                        )
-                                        inputFocusRequester
-                                            .requestFocus()
-                                        keyboardController
-                                            ?.show()
-                                    }
-                                }
-                            }
-                        }
             )
         }
     }
@@ -2334,9 +2292,3 @@ private const val RESIZE_DEBOUNCE_MS =
 
 private const val FONT_PERSIST_DEBOUNCE_MS =
     250L
-
-private const val FOCUS_RESTORE_DELAY_MS =
-    70L
-
-private const val FOCUS_RESTORE_GUARD_MS =
-    600L

@@ -10,8 +10,15 @@ test("Stage 10F keeps terminal extra keys above IME and hides text selection han
     "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
   );
 
-  assert.match(source, /import androidx\.compose\.foundation\.layout\.imePadding/);
-  assert.match(source, /\.fillMaxSize\(\)\s*\.imePadding\(\)\s*\.padding\(10\.dp\)/);
+  assert.doesNotMatch(
+    source,
+    /import androidx\.compose\.foundation\.layout\.imePadding/
+  );
+  assert.doesNotMatch(source, /\.imePadding\(\)/);
+  assert.match(
+    source,
+    /Row\([\s\S]*?PtyKey\("ESC"/
+  );
 
   assert.match(
     source,

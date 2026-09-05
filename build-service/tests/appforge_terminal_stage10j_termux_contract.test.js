@@ -27,7 +27,9 @@ test("Stage 10J makes main Terminal AppForge-owned and Termux-like", async () =>
   assert.match(pty, /PackagedLinuxEngine/);
   assert.match(pty, /RESIZE_DEBOUNCE_MS/);
   assert.match(pty, /availableWidthPx/);
-  assert.match(pty, /FOCUS_RESTORE_GUARD_MS/);
+  assert.doesNotMatch(pty, /FOCUS_RESTORE_GUARD_MS/);
+  assert.doesNotMatch(pty, /FOCUS_RESTORE_DELAY_MS/);
+  assert.match(pty, /\.focusRequester\(\s*inputFocusRequester\s*\)/);
   assert.match(pty, /isLowSurrogate/);
   assert.match(pty, /horizontalScroll/);
   assert.doesNotMatch(

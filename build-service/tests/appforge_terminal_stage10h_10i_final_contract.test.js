@@ -13,8 +13,8 @@ test("Stage 10H fixes phone terminal UX without regressing native PTY", async ()
   assert.match(pty, /outputRevision/);
   assert.match(pty, /LaunchedEffect\(\s*state\.outputRevision\s*\)/);
   assert.doesNotMatch(pty, /LaunchedEffect\(\s*rendered\.length,\s*outputScroll\.maxValue/);
-  assert.match(pty, /WindowInsets\.ime\s*\.getBottom\(density\)/);
-  assert.match(pty, /imeBottomPx/);
+  assert.doesNotMatch(pty, /WindowInsets\.ime/);
+  assert.doesNotMatch(pty, /imeBottomPx/);
   assert.doesNotMatch(
     pty,
     /import androidx\.compose\.foundation\.layout\.getBottom/
