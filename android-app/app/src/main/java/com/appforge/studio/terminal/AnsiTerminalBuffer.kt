@@ -194,11 +194,17 @@ internal class AnsiTerminalBuffer(
     }
 
     fun snapshot(
-        includeScrollback: Boolean = true
+        includeScrollback: Boolean = true,
+        maxHistoryLines: Int = Int.MAX_VALUE
     ): AnsiTerminalSnapshot {
         val history =
             if (includeScrollback && !alternateScreen) {
-                scrollback.toList()
+                scrollback
+                    .toList()
+                    .takeLast(
+                        maxHistoryLines
+                            .coerceAtLeast(0)
+                    )
             } else {
                 emptyList()
             }

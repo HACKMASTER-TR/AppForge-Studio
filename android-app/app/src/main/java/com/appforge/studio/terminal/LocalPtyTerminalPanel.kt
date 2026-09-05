@@ -662,7 +662,12 @@ internal object LocalPtySessionRegistry {
 
             item.optString("snapshot")
                 .takeIf { it.isNotBlank() }
-                ?.let { buffer.feed(it) }
+                ?.takeLast(
+                    MAX_PERSISTED_SNAPSHOT_CHARS
+                )
+                ?.let {
+                    buffer.feed(it)
+                }
 
             records[id] =
                 Record(
@@ -796,13 +801,19 @@ internal object LocalPtySessionRegistry {
                         restored = it.restored,
                         outputRevision = it.outputRevision,
                         snapshot =
-                            it.buffer.snapshot()
+                            it.buffer.snapshot(
+                            maxHistoryLines =
+                                MAX_RENDERED_PTY_HISTORY_LINES
+                        )
                     )
                 }
     }
 
     private const val MAX_LOCAL_PTY_SESSIONS = 6
 
+
+    private const val MAX_RENDERED_PTY_HISTORY_LINES =
+        240
     /*
      * ~31 fps is enough for terminal output while avoiding hundreds of
      * Compose snapshots during large paste/build bursts.
@@ -810,7 +821,7 @@ internal object LocalPtySessionRegistry {
     private const val OUTPUT_PUBLISH_INTERVAL_MS =
         32L
 
-    private const val MAX_PERSISTED_SNAPSHOT_CHARS = 32_768
+    private const val MAX_PERSISTED_SNAPSHOT_CHARS = 12_288
     private const val PREFS_NAME = "appforge_local_pty_sessions"
     private const val KEY_SESSIONS = "session_descriptors_v2"
 }

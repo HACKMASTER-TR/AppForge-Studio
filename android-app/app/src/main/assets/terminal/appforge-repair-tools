@@ -3,6 +3,14 @@ set -eu
 
 printf '%s\n' "=== APPFORGE TOOLCHAIN REPAIR ==="
 
+printf '%s\n' "Yarım kalan dpkg işlemleri kontrol ediliyor…"
+
+DEBIAN_FRONTEND=noninteractive \
+dpkg --configure -a
+
+DEBIAN_FRONTEND=noninteractive \
+apt-get -f install -y
+
 apt-get update
 
 DEBIAN_FRONTEND=noninteractive \
