@@ -3,6 +3,7 @@ set -u
 
 failed=0
 tool_failed=0
+native_repo="/root/AppForge-Studio"
 
 pass_item() {
     printf '%-22s PASS\n' "$1"
@@ -71,6 +72,14 @@ repo_root="$(
         true
 )"
 
+if [ -z "$repo_root" ] &&
+   git -C "$native_repo" \
+       rev-parse \
+       --is-inside-work-tree \
+       >/dev/null 2>&1; then
+    repo_root="$native_repo"
+fi
+
 if [ -n "$repo_root" ]; then
     pass_item "git-repository"
 
@@ -79,7 +88,8 @@ if [ -n "$repo_root" ]; then
 
     printf 'branch                 %s\n' \
         "$(
-            git branch \
+            git -C "$repo_root" \
+                branch \
                 --show-current \
                 2>/dev/null ||
                 printf 'HEAD'

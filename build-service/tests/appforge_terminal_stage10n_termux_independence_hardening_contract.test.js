@@ -190,7 +190,7 @@ test("Stage 10N provides one-command tool repair and project bootstrap", async (
 
   assert.match(
     project,
-    /\/workspace\/AppForge-Studio/
+    /\/root\/AppForge-Studio/
   );
 
   assert.match(

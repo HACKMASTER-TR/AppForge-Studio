@@ -1,11 +1,25 @@
 #!/bin/sh
 set -eu
 
-repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+native_repo="/root/AppForge-Studio"
 
-if [ -f "$repo_root/build-service/package.json" ]; then
+repo_root="$(
+    git rev-parse \
+        --show-toplevel \
+        2>/dev/null ||
+        true
+)"
+
+if [ -z "$repo_root" ] &&
+   [ -d "$native_repo/.git" ]; then
+    repo_root="$native_repo"
+fi
+
+if [ -n "$repo_root" ] &&
+   [ -f "$repo_root/build-service/package.json" ]; then
     cd "$repo_root/build-service"
-elif [ -f "$repo_root/package.json" ]; then
+elif [ -n "$repo_root" ] &&
+     [ -f "$repo_root/package.json" ]; then
     cd "$repo_root"
 elif [ -f /workspace/build-service/package.json ]; then
     cd /workspace/build-service

@@ -1,18 +1,33 @@
 #!/bin/sh
 set -eu
 
-repo="/workspace/AppForge-Studio"
+repo="/root/AppForge-Studio"
 url="https://github.com/HACKMASTER-TR/AppForge-Studio.git"
 
-if [ ! -d "$repo/.git" ]; then
-    if [ -e "$repo" ]; then
-        printf '%s\n' \
-            "Hedef var ama Git deposu değil: $repo" >&2
-        exit 2
-    fi
+valid_repo() {
+    git -C "$repo" \
+        rev-parse \
+        --is-inside-work-tree \
+        >/dev/null 2>&1
+}
+
+if [ -e "$repo" ] && ! valid_repo; then
+    backup="${repo}.partial.$(date +%s)"
 
     printf '%s\n' \
-        "AppForge Studio deposu indiriliyor…"
+        "Yarım kalmış native repo bulundu."
+
+    printf 'Yedekleniyor: %s\n' \
+        "$backup"
+
+    mv \
+        "$repo" \
+        "$backup"
+fi
+
+if ! valid_repo; then
+    printf '%s\n' \
+        "AppForge Studio native Linux deposu indiriliyor…"
 
     git clone \
         "$url" \
@@ -32,6 +47,12 @@ printf 'Branch: %s\n' \
 
 printf 'HEAD:   %s\n' \
     "$(git log -1 --oneline)"
+
+printf '\n%s\n' \
+    "Git/NPM geliştirme alanı: /root/AppForge-Studio"
+
+printf '%s\n' \
+    "Android Files paylaşım alanı: /workspace"
 
 printf '\n%s\n' \
     "Bu shell artık AppForge-Studio deposunda."

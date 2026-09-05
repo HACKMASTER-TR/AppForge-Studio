@@ -226,12 +226,12 @@ test("Stage 10M installs standalone workstation helpers", async () => {
 
   assert.match(
     ready,
-    /git push --dry-run origin HEAD/
+    /git[\s\\\\]*-C[\s\\\\]*"\$repo_root"[\s\\\\]*push[\s\\\\]*--dry-run[\s\\\\]*origin[\s\\\\]*HEAD/
   );
 
   assert.match(
     ready,
-    /git ls-remote origin HEAD/
+    /git[\s\\\\]*-C[\s\\\\]*"\$repo_root"[\s\\\\]*ls-remote[\s\\\\]*origin[\s\\\\]*HEAD/
   );
 
   assert.match(

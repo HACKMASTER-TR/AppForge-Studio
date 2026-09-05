@@ -1,10 +1,17 @@
 #!/bin/sh
 set -eu
 
+native_repo="/root/AppForge-Studio"
+
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 
+if [ -z "$repo_root" ] &&
+   [ -d "$native_repo/.git" ]; then
+    repo_root="$native_repo"
+fi
+
 if [ -z "$repo_root" ]; then
-    printf '%s\n' "Git deposu bulunamadı." >&2
+    printf '%s\n' "Git deposu bulunamadı. appforge-project çalıştır." >&2
     exit 2
 fi
 
