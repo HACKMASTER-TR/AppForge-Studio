@@ -1,5 +1,10 @@
 package com.appforge.studio.terminal
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,12 +35,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.DateFormat
 import java.util.Date
@@ -46,6 +55,9 @@ internal fun WorkspaceFilesPanel(
 ) {
     val scope =
         rememberCoroutineScope()
+
+    val context =
+        LocalContext.current
 
     var currentDirectory by
         remember(workspace.absolutePath) {
@@ -476,6 +488,33 @@ internal fun WorkspaceFilesPanel(
                                     currentDirectory =
                                         entry.file
                                 } else if (
+                                    entry.file.extension
+                                        .equals(
+                                            "apk",
+                                            ignoreCase = true
+                                        )
+                                ) {
+                                    scope.launch {
+                                        runCatching {
+                                            openWorkspaceApkInstaller(
+                                                context =
+                                                    context,
+                                                source =
+                                                    entry.file
+                                            )
+                                        }.onSuccess {
+                                            message =
+                                                it
+                                        }.onFailure {
+                                            message =
+                                                "APK yükleyici açılamadı: " +
+                                                    (
+                                                        it.message
+                                                            ?: "Bilinmeyen hata"
+                                                    )
+                                        }
+                                    }
+                                } else if (
                                     WorkspaceFileService
                                         .isTextFile(
                                             entry.file
@@ -520,6 +559,131 @@ internal fun WorkspaceFilesPanel(
         }
     }
 }
+
+
+private suspend fun openWorkspaceApkInstaller(
+    context: Context,
+    source: File
+): String {
+    require(
+        source.isFile &&
+            source.extension.equals(
+                "apk",
+                ignoreCase = true
+            )
+    ) {
+        "Geçerli APK dosyası bulunamadı."
+    }
+
+    if (
+        Build.VERSION.SDK_INT >=
+            Build.VERSION_CODES.O &&
+        !context.packageManager
+            .canRequestPackageInstalls()
+    ) {
+        val permissionIntent =
+            Intent(
+                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse(
+                    "package:${context.packageName}"
+                )
+            ).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK
+            )
+
+        context.startActivity(
+            permissionIntent
+        )
+
+        return "APK yükleme iznini ver, ardından dosyaya tekrar dokun."
+    }
+
+    val cachedApk =
+        withContext(
+            Dispatchers.IO
+        ) {
+            val installerDirectory =
+                File(
+                    context.cacheDir,
+                    "apk-installer"
+                ).apply {
+                    check(
+                        exists() ||
+                            mkdirs()
+                    ) {
+                        "APK yükleme klasörü oluşturulamadı."
+                    }
+                }
+
+            installerDirectory
+                .listFiles()
+                .orEmpty()
+                .filter {
+                    it.isFile &&
+                        it.extension.equals(
+                            "apk",
+                            ignoreCase = true
+                        )
+                }
+                .forEach {
+                    runCatching {
+                        it.delete()
+                    }
+                }
+
+            File(
+                installerDirectory,
+                "AppForgeStudio-install.apk"
+            ).also { destination ->
+                source.copyTo(
+                    target =
+                        destination,
+                    overwrite =
+                        true
+                )
+
+                check(
+                    destination.isFile &&
+                        destination.length() ==
+                            source.length()
+                ) {
+                    "APK güvenli yükleme alanına kopyalanamadı."
+                }
+            }
+        }
+
+    val uri =
+        FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            cachedApk
+        )
+
+    val installIntent =
+        Intent(
+            Intent.ACTION_VIEW
+        ).apply {
+            setDataAndType(
+                uri,
+                "application/vnd.android.package-archive"
+            )
+
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK
+            )
+        }
+
+    context.startActivity(
+        installIntent
+    )
+
+    return "Android APK yükleyici açıldı."
+}
+
 
 @Composable
 private fun WorkspaceEntryCard(
