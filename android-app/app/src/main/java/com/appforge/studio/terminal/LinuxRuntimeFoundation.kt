@@ -489,7 +489,11 @@ internal object LinuxToolchainCatalog {
                 "sqlite3",
                 "openssl",
                 "bash",
-                "zsh"
+                "zsh",
+                "less",
+                "nano",
+                "file",
+                "procps"
             ),
             spec(
                 LinuxToolchainId.PYTHON,

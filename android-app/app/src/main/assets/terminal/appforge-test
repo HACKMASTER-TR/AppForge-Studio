@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+if [ -f "$repo_root/build-service/package.json" ]; then
+    cd "$repo_root/build-service"
+elif [ -f "$repo_root/package.json" ]; then
+    cd "$repo_root"
+elif [ -f /workspace/build-service/package.json ]; then
+    cd /workspace/build-service
+elif [ -f /workspace/package.json ]; then
+    cd /workspace
+else
+    printf '%s\n' \
+        "package.json veya build-service/package.json bulunamadı." >&2
+    exit 2
+fi
+
+if [ "$#" -eq 0 ]; then
+    exec npm test
+fi
+
+exec npm test -- "$@"

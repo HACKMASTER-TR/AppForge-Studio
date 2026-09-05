@@ -1,0 +1,123 @@
+#!/bin/sh
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+
+if [ -z "$repo_root" ]; then
+    printf '%s\n' "Git deposu bulunamadı." >&2
+    exit 2
+fi
+
+origin="$(git -C "$repo_root" remote get-url origin 2>/dev/null || true)"
+
+case "$origin" in
+    https://github.com/*)
+        repo="${origin#https://github.com/}"
+        ;;
+    git@github.com:*)
+        repo="${origin#git@github.com:}"
+        ;;
+    ssh://git@github.com/*)
+        repo="${origin#ssh://git@github.com/}"
+        ;;
+    *)
+        printf '%s\n' "GitHub origin bulunamadı: $origin" >&2
+        exit 2
+        ;;
+esac
+
+repo="${repo%.git}"
+repo="${repo%/}"
+
+if [ "$repo" = "HACKMASTER-TR/AppForge-Studio" ]; then
+    api="https://api.github.com/repos/$repo/releases/tags/appforge-studio-latest"
+else
+    api="https://api.github.com/repos/$repo/releases/latest"
+fi
+
+metadata="$(mktemp)"
+
+cleanup() {
+    rm -f "$metadata"
+}
+
+trap cleanup EXIT INT TERM
+
+curl \
+    -fsSL \
+    --retry 2 \
+    -H 'Accept: application/vnd.github+json' \
+    -H 'X-GitHub-Api-Version: 2022-11-28' \
+    -H 'User-Agent: AppForge-Terminal' \
+    "$api" \
+    -o "$metadata"
+
+url="$(
+    jq -r '
+        [
+            .assets[]
+            | select(
+                (.name | ascii_downcase | endswith(".apk"))
+            )
+        ][0].browser_download_url // empty
+    ' "$metadata"
+)"
+
+if [ -z "$url" ]; then
+    printf '%s\n' "Release içinde APK bulunamadı." >&2
+    exit 3
+fi
+
+name="${url##*/}"
+
+download_dir="/workspace/AppForgeDownloads"
+
+mkdir -p "$download_dir"
+
+if [ "$repo_root" = "/workspace" ]; then
+    git_dir="$(
+        git -C "$repo_root" \
+            rev-parse \
+            --absolute-git-dir \
+            2>/dev/null ||
+            true
+    )"
+
+    if [ -n "$git_dir" ]; then
+        mkdir -p "$git_dir/info"
+
+        exclude="$git_dir/info/exclude"
+
+        touch "$exclude"
+
+        if ! grep -qxF '/AppForgeDownloads/' "$exclude"; then
+            printf '%s\n' \
+                '/AppForgeDownloads/' \
+                >> "$exclude"
+        fi
+    fi
+fi
+
+destination="$download_dir/$name"
+partial="$destination.part"
+
+rm -f "$partial"
+
+printf 'APK indiriliyor: %s\n' "$name"
+
+curl \
+    -fL \
+    --retry 3 \
+    --retry-delay 2 \
+    "$url" \
+    -o "$partial"
+
+mv "$partial" "$destination"
+
+printf '\n=== APK ===\n'
+ls -lh "$destination"
+
+printf '\n=== SHA256 ===\n'
+sha256sum "$destination"
+
+printf '\nDosyalar sekmesinden aç:\n%s\n' "$destination"

@@ -1,0 +1,114 @@
+#!/bin/sh
+set -u
+
+failed=0
+
+pass_item() {
+    printf '%-22s PASS\n' "$1"
+}
+
+miss_item() {
+    printf '%-22s MISS\n' "$1"
+    failed=1
+}
+
+info_item() {
+    printf '%-22s %s\n' "$1" "$2"
+}
+
+printf '%s\n' "=== APPFORGE TERMUX-INDEPENDENCE CHECK ==="
+
+if appforge-doctor; then
+    :
+else
+    failed=1
+fi
+
+printf '\n%s\n' "--- Persistence ---"
+
+marker="/var/lib/appforge/standalone-persistence-probe-v1"
+
+if [ -f "$marker" ]; then
+    pass_item "persistence"
+    info_item "marker" "$(cat "$marker" 2>/dev/null || true)"
+else
+    mkdir -p /var/lib/appforge
+
+    date -u '+%Y-%m-%dT%H:%M:%SZ' \
+        > "$marker"
+
+    info_item "persistence" "INIT"
+    printf '%s\n' \
+        "Marker oluşturuldu. Uygulamayı yeniden açtıktan sonra tekrar appforge-ready çalıştır."
+fi
+
+printf '\n%s\n' "--- Git repository ---"
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+
+if [ -z "$repo_root" ]; then
+    miss_item "git-repository"
+    printf '%s\n' \
+        "Bir Git deposuna cd ile girip appforge-ready komutunu tekrar çalıştır."
+    exit "$failed"
+fi
+
+pass_item "git-repository"
+info_item "repo" "$repo_root"
+
+if git diff --check >/dev/null 2>&1; then
+    pass_item "git-diff-check"
+else
+    miss_item "git-diff-check"
+fi
+
+origin="$(git remote get-url origin 2>/dev/null || true)"
+
+if [ -z "$origin" ]; then
+    miss_item "origin"
+    exit "$failed"
+fi
+
+info_item "origin" "$origin"
+
+case "$origin" in
+    https://github.com/*)
+        pass_item "github-https-origin"
+        ;;
+    *)
+        miss_item "github-https-origin"
+        printf '%s\n' \
+            "Secure AppForge GitHub bridge için origin HTTPS github.com olmalı."
+        exit "$failed"
+        ;;
+esac
+
+printf '\n%s\n' "--- GitHub authentication ---"
+
+if GIT_TERMINAL_PROMPT=0 \
+   git ls-remote origin HEAD \
+   >/dev/null 2>&1; then
+    pass_item "git-fetch-auth"
+else
+    miss_item "git-fetch-auth"
+fi
+
+if GIT_TERMINAL_PROMPT=0 \
+   git push --dry-run origin HEAD \
+   >/dev/null 2>&1; then
+    pass_item "git-push-auth"
+else
+    miss_item "git-push-auth"
+fi
+
+printf '\n%s\n' "--- Result ---"
+
+if [ "$failed" -eq 0 ]; then
+    printf '%s\n' \
+        "APPFORGE TERMINAL READY — Termux geliştirme bağımlılığı kaldırılabilir."
+else
+    printf '%s\n' \
+        "APPFORGE TERMINAL NOT READY — yukarıdaki MISS satırlarını düzelt."
+fi
+
+exit "$failed"

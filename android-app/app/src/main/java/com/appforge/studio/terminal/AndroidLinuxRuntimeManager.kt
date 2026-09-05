@@ -560,9 +560,9 @@ internal class AndroidLinuxRuntimeManager(
             Mutex()
 
         private const val DEV_SUITE_REVISION =
-            "appforge-dev-suite-v1"
+            "appforge-dev-suite-v2"
 
         private const val DEV_SUITE_MARKER =
-            "var/lib/appforge/dev-suite-v1"
+            "var/lib/appforge/dev-suite-v2"
     }
 }

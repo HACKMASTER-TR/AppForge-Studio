@@ -1,0 +1,67 @@
+#!/bin/sh
+set -u
+
+failed=0
+
+pass_item() {
+    printf '%-22s PASS\n' "$1"
+}
+
+miss_item() {
+    printf '%-22s MISS\n' "$1"
+    failed=1
+}
+
+printf '%s\n' "=== APPFORGE STANDALONE DOCTOR ==="
+
+for command_name in \
+    sh \
+    bash \
+    git \
+    ssh \
+    curl \
+    wget \
+    python3 \
+    node \
+    npm \
+    java \
+    gradle \
+    clang \
+    cmake \
+    jq \
+    nano
+do
+    if command -v "$command_name" >/dev/null 2>&1; then
+        pass_item "$command_name"
+    else
+        miss_item "$command_name"
+    fi
+done
+
+if [ -d /workspace ] && [ -r /workspace ] && [ -w /workspace ]; then
+    pass_item "/workspace"
+else
+    miss_item "/workspace"
+fi
+
+if [ -x /usr/local/bin/appforge-git-askpass ] &&
+   [ -s /run/appforge/github-credential ]; then
+    pass_item "github-auth-bridge"
+else
+    miss_item "github-auth-bridge"
+fi
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+
+if [ -n "$repo_root" ]; then
+    pass_item "git-repository"
+    printf 'repo                   %s\n' "$repo_root"
+    printf 'branch                 %s\n' \
+        "$(git branch --show-current 2>/dev/null || printf 'HEAD')"
+else
+    printf '%-22s INFO\n' "git-repository"
+fi
+
+printf '%s\n' "=================================="
+
+exit "$failed"

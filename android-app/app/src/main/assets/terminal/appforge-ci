@@ -1,0 +1,55 @@
+#!/bin/sh
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+
+if [ -z "$repo_root" ]; then
+    printf '%s\n' "Git deposu bulunamadı." >&2
+    exit 2
+fi
+
+origin="$(git -C "$repo_root" remote get-url origin 2>/dev/null || true)"
+
+case "$origin" in
+    https://github.com/*)
+        repo="${origin#https://github.com/}"
+        ;;
+    git@github.com:*)
+        repo="${origin#git@github.com:}"
+        ;;
+    ssh://git@github.com/*)
+        repo="${origin#ssh://git@github.com/}"
+        ;;
+    *)
+        printf '%s\n' "GitHub origin bulunamadı: $origin" >&2
+        exit 2
+        ;;
+esac
+
+repo="${repo%.git}"
+repo="${repo%/}"
+
+case "$repo" in
+    */*)
+        ;;
+    *)
+        printf '%s\n' "GitHub repo adı çözülemedi." >&2
+        exit 2
+        ;;
+esac
+
+api="https://api.github.com/repos/$repo/actions/runs?per_page=10"
+
+printf '=== %s CI ===\n' "$repo"
+
+curl \
+    -fsSL \
+    --retry 2 \
+    -H 'Accept: application/vnd.github+json' \
+    -H 'X-GitHub-Api-Version: 2022-11-28' \
+    -H 'User-Agent: AppForge-Terminal' \
+    "$api" |
+jq -r '
+    .workflow_runs[:10][] |
+    "\(.name) #\(.run_number)  \(.status | ascii_upcase)  \((.conclusion // "-") | ascii_upcase)"
+'

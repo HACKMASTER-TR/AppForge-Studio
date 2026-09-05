@@ -36,6 +36,61 @@ internal object ProrootPinnedRuntime {
         }
     }
 
+    private const val MAX_GITHUB_CREDENTIAL_BYTES =
+        64L * 1_024L
+
+    private fun ensureGitCredentialMountPoint(
+        rootfs: File
+    ) {
+        val safeRootfs =
+            rootfs.canonicalFile
+
+        val mountPoint =
+            File(
+                safeRootfs,
+                APPFORGE_GITHUB_CREDENTIAL_GUEST_PATH
+                    .removePrefix("/")
+            ).canonicalFile
+
+        check(
+            mountPoint.absolutePath
+                .startsWith(
+                    safeRootfs.absolutePath +
+                        File.separator
+                )
+        ) {
+            "Git kimlik mount noktası rootfs dışında."
+        }
+
+        val parent =
+            requireNotNull(
+                mountPoint.parentFile
+            )
+
+        check(
+            parent.exists() ||
+                parent.mkdirs()
+        ) {
+            "Git kimlik mount klasörü oluşturulamadı."
+        }
+
+        check(parent.isDirectory) {
+            "Git kimlik mount klasörü geçersiz."
+        }
+
+        if (!mountPoint.exists()) {
+            check(
+                mountPoint.createNewFile()
+            ) {
+                "Git kimlik mount dosyası oluşturulamadı."
+            }
+        }
+
+        check(mountPoint.isFile) {
+            "Git kimlik mount dosyası geçersiz."
+        }
+    }
+
     const val supportedAbi =
         "arm64-v8a"
 
@@ -133,7 +188,8 @@ internal object ProrootPinnedRuntime {
 
     fun buildInteractiveShellArguments(
         rootfs: File,
-        workspace: File
+        workspace: File,
+        githubCredentialFile: File? = null
     ): List<String> {
         val safeRootfs =
             rootfs.canonicalFile
@@ -162,6 +218,24 @@ internal object ProrootPinnedRuntime {
             "Çalışma alanı okunamıyor."
         }
 
+        val safeCredential =
+            githubCredentialFile
+                ?.canonicalFile
+                ?.also { credential ->
+                    require(
+                        credential.isFile &&
+                            credential.canRead() &&
+                            credential.length() in
+                                1L..MAX_GITHUB_CREDENTIAL_BYTES
+                    ) {
+                        "GitHub kimlik köprüsü dosyası geçersiz."
+                    }
+
+                    ensureGitCredentialMountPoint(
+                        safeRootfs
+                    )
+                }
+
         val bash =
             File(
                 safeRootfs,
@@ -175,22 +249,36 @@ internal object ProrootPinnedRuntime {
                 "/bin/sh"
             }
 
-        return listOf(
-            "-r",
-            safeRootfs.absolutePath,
-            "-0",
-            "--link2symlink",
-            "-b",
-            "/dev:/dev",
-            "-b",
-            "/proc:/proc",
-            "-b",
-            "${safeWorkspace.absolutePath}:/workspace",
-            "-w",
-            "/workspace",
-            shell,
-            "-l"
-        )
+        return buildList {
+            add("-r")
+            add(safeRootfs.absolutePath)
+            add("-0")
+            add("--link2symlink")
+            add("-b")
+            add("/dev:/dev")
+            add("-b")
+            add("/proc:/proc")
+
+            safeCredential?.let { credential ->
+                add("-b")
+                add(
+                    "${credential.absolutePath}:$APPFORGE_GITHUB_CREDENTIAL_GUEST_PATH"
+                )
+            }
+
+            add("-b")
+            add(
+                "${safeWorkspace.absolutePath}:/workspace"
+            )
+            addAll(
+                listOf(
+                    "-w",
+                    "/workspace",
+                    shell,
+                    "-l"
+                )
+            )
+        }
     }
 
 }

@@ -154,6 +154,12 @@ internal object LocalPtySessionRegistry {
 
             appContext =
                 context.applicationContext
+
+            TerminalGitCredentialBridge
+                .clearStale(
+                    appContext
+                )
+
             restoreLocked()
             initialized = true
             publishLocked()
@@ -757,6 +763,10 @@ private class LocalInteractivePtySession(
     private var linuxMode =
         false
 
+    private var gitCredentialLease:
+        TerminalGitCredentialLease? =
+        null
+
     private var inputDescriptor:
         ParcelFileDescriptor? =
         null
@@ -825,6 +835,23 @@ private class LocalInteractivePtySession(
                     if (linuxRootfs != null) {
                         linuxMode = true
 
+                        TerminalStandaloneDeveloperBootstrap
+                            .install(
+                                appContext,
+                                linuxRootfs
+                            )
+
+                        closeGitCredentialLease()
+
+                        val credentialLease =
+                            TerminalGitCredentialBridge
+                                .prepare(
+                                    appContext
+                                )
+
+                        gitCredentialLease =
+                            credentialLease
+
                         val launcher =
                             PackagedLinuxEngine(
                                 appContext
@@ -838,29 +865,70 @@ private class LocalInteractivePtySession(
                                 mkdirs()
                             }
 
+                        val environment =
+                            mutableMapOf(
+                                "PROROOT_TMP_DIR" to
+                                    runtimeTemp.absolutePath,
+                                "HOME" to "/root",
+                                "TERM" to
+                                    "xterm-256color",
+                                "COLORTERM" to
+                                    "truecolor",
+                                "LANG" to
+                                    "C.UTF-8",
+                                "PATH" to
+                                    "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+                            ).apply {
+                                if (
+                                    credentialLease !=
+                                        null
+                                ) {
+                                    put(
+                                        "GIT_ASKPASS",
+                                        APPFORGE_GIT_ASKPASS_GUEST_PATH
+                                    )
+                                    put(
+                                        "GIT_TERMINAL_PROMPT",
+                                        "0"
+                                    )
+
+                                    /*
+                                     * Never persist plaintext Git credentials
+                                     * through a configured credential helper.
+                                     * The AppForge Keystore-backed bridge owns
+                                     * this PTY session's temporary credential.
+                                     */
+                                    put(
+                                        "GIT_CONFIG_COUNT",
+                                        "1"
+                                    )
+                                    put(
+                                        "GIT_CONFIG_KEY_0",
+                                        "credential.helper"
+                                    )
+                                    put(
+                                        "GIT_CONFIG_VALUE_0",
+                                        ""
+                                    )
+                                }
+                            }
+
                         AppForgePtyBridge.spawn(
                             executable =
                                 launcher.absolutePath,
                             arguments =
                                 ProrootPinnedRuntime
                                     .buildInteractiveShellArguments(
-                                        rootfs = linuxRootfs,
-                                        workspace = workspace
+                                        rootfs =
+                                            linuxRootfs,
+                                        workspace =
+                                            workspace,
+                                        githubCredentialFile =
+                                            credentialLease
+                                                ?.credentialFile
                                     ),
                             environment =
-                                mapOf(
-                                    "PROROOT_TMP_DIR" to
-                                        runtimeTemp.absolutePath,
-                                    "HOME" to "/root",
-                                    "TERM" to
-                                        "xterm-256color",
-                                    "COLORTERM" to
-                                        "truecolor",
-                                    "LANG" to
-                                        "C.UTF-8",
-                                    "PATH" to
-                                        "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-                                ),
+                                environment,
                             workingDirectory =
                                 appContext.filesDir
                                     .canonicalPath,
@@ -869,6 +937,7 @@ private class LocalInteractivePtySession(
                         )
                     } else {
                         linuxMode = false
+                        closeGitCredentialLease()
 
                         val tmp =
                             File(
@@ -1007,11 +1076,14 @@ private class LocalInteractivePtySession(
                         if (shouldNotifyExit) {
                             onExit(exitCode)
                         }
+
+                        closeGitCredentialLease()
                     }
             }
         } catch (error: Throwable) {
             running.set(false)
             closeDescriptors()
+            closeGitCredentialLease()
             throw error
         }
     }
@@ -1088,7 +1160,19 @@ private class LocalInteractivePtySession(
         waiterJob = null
 
         closeDescriptors()
+        closeGitCredentialLease()
         scope.cancel()
+    }
+
+    @Synchronized
+    private fun closeGitCredentialLease() {
+        runCatching {
+            gitCredentialLease
+                ?.close()
+        }
+
+        gitCredentialLease =
+            null
     }
 
     @Synchronized

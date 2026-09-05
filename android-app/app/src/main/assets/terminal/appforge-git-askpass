@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+
+credential="/run/appforge/github-credential"
+prompt="${1:-}"
+
+case "$prompt" in
+    *github.com*)
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+
+[ -r "$credential" ] || exit 1
+[ -s "$credential" ] || exit 1
+
+case "$prompt" in
+    *Username*|*username*)
+        sed -n '1p' "$credential"
+        ;;
+    *Password*|*password*)
+        sed -n '2p' "$credential"
+        ;;
+    *)
+        exit 1
+        ;;
+esac
