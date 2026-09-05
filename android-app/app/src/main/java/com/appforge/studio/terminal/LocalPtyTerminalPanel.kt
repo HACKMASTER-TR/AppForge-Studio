@@ -2117,6 +2117,21 @@ private fun LocalPtySurface(
     var pinchFontSizeSp by remember(state.id) { mutableStateOf(fontSizeSp) }
     var surfaceSize by remember(state.id) { mutableStateOf(IntSize.Zero) }
 
+    var pendingMultilinePasteBoundary by
+        remember(state.id) {
+            mutableStateOf(false)
+        }
+
+    var lastAutoFollowLineCount by
+        remember(state.id) {
+            mutableStateOf(0)
+        }
+
+    var autoFollowInitialized by
+        remember(state.id) {
+            mutableStateOf(false)
+        }
+
     LaunchedEffect(fontSizeSp) {
         pinchFontSizeSp = fontSizeSp
     }
@@ -2181,7 +2196,41 @@ private fun LocalPtySurface(
         val lastIndex =
             state.snapshot.lines.lastIndex
 
-        if (lastIndex >= 0) {
+        if (lastIndex < 0) {
+            lastAutoFollowLineCount = 0
+            return@LaunchedEffect
+        }
+
+        val visibleLastIndex =
+            outputListState
+                .layoutInfo
+                .visibleItemsInfo
+                .lastOrNull()
+                ?.index
+                ?: -1
+
+        val previousLastIndex =
+            (lastAutoFollowLineCount - 1)
+                .coerceAtLeast(0)
+
+        val wasNearBottom =
+            !autoFollowInitialized ||
+                visibleLastIndex < 0 ||
+                visibleLastIndex >=
+                    (
+                        previousLastIndex -
+                            AUTO_FOLLOW_MARGIN_LINES
+                    ).coerceAtLeast(0)
+
+        lastAutoFollowLineCount =
+            state.snapshot.lines.size
+
+        autoFollowInitialized = true
+
+        if (
+            wasNearBottom &&
+            !outputListState.isScrollInProgress
+        ) {
             outputListState.scrollToItem(
                 lastIndex
             )
@@ -2379,15 +2428,40 @@ private fun LocalPtySurface(
                         lineIndex
                     }
                 ) { lineIndex ->
+                    val line =
+                        state.snapshot.lines[
+                            lineIndex
+                        ]
+
+                    val cursorColumnForLine =
+                        if (
+                            state.running &&
+                            state.snapshot.cursorVisible &&
+                            lineIndex ==
+                                state.snapshot.cursorLine
+                        ) {
+                            state.snapshot.cursorColumn
+                        } else {
+                            -1
+                        }
+
+                    val renderedLine =
+                        remember(
+                            line,
+                            cursorColumnForLine
+                        ) {
+                            renderLocalPtyLine(
+                                snapshot =
+                                    state.snapshot,
+                                lineIndex =
+                                    lineIndex,
+                                showCursor =
+                                    state.running
+                            )
+                        }
+
                     Text(
-                        renderLocalPtyLine(
-                            snapshot =
-                                state.snapshot,
-                            lineIndex =
-                                lineIndex,
-                            showCursor =
-                                state.running
-                        ),
+                        renderedLine,
                         color =
                             TerminalText,
                         fontFamily =
@@ -2396,12 +2470,13 @@ private fun LocalPtySurface(
                             fontSize,
                         lineHeight =
                             lineHeight,
+                        softWrap = false,
+                        maxLines = 1,
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .heightIn(
-                                    min =
-                                        terminalRowHeight
+                                .height(
+                                    terminalRowHeight
                                 )
                     )
                 }
@@ -2432,12 +2507,25 @@ private fun LocalPtySurface(
                         return@BasicTextField
                     }
 
-                    val delta =
+                    val rawDelta =
                         localPtyImeDeltaWithSentinel(
                             previous =
                                 imeValue.text,
                             next =
                                 next.text
+                        )
+
+                    val delta =
+                        localPtySeparateConsecutivePaste(
+                            previousPasteNeedsBoundary =
+                                pendingMultilinePasteBoundary,
+                            delta =
+                                rawDelta
+                        )
+
+                    pendingMultilinePasteBoundary =
+                        localPtyLeavesOpenMultilinePaste(
+                            rawDelta
                         )
 
                     imeValue =
@@ -2483,135 +2571,162 @@ private fun renderLocalPtyLine(
     snapshot: AnsiTerminalSnapshot,
     lineIndex: Int,
     showCursor: Boolean
-): AnnotatedString =
-    buildAnnotatedString {
-        val line =
-            snapshot.lines
-                .getOrNull(
-                    lineIndex
-                )
-                ?: return@buildAnnotatedString
+): AnnotatedString {
+    val line =
+        snapshot.lines
+            .getOrNull(
+                lineIndex
+            )
+            ?: return AnnotatedString("")
 
-        val cursorColumn =
-            if (
-                showCursor &&
-                snapshot.cursorVisible &&
-                lineIndex ==
-                    snapshot.cursorLine
-            ) {
-                snapshot.cursorColumn
-                    .coerceAtLeast(0)
-            } else {
-                -1
-            }
+    val cursorColumn =
+        if (
+            showCursor &&
+            snapshot.cursorVisible &&
+            lineIndex ==
+                snapshot.cursorLine
+        ) {
+            snapshot.cursorColumn
+                .coerceAtLeast(0)
+        } else {
+            -1
+        }
 
-        val lastContentColumn =
-            line.indexOfLast {
-                it.character != ' '
-            }
+    val lastContentColumn =
+        line.indexOfLast {
+            it.character != ' '
+        }
 
-        val lastColumn =
-            maxOf(
-                lastContentColumn,
-                cursorColumn
+    val lastColumn =
+        maxOf(
+            lastContentColumn,
+            cursorColumn
+        )
+
+    if (lastColumn < 0) {
+        return AnnotatedString("")
+    }
+
+    val builder =
+        AnnotatedString.Builder()
+
+    val run =
+        StringBuilder()
+
+    var runStyle:
+        AnsiTerminalStyle? =
+        null
+
+    fun flushRun() {
+        if (run.isEmpty()) {
+            return
+        }
+
+        builder.pushStyle(
+            localPtySpanStyle(
+                runStyle
+                    ?: AnsiTerminalStyle()
+            )
+        )
+
+        builder.append(
+            run.toString()
+        )
+
+        builder.pop()
+
+        run.setLength(0)
+    }
+
+    for (column in 0..lastColumn) {
+        if (column == cursorColumn) {
+            flushRun()
+            builder.append('▌')
+        }
+
+        if (column >= line.size) {
+            continue
+        }
+
+        val cell =
+            line[column]
+
+        if (
+            runStyle !=
+                cell.style
+        ) {
+            flushRun()
+            runStyle =
+                cell.style
+        }
+
+        run.append(
+            cell.character
+        )
+    }
+
+    flushRun()
+
+    return builder.toAnnotatedString()
+}
+
+private fun localPtySpanStyle(
+    style: AnsiTerminalStyle
+): SpanStyle {
+    val defaultFg =
+        TerminalText
+
+    val defaultBg =
+        Color(0xFF030609)
+
+    val explicitFg =
+        style.foregroundRgb
+            ?.let(
+                ::localAnsiColor
             )
 
-        if (lastColumn >= 0) {
-            for (
-                column in
-                0..lastColumn
-            ) {
-                if (
-                    column ==
-                        cursorColumn
-                ) {
-                    append('▌')
-                }
+    val explicitBg =
+        style.backgroundRgb
+            ?.let(
+                ::localAnsiColor
+            )
 
-                if (
-                    column <
-                        line.size
-                ) {
-                    val cell =
-                        line[column]
-
-                    val style =
-                        cell.style
-
-                    val defaultFg =
-                        TerminalText
-
-                    val defaultBg =
-                        Color(
-                            0xFF030609
-                        )
-
-                    val explicitFg =
-                        style.foregroundRgb
-                            ?.let(
-                                ::localAnsiColor
-                            )
-
-                    val explicitBg =
-                        style.backgroundRgb
-                            ?.let(
-                                ::localAnsiColor
-                            )
-
-                    val fg =
-                        if (
-                            style.inverse
-                        ) {
-                            explicitBg
-                                ?: defaultBg
-                        } else {
-                            explicitFg
-                                ?: defaultFg
-                        }
-
-                    val bg =
-                        if (
-                            style.inverse
-                        ) {
-                            explicitFg
-                                ?: defaultFg
-                        } else {
-                            explicitBg
-                        }
-
-                    withStyle(
-                        SpanStyle(
-                            color =
-                                fg,
-                            background =
-                                bg
-                                    ?: Color.Unspecified,
-                            fontWeight =
-                                if (
-                                    style.bold
-                                ) {
-                                    FontWeight.Bold
-                                } else {
-                                    FontWeight.Normal
-                                },
-                            textDecoration =
-                                if (
-                                    style.underline
-                                ) {
-                                    TextDecoration.Underline
-                                } else {
-                                    TextDecoration.None
-                                }
-                        )
-                    ) {
-                        append(
-                            cell.character
-                        )
-                    }
-                }
-            }
+    val fg =
+        if (style.inverse) {
+            explicitBg
+                ?: defaultBg
+        } else {
+            explicitFg
+                ?: defaultFg
         }
-    }
+
+    val bg =
+        if (style.inverse) {
+            explicitFg
+                ?: defaultFg
+        } else {
+            explicitBg
+        }
+
+    return SpanStyle(
+        color = fg,
+        background =
+            bg
+                ?: Color.Unspecified,
+        fontWeight =
+            if (style.bold) {
+                FontWeight.Bold
+            } else {
+                FontWeight.Normal
+            },
+        textDecoration =
+            if (style.underline) {
+                TextDecoration.Underline
+            } else {
+                TextDecoration.None
+            }
+    )
+}
 
 private fun renderLocalPtySnapshot(
     snapshot: AnsiTerminalSnapshot,
@@ -2783,6 +2898,39 @@ private fun localPtyImeDeltaWithSentinel(
         next = nextPayload
     )
 }
+
+private fun localPtySeparateConsecutivePaste(
+    previousPasteNeedsBoundary: Boolean,
+    delta: String
+): String {
+    if (
+        previousPasteNeedsBoundary &&
+        delta.length > 1 &&
+        delta.firstOrNull() != '\n' &&
+        delta.firstOrNull() != '\r'
+    ) {
+        /*
+         * A copied multiline shell block may not contain a final newline.
+         * If another paste immediately follows, complete the pending line
+         * first instead of producing strings such as "EOFcd".
+         *
+         * Normal single-character typing remains untouched.
+         */
+        return "\r" + delta
+    }
+
+    return delta
+}
+
+private fun localPtyLeavesOpenMultilinePaste(
+    delta: String
+): Boolean =
+    (
+        delta.contains('\n') ||
+            delta.contains('\r')
+    ) &&
+        !delta.endsWith('\n') &&
+        !delta.endsWith('\r')
 
 private fun localPtyImeValue(
     next: TextFieldValue
@@ -2969,6 +3117,9 @@ private const val LOCAL_PTY_IME_SENTINEL =
 
 private const val MAX_LOCAL_PTY_IME_CHARS =
     2_048
+
+private const val AUTO_FOLLOW_MARGIN_LINES =
+    2
 
 private const val RESIZE_DEBOUNCE_MS =
     140L
