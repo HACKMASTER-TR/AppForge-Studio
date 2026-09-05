@@ -1559,6 +1559,46 @@ internal fun LocalPtyTerminalPanel(
                             )
                         }
                     }
+                    PtyKey("CTRL+A", true) {
+                        scope.launch {
+                            LocalPtySessionRegistry.write(
+                                state.id,
+                                "\u0001"
+                            )
+                        }
+                    }
+                    PtyKey("CTRL+E", true) {
+                        scope.launch {
+                            LocalPtySessionRegistry.write(
+                                state.id,
+                                "\u0005"
+                            )
+                        }
+                    }
+                    PtyKey("CTRL+R", true) {
+                        scope.launch {
+                            LocalPtySessionRegistry.write(
+                                state.id,
+                                "\u0012"
+                            )
+                        }
+                    }
+                    PtyKey("CTRL+U", true) {
+                        scope.launch {
+                            LocalPtySessionRegistry.write(
+                                state.id,
+                                "\u0015"
+                            )
+                        }
+                    }
+                    PtyKey("CTRL+W", true) {
+                        scope.launch {
+                            LocalPtySessionRegistry.write(
+                                state.id,
+                                "\u0017"
+                            )
+                        }
+                    }
                     PtyKey("⌫", true) {
                         scope.launch {
                             LocalPtySessionRegistry.write(
