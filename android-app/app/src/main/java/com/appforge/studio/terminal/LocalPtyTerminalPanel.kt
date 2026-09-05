@@ -3291,16 +3291,6 @@ private const val COPY_MODE_MAX_LINES =
 private const val COPY_MODE_CONTEXT_BEFORE_LINES =
     80
 
-/*
- * SelectionContainer is intentionally bounded. Full history remains
- * available in normal virtualized terminal mode.
- */
-private const val COPY_MODE_MAX_LINES =
-    500
-
-private const val COPY_MODE_CONTEXT_BEFORE_LINES =
-    80
-
 private const val AUTO_FOLLOW_MARGIN_LINES =
     2
 

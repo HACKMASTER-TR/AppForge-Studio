@@ -131,3 +131,27 @@ test("Stage 11D preserves verified IME and paste behavior", async () => {
     );
   }
 });
+
+
+test("Stage 11D declares copy bounds exactly once", async () => {
+  const source =
+    await readFile(panelUrl, "utf8");
+
+  assert.equal(
+    (
+      source.match(
+        /private const val COPY_MODE_MAX_LINES/g
+      ) ?? []
+    ).length,
+    1
+  );
+
+  assert.equal(
+    (
+      source.match(
+        /private const val COPY_MODE_CONTEXT_BEFORE_LINES/g
+      ) ?? []
+    ).length,
+    1
+  );
+});
