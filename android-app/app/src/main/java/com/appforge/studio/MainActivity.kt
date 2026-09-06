@@ -3997,15 +3997,53 @@ private fun AppForgeApp() {
                             ?.consumeAccountAction()
                     },
                     onSession = {
-                        session = it
+                        nextSession ->
 
-                        if (it != null) {
-                            SecureAccountStore
-                                .saveSession(
-                                    context,
-                                    it
-                                )
-                        } else {
+                        val previousAccountKey =
+                            session
+                                ?.userId
+                                ?.trim()
+                                .orEmpty()
+                                .ifBlank {
+                                    session
+                                        ?.email
+                                        ?.trim()
+                                        ?.lowercase()
+                                        .orEmpty()
+                                }
+
+                        val nextAccountKey =
+                            nextSession
+                                ?.userId
+                                ?.trim()
+                                .orEmpty()
+                                .ifBlank {
+                                    nextSession
+                                        ?.email
+                                        ?.trim()
+                                        ?.lowercase()
+                                        .orEmpty()
+                                }
+
+                        val accountChanged =
+                            nextSession != null &&
+                            previousAccountKey
+                                .isNotBlank() &&
+                            nextAccountKey
+                                .isNotBlank() &&
+                            previousAccountKey !=
+                                nextAccountKey
+
+                        /*
+                         * Farklı AppForge hesabına geçildiğinde
+                         * önceki kullanıcının oturumuna bağlı
+                         * API anahtarı ve harici bağlantıları
+                         * yeni kullanıcıya taşınamaz.
+                         */
+                        if (
+                            nextSession == null ||
+                            accountChanged
+                        ) {
                             SecureAccountStore
                                 .clearAll(
                                     context
@@ -4016,6 +4054,21 @@ private fun AppForgeApp() {
                             draft =
                                 draft.copy(
                                     buildApiKey = ""
+                                )
+
+                            proStatus = null
+                            proSecurityMessage = ""
+                            projectQuota = null
+                        }
+
+                        session =
+                            nextSession
+
+                        if (nextSession != null) {
+                            SecureAccountStore
+                                .saveSession(
+                                    context,
+                                    nextSession
                                 )
                         }
                     },
@@ -4311,6 +4364,10 @@ private fun AppForgeApp() {
                             currentProjectId,
                         activeDraft =
                             draft,
+                        accountEmail =
+                            session
+                                ?.email
+                                .orEmpty(),
                         railwayAuthorizationUri =
                             hostActivity
                                 ?.externalAuthorizationUri,

@@ -78,7 +78,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.appforge.studio.security.SecureAccountStore
 import java.security.MessageDigest
 import java.io.File
 import java.io.FileInputStream
@@ -100,7 +99,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
-private const val OWNER_RAILWAY_IDENTITY_SHA256 =
+private const val OWNER_ACCOUNT_EMAIL_SHA256 =
     "1249d3064d7f482d584f75caf93ea01649f13e4a26d183c4729d2fae5d205589"
 
 private fun normalizedIdentityDigest(
@@ -128,30 +127,12 @@ private fun normalizedIdentityDigest(
 }
 
 private fun ownerTerminalShortcutsEnabled(
-    context: Context
-): Boolean {
-    val railway =
-        SecureAccountStore
-            .loadExternalConnection(
-                context,
-                ExternalProvider.RAILWAY.key
-            )
-            ?: return false
-
-    return railway
-        .accountLabel
-        .split(" • ")
-        .map {
-            it.trim()
-        }
-        .filter {
-            it.isNotBlank()
-        }
-        .any {
-            normalizedIdentityDigest(it) ==
-                OWNER_RAILWAY_IDENTITY_SHA256
-        }
-}
+    accountEmail: String
+): Boolean =
+    normalizedIdentityDigest(
+        accountEmail
+    ) ==
+        OWNER_ACCOUNT_EMAIL_SHA256
 
 internal data class LocalPtyTerminalState(
     val id: String,
@@ -1394,6 +1375,7 @@ internal fun LocalPtyTerminalPanel(
     sessions: List<TerminalSessionState>,
     activeSession: TerminalSessionState,
     workspaceRoot: File,
+    accountEmail: String,
     onSelectSession: (String) -> Unit,
     onNewSession: () -> Unit,
     onCloseSession: (String) -> Unit,
@@ -1407,22 +1389,14 @@ internal fun LocalPtyTerminalPanel(
     val scope =
         rememberCoroutineScope()
 
-    var ownerQuickActionsEnabled by
+    val ownerQuickActionsEnabled =
         remember(
-            workspaceRoot.absolutePath
+            accountEmail
         ) {
-            mutableStateOf(false)
-        }
-
-    LaunchedEffect(
-        context.applicationContext,
-        workspaceRoot.absolutePath
-    ) {
-        ownerQuickActionsEnabled =
             ownerTerminalShortcutsEnabled(
-                context.applicationContext
+                accountEmail
             )
-    }
+        }
 
     val allStates by
         LocalPtySessionRegistry.states

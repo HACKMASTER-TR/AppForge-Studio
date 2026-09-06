@@ -323,6 +323,57 @@ internal fun ConnectionsPanel(
         }
     }
 
+    fun switchRailwayAccount() {
+        if (
+            busyProvider != null ||
+            railwayReadBusy
+        ) {
+            return
+        }
+
+        val provider =
+            ExternalProvider.RAILWAY
+
+        /*
+         * Yeni hesaba geçmeden önce eski token ve
+         * bekleyen OAuth kaydı mutlaka silinir.
+         */
+        SecureAccountStore
+            .clearExternalConnection(
+                context,
+                provider.key
+            )
+
+        SecureAccountStore
+            .clearPendingExternalAuthorization(
+                context,
+                provider.key
+            )
+
+        updateConnection(
+            provider,
+            null
+        )
+
+        manualProvider = null
+        manualToken = ""
+        manualError = ""
+        railwayOverview = null
+        railwayReadError = ""
+        message =
+            "Eski Railway oturumu kaldırıldı. Yeni hesabı bağla."
+
+        if (
+            clientId(provider)
+                .isBlank()
+        ) {
+            manualProvider =
+                provider
+        } else {
+            beginRailwayFlow()
+        }
+    }
+
     fun testRailwayReadAccess() {
         val current =
             railwayConnection
@@ -931,6 +982,21 @@ internal fun ConnectionsPanel(
                         railwayConnection !=
                             null
                     ) {
+                        OutlinedButton(
+                            onClick = {
+                                switchRailwayAccount()
+                            },
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            enabled =
+                                busyProvider == null &&
+                                !railwayReadBusy
+                        ) {
+                            Text(
+                                "Railway Hesabını Değiştir"
+                            )
+                        }
+
                         OutlinedButton(
                             onClick = {
                                 testRailwayReadAccess()

@@ -7,28 +7,33 @@ const panelUrl = new URL(
   import.meta.url
 );
 
-test("Stage 11H gates owner shortcuts by secure Railway identity", async () => {
+test("Stage 11H gates owner shortcuts by AppForge account identity", async () => {
   const source =
     await readFile(panelUrl, "utf8");
 
   assert.match(
     source,
-    /SecureAccountStore/
+    /OWNER_ACCOUNT_EMAIL_SHA256/
   );
 
   assert.match(
     source,
-    /ExternalProvider\.RAILWAY\.key/
+    /ownerTerminalShortcutsEnabled\(\s*accountEmail: String/
   );
 
   assert.match(
     source,
-    /OWNER_RAILWAY_IDENTITY_SHA256/
+    /normalizedIdentityDigest\(\s*accountEmail/
   );
 
   assert.match(
     source,
     /MessageDigest/
+  );
+
+  assert.doesNotMatch(
+    source,
+    /OWNER_RAILWAY_IDENTITY_SHA256/
   );
 
   assert.doesNotMatch(

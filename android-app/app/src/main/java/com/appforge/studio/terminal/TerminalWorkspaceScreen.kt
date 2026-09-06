@@ -77,6 +77,7 @@ private enum class TerminalWorkspaceTab(
 fun TerminalWorkspaceScreen(
     activeProjectId: String?,
     activeDraft: ProjectDraft,
+    accountEmail: String,
     railwayAuthorizationUri: Uri?,
     railwayAuthorizationSequence: Int,
     onRailwayAuthorizationConsumed: () -> Unit,
@@ -911,6 +912,8 @@ fun TerminalWorkspaceScreen(
                                 activeSession,
                             workspaceRoot =
                                 workspace,
+                            accountEmail =
+                                accountEmail,
                             onSelectSession = {
                                 activeSessionId =
                                     it
