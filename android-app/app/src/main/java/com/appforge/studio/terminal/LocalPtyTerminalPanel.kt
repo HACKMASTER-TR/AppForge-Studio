@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.appforge.studio.security.SecureAccountStore
 import java.security.MessageDigest
 import java.io.File
 import java.io.FileInputStream
@@ -599,6 +600,74 @@ internal object LocalPtySessionRegistry {
 
         val removed =
             synchronized(lock) {
+                /*
+                 * accountScope() hâlâ ÇIKILAN AppForge
+                 * hesabını gösterirken oturumları kaydet.
+                 */
+                records.values
+                    .forEach { record ->
+                        record.session
+                            .currentWorkingDirectory()
+                            ?.takeIf {
+                                it.isDirectory &&
+                                    it.canRead()
+                            }
+                            ?.let {
+                                record.workingDirectory =
+                                    it
+                            }
+                    }
+
+                persistLocked()
+
+                val snapshot =
+                    records.values
+                        .toList()
+
+                /*
+                 * Yeni hesap RAM'de eski hesabın
+                 * oturumlarını kesinlikle göremez.
+                 */
+                records.clear()
+
+                pendingOutputPublishes
+                    .clear()
+
+                publishLocked()
+
+                snapshot
+            }
+
+        /*
+         * Canlı shell işlemi ve geçici Git credential
+         * lease'i hesaplar arasında taşınmaz.
+         */
+        removed.forEach {
+            it.session.close()
+        }
+
+        TerminalGitCredentialBridge
+            .clearStale(
+                appContext
+            )
+    }
+
+    fun reloadForActiveAccount(
+        context: Context
+    ) {
+        /*
+         * Terminal daha önce hiç açılmadıysa initialize()
+         * doğrudan yeni aktif hesabın kasasını yükler.
+         */
+        if (!initialized) {
+            initialize(
+                context
+            )
+            return
+        }
+
+        val removed =
+            synchronized(lock) {
                 val snapshot =
                     records.values
                         .toList()
@@ -608,17 +677,20 @@ internal object LocalPtySessionRegistry {
                 pendingOutputPublishes
                     .clear()
 
-                persistLocked()
+                /*
+                 * SecureAccountStore artık yeni AppForge
+                 * hesabının namespace'ini kullanıyor.
+                 */
+                restoreLocked()
+
                 publishLocked()
 
                 snapshot
             }
 
         /*
-         * Çalışan shell eski hesabın geçici Git credential
-         * lease'ini taşıyabilir. Yeni hesaba geçmeden önce
-         * bütün PTY süreçlerini ve geçici credential dosyalarını
-         * kapat.
+         * Savunma amaçlı: beklenmedik çalışan eski
+         * process kaldıysa kapat.
          */
         removed.forEach {
             it.session.close()
@@ -680,12 +752,11 @@ internal object LocalPtySessionRegistry {
 
     private fun restoreLocked() {
         val raw =
-            appContext
-                .getSharedPreferences(
-                    PREFS_NAME,
-                    Context.MODE_PRIVATE
+            SecureAccountStore
+                .loadTerminalSessionState(
+                    appContext
                 )
-                .getString(KEY_SESSIONS, null)
+                ?: migrateLegacyTerminalState()
                 ?: return
 
         val array =
@@ -823,14 +894,67 @@ internal object LocalPtySessionRegistry {
                 )
             }
 
-        appContext
-            .getSharedPreferences(
-                PREFS_NAME,
-                Context.MODE_PRIVATE
+        SecureAccountStore
+            .saveTerminalSessionState(
+                appContext,
+                array.toString()
             )
+    }
+
+    private fun migrateLegacyTerminalState():
+        String? {
+
+        val legacyPrefs =
+            appContext
+                .getSharedPreferences(
+                    PREFS_NAME,
+                    Context.MODE_PRIVATE
+                )
+
+        val legacy =
+            legacyPrefs
+                .getString(
+                    KEY_SESSIONS,
+                    null
+                )
+                ?.trim()
+                ?.takeIf {
+                    it.isNotBlank() &&
+                        it != "[]"
+                }
+
+        /*
+         * Boş/eski preference anahtarını da kaldır.
+         */
+        if (legacy == null) {
+            legacyPrefs
+                .edit()
+                .remove(
+                    KEY_SESSIONS
+                )
+                .apply()
+
+            return null
+        }
+
+        SecureAccountStore
+            .saveTerminalSessionState(
+                appContext,
+                legacy
+            )
+
+        /*
+         * Şifreli yazım başarıyla tamamlandıktan sonra
+         * plaintext kopyayı cihazdan kaldır.
+         */
+        legacyPrefs
             .edit()
-            .putString(KEY_SESSIONS, array.toString())
+            .remove(
+                KEY_SESSIONS
+            )
             .apply()
+
+        return legacy
     }
 
     private fun nextTerminalIndexLocked(
@@ -1486,7 +1610,8 @@ internal fun LocalPtyTerminalPanel(
 
     LaunchedEffect(
         environmentState.phase,
-        workspaceRoot.absolutePath
+        workspaceRoot.absolutePath,
+        accountEmail
     ) {
         if (
             environmentState.phase ==

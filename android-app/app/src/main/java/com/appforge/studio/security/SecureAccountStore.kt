@@ -53,6 +53,12 @@ object SecureAccountStore {
     private const val API_IV =
         "build_api_iv"
 
+    private const val TERMINAL_SESSIONS_DATA =
+        "terminal_sessions_data"
+
+    private const val TERMINAL_SESSIONS_IV =
+        "terminal_sessions_iv"
+
     private const val ACCOUNT_SCOPE_PREFIX =
         "account_"
 
@@ -208,6 +214,94 @@ object SecureAccountStore {
             .edit()
             .remove(SESSION_DATA)
             .remove(SESSION_IV)
+            .apply()
+    }
+
+    fun saveTerminalSessionState(
+        context: Context,
+        state: String
+    ) {
+        val clean =
+            state.trim()
+
+        if (clean.isBlank()) {
+            clearTerminalSessionState(
+                context
+            )
+            return
+        }
+
+        val scope =
+            accountScope(
+                context
+            )
+
+        writeEncrypted(
+            context = context,
+            dataKey =
+                scopedKey(
+                    scope,
+                    TERMINAL_SESSIONS_DATA
+                ),
+            ivKey =
+                scopedKey(
+                    scope,
+                    TERMINAL_SESSIONS_IV
+                ),
+            plaintext =
+                clean
+        )
+    }
+
+    fun loadTerminalSessionState(
+        context: Context
+    ): String? {
+        val scope =
+            accountScope(
+                context
+            )
+
+        return readEncrypted(
+            context = context,
+            dataKey =
+                scopedKey(
+                    scope,
+                    TERMINAL_SESSIONS_DATA
+                ),
+            ivKey =
+                scopedKey(
+                    scope,
+                    TERMINAL_SESSIONS_IV
+                )
+        )
+            ?.trim()
+            ?.takeIf {
+                it.isNotBlank()
+            }
+    }
+
+    fun clearTerminalSessionState(
+        context: Context
+    ) {
+        val scope =
+            accountScope(
+                context
+            )
+
+        prefs(context)
+            .edit()
+            .remove(
+                scopedKey(
+                    scope,
+                    TERMINAL_SESSIONS_DATA
+                )
+            )
+            .remove(
+                scopedKey(
+                    scope,
+                    TERMINAL_SESSIONS_IV
+                )
+            )
             .apply()
     }
 

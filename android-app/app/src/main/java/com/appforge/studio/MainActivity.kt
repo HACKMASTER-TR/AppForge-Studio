@@ -4027,8 +4027,6 @@ private fun AppForgeApp() {
 
                         val accountChanged =
                             nextSession != null &&
-                            previousAccountKey
-                                .isNotBlank() &&
                             nextAccountKey
                                 .isNotBlank() &&
                             previousAccountKey !=
@@ -4098,6 +4096,23 @@ private fun AppForgeApp() {
 
                             session =
                                 nextSession
+
+                            if (
+                                accountChanged
+                            ) {
+                                /*
+                                 * SecureAccountStore artık yeni
+                                 * hesabın namespace'inde.
+                                 * Terminal sekmelerini ve snapshotı
+                                 * o hesabın şifreli kasasından yükle.
+                                 */
+                                com.appforge.studio
+                                    .terminal
+                                    .LocalPtySessionRegistry
+                                    .reloadForActiveAccount(
+                                        context.applicationContext
+                                    )
+                            }
 
                             val restoredApiKey =
                                 SecureAccountStore
