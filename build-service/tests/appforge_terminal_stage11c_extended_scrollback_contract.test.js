@@ -93,7 +93,7 @@ test("Stage 11C preserves Stage 11A IME and interaction contracts", async () => 
 
   assert.match(
     source,
-    /pendingMultilinePasteBoundary/
+    /pendingBracketedPaste/
   );
 
   assert.match(

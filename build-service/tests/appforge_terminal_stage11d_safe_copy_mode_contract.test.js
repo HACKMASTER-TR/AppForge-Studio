@@ -108,7 +108,7 @@ test("Stage 11D preserves verified IME and paste behavior", async () => {
 
   assert.match(
     source,
-    /pendingMultilinePasteBoundary/
+    /pendingBracketedPaste/
   );
 
   assert.match(

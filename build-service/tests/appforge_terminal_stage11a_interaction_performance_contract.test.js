@@ -74,7 +74,7 @@ test("Stage 11A separates consecutive multiline pastes safely", async () => {
 
   assert.match(
     source,
-    /pendingMultilinePasteBoundary/
+    /pendingBracketedPaste/
   );
 
   assert.match(

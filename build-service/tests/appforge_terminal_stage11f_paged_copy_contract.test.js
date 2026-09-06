@@ -111,7 +111,7 @@ test("Stage 11F preserves verified terminal interaction architecture", async () 
 
   assert.match(
     source,
-    /pendingMultilinePasteBoundary/
+    /pendingBracketedPaste/
   );
 
   assert.match(

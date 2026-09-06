@@ -2466,9 +2466,18 @@ private fun LocalPtySurface(
     var pinchFontSizeSp by remember(state.id) { mutableStateOf(fontSizeSp) }
     var surfaceSize by remember(state.id) { mutableStateOf(IntSize.Zero) }
 
-    var pendingMultilinePasteBoundary by
+    /*
+     * Clipboard paste is kept inside Bash/Readline's edit buffer
+     * with terminal-standard bracketed-paste sequences.
+     *
+     * Keep the last pasted payload until explicit Enter so a
+     * stale Gboard editor replay cannot submit the same block twice.
+     */
+    var pendingBracketedPaste by
         remember(state.id) {
-            mutableStateOf(false)
+            mutableStateOf<String?>(
+                null
+            )
         }
 
     var lastAutoFollowLineCount by
@@ -3081,44 +3090,55 @@ private fun LocalPtySurface(
                         )
 
                     /*
-                     * Clipboard text can carry a trailing newline.
+                     * Never feed a clipboard block to the interactive
+                     * shell as raw newlines.
                      *
-                     * For a single-line paste that newline must NOT
-                     * submit the shell command automatically. The text
-                     * is written to the PTY and the user explicitly
-                     * presses Enter to execute it.
+                     * Bash/Readline bracketed-paste mode keeps pasted
+                     * text in the current edit buffer. Only an explicit
+                     * Enter submits it.
                      *
-                     * Real multiline script/heredoc pastes keep their
-                     * internal and final newlines unchanged.
+                     * Some Android keyboards replay the complete pasted
+                     * editor value when Enter is pressed. The pending
+                     * payload lets us recognize that replay and send only
+                     * one real Enter instead of the entire script again.
                      */
-                    val submitSafeDelta =
-                        localPtySuppressSingleLinePasteSubmit(
-                            rawDelta
-                        )
-
-                    val delta =
-                        localPtySeparateConsecutivePaste(
-                            previousPasteNeedsBoundary =
-                                pendingMultilinePasteBoundary,
+                    val dispatch =
+                        localPtyBracketedPasteDispatch(
                             delta =
-                                submitSafeDelta
+                                rawDelta,
+                            pendingPaste =
+                                pendingBracketedPaste
                         )
 
-                    pendingMultilinePasteBoundary =
-                        localPtyLeavesOpenMultilinePaste(
-                            submitSafeDelta
-                        )
+                    pendingBracketedPaste =
+                        dispatch.pendingPaste
 
                     imeValue =
-                        localPtyImeValue(
-                            next
-                        )
+                        if (
+                            dispatch.resetIme
+                        ) {
+                            TextFieldValue(
+                                text =
+                                    LOCAL_PTY_IME_SENTINEL,
+                                selection =
+                                    TextRange(
+                                        LOCAL_PTY_IME_SENTINEL.length
+                                    )
+                            )
+                        } else {
+                            localPtyImeValue(
+                                next
+                            )
+                        }
 
-                    if (delta.isNotEmpty()) {
+                    if (
+                        dispatch.ptyText
+                            .isNotEmpty()
+                    ) {
                         scope.launch {
                             LocalPtySessionRegistry.write(
                                 state.id,
-                                delta
+                                dispatch.ptyText
                             )
                         }
                     }
@@ -3519,6 +3539,172 @@ private fun localPtyImeDeltaWithSentinel(
     )
 }
 
+private data class LocalPtyImeDispatch(
+    val ptyText: String,
+    val pendingPaste: String?,
+    val resetIme: Boolean
+)
+
+private fun localPtyBracketedPasteDispatch(
+    delta: String,
+    pendingPaste: String?
+): LocalPtyImeDispatch {
+    val normalized =
+        delta
+            .replace(
+                "\r\n",
+                "\n"
+            )
+            .replace(
+                '\r',
+                '\n'
+            )
+
+    /*
+     * Explicit Enter after a protected paste.
+     */
+    if (
+        pendingPaste != null &&
+        normalized == "\n"
+    ) {
+        return LocalPtyImeDispatch(
+            ptyText = "\r",
+            pendingPaste = null,
+            resetIme = true
+        )
+    }
+
+    /*
+     * Gboard can replay the whole previous editor value after
+     * the hidden TextField has already been reset.
+     *
+     * Exact replay: ignore it.
+     */
+    if (
+        pendingPaste != null &&
+        normalized == pendingPaste
+    ) {
+        return LocalPtyImeDispatch(
+            ptyText = "",
+            pendingPaste = pendingPaste,
+            resetIme = true
+        )
+    }
+
+    /*
+     * Most important replay case:
+     *
+     * paste:
+     *   <entire script>
+     *
+     * Enter event reported by IME:
+     *   <entire script> + newline
+     *
+     * Do NOT resend the script. Send only Enter.
+     */
+    if (
+        pendingPaste != null &&
+        normalized ==
+            pendingPaste + "\n"
+    ) {
+        return LocalPtyImeDispatch(
+            ptyText = "\r",
+            pendingPaste = null,
+            resetIme = true
+        )
+    }
+
+    /*
+     * Ordinary one-character editing after paste still goes
+     * straight to Readline. Keep enough pending information to
+     * recognize a later stale keyboard replay.
+     */
+    if (
+        pendingPaste != null &&
+        normalized.length == 1 &&
+        normalized != "\n"
+    ) {
+        val updatedPending =
+            if (
+                normalized == "\u007f"
+            ) {
+                pendingPaste
+                    .dropLast(1)
+            } else {
+                pendingPaste +
+                    normalized
+            }
+
+        return LocalPtyImeDispatch(
+            ptyText = normalized,
+            pendingPaste =
+                updatedPending,
+            resetIme = false
+        )
+    }
+
+    /*
+     * A surrogate pair is one typed Unicode character, not a
+     * multi-character clipboard paste.
+     */
+    val singleUnicodeCharacter =
+        normalized.length == 2 &&
+            normalized[0]
+                .isHighSurrogate() &&
+            normalized[1]
+                .isLowSurrogate()
+
+    val bulkPaste =
+        normalized.contains(
+            '\n'
+        ) ||
+            (
+                normalized.length > 1 &&
+                    !singleUnicodeCharacter &&
+                    normalized.any {
+                        it != '\u007f'
+                    }
+                )
+
+    if (!bulkPaste) {
+        return LocalPtyImeDispatch(
+            ptyText = normalized,
+            pendingPaste =
+                pendingPaste,
+            resetIme = false
+        )
+    }
+
+    /*
+     * Stage 11N already removes an accidental trailing submit
+     * newline from a one-line clipboard payload. Multiline
+     * payloads keep their internal line structure.
+     */
+    val pastePayload =
+        localPtySuppressSingleLinePasteSubmit(
+            normalized
+        )
+
+    if (pastePayload.isEmpty()) {
+        return LocalPtyImeDispatch(
+            ptyText = "",
+            pendingPaste =
+                pendingPaste,
+            resetIme = true
+        )
+    }
+
+    return LocalPtyImeDispatch(
+        ptyText =
+            LOCAL_PTY_BRACKETED_PASTE_START +
+                pastePayload +
+                LOCAL_PTY_BRACKETED_PASTE_END,
+        pendingPaste =
+            pastePayload,
+        resetIme = true
+    )
+}
+
 private fun localPtySuppressSingleLinePasteSubmit(
     delta: String
 ): String {
@@ -3790,6 +3976,12 @@ private val TerminalShortcutMatteText =
 
 private val TerminalShortcutMatteTextDisabled =
     Color(0xFF9DA2A8)
+
+private const val LOCAL_PTY_BRACKETED_PASTE_START =
+    "\u001b[200~"
+
+private const val LOCAL_PTY_BRACKETED_PASTE_END =
+    "\u001b[201~"
 
 private const val LOCAL_PTY_IME_SENTINEL =
     "\u2063"

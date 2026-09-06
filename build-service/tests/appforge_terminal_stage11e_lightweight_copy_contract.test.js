@@ -110,7 +110,7 @@ test("Stage 11E preserves terminal IME and shortcuts", async () => {
 
   assert.match(
     source,
-    /pendingMultilinePasteBoundary/
+    /pendingBracketedPaste/
   );
 
   for (const key of [

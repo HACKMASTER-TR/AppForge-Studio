@@ -8,13 +8,10 @@ const panelUrl = new URL(
 );
 
 test(
-  "Stage 11N suppresses automatic submit for a pasted single-line command",
+  "Stage 11N keeps single-line trailing-submit protection",
   async () => {
     const source =
-      await readFile(
-        panelUrl,
-        "utf8"
-      );
+      await readFile(panelUrl, "utf8");
 
     assert.match(
       source,
@@ -23,22 +20,7 @@ test(
 
     assert.match(
       source,
-      /if \(delta\.length <= 1\)/
-    );
-
-    assert.match(
-      source,
-      /normalized\.endsWith\('\\n'\)/
-    );
-
-    assert.match(
-      source,
       /normalized\.trimEnd\(\s*'\\n'/
-    );
-
-    assert.match(
-      source,
-      /withoutTrailingNewlines\.contains\(\s*'\\n'/
     );
 
     assert.match(
@@ -49,94 +31,41 @@ test(
 );
 
 test(
-  "Stage 11N applies safe paste handling before PTY write",
+  "Stage 11N single-line protection is used by bracketed paste",
   async () => {
     const source =
-      await readFile(
-        panelUrl,
-        "utf8"
-      );
+      await readFile(panelUrl, "utf8");
 
-    const safeIndex =
+    const start =
       source.indexOf(
-        "val submitSafeDelta"
+        "private fun localPtyBracketedPasteDispatch("
       );
 
-    const consecutiveIndex =
-      source.indexOf(
-        "localPtySeparateConsecutivePaste(",
-        safeIndex
-      );
-
-    assert.ok(
-      safeIndex >= 0 &&
-      consecutiveIndex > safeIndex
-    );
+    assert.ok(start >= 0);
 
     const block =
       source.slice(
-        safeIndex,
-        consecutiveIndex + 500
+        start,
+        start + 7000
       );
 
     assert.match(
       block,
-      /localPtySuppressSingleLinePasteSubmit\(\s*rawDelta/
+      /localPtySuppressSingleLinePasteSubmit\(\s*normalized/
     );
 
     assert.match(
       block,
-      /delta =\s*submitSafeDelta/
+      /LOCAL_PTY_BRACKETED_PASTE_START/
     );
   }
 );
 
 test(
-  "Stage 11N keeps explicit keyboard Enter and multiline paste behavior",
+  "Stage 11N preserves terminal IME copy and shortcuts",
   async () => {
     const source =
-      await readFile(
-        panelUrl,
-        "utf8"
-      );
-
-    /*
-     * One-character newline is returned untouched,
-     * so Gboard/terminal Enter still executes.
-     */
-    assert.match(
-      source,
-      /if \(delta\.length <= 1\) \{\s*return delta/
-    );
-
-    /*
-     * Multiline payloads remain untouched.
-     */
-    assert.match(
-      source,
-      /withoutTrailingNewlines\.contains\(\s*'\\n'[\s\S]*?return normalized/
-    );
-
-    assert.match(
-      source,
-      /localPtyLeavesOpenMultilinePaste\(\s*submitSafeDelta/
-    );
-
-    assert.match(
-      source,
-      /localPtySeparateConsecutivePaste/
-    );
-  }
-);
-
-test(
-  "Stage 11N preserves terminal IME copy and shortcut architecture",
-  async () => {
-    const source =
-      await readFile(
-        panelUrl,
-        "utf8"
-      );
+      await readFile(panelUrl, "utf8");
 
     assert.doesNotMatch(
       source,
@@ -173,7 +102,7 @@ test(
     ]) {
       assert.ok(
         source.includes(key),
-        `terminal shortcut disappeared: ${key}`
+        `shortcut disappeared: ${key}`
       );
     }
   }
