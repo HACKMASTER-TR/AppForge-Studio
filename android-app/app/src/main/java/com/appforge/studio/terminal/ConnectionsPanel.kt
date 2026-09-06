@@ -128,6 +128,23 @@ internal fun ConnectionsPanel(
             mutableStateOf<ExternalProvider?>(null)
         }
 
+    var railwayOverview by
+        remember {
+            mutableStateOf<RailwayReadOverview?>(
+                null
+            )
+        }
+
+    var railwayReadBusy by
+        remember {
+            mutableStateOf(false)
+        }
+
+    var railwayReadError by
+        remember {
+            mutableStateOf("")
+        }
+
     fun clientId(provider: ExternalProvider): String =
         when (provider) {
             ExternalProvider.GITHUB ->
@@ -145,8 +162,14 @@ internal fun ConnectionsPanel(
             ExternalProvider.GITHUB ->
                 githubConnection = connection
 
-            ExternalProvider.RAILWAY ->
+            ExternalProvider.RAILWAY -> {
                 railwayConnection = connection
+
+                if (connection == null) {
+                    railwayOverview = null
+                    railwayReadError = ""
+                }
+            }
         }
     }
 
@@ -297,6 +320,48 @@ internal fun ConnectionsPanel(
             }
 
             busyProvider = null
+        }
+    }
+
+    fun testRailwayReadAccess() {
+        val current =
+            railwayConnection
+
+        if (current == null) {
+            message =
+                "Önce Railway hesabını bağla."
+            return
+        }
+
+        if (railwayReadBusy) {
+            return
+        }
+
+        railwayReadBusy = true
+        railwayReadError = ""
+        railwayOverview = null
+
+        scope.launch {
+            runCatching {
+                ExternalConnectionsClient
+                    .readRailwayOverview(
+                        current.accessToken
+                    )
+            }.onSuccess {
+                railwayOverview = it
+
+                message =
+                    "Railway proje erişimi doğrulandı: " +
+                        "${it.projects.size} proje, " +
+                        "${it.totalServices} servis, " +
+                        "${it.totalEnvironments} ortam."
+            }.onFailure {
+                railwayReadError =
+                    it.message
+                        ?: "Railway proje erişimi test edilemedi."
+            }
+
+            railwayReadBusy = false
         }
     }
 
@@ -860,6 +925,95 @@ internal fun ConnectionsPanel(
                         context,
                         "https://railway.com/dashboard"
                     )
+                },
+                extraAction = {
+                    if (
+                        railwayConnection !=
+                            null
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                testRailwayReadAccess()
+                            },
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            enabled =
+                                !railwayReadBusy
+                        ) {
+                            Text(
+                                if (
+                                    railwayReadBusy
+                                ) {
+                                    "Railway test ediliyor…"
+                                } else {
+                                    "Proje Erişimini Test Et"
+                                }
+                            )
+                        }
+
+                        if (
+                            railwayReadError
+                                .isNotBlank()
+                        ) {
+                            Text(
+                                railwayReadError,
+                                color =
+                                    TerminalError,
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+
+                        railwayOverview
+                            ?.let { overview ->
+                                Text(
+                                    "Projeler: " +
+                                        "${overview.projects.size}" +
+                                        " • Servisler: " +
+                                        "${overview.totalServices}" +
+                                        " • Ortamlar: " +
+                                        "${overview.totalEnvironments}",
+                                    color =
+                                        TerminalSuccess,
+                                    fontSize =
+                                        11.sp,
+                                    fontWeight =
+                                        FontWeight.Bold
+                                )
+
+                                overview.projects
+                                    .take(8)
+                                    .forEach {
+                                        project ->
+                                        Text(
+                                            "• ${project.name}" +
+                                                " — " +
+                                                "${project.serviceCount} servis" +
+                                                " / " +
+                                                "${project.environmentCount} ortam",
+                                            color =
+                                                TerminalMuted,
+                                            fontSize =
+                                                10.sp
+                                        )
+                                    }
+
+                                if (
+                                    overview.projects.size >
+                                        8
+                                ) {
+                                    Text(
+                                        "… ve " +
+                                            "${overview.projects.size - 8}" +
+                                            " proje daha",
+                                        color =
+                                            TerminalMuted,
+                                        fontSize =
+                                            10.sp
+                                    )
+                                }
+                            }
+                    }
                 }
             )
         }
@@ -948,8 +1102,9 @@ private fun ProviderConnectionCard(
                         if (connection == null) {
                             "Bağlı değil"
                         } else {
-                            connection.accountLabel
-                                .ifBlank { "Bağlı hesap" }
+                            displayExternalAccountLabel(
+                                connection.accountLabel
+                            )
                         },
                         color =
                             if (connection == null) {
@@ -1069,6 +1224,26 @@ private fun ProviderConnectionCard(
         }
     }
 }
+
+private fun displayExternalAccountLabel(
+    value: String
+): String =
+    value
+        .split(" • ")
+        .map {
+            it.trim()
+        }
+        .filter {
+            it.isNotBlank() &&
+                !it.equals(
+                    "null",
+                    ignoreCase = true
+                )
+        }
+        .joinToString(" • ")
+        .ifBlank {
+            "Bağlı hesap"
+        }
 
 private fun openExternalUrl(
     context: Context,

@@ -53,6 +53,29 @@ internal data class ExternalIdentity(
     val detail: String = ""
 )
 
+internal data class RailwayProjectSummary(
+    val id: String,
+    val name: String,
+    val serviceCount: Int,
+    val environmentCount: Int
+)
+
+internal data class RailwayReadOverview(
+    val projects: List<RailwayProjectSummary>
+) {
+    val totalServices: Int
+        get() =
+            projects.sumOf {
+                it.serviceCount
+            }
+
+    val totalEnvironments: Int
+        get() =
+            projects.sumOf {
+                it.environmentCount
+            }
+}
+
 internal data class OAuthToken(
     val accessToken: String,
     val refreshToken: String,
@@ -458,6 +481,173 @@ internal object ExternalConnectionsClient {
             }
         }
 
+    suspend fun readRailwayOverview(
+        accessToken: String
+    ): RailwayReadOverview =
+        withContext(Dispatchers.IO) {
+            val cleanToken =
+                accessToken.trim()
+
+            require(
+                cleanToken.isNotBlank() &&
+                    cleanToken.length <=
+                        MAX_TOKEN_LENGTH &&
+                    cleanToken.none {
+                        it == '\n' ||
+                            it == '\r' ||
+                            it == '\u0000'
+                    }
+            ) {
+                "Railway tokenı geçersiz."
+            }
+
+            val query =
+                "query AppForgeRailwayReadTest { " +
+                    "projects { edges { node { " +
+                    "id name " +
+                    "services { edges { node { id name } } } " +
+                    "environments { edges { node { id name } } } " +
+                    "} } } }"
+
+            val response =
+                request(
+                    method = "POST",
+                    url =
+                        "https://backboard.railway.com/graphql/v2",
+                    accessToken =
+                        cleanToken,
+                    contentType =
+                        "application/json",
+                    body =
+                        JSONObject()
+                            .put(
+                                "query",
+                                query
+                            )
+                            .toString()
+                )
+
+            ensureSuccess(response)
+
+            val root =
+                JSONObject(
+                    response.body
+                )
+
+            val errors =
+                root.optJSONArray(
+                    "errors"
+                )
+
+            require(
+                errors == null ||
+                    errors.length() == 0
+            ) {
+                errors
+                    ?.optJSONObject(0)
+                    ?.optString("message")
+                    ?.takeIf {
+                        it.isNotBlank()
+                    }
+                    ?: "Railway proje erişimi doğrulanamadı."
+            }
+
+            val projectsRoot =
+                root
+                    .optJSONObject("data")
+                    ?.optJSONObject(
+                        "projects"
+                    )
+                    ?: error(
+                        "Railway proje listesi alınamadı."
+                    )
+
+            val edges =
+                projectsRoot
+                    .optJSONArray(
+                        "edges"
+                    )
+
+            val projects =
+                buildList {
+                    val count =
+                        edges?.length()
+                            ?: 0
+
+                    for (
+                        index in
+                        0 until count
+                    ) {
+                        val node =
+                            edges
+                                ?.optJSONObject(
+                                    index
+                                )
+                                ?.optJSONObject(
+                                    "node"
+                                )
+                                ?: continue
+
+                        val id =
+                            railwayField(
+                                node,
+                                "id"
+                            )
+
+                        val name =
+                            railwayField(
+                                node,
+                                "name"
+                            )
+                                .ifBlank {
+                                    id.ifBlank {
+                                        "İsimsiz proje"
+                                    }
+                                }
+
+                        val serviceCount =
+                            node
+                                .optJSONObject(
+                                    "services"
+                                )
+                                ?.optJSONArray(
+                                    "edges"
+                                )
+                                ?.length()
+                                ?: 0
+
+                        val environmentCount =
+                            node
+                                .optJSONObject(
+                                    "environments"
+                                )
+                                ?.optJSONArray(
+                                    "edges"
+                                )
+                                ?.length()
+                                ?: 0
+
+                        add(
+                            RailwayProjectSummary(
+                                id = id,
+                                name = name,
+                                serviceCount =
+                                    serviceCount,
+                                environmentCount =
+                                    environmentCount
+                            )
+                        )
+                    }
+                }
+
+            RailwayReadOverview(
+                projects =
+                    projects.sortedBy {
+                        it.name.lowercase()
+                    }
+            )
+        }
+
     suspend fun refreshRailway(
         connection: ExternalServiceConnection,
         clientId: String
@@ -587,20 +777,60 @@ internal object ExternalConnectionsClient {
         )
     }
 
+    private fun railwayField(
+        json: JSONObject,
+        key: String
+    ): String {
+        if (
+            !json.has(key) ||
+            json.isNull(key)
+        ) {
+            return ""
+        }
+
+        return json
+            .optString(key)
+            .trim()
+            .takeUnless {
+                it.equals(
+                    "null",
+                    ignoreCase = true
+                )
+            }
+            .orEmpty()
+    }
+
     private fun railwayIdentity(
         json: JSONObject
     ): ExternalIdentity {
         val email =
-            json.optString("email")
+            railwayField(
+                json,
+                "email"
+            )
+
         val name =
-            json.optString("name")
+            railwayField(
+                json,
+                "name"
+            )
                 .ifBlank {
-                    json.optString("displayName")
+                    railwayField(
+                        json,
+                        "displayName"
+                    )
                 }
+
         val id =
-            json.optString("sub")
+            railwayField(
+                json,
+                "sub"
+            )
                 .ifBlank {
-                    json.optString("id")
+                    railwayField(
+                        json,
+                        "id"
+                    )
                 }
 
         return ExternalIdentity(
@@ -614,7 +844,8 @@ internal object ExternalConnectionsClient {
                 },
             detail =
                 email.takeIf {
-                    it.isNotBlank() && it != name
+                    it.isNotBlank() &&
+                        it != name
                 }.orEmpty()
         )
     }
