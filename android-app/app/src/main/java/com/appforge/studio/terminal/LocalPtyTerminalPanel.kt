@@ -2118,6 +2118,96 @@ private fun LocalPtySurface(
             mutableStateOf("")
         }
 
+    var copySourceSnapshot by
+        remember(state.id) {
+            mutableStateOf<AnsiTerminalSnapshot?>(
+                null
+            )
+        }
+
+    var copyWindowStart by
+        remember(state.id) {
+            mutableStateOf(0)
+        }
+
+    fun updateCopyWindow(
+        requestedStart: Int
+    ) {
+        val source =
+            copySourceSnapshot
+                ?: return
+
+        val totalLines =
+            source.lines.size
+
+        if (totalLines <= 0) {
+            copyWindowStart =
+                0
+
+            copySnapshot =
+                source.copy(
+                    lines =
+                        emptyList(),
+                    cursorLine =
+                        0,
+                    cursorVisible =
+                        false
+                )
+
+            copyRangeLabel =
+                "Kopya modu • terminal boş"
+
+            return
+        }
+
+        val lastStart =
+            (
+                totalLines -
+                    COPY_MODE_MAX_LINES
+                )
+                .coerceAtLeast(0)
+
+        val start =
+            requestedStart
+                .coerceIn(
+                    0,
+                    lastStart
+                )
+
+        val end =
+            (
+                start +
+                    COPY_MODE_MAX_LINES
+                )
+                .coerceAtMost(
+                    totalLines
+                )
+
+        copyWindowStart =
+            start
+
+        val frozenLines =
+            source.lines
+                .subList(
+                    start,
+                    end
+                )
+
+        copySnapshot =
+            source.copy(
+                lines =
+                    frozenLines,
+                cursorLine =
+                    -1,
+                cursorVisible =
+                    false
+            )
+
+        copyRangeLabel =
+            "Kopya modu • satır " +
+                "${start + 1}–$end / $totalLines"
+    }
+
     var imeValue by
         remember(state.id) {
             mutableStateOf(
@@ -2165,22 +2255,26 @@ private fun LocalPtySurface(
 
             keyboardController?.hide()
 
+            /*
+             * Freeze the complete source snapshot by reference at copy-mode
+             * entry. Only COPY_MODE_MAX_LINES are rendered/selectable at
+             * any moment.
+             */
+            copySnapshot =
+                null
+
+            copySourceSnapshot =
+                state.snapshot
+
             val totalLines =
-                state.snapshot.lines.size
+                state.snapshot
+                    .lines
+                    .size
 
             if (totalLines <= 0) {
-                copySnapshot =
-                    state.snapshot.copy(
-                        lines =
-                            emptyList(),
-                        cursorLine =
-                            0,
-                        cursorVisible =
-                            false
-                    )
-
-                copyRangeLabel =
-                    "Kopya modu • terminal boş"
+                updateCopyWindow(
+                    0
+                )
             } else {
                 val anchor =
                     outputListState
@@ -2190,63 +2284,37 @@ private fun LocalPtySurface(
                             totalLines - 1
                         )
 
-                var start =
+                val lastStart =
+                    (
+                        totalLines -
+                            COPY_MODE_MAX_LINES
+                        )
+                        .coerceAtLeast(0)
+
+                val initialStart =
                     (
                         anchor -
                             COPY_MODE_CONTEXT_BEFORE_LINES
                         )
                         .coerceAtLeast(0)
-
-                var end =
-                    (
-                        start +
-                            COPY_MODE_MAX_LINES
-                        )
                         .coerceAtMost(
-                            totalLines
+                            lastStart
                         )
 
-                /*
-                 * Near the end of history, shift the window backwards so
-                 * copy mode still exposes the full configured window.
-                 */
-                if (
-                    end - start <
-                        COPY_MODE_MAX_LINES
-                ) {
-                    start =
-                        (
-                            end -
-                                COPY_MODE_MAX_LINES
-                            )
-                            .coerceAtLeast(0)
-                }
-
-                val frozenLines =
-                    state.snapshot.lines
-                        .subList(
-                            start,
-                            end
-                        )
-
-                copySnapshot =
-                    state.snapshot.copy(
-                        lines =
-                            frozenLines,
-                        cursorLine =
-                            -1,
-                        cursorVisible =
-                            false
-                    )
-
-                copyRangeLabel =
-                    "Kopya modu • satır " +
-                        "${start + 1}–$end / $totalLines"
+                updateCopyWindow(
+                    initialStart
+                )
             }
 
             copyScrollState
                 .scrollTo(0)
         } else {
+            copySourceSnapshot =
+                null
+
+            copyWindowStart =
+                0
+
             copySnapshot =
                 null
 
@@ -2498,22 +2566,117 @@ private fun LocalPtySurface(
                     modifier =
                         Modifier.fillMaxSize()
                 ) {
-                    Text(
-                        copyRangeLabel,
-                        color =
-                            TerminalSecondary,
-                        fontFamily =
-                            FontFamily.Monospace,
-                        fontSize =
-                            10.sp,
+                    val copyTotalLines =
+                        copySourceSnapshot
+                            ?.lines
+                            ?.size
+                            ?: 0
+
+                    Column(
                         modifier =
-                            Modifier.padding(
-                                start = 16.dp,
-                                end = 12.dp,
-                                top = 8.dp,
-                                bottom = 4.dp
-                            )
-                    )
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    start = 12.dp,
+                                    end = 8.dp,
+                                    top = 6.dp,
+                                    bottom = 2.dp
+                                )
+                    ) {
+                        Text(
+                            copyRangeLabel,
+                            color =
+                                TerminalSecondary,
+                            fontFamily =
+                                FontFamily.Monospace,
+                            fontSize =
+                                10.sp,
+                            modifier =
+                                Modifier.padding(
+                                    start = 4.dp,
+                                    end = 4.dp
+                                )
+                        )
+
+                        if (
+                            copyTotalLines >
+                                COPY_MODE_MAX_LINES
+                        ) {
+                            Row(
+                                modifier =
+                                    Modifier.fillMaxWidth(),
+                                horizontalArrangement =
+                                    Arrangement.End,
+                                verticalAlignment =
+                                    Alignment.CenterVertically
+                            ) {
+                                TextButton(
+                                    enabled =
+                                        copyWindowStart > 0,
+                                    onClick = {
+                                        updateCopyWindow(
+                                            (
+                                                copyWindowStart -
+                                                    COPY_MODE_MAX_LINES
+                                                )
+                                                .coerceAtLeast(0)
+                                        )
+
+                                        scope.launch {
+                                            copyScrollState
+                                                .scrollTo(0)
+                                        }
+                                    }
+                                ) {
+                                    Text(
+                                        "← ÖNCEKİ 500",
+                                        fontFamily =
+                                            FontFamily.Monospace,
+                                        fontSize =
+                                            9.sp
+                                    )
+                                }
+
+                                TextButton(
+                                    enabled =
+                                        copyWindowStart +
+                                            COPY_MODE_MAX_LINES <
+                                            copyTotalLines,
+                                    onClick = {
+                                        val lastStart =
+                                            (
+                                                copyTotalLines -
+                                                    COPY_MODE_MAX_LINES
+                                                )
+                                                .coerceAtLeast(0)
+
+                                        updateCopyWindow(
+                                            (
+                                                copyWindowStart +
+                                                    COPY_MODE_MAX_LINES
+                                                )
+                                                .coerceAtMost(
+                                                    lastStart
+                                                )
+                                        )
+
+                                        scope.launch {
+                                            copyScrollState
+                                                .scrollTo(0)
+                                        }
+                                    }
+                                ) {
+                                    Text(
+                                        "SONRAKİ 500 →",
+                                        fontFamily =
+                                            FontFamily.Monospace,
+                                        fontSize =
+                                            9.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     Box(
                         modifier =
