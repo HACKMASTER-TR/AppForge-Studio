@@ -7,6 +7,7 @@ import android.util.Base64
 import com.appforge.studio.net.Session
 import org.json.JSONObject
 import java.security.KeyStore
+import java.security.MessageDigest
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -51,6 +52,12 @@ object SecureAccountStore {
 
     private const val API_IV =
         "build_api_iv"
+
+    private const val ACCOUNT_SCOPE_PREFIX =
+        "account_"
+
+    private const val GUEST_ACCOUNT_SCOPE =
+        "guest"
 
     private const val TRANSFORMATION =
         "AES/GCM/NoPadding"
@@ -126,7 +133,12 @@ object SecureAccountStore {
                         "twoFactorEnabled",
                         false
                     )
-            )
+            ).also {
+                migrateLegacyAccountCredentials(
+                    context,
+                    it
+                )
+            }
         }.getOrElse {
             clearSession(context)
             null
@@ -145,10 +157,21 @@ object SecureAccountStore {
             return
         }
 
+        val scope =
+            accountScope(context)
+
         writeEncrypted(
             context = context,
-            dataKey = API_DATA,
-            ivKey = API_IV,
+            dataKey =
+                scopedKey(
+                    scope,
+                    API_DATA
+                ),
+            ivKey =
+                scopedKey(
+                    scope,
+                    API_IV
+                ),
             plaintext = clean
         )
     }
@@ -156,10 +179,21 @@ object SecureAccountStore {
     fun loadBuildApiKey(
         context: Context
     ): String? {
+        val scope =
+            accountScope(context)
+
         return readEncrypted(
             context = context,
-            dataKey = API_DATA,
-            ivKey = API_IV
+            dataKey =
+                scopedKey(
+                    scope,
+                    API_DATA
+                ),
+            ivKey =
+                scopedKey(
+                    scope,
+                    API_IV
+                )
         )
             ?.trim()
             ?.takeIf {
@@ -180,10 +214,23 @@ object SecureAccountStore {
     fun clearBuildApiKey(
         context: Context
     ) {
+        val scope =
+            accountScope(context)
+
         prefs(context)
             .edit()
-            .remove(API_DATA)
-            .remove(API_IV)
+            .remove(
+                scopedKey(
+                    scope,
+                    API_DATA
+                )
+            )
+            .remove(
+                scopedKey(
+                    scope,
+                    API_IV
+                )
+            )
             .apply()
     }
 
@@ -244,15 +291,24 @@ object SecureAccountStore {
                 )
             }
 
+        val scope =
+            accountScope(context)
+
         writeEncrypted(
             context = context,
             dataKey =
-                externalDataKey(
-                    provider
+                scopedKey(
+                    scope,
+                    externalDataKey(
+                        provider
+                    )
                 ),
             ivKey =
-                externalIvKey(
-                    provider
+                scopedKey(
+                    scope,
+                    externalIvKey(
+                        provider
+                    )
                 ),
             plaintext =
                 json.toString()
@@ -266,16 +322,25 @@ object SecureAccountStore {
         val safeProvider =
             normalizeProvider(provider)
 
+        val scope =
+            accountScope(context)
+
         val raw =
             readEncrypted(
                 context = context,
                 dataKey =
-                    externalDataKey(
-                        safeProvider
+                    scopedKey(
+                        scope,
+                        externalDataKey(
+                            safeProvider
+                        )
                     ),
                 ivKey =
-                    externalIvKey(
-                        safeProvider
+                    scopedKey(
+                        scope,
+                        externalIvKey(
+                            safeProvider
+                        )
                     )
             ) ?: return null
 
@@ -291,7 +356,9 @@ object SecureAccountStore {
             }
 
             ExternalServiceConnection(
-                provider = safeProvider,
+                provider =
+                    safeProvider,
+
                 accessToken =
                     validateToken(
                         json.getString(
@@ -299,6 +366,7 @@ object SecureAccountStore {
                         ),
                         required = true
                     ),
+
                 refreshToken =
                     validateToken(
                         json.optString(
@@ -306,24 +374,29 @@ object SecureAccountStore {
                         ),
                         required = false
                     ),
+
                 tokenType =
                     json.optString(
                         "tokenType",
                         "oauth"
                     ),
+
                 accountLabel =
                     json.optString(
                         "accountLabel"
                     ),
+
                 scopes =
                     json.optString(
                         "scopes"
                     ),
+
                 expiresAt =
                     json.optLong(
                         "expiresAt",
                         0L
                     ),
+
                 connectedAt =
                     json.optLong(
                         "connectedAt",
@@ -347,16 +420,25 @@ object SecureAccountStore {
         val safeProvider =
             normalizeProvider(provider)
 
+        val scope =
+            accountScope(context)
+
         prefs(context)
             .edit()
             .remove(
-                externalDataKey(
-                    safeProvider
+                scopedKey(
+                    scope,
+                    externalDataKey(
+                        safeProvider
+                    )
                 )
             )
             .remove(
-                externalIvKey(
-                    safeProvider
+                scopedKey(
+                    scope,
+                    externalIvKey(
+                        safeProvider
+                    )
                 )
             )
             .apply()
@@ -371,7 +453,9 @@ object SecureAccountStore {
                 authorization.provider
             )
 
-        require(provider == "railway") {
+        require(
+            provider == "railway"
+        ) {
             "Desteklenmeyen OAuth dönüş sağlayıcısı."
         }
 
@@ -381,8 +465,14 @@ object SecureAccountStore {
 
         val json =
             JSONObject().apply {
-                put("provider", provider)
-                put("state", authorization.state)
+                put(
+                    "provider",
+                    provider
+                )
+                put(
+                    "state",
+                    authorization.state
+                )
                 put(
                     "codeVerifier",
                     authorization.codeVerifier
@@ -397,11 +487,27 @@ object SecureAccountStore {
                 )
             }
 
+        val scope =
+            accountScope(context)
+
         writeEncrypted(
             context = context,
-            dataKey = pendingDataKey(provider),
-            ivKey = pendingIvKey(provider),
-            plaintext = json.toString()
+            dataKey =
+                scopedKey(
+                    scope,
+                    pendingDataKey(
+                        provider
+                    )
+                ),
+            ivKey =
+                scopedKey(
+                    scope,
+                    pendingIvKey(
+                        provider
+                    )
+                ),
+            plaintext =
+                json.toString()
         )
     }
 
@@ -412,39 +518,75 @@ object SecureAccountStore {
         val safeProvider =
             normalizeProvider(provider)
 
+        val scope =
+            accountScope(context)
+
         val raw =
             readEncrypted(
                 context = context,
-                dataKey = pendingDataKey(safeProvider),
-                ivKey = pendingIvKey(safeProvider)
+                dataKey =
+                    scopedKey(
+                        scope,
+                        pendingDataKey(
+                            safeProvider
+                        )
+                    ),
+                ivKey =
+                    scopedKey(
+                        scope,
+                        pendingIvKey(
+                            safeProvider
+                        )
+                    )
             ) ?: return null
 
         return runCatching {
-            val json = JSONObject(raw)
+            val json =
+                JSONObject(raw)
+
             require(
-                json.getString("provider") ==
+                json.getString(
+                    "provider"
+                ) ==
                     safeProvider
             ) {
                 "OAuth sağlayıcısı eşleşmiyor."
             }
 
             PendingExternalAuthorization(
-                provider = safeProvider,
-                state = json.getString("state"),
+                provider =
+                    safeProvider,
+
+                state =
+                    json.getString(
+                        "state"
+                    ),
+
                 codeVerifier =
-                    json.getString("codeVerifier"),
+                    json.getString(
+                        "codeVerifier"
+                    ),
+
                 redirectUri =
-                    json.getString("redirectUri"),
+                    json.getString(
+                        "redirectUri"
+                    ),
+
                 expiresAt =
-                    json.getLong("expiresAt")
+                    json.getLong(
+                        "expiresAt"
+                    )
             ).also {
-                validatePendingAuthorization(it)
+                validatePendingAuthorization(
+                    it
+                )
             }
         }.getOrElse {
             clearPendingExternalAuthorization(
                 context,
                 safeProvider
             )
+
             null
         }
     }
@@ -456,10 +598,27 @@ object SecureAccountStore {
         val safeProvider =
             normalizeProvider(provider)
 
+        val scope =
+            accountScope(context)
+
         prefs(context)
             .edit()
-            .remove(pendingDataKey(safeProvider))
-            .remove(pendingIvKey(safeProvider))
+            .remove(
+                scopedKey(
+                    scope,
+                    pendingDataKey(
+                        safeProvider
+                    )
+                )
+            )
+            .remove(
+                scopedKey(
+                    scope,
+                    pendingIvKey(
+                        safeProvider
+                    )
+                )
+            )
             .apply()
     }
 
@@ -469,6 +628,202 @@ object SecureAccountStore {
         prefs(context)
             .edit()
             .clear()
+            .apply()
+    }
+
+    private fun accountScope(
+        context: Context
+    ): String =
+        accountScope(
+            loadSession(
+                context
+            )
+        )
+
+    private fun accountScope(
+        session: Session?
+    ): String {
+        val identity =
+            session
+                ?.userId
+                ?.trim()
+                .orEmpty()
+                .ifBlank {
+                    session
+                        ?.email
+                        ?.trim()
+                        ?.lowercase()
+                        .orEmpty()
+                }
+
+        if (identity.isBlank()) {
+            return GUEST_ACCOUNT_SCOPE
+        }
+
+        return MessageDigest
+            .getInstance(
+                "SHA-256"
+            )
+            .digest(
+                identity.toByteArray(
+                    Charsets.UTF_8
+                )
+            )
+            .joinToString("") {
+                byte ->
+                "%02x".format(
+                    byte.toInt() and
+                        0xff
+                )
+            }
+    }
+
+    private fun scopedKey(
+        scope: String,
+        baseKey: String
+    ): String =
+        "$ACCOUNT_SCOPE_PREFIX${scope}_$baseKey"
+
+    /*
+     * v1 sürümünde build API, GitHub ve Railway bilgileri
+     * global preference anahtarlarında tutuluyordu.
+     *
+     * Güncelleme sonrası mevcut oturum ilk kez okunurken
+     * bu kayıtları o hesabın SHA-256 namespace'ine taşırız.
+     * Böylece eski kullanıcının tokenı sonraki hesaba
+     * yanlışlıkla migrate edilemez.
+     */
+    private fun migrateLegacyAccountCredentials(
+        context: Context,
+        session: Session
+    ) {
+        val scope =
+            accountScope(
+                session
+            )
+
+        if (
+            scope ==
+                GUEST_ACCOUNT_SCOPE
+        ) {
+            return
+        }
+
+        listOf(
+            API_DATA to
+                API_IV,
+
+            externalDataKey(
+                "github"
+            ) to
+                externalIvKey(
+                    "github"
+                ),
+
+            externalDataKey(
+                "railway"
+            ) to
+                externalIvKey(
+                    "railway"
+                ),
+
+            pendingDataKey(
+                "railway"
+            ) to
+                pendingIvKey(
+                    "railway"
+                )
+        ).forEach {
+            pair ->
+
+            migrateLegacyEncryptedPair(
+                context =
+                    context,
+                scope =
+                    scope,
+                legacyDataKey =
+                    pair.first,
+                legacyIvKey =
+                    pair.second
+            )
+        }
+    }
+
+    private fun migrateLegacyEncryptedPair(
+        context: Context,
+        scope: String,
+        legacyDataKey: String,
+        legacyIvKey: String
+    ) {
+        val scopedDataKey =
+            scopedKey(
+                scope,
+                legacyDataKey
+            )
+
+        val scopedIvKey =
+            scopedKey(
+                scope,
+                legacyIvKey
+            )
+
+        /*
+         * Hesap kasasında zaten geçerli bir değer varsa
+         * eski global kopya kullanılmaz.
+         */
+        val scoped =
+            readEncrypted(
+                context =
+                    context,
+                dataKey =
+                    scopedDataKey,
+                ivKey =
+                    scopedIvKey
+            )
+
+        if (scoped != null) {
+            prefs(context)
+                .edit()
+                .remove(
+                    legacyDataKey
+                )
+                .remove(
+                    legacyIvKey
+                )
+                .apply()
+
+            return
+        }
+
+        val legacy =
+            readEncrypted(
+                context =
+                    context,
+                dataKey =
+                    legacyDataKey,
+                ivKey =
+                    legacyIvKey
+            ) ?: return
+
+        writeEncrypted(
+            context =
+                context,
+            dataKey =
+                scopedDataKey,
+            ivKey =
+                scopedIvKey,
+            plaintext =
+                legacy
+        )
+
+        prefs(context)
+            .edit()
+            .remove(
+                legacyDataKey
+            )
+            .remove(
+                legacyIvKey
+            )
             .apply()
     }
 

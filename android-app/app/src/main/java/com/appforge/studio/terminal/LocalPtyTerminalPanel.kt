@@ -592,6 +592,44 @@ internal object LocalPtySessionRegistry {
         removed?.session?.close()
     }
 
+    fun closeAllForAccountSwitch() {
+        if (!initialized) {
+            return
+        }
+
+        val removed =
+            synchronized(lock) {
+                val snapshot =
+                    records.values
+                        .toList()
+
+                records.clear()
+
+                pendingOutputPublishes
+                    .clear()
+
+                persistLocked()
+                publishLocked()
+
+                snapshot
+            }
+
+        /*
+         * Çalışan shell eski hesabın geçici Git credential
+         * lease'ini taşıyabilir. Yeni hesaba geçmeden önce
+         * bütün PTY süreçlerini ve geçici credential dosyalarını
+         * kapat.
+         */
+        removed.forEach {
+            it.session.close()
+        }
+
+        TerminalGitCredentialBridge
+            .clearStale(
+                appContext
+            )
+    }
+
     suspend fun sendCommand(
         context: Context,
         workspace: File,

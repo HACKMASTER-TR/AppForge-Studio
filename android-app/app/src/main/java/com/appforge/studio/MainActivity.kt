@@ -4035,20 +4035,36 @@ private fun AppForgeApp() {
                                 nextAccountKey
 
                         /*
-                         * Farklı AppForge hesabına geçildiğinde
-                         * önceki kullanıcının oturumuna bağlı
-                         * API anahtarı ve harici bağlantıları
-                         * yeni kullanıcıya taşınamaz.
+                         * Hesap değişimi veya çıkış:
+                         * eski hesabın çalışan PTY shell'leri
+                         * ve geçici Git credential lease'leri
+                         * yeni hesaba taşınamaz.
                          */
                         if (
                             nextSession == null ||
                             accountChanged
                         ) {
+                            com.appforge.studio
+                                .terminal
+                                .LocalPtySessionRegistry
+                                .closeAllForAccountSwitch()
+                        }
+
+                        if (
+                            nextSession ==
+                                null
+                        ) {
+                            /*
+                             * Çıkış yalnız aktif sessionı kapatır.
+                             * Hesaba ait şifreli GitHub/Railway/API
+                             * kasası cihazda korunur.
+                             */
                             SecureAccountStore
-                                .clearAll(
+                                .clearSession(
                                     context
                                 )
 
+                            session = null
                             apiKey = ""
 
                             draft =
@@ -4059,16 +4075,44 @@ private fun AppForgeApp() {
                             proStatus = null
                             proSecurityMessage = ""
                             projectQuota = null
-                        }
 
-                        session =
-                            nextSession
+                        } else {
+                            if (
+                                accountChanged
+                            ) {
+                                proStatus = null
+                                proSecurityMessage = ""
+                                projectQuota = null
+                            }
 
-                        if (nextSession != null) {
+                            /*
+                             * Önce yeni aktif AppForge sessionını kaydet.
+                             * Bundan sonraki SecureAccountStore okumaları
+                             * otomatik olarak yeni hesabın namespace'ine gider.
+                             */
                             SecureAccountStore
                                 .saveSession(
                                     context,
                                     nextSession
+                                )
+
+                            session =
+                                nextSession
+
+                            val restoredApiKey =
+                                SecureAccountStore
+                                    .loadBuildApiKey(
+                                        context
+                                    )
+                                    .orEmpty()
+
+                            apiKey =
+                                restoredApiKey
+
+                            draft =
+                                draft.copy(
+                                    buildApiKey =
+                                        restoredApiKey
                                 )
                         }
                     },
