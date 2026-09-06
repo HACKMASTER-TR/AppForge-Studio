@@ -3080,17 +3080,33 @@ private fun LocalPtySurface(
                                 next.text
                         )
 
+                    /*
+                     * Clipboard text can carry a trailing newline.
+                     *
+                     * For a single-line paste that newline must NOT
+                     * submit the shell command automatically. The text
+                     * is written to the PTY and the user explicitly
+                     * presses Enter to execute it.
+                     *
+                     * Real multiline script/heredoc pastes keep their
+                     * internal and final newlines unchanged.
+                     */
+                    val submitSafeDelta =
+                        localPtySuppressSingleLinePasteSubmit(
+                            rawDelta
+                        )
+
                     val delta =
                         localPtySeparateConsecutivePaste(
                             previousPasteNeedsBoundary =
                                 pendingMultilinePasteBoundary,
                             delta =
-                                rawDelta
+                                submitSafeDelta
                         )
 
                     pendingMultilinePasteBoundary =
                         localPtyLeavesOpenMultilinePaste(
-                            rawDelta
+                            submitSafeDelta
                         )
 
                     imeValue =
@@ -3501,6 +3517,65 @@ private fun localPtyImeDeltaWithSentinel(
         previous = previousPayload,
         next = nextPayload
     )
+}
+
+private fun localPtySuppressSingleLinePasteSubmit(
+    delta: String
+): String {
+    /*
+     * A normal keyboard Enter arrives as a one-character "\n".
+     * Never suppress that.
+     */
+    if (delta.length <= 1) {
+        return delta
+    }
+
+    /*
+     * localPtyImeDelta() already normalizes CRLF/CR to LF,
+     * but keeping this helper defensive makes its contract
+     * explicit and safe if it is reused later.
+     */
+    val normalized =
+        delta
+            .replace(
+                "\r\n",
+                "\n"
+            )
+            .replace(
+                '\r',
+                '\n'
+            )
+
+    if (!normalized.endsWith('\n')) {
+        return normalized
+    }
+
+    /*
+     * Remove only the submit boundary of a one-line clipboard
+     * payload. Examples:
+     *
+     *   "pwd\n"        -> "pwd"
+     *   "git status\n" -> "git status"
+     *
+     * A multiline script stays untouched:
+     *
+     *   "echo a\necho b\n" -> unchanged
+     */
+    val withoutTrailingNewlines =
+        normalized.trimEnd(
+            '\n'
+        )
+
+    if (
+        withoutTrailingNewlines.isBlank() ||
+        withoutTrailingNewlines.contains(
+            '\n'
+        )
+    ) {
+        return normalized
+    }
+
+    return withoutTrailingNewlines
 }
 
 private fun localPtySeparateConsecutivePaste(
