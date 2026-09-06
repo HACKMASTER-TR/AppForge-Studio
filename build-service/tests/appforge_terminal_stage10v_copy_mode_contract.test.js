@@ -73,7 +73,7 @@ test("Stage 10V makes copy mode selectable and hides the IME", async () => {
 
   assert.match(
     source,
-    /renderLocalPtySnapshot\([\s\S]*?showCursor\s*=\s*false/
+    /renderLocalPtyCopyText\(\s*frozenCopySnapshot\s*\)/
   );
 
   assert.match(

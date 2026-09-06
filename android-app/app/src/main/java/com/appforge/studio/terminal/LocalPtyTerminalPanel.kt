@@ -2489,11 +2489,8 @@ private fun LocalPtySurface(
                     remember(
                         frozenCopySnapshot
                     ) {
-                        renderLocalPtySnapshot(
-                            snapshot =
-                                frozenCopySnapshot,
-                            showCursor =
-                                false
+                        renderLocalPtyCopyText(
+                            frozenCopySnapshot
                         )
                     }
 
@@ -2890,6 +2887,45 @@ private fun localPtySpanStyle(
             }
     )
 }
+
+/*
+ * Copy mode deliberately uses plain text.
+ *
+ * The normal terminal keeps ANSI styling line-by-line, but selectable copy
+ * content must not create one SpanStyle per terminal cell. A few hundred
+ * lines can otherwise produce tens of thousands of spans and block Compose's
+ * UI thread while SelectionContainer measures the text.
+ */
+private fun renderLocalPtyCopyText(
+    snapshot: AnsiTerminalSnapshot
+): String =
+    buildString {
+        snapshot.lines.forEachIndexed { lineIndex, line ->
+            val lastContentColumn =
+                line.indexOfLast {
+                    it.character != ' '
+                }
+
+            if (lastContentColumn >= 0) {
+                for (
+                    column in
+                    0..lastContentColumn
+                ) {
+                    append(
+                        line[column]
+                            .character
+                    )
+                }
+            }
+
+            if (
+                lineIndex <
+                    snapshot.lines.lastIndex
+            ) {
+                append('\n')
+            }
+        }
+    }
 
 private fun renderLocalPtySnapshot(
     snapshot: AnsiTerminalSnapshot,

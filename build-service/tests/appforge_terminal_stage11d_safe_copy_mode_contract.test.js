@@ -53,12 +53,12 @@ test("Stage 11D freezes copy content instead of selecting live 5000-line history
 
   assert.match(
     source,
-    /renderLocalPtySnapshot\(\s*snapshot\s*=\s*\n\s*frozenCopySnapshot/
+    /renderLocalPtyCopyText\(\s*frozenCopySnapshot\s*\)/
   );
 
   assert.doesNotMatch(
     source,
-    /val selectableOutput\s*=\s*[\s\S]{0,250}renderLocalPtySnapshot\(\s*snapshot\s*=\s*\n\s*state\.snapshot/
+    /val selectableOutput\s*=\s*[\s\S]{0,250}renderLocalPtySnapshot\(/
   );
 
   assert.match(
