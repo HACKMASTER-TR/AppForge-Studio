@@ -6,6 +6,10 @@ on:
 permissions:
   contents: read
 
+env:
+  APPFORGE_ANDROID_NDK_VERSION: "28.2.13676358"
+  APPFORGE_ANDROID_CMAKE_VERSION: "3.22.1"
+
 jobs:
   build-play-aab:
     runs-on: ubuntu-latest
@@ -25,22 +29,108 @@ jobs:
         with:
           gradle-version: "9.3.1"
 
-      - name: Restore AppForge Firebase config
+      - name: Validate Play release secrets
+        shell: bash
+        env:
+          APPFORGE_FIREBASE_GOOGLE_SERVICES_B64: ${{ secrets.APPFORGE_FIREBASE_GOOGLE_SERVICES_B64 }}
+          APPFORGE_RELEASE_KEYSTORE_B64: ${{ secrets.APPFORGE_RELEASE_KEYSTORE_B64 }}
+          APPFORGE_RELEASE_STORE_PASSWORD: ${{ secrets.APPFORGE_RELEASE_STORE_PASSWORD }}
+          APPFORGE_RELEASE_KEY_PASSWORD: ${{ secrets.APPFORGE_RELEASE_KEY_PASSWORD }}
+          APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
+          APPFORGE_RAILWAY_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_RAILWAY_OAUTH_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+
+          required=(
+            APPFORGE_FIREBASE_GOOGLE_SERVICES_B64
+            APPFORGE_RELEASE_KEYSTORE_B64
+            APPFORGE_RELEASE_STORE_PASSWORD
+            APPFORGE_RELEASE_KEY_PASSWORD
+            APPFORGE_GITHUB_OAUTH_CLIENT_ID
+            APPFORGE_RAILWAY_OAUTH_CLIENT_ID
+          )
+
+          missing=0
+
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              echo "❌ Eksik GitHub secret: $name"
+              missing=1
+            fi
+          done
+
+          test "$missing" -eq 0
+
+          echo "✅ Play release secret preflight PASS."
+
+      - name: Install deterministic Android native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SDKMANAGER="$(
+            find "$ANDROID_HOME/cmdline-tools" \
+              -type f \
+              -name sdkmanager \
+              | sort -V \
+              | tail -n 1
+          )"
+
+          test -x "$SDKMANAGER"
+
+          "$SDKMANAGER" \
+            "ndk;${APPFORGE_ANDROID_NDK_VERSION}" \
+            "cmake;${APPFORGE_ANDROID_CMAKE_VERSION}"
+
+          test -d "$ANDROID_HOME/ndk/${APPFORGE_ANDROID_NDK_VERSION}"
+          test -d "$ANDROID_HOME/cmake/${APPFORGE_ANDROID_CMAKE_VERSION}"
+
+          echo "✅ Native toolchain PASS: NDK ${APPFORGE_ANDROID_NDK_VERSION} / CMake ${APPFORGE_ANDROID_CMAKE_VERSION}"
+
+      - name: Restore and verify AppForge Firebase config
         shell: bash
         env:
           APPFORGE_FIREBASE_GOOGLE_SERVICES_B64: ${{ secrets.APPFORGE_FIREBASE_GOOGLE_SERVICES_B64 }}
         run: |
           set -euo pipefail
 
-          if [ -n "$APPFORGE_FIREBASE_GOOGLE_SERVICES_B64" ]; then
-            printf '%s' "$APPFORGE_FIREBASE_GOOGLE_SERVICES_B64"               | base64 --decode               > android-app/app/google-services.json
+          printf '%s' "$APPFORGE_FIREBASE_GOOGLE_SERVICES_B64" \
+            | base64 --decode \
+            > android-app/app/google-services.json
 
-            python3 -m json.tool               android-app/app/google-services.json               >/dev/null
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
 
-            echo "AppForge Studio Firebase config restored."
-          else
-            echo "APPFORGE_FIREBASE_GOOGLE_SERVICES_B64 tanımlı değil; Studio FCM bu build'de pasif."
-          fi
+          path = Path("android-app/app/google-services.json")
+
+          data = json.loads(
+              path.read_text(encoding="utf-8")
+          )
+
+          packages = set()
+
+          for entry in data.get("client", []):
+              package_name = (
+                  entry
+                  .get("client_info", {})
+                  .get("android_client_info", {})
+                  .get("package_name")
+              )
+
+              if package_name:
+                  packages.add(package_name)
+
+          expected = "com.appforge.studio"
+
+          if expected not in packages:
+              raise SystemExit(
+                  f"Firebase config package mismatch. "
+                  f"Expected {expected}; found {sorted(packages)}"
+              )
+
+          print("✅ Firebase package config PASS.")
+          PY
 
       - name: Restore Play upload keystore
         shell: bash
@@ -48,8 +138,6 @@ jobs:
           KEYSTORE_B64: ${{ secrets.APPFORGE_RELEASE_KEYSTORE_B64 }}
         run: |
           set -euo pipefail
-
-          test -n "$KEYSTORE_B64"
 
           printf '%s' "$KEYSTORE_B64" \
             | base64 --decode \
@@ -71,7 +159,65 @@ jobs:
             -alias appforge-release \
             > /dev/null
 
-          echo "✅ Release keystore doğrulandı."
+          echo "✅ Release upload keystore PASS."
+
+      - name: Resolve AppForge version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          source = Path(
+              "android-app/app/build.gradle.kts"
+          ).read_text(encoding="utf-8")
+
+          code_match = re.search(
+              r"\bversionCode\s*=\s*(\d+)",
+              source
+          )
+
+          name_match = re.search(
+              r'\bversionName\s*=\s*"([^"]+)"',
+              source
+          )
+
+          if not code_match or not name_match:
+              raise SystemExit(
+                  "versionCode/versionName bulunamadı."
+              )
+
+          version_code = code_match.group(1)
+          version_name = name_match.group(1)
+
+          aab_name = (
+              f"AppForgeStudio-Play-"
+              f"{version_name}-{version_code}.aab"
+          )
+
+          with open(
+              os.environ["GITHUB_ENV"],
+              "a",
+              encoding="utf-8"
+          ) as env:
+              env.write(
+                  f"APPFORGE_VERSION_CODE={version_code}\n"
+              )
+              env.write(
+                  f"APPFORGE_VERSION_NAME={version_name}\n"
+              )
+              env.write(
+                  f"APPFORGE_PLAY_AAB_NAME={aab_name}\n"
+              )
+
+          print(
+              f"✅ Version: {version_name} "
+              f"(versionCode {version_code})"
+          )
+          PY
 
       - name: Prepare Play Store manifest
         shell: bash
@@ -80,16 +226,20 @@ jobs:
 
           MANIFEST="android-app/app/src/main/AndroidManifest.xml"
 
-          sed -i             '/android.permission.REQUEST_INSTALL_PACKAGES/d'             "$MANIFEST"
+          sed -i \
+            '/android.permission.REQUEST_INSTALL_PACKAGES/d' \
+            "$MANIFEST"
 
-          if grep -q             'android.permission.REQUEST_INSTALL_PACKAGES'             "$MANIFEST"; then
+          if grep -q \
+            'android.permission.REQUEST_INSTALL_PACKAGES' \
+            "$MANIFEST"; then
             echo "❌ REQUEST_INSTALL_PACKAGES kaldırılamadı."
             exit 1
           fi
 
-          echo "✅ Play Store manifesti hazır."
+          echo "✅ Play Store manifest PASS."
 
-      - name: Build signed Play AAB
+      - name: Test lint and build signed Play AAB
         env:
           APPFORGE_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/appforge-release.jks
           APPFORGE_RELEASE_STORE_PASSWORD: ${{ secrets.APPFORGE_RELEASE_STORE_PASSWORD }}
@@ -102,6 +252,9 @@ jobs:
 
           gradle \
             -p android-app \
+            :app:testReleaseUnitTest \
+            :app:lintRelease \
+            :app:signingReport \
             :app:bundleRelease \
             --stacktrace
 
@@ -111,18 +264,22 @@ jobs:
           set -euo pipefail
 
           FOUND="$(
-            grep -R -l               --include='AndroidManifest.xml'               'android.permission.REQUEST_INSTALL_PACKAGES'               android-app/app/build/intermediates               2>/dev/null || true
+            grep -R -l \
+              --include='AndroidManifest.xml' \
+              'android.permission.REQUEST_INSTALL_PACKAGES' \
+              android-app/app/build/intermediates \
+              2>/dev/null || true
           )"
 
           if [ -n "$FOUND" ]; then
-            echo "❌ Play build içinde yasaklanan izin bulundu:"
+            echo "❌ Play build içinde REQUEST_INSTALL_PACKAGES bulundu:"
             echo "$FOUND"
             exit 1
           fi
 
-          echo "✅ REQUEST_INSTALL_PACKAGES Play AAB'den çıkarıldı."
+          echo "✅ Play permission regression PASS."
 
-      - name: Verify AAB
+      - name: Verify signed AAB
         shell: bash
         run: |
           set -euo pipefail
@@ -131,20 +288,36 @@ jobs:
             find android-app/app/build/outputs/bundle/release \
               -type f \
               -name '*.aab' \
-              | head -n 1
+              -print \
+              -quit
           )"
 
           test -n "$AAB"
           test -s "$AAB"
 
-          cp "$AAB" AppForgeStudio-Play-5.1.0.aab
+          jarsigner -verify "$AAB"
 
-          ls -lh AppForgeStudio-Play-5.1.0.aab
+          cp \
+            "$AAB" \
+            "$APPFORGE_PLAY_AAB_NAME"
+
+          sha256sum \
+            "$APPFORGE_PLAY_AAB_NAME" \
+            > "${APPFORGE_PLAY_AAB_NAME}.sha256"
+
+          echo "✅ Signed Play AAB PASS."
+          echo "Version: ${APPFORGE_VERSION_NAME} (${APPFORGE_VERSION_CODE})"
+
+          ls -lh \
+            "$APPFORGE_PLAY_AAB_NAME" \
+            "${APPFORGE_PLAY_AAB_NAME}.sha256"
 
       - name: Upload Play AAB
         uses: actions/upload-artifact@v7
         with:
           name: AppForgeStudio-Play-AAB
-          path: AppForgeStudio-Play-5.1.0.aab
+          path: |
+            AppForgeStudio-Play-*.aab
+            AppForgeStudio-Play-*.aab.sha256
           if-no-files-found: error
           retention-days: 14
