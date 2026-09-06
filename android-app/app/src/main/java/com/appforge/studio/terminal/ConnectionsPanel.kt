@@ -1306,6 +1306,9 @@ private fun displayExternalAccountLabel(
                     ignoreCase = true
                 )
         }
+        .distinctBy {
+            it.lowercase()
+        }
         .joinToString(" • ")
         .ifBlank {
             "Bağlı hesap"

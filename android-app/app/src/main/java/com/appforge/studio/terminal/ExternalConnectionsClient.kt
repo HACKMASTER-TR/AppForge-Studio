@@ -557,6 +557,40 @@ internal object ExternalConnectionsClient {
                                 .toString()
                     )
 
+                if (
+                    response.code !in
+                        200..299
+                ) {
+                    val graphRoot =
+                        runCatching {
+                            JSONObject(
+                                response.body
+                            )
+                        }.getOrNull()
+
+                    val graphMessage =
+                        graphRoot
+                            ?.optJSONArray(
+                                "errors"
+                            )
+                            ?.optJSONObject(0)
+                            ?.optString(
+                                "message"
+                            )
+                            ?.trim()
+                            ?.takeIf {
+                                it.isNotBlank()
+                            }
+
+                    if (graphMessage != null) {
+                        error(
+                            graphMessage.take(
+                                MAX_ERROR_DETAIL_LENGTH
+                            )
+                        )
+                    }
+                }
+
                 ensureSuccess(
                     response
                 )
@@ -796,8 +830,7 @@ internal object ExternalConnectionsClient {
                             "id name " +
                             "services { edges { node { id name } } } " +
                             "environments { edges { node { id name } } } " +
-                            "} } } } } " +
-                            "}"
+                            "} } } } }"
                     )
                 }.onSuccess {
                     root ->
