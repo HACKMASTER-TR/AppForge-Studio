@@ -12,115 +12,152 @@ const panelUrl = new URL(
   import.meta.url
 );
 
-test("Stage 11G adds read-only Railway project access test", async () => {
-  const source =
-    await readFile(clientUrl, "utf8");
+test(
+  "Stage 11G keeps read-only Railway project access",
+  async () => {
+    const source =
+      await readFile(
+        clientUrl,
+        "utf8"
+      );
 
-  assert.match(
-    source,
-    /suspend fun readRailwayOverview\(/
-  );
+    assert.match(
+      source,
+      /suspend fun readRailwayOverview\(/
+    );
 
-  assert.match(
-    source,
-    /query AppForgeRailwayReadTest/
-  );
+    assert.match(
+      source,
+      /AppForgePersonalProjects/
+    );
 
-  assert.match(
-    source,
-    /projects \{ edges \{ node \{/
-  );
+    assert.match(
+      source,
+      /AppForgeWorkspaces/
+    );
 
-  assert.match(
-    source,
-    /services \{ edges \{ node \{ id name \}/
-  );
+    assert.match(
+      source,
+      /AppForgeWorkspaceProjects/
+    );
 
-  assert.match(
-    source,
-    /environments \{ edges \{ node \{ id name \}/
-  );
+    assert.match(
+      source,
+      /services \{ edges \{ node \{ id name \}/
+    );
 
-  assert.match(
-    source,
-    /https:\/\/backboard\.railway\.com\/graphql\/v2/
-  );
+    assert.match(
+      source,
+      /environments \{ edges \{ node \{ id name \}/
+    );
 
-  assert.doesNotMatch(
-    source,
-    /mutation AppForgeRailwayReadTest/
-  );
-});
+    assert.match(
+      source,
+      /https:\/\/backboard\.railway\.com\/graphql\/v2/
+    );
 
-test("Stage 11G never exposes the Railway token in UI", async () => {
-  const panel =
-    await readFile(panelUrl, "utf8");
+    assert.doesNotMatch(
+      source,
+      /mutation\s+AppForge(?:PersonalProjects|Workspaces|WorkspaceProjects)/
+    );
+  }
+);
 
-  assert.match(
-    panel,
-    /Proje Erişimini Test Et/
-  );
+test(
+  "Stage 11G never exposes Railway tokens in UI",
+  async () => {
+    const panel =
+      await readFile(
+        panelUrl,
+        "utf8"
+      );
 
-  assert.match(
-    panel,
-    /readRailwayOverview\(\s*current\.accessToken/
-  );
+    assert.match(
+      panel,
+      /Proje Erişimini Test Et/
+    );
 
-  assert.doesNotMatch(
-    panel,
-    /Text\(\s*current\.accessToken/
-  );
+    assert.match(
+      panel,
+      /readRailwayOverview\(\s*current\.accessToken/
+    );
 
-  assert.doesNotMatch(
-    panel,
-    /clipboard\.setText\([\s\S]{0,100}current\.accessToken/
-  );
-});
+    assert.doesNotMatch(
+      panel,
+      /Text\(\s*current\.accessToken/
+    );
 
-test("Stage 11G fixes nullable Railway identity labels", async () => {
-  const client =
-    await readFile(clientUrl, "utf8");
+    assert.doesNotMatch(
+      panel,
+      /clipboard\.setText\([\s\S]{0,100}current\.accessToken/
+    );
+  }
+);
 
-  const panel =
-    await readFile(panelUrl, "utf8");
+test(
+  "Stage 11G keeps normalized Railway identity rendering",
+  async () => {
+    const client =
+      await readFile(
+        clientUrl,
+        "utf8"
+      );
 
-  assert.match(
-    client,
-    /private fun railwayField\(/
-  );
+    const panel =
+      await readFile(
+        panelUrl,
+        "utf8"
+      );
 
-  assert.match(
-    client,
-    /json\.isNull\(key\)/
-  );
+    assert.match(
+      client,
+      /private fun railwayField\(/
+    );
 
-  assert.match(
-    panel,
-    /displayExternalAccountLabel\(/
-  );
+    assert.match(
+      client,
+      /json\.isNull\(key\)/
+    );
 
-  assert.match(
-    panel,
-    /ignoreCase = true/
-  );
-});
+    assert.match(
+      client,
+      /val label =/
+    );
 
-test("Stage 11G preserves secure connection storage", async () => {
-  const panel =
-    await readFile(panelUrl, "utf8");
+    assert.match(
+      client,
+      /it != label/
+    );
 
-  assert.match(
-    panel,
-    /SecureAccountStore\.loadExternalConnection/
-  );
+    assert.match(
+      panel,
+      /displayExternalAccountLabel\(/
+    );
+  }
+);
 
-  assert.match(
-    panel,
-    /SecureAccountStore\.saveExternalConnection/
-  );
+test(
+  "Stage 11G preserves secure connection storage",
+  async () => {
+    const panel =
+      await readFile(
+        panelUrl,
+        "utf8"
+      );
 
-  assert.match(
-    panel,
-    /PasswordVisualTransformation/
-  );
-});
+    assert.match(
+      panel,
+      /SecureAccountStore\.loadExternalConnection/
+    );
+
+    assert.match(
+      panel,
+      /SecureAccountStore\.saveExternalConnection/
+    );
+
+    assert.match(
+      panel,
+      /PasswordVisualTransformation/
+    );
+  }
+);

@@ -501,150 +501,494 @@ internal object ExternalConnectionsClient {
                 "Railway tokenı geçersiz."
             }
 
-            val query =
-                "query AppForgeRailwayReadTest { " +
-                    "projects { edges { node { " +
-                    "id name " +
-                    "services { edges { node { id name } } } " +
-                    "environments { edges { node { id name } } } " +
-                    "} } } }"
+            val projectsById =
+                linkedMapOf<
+                    String,
+                    RailwayProjectSummary
+                >()
 
-            val response =
-                request(
-                    method = "POST",
-                    url =
-                        "https://backboard.railway.com/graphql/v2",
-                    accessToken =
-                        cleanToken,
-                    contentType =
-                        "application/json",
-                    body =
-                        JSONObject()
-                            .put(
-                                "query",
-                                query
-                            )
-                            .toString()
-                )
+            val discoveryErrors =
+                mutableListOf<String>()
 
-            ensureSuccess(response)
+            fun firstGraphError(
+                root: JSONObject
+            ): String? {
+                val errors =
+                    root.optJSONArray(
+                        "errors"
+                    )
 
-            val root =
-                JSONObject(
-                    response.body
-                )
-
-            val errors =
-                root.optJSONArray(
-                    "errors"
-                )
-
-            require(
-                errors == null ||
+                if (
+                    errors == null ||
                     errors.length() == 0
-            ) {
-                errors
-                    ?.optJSONObject(0)
-                    ?.optString("message")
+                ) {
+                    return null
+                }
+
+                return errors
+                    .optJSONObject(0)
+                    ?.optString(
+                        "message"
+                    )
                     ?.takeIf {
                         it.isNotBlank()
                     }
-                    ?: "Railway proje erişimi doğrulanamadı."
+                    ?: "Railway sorgusu tamamlanamadı."
             }
 
-            val projectsRoot =
-                root
-                    .optJSONObject("data")
-                    ?.optJSONObject(
-                        "projects"
-                    )
-                    ?: error(
-                        "Railway proje listesi alınamadı."
+            fun executeGraph(
+                query: String
+            ): JSONObject {
+                val response =
+                    request(
+                        method = "POST",
+                        url =
+                            "https://backboard.railway.com/graphql/v2",
+                        accessToken =
+                            cleanToken,
+                        contentType =
+                            "application/json",
+                        body =
+                            JSONObject()
+                                .put(
+                                    "query",
+                                    query
+                                )
+                                .toString()
                     )
 
-            val edges =
-                projectsRoot
-                    .optJSONArray(
-                        "edges"
+                ensureSuccess(
+                    response
+                )
+
+                return JSONObject(
+                    response.body
+                )
+            }
+
+            fun projectSummary(
+                node: JSONObject
+            ): RailwayProjectSummary? {
+                val id =
+                    railwayField(
+                        node,
+                        "id"
                     )
 
-            val projects =
-                buildList {
+                if (id.isBlank()) {
+                    return null
+                }
+
+                val name =
+                    railwayField(
+                        node,
+                        "name"
+                    )
+                        .ifBlank {
+                            id
+                        }
+
+                val serviceCount =
+                    node
+                        .optJSONObject(
+                            "services"
+                        )
+                        ?.optJSONArray(
+                            "edges"
+                        )
+                        ?.length()
+                        ?: 0
+
+                val environmentCount =
+                    node
+                        .optJSONObject(
+                            "environments"
+                        )
+                        ?.optJSONArray(
+                            "edges"
+                        )
+                        ?.length()
+                        ?: 0
+
+                return RailwayProjectSummary(
+                    id = id,
+                    name = name,
+                    serviceCount =
+                        serviceCount,
+                    environmentCount =
+                        environmentCount
+                )
+            }
+
+            fun mergeConnection(
+                connection: JSONObject?
+            ) {
+                val edges =
+                    connection
+                        ?.optJSONArray(
+                            "edges"
+                        )
+                        ?: return
+
+                for (
+                    index in
+                    0 until edges.length()
+                ) {
+                    val node =
+                        edges
+                            .optJSONObject(
+                                index
+                            )
+                            ?.optJSONObject(
+                                "node"
+                            )
+                            ?: continue
+
+                    val summary =
+                        projectSummary(
+                            node
+                        )
+                            ?: continue
+
+                    projectsById[
+                        summary.id
+                    ] =
+                        summary
+                }
+            }
+
+            /*
+             * 1) Kişisel hesaba doğrudan bağlı projeler.
+             */
+            runCatching {
+                executeGraph(
+                    "query AppForgePersonalProjects { " +
+                        "projects(first: 100) { edges { node { " +
+                        "id name " +
+                        "services { edges { node { id name } } } " +
+                        "environments { edges { node { id name } } } " +
+                        "} } } }"
+                )
+            }.onSuccess {
+                root ->
+
+                val graphError =
+                    firstGraphError(
+                        root
+                    )
+
+                if (graphError != null) {
+                    discoveryErrors +=
+                        graphError
+                } else {
+                    mergeConnection(
+                        root
+                            .optJSONObject(
+                                "data"
+                            )
+                            ?.optJSONObject(
+                                "projects"
+                            )
+                    )
+                }
+            }.onFailure {
+                discoveryErrors +=
+                    (
+                        it.message
+                            ?: "Kişisel Railway projeleri okunamadı."
+                    )
+            }
+
+            /*
+             * 2) Hesabın üye olduğu workspace'leri bul.
+             *
+             * Railway'de workspace projeleri top-level
+             * personal projects listesinden ayrı olabilir.
+             */
+            val workspaceIds =
+                linkedSetOf<String>()
+
+            runCatching {
+                executeGraph(
+                    "query AppForgeWorkspaces { " +
+                        "me { workspaces { id name } } " +
+                        "}"
+                )
+            }.onSuccess {
+                root ->
+
+                val graphError =
+                    firstGraphError(
+                        root
+                    )
+
+                if (graphError != null) {
+                    discoveryErrors +=
+                        graphError
+                } else {
+                    val workspaces =
+                        root
+                            .optJSONObject(
+                                "data"
+                            )
+                            ?.optJSONObject(
+                                "me"
+                            )
+                            ?.optJSONArray(
+                                "workspaces"
+                            )
+
                     val count =
-                        edges?.length()
-                            ?: 0
+                        minOf(
+                            workspaces
+                                ?.length()
+                                ?: 0,
+                            MAX_RAILWAY_DISCOVERY_WORKSPACES
+                        )
 
                     for (
                         index in
                         0 until count
                     ) {
-                        val node =
-                            edges
+                        val id =
+                            workspaces
                                 ?.optJSONObject(
                                     index
                                 )
+                                ?.let {
+                                    railwayField(
+                                        it,
+                                        "id"
+                                    )
+                                }
+                                .orEmpty()
+
+                        if (id.isNotBlank()) {
+                            workspaceIds +=
+                                id
+                        }
+                    }
+                }
+            }.onFailure {
+                discoveryErrors +=
+                    (
+                        it.message
+                            ?: "Railway workspace listesi okunamadı."
+                    )
+            }
+
+            /*
+             * 3) Her workspace içindeki projeleri oku.
+             */
+            workspaceIds.forEach {
+                workspaceId ->
+
+                val safeWorkspaceId =
+                    JSONObject.quote(
+                        workspaceId
+                    )
+
+                runCatching {
+                    executeGraph(
+                        "query AppForgeWorkspaceProjects { " +
+                            "workspace(workspaceId: $safeWorkspaceId) { " +
+                            "projects(first: 100) { edges { node { " +
+                            "id name " +
+                            "services { edges { node { id name } } } " +
+                            "environments { edges { node { id name } } } " +
+                            "} } } } } " +
+                            "}"
+                    )
+                }.onSuccess {
+                    root ->
+
+                    val graphError =
+                        firstGraphError(
+                            root
+                        )
+
+                    if (graphError != null) {
+                        discoveryErrors +=
+                            graphError
+                    } else {
+                        mergeConnection(
+                            root
+                                .optJSONObject(
+                                    "data"
+                                )
                                 ?.optJSONObject(
-                                    "node"
+                                    "workspace"
+                                )
+                                ?.optJSONObject(
+                                    "projects"
+                                )
+                        )
+                    }
+                }.onFailure {
+                    discoveryErrors +=
+                        (
+                            it.message
+                                ?: "Railway workspace projeleri okunamadı."
+                        )
+                }
+            }
+
+            /*
+             * 4) OAuth project-scope ile açıkça paylaşılan
+             * projeleri de keşfet.
+             *
+             * Account tokenında desteklenmiyorsa bu sorgunun
+             * hatası genel sonucu bozmaz.
+             */
+            runCatching {
+                executeGraph(
+                    "query AppForgeExternalProjects { " +
+                        "externalWorkspaces { " +
+                        "id name projects { id name } " +
+                        "} " +
+                        "}"
+                )
+            }.onSuccess {
+                root ->
+
+                if (
+                    firstGraphError(
+                        root
+                    ) == null
+                ) {
+                    val externalWorkspaces =
+                        root
+                            .optJSONObject(
+                                "data"
+                            )
+                            ?.optJSONArray(
+                                "externalWorkspaces"
+                            )
+
+                    val workspaceCount =
+                        minOf(
+                            externalWorkspaces
+                                ?.length()
+                                ?: 0,
+                            MAX_RAILWAY_DISCOVERY_WORKSPACES
+                        )
+
+                    for (
+                        workspaceIndex in
+                        0 until workspaceCount
+                    ) {
+                        val externalProjects =
+                            externalWorkspaces
+                                ?.optJSONObject(
+                                    workspaceIndex
+                                )
+                                ?.optJSONArray(
+                                    "projects"
                                 )
                                 ?: continue
 
-                        val id =
-                            railwayField(
-                                node,
-                                "id"
-                            )
+                        for (
+                            projectIndex in
+                            0 until externalProjects.length()
+                        ) {
+                            val project =
+                                externalProjects
+                                    .optJSONObject(
+                                        projectIndex
+                                    )
+                                    ?: continue
 
-                        val name =
-                            railwayField(
-                                node,
-                                "name"
-                            )
-                                .ifBlank {
-                                    id.ifBlank {
-                                        "İsimsiz proje"
-                                    }
+                            val projectId =
+                                railwayField(
+                                    project,
+                                    "id"
+                                )
+
+                            if (
+                                projectId.isBlank() ||
+                                projectsById.containsKey(
+                                    projectId
+                                ) ||
+                                projectsById.size >=
+                                    MAX_RAILWAY_DISCOVERY_PROJECTS
+                            ) {
+                                continue
+                            }
+
+                            val safeProjectId =
+                                JSONObject.quote(
+                                    projectId
+                                )
+
+                            runCatching {
+                                executeGraph(
+                                    "query AppForgeProjectDetail { " +
+                                        "project(id: $safeProjectId) { " +
+                                        "id name " +
+                                        "services { edges { node { id name } } } " +
+                                        "environments { edges { node { id name } } } " +
+                                        "} " +
+                                        "}"
+                                )
+                            }.onSuccess {
+                                detailRoot ->
+
+                                if (
+                                    firstGraphError(
+                                        detailRoot
+                                    ) == null
+                                ) {
+                                    detailRoot
+                                        .optJSONObject(
+                                            "data"
+                                        )
+                                        ?.optJSONObject(
+                                            "project"
+                                        )
+                                        ?.let {
+                                            projectSummary(
+                                                it
+                                            )
+                                        }
+                                        ?.let {
+                                            summary ->
+
+                                            projectsById[
+                                                summary.id
+                                            ] =
+                                                summary
+                                        }
                                 }
-
-                        val serviceCount =
-                            node
-                                .optJSONObject(
-                                    "services"
-                                )
-                                ?.optJSONArray(
-                                    "edges"
-                                )
-                                ?.length()
-                                ?: 0
-
-                        val environmentCount =
-                            node
-                                .optJSONObject(
-                                    "environments"
-                                )
-                                ?.optJSONArray(
-                                    "edges"
-                                )
-                                ?.length()
-                                ?: 0
-
-                        add(
-                            RailwayProjectSummary(
-                                id = id,
-                                name = name,
-                                serviceCount =
-                                    serviceCount,
-                                environmentCount =
-                                    environmentCount
-                            )
-                        )
+                            }
+                        }
                     }
                 }
+            }
+
+            /*
+             * Sorgular gerçekten hata verdiyse "0 proje"
+             * diyerek hatayı gizleme.
+             */
+            if (
+                projectsById.isEmpty() &&
+                discoveryErrors.isNotEmpty()
+            ) {
+                error(
+                    discoveryErrors
+                        .first()
+                        .take(
+                            MAX_ERROR_DETAIL_LENGTH
+                        )
+                )
+            }
 
             RailwayReadOverview(
                 projects =
-                    projects.sortedBy {
-                        it.name.lowercase()
-                    }
+                    projectsById
+                        .values
+                        .sortedBy {
+                            it.name.lowercase()
+                        }
             )
         }
 
@@ -833,19 +1177,21 @@ internal object ExternalConnectionsClient {
                     )
                 }
 
-        return ExternalIdentity(
-            label =
-                name.ifBlank {
-                    email.ifBlank {
-                        id.ifBlank {
-                            "Railway hesabı"
-                        }
+        val label =
+            name.ifBlank {
+                email.ifBlank {
+                    id.ifBlank {
+                        "Railway hesabı"
                     }
-                },
+                }
+            }
+
+        return ExternalIdentity(
+            label = label,
             detail =
                 email.takeIf {
                     it.isNotBlank() &&
-                        it != name
+                        it != label
                 }.orEmpty()
         )
     }
@@ -1228,6 +1574,12 @@ internal object ExternalConnectionsClient {
 
     private const val MAX_RESPONSE_BYTES =
         256 * 1_024
+
+    private const val MAX_RAILWAY_DISCOVERY_WORKSPACES =
+        32
+
+    private const val MAX_RAILWAY_DISCOVERY_PROJECTS =
+        100
 
     private const val MAX_TOKEN_LENGTH =
         32 * 1_024
