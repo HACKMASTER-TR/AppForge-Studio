@@ -78,6 +78,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.appforge.studio.security.SecureAccountStore
+import java.security.MessageDigest
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -97,6 +99,59 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+
+private const val OWNER_RAILWAY_IDENTITY_SHA256 =
+    "1249d3064d7f482d584f75caf93ea01649f13e4a26d183c4729d2fae5d205589"
+
+private fun normalizedIdentityDigest(
+    value: String
+): String {
+    val clean =
+        value
+            .trim()
+            .lowercase()
+
+    if (clean.isBlank()) {
+        return ""
+    }
+
+    return MessageDigest
+        .getInstance("SHA-256")
+        .digest(
+            clean.toByteArray(
+                Charsets.UTF_8
+            )
+        )
+        .joinToString("") {
+            "%02x".format(it)
+        }
+}
+
+private fun ownerTerminalShortcutsEnabled(
+    context: Context
+): Boolean {
+    val railway =
+        SecureAccountStore
+            .loadExternalConnection(
+                context,
+                ExternalProvider.RAILWAY.key
+            )
+            ?: return false
+
+    return railway
+        .accountLabel
+        .split(" • ")
+        .map {
+            it.trim()
+        }
+        .filter {
+            it.isNotBlank()
+        }
+        .any {
+            normalizedIdentityDigest(it) ==
+                OWNER_RAILWAY_IDENTITY_SHA256
+        }
+}
 
 internal data class LocalPtyTerminalState(
     val id: String,
@@ -1352,6 +1407,23 @@ internal fun LocalPtyTerminalPanel(
     val scope =
         rememberCoroutineScope()
 
+    var ownerQuickActionsEnabled by
+        remember(
+            workspaceRoot.absolutePath
+        ) {
+            mutableStateOf(false)
+        }
+
+    LaunchedEffect(
+        context.applicationContext,
+        workspaceRoot.absolutePath
+    ) {
+        ownerQuickActionsEnabled =
+            ownerTerminalShortcutsEnabled(
+                context.applicationContext
+            )
+    }
+
     val allStates by
         LocalPtySessionRegistry.states
             .collectAsState()
@@ -1777,6 +1849,39 @@ internal fun LocalPtyTerminalPanel(
                     ) {
                         terminalCopyMode =
                             !terminalCopyMode
+                    }
+
+                    if (
+                        ownerQuickActionsEnabled
+                    ) {
+                        PtyKey(
+                            "APK",
+                            true
+                        ) {
+                            scope.launch {
+                                LocalPtySessionRegistry
+                                    .write(
+                                        state.id,
+                                        "appforge-apk\r"
+                                    )
+                            }
+                        }
+
+                        PtyKey(
+                            "DASH",
+                            true
+                        ) {
+                            scope.launch {
+                                LocalPtySessionRegistry
+                                    .write(
+                                        state.id,
+                                        "cd /root/AppForge-Studio && " +
+                                            "if [ -x ./dashboard.sh ]; then " +
+                                            "./dashboard.sh; else " +
+                                            "echo 'dashboard.sh bulunamadı'; fi\r"
+                                    )
+                            }
+                        }
                     }
 
                     PtyKey("ESC", true) {
