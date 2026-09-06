@@ -252,7 +252,7 @@ jobs:
 
           gradle \
             -p android-app \
-            :app:testReleaseUnitTest \
+            :app:testDebugUnitTest \
             :app:lintRelease \
             :app:signingReport \
             :app:bundleRelease \
