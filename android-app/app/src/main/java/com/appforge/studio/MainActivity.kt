@@ -1003,72 +1003,68 @@ private fun AppForgeApp() {
             ?.limit
             ?: 5
 
-    var status by remember { mutableStateOf("Hazır") }
-    var progress by remember { mutableIntStateOf(0) }
+    /*
+     * One stable holder owns the high-frequency build runtime state.
+     *
+     * Delegated aliases preserve all existing build code below while
+     * allowing Builder-specific composition extraction in Phase 11.
+     */
+    val buildRuntime =
+        remember {
+            BuildRuntimeState()
+        }
+
+    var status by
+        buildRuntime.status
+
+    var progress by
+        buildRuntime.progress
 
     var buildStartedAtMs by
-        remember {
-            mutableStateOf<Long?>(
-                null
-            )
-        }
+        buildRuntime.buildStartedAtMs
 
     var buildElapsedMs by
-        remember {
-            mutableLongStateOf(
-                0L
-            )
-        }
+        buildRuntime.buildElapsedMs
 
     var buildTimerRunning by
-        remember {
-            mutableStateOf(
-                false
-            )
-        }
+        buildRuntime.buildTimerRunning
 
-    var logs by remember { mutableStateOf(listOf<String>()) }
-    var preflight by remember { mutableStateOf(listOf<String>()) }
-    var buildId by remember { mutableStateOf<String?>(null) }
-    var buildNo by remember { mutableStateOf<Long?>(null) }
-    var apkUrl by remember { mutableStateOf<String?>(null) }
-    var aabUrl by remember { mutableStateOf<String?>(null) }
-    var exeUrl by remember { mutableStateOf<String?>(null) }
+    var logs by
+        buildRuntime.logs
+
+    var preflight by
+        buildRuntime.preflight
+
+    var buildId by
+        buildRuntime.buildId
+
+    var buildNo by
+        buildRuntime.buildNo
+
+    var apkUrl by
+        buildRuntime.apkUrl
+
+    var aabUrl by
+        buildRuntime.aabUrl
+
+    var exeUrl by
+        buildRuntime.exeUrl
 
     var queuePosition by
-        remember {
-            mutableStateOf<Int?>(
-                null
-            )
-        }
+        buildRuntime.queuePosition
 
     var queueAhead by
-        remember {
-            mutableStateOf<Int?>(
-                null
-            )
-        }
+        buildRuntime.queueAhead
 
     var queueWorkerSlots by
-        remember {
-            mutableIntStateOf(
-                0
-            )
-        }
+        buildRuntime.queueWorkerSlots
 
     var queueEtaSeconds by
-        remember {
-            mutableStateOf<Int?>(
-                null
-            )
-        }
+        buildRuntime.queueEtaSeconds
 
     var queueEstimate by
-        remember {
-            mutableStateOf<String?>(
-                null
-            )
-        }
+        buildRuntime.queueEstimate
+
 
     /*
      * Build süresi:
