@@ -16,7 +16,12 @@ internal data class TerminalPerformanceSnapshot(
     val snapshotsBuilt: Long,
     val snapshotsReused: Long,
     val totalPublishNanos: Long,
-    val maxPublishNanos: Long
+    val maxPublishNanos: Long,
+    val slowPublishCalls: Long,
+    val inputWrites: Long,
+    val totalInputWriteNanos: Long,
+    val maxInputWriteNanos: Long,
+    val slowInputWrites: Long
 ) {
     val averagePublishMicros: Long
         get() =
@@ -53,6 +58,115 @@ internal data class TerminalPerformanceSnapshot(
                     100
                 )
         }
+
+
+    val averageInputWriteMicros: Long
+        get() =
+            if (
+                inputWrites <= 0L
+            ) {
+                0L
+            } else {
+                (
+                    totalInputWriteNanos /
+                        inputWrites
+                    ) /
+                    1_000L
+            }
+
+
+    fun compactSummary(): String {
+        val maxPublishMs =
+            maxPublishNanos /
+                1_000_000L
+
+        val maxInputMs =
+            maxInputWriteNanos /
+                1_000_000L
+
+        return buildString {
+            append(
+                "PTY "
+            )
+            append(
+                livePtyProcesses
+            )
+            append(
+                " • FD "
+            )
+            append(
+                livePtyDescriptors
+            )
+
+            append(
+                " • Cache %"
+            )
+            append(
+                snapshotReusePercent
+            )
+
+            append(
+                " • Render ort "
+            )
+            append(
+                averagePublishMicros
+            )
+            append(
+                "µs"
+            )
+
+            append(
+                " max "
+            )
+            append(
+                maxPublishMs
+            )
+            append(
+                "ms"
+            )
+
+            append(
+                " slow="
+            )
+            append(
+                slowPublishCalls
+            )
+
+            append(
+                " • Input ort "
+            )
+            append(
+                averageInputWriteMicros
+            )
+            append(
+                "µs"
+            )
+
+            append(
+                " max "
+            )
+            append(
+                maxInputMs
+            )
+            append(
+                "ms"
+            )
+
+            append(
+                " slow="
+            )
+            append(
+                slowInputWrites
+            )
+
+            append(
+                " • Denge hata="
+            )
+            append(
+                resourceBalanceErrors
+            )
+        }
+    }
 }
 
 
@@ -98,6 +212,21 @@ internal object TerminalPerformanceMetrics {
         AtomicLong(0L)
 
     private val maxPublishNanos =
+        AtomicLong(0L)
+
+    private val slowPublishCalls =
+        AtomicLong(0L)
+
+    private val inputWrites =
+        AtomicLong(0L)
+
+    private val totalInputWriteNanos =
+        AtomicLong(0L)
+
+    private val maxInputWriteNanos =
+        AtomicLong(0L)
+
+    private val slowInputWrites =
         AtomicLong(0L)
 
 
@@ -187,6 +316,44 @@ internal object TerminalPerformanceMetrics {
             maxPublishNanos,
             safeDuration
         )
+
+        if (
+            safeDuration >=
+                SLOW_PUBLISH_THRESHOLD_NANOS
+        ) {
+            slowPublishCalls
+                .incrementAndGet()
+        }
+    }
+
+
+    fun recordInputWrite(
+        durationNanos: Long
+    ) {
+        val safeDuration =
+            durationNanos
+                .coerceAtLeast(0L)
+
+        inputWrites
+            .incrementAndGet()
+
+        totalInputWriteNanos
+            .addAndGet(
+                safeDuration
+            )
+
+        updateMaximum(
+            maxInputWriteNanos,
+            safeDuration
+        )
+
+        if (
+            safeDuration >=
+                SLOW_INPUT_WRITE_THRESHOLD_NANOS
+        ) {
+            slowInputWrites
+                .incrementAndGet()
+        }
     }
 
 
@@ -227,7 +394,22 @@ internal object TerminalPerformanceMetrics {
                 totalPublishNanos.get(),
 
             maxPublishNanos =
-                maxPublishNanos.get()
+                maxPublishNanos.get(),
+
+            slowPublishCalls =
+                slowPublishCalls.get(),
+
+            inputWrites =
+                inputWrites.get(),
+
+            totalInputWriteNanos =
+                totalInputWriteNanos.get(),
+
+            maxInputWriteNanos =
+                maxInputWriteNanos.get(),
+
+            slowInputWrites =
+                slowInputWrites.get()
         )
 
 
@@ -247,6 +429,11 @@ internal object TerminalPerformanceMetrics {
         snapshotsReused.set(0L)
         totalPublishNanos.set(0L)
         maxPublishNanos.set(0L)
+        slowPublishCalls.set(0L)
+        inputWrites.set(0L)
+        totalInputWriteNanos.set(0L)
+        maxInputWriteNanos.set(0L)
+        slowInputWrites.set(0L)
     }
 
 
@@ -339,4 +526,14 @@ internal object TerminalPerformanceMetrics {
 
     private const val NATIVE_PTY_DESCRIPTOR_COUNT =
         3
+
+    /*
+     * These are diagnostic thresholds, not hard UI deadlines.
+     * They flag work that can contribute to visible terminal jank.
+     */
+    private const val SLOW_PUBLISH_THRESHOLD_NANOS =
+        16_000_000L
+
+    private const val SLOW_INPUT_WRITE_THRESHOLD_NANOS =
+        16_000_000L
 }

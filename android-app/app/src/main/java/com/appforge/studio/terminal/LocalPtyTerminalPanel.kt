@@ -529,7 +529,26 @@ internal object LocalPtySessionRegistry {
             }
                 ?: return
 
-        session.write(text)
+        if (
+            text.isEmpty()
+        ) {
+            return
+        }
+
+        val startedAtNanos =
+            System.nanoTime()
+
+        try {
+            session.write(
+                text
+            )
+        } finally {
+            TerminalPerformanceMetrics
+                .recordInputWrite(
+                    System.nanoTime() -
+                        startedAtNanos
+                )
+        }
     }
 
     suspend fun sendControlC(id: String) {
@@ -2243,6 +2262,16 @@ internal fun LocalPtyTerminalPanel(
                                             "echo 'dashboard.sh bulunamadı'; fi\r"
                                     )
                             }
+                        }
+
+                        PtyKey(
+                            "PERF",
+                            true
+                        ) {
+                            message =
+                                LocalPtySessionRegistry
+                                    .performanceSnapshot()
+                                    .compactSummary()
                         }
                     }
 

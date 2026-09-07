@@ -161,4 +161,66 @@ class TerminalPerformanceMetricsTest {
             snapshot.maxPublishNanos
         )
     }
+
+    @Test
+    fun recordsInputLatencyAndSlowOperations() {
+        TerminalPerformanceMetrics
+            .resetForTests()
+
+        TerminalPerformanceMetrics
+            .recordInputWrite(
+                500_000L
+            )
+
+        TerminalPerformanceMetrics
+            .recordInputWrite(
+                20_000_000L
+            )
+
+        TerminalPerformanceMetrics
+            .recordPublish(
+                snapshotBuildCount = 1,
+                snapshotReuseCount = 0,
+                durationNanos =
+                    18_000_000L
+            )
+
+        val snapshot =
+            TerminalPerformanceMetrics
+                .snapshot()
+
+        assertEquals(
+            2L,
+            snapshot.inputWrites
+        )
+
+        assertEquals(
+            10_250L,
+            snapshot.averageInputWriteMicros
+        )
+
+        assertEquals(
+            20_000_000L,
+            snapshot.maxInputWriteNanos
+        )
+
+        assertEquals(
+            1L,
+            snapshot.slowInputWrites
+        )
+
+        assertEquals(
+            1L,
+            snapshot.slowPublishCalls
+        )
+
+        assertTrue(
+            snapshot
+                .compactSummary()
+                .contains(
+                    "Cache %"
+                )
+        )
+    }
+
 }
