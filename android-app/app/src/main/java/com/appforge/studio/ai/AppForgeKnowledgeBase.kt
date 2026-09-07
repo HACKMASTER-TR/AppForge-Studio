@@ -1129,6 +1129,120 @@ object AppForgeKnowledgeBase {
                 )
             }
 
+        val gettingStartedArticles =
+            listOf(
+                HelpArticle(
+                    category =
+                        "Kullanım Rehberi",
+                    title =
+                        "AppForge Studio nasıl kullanılır?",
+                    text =
+                        "1. Ana ekrandan Hızlı Oluştur veya Gelişmiş Oluştur seç.\n" +
+                            "2. HTML, ZIP, web URL'si veya desteklenen kaynak projeni ekle.\n" +
+                            "3. Uygulama adı, package name, sürüm, ikon, görünüm, izinler ve gerekli WebView/Native özelliklerini ayarla.\n" +
+                            "4. Gelişmiş Builder kullanıyorsan Native Bridge, Firebase, Billing, AdMob, Deep Link ve imzalama seçeneklerini ihtiyacına göre yapılandır.\n" +
+                            "5. Önizleme ve preflight kontrollerinde gösterilen sorunları düzelt.\n" +
+                            "6. Test için APK; Google Play yayını için release imzalı AAB oluştur.\n" +
+                            "7. Projelerini Kütüphane ve Geçmiş bölümlerinden yeniden açabilir, önceki build sonuçlarını kontrol edebilirsin.\n\n" +
+                            "Google Play'e göndermeden önce package name, versionCode, target SDK, keystore ve Play Console beyanlarını son kez kontrol et.",
+                    keywords =
+                        setOf(
+                            "appforge",
+                            "studio",
+                            "nasıl kullanılır",
+                            "başlangıç",
+                            "hızlı oluştur",
+                            "gelişmiş oluştur",
+                            "builder",
+                            "apk",
+                            "aab",
+                            "play store"
+                        )
+                ),
+                HelpArticle(
+                    category =
+                        "Kullanım Rehberi",
+                    title =
+                        "AppForge Terminal nasıl kullanılır?",
+                    text =
+                        "1. Çalışmak istediğin projeyi seç ve Terminal bölümünü aç.\n" +
+                            "2. Terminal 1 mevcut oturumdur; + Oturum ile aynı proje için ek terminal açabilirsin.\n" +
+                            "3. Linux shell komutlarını doğrudan yaz ve Enter ile çalıştır.\n" +
+                            "4. ESC, TAB, CTRL+C, CTRL+L, CTRL+A, CTRL+E, CTRL+R, CTRL+U ve CTRL+W kısayollarını üstteki terminal tuşlarından kullanabilirsin. CTRL+C çalışan komutu durdurur.\n" +
+                            "5. Dosyalar sekmesi proje dosyalarını görüntüleme ve düzenleme; Git sekmesi repository işlemleri; Bağlantılar GitHub/Railway yetkilendirmesi; SSH güvenli uzak bağlantı; Araçlar ise runtime ve geliştirme araçları içindir.\n" +
+                            "6. SSH bağlantısında ilk bağlantı sırasında sunucu parmak izini doğrula.\n" +
+                            "7. KOPYA modu terminal çıktısını seçip kopyalamak, YAZ modu tekrar terminale yazmak için kullanılır.\n\n" +
+                            "Bilmediğin veya kaynağına güvenmediğin shell komutlarını çalıştırmadan önce içeriğini kontrol et.",
+                    keywords =
+                        setOf(
+                            "terminal",
+                            "shell",
+                            "linux",
+                            "komut",
+                            "dosyalar",
+                            "git",
+                            "github",
+                            "railway",
+                            "ssh",
+                            "araçlar",
+                            "ctrl c"
+                        )
+                ),
+                HelpArticle(
+                    category =
+                        "Kullanım Rehberi",
+                    title =
+                        "Excel Tools nasıl kullanılır?",
+                    text =
+                        "1. AppForge Excel Tools'u aç ve DOSYA SEÇ düğmesine dokun.\n" +
+                            "2. XLSX, XLSM veya CSV dosyanı seç. Desteklenen maksimum dosya boyutu 80 MB'dir.\n" +
+                            "3. XLSX/XLSM dosyalarında çalışma kitabı ve sayfa korumaları kaldırılmış düzenlenebilir yeni bir kopya hazırlanır. Orijinal dosyaya dokunulmaz.\n" +
+                            "4. Formüller ve biçimlendirme korunur; XLSM dosyalarında makrolar korunur. CSV için de ayrı bir kopya oluşturulur.\n" +
+                            "5. İşlem tamamlandığında DOSYAYI AÇ ile sonucu açabilirsin.\n" +
+                            "6. Önceki işlemler İşlem geçmişi bölümünde görüntülenebilir.\n\n" +
+                            "Excel Tools ve VideoForge ücretsiz planda ortak 5 kullanım hakkını paylaşır; PRO erişiminde kullanım sınırsızdır.",
+                    keywords =
+                        setOf(
+                            "excel",
+                            "excel tools",
+                            "xlsx",
+                            "xlsm",
+                            "csv",
+                            "makro",
+                            "koruma",
+                            "dosya",
+                            "80 mb"
+                        )
+                ),
+                HelpArticle(
+                    category =
+                        "Kullanım Rehberi",
+                    title =
+                        "VideoForge nasıl kullanılır?",
+                    text =
+                        "1. VideoForge'u aç ve VİDEO SEÇ ile telefonundaki videoyu seç.\n" +
+                            "2. Dublaj yapılacak hedef dili ve Hızlı, Dengeli veya Yüksek kalite seçeneğini belirle. Çoğu işlem için Dengeli önerilir.\n" +
+                            "3. İlk kullanımdaysa AI MODELLERİNİ HAZIRLA düğmesiyle gerekli yerel modelleri hazırla.\n" +
+                            "4. İstersen önce İLK 30 SANİYEYİ ÖNİZLE ile sonucu kontrol et.\n" +
+                            "5. DUBLAJ OLUŞTUR ile tam işlemi başlat. İlerleme Durum bölümünde gösterilir; tamamlandığında sonucu açabilir veya paylaşabilirsin.\n" +
+                            "6. Linkten video bölümüne doğrudan video dosyası bağlantısı girerek videoyu indirebilir veya dublaj işlemine gönderebilirsin. DRM, üyelik veya giriş koruması aşılmaz.\n" +
+                            "7. Gelişmiş Ayarlar'da kaynak dili, konuşmacı modu, SRT altyazı, arka plan sesi, zaman senkronizasyonu ve yarım kalan işlemi devam ettirme seçenekleri bulunur.\n" +
+                            "8. Oluşturulan sonuçlara İşlem geçmişi bölümünden tekrar ulaşabilirsin.",
+                    keywords =
+                        setOf(
+                            "videoforge",
+                            "video",
+                            "dublaj",
+                            "altyazı",
+                            "srt",
+                            "ai model",
+                            "hedef dil",
+                            "önizleme",
+                            "video indir"
+                        )
+                )
+            )
+
         val languageSupport =
             HelpArticle(
                 category =
@@ -1166,6 +1280,7 @@ object AppForgeKnowledgeBase {
             listOf(
                 languageSupport
             ) +
+                gettingStartedArticles +
                 faqArticles +
                 chunkArticles
             )

@@ -22345,7 +22345,7 @@ private fun AppForgeHelpCenterScreen(
                         )
 
                         Text(
-                            "APK, AAB, keystore, Billing, Media3, Firebase, Native Bridge, Play Store, Python veya başka bir AppForge özelliğini yaz.",
+                            "AppForge, Terminal, Excel Tools, VideoForge, APK, AAB, keystore, Billing, Firebase, Play Store veya başka bir özelliği yaz.",
                             color =
                                 TextSecondary,
                             lineHeight =
@@ -22655,7 +22655,7 @@ private fun SettingsHubScreen(
         SettingsEntry(
             "❓",
             t(languageCode, "how_to_use"),
-            "Arama, SSS ve AppForge kullanım rehberi",
+            "AppForge, Terminal, Excel Tools ve VideoForge kullanım rehberi",
             onOpenHowTo
         ),
         SettingsEntry(
