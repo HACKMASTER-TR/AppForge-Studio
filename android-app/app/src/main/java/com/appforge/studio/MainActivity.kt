@@ -105,6 +105,7 @@ import com.hackmaster.videoforge.AppVisibility
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -1074,94 +1075,132 @@ private fun AppForgeApp() {
      * Başlatıldığı andan itibaren canlı sayar.
      * Başarı / hata / iptal durumunda son değerde kalır.
      */
-    LaunchedEffect(
-        buildTimerRunning,
-        buildStartedAtMs
-    ) {
-        while (
-            buildTimerRunning
-        ) {
-            val startedAt =
+    /*
+     * Build runtime observers intentionally use snapshotFlow instead
+     * of LaunchedEffect state keys.
+     *
+     * status/progress can change very frequently during a build.
+     * Reading them as LaunchedEffect keys subscribed the whole
+     * AppForgeApp composition scope to those updates.
+     *
+     * snapshotFlow observes the same Compose states from the coroutine
+     * snapshot system without making them root composition reads.
+     */
+    LaunchedEffect(Unit) {
+        snapshotFlow {
+            buildTimerRunning to
                 buildStartedAtMs
-                    ?: break
-
-            buildElapsedMs =
-                (
-                    System.currentTimeMillis() -
+        }
+            .collectLatest {
+                    (
+                        running,
                         startedAt
-                ).coerceAtLeast(
-                    0L
-                )
+                    ) ->
 
-            delay(
-                BUILD_TIMER_UI_TICK_MS
+                if (
+                    !running ||
+                    startedAt ==
+                        null
+                ) {
+                    return@collectLatest
+                }
+
+                while (true) {
+                    buildElapsedMs =
+                        (
+                            System.currentTimeMillis() -
+                                startedAt
+                            )
+                            .coerceAtLeast(
+                                0L
+                            )
+
+                    delay(
+                        BUILD_TIMER_UI_TICK_MS
+                    )
+                }
+            }
+    }
+
+
+    LaunchedEffect(Unit) {
+        snapshotFlow {
+            Triple(
+                status,
+                progress,
+                buildTimerRunning
             )
         }
-    }
-
-    LaunchedEffect(
-        status,
-        progress,
-        buildTimerRunning
-    ) {
-        if (
-            !buildTimerRunning
-        ) {
-            return@LaunchedEffect
-        }
-
-        val normalizedStatus =
-            status
-                .trim()
-                .lowercase()
-
-        val terminal =
-            progress >= 100 ||
-                normalizedStatus in
-                    setOf(
-                        "success",
-                        "succeeded",
-                        "completed",
-                        "done",
-                        "failed",
-                        "cancelled",
-                        "canceled"
-                    ) ||
-                normalizedStatus
-                    .startsWith(
-                        "hata"
-                    ) ||
-                normalizedStatus
-                    .contains(
-                        "tamamlandı"
-                    ) ||
-                normalizedStatus
-                    .contains(
-                        "iptal"
-                    )
-
-        if (
-            terminal
-        ) {
-            val startedAt =
-                buildStartedAtMs
-
-            if (
-                startedAt != null
-            ) {
-                buildElapsedMs =
+            .collectLatest {
                     (
-                        System.currentTimeMillis() -
-                            startedAt
-                    ).coerceAtLeast(
-                        0L
-                    )
-            }
+                        statusValue,
+                        progressValue,
+                        timerRunning
+                    ) ->
 
-            buildTimerRunning =
-                false
-        }
+                if (
+                    !timerRunning
+                ) {
+                    return@collectLatest
+                }
+
+                val normalizedStatus =
+                    statusValue
+                        .trim()
+                        .lowercase()
+
+                val terminal =
+                    progressValue >=
+                        100 ||
+                        normalizedStatus in
+                            setOf(
+                                "success",
+                                "succeeded",
+                                "completed",
+                                "done",
+                                "failed",
+                                "cancelled",
+                                "canceled"
+                            ) ||
+                        normalizedStatus
+                            .startsWith(
+                                "hata"
+                            ) ||
+                        normalizedStatus
+                            .contains(
+                                "tamamlandı"
+                            ) ||
+                        normalizedStatus
+                            .contains(
+                                "iptal"
+                            )
+
+                if (
+                    terminal
+                ) {
+                    val startedAt =
+                        buildStartedAtMs
+
+                    if (
+                        startedAt !=
+                            null
+                    ) {
+                        buildElapsedMs =
+                            (
+                                System.currentTimeMillis() -
+                                    startedAt
+                                )
+                                .coerceAtLeast(
+                                    0L
+                                )
+                    }
+
+                    buildTimerRunning =
+                        false
+                }
+            }
     }
+
 
     // Yalnız daha önce açıkça kaydedilmiş projeleri debounce ile güncelle.
     // Proje açılışı gerçek değişiklik sayılmaz. İlk farklı taslak Free planda
