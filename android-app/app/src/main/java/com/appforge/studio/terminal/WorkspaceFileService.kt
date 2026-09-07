@@ -56,7 +56,29 @@ data class WorkspaceEntry(
     val modifiedAt: Long
 )
 
+
+data class WorkspacePage(
+    val entries: List<WorkspaceEntry>,
+    val totalCount: Int,
+    val pageIndex: Int,
+    val pageSize: Int,
+    val pageCount: Int
+) {
+    val hasPrevious: Boolean
+        get() =
+            pageIndex > 0
+
+    val hasNext: Boolean
+        get() =
+            pageIndex + 1 <
+                pageCount
+}
+
+
 object WorkspaceFileService {
+    const val DEFAULT_PAGE_SIZE =
+        200
+
     private const val MAX_EDITOR_BYTES =
         2L * 1_024L * 1_024L
 
@@ -103,11 +125,17 @@ object WorkspaceFileService {
             "gitignore"
         )
 
+    /*
+     * Legacy full-list API is retained for compatibility with any
+     * existing callers. The Files UI uses listPage() below.
+     */
     suspend fun list(
         root: File,
         directory: File
     ): List<WorkspaceEntry> =
-        withContext(Dispatchers.IO) {
+        withContext(
+            Dispatchers.IO
+        ) {
             val safeRoot =
                 root.canonicalFile
 
@@ -117,40 +145,141 @@ object WorkspaceFileService {
                     directory
                 )
 
-            safeDirectory
-                .listFiles()
-                .orEmpty()
-                .filterNot {
-                    it.name ==
-                        ".appforge-trash"
-                }
-                .sortedWith(
-                    compareBy<File> {
-                        !it.isDirectory
-                    }.thenBy {
-                        it.name.lowercase()
-                    }
-                )
+            sortedChildren(
+                safeDirectory
+            )
                 .map { file ->
-                    WorkspaceEntry(
-                        file = file,
-                        relativePath =
-                            file
-                                .relativeTo(safeRoot)
-                                .invariantSeparatorsPath,
-                        isDirectory =
-                            file.isDirectory,
-                        sizeBytes =
-                            if (file.isFile) {
-                                file.length()
-                            } else {
-                                0L
-                            },
-                        modifiedAt =
-                            file.lastModified()
+                    workspaceEntry(
+                        safeRoot,
+                        file
                     )
                 }
         }
+
+
+    /*
+     * Large folders publish only one page of WorkspaceEntry objects
+     * into Compose state.
+     *
+     * Directory ordering remains exactly the same:
+     * directories first, then case-insensitive name order.
+     */
+    suspend fun listPage(
+        root: File,
+        directory: File,
+        pageIndex: Int,
+        pageSize: Int =
+            DEFAULT_PAGE_SIZE
+    ): WorkspacePage =
+        withContext(
+            Dispatchers.IO
+        ) {
+            val safeRoot =
+                root.canonicalFile
+
+            val safeDirectory =
+                requireInside(
+                    safeRoot,
+                    directory
+                )
+
+            val children =
+                sortedChildren(
+                    safeDirectory
+                )
+
+            val window =
+                WorkspacePagination
+                    .window(
+                        totalCount =
+                            children.size,
+                        requestedPage =
+                            pageIndex,
+                        requestedPageSize =
+                            pageSize
+                    )
+
+            val pageEntries =
+                if (
+                    window.fromIndex >=
+                        window.toIndex
+                ) {
+                    emptyList()
+                } else {
+                    children
+                        .subList(
+                            window.fromIndex,
+                            window.toIndex
+                        )
+                        .map { file ->
+                            workspaceEntry(
+                                safeRoot,
+                                file
+                            )
+                        }
+                }
+
+            WorkspacePage(
+                entries =
+                    pageEntries,
+                totalCount =
+                    children.size,
+                pageIndex =
+                    window.pageIndex,
+                pageSize =
+                    window.pageSize,
+                pageCount =
+                    window.pageCount
+            )
+        }
+
+
+    private fun sortedChildren(
+        directory: File
+    ): List<File> =
+        directory
+            .listFiles()
+            .orEmpty()
+            .asSequence()
+            .filterNot {
+                it.name ==
+                    ".appforge-trash"
+            }
+            .sortedWith(
+                compareBy<File> {
+                    !it.isDirectory
+                }.thenBy {
+                    it.name.lowercase()
+                }
+            )
+            .toList()
+
+
+    private fun workspaceEntry(
+        root: File,
+        file: File
+    ): WorkspaceEntry =
+        WorkspaceEntry(
+            file =
+                file,
+            relativePath =
+                file
+                    .relativeTo(root)
+                    .invariantSeparatorsPath,
+            isDirectory =
+                file.isDirectory,
+            sizeBytes =
+                if (
+                    file.isFile
+                ) {
+                    file.length()
+                } else {
+                    0L
+                },
+            modifiedAt =
+                file.lastModified()
+        )
+
 
     suspend fun readText(
         root: File,

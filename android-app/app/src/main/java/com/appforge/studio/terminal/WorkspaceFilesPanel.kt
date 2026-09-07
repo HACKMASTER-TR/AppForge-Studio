@@ -71,6 +71,27 @@ internal fun WorkspaceFilesPanel(
             )
         }
 
+    var pageIndex by
+        remember(
+            workspace.absolutePath
+        ) {
+            mutableIntStateOf(0)
+        }
+
+    var totalEntryCount by
+        remember(
+            workspace.absolutePath
+        ) {
+            mutableIntStateOf(0)
+        }
+
+    var pageCount by
+        remember(
+            workspace.absolutePath
+        ) {
+            mutableIntStateOf(0)
+        }
+
     var refreshKey by
         remember(workspace.absolutePath) {
             mutableIntStateOf(0)
@@ -120,6 +141,7 @@ internal fun WorkspaceFilesPanel(
     LaunchedEffect(
         workspace.absolutePath,
         currentDirectory.absolutePath,
+        pageIndex,
         refreshKey
     ) {
         loading =
@@ -129,15 +151,45 @@ internal fun WorkspaceFilesPanel(
             ""
 
         runCatching {
-            WorkspaceFileService.list(
-                workspace,
-                currentDirectory
-            )
-        }.onSuccess {
-            entries = it
+            WorkspaceFileService
+                .listPage(
+                    root =
+                        workspace,
+                    directory =
+                        currentDirectory,
+                    pageIndex =
+                        pageIndex
+                )
+        }.onSuccess { page ->
+            entries =
+                page.entries
+
+            totalEntryCount =
+                page.totalCount
+
+            pageCount =
+                page.pageCount
+
+            /*
+             * Deleting the last item on the final page can reduce
+             * pageCount. listPage() safely clamps the requested page.
+             */
+            if (
+                pageIndex !=
+                    page.pageIndex
+            ) {
+                pageIndex =
+                    page.pageIndex
+            }
         }.onFailure {
             entries =
                 emptyList()
+
+            totalEntryCount =
+                0
+
+            pageCount =
+                0
 
             message =
                 it.message
@@ -324,6 +376,9 @@ internal fun WorkspaceFilesPanel(
                     ) {
                         currentDirectory =
                             parent
+
+                        pageIndex =
+                            0
                     }
                 },
                 enabled =
@@ -420,6 +475,105 @@ internal fun WorkspaceFilesPanel(
             }
         }
 
+        if (
+            !loading &&
+            totalEntryCount > 0
+        ) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth(),
+                verticalAlignment =
+                    Alignment.CenterVertically,
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        8.dp
+                    )
+            ) {
+                val firstVisible =
+                    (
+                        pageIndex *
+                            WorkspaceFileService
+                                .DEFAULT_PAGE_SIZE
+                        ) +
+                        1
+
+                val lastVisible =
+                    minOf(
+                        totalEntryCount,
+                        firstVisible +
+                            entries.size -
+                            1
+                    )
+
+                Text(
+                    "$firstVisible–$lastVisible / $totalEntryCount",
+                    modifier =
+                        Modifier.weight(1f),
+                    color =
+                        TerminalMuted,
+                    fontFamily =
+                        FontFamily.Monospace,
+                    fontSize =
+                        10.sp
+                )
+
+                if (
+                    pageCount > 1
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            pageIndex =
+                                (
+                                    pageIndex -
+                                        1
+                                    )
+                                    .coerceAtLeast(
+                                        0
+                                    )
+                        },
+                        enabled =
+                            pageIndex > 0
+                    ) {
+                        Text(
+                            "‹ Önceki"
+                        )
+                    }
+
+                    Text(
+                        "${pageIndex + 1}/$pageCount",
+                        color =
+                            TerminalPrimary,
+                        fontFamily =
+                            FontFamily.Monospace,
+                        fontSize =
+                            10.sp
+                    )
+
+                    OutlinedButton(
+                        onClick = {
+                            pageIndex =
+                                (
+                                    pageIndex +
+                                        1
+                                    )
+                                    .coerceAtMost(
+                                        pageCount -
+                                            1
+                                    )
+                        },
+                        enabled =
+                            pageIndex + 1 <
+                                pageCount
+                    ) {
+                        Text(
+                            "Sonraki ›"
+                        )
+                    }
+                }
+            }
+        }
+
         when {
             loading ->
                 Box(
@@ -487,6 +641,9 @@ internal fun WorkspaceFilesPanel(
                                 if (entry.isDirectory) {
                                     currentDirectory =
                                         entry.file
+
+                                    pageIndex =
+                                        0
                                 } else if (
                                     entry.file.extension
                                         .equals(
