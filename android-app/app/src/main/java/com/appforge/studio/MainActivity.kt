@@ -4552,7 +4552,12 @@ private fun AppForgeApp() {
                     )
 
 
-                AppScreen.AI_ASSISTANT -> LocalAiAssistantScreen(
+                AppScreen.AI_ASSISTANT ->
+                    BuildRuntimeCompositionBoundary(
+                        runtime =
+                            buildRuntime
+                    ) {
+                        LocalAiAssistantScreen(
                     draft =
                         draft,
                     onDraftChange = {
@@ -4727,6 +4732,8 @@ private fun AppForgeApp() {
                         returnFromWorkspace()
                     }
                 )
+                    }
+
 
                 AppScreen.TEST_LAB -> TestLabScreen(
                     serverUrl =
@@ -5382,6 +5389,27 @@ private fun AppForgeApp() {
                 }
             }
         }
+    }
+}
+
+
+/*
+ * Child composition boundary for screens that need live build
+ * information but should not subscribe AppForgeApp itself to each
+ * high-frequency BuildRuntimeState field.
+ *
+ * The stable runtime object is used as the key. State values remain
+ * read by the content below this boundary.
+ */
+@Composable
+private fun BuildRuntimeCompositionBoundary(
+    runtime: BuildRuntimeState,
+    content: @Composable () -> Unit
+) {
+    key(
+        runtime
+    ) {
+        content()
     }
 }
 
