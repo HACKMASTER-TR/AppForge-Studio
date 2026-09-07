@@ -10,6 +10,7 @@ import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.media.MediaMuxer
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import java.io.File
 import java.nio.ByteBuffer
@@ -449,6 +450,12 @@ object AudioMedia {
     }
 
     fun saveVideoToMediaStore(context: Context, source: File, displayName: String): Uri {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            error(
+                "VideoForge çıktı kaydetme Android 10 veya üzerini gerektirir."
+            )
+        }
+
         val values = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, displayName)
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
@@ -472,6 +479,12 @@ object AudioMedia {
     }
 
     fun saveSrtToDownloads(context: Context, text: String, displayName: String): Uri {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            error(
+                "VideoForge altyazı kaydetme Android 10 veya üzerini gerektirir."
+            )
+        }
+
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, displayName)
             put(MediaStore.Downloads.MIME_TYPE, "application/x-subrip")
