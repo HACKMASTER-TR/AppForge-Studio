@@ -35,58 +35,22 @@ internal object AdvancedGitService {
         workspace: File
     ): AdvancedGitSnapshot =
         withRepository(workspace) { git, repository ->
-            val status =
-                git.status()
-                    .call()
+            val workingTree =
+                GitWorkingTreeStatusCache
+                    .getOrLoad(
+                        workspace =
+                            workspace,
+                        git =
+                            git,
+                        repository =
+                            repository
+                    )
 
-            AdvancedGitSnapshot(
-                branch =
-                    runCatching {
-                        repository.branch
-                    }.getOrDefault("HEAD"),
-                branches =
-                    git.branchList()
-                        .call()
-                        .map {
-                            Repository.shortenRefName(
-                                it.name
-                            )
-                        }
-                        .distinct()
-                        .sorted(),
-                staged =
-                    (
-                        status.added +
-                            status.changed +
-                            status.removed
-                        )
-                        .toList()
-                        .distinct()
-                        .sorted(),
-                unstaged =
-                    (
-                        status.modified +
-                            status.missing +
-                            status.untracked
-                        )
-                        .toList()
-                        .distinct()
-                        .sorted(),
-                conflicts =
-                    status.conflicting
-                        .toList()
-                        .distinct()
-                        .sorted(),
-                originUrl =
-                    repository.config
-                        .getString(
-                            "remote",
-                            "origin",
-                            "url"
-                        )
-                        ?.takeIf {
-                            it.isNotBlank()
-                        }
+            buildSnapshot(
+                git =
+                    git,
+                workingTree =
+                    workingTree
             )
         }
 
@@ -315,60 +279,74 @@ internal object AdvancedGitService {
         val repository =
             git.repository
 
-        val status =
-            git.status()
-                .call()
+        val workingTree =
+            GitWorkingTreeStatusCache
+                .refresh(
+                    workspace =
+                        workspace,
+                    git =
+                        git,
+                    repository =
+                        repository
+                )
 
-        return AdvancedGitSnapshot(
+        return buildSnapshot(
+            git =
+                git,
+            workingTree =
+                workingTree
+        )
+    }
+
+
+    private fun buildSnapshot(
+        git: Git,
+        workingTree:
+            GitWorkingTreeStatusSnapshot
+    ): AdvancedGitSnapshot =
+        AdvancedGitSnapshot(
             branch =
-                runCatching {
-                    repository.branch
-                }.getOrDefault("HEAD"),
+                workingTree.branch,
+
             branches =
                 git.branchList()
                     .call()
                     .map {
-                        Repository.shortenRefName(
-                            it.name
-                        )
+                        Repository
+                            .shortenRefName(
+                                it.name
+                            )
                     }
                     .distinct()
                     .sorted(),
+
             staged =
                 (
-                    status.added +
-                        status.changed +
-                        status.removed
+                    workingTree.added +
+                        workingTree.changed +
+                        workingTree.removed
                     )
-                    .toList()
                     .distinct()
                     .sorted(),
+
             unstaged =
                 (
-                    status.modified +
-                        status.missing +
-                        status.untracked
+                    workingTree.modified +
+                        workingTree.missing +
+                        workingTree.untracked
                     )
-                    .toList()
                     .distinct()
                     .sorted(),
+
             conflicts =
-                status.conflicting
-                    .toList()
+                workingTree.conflicting
                     .distinct()
                     .sorted(),
+
             originUrl =
-                repository.config
-                    .getString(
-                        "remote",
-                        "origin",
-                        "url"
-                    )
-                    ?.takeIf {
-                        it.isNotBlank()
-                    }
+                workingTree.originUrl
         )
-    }
+
 
     private suspend fun <T> withRepository(
         workspace: File,

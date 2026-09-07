@@ -3,7 +3,6 @@ package com.appforge.studio.terminal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.api.Status
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.eclipse.jgit.transport.CredentialsProvider
@@ -95,11 +94,17 @@ object GitWorkspaceService {
     ): String =
         withRepository(workspace) { git, repository ->
             val status =
-                git.status()
-                    .call()
+                GitWorkingTreeStatusCache
+                    .getOrLoad(
+                        workspace =
+                            workspace,
+                        git =
+                            git,
+                        repository =
+                            repository
+                    )
 
             buildStatusText(
-                repository,
                 status
             )
         }
@@ -111,12 +116,22 @@ object GitWorkspaceService {
             val safeWorkspace =
                 requireWorkspace(workspace)
 
-            Git.init()
-                .setDirectory(safeWorkspace)
-                .call()
-                .use { git ->
-                    "Git deposu hazır: ${git.repository.directory.absolutePath}"
-                }
+            val result =
+                Git.init()
+                    .setDirectory(
+                        safeWorkspace
+                    )
+                    .call()
+                    .use { git ->
+                        "Git deposu hazır: ${git.repository.directory.absolutePath}"
+                    }
+
+            GitWorkingTreeStatusCache
+                .invalidate(
+                    safeWorkspace
+                )
+
+            result
         }
 
     suspend fun stageAll(
@@ -131,6 +146,11 @@ object GitWorkspaceService {
                 .setUpdate(true)
                 .addFilepattern(".")
                 .call()
+
+            GitWorkingTreeStatusCache
+                .invalidate(
+                    workspace
+                )
 
             "Tüm değişiklikler hazırlama alanına eklendi."
         }
@@ -158,6 +178,11 @@ object GitWorkspaceService {
                         }
                     )
                     .call()
+
+            GitWorkingTreeStatusCache
+                .invalidate(
+                    workspace
+                )
 
             "Commit oluşturuldu: ${commit.name.take(8)} • ${commit.shortMessage}"
         }
@@ -233,6 +258,11 @@ object GitWorkspaceService {
                     .call()
             }
 
+            GitWorkingTreeStatusCache
+                .invalidate(
+                    workspace
+                )
+
             "origin ayarlandı: $cleanUrl"
         }
 
@@ -254,6 +284,11 @@ object GitWorkspaceService {
 
             val result =
                 command.call()
+
+            GitWorkingTreeStatusCache
+                .invalidate(
+                    workspace
+                )
 
             val status =
                 result
@@ -452,59 +487,82 @@ object GitWorkspaceService {
         }
 
     private fun buildStatusText(
-        repository: Repository,
-        status: Status
+        status:
+            GitWorkingTreeStatusSnapshot
     ): String {
-        val branch =
-            runCatching {
-                repository.branch
-            }.getOrDefault("HEAD")
-
         val changes =
             buildList {
                 status.added.forEach {
-                    add("A  $it")
+                    add(
+                        "A  $it"
+                    )
                 }
 
                 status.changed.forEach {
-                    add("M  $it")
+                    add(
+                        "M  $it"
+                    )
                 }
 
                 status.modified.forEach {
-                    add(" M $it")
+                    add(
+                        " M $it"
+                    )
                 }
 
                 status.removed.forEach {
-                    add("D  $it")
+                    add(
+                        "D  $it"
+                    )
                 }
 
                 status.missing.forEach {
-                    add(" D $it")
+                    add(
+                        " D $it"
+                    )
                 }
 
                 status.untracked.forEach {
-                    add("?? $it")
+                    add(
+                        "?? $it"
+                    )
                 }
 
                 status.conflicting.forEach {
-                    add("UU $it")
+                    add(
+                        "UU $it"
+                    )
                 }
-            }.distinct()
+            }
+                .distinct()
 
         return buildString {
-            append("Dal: ")
-            append(branch)
-            append('\n')
+            append(
+                "Dal: "
+            )
+            append(
+                status.branch
+            )
+            append(
+                '\n'
+            )
 
-            if (changes.isEmpty()) {
-                append("Çalışma alanı temiz.")
+            if (
+                changes.isEmpty()
+            ) {
+                append(
+                    "Çalışma alanı temiz."
+                )
             } else {
                 append(
-                    changes.joinToString("\n")
+                    changes.joinToString(
+                        "\n"
+                    )
                 )
             }
         }
     }
+
 
     private fun originUrl(
         repository: Repository
