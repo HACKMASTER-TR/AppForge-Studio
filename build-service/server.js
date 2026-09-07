@@ -510,6 +510,80 @@ function mailDeliveryConfigured() {
   );
 }
 
+/*
+ * Legacy APK login is an explicit per-account ADMIN permission.
+ *
+ * Security rules:
+ * - ADMIN accounts can never use this bypass.
+ * - A present device id must always be valid.
+ * - Only a completely missing device id can use the exception.
+ * - Password / active-account / 2FA checks remain unchanged.
+ */
+async function accountAllowsLegacyDeviceLogin(
+  userId
+) {
+  const result =
+    await query(
+      `SELECT
+         role,
+         is_active AS "isActive",
+         allow_legacy_device_login AS "allowLegacyDeviceLogin"
+       FROM appforge_users
+       WHERE id = $1
+       LIMIT 1`,
+      [userId]
+    );
+
+  const account =
+    result.rows[0];
+
+  return Boolean(
+    account &&
+    account.isActive === true &&
+    account.role !== "admin" &&
+    account.allowLegacyDeviceLogin === true
+  );
+}
+
+
+async function resolveLoginDeviceId(
+  req,
+  userId
+) {
+  const rawDeviceId =
+    String(
+      req.get(
+        "X-AppForge-Device-ID"
+      ) || ""
+    ).trim();
+
+  /*
+   * Header varsa normal güvenlik doğrulaması her zaman uygulanır.
+   * Böylece hatalı / sahte bir değer legacy iznine düşemez.
+   */
+  if (rawDeviceId) {
+    return requestDeviceId(
+      req
+    );
+  }
+
+  if (
+    await accountAllowsLegacyDeviceLogin(
+      userId
+    )
+  ) {
+    return null;
+  }
+
+  /*
+   * Normal hesaplarda mevcut DEVICE_ID_REQUIRED davranışı korunur.
+   */
+  return requestDeviceId(
+    req
+  );
+}
+
+
 // -----------------------------------------------------------------------------
 // Admin operations / production status
 // -----------------------------------------------------------------------------
@@ -791,6 +865,7 @@ app.get(
              u.display_name AS "displayName",
              u.role,
              u.is_active AS "isActive",
+             u.allow_legacy_device_login AS "allowLegacyDeviceLogin",
              u.created_at AS "createdAt",
 
              CASE
@@ -1155,6 +1230,115 @@ app.post(
           Boolean(
             entitlement?.active
           )
+      });
+
+    } catch (error) {
+      res
+        .status(
+          Number(
+            error?.statusCode ||
+            500
+          )
+        )
+        .json({
+          error:
+            String(
+              error?.message ||
+              error
+            )
+        });
+    }
+  }
+);
+
+
+app.post(
+  "/api/admin/users/:userId/legacy-device-login",
+  authRequired,
+  adminRequired,
+  async (req, res) => {
+    try {
+      const userId =
+        String(
+          req.params.userId ||
+          ""
+        ).trim();
+
+      const enabled =
+        req.body?.enabled ===
+        true;
+
+      const result =
+        await query(
+          `SELECT
+             id,
+             email,
+             role,
+             is_active AS "isActive"
+           FROM appforge_users
+           WHERE id = $1
+           LIMIT 1`,
+          [
+            userId
+          ]
+        );
+
+      const target =
+        result.rows[0];
+
+      if (
+        !target ||
+        target.isActive !== true
+      ) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Hesap bulunamadı."
+          });
+      }
+
+      /*
+       * Yönetici hesaplarında cihaz korumasının zayıflatılmasına
+       * izin verilmez.
+       */
+      if (
+        target.role ===
+          "admin" &&
+        enabled
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "ADMIN hesaplarında eski APK cihaz muafiyeti açılamaz."
+          });
+      }
+
+      await query(
+        `UPDATE appforge_users
+         SET
+           allow_legacy_device_login = $2,
+           updated_at = NOW()
+         WHERE id = $1`,
+        [
+          target.id,
+          enabled
+        ]
+      );
+
+      res.json({
+        ok:
+          true,
+
+        id:
+          target.id,
+
+        email:
+          target.email,
+
+        allowLegacyDeviceLogin:
+          enabled
       });
 
     } catch (error) {
@@ -1568,7 +1752,10 @@ app.post(
         );
 
       const deviceId =
-        requestDeviceId(req);
+        await resolveLoginDeviceId(
+          req,
+          user.id
+        );
 
       if (
         user.twoFactorEnabled
@@ -1583,17 +1770,24 @@ app.post(
         });
       }
 
-      await bindAccountDevice(
-        user.id,
-        deviceId
-      );
+      if (deviceId) {
+        await bindAccountDevice(
+          user.id,
+          deviceId
+        );
+      }
 
       res.json({
         user,
         token:
           issueAccessToken(
             user,
-            { deviceBound: true }
+            {
+              deviceBound:
+                Boolean(
+                  deviceId
+                )
+            }
           )
       });
     } catch (error) {
@@ -1640,11 +1834,19 @@ app.post(
           });
       }
 
-      await bindAccountDevice(
-        payload.sub,
+      const deviceId =
         payload.deviceId ||
-          requestDeviceId(req)
-      );
+        await resolveLoginDeviceId(
+          req,
+          payload.sub
+        );
+
+      if (deviceId) {
+        await bindAccountDevice(
+          payload.sub,
+          deviceId
+        );
+      }
 
       const result =
         await query(
@@ -1685,7 +1887,12 @@ app.post(
         token:
           issueAccessToken(
             user,
-            { deviceBound: true }
+            {
+              deviceBound:
+                Boolean(
+                  deviceId
+                )
+            }
           )
       });
     } catch (error) {

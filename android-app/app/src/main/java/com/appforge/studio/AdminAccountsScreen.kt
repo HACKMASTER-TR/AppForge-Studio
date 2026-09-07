@@ -49,7 +49,8 @@ private data class ManagedAppForgeAccount(
     val proSource: String?,
     val freeProjectUsed: Int,
     val freeProjectLimit: Int,
-    val customFreeProjectLimit: Int?
+    val customFreeProjectLimit: Int?,
+    val allowLegacyDeviceLogin: Boolean
 )
 
 
@@ -253,6 +254,62 @@ fun AdminAccountsScreen(
             }
         }
     }
+
+    fun toggleLegacyDeviceLogin(
+        account: ManagedAppForgeAccount
+    ) {
+        if (busy) return
+
+        if (
+            account.role ==
+                "admin"
+        ) {
+            message =
+                "ADMIN hesaplarında eski APK girişi açılamaz."
+            return
+        }
+
+        busy =
+            true
+
+        scope.launch {
+            try {
+                val enabled =
+                    !account
+                        .allowLegacyDeviceLogin
+
+                withContext(
+                    Dispatchers.IO
+                ) {
+                    api.setLegacyDeviceLogin(
+                        account.id,
+                        enabled
+                    )
+                }
+
+                message =
+                    if (enabled) {
+                        "${account.email} → Eski APK girişi AÇIK"
+                    } else {
+                        "${account.email} → Eski APK girişi KAPALI"
+                    }
+
+                refresh()
+
+            } catch (
+                error: Throwable
+            ) {
+                message =
+                    error.message
+                        .orEmpty()
+
+            } finally {
+                busy =
+                    false
+            }
+        }
+    }
+
 
     fun updateProjectLimit(
         account: ManagedAppForgeAccount,
@@ -597,6 +654,56 @@ fun AdminAccountsScreen(
                             "admin"
                     ) {
                         Text(
+                            if (
+                                account.allowLegacyDeviceLogin
+                            ) {
+                                "Eski APK girişi: AÇIK"
+                            } else {
+                                "Eski APK girişi: KAPALI"
+                            },
+                            style =
+                                MaterialTheme
+                                    .typography
+                                    .bodyMedium
+                        )
+
+                        Text(
+                            if (
+                                account.allowLegacyDeviceLogin
+                            ) {
+                                "Cihaz kimliği göndermeyen eski AppForge sürümleri bu hesaba giriş yapabilir. Parola ve 2FA kontrolleri devam eder."
+                            } else {
+                                "Eski AppForge sürümleri için cihaz kimliği zorunludur."
+                            },
+                            style =
+                                MaterialTheme
+                                    .typography
+                                    .bodySmall
+                        )
+
+                        OutlinedButton(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            enabled =
+                                !busy,
+                            onClick = {
+                                toggleLegacyDeviceLogin(
+                                    account
+                                )
+                            }
+                        ) {
+                            Text(
+                                if (
+                                    account.allowLegacyDeviceLogin
+                                ) {
+                                    "ESKİ APK GİRİŞİNİ KAPAT"
+                                } else {
+                                    "ESKİ APK GİRİŞİNE İZİN VER"
+                                }
+                            )
+                        }
+
+                        Text(
                             "FREE proje hakkı: ${account.freeProjectUsed} / ${account.freeProjectLimit}",
                             style =
                                 MaterialTheme
@@ -844,7 +951,13 @@ private class AdminAccountsApi(
                                     .takeIf {
                                         it > 0
                                     }
-                            }
+                            },
+
+                        allowLegacyDeviceLogin =
+                            item.optBoolean(
+                                "allowLegacyDeviceLogin",
+                                false
+                            )
                     )
                 )
             }
@@ -893,6 +1006,22 @@ private class AdminAccountsApi(
                 .put(
                     "active",
                     active
+                )
+        )
+    }
+
+
+    fun setLegacyDeviceLogin(
+        userId: String,
+        enabled: Boolean
+    ) {
+        request(
+            "/api/admin/users/$userId/legacy-device-login",
+            "POST",
+            JSONObject()
+                .put(
+                    "enabled",
+                    enabled
                 )
         )
     }
