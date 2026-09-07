@@ -165,7 +165,8 @@ internal object LocalPtySessionRegistry {
         var columns: Int,
         var lastActivatedAt: Long,
         var restored: Boolean,
-        var outputRevision: Long
+        var outputRevision: Long,
+        var pendingOutputChars: Long
     )
 
     private val lock = Any()
@@ -348,7 +349,8 @@ internal object LocalPtySessionRegistry {
                     lastActivatedAt =
                         System.currentTimeMillis(),
                     restored = false,
-                    outputRevision = 0L
+                    outputRevision = 0L,
+                    pendingOutputChars = 0L
                 )
 
             persistLocked()
@@ -451,6 +453,16 @@ internal object LocalPtySessionRegistry {
                             )
                         )
                         current.outputRevision += 1L
+
+                        current.pendingOutputChars =
+                            TerminalOutputBackpressure
+                                .accumulatePendingChars(
+                                    current =
+                                        current.pendingOutputChars,
+                                    additional =
+                                        chunk.length
+                                )
+
                         current.session
                             .currentWorkingDirectory()
                             ?.takeIf {
@@ -913,7 +925,8 @@ internal object LocalPtySessionRegistry {
                         item.optLong("lastActive", 0L)
                             .coerceAtLeast(0L),
                     restored = true,
-                    outputRevision = 1L
+                    outputRevision = 1L,
+                    pendingOutputChars = 0L
                 )
         }
     }
@@ -1050,36 +1063,91 @@ internal object LocalPtySessionRegistry {
             return
         }
 
-        val publishIntervalMs =
+        /*
+         * Always start with the lowest latency allowed for the
+         * session class. When the timer wakes, accumulated output
+         * determines whether publication should be deferred a little
+         * longer. No PTY data is removed or skipped.
+         */
+        val initialDelayMillis =
             if (
                 id ==
                     activeSessionId
             ) {
-                ACTIVE_OUTPUT_PUBLISH_INTERVAL_MS
+                TerminalOutputBackpressure
+                    .ACTIVE_NORMAL_DELAY_MS
             } else {
-                BACKGROUND_OUTPUT_PUBLISH_INTERVAL_MS
+                TerminalOutputBackpressure
+                    .BACKGROUND_NORMAL_DELAY_MS
             }
 
         outputPublishScope.launch {
+            var elapsedDelayMillis =
+                initialDelayMillis
+
             delay(
-                publishIntervalMs
+                initialDelayMillis
             )
 
-            synchronized(lock) {
-                pendingOutputPublishes.remove(
-                    id
-                )
+            while (true) {
+                val targetDelayMillis =
+                    synchronized(lock) {
+                        records[id]
+                            ?.let { record ->
+                                TerminalOutputBackpressure
+                                    .targetPublishDelayMillis(
+                                        active =
+                                            id ==
+                                                activeSessionId,
+                                        pendingChars =
+                                            record
+                                                .pendingOutputChars
+                                    )
+                            }
+                    }
+                        ?: return@launch
+
+                val remainingDelayMillis =
+                    (
+                        targetDelayMillis -
+                            elapsedDelayMillis
+                        )
+                        .coerceAtLeast(0L)
 
                 if (
-                    records.containsKey(
-                        id
-                    )
+                    remainingDelayMillis ==
+                        0L
                 ) {
-                    publishLocked()
+                    break
                 }
+
+                delay(
+                    remainingDelayMillis
+                )
+
+                elapsedDelayMillis +=
+                    remainingDelayMillis
+            }
+
+            synchronized(lock) {
+                pendingOutputPublishes
+                    .remove(id)
+
+                records[id]
+                    ?.let { record ->
+                        /*
+                         * Reset only the pressure counter. Terminal
+                         * content itself remains in AnsiTerminalBuffer.
+                         */
+                        record.pendingOutputChars =
+                            0L
+
+                        publishLocked()
+                    }
             }
         }
     }
+
 
     private fun publishLocked() {
         val startedAtNanos =
@@ -1186,14 +1254,9 @@ internal object LocalPtySessionRegistry {
     private const val MAX_RENDERED_PTY_HISTORY_LINES =
         5_000
     /*
-     * Keep the active terminal responsive while reducing Compose work
-     * generated by terminals that are currently in the background.
+     * Output publication cadence is controlled by
+     * TerminalOutputBackpressure.
      */
-    private const val ACTIVE_OUTPUT_PUBLISH_INTERVAL_MS =
-        32L
-
-    private const val BACKGROUND_OUTPUT_PUBLISH_INTERVAL_MS =
-        250L
 
     private const val MAX_PERSISTED_SNAPSHOT_CHARS = 12_288
     private const val PREFS_NAME = "appforge_local_pty_sessions"
