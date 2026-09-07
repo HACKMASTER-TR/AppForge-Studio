@@ -1082,6 +1082,15 @@ internal object LocalPtySessionRegistry {
     }
 
     private fun publishLocked() {
+        val startedAtNanos =
+            System.nanoTime()
+
+        var snapshotBuildCount =
+            0
+
+        var snapshotReuseCount =
+            0
+
         mutableStates.value =
             records.values
                 .map { record ->
@@ -1100,8 +1109,14 @@ internal object LocalPtySessionRegistry {
                             cached.columns ==
                                 record.columns
                         ) {
+                            snapshotReuseCount +=
+                                1
+
                             cached.snapshot
                         } else {
+                            snapshotBuildCount +=
+                                1
+
                             record.buffer
                                 .snapshot(
                                     maxHistoryLines =
@@ -1142,7 +1157,28 @@ internal object LocalPtySessionRegistry {
                         snapshot = snapshot
                     )
                 }
+
+        TerminalPerformanceMetrics
+            .recordPublish(
+                snapshotBuildCount =
+                    snapshotBuildCount,
+                snapshotReuseCount =
+                    snapshotReuseCount,
+                durationNanos =
+                    System.nanoTime() -
+                        startedAtNanos
+            )
     }
+
+    /*
+     * Future Test Lab / diagnostic UI can query this without touching
+     * the PTY or Compose state.
+     */
+    internal fun performanceSnapshot():
+        TerminalPerformanceSnapshot =
+        TerminalPerformanceMetrics
+            .snapshot()
+
 
     private const val MAX_LOCAL_PTY_SESSIONS = 6
 
@@ -1177,6 +1213,14 @@ private class LocalInteractivePtySession(
         )
 
     private val running =
+        AtomicBoolean(false)
+
+    /*
+     * True only while this session owns the native PTY process and
+     * its input/output/control descriptors. AtomicBoolean makes
+     * cleanup idempotent when close() races with the waiter.
+     */
+    private val resourcesTracked =
         AtomicBoolean(false)
 
     private var processId: Int? =
@@ -1402,6 +1446,17 @@ private class LocalInteractivePtySession(
                 processId =
                     spawned.processId
 
+                if (
+                    resourcesTracked
+                        .compareAndSet(
+                            false,
+                            true
+                        )
+                ) {
+                    TerminalPerformanceMetrics
+                        .onPtySpawned()
+                }
+
                 inputDescriptor =
                     ParcelFileDescriptor
                         .adoptFd(
@@ -1624,6 +1679,14 @@ private class LocalInteractivePtySession(
             controlDescriptor?.close()
         }
         controlDescriptor = null
+
+        if (
+            resourcesTracked
+                .getAndSet(false)
+        ) {
+            TerminalPerformanceMetrics
+                .onPtyResourcesReleased()
+        }
 
         processId = null
         linuxMode = false
