@@ -5042,8 +5042,11 @@ private fun AppForgeApp() {
                                 }
                             )
 
-                            else -> BuildStep(
-                                draft = draft,
+                            else -> BuildRuntimeStep(
+                                runtime =
+                                    buildRuntime,
+                                draft =
+                                    draft,
                                 onDraftChange = {
                                     updated ->
                                     draft =
@@ -5055,32 +5058,10 @@ private fun AppForgeApp() {
                                         retryDraft
                                     )
                                 },
-                                status = status,
-                                progress = progress,
-                                buildElapsedMs = buildElapsedMs,
-                                buildTimerRunning = buildTimerRunning,
-                                logs = logs,
-                                preflight = preflight,
-                                buildId = buildId,
-                                buildNo = buildNo,
-                                appName = draft.appName,
-                                serverUrl = serverUrl,
-                                apiKey = apiKey,
-                                apkUrl = apkUrl,
-                                aabUrl = aabUrl,
-                                exeUrl = exeUrl,
-                                buildOutput =
-                                    draft.buildOutput,
-                                queuePosition =
-                                    queuePosition,
-                                queueAhead =
-                                    queueAhead,
-                                queueWorkerSlots =
-                                    queueWorkerSlots,
-                                queueEtaSeconds =
-                                    queueEtaSeconds,
-                                queueEstimate =
-                                    queueEstimate
+                                serverUrl =
+                                    serverUrl,
+                                apiKey =
+                                    apiKey
                             )
                         }
                     }
@@ -5402,6 +5383,122 @@ private fun AppForgeApp() {
             }
         }
     }
+}
+
+
+/*
+ * Recomposition boundary for the high-frequency build UI.
+ *
+ * AppForgeApp passes only the stable BuildRuntimeState holder.
+ * Individual status/progress/log/queue states are read inside this
+ * child composition, so normal build polling does not require the
+ * whole Builder parent tree to observe each runtime field.
+ */
+@Composable
+private fun BuildRuntimeStep(
+    runtime: BuildRuntimeState,
+    draft: ProjectDraft,
+    onDraftChange: (ProjectDraft) -> Unit,
+    onRetryBuild: (ProjectDraft) -> Unit,
+    serverUrl: String,
+    apiKey: String
+) {
+    val status by
+        runtime.status
+
+    val progress by
+        runtime.progress
+
+    val buildElapsedMs by
+        runtime.buildElapsedMs
+
+    val buildTimerRunning by
+        runtime.buildTimerRunning
+
+    val logs by
+        runtime.logs
+
+    val preflight by
+        runtime.preflight
+
+    val buildId by
+        runtime.buildId
+
+    val buildNo by
+        runtime.buildNo
+
+    val apkUrl by
+        runtime.apkUrl
+
+    val aabUrl by
+        runtime.aabUrl
+
+    val exeUrl by
+        runtime.exeUrl
+
+    val queuePosition by
+        runtime.queuePosition
+
+    val queueAhead by
+        runtime.queueAhead
+
+    val queueWorkerSlots by
+        runtime.queueWorkerSlots
+
+    val queueEtaSeconds by
+        runtime.queueEtaSeconds
+
+    val queueEstimate by
+        runtime.queueEstimate
+
+    BuildStep(
+        draft =
+            draft,
+        onDraftChange =
+            onDraftChange,
+        onRetryBuild =
+            onRetryBuild,
+        status =
+            status,
+        progress =
+            progress,
+        buildElapsedMs =
+            buildElapsedMs,
+        buildTimerRunning =
+            buildTimerRunning,
+        logs =
+            logs,
+        preflight =
+            preflight,
+        buildId =
+            buildId,
+        buildNo =
+            buildNo,
+        appName =
+            draft.appName,
+        serverUrl =
+            serverUrl,
+        apiKey =
+            apiKey,
+        apkUrl =
+            apkUrl,
+        aabUrl =
+            aabUrl,
+        exeUrl =
+            exeUrl,
+        buildOutput =
+            draft.buildOutput,
+        queuePosition =
+            queuePosition,
+        queueAhead =
+            queueAhead,
+        queueWorkerSlots =
+            queueWorkerSlots,
+        queueEtaSeconds =
+            queueEtaSeconds,
+        queueEstimate =
+            queueEstimate
+    )
 }
 
 
