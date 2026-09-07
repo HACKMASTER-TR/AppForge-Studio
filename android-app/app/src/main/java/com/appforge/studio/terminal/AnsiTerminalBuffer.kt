@@ -22,7 +22,8 @@ internal data class AnsiTerminalSnapshot(
     val cursorColumn: Int,
     val cursorVisible: Boolean,
     val rows: Int,
-    val columns: Int
+    val columns: Int,
+    val bracketedPasteEnabled: Boolean = false
 ) {
     fun plainText(): String =
         lines.joinToString("\n") { line ->
@@ -77,6 +78,7 @@ internal class AnsiTerminalBuffer(
     private var savedCursorRow = 0
     private var savedCursorColumn = 0
     private var cursorVisible = true
+    private var bracketedPasteEnabled = false
     private var currentStyle =
         AnsiTerminalStyle()
 
@@ -105,6 +107,7 @@ internal class AnsiTerminalBuffer(
         savedCursorRow = 0
         savedCursorColumn = 0
         cursorVisible = true
+        bracketedPasteEnabled = false
         currentStyle =
             AnsiTerminalStyle()
         parserState =
@@ -231,7 +234,9 @@ internal class AnsiTerminalBuffer(
             cursorVisible =
                 cursorVisible,
             rows = rows,
-            columns = columns
+            columns = columns,
+            bracketedPasteEnabled =
+                bracketedPasteEnabled
         )
     }
 
@@ -605,6 +610,7 @@ internal class AnsiTerminalBuffer(
                         .forEach { mode ->
                             when (mode) {
                                 25 -> cursorVisible = true
+                                2004 -> bracketedPasteEnabled = true
                                 47, 1047, 1049 ->
                                     enterAlternateScreen()
                             }
@@ -618,6 +624,7 @@ internal class AnsiTerminalBuffer(
                         .forEach { mode ->
                             when (mode) {
                                 25 -> cursorVisible = false
+                                2004 -> bracketedPasteEnabled = false
                                 47, 1047, 1049 ->
                                     leaveAlternateScreen()
                             }

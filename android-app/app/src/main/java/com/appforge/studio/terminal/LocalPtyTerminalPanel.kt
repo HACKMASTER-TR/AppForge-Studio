@@ -3107,7 +3107,10 @@ private fun LocalPtySurface(
                             delta =
                                 rawDelta,
                             pendingPaste =
-                                pendingBracketedPaste
+                                pendingBracketedPaste,
+                            bracketedPasteEnabled =
+                                state.snapshot
+                                    .bracketedPasteEnabled
                         )
 
                     pendingBracketedPaste =
@@ -3547,7 +3550,8 @@ private data class LocalPtyImeDispatch(
 
 private fun localPtyBracketedPasteDispatch(
     delta: String,
-    pendingPaste: String?
+    pendingPaste: String?,
+    bracketedPasteEnabled: Boolean
 ): LocalPtyImeDispatch {
     val normalized =
         delta
@@ -3694,11 +3698,26 @@ private fun localPtyBracketedPasteDispatch(
         )
     }
 
-    return LocalPtyImeDispatch(
-        ptyText =
+    /*
+     * A real terminal adds bracketed-paste delimiters only after
+     * the foreground application enables DEC private mode 2004.
+     *
+     * Readline enables it at an editable shell prompt, but raw
+     * prompts such as `read` or other interactive programs can
+     * disable it. In that state the payload must be sent verbatim.
+     */
+    val ptyPasteText =
+        if (bracketedPasteEnabled) {
             LOCAL_PTY_BRACKETED_PASTE_START +
                 pastePayload +
-                LOCAL_PTY_BRACKETED_PASTE_END,
+                LOCAL_PTY_BRACKETED_PASTE_END
+        } else {
+            pastePayload
+        }
+
+    return LocalPtyImeDispatch(
+        ptyText =
+            ptyPasteText,
         pendingPaste =
             pastePayload,
         resetIme = true

@@ -64,6 +64,61 @@ class AnsiTerminalBufferTest {
     }
 
     @Test
+    fun tracksBracketedPastePrivateMode() {
+        val buffer =
+            AnsiTerminalBuffer(
+                initialRows = 4,
+                initialColumns = 40
+            )
+
+        assertFalse(
+            buffer
+                .snapshot(false)
+                .bracketedPasteEnabled
+        )
+
+        buffer.feed(
+            "\u001b[?2004h"
+        )
+
+        val enabled =
+            buffer.snapshot(false)
+
+        assertTrue(
+            enabled.bracketedPasteEnabled
+        )
+
+        assertFalse(
+            enabled
+                .plainText()
+                .contains('\u001b')
+        )
+
+        buffer.feed(
+            "\u001b[?2004l"
+        )
+
+        assertFalse(
+            buffer
+                .snapshot(false)
+                .bracketedPasteEnabled
+        )
+
+        buffer.feed(
+            "\u001b[?2004h"
+        )
+
+        buffer.reset()
+
+        assertFalse(
+            buffer
+                .snapshot(false)
+                .bracketedPasteEnabled
+        )
+    }
+
+
+    @Test
     fun resizesAndKeepsCursorInsideBounds() {
         val buffer =
             AnsiTerminalBuffer(
