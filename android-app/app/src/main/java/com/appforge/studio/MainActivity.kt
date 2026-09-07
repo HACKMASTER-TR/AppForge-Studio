@@ -387,6 +387,17 @@ private val TextSecondary = Color(0xFFA9B1C7)
 private const val APPFORGE_DOWNLOAD_FOLDER =
     "AppForge Studio"
 
+/*
+ * Build elapsed time is display-only.
+ *
+ * 250 ms updates forced up to four root AppForgeApp state changes
+ * per second while a build was running. One-second UI ticks preserve
+ * elapsed-time accuracy because the value itself is still calculated
+ * from System.currentTimeMillis().
+ */
+private const val BUILD_TIMER_UI_TICK_MS =
+    1_000L
+
 private fun persistReadUriPermission(
     context: Context,
     uri: Uri
@@ -1083,7 +1094,7 @@ private fun AppForgeApp() {
                 )
 
             delay(
-                250L
+                BUILD_TIMER_UI_TICK_MS
             )
         }
     }
