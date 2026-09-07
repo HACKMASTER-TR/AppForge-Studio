@@ -436,8 +436,43 @@ object AudioMedia {
                 videoInfo.offset = 0
                 videoInfo.size = size
                 videoInfo.presentationTimeUs = pts
-                videoInfo.flags = extractor.sampleFlags
-                muxer.writeSampleData(videoMuxTrack, videoBuffer, videoInfo)
+
+                val sampleFlags = extractor.sampleFlags
+
+                check(
+                    (sampleFlags and MediaExtractor.SAMPLE_FLAG_ENCRYPTED) == 0
+                ) {
+                    "Şifreli/DRM korumalı video yeniden paketlenemez."
+                }
+
+                videoInfo.flags =
+                    (
+                        if (
+                            (sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0
+                        ) {
+                            MediaCodec.BUFFER_FLAG_KEY_FRAME
+                        } else {
+                            0
+                        }
+                    ) or
+                    (
+                        if (
+                            (
+                                sampleFlags and
+                                    MediaExtractor.SAMPLE_FLAG_PARTIAL_FRAME
+                            ) != 0
+                        ) {
+                            MediaCodec.BUFFER_FLAG_PARTIAL_FRAME
+                        } else {
+                            0
+                        }
+                    )
+
+                muxer.writeSampleData(
+                    videoMuxTrack,
+                    videoBuffer,
+                    videoInfo
+                )
                 extractor.advance()
             }
         } finally {

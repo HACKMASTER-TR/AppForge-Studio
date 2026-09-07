@@ -242,7 +242,47 @@ jobs:
 
           echo "✅ Play Store manifest PASS."
 
-      - name: Test lint and build signed Play AAB
+      - name: Release lint preflight
+        env:
+          APPFORGE_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/appforge-release.jks
+          APPFORGE_RELEASE_STORE_PASSWORD: ${{ secrets.APPFORGE_RELEASE_STORE_PASSWORD }}
+          APPFORGE_RELEASE_KEY_ALIAS: appforge-release
+          APPFORGE_RELEASE_KEY_PASSWORD: ${{ secrets.APPFORGE_RELEASE_KEY_PASSWORD }}
+          APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
+          APPFORGE_RAILWAY_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_RAILWAY_OAUTH_CLIENT_ID }}
+        run: |
+          set -uo pipefail
+
+          if gradle \
+            -p android-app \
+            :app:lintRelease \
+            --stacktrace; then
+
+            echo "✅ Release lint preflight PASS."
+
+          else
+
+            REPORT="$(
+              find android-app/app/build \
+                -type f \
+                -name 'lint-results-release.txt' \
+                -print \
+                -quit
+            )"
+
+            echo
+            echo "=== RELEASE LINT ERRORS ==="
+
+            if [ -n "$REPORT" ] && [ -s "$REPORT" ]; then
+              grep -n ' Error: ' "$REPORT" || cat "$REPORT"
+            else
+              echo "Lint text report bulunamadı."
+            fi
+
+            exit 1
+          fi
+
+      - name: Test and build signed Play AAB
         env:
           APPFORGE_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/appforge-release.jks
           APPFORGE_RELEASE_STORE_PASSWORD: ${{ secrets.APPFORGE_RELEASE_STORE_PASSWORD }}
@@ -256,7 +296,6 @@ jobs:
           gradle \
             -p android-app \
             :app:testDebugUnitTest \
-            :app:lintRelease \
             :app:signingReport \
             :app:bundleRelease \
             --stacktrace
