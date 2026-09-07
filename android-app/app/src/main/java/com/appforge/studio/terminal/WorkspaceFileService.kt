@@ -3,8 +3,11 @@ package com.appforge.studio.terminal
 import android.content.Context
 import com.appforge.studio.model.ProjectDraft
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.nio.file.Files
 
 object TerminalWorkspaceResolver {
     fun resolve(
@@ -78,6 +81,9 @@ data class WorkspacePage(
 object WorkspaceFileService {
     const val DEFAULT_PAGE_SIZE =
         200
+
+    private const val CANCELLATION_CHECK_INTERVAL =
+        64
 
     private const val MAX_EDITOR_BYTES =
         2L * 1_024L * 1_024L
@@ -234,25 +240,111 @@ object WorkspaceFileService {
         }
 
 
-    private fun sortedChildren(
+    private suspend fun sortedChildren(
         directory: File
-    ): List<File> =
-        directory
-            .listFiles()
-            .orEmpty()
-            .asSequence()
-            .filterNot {
-                it.name ==
-                    ".appforge-trash"
-            }
-            .sortedWith(
-                compareBy<File> {
-                    !it.isDirectory
-                }.thenBy {
-                    it.name.lowercase()
-                }
+    ): List<File> {
+        WorkspaceDirectoryIndexes
+            .get(
+                directory
             )
-            .toList()
+            ?.let {
+                return it
+            }
+
+        val children =
+            scanDirectoryChildren(
+                directory
+            )
+
+        WorkspaceDirectoryIndexes
+            .put(
+                directory,
+                children
+            )
+
+        return children
+    }
+
+
+    /*
+     * DirectoryStream avoids allocating the complete listFiles()
+     * array before AppForge has a chance to observe coroutine
+     * cancellation.
+     */
+    private suspend fun scanDirectoryChildren(
+        directory: File
+    ): List<File> {
+        val children =
+            ArrayList<File>()
+
+        Files
+            .newDirectoryStream(
+                directory.toPath()
+            )
+            .use { stream ->
+                var scanned =
+                    0
+
+                for (
+                    path in stream
+                ) {
+                    /*
+                     * Cancellation check is batched to keep the hot
+                     * loop cheap while still allowing abandoned
+                     * directory loads to stop quickly.
+                     */
+                    if (
+                        scanned %
+                            CANCELLATION_CHECK_INTERVAL ==
+                            0
+                    ) {
+                        currentCoroutineContext()
+                            .ensureActive()
+                    }
+
+                    scanned +=
+                        1
+
+                    val file =
+                        path.toFile()
+
+                    if (
+                        file.name !=
+                            ".appforge-trash"
+                    ) {
+                        children.add(
+                            file
+                        )
+                    }
+                }
+            }
+
+        currentCoroutineContext()
+            .ensureActive()
+
+        children.sortWith(
+            compareBy<File> {
+                !it.isDirectory
+            }.thenBy {
+                it.name.lowercase()
+            }
+        )
+
+        currentCoroutineContext()
+            .ensureActive()
+
+        return children
+    }
+
+
+    fun invalidateDirectory(
+        directory: File
+    ) {
+        WorkspaceDirectoryIndexes
+            .invalidate(
+                directory
+            )
+    }
 
 
     private fun workspaceEntry(
@@ -380,6 +472,11 @@ object WorkspaceFileService {
                 "Dosya veya klasör oluşturulamadı."
             }
 
+            WorkspaceDirectoryIndexes
+                .invalidate(
+                    safeParent
+                )
+
             target
         }
 
@@ -415,11 +512,22 @@ object WorkspaceFileService {
                     "${System.currentTimeMillis()}_${safeTarget.name}"
                 )
 
+            val originalParent =
+                safeTarget.parentFile
+
             require(
                 safeTarget.renameTo(destination)
             ) {
                 "Öğe geri dönüşüm alanına taşınamadı."
             }
+
+            originalParent
+                ?.let {
+                    WorkspaceDirectoryIndexes
+                        .invalidate(
+                            it
+                        )
+                }
 
             destination
         }
