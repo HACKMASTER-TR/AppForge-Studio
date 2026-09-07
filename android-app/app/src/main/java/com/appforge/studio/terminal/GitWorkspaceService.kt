@@ -411,19 +411,25 @@ object GitWorkspaceService {
             val safeWorkspace =
                 requireWorkspace(workspace)
 
-            val repository =
+            val repositoryBuilder =
                 FileRepositoryBuilder()
                     .findGitDir(safeWorkspace)
                     .readEnvironment()
-                    .build()
+
+            val gitDir =
+                repositoryBuilder.gitDir
+
+            require(
+                gitDir != null &&
+                    gitDir.isDirectory
+            ) {
+                "Bu çalışma alanında Git deposu yok. Önce Git Başlat'a dokunun."
+            }
+
+            val repository =
+                repositoryBuilder.build()
 
             repository.use { safeRepository ->
-                require(
-                    safeRepository.directory != null &&
-                        safeRepository.directory.isDirectory
-                ) {
-                    "Bu çalışma alanında Git deposu yok. Önce Git Başlat'a dokunun."
-                }
 
                 val repositoryRoot =
                     runCatching {
