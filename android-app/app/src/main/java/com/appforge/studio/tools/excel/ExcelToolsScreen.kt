@@ -945,6 +945,10 @@ private fun loadExcelHistory(
     context: Context
 ): List<ExcelMediaHistoryItem> {
 
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        return emptyList()
+    }
+
     val resolver =
         context.contentResolver
 
