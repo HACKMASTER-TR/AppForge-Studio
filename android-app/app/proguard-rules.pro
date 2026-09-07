@@ -16,3 +16,12 @@
 # AppForge Terminal: JSch can discover optional crypto providers at runtime.
 -dontwarn org.bouncycastle.**
 -dontwarn net.i2p.crypto.eddsa.**
+
+
+# AppForge Git / JGit:
+# JGit also contains desktop-JVM integrations that Android does not provide.
+# The active Android Git paths do not require JMX/GSS desktop APIs.
+-dontwarn java.lang.ProcessHandle
+-dontwarn java.lang.management.**
+-dontwarn javax.management.**
+-dontwarn org.ietf.jgss.**
