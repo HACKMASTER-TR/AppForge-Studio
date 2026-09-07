@@ -8,6 +8,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
@@ -817,6 +818,12 @@ private fun saveExcelToDownloads(
     mimeType: String,
     data: ByteArray
 ): Uri {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        throw IOException(
+            "Excel çıktısını İndirilenler klasörüne kaydetmek Android 10 veya üzerini gerektirir."
+        )
+    }
+
     val resolver =
         context.contentResolver
 
