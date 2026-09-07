@@ -181,8 +181,27 @@ internal object LocalPtySessionRegistry {
                 Dispatchers.Default
         )
 
+    private data class PublishedSnapshot(
+        val outputRevision: Long,
+        val rows: Int,
+        val columns: Int,
+        val snapshot: AnsiTerminalSnapshot
+    )
+
     private val pendingOutputPublishes =
         HashSet<String>()
+
+    /*
+     * Phase 1:
+     * Unchanged PTY sessions reuse their last rendered snapshot.
+     * This avoids rebuilding up to 5,000 history lines for every
+     * session whenever only one terminal receives output.
+     */
+    private val publishedSnapshots =
+        HashMap<String, PublishedSnapshot>()
+
+    private var activeSessionId:
+        String? = null
 
     private val records =
         LinkedHashMap<String, Record>()
@@ -555,6 +574,9 @@ internal object LocalPtySessionRegistry {
 
     fun markActivated(id: String) {
         synchronized(lock) {
+            activeSessionId =
+                id
+
             records[id]?.let {
                 it.lastActivatedAt =
                     System.currentTimeMillis()
@@ -583,11 +605,27 @@ internal object LocalPtySessionRegistry {
     fun closeSession(id: String) {
         val removed =
             synchronized(lock) {
-                records.remove(id)
-                    .also {
-                        persistLocked()
-                        publishLocked()
-                    }
+                val current =
+                    records.remove(id)
+
+                pendingOutputPublishes
+                    .remove(id)
+
+                publishedSnapshots
+                    .remove(id)
+
+                if (
+                    activeSessionId ==
+                        id
+                ) {
+                    activeSessionId =
+                        null
+                }
+
+                persistLocked()
+                publishLocked()
+
+                current
             }
 
         removed?.session?.close()
@@ -633,6 +671,12 @@ internal object LocalPtySessionRegistry {
                 pendingOutputPublishes
                     .clear()
 
+                publishedSnapshots
+                    .clear()
+
+                activeSessionId =
+                    null
+
                 publishLocked()
 
                 snapshot
@@ -676,6 +720,12 @@ internal object LocalPtySessionRegistry {
 
                 pendingOutputPublishes
                     .clear()
+
+                publishedSnapshots
+                    .clear()
+
+                activeSessionId =
+                    null
 
                 /*
                  * SecureAccountStore artık yeni AppForge
@@ -1000,9 +1050,19 @@ internal object LocalPtySessionRegistry {
             return
         }
 
+        val publishIntervalMs =
+            if (
+                id ==
+                    activeSessionId
+            ) {
+                ACTIVE_OUTPUT_PUBLISH_INTERVAL_MS
+            } else {
+                BACKGROUND_OUTPUT_PUBLISH_INTERVAL_MS
+            }
+
         outputPublishScope.launch {
             delay(
-                OUTPUT_PUBLISH_INTERVAL_MS
+                publishIntervalMs
             )
 
             synchronized(lock) {
@@ -1024,26 +1084,62 @@ internal object LocalPtySessionRegistry {
     private fun publishLocked() {
         mutableStates.value =
             records.values
-                .map {
+                .map { record ->
+                    val cached =
+                        publishedSnapshots[
+                            record.id
+                        ]
+
+                    val snapshot =
+                        if (
+                            cached != null &&
+                            cached.outputRevision ==
+                                record.outputRevision &&
+                            cached.rows ==
+                                record.rows &&
+                            cached.columns ==
+                                record.columns
+                        ) {
+                            cached.snapshot
+                        } else {
+                            record.buffer
+                                .snapshot(
+                                    maxHistoryLines =
+                                        MAX_RENDERED_PTY_HISTORY_LINES
+                                )
+                                .also { fresh ->
+                                    publishedSnapshots[
+                                        record.id
+                                    ] =
+                                        PublishedSnapshot(
+                                            outputRevision =
+                                                record.outputRevision,
+                                            rows =
+                                                record.rows,
+                                            columns =
+                                                record.columns,
+                                            snapshot =
+                                                fresh
+                                        )
+                                }
+                        }
+
                     LocalPtyTerminalState(
-                        id = it.id,
-                        title = it.title,
+                        id = record.id,
+                        title = record.title,
                         workspacePath =
-                            it.workspace.absolutePath,
-                        running = it.running,
-                        starting = it.starting,
-                        exitCode = it.exitCode,
-                        rows = it.rows,
-                        columns = it.columns,
+                            record.workspace.absolutePath,
+                        running = record.running,
+                        starting = record.starting,
+                        exitCode = record.exitCode,
+                        rows = record.rows,
+                        columns = record.columns,
                         lastActivatedAt =
-                            it.lastActivatedAt,
-                        restored = it.restored,
-                        outputRevision = it.outputRevision,
-                        snapshot =
-                            it.buffer.snapshot(
-                            maxHistoryLines =
-                                MAX_RENDERED_PTY_HISTORY_LINES
-                        )
+                            record.lastActivatedAt,
+                        restored = record.restored,
+                        outputRevision =
+                            record.outputRevision,
+                        snapshot = snapshot
                     )
                 }
     }
@@ -1054,11 +1150,14 @@ internal object LocalPtySessionRegistry {
     private const val MAX_RENDERED_PTY_HISTORY_LINES =
         5_000
     /*
-     * ~31 fps is enough for terminal output while avoiding hundreds of
-     * Compose snapshots during large paste/build bursts.
+     * Keep the active terminal responsive while reducing Compose work
+     * generated by terminals that are currently in the background.
      */
-    private const val OUTPUT_PUBLISH_INTERVAL_MS =
+    private const val ACTIVE_OUTPUT_PUBLISH_INTERVAL_MS =
         32L
+
+    private const val BACKGROUND_OUTPUT_PUBLISH_INTERVAL_MS =
+        250L
 
     private const val MAX_PERSISTED_SNAPSHOT_CHARS = 12_288
     private const val PREFS_NAME = "appforge_local_pty_sessions"
