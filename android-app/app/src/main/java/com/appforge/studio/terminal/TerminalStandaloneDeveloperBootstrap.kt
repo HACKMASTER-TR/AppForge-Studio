@@ -255,6 +255,7 @@ internal object TerminalStandaloneDeveloperBootstrap {
     private val executableAssets =
         listOf(
             "appforge-git-askpass",
+            "gh",
             "appforge-doctor",
             "appforge-ready",
             "appforge-test",
