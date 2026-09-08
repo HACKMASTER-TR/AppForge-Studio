@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -28,9 +29,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,6 +90,10 @@ private object CopyV2 {
         "account" to "Hesabım",
         "settings" to "Ayarlar",
         "trash" to "Geri Dönüşüm",
+        "move_to_trash" to "Geri Dönüşüme Taşı",
+        "trash_confirm_title" to "Projeyi geri dönüşüme taşı?",
+        "trash_confirm_body" to "Bu proje geri dönüşüme taşınacak. 30 gün içinde geri yükleyebilirsiniz.",
+        "cancel" to "İptal",
         "backup" to "Yedekleme",
         "import" to "Projeleri İçe Aktar",
         "export" to "Projeleri Dışa Aktar",
@@ -121,6 +129,10 @@ private object CopyV2 {
         "account" to "Account",
         "settings" to "Settings",
         "trash" to "Trash",
+        "move_to_trash" to "Move to Trash",
+        "trash_confirm_title" to "Move project to Trash?",
+        "trash_confirm_body" to "This project will be moved to Trash. You can restore it within 30 days.",
+        "cancel" to "Cancel",
         "backup" to "Backup",
         "import" to "Import Projects",
         "export" to "Export Projects",
@@ -156,6 +168,10 @@ private object CopyV2 {
         "account" to "Konto",
         "settings" to "Einstellungen",
         "trash" to "Papierkorb",
+        "move_to_trash" to "In den Papierkorb",
+        "trash_confirm_title" to "Projekt in den Papierkorb verschieben?",
+        "trash_confirm_body" to "Dieses Projekt wird in den Papierkorb verschoben und kann innerhalb von 30 Tagen wiederhergestellt werden.",
+        "cancel" to "Abbrechen",
         "backup" to "Sicherung",
         "import" to "Projekte importieren",
         "export" to "Projekte exportieren",
@@ -191,6 +207,10 @@ private object CopyV2 {
         "account" to "الحساب",
         "settings" to "الإعدادات",
         "trash" to "سلة المحذوفات",
+        "move_to_trash" to "نقل إلى سلة المحذوفات",
+        "trash_confirm_title" to "نقل المشروع إلى سلة المحذوفات؟",
+        "trash_confirm_body" to "سيتم نقل هذا المشروع إلى سلة المحذوفات ويمكن استعادته خلال 30 يومًا.",
+        "cancel" to "إلغاء",
         "backup" to "النسخ الاحتياطي",
         "import" to "استيراد المشاريع",
         "export" to "تصدير المشاريع",
@@ -257,9 +277,33 @@ fun StudioHomeV2(
                 ignoreCase = true
             ) == true
 
-    val projects =
+    /*
+     * The home list normally changes when the active account changes.
+     * A local refresh token also lets a trash action remove the card
+     * immediately without recreating the whole home screen.
+     */
+    val projectRefreshToken =
         remember(
             accountEmail
+        ) {
+            mutableIntStateOf(
+                0
+            )
+        }
+
+    val deleteCandidate =
+        remember(
+            accountEmail
+        ) {
+            mutableStateOf<SavedProject?>(
+                null
+            )
+        }
+
+    val projects =
+        remember(
+            accountEmail,
+            projectRefreshToken.intValue
         ) {
             ProjectLibrary.load(
                 context
@@ -276,6 +320,101 @@ fun StudioHomeV2(
         }
     val successfulBuilds = remember(builds) { builds.count { it.status == "success" } }
     val latestBuild = remember(builds) { builds.maxByOrNull { it.createdAt } }
+
+    deleteCandidate.value
+        ?.let {
+            project ->
+
+            AlertDialog(
+                onDismissRequest = {
+                    deleteCandidate.value =
+                        null
+                },
+                containerColor =
+                    V2Surface,
+                titleContentColor =
+                    V2Text,
+                textContentColor =
+                    V2Muted,
+                title = {
+                    Text(
+                        t(
+                            "trash_confirm_title"
+                        ),
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                8.dp
+                            )
+                    ) {
+                        Text(
+                            project.name,
+                            color =
+                                V2Text,
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            t(
+                                "trash_confirm_body"
+                            )
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            deleteCandidate.value =
+                                null
+                        }
+                    ) {
+                        Text(
+                            t(
+                                "cancel"
+                            )
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            ProjectLibrary.delete(
+                                context,
+                                project.id
+                            )
+
+                            deleteCandidate.value =
+                                null
+
+                            projectRefreshToken
+                                .intValue +=
+                                1
+                        },
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor =
+                                    Color(
+                                        0xFFB94A58
+                                    ),
+                                contentColor =
+                                    Color.White
+                            )
+                    ) {
+                        Text(
+                            t(
+                                "move_to_trash"
+                            )
+                        )
+                    }
+                }
+            )
+        }
 
     Scaffold(
         containerColor = V2Bg,
@@ -654,8 +793,31 @@ fun StudioHomeV2(
                     }
                 }
             } else {
-                items(projects.take(8), key = { it.id }) { project ->
-                    ProjectCardV2(project, language) { onOpenProject(project) }
+                items(
+                    projects.take(
+                        8
+                    ),
+                    key = {
+                        it.id
+                    }
+                ) {
+                    project ->
+
+                    ProjectCardV2(
+                        project =
+                            project,
+                        language =
+                            language,
+                        onClick = {
+                            onOpenProject(
+                                project
+                            )
+                        },
+                        onTrash = {
+                            deleteCandidate.value =
+                                project
+                        }
+                    )
                 }
             }
 
@@ -758,7 +920,8 @@ private fun V2Section(title: String, modifier: Modifier = Modifier) {
 private fun ProjectCardV2(
     project: SavedProject,
     language: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onTrash: () -> Unit
 ) {
     val updatedLabel = CopyV2.text(language, "updated")
     val date = remember(project.updatedAt) {
@@ -810,7 +973,57 @@ private fun ProjectCardV2(
                 )
                 Text("$updatedLabel • $date", color = Color(0xFF78839D), fontSize = 10.sp)
             }
-            Text("›", color = V2Primary, fontSize = 26.sp)
+            Column(
+                horizontalAlignment =
+                    Alignment.End,
+                verticalArrangement =
+                    Arrangement.spacedBy(
+                        5.dp
+                    )
+            ) {
+                Text(
+                    "›",
+                    color =
+                        V2Primary,
+                    fontSize =
+                        26.sp
+                )
+
+                /*
+                 * Keep the project card itself as the fast Open action.
+                 * Trash is a separate explicit action and still requires
+                 * confirmation before ProjectLibrary.delete().
+                 */
+                OutlinedButton(
+                    onClick =
+                        onTrash,
+                    modifier =
+                        Modifier.height(
+                            32.dp
+                        ),
+                    contentPadding =
+                        PaddingValues(
+                            horizontal =
+                                9.dp,
+                            vertical =
+                                0.dp
+                        ),
+                    colors =
+                        ButtonDefaults
+                            .outlinedButtonColors(
+                                contentColor =
+                                    Color(
+                                        0xFFFF9B9B
+                                    )
+                            )
+                ) {
+                    Text(
+                        "🗑",
+                        fontSize =
+                            14.sp
+                    )
+                }
+            }
         }
     }
 }
