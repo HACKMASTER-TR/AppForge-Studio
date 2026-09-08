@@ -64,6 +64,24 @@ class LocalPtyInteractiveInputTest {
 
 
     @Test
+    fun promptShortcutSubmitsAnswerAtomically() {
+        assertEquals(
+            "y\r",
+            localPtyPromptAnswer(
+                'Y'
+            )
+        )
+
+        assertEquals(
+            "n\r",
+            localPtyPromptAnswer(
+                'n'
+            )
+        )
+    }
+
+
+    @Test
     fun rawYesNoPromptKeysPassThroughUnchanged() {
         listOf(
             "y",

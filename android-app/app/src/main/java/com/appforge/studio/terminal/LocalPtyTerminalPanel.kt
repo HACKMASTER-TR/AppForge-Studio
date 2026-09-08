@@ -2544,7 +2544,9 @@ internal fun LocalPtyTerminalPanel(
                         scope.launch {
                             LocalPtySessionRegistry.write(
                                 state.id,
-                                "y"
+                                localPtyPromptAnswer(
+                                    'y'
+                                )
                             )
                         }
                     }
@@ -2556,7 +2558,9 @@ internal fun LocalPtyTerminalPanel(
                         scope.launch {
                             LocalPtySessionRegistry.write(
                                 state.id,
-                                "n"
+                                localPtyPromptAnswer(
+                                    'n'
+                                )
                             )
                         }
                     }
@@ -4424,6 +4428,28 @@ private fun localPtyImeDelta(
         )
     }
 }
+
+internal fun localPtyPromptAnswer(
+    answer: Char
+): String {
+    val normalized =
+        answer.lowercaseChar()
+
+    require(
+        normalized == 'y' ||
+            normalized == 'n'
+    ) {
+        "Prompt cevabı yalnız Y veya N olabilir."
+    }
+
+    /*
+     * Send answer and submit boundary in ONE PTY write.
+     * This prevents coroutine/IME ordering races in interactive
+     * line-based prompts such as GitHub CLI (Y/n).
+     */
+    return "$normalized\r"
+}
+
 
 @Composable
 private fun PtyKey(
