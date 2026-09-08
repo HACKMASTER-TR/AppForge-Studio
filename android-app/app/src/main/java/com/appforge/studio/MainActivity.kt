@@ -102,6 +102,7 @@ import com.appforge.studio.security.StudioSecurityClient
 import com.appforge.studio.security.StudioBillingManager
 import com.appforge.studio.security.SecureAccountStore
 import com.appforge.studio.security.StudioPlanPrice
+import com.appforge.studio.task.AppForgeTaskManager
 import com.hackmaster.videoforge.AppVisibility
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -1559,136 +1560,279 @@ private fun AppForgeApp() {
         }
 
 
-    val sourcePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            try {
-                val key = draft.packageName.replace(".", "_").ifBlank { "project" }
-                val result =
-                    ProjectImporter.importLocalSource(
-                        context,
-                        uri,
-                        key
-                    )
+    val sourcePicker =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts
+                    .OpenDocument()
+        ) {
+            uri: Uri? ->
 
-                val analysis =
-                    SourceCapabilityAnalyzer
-                        .analyze(
-                            result.projectDir
+            if (uri != null) {
+                /*
+                 * Snapshot project identity before leaving the UI
+                 * dispatcher. A slow import must never overwrite a
+                 * different project opened while it was running.
+                 */
+                val baseDraft =
+                    draft
+
+                val baseProjectId =
+                    currentProjectId
+
+                val key =
+                    baseDraft
+                        .packageName
+                        .replace(
+                            ".",
+                            "_"
                         )
-
-                sourceAnalysis =
-                    analysis
-
-                draft =
-                    draft.copy(
-                        sourceUri =
-                            uri.toString(),
-
-                        sourceLabel =
-                            uri.lastPathSegment
-                                ?: "Seçili dosya",
-
-                        importedFolder =
-                            result.projectDir
-                                .absolutePath,
-
-                        startPage =
-                            result.startPage
-                                .absolutePath,
-
-                        sourceTechnology =
-                            analysis.technologyId,
-
-                        sourceTechnologyLabel =
-                            analysis.technologyLabel,
-
-                        sourceBuildEngine =
-                            analysis.buildEngine,
-
-                        sourceBuildReady =
-                            analysis.buildReady,
-
-                        camera =
-                            analysis.camera,
-
-                        microphone =
-                            analysis.microphone,
-
-                        location =
-                            analysis.location,
-
-                        notifications =
-                            analysis.notifications,
-
-                        networkState =
-                            analysis.networkState,
-
-                        wakeLock =
-                            analysis.wakeLock,
-
-                        nfc =
-                            analysis.nfc,
-
-                        additionalPermissions =
-                            analysis.additionalPermissions,
-
-                        fileUpload =
-                            analysis.fileUpload ||
-                                analysis.camera ||
-                                analysis.microphone,
-
-                        downloads =
-                            analysis.downloads,
-
-                        webMediaAutoplayEnabled =
-                            draft.webMediaAutoplayEnabled ||
-                                analysis.mediaPlayer,
-
-                        webJavaScriptEnabled =
-                            draft.webJavaScriptEnabled ||
-                                analysis.mediaPlayer ||
-                                analysis.qrScanner,
-
-                        mediaPlayerBridge =
-                            analysis.mediaPlayer,
-
-                        qrScanner =
-                            analysis.qrScanner,
-
-                        javascriptBridge =
-                            draft.javascriptBridge ||
-                                analysis.mediaPlayer ||
-                                analysis.qrScanner
-                    )
-
-                val detected =
-                    analysis.detectedLabels()
+                        .ifBlank {
+                            "project"
+                        }
 
                 status =
-                    if (
-                        analysis.buildReady
+                    "Kaynak proje kuyruğa alındı..."
+
+                AppForgeTaskManager
+                    .submit(
+                        name =
+                            "Kaynak proje içe aktar",
+                        retryLimit =
+                            0
                     ) {
-                        "Proje algılandı: ${analysis.technologyLabel} • " +
-                            (
-                                if (
-                                    detected.isEmpty()
-                                ) {
-                                    "${analysis.scannedFiles} dosya tarandı"
-                                } else {
-                                    "Otomatik: ${detected.joinToString(", ")}"
-                                }
+                        try {
+                            reportProgress(
+                                5,
+                                "Kaynak dosya hazırlanıyor..."
                             )
-                    } else {
-                        "Proje algılandı: ${analysis.technologyLabel} • " +
-                            "uygun derleme yolu otomatik seçilecek"
+
+                            val result =
+                                io {
+                                    ProjectImporter
+                                        .importLocalSource(
+                                            context,
+                                            uri,
+                                            key
+                                        )
+                                }
+
+                            reportProgress(
+                                60,
+                                "Proje yapısı analiz ediliyor..."
+                            )
+
+                            val analysis =
+                                io {
+                                    SourceCapabilityAnalyzer
+                                        .analyze(
+                                            result.projectDir
+                                        )
+                                }
+
+                            reportProgress(
+                                85,
+                                "Sonuç uygulanıyor..."
+                            )
+
+                            val stillSameProject =
+                                withContext(
+                                    Dispatchers.Main.immediate
+                                ) {
+                                    currentProjectId ==
+                                        baseProjectId &&
+                                        draft.packageName ==
+                                            baseDraft.packageName
+                                }
+
+                            if (
+                                !stillSameProject
+                            ) {
+                                /*
+                                 * Imported source belongs to a screen
+                                 * the user has already left. Remove the
+                                 * temporary imported tree rather than
+                                 * leaking it or overwriting new state.
+                                 */
+                                io {
+                                    result
+                                        .projectDir
+                                        .deleteRecursively()
+                                }
+
+                                withContext(
+                                    Dispatchers.Main.immediate
+                                ) {
+                                    status =
+                                        "Kaynak içe aktarma tamamlandı ancak aktif proje değişti; sonuç uygulanmadı."
+                                }
+
+                                return@submit
+                            }
+
+                            val detected =
+                                analysis
+                                    .detectedLabels()
+
+                            val nextDraft =
+                                baseDraft.copy(
+                                    sourceUri =
+                                        uri.toString(),
+
+                                    sourceLabel =
+                                        uri.lastPathSegment
+                                            ?: "Seçili dosya",
+
+                                    importedFolder =
+                                        result
+                                            .projectDir
+                                            .absolutePath,
+
+                                    startPage =
+                                        result
+                                            .startPage
+                                            .absolutePath,
+
+                                    sourceTechnology =
+                                        analysis
+                                            .technologyId,
+
+                                    sourceTechnologyLabel =
+                                        analysis
+                                            .technologyLabel,
+
+                                    sourceBuildEngine =
+                                        analysis
+                                            .buildEngine,
+
+                                    sourceBuildReady =
+                                        analysis
+                                            .buildReady,
+
+                                    camera =
+                                        analysis.camera,
+
+                                    microphone =
+                                        analysis.microphone,
+
+                                    location =
+                                        analysis.location,
+
+                                    notifications =
+                                        analysis.notifications,
+
+                                    networkState =
+                                        analysis.networkState,
+
+                                    wakeLock =
+                                        analysis.wakeLock,
+
+                                    nfc =
+                                        analysis.nfc,
+
+                                    additionalPermissions =
+                                        analysis
+                                            .additionalPermissions,
+
+                                    fileUpload =
+                                        analysis.fileUpload ||
+                                            analysis.camera ||
+                                            analysis.microphone,
+
+                                    downloads =
+                                        analysis.downloads,
+
+                                    webMediaAutoplayEnabled =
+                                        baseDraft
+                                            .webMediaAutoplayEnabled ||
+                                            analysis.mediaPlayer,
+
+                                    webJavaScriptEnabled =
+                                        baseDraft
+                                            .webJavaScriptEnabled ||
+                                            analysis.mediaPlayer ||
+                                            analysis.qrScanner,
+
+                                    mediaPlayerBridge =
+                                        analysis.mediaPlayer,
+
+                                    qrScanner =
+                                        analysis.qrScanner,
+
+                                    javascriptBridge =
+                                        baseDraft.javascriptBridge ||
+                                            analysis.mediaPlayer ||
+                                            analysis.qrScanner
+                                )
+
+                            val successMessage =
+                                if (
+                                    analysis.buildReady
+                                ) {
+                                    "Proje algılandı: ${analysis.technologyLabel} • " +
+                                        (
+                                            if (
+                                                detected.isEmpty()
+                                            ) {
+                                                "${analysis.scannedFiles} dosya tarandı"
+                                            } else {
+                                                "Otomatik: ${
+                                                    detected.joinToString(
+                                                        ", "
+                                                    )
+                                                }"
+                                            }
+                                        )
+                                } else {
+                                    "Proje algılandı: ${analysis.technologyLabel} • " +
+                                        "uygun derleme yolu otomatik seçilecek"
+                                }
+
+                            withContext(
+                                Dispatchers.Main.immediate
+                            ) {
+                                sourceAnalysis =
+                                    analysis
+
+                                draft =
+                                    nextDraft
+
+                                status =
+                                    successMessage
+                            }
+
+                            reportProgress(
+                                100,
+                                "Kaynak proje hazır."
+                            )
+                        } catch (
+                            cancelled:
+                                kotlinx.coroutines
+                                    .CancellationException
+                        ) {
+                            withContext(
+                                Dispatchers.Main.immediate
+                            ) {
+                                status =
+                                    "Kaynak içe aktarma iptal edildi."
+                            }
+
+                            throw cancelled
+                        } catch (
+                            error: Throwable
+                        ) {
+                            withContext(
+                                Dispatchers.Main.immediate
+                            ) {
+                                status =
+                                    "Hata: ${error.message}"
+                            }
+
+                            throw error
+                        }
                     }
-            } catch (t: Throwable) {
-                status = "Hata: ${t.message}"
             }
         }
-    }
 
     val keystorePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -1791,25 +1935,76 @@ private fun AppForgeApp() {
                     )
         ) {
             uri: Uri? ->
-            if (uri != null) {
-                try {
-                    ProjectBackupManager
-                        .exportToUri(
-                            context,
-                            draft,
-                            uri
-                        )
 
-                    status =
-                        "AppForge proje yedeği dışa aktarıldı."
-                } catch (
-                    t: Throwable
-                ) {
-                    status =
-                        "Yedek dışa aktarılamadı: ${t.message}"
-                }
+            if (uri != null) {
+                val draftSnapshot =
+                    draft
+
+                status =
+                    "Proje yedeği kuyruğa alındı..."
+
+                AppForgeTaskManager
+                    .submit(
+                        name =
+                            "Proje yedeğini dışa aktar",
+                        retryLimit =
+                            1
+                    ) {
+                        try {
+                            reportProgress(
+                                10,
+                                "Yedek hazırlanıyor..."
+                            )
+
+                            io {
+                                ProjectBackupManager
+                                    .exportToUri(
+                                        context,
+                                        draftSnapshot,
+                                        uri
+                                    )
+                            }
+
+                            reportProgress(
+                                100,
+                                "Yedek hazır."
+                            )
+
+                            withContext(
+                                Dispatchers.Main.immediate
+                            ) {
+                                status =
+                                    "AppForge proje yedeği dışa aktarıldı."
+                            }
+                        } catch (
+                            cancelled:
+                                kotlinx.coroutines
+                                    .CancellationException
+                        ) {
+                            withContext(
+                                Dispatchers.Main.immediate
+                            ) {
+                                status =
+                                    "Yedek dışa aktarma iptal edildi."
+                            }
+
+                            throw cancelled
+                        } catch (
+                            error: Throwable
+                        ) {
+                            withContext(
+                                Dispatchers.Main.immediate
+                            ) {
+                                status =
+                                    "Yedek dışa aktarılamadı: ${error.message}"
+                            }
+
+                            throw error
+                        }
+                    }
             }
         }
+
 
     val allProjectsExportLauncher =
         rememberLauncherForActivityResult(
@@ -1822,21 +2017,67 @@ private fun AppForgeApp() {
             uri: Uri? ->
 
             if (uri != null) {
-                try {
-                    ProjectBackupManager
-                        .exportAllProjectsToUri(
-                            context,
-                            uri
-                        )
+                status =
+                    "Tüm proje yedekleri kuyruğa alındı..."
 
-                    status =
-                        "Tüm AppForge projeleri ZIP olarak dışa aktarıldı."
-                } catch (
-                    t: Throwable
-                ) {
-                    status =
-                        "Projeler dışa aktarılamadı: ${t.message}"
-                }
+                AppForgeTaskManager
+                    .submit(
+                        name =
+                            "Tüm AppForge projelerini dışa aktar",
+                        retryLimit =
+                            1
+                    ) {
+                        try {
+                            reportProgress(
+                                10,
+                                "Projeler paketleniyor..."
+                            )
+
+                            io {
+                                ProjectBackupManager
+                                    .exportAllProjectsToUri(
+                                        context,
+                                        uri
+                                    )
+                            }
+
+                            reportProgress(
+                                100,
+                                "Proje arşivi hazır."
+                            )
+
+                            withContext(
+                                Dispatchers.Main.immediate
+                            ) {
+                                status =
+                                    "Tüm AppForge projeleri ZIP olarak dışa aktarıldı."
+                            }
+                        } catch (
+                            cancelled:
+                                kotlinx.coroutines
+                                    .CancellationException
+                        ) {
+                            withContext(
+                                Dispatchers.Main.immediate
+                            ) {
+                                status =
+                                    "Proje dışa aktarma iptal edildi."
+                            }
+
+                            throw cancelled
+                        } catch (
+                            error: Throwable
+                        ) {
+                            withContext(
+                                Dispatchers.Main.immediate
+                            ) {
+                                status =
+                                    "Projeler dışa aktarılamadı: ${error.message}"
+                            }
+
+                            throw error
+                        }
+                    }
             }
         }
 
@@ -1852,21 +2093,67 @@ private fun AppForgeApp() {
             uri: Uri? ->
 
             if (uri != null) {
-                try {
-                    ProjectBackupManager
-                        .exportAllAndroidProjectsToUri(
-                            context,
-                            uri
-                        )
+                status =
+                    "Android proje yedekleri kuyruğa alındı..."
 
-                    status =
-                        "Android Studio projeleri ZIP olarak dışa aktarıldı."
-                } catch (
-                    t: Throwable
-                ) {
-                    status =
-                        "Android projeleri dışa aktarılamadı: ${t.message}"
-                }
+                AppForgeTaskManager
+                    .submit(
+                        name =
+                            "Android Studio projelerini dışa aktar",
+                        retryLimit =
+                            1
+                    ) {
+                        try {
+                            reportProgress(
+                                10,
+                                "Android projeleri paketleniyor..."
+                            )
+
+                            io {
+                                ProjectBackupManager
+                                    .exportAllAndroidProjectsToUri(
+                                        context,
+                                        uri
+                                    )
+                            }
+
+                            reportProgress(
+                                100,
+                                "Android proje arşivi hazır."
+                            )
+
+                            withContext(
+                                Dispatchers.Main.immediate
+                            ) {
+                                status =
+                                    "Android Studio projeleri ZIP olarak dışa aktarıldı."
+                            }
+                        } catch (
+                            cancelled:
+                                kotlinx.coroutines
+                                    .CancellationException
+                        ) {
+                            withContext(
+                                Dispatchers.Main.immediate
+                            ) {
+                                status =
+                                    "Android proje dışa aktarma iptal edildi."
+                            }
+
+                            throw cancelled
+                        } catch (
+                            error: Throwable
+                        ) {
+                            withContext(
+                                Dispatchers.Main.immediate
+                            ) {
+                                status =
+                                    "Android projeleri dışa aktarılamadı: ${error.message}"
+                            }
+
+                            throw error
+                        }
+                    }
             }
         }
 
