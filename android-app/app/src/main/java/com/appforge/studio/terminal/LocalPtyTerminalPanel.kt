@@ -1589,9 +1589,14 @@ private class LocalInteractivePtySession(
                         )
                     } else {
                         linuxMode = false
-                        linuxRootfs = null
-                        linuxWorkspace = null
-                        trackedLinuxWorkingDirectory =
+                        this@LocalInteractivePtySession
+                            .linuxRootfs =
+                            null
+                        this@LocalInteractivePtySession
+                            .linuxWorkspace =
+                            null
+                        this@LocalInteractivePtySession
+                            .trackedLinuxWorkingDirectory =
                             null
                         workingDirectoryTracker.reset()
 
