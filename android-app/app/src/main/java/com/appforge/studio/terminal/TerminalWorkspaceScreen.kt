@@ -35,6 +35,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -174,6 +175,53 @@ fun TerminalWorkspaceScreen(
                 projectId = selectedProjectId,
                 draft = selectedDraft
             )
+        }
+
+    val activePtyWorkingDirectory by
+        LocalPtySessionRegistry
+            .activeWorkingDirectory
+            .collectAsState()
+
+    /*
+     * Files follows the active PTY directory.
+     * Git follows the nearest Git repository root.
+     *
+     * Terminal snapshots themselves remain isolated inside
+     * LocalPtyTerminalPanel.
+     */
+    val filesWorkspace =
+        remember(
+            workspace.absolutePath,
+            activePtyWorkingDirectory
+        ) {
+            activePtyWorkingDirectory
+                ?.takeIf {
+                    it.workspacePath ==
+                        workspace.absolutePath
+                }
+                ?.workingDirectoryPath
+                ?.let { path ->
+                    runCatching {
+                        File(path)
+                            .canonicalFile
+                    }.getOrNull()
+                }
+                ?.takeIf {
+                    it.isDirectory &&
+                        it.canRead()
+                }
+                ?: workspace
+        }
+
+    val gitWorkspace =
+        remember(
+            filesWorkspace.absolutePath
+        ) {
+            TerminalWorkingDirectoryResolver
+                .findGitRoot(
+                    filesWorkspace
+                )
+                ?: filesWorkspace
         }
 
     val workspaceHistoryKey =
@@ -986,12 +1034,14 @@ fun TerminalWorkspaceScreen(
 
                     TerminalWorkspaceTab.FILES ->
                         WorkspaceFilesPanel(
-                            workspace = workspace
+                            workspace =
+                                filesWorkspace
                         )
 
                     TerminalWorkspaceTab.GIT ->
                         GitWorkspacePanel(
-                            workspace = workspace
+                            workspace =
+                                gitWorkspace
                         )
 
                     TerminalWorkspaceTab.CONNECTIONS ->

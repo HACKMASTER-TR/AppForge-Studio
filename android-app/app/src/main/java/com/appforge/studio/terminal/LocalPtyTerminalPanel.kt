@@ -150,6 +150,11 @@ internal data class LocalPtyTerminalState(
     val snapshot: AnsiTerminalSnapshot
 )
 
+internal data class LocalPtyWorkingDirectoryState(
+    val workspacePath: String,
+    val workingDirectoryPath: String
+)
+
 internal object LocalPtySessionRegistry {
     private data class Record(
         val id: String,
@@ -170,6 +175,21 @@ internal object LocalPtySessionRegistry {
     )
 
     private val lock = Any()
+
+    /*
+     * Lightweight state separated from terminal snapshots.
+     * TerminalWorkspaceScreen observes only actual cwd changes,
+     * never every PTY output frame.
+     */
+    private val mutableActiveWorkingDirectory =
+        MutableStateFlow<LocalPtyWorkingDirectoryState?>(
+            null
+        )
+
+    val activeWorkingDirectory:
+        StateFlow<LocalPtyWorkingDirectoryState?> =
+        mutableActiveWorkingDirectory
+            .asStateFlow()
 
     /*
      * PTY output can arrive in many small chunks during paste/build output.
@@ -469,8 +489,23 @@ internal object LocalPtySessionRegistry {
                                 it.isDirectory &&
                                     it.canRead()
                             }
-                            ?.let {
-                                current.workingDirectory = it
+                            ?.let { cwd ->
+                                if (
+                                    current.workingDirectory !=
+                                        cwd
+                                ) {
+                                    current.workingDirectory =
+                                        cwd
+
+                                    if (
+                                        id ==
+                                            activeSessionId
+                                    ) {
+                                        publishActiveWorkingDirectoryLocked(
+                                            current
+                                        )
+                                    }
+                                }
                             }
 
                         scheduleOutputPublishLocked(
@@ -603,6 +638,28 @@ internal object LocalPtySessionRegistry {
         )
     }
 
+    private fun publishActiveWorkingDirectoryLocked(
+        record: Record?
+    ) {
+        val next =
+            record?.let {
+                LocalPtyWorkingDirectoryState(
+                    workspacePath =
+                        it.workspace.absolutePath,
+                    workingDirectoryPath =
+                        it.workingDirectory.absolutePath
+                )
+            }
+
+        if (
+            mutableActiveWorkingDirectory.value !=
+                next
+        ) {
+            mutableActiveWorkingDirectory.value =
+                next
+        }
+    }
+
     fun markActivated(id: String) {
         synchronized(lock) {
             activeSessionId =
@@ -611,14 +668,22 @@ internal object LocalPtySessionRegistry {
             records[id]?.let {
                 it.lastActivatedAt =
                     System.currentTimeMillis()
+
                 it.session
                     .currentWorkingDirectory()
                     ?.takeIf { cwd ->
-                        cwd.isDirectory && cwd.canRead()
+                        cwd.isDirectory &&
+                            cwd.canRead()
                     }
                     ?.let { cwd ->
-                        it.workingDirectory = cwd
+                        it.workingDirectory =
+                            cwd
                     }
+
+                publishActiveWorkingDirectoryLocked(
+                    it
+                )
+
                 persistLocked()
                 publishLocked()
             }
@@ -650,6 +715,9 @@ internal object LocalPtySessionRegistry {
                         id
                 ) {
                     activeSessionId =
+                        null
+
+                    mutableActiveWorkingDirectory.value =
                         null
                 }
 
@@ -708,6 +776,9 @@ internal object LocalPtySessionRegistry {
                 activeSessionId =
                     null
 
+                mutableActiveWorkingDirectory.value =
+                    null
+
                 publishLocked()
 
                 snapshot
@@ -756,6 +827,9 @@ internal object LocalPtySessionRegistry {
                     .clear()
 
                 activeSessionId =
+                    null
+
+                mutableActiveWorkingDirectory.value =
                     null
 
                 /*
@@ -1312,6 +1386,21 @@ private class LocalInteractivePtySession(
     private var linuxMode =
         false
 
+    private val workingDirectoryTracker =
+        TerminalWorkingDirectoryTracker()
+
+    @Volatile
+    private var linuxRootfs:
+        File? = null
+
+    @Volatile
+    private var linuxWorkspace:
+        File? = null
+
+    @Volatile
+    private var trackedLinuxWorkingDirectory:
+        File? = null
+
     private var gitCredentialLease:
         TerminalGitCredentialLease? =
         null
@@ -1384,6 +1473,18 @@ private class LocalInteractivePtySession(
                     if (linuxRootfs != null) {
                         linuxMode = true
 
+                        this@LocalInteractivePtySession
+                            .linuxRootfs =
+                            linuxRootfs.canonicalFile
+
+                        linuxWorkspace =
+                            workspace.canonicalFile
+
+                        trackedLinuxWorkingDirectory =
+                            workspace.canonicalFile
+
+                        workingDirectoryTracker.reset()
+
                         TerminalStandaloneDeveloperBootstrap
                             .install(
                                 appContext,
@@ -1419,6 +1520,8 @@ private class LocalInteractivePtySession(
                                 "PROROOT_TMP_DIR" to
                                     runtimeTemp.absolutePath,
                                 "HOME" to "/root",
+                                "PROMPT_COMMAND" to
+                                    APPFORGE_CWD_PROMPT_COMMAND,
                                 "TERM" to
                                     "xterm-256color",
                                 "COLORTERM" to
@@ -1486,6 +1589,12 @@ private class LocalInteractivePtySession(
                         )
                     } else {
                         linuxMode = false
+                        linuxRootfs = null
+                        linuxWorkspace = null
+                        trackedLinuxWorkingDirectory =
+                            null
+                        workingDirectoryTracker.reset()
+
                         closeGitCredentialLease()
 
                         val tmp =
@@ -1597,12 +1706,54 @@ private class LocalInteractivePtySession(
                                     if (count < 0) break
 
                                     if (count > 0) {
-                                        onOutput(
+                                        val chunk =
                                             String(
                                                 buffer,
                                                 0,
                                                 count
                                             )
+
+                                        if (linuxMode) {
+                                            workingDirectoryTracker
+                                                .feed(
+                                                    chunk
+                                                )
+                                                ?.let { guestPath ->
+                                                    val rootfs =
+                                                        linuxRootfs
+
+                                                    val mountedWorkspace =
+                                                        linuxWorkspace
+
+                                                    if (
+                                                        rootfs != null &&
+                                                        mountedWorkspace !=
+                                                            null
+                                                    ) {
+                                                        TerminalWorkingDirectoryResolver
+                                                            .resolveLinuxGuestDirectory(
+                                                                rootfs =
+                                                                    rootfs,
+                                                                workspace =
+                                                                    mountedWorkspace,
+                                                                guestPath =
+                                                                    guestPath
+                                                            )
+                                                            ?.let { resolved ->
+                                                                trackedLinuxWorkingDirectory =
+                                                                    resolved
+                                                            }
+                                                    }
+                                                }
+                                        }
+
+                                        /*
+                                         * The ANSI buffer already consumes OSC
+                                         * sequences invisibly, so this marker does
+                                         * not appear in terminal output.
+                                         */
+                                        onOutput(
+                                            chunk
                                         )
                                     }
                                 }
@@ -1690,7 +1841,7 @@ private class LocalInteractivePtySession(
 
     fun currentWorkingDirectory(): File? {
         if (linuxMode) {
-            return null
+            return trackedLinuxWorkingDirectory
         }
 
         val pid = processId
@@ -1772,6 +1923,11 @@ private class LocalInteractivePtySession(
 
         processId = null
         linuxMode = false
+        linuxRootfs = null
+        linuxWorkspace = null
+        trackedLinuxWorkingDirectory =
+            null
+        workingDirectoryTracker.reset()
     }
 }
 
