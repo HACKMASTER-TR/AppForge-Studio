@@ -2483,99 +2483,104 @@ internal fun LocalPtyTerminalPanel(
                             )
                         }
                     }
-                    PtyKey("CTRL+A", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\u0001"
-                            )
-                        }
-                    }
-                    PtyKey("CTRL+E", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\u0005"
-                            )
-                        }
-                    }
-                    PtyKey("CTRL+R", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\u0012"
-                            )
-                        }
-                    }
-                    PtyKey("CTRL+U", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\u0015"
-                            )
-                        }
-                    }
-                    PtyKey("CTRL+W", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\u0017"
-                            )
-                        }
-                    }
-                    PtyKey("⌫", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\u007f"
-                            )
-                        }
-                    }
-
-                    /*
-                     * Direct raw prompt keys bypass Android IME composition.
-                     * Useful for gh, ssh, package managers and other CLI
-                     * confirmation prompts.
-                     */
-                    PtyKey("Y", true) {
-                        directInputRevision +=
-                            1L
-
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                localPtyPromptAnswer(
-                                    'y'
+                    if (
+                        ownerQuickActionsEnabled
+                    ) {
+                        PtyKey("CTRL+A", true) {
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    "\u0001"
                                 )
-                            )
+                            }
                         }
-                    }
-
-                    PtyKey("N", true) {
-                        directInputRevision +=
-                            1L
-
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                localPtyPromptAnswer(
-                                    'n'
+                        PtyKey("CTRL+E", true) {
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    "\u0005"
                                 )
-                            )
+                            }
+                        }
+                        PtyKey("CTRL+R", true) {
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    "\u0012"
+                                )
+                            }
+                        }
+                        PtyKey("CTRL+U", true) {
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    "\u0015"
+                                )
+                            }
+                        }
+                        PtyKey("CTRL+W", true) {
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    "\u0017"
+                                )
+                            }
+                        }
+                        PtyKey("⌫", true) {
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    "\u007f"
+                                )
+                            }
+                        }
+
+                        /*
+                         * Direct raw prompt keys bypass Android IME composition.
+                         * Useful for gh, ssh, package managers and other CLI
+                         * confirmation prompts.
+                         */
+                        PtyKey("Y", true) {
+                            directInputRevision +=
+                                1L
+
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    localPtyPromptAnswer(
+                                        'y'
+                                    )
+                                )
+                            }
+                        }
+
+                        PtyKey("N", true) {
+                            directInputRevision +=
+                                1L
+
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    localPtyPromptAnswer(
+                                        'n'
+                                    )
+                                )
+                            }
+                        }
+
+                        PtyKey("↵", true) {
+                            directInputRevision +=
+                                1L
+
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    "\r"
+                                )
+                            }
                         }
                     }
 
-                    PtyKey("↵", true) {
-                        directInputRevision +=
-                            1L
-
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\r"
-                            )
-                        }
-                    }
                     PtyKey("←", true) {
                         scope.launch {
                             LocalPtySessionRegistry.write(
@@ -2608,63 +2613,68 @@ internal fun LocalPtyTerminalPanel(
                             )
                         }
                     }
-                    PtyKey("pwd", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "pwd\r"
-                            )
-                        }
-                    }
-                    PtyKey("ls", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "ls -la\r"
-                            )
-                        }
-                    }
-                    PtyKey("clear", true) {
-                        LocalPtySessionRegistry
-                            .clearBuffer(
-                                state.id
-                            )
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\u000c"
-                            )
-                        }
-                    }
-                    PtyKey(
-                        "A−",
-                        terminalFontSizeSp > 8f
+                    if (
+                        ownerQuickActionsEnabled
                     ) {
-                        terminalFontSizeSp =
-                            (terminalFontSizeSp - 1f)
-                                .coerceAtLeast(8f)
-                    }
-                    PtyKey(
-                        "A+",
-                        terminalFontSizeSp < 18f
-                    ) {
-                        terminalFontSizeSp =
-                            (terminalFontSizeSp + 1f)
-                                .coerceAtMost(18f)
-                    }
-                    PtyKey("Tanıla", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "printf '=== APPFORGE PTY SELF TEST ===\\n'; " +
-                                    "printf 'TERM=%s\\n' \"\$TERM\"; stty size; pwd; " +
-                                    "for c in sh curl unzip tar gzip sed awk grep find xargs git ssh python3 node npm java gradle clang cmake; do " +
-                                    "command -v \"\$c\" >/dev/null 2>&1 && " +
-                                    "printf '%-8s PASS\\n' \"\$c\" || " +
-                                    "printf '%-8s MISS\\n' \"\$c\"; done\r"
-                            )
+                        PtyKey("pwd", true) {
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    "pwd\r"
+                                )
+                            }
+                        }
+                        PtyKey("ls", true) {
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    "ls -la\r"
+                                )
+                            }
+                        }
+                        PtyKey("clear", true) {
+                            LocalPtySessionRegistry
+                                .clearBuffer(
+                                    state.id
+                                )
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    "\u000c"
+                                )
+                            }
+                        }
+                        PtyKey(
+                            "A−",
+                            terminalFontSizeSp > 8f
+                        ) {
+                            terminalFontSizeSp =
+                                (terminalFontSizeSp - 1f)
+                                    .coerceAtLeast(8f)
+                        }
+                        PtyKey(
+                            "A+",
+                            terminalFontSizeSp < 18f
+                        ) {
+                            terminalFontSizeSp =
+                                (terminalFontSizeSp + 1f)
+                                    .coerceAtMost(18f)
+                        }
+                        PtyKey("Tanıla", true) {
+                            scope.launch {
+                                LocalPtySessionRegistry.write(
+                                    state.id,
+                                    "printf '=== APPFORGE PTY SELF TEST ===\\n'; " +
+                                        "printf 'TERM=%s\\n' \"\$TERM\"; stty size; pwd; " +
+                                        "for c in sh curl unzip tar gzip sed awk grep find xargs git ssh python3 node npm java gradle clang cmake; do " +
+                                        "command -v \"\$c\" >/dev/null 2>&1 && " +
+                                        "printf '%-8s PASS\\n' \"\$c\" || " +
+                                        "printf '%-8s MISS\\n' \"\$c\"; done\r"
+                                )
+                            }
                         }
                     }
+
                 }
             } else {
                 PtyKey(
