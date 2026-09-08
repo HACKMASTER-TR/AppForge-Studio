@@ -2064,13 +2064,17 @@ private fun AppForgeApp() {
             }
         }
 
+    /*
+     * Local AI is intentionally cold until the user actually opens AI.
+     *
+     * Previously LocalAiModelStore.load() ran synchronously during the
+     * root AppForgeApp composition and the auto-installer started
+     * monitoring the network immediately, even when AI was never used.
+     */
     var aiModelInfo by
         remember {
-            mutableStateOf(
-                LocalAiModelStore
-                    .load(
-                        context
-                    )
+            mutableStateOf<LocalAiModelInfo?>(
+                null
             )
         }
 
@@ -2080,6 +2084,76 @@ private fun AppForgeApp() {
                 ""
             )
         }
+
+    var aiModelStateLoaded by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+    /*
+     * Sticky activation:
+     * after the first AI visit, model preparation may continue while
+     * the user navigates elsewhere. This prevents cancelling a model
+     * installation just because the AI screen was closed.
+     */
+    var aiRuntimeActivated by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+    LaunchedEffect(
+        screen
+    ) {
+        if (
+            screen ==
+                AppScreen.AI_ASSISTANT
+        ) {
+            aiRuntimeActivated =
+                true
+        }
+    }
+
+    LaunchedEffect(
+        aiRuntimeActivated,
+        aiModelStateLoaded
+    ) {
+        if (
+            !aiRuntimeActivated ||
+            aiModelStateLoaded
+        ) {
+            return@LaunchedEffect
+        }
+
+        aiModelImportMessage =
+            "Yerel AI durumu yükleniyor..."
+
+        aiModelInfo =
+            withContext(
+                Dispatchers.IO
+            ) {
+                LocalAiModelStore
+                    .load(
+                        context
+                    )
+            }
+
+        aiModelStateLoaded =
+            true
+
+        aiModelImportMessage =
+            if (
+                aiModelInfo !=
+                    null
+            ) {
+                "Yerel AI hazır • cihaz üzerinde çalışıyor."
+            } else {
+                "Yerel AI hazırlanıyor..."
+            }
+    }
 
     var aiModelInstalling by
         remember {
@@ -2168,10 +2242,19 @@ private fun AppForgeApp() {
     //   bu uygulama oturumu boyunca tekrar sorma.
     //   Wi-Fi geldiğinde otomatik devam et.
     LaunchedEffect(
+        aiRuntimeActivated,
+        aiModelStateLoaded,
         aiModelInfo,
         mobileAiAllowedForSession,
         mobileAiDeclinedForSession
     ) {
+        if (
+            !aiRuntimeActivated ||
+            !aiModelStateLoaded
+        ) {
+            return@LaunchedEffect
+        }
+
         while (
             aiModelInfo == null
         ) {
