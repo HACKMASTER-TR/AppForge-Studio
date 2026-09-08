@@ -123,6 +123,11 @@ object GitWorkspaceService {
                     )
                     .call()
                     .use { git ->
+                        AppForgeGitInternalExcludes
+                            .ensure(
+                                git.repository
+                            )
+
                         "Git deposu hazır: ${git.repository.directory.absolutePath}"
                     }
 
@@ -392,7 +397,12 @@ object GitWorkspaceService {
                 )
 
             command.call()
-                .close()
+                .use { git ->
+                    AppForgeGitInternalExcludes
+                        .ensure(
+                            git.repository
+                        )
+                }
 
             destination
         }
@@ -465,6 +475,20 @@ object GitWorkspaceService {
                 repositoryBuilder.build()
 
             repository.use { safeRepository ->
+                val internalExcludesChanged =
+                    AppForgeGitInternalExcludes
+                        .ensure(
+                            safeRepository
+                        )
+
+                if (
+                    internalExcludesChanged
+                ) {
+                    GitWorkingTreeStatusCache
+                        .invalidate(
+                            safeWorkspace
+                        )
+                }
 
                 val repositoryRoot =
                     runCatching {
