@@ -2186,13 +2186,42 @@ private fun AppForgeApp() {
         ) {
             uri: Uri? ->
             if (uri != null) {
-                try {
-                    val importedProjects =
-                        ProjectBackupManager
-                            .importManyFromUri(
-                                context,
-                                uri
-                            )
+                status =
+                    "AppForge yedeği içe aktarma kuyruğa alındı..."
+
+                AppForgeTaskManager
+                    .submit(
+                        name =
+                            "AppForge yedeğini içe aktar",
+                        uniqueKey =
+                            "backup-import:${uri}",
+                        retryLimit =
+                            0
+                    ) {
+                        reportProgress(
+                            5,
+                            "Yedek dosyası okunuyor..."
+                        )
+
+                        withContext(
+                            Dispatchers.Main.immediate
+                        ) {
+                            try {
+                                val importedProjects =
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        ProjectBackupManager
+                                            .importManyFromUri(
+                                                context,
+                                                uri
+                                            )
+                                    }
+
+                                reportProgress(
+                                    60,
+                                    "Projeler geri yükleniyor..."
+                                )
 
                     var importedCount =
                         0
@@ -2331,12 +2360,30 @@ private fun AppForgeApp() {
                                 "İçe aktarılacak proje bulunamadı."
                             }
                     }
-                } catch (
-                    t: Throwable
-                ) {
-                    status =
-                        "Yedek içe aktarılamadı: ${t.message}"
-                }
+                            } catch (
+                                cancelled:
+                                    kotlinx.coroutines
+                                        .CancellationException
+                            ) {
+                                status =
+                                    "Yedek içe aktarma iptal edildi."
+
+                                throw cancelled
+                            } catch (
+                                t: Throwable
+                            ) {
+                                status =
+                                    "Yedek içe aktarılamadı: ${t.message}"
+
+                                throw t
+                            }
+                        }
+
+                        reportProgress(
+                            100,
+                            "Projeler içe aktarıldı."
+                        )
+                    }
             }
         }
 
