@@ -84,6 +84,7 @@ private object CopyV2 {
         "tools" to "Studio araçları",
         "terminal" to "AppForge Terminal",
         "terminal_body" to "Proje dosyaları, Git, SSH ve komutlar tek çalışma alanında.",
+        "tasks" to "Görev Merkezi",
         "other_apps" to "Diğer Uygulamalar",
         "templates" to "Şablonlar",
         "history" to "Derleme Geçmişi",
@@ -123,6 +124,7 @@ private object CopyV2 {
         "tools" to "Studio tools",
         "terminal" to "AppForge Terminal",
         "terminal_body" to "Project files, Git, SSH and commands in one workspace.",
+        "tasks" to "Task Center",
         "other_apps" to "Other Apps",
         "templates" to "Templates",
         "history" to "Build History",
@@ -162,6 +164,7 @@ private object CopyV2 {
         "tools" to "Studio-Werkzeuge",
         "terminal" to "AppForge Terminal",
         "terminal_body" to "Projektdateien, Git, SSH und Befehle in einem Arbeitsbereich.",
+        "tasks" to "Aufgabenzentrale",
         "other_apps" to "Weitere Apps",
         "templates" to "Vorlagen",
         "history" to "Build-Verlauf",
@@ -201,6 +204,7 @@ private object CopyV2 {
         "tools" to "أدوات Studio",
         "terminal" to "AppForge Terminal",
         "terminal_body" to "ملفات المشروع وGit وSSH والأوامر في مساحة عمل واحدة.",
+        "tasks" to "مركز المهام",
         "other_apps" to "تطبيقات أخرى",
         "templates" to "القوالب",
         "history" to "سجل البناء",
@@ -247,6 +251,7 @@ fun StudioHomeV2(
     onOpenAi: () -> Unit,
     onOpenTemplates: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenTasks: () -> Unit,
     onOpenTerminal: () -> Unit,
     onOpenOtherApps: () -> Unit,
     onImportProject: () -> Unit,
@@ -840,6 +845,13 @@ fun StudioHomeV2(
                         ToolCard("⌫", t("trash"), onOpenTrash, Modifier.weight(1f))
                         ToolCard("⇄", t("convert"), onCreateConversion, Modifier.weight(1f))
                     }
+
+                    ToolCard(
+                        "☷",
+                        t("tasks"),
+                        onOpenTasks,
+                        Modifier.fillMaxWidth()
+                    )
                 }
             }
 

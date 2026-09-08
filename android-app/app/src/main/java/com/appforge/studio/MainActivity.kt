@@ -603,7 +603,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, TERMINAL, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 private data class ParallelBuildTestItem(
     val slot: Int,
@@ -798,6 +798,8 @@ private fun AppForgeApp() {
             screen ==
                 AppScreen.TERMINAL ||
             screen ==
+                AppScreen.TASKS ||
+            screen ==
                 AppScreen.HISTORY ||
             screen ==
                 AppScreen.TRASH ||
@@ -820,6 +822,10 @@ private fun AppForgeApp() {
                     AppScreen.HOME
 
             AppScreen.ADMIN_OPS ->
+                screen =
+                    AppScreen.HOME
+
+            AppScreen.TASKS ->
                 screen =
                     AppScreen.HOME
 
@@ -4084,6 +4090,12 @@ private fun AppForgeApp() {
                             )
                         },
 
+                        onOpenTasks = {
+                            openWorkspaceScreen(
+                                AppScreen.TASKS
+                            )
+                        },
+
                         onOpenTerminal = {
                             terminalReturnScreen =
                                 screen
@@ -4832,6 +4844,17 @@ private fun AppForgeApp() {
                             AppScreen.HOME
                     }
                 )
+
+
+                AppScreen.TASKS ->
+                    com.appforge.studio.task.AppForgeTaskCenterScreen(
+                        languageCode =
+                            prefs.languageCode,
+                        onBack = {
+                            screen =
+                                AppScreen.HOME
+                        }
+                    )
 
 
                 AppScreen.TERMINAL ->
