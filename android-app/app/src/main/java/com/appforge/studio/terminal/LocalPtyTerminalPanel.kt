@@ -2115,6 +2115,16 @@ internal fun LocalPtyTerminalPanel(
         }
 
     /*
+     * Accessory keys bypass the hidden IME field and write directly
+     * to the PTY. Track those writes so stale composition/paste state
+     * can be cleared before the next interactive prompt input.
+     */
+    var directInputRevision by
+        remember(activePtyId) {
+            mutableStateOf(0L)
+        }
+
+    /*
      * Keep the terminal viewport measured independently from the IME.
      * Only the extra-key accessory bar follows the keyboard.
      */
@@ -2356,6 +2366,8 @@ internal fun LocalPtyTerminalPanel(
                 },
                 bottomContentPaddingPx =
                     accessoryReservePx,
+                directInputRevision =
+                    directInputRevision,
                 modifier =
                     Modifier.weight(1f)
             )
@@ -2453,6 +2465,9 @@ internal fun LocalPtyTerminalPanel(
                         }
                     }
                     PtyKey("CTRL+C", true) {
+                        directInputRevision +=
+                            1L
+
                         scope.launch {
                             LocalPtySessionRegistry
                                 .sendControlC(
@@ -2516,7 +2531,40 @@ internal fun LocalPtyTerminalPanel(
                             )
                         }
                     }
+
+                    /*
+                     * Direct raw prompt keys bypass Android IME composition.
+                     * Useful for gh, ssh, package managers and other CLI
+                     * confirmation prompts.
+                     */
+                    PtyKey("Y", true) {
+                        directInputRevision +=
+                            1L
+
+                        scope.launch {
+                            LocalPtySessionRegistry.write(
+                                state.id,
+                                "y"
+                            )
+                        }
+                    }
+
+                    PtyKey("N", true) {
+                        directInputRevision +=
+                            1L
+
+                        scope.launch {
+                            LocalPtySessionRegistry.write(
+                                state.id,
+                                "n"
+                            )
+                        }
+                    }
+
                     PtyKey("↵", true) {
+                        directInputRevision +=
+                            1L
+
                         scope.launch {
                             LocalPtySessionRegistry.write(
                                 state.id,
@@ -2741,6 +2789,7 @@ private fun LocalPtySurface(
     copyMode: Boolean,
     onFontSizeSpChange: (Float) -> Unit,
     bottomContentPaddingPx: Int = 0,
+    directInputRevision: Long = 0L,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -2894,6 +2943,36 @@ private fun LocalPtySurface(
                 null
             )
         }
+
+    /*
+     * Toolbar Enter / Y / N / CTRL+C do not pass through
+     * BasicTextField.onValueChange. Clear its shadow state explicitly,
+     * otherwise a previous pasted command can leak into the next
+     * interactive CLI prompt.
+     */
+    LaunchedEffect(
+        directInputRevision
+    ) {
+        if (
+            directInputRevision <=
+                0L
+        ) {
+            return@LaunchedEffect
+        }
+
+        pendingBracketedPaste =
+            null
+
+        imeValue =
+            TextFieldValue(
+                text =
+                    LOCAL_PTY_IME_SENTINEL,
+                selection =
+                    TextRange(
+                        LOCAL_PTY_IME_SENTINEL.length
+                    )
+            )
+    }
 
     var lastAutoFollowLineCount by
         remember(state.id) {
@@ -3957,13 +4036,13 @@ private fun localPtyImeDeltaWithSentinel(
     )
 }
 
-private data class LocalPtyImeDispatch(
+internal data class LocalPtyImeDispatch(
     val ptyText: String,
     val pendingPaste: String?,
     val resetIme: Boolean
 )
 
-private fun localPtyBracketedPasteDispatch(
+internal fun localPtyBracketedPasteDispatch(
     delta: String,
     pendingPaste: String?,
     bracketedPasteEnabled: Boolean
@@ -3980,10 +4059,18 @@ private fun localPtyBracketedPasteDispatch(
             )
 
     /*
-     * Explicit Enter after a protected paste.
+     * A standalone Android IME Enter is a terminal submit key,
+     * never clipboard content.
+     *
+     * This must be handled before bulk-paste detection because
+     * normalized.contains('\n') would otherwise classify Enter
+     * as a bracketed paste while Readline mode 2004 is enabled.
+     *
+     * Clearing pendingPaste also prevents a command pasted and
+     * submitted with the accessory Enter key from contaminating
+     * the following raw Y/N prompt.
      */
     if (
-        pendingPaste != null &&
         normalized == "\n"
     ) {
         return LocalPtyImeDispatch(
