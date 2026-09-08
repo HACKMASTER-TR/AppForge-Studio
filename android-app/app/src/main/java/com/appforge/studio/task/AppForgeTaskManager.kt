@@ -96,6 +96,7 @@ class AppForgeTaskContext internal constructor(
 
 private data class AppForgeTaskDefinition(
     val name: String,
+    val uniqueKey: String?,
     val retryLimit: Int,
     val block:
         suspend AppForgeTaskContext.() -> Unit
@@ -116,6 +117,9 @@ object AppForgeTaskManager {
 
     private const val MAX_HISTORY =
         100
+
+    private const val MAX_FINISHED_HISTORY =
+        50
 
     private val scope =
         CoroutineScope(
@@ -157,9 +161,21 @@ object AppForgeTaskManager {
             AppForgeTaskDefinition
         >()
 
+    /*
+     * Only QUEUED/RUNNING tasks own a unique key.
+     * Terminal states release it immediately so a new operation
+     * may start later using the same logical identity.
+     */
+    private val activeUniqueKeys =
+        HashMap<
+            String,
+            String
+        >()
+
 
     fun submit(
         name: String,
+        uniqueKey: String? = null,
         retryLimit: Int = 0,
         block:
             suspend AppForgeTaskContext.() -> Unit
@@ -176,6 +192,13 @@ object AppForgeTaskManager {
             "Retry limiti negatif olamaz."
         }
 
+        val safeUniqueKey =
+            uniqueKey
+                ?.trim()
+                ?.takeIf {
+                    it.isNotBlank()
+                }
+
         val id =
             UUID.randomUUID()
                 .toString()
@@ -186,15 +209,68 @@ object AppForgeTaskManager {
         synchronized(
             lock
         ) {
+            /*
+             * Double tap / repeated launcher callback:
+             * return the already active logical task instead of
+             * creating another heavy operation.
+             */
+            if (
+                safeUniqueKey !=
+                    null
+            ) {
+                val existingId =
+                    activeUniqueKeys[
+                        safeUniqueKey
+                    ]
+
+                if (
+                    existingId !=
+                        null
+                ) {
+                    val existing =
+                        findLocked(
+                            existingId
+                        )
+
+                    if (
+                        existing
+                            ?.canCancel ==
+                            true
+                    ) {
+                        return existingId
+                    }
+
+                    /*
+                     * Defensive stale-key cleanup.
+                     */
+                    activeUniqueKeys
+                        .remove(
+                            safeUniqueKey
+                        )
+                }
+            }
+
             definitions[id] =
                 AppForgeTaskDefinition(
                     name =
                         name.trim(),
+                    uniqueKey =
+                        safeUniqueKey,
                     retryLimit =
                         retryLimit,
                     block =
                         block
                 )
+
+            if (
+                safeUniqueKey !=
+                    null
+            ) {
+                activeUniqueKeys[
+                    safeUniqueKey
+                ] =
+                    id
+            }
 
             addSnapshotLocked(
                 AppForgeTaskSnapshot(
@@ -281,6 +357,37 @@ object AppForgeTaskManager {
                 return false
             }
 
+            val definition =
+                definitions[id]
+                    ?: return false
+
+            val uniqueKey =
+                definition.uniqueKey
+
+            if (
+                uniqueKey !=
+                    null
+            ) {
+                val owner =
+                    activeUniqueKeys[
+                        uniqueKey
+                    ]
+
+                if (
+                    owner !=
+                        null &&
+                    owner !=
+                        id
+                ) {
+                    return false
+                }
+
+                activeUniqueKeys[
+                    uniqueKey
+                ] =
+                    id
+            }
+
             updateLocked(
                 id
             ) {
@@ -342,6 +449,15 @@ object AppForgeTaskManager {
                 )
         }
     }
+
+
+    internal fun trimHistoryForTests(
+        input:
+            List<AppForgeTaskSnapshot>
+    ): List<AppForgeTaskSnapshot> =
+        trimHistory(
+            input
+        )
 
 
     internal fun reportProgress(
@@ -442,6 +558,12 @@ object AppForgeTaskManager {
                                         System.currentTimeMillis()
                                 )
                             }
+
+                            releaseUniqueKeyLocked(
+                                id
+                            )
+
+                            enforceHistoryLocked()
                         }
                     }
                 } catch (
@@ -463,6 +585,12 @@ object AppForgeTaskManager {
                                     System.currentTimeMillis()
                             )
                         }
+
+                        releaseUniqueKeyLocked(
+                            id
+                        )
+
+                        enforceHistoryLocked()
                     }
                 } catch (
                     error: Throwable
@@ -485,6 +613,12 @@ object AppForgeTaskManager {
                                     System.currentTimeMillis()
                             )
                         }
+
+                        releaseUniqueKeyLocked(
+                            id
+                        )
+
+                        enforceHistoryLocked()
                     }
                 } finally {
                     synchronized(
@@ -522,21 +656,11 @@ object AppForgeTaskManager {
         snapshot:
             AppForgeTaskSnapshot
     ) {
-        val combined =
+        mutableTasks.value =
             mutableTasks.value +
                 snapshot
 
-        mutableTasks.value =
-            if (
-                combined.size <=
-                    MAX_HISTORY
-            ) {
-                combined
-            } else {
-                trimHistory(
-                    combined
-                )
-            }
+        enforceHistoryLocked()
     }
 
 
@@ -569,17 +693,52 @@ object AppForgeTaskManager {
      * Never throw away queued/running work.
      * Old completed entries are discarded first.
      */
+    private fun enforceHistoryLocked() {
+        val trimmed =
+            trimHistory(
+                mutableTasks.value
+            )
+
+        if (
+            trimmed !=
+                mutableTasks.value
+        ) {
+            mutableTasks.value =
+                trimmed
+        }
+
+        /*
+         * Definitions contain retry closures and may capture project
+         * objects/URIs. Never retain definitions after their history
+         * entry has been evicted.
+         */
+        val retainedIds =
+            mutableTasks.value
+                .mapTo(
+                    HashSet()
+                ) {
+                    it.id
+                }
+
+        definitions
+            .keys
+            .retainAll(
+                retainedIds
+            )
+    }
+
+
+    /*
+     * Active tasks are NEVER discarded.
+     *
+     * Once they finish, only the latest 50 completed entries remain.
+     * MAX_HISTORY still caps completed slots further if a very large
+     * number of queued tasks is active.
+     */
     private fun trimHistory(
         input:
             List<AppForgeTaskSnapshot>
     ): List<AppForgeTaskSnapshot> {
-        if (
-            input.size <=
-                MAX_HISTORY
-        ) {
-            return input
-        }
-
         val active =
             input.filter {
                 it.state ==
@@ -596,7 +755,7 @@ object AppForgeTaskManager {
                     AppForgeTaskState.RUNNING
             }
 
-        val finishedSlots =
+        val availableFinishedSlots =
             (
                 MAX_HISTORY -
                     active.size
@@ -604,11 +763,14 @@ object AppForgeTaskManager {
                 .coerceAtLeast(
                     0
                 )
+                .coerceAtMost(
+                    MAX_FINISHED_HISTORY
+                )
 
         return (
             finished
                 .takeLast(
-                    finishedSlots
+                    availableFinishedSlots
                 ) +
             active
         )
@@ -616,4 +778,27 @@ object AppForgeTaskManager {
                 it.createdAt
             }
     }
+
+
+    private fun releaseUniqueKeyLocked(
+        id: String
+    ) {
+        val uniqueKey =
+            definitions[id]
+                ?.uniqueKey
+                ?: return
+
+        if (
+            activeUniqueKeys[
+                uniqueKey
+            ] ==
+                id
+        ) {
+            activeUniqueKeys
+                .remove(
+                    uniqueKey
+                )
+        }
+    }
+
 }

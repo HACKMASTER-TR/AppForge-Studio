@@ -1604,6 +1604,8 @@ private fun AppForgeApp() {
                     .submit(
                         name =
                             "Kaynak proje içe aktar",
+                        uniqueKey =
+                            "source-import:${baseProjectId ?: key}",
                         retryLimit =
                             0
                     ) {
@@ -1953,6 +1955,14 @@ private fun AppForgeApp() {
                     .submit(
                         name =
                             "Proje yedeğini dışa aktar",
+                        uniqueKey =
+                            "backup-project:${
+                                draftSnapshot.packageName
+                                    .trim()
+                                    .ifBlank {
+                                        "project"
+                                    }
+                            }",
                         retryLimit =
                             1
                     ) {
@@ -2030,6 +2040,8 @@ private fun AppForgeApp() {
                     .submit(
                         name =
                             "Tüm AppForge projelerini dışa aktar",
+                        uniqueKey =
+                            "backup-all-projects",
                         retryLimit =
                             1
                     ) {
@@ -2106,6 +2118,8 @@ private fun AppForgeApp() {
                     .submit(
                         name =
                             "Android Studio projelerini dışa aktar",
+                        uniqueKey =
+                            "backup-all-android-projects",
                         retryLimit =
                             1
                     ) {
