@@ -56,6 +56,7 @@ import com.appforge.studio.build.TestLabResult
 import com.appforge.studio.ai.AppForgeKnowledgeBase
 import com.appforge.studio.ai.AppForgeProjectAdvisor
 import com.appforge.studio.ai.AppForgeBuildErrorAdvisor
+import com.appforge.studio.ai.BuildDiagnosisPolicy
 import com.appforge.studio.ai.AppForgeAssistantIntegration
 import com.appforge.studio.ai.AppForgeAiCommandParser
 import com.appforge.studio.ai.AppForgeSmartSuggestions
@@ -4633,8 +4634,14 @@ private fun AppForgeApp() {
                                 !exeUrl.isNullOrBlank(),
                             buildDiagnosis =
                                 if (
-                                    logs.isNotEmpty() ||
-                                    preflight.isNotEmpty()
+                                    BuildDiagnosisPolicy
+                                        .shouldDiagnoseFailure(
+                                            status
+                                        ) &&
+                                    (
+                                        logs.isNotEmpty() ||
+                                        preflight.isNotEmpty()
+                                    )
                                 ) {
                                     AppForgeBuildErrorAdvisor
                                         .diagnose(
@@ -10880,6 +10887,100 @@ private fun LocalAiAssistantScreen(
 
         if (
             asksBuildDiagnosis &&
+            BuildDiagnosisPolicy
+                .isSuccessful(
+                    status =
+                        runtimeContext.buildStatus,
+                    progress =
+                        runtimeContext.buildProgress
+                )
+        ) {
+            val outputs =
+                buildList {
+                    if (
+                        runtimeContext.hasApk
+                    ) {
+                        add("APK")
+                    }
+
+                    if (
+                        runtimeContext.hasAab
+                    ) {
+                        add("AAB")
+                    }
+
+                    if (
+                        runtimeContext.hasExe
+                    ) {
+                        add("EXE")
+                    }
+                }
+
+            val answer =
+                buildString {
+                    append(
+                        "Derleme başarılı"
+                    )
+
+                    if (
+                        runtimeContext.buildProgress >
+                            0
+                    ) {
+                        append(
+                            " • %"
+                        )
+
+                        append(
+                            runtimeContext
+                                .buildProgress
+                        )
+                    }
+
+                    append(
+                        "."
+                    )
+
+                    if (
+                        outputs.isNotEmpty()
+                    ) {
+                        append(
+                            "\nHazır çıktı: "
+                        )
+
+                        append(
+                            outputs.joinToString(
+                                ", "
+                            )
+                        )
+
+                        append(
+                            "."
+                        )
+                    }
+
+                    append(
+                        "\nHata algılanmadı."
+                    )
+                }
+
+            addMessage(
+                "assistant",
+                answer
+            )
+
+            status =
+                "Build durumu açıklandı • başarılı"
+
+            return
+        }
+
+
+        if (
+            asksBuildDiagnosis &&
+            BuildDiagnosisPolicy
+                .shouldDiagnoseFailure(
+                    runtimeContext.buildStatus
+                ) &&
             (
                 buildLogs.isNotEmpty() ||
                     buildPreflight.isNotEmpty()
