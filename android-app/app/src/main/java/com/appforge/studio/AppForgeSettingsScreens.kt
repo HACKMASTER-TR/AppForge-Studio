@@ -395,7 +395,7 @@ internal fun LegalCenterScreen(
 }
 
 @Composable
-private fun LegalInfoCard(
+internal fun LegalInfoCard(
     icon: String,
     title: String,
     body: String

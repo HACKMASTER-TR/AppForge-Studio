@@ -48,7 +48,7 @@ internal fun HowToUseCenterScreen(
 }
 
 @Composable
-private fun ExpandableGuideCard(
+internal fun ExpandableGuideCard(
     icon: String,
     title: String,
     subtitle: String,
