@@ -3,34 +3,562 @@ set -eu
 
 REAL_GH="/usr/bin/gh"
 CREDENTIAL="/run/appforge/github-credential"
+API_ROOT="https://api.github.com"
+API_VERSION="2022-11-28"
 
-if [ ! -x "$REAL_GH" ]; then
-    echo "AppForge: GitHub CLI bulunamadı: $REAL_GH" >&2
-    exit 127
-fi
+die() {
+    printf 'AppForge gh: %s\n' "$*" >&2
+    exit 1
+}
 
-# Explicit user-supplied GH/GITHUB token always wins.
-if [ -n "${GH_TOKEN:-}" ] || [ -n "${GITHUB_TOKEN:-}" ]; then
-    exec "$REAL_GH" "$@"
-fi
+need_tool() {
+    command -v "$1" >/dev/null 2>&1 ||
+        die "Gerekli araç bulunamadı: $1"
+}
 
-# AppForge GitHub connection is mounted into the Linux runtime as:
-#   line 1 = username
-#   line 2 = access token
-#
-# Never print or persist the token. It exists only in this gh subprocess.
-if [ -r "$CREDENTIAL" ] && [ -s "$CREDENTIAL" ]; then
-    token="$(sed -n '2p' "$CREDENTIAL")"
+need_tool curl
+need_tool jq
 
-    if [ -n "$token" ]; then
-        GH_TOKEN="$token"
-        export GH_TOKEN
+load_token() {
+    token="${GH_TOKEN:-}"
 
-        unset token
-
-        exec "$REAL_GH" "$@"
+    if [ -z "$token" ]; then
+        token="${GITHUB_TOKEN:-}"
     fi
-fi
 
-# No AppForge GitHub connection: preserve normal GitHub CLI behavior.
-exec "$REAL_GH" "$@"
+    if [ -z "$token" ] &&
+       [ -r "$CREDENTIAL" ] &&
+       [ -s "$CREDENTIAL" ]; then
+        token="$(
+            sed -n '2p' "$CREDENTIAL"
+        )"
+    fi
+
+    [ -n "$token" ] ||
+        die "GitHub bağlantısı bulunamadı. Bağlantılar > GitHub bölümünden hesabı bağlayın."
+
+    case "$token" in
+        *'
+'*|*'
+'*)
+            die "GitHub token biçimi geçersiz."
+            ;;
+    esac
+}
+
+api_request() {
+    method="$1"
+    path="$2"
+    shift 2
+
+    case "$path" in
+        /*)
+            ;;
+        *)
+            path="/$path"
+            ;;
+    esac
+
+    url="${API_ROOT}${path}"
+
+    # Token curl argv'sine yazılmaz.
+    # Header config üzerinden stdin ile aktarılır.
+    {
+        printf 'header = "Authorization: Bearer %s"\n' "$token"
+        printf 'header = "Accept: application/vnd.github+json"\n'
+        printf 'header = "X-GitHub-Api-Version: %s"\n' "$API_VERSION"
+    } |
+        curl \
+            --config - \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --request "$method" \
+            "$url" \
+            "$@"
+}
+
+valid_repo() {
+    printf '%s\n' "$1" |
+        grep -Eq \
+        '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'
+}
+
+repo_from_cwd() {
+    remote="$(
+        git config \
+            --get remote.origin.url \
+            2>/dev/null ||
+        true
+    )"
+
+    [ -n "$remote" ] ||
+        return 1
+
+    case "$remote" in
+        https://github.com/*)
+            repo="${remote#https://github.com/}"
+            ;;
+
+        http://github.com/*)
+            repo="${remote#http://github.com/}"
+            ;;
+
+        git@github.com:*)
+            repo="${remote#git@github.com:}"
+            ;;
+
+        ssh://git@github.com/*)
+            repo="${remote#ssh://git@github.com/}"
+            ;;
+
+        *)
+            return 1
+            ;;
+    esac
+
+    repo="${repo%.git}"
+
+    valid_repo "$repo" ||
+        return 1
+
+    printf '%s\n' "$repo"
+}
+
+resolve_repo() {
+    requested="${1:-}"
+
+    if [ -n "$requested" ]; then
+        valid_repo "$requested" ||
+            die "Repo biçimi geçersiz: $requested"
+
+        printf '%s\n' "$requested"
+        return
+    fi
+
+    repo_from_cwd ||
+        die "Repo belirlenemedi. -R OWNER/REPO kullanın."
+}
+
+cmd_auth_status() {
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --hostname)
+                [ "$#" -ge 2 ] ||
+                    die "--hostname değer bekliyor."
+
+                [ "$2" = "github.com" ] ||
+                    die "Yalnız github.com destekleniyor."
+
+                shift 2
+                ;;
+
+            *)
+                die "auth status için desteklenmeyen seçenek: $1"
+                ;;
+        esac
+    done
+
+    response="$(
+        api_request \
+            GET \
+            /user
+    )"
+
+    login="$(
+        printf '%s\n' "$response" |
+            jq -r '.login // empty'
+    )"
+
+    [ -n "$login" ] ||
+        die "GitHub hesabı doğrulanamadı."
+
+    printf '%s\n' \
+        "github.com" \
+        "  ✓ Logged in to github.com as $login" \
+        "  - Authentication: AppForge secure GitHub connection" \
+        "  - Protocol: HTTPS REST bridge"
+}
+
+cmd_api() {
+    endpoint=""
+    method="GET"
+    jq_filter=""
+    data='{}'
+    has_fields=0
+
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            -X|--method)
+                [ "$#" -ge 2 ] ||
+                    die "$1 değer bekliyor."
+
+                method="$2"
+                shift 2
+                ;;
+
+            --jq|-q)
+                [ "$#" -ge 2 ] ||
+                    die "$1 değer bekliyor."
+
+                jq_filter="$2"
+                shift 2
+                ;;
+
+            -f|--raw-field|-F|--field)
+                [ "$#" -ge 2 ] ||
+                    die "$1 değer bekliyor."
+
+                pair="$2"
+
+                case "$pair" in
+                    *=*)
+                        key="${pair%%=*}"
+                        value="${pair#*=}"
+                        ;;
+                    *)
+                        die "Alan KEY=VALUE biçiminde olmalı."
+                        ;;
+                esac
+
+                data="$(
+                    jq -cn \
+                        --argjson base "$data" \
+                        --arg key "$key" \
+                        --arg value "$value" \
+                        '$base + {($key): $value}'
+                )"
+
+                has_fields=1
+                shift 2
+                ;;
+
+            --hostname)
+                [ "$#" -ge 2 ] ||
+                    die "--hostname değer bekliyor."
+
+                [ "$2" = "github.com" ] ||
+                    die "Yalnız github.com destekleniyor."
+
+                shift 2
+                ;;
+
+            -*)
+                die "gh api için desteklenmeyen seçenek: $1"
+                ;;
+
+            *)
+                if [ -z "$endpoint" ]; then
+                    endpoint="$1"
+                    shift
+                else
+                    die "Fazladan gh api argümanı: $1"
+                fi
+                ;;
+        esac
+    done
+
+    [ -n "$endpoint" ] ||
+        die "gh api endpoint gerekli."
+
+    if [ "$endpoint" = "graphql" ]; then
+        endpoint="/graphql"
+
+        if [ "$method" = "GET" ]; then
+            method="POST"
+        fi
+    fi
+
+    if [ "$has_fields" -eq 1 ] &&
+       [ "$method" = "GET" ]; then
+        method="POST"
+    fi
+
+    if [ "$has_fields" -eq 1 ]; then
+        response="$(
+            api_request \
+                "$method" \
+                "$endpoint" \
+                --header \
+                "Content-Type: application/json" \
+                --data "$data"
+        )"
+    else
+        response="$(
+            api_request \
+                "$method" \
+                "$endpoint"
+        )"
+    fi
+
+    if [ -n "$jq_filter" ]; then
+        printf '%s\n' "$response" |
+            jq -r "$jq_filter"
+    else
+        printf '%s\n' "$response"
+    fi
+}
+
+cmd_repo_view() {
+    repo=""
+
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            -R|--repo)
+                [ "$#" -ge 2 ] ||
+                    die "$1 değer bekliyor."
+
+                repo="$2"
+                shift 2
+                ;;
+
+            -*)
+                die "repo view için desteklenmeyen seçenek: $1"
+                ;;
+
+            *)
+                if [ -z "$repo" ]; then
+                    repo="$1"
+                    shift
+                else
+                    die "Fazladan repo argümanı: $1"
+                fi
+                ;;
+        esac
+    done
+
+    repo="$(resolve_repo "$repo")"
+
+    response="$(
+        api_request \
+            GET \
+            "/repos/$repo"
+    )"
+
+    printf '%s\n' "$response" |
+        jq -r '
+            . as $r |
+            [
+                ("Repository: " + $r.full_name),
+                ("Default branch: " + $r.default_branch),
+                ("Visibility: " + ($r.visibility // "unknown")),
+                ("URL: " + $r.html_url),
+                (
+                    if (($r.description // "") | length) > 0
+                    then "Description: " + $r.description
+                    else empty
+                    end
+                )
+            ] |
+            .[]
+        '
+}
+
+cmd_run_view() {
+    run_id=""
+    repo=""
+
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            -R|--repo)
+                [ "$#" -ge 2 ] ||
+                    die "$1 değer bekliyor."
+
+                repo="$2"
+                shift 2
+                ;;
+
+            -*)
+                die "run view için desteklenmeyen seçenek: $1"
+                ;;
+
+            *)
+                if [ -z "$run_id" ]; then
+                    run_id="$1"
+                    shift
+                else
+                    die "Fazladan run view argümanı: $1"
+                fi
+                ;;
+        esac
+    done
+
+    case "$run_id" in
+        ''|*[!0-9]*)
+            die "Geçerli run ID gerekli."
+            ;;
+    esac
+
+    repo="$(resolve_repo "$repo")"
+
+    response="$(
+        api_request \
+            GET \
+            "/repos/$repo/actions/runs/$run_id"
+    )"
+
+    printf '%s\n' "$response" |
+        jq -r '
+            [
+                ("Run: " + (.id | tostring)),
+                ("Workflow: " + (.name // "-")),
+                ("Status: " + (.status // "-")),
+                ("Conclusion: " + (.conclusion // "-")),
+                ("Branch: " + (.head_branch // "-")),
+                ("Event: " + (.event // "-")),
+                ("URL: " + (.html_url // "-"))
+            ] |
+            .[]
+        '
+}
+
+cmd_run_rerun() {
+    run_id=""
+    repo=""
+    failed_only=0
+
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            -R|--repo)
+                [ "$#" -ge 2 ] ||
+                    die "$1 değer bekliyor."
+
+                repo="$2"
+                shift 2
+                ;;
+
+            --failed)
+                failed_only=1
+                shift
+                ;;
+
+            -*)
+                die "run rerun için desteklenmeyen seçenek: $1"
+                ;;
+
+            *)
+                if [ -z "$run_id" ]; then
+                    run_id="$1"
+                    shift
+                else
+                    die "Fazladan run rerun argümanı: $1"
+                fi
+                ;;
+        esac
+    done
+
+    case "$run_id" in
+        ''|*[!0-9]*)
+            die "Geçerli run ID gerekli."
+            ;;
+    esac
+
+    repo="$(resolve_repo "$repo")"
+
+    if [ "$failed_only" -eq 1 ]; then
+        endpoint="/repos/$repo/actions/runs/$run_id/rerun-failed-jobs"
+    else
+        endpoint="/repos/$repo/actions/runs/$run_id/rerun"
+    fi
+
+    api_request \
+        POST \
+        "$endpoint" \
+        >/dev/null
+
+    if [ "$failed_only" -eq 1 ]; then
+        printf 'Failed jobs rerun requested: %s #%s\n' \
+            "$repo" \
+            "$run_id"
+    else
+        printf 'Run rerun requested: %s #%s\n' \
+            "$repo" \
+            "$run_id"
+    fi
+}
+
+load_token
+
+case "${1:-}" in
+    auth)
+        shift
+
+        case "${1:-}" in
+            status)
+                shift
+                cmd_auth_status "$@"
+                ;;
+
+            *)
+                # Login/logout gibi desteklenmeyen auth işlemlerinde
+                # gerçek gh davranışını koru.
+                exec env \
+                    GH_TOKEN="$token" \
+                    "$REAL_GH" \
+                    auth \
+                    "$@"
+                ;;
+        esac
+        ;;
+
+    api)
+        shift
+        cmd_api "$@"
+        ;;
+
+    repo)
+        shift
+
+        case "${1:-}" in
+            view)
+                shift
+                cmd_repo_view "$@"
+                ;;
+
+            *)
+                exec env \
+                    GH_TOKEN="$token" \
+                    "$REAL_GH" \
+                    repo \
+                    "$@"
+                ;;
+        esac
+        ;;
+
+    run)
+        shift
+
+        case "${1:-}" in
+            view)
+                shift
+                cmd_run_view "$@"
+                ;;
+
+            rerun)
+                shift
+                cmd_run_rerun "$@"
+                ;;
+
+            *)
+                exec env \
+                    GH_TOKEN="$token" \
+                    "$REAL_GH" \
+                    run \
+                    "$@"
+                ;;
+        esac
+        ;;
+
+    --version|version|-v)
+        exec "$REAL_GH" "$@"
+        ;;
+
+    *)
+        # Henüz REST bridge'e taşınmamış komutlarda mevcut gh
+        # davranışı korunur.
+        exec env \
+            GH_TOKEN="$token" \
+            "$REAL_GH" \
+            "$@"
+        ;;
+esac
