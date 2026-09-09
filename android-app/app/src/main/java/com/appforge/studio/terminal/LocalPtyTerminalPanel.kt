@@ -4189,20 +4189,22 @@ internal fun localPtyBracketedPasteDispatch(
      * Real clipboard paste normally has no active IME composition,
      * so preserve the existing bracketed-paste behavior there.
      */
+    /*
+     * Android IMEs can commit ordinary typed text as a multi-character
+     * delta even when TextFieldValue.composition is already null.
+     *
+     * Therefore character count alone cannot identify clipboard paste.
+     *
+     * A single-line burst is safe to feed directly into Readline: it only
+     * edits the current command and does not execute until Enter arrives.
+     *
+     * Multi-line input is the case that needs bracketed-paste protection,
+     * because raw newlines could execute multiple commands immediately.
+     */
     val bulkPaste =
-        !imeComposing &&
-            (
-                normalized.contains(
-                    '\n'
-                ) ||
-                    (
-                        normalized.length > 1 &&
-                            !singleUnicodeCharacter &&
-                            normalized.any {
-                                it != '\u007f'
-                            }
-                        )
-                )
+        normalized.contains(
+            '\n'
+        )
 
     if (!bulkPaste) {
         return LocalPtyImeDispatch(

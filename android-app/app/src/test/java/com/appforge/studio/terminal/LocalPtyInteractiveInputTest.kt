@@ -107,7 +107,7 @@ class LocalPtyInteractiveInputTest {
 
 
     @Test
-    fun realClipboardBurstStillUsesBracketedPaste() {
+    fun singleLineBurstIsNotWrappedAsBracketedPaste() {
         val result =
             localPtyBracketedPasteDispatch(
                 delta = "ab",
@@ -117,12 +117,37 @@ class LocalPtyInteractiveInputTest {
             )
 
         assertEquals(
-            "\u001b[200~ab\u001b[201~",
+            "ab",
+            result.ptyText
+        )
+
+        assertNull(
+            result.pendingPaste
+        )
+
+        assertFalse(
+            result.resetIme
+        )
+    }
+
+
+    @Test
+    fun multiLinePasteStillUsesBracketedPaste() {
+        val result =
+            localPtyBracketedPasteDispatch(
+                delta = "echo one\necho two",
+                pendingPaste = null,
+                bracketedPasteEnabled = true,
+                imeComposing = false
+            )
+
+        assertEquals(
+            "\u001b[200~echo one\necho two\u001b[201~",
             result.ptyText
         )
 
         assertEquals(
-            "ab",
+            "echo one\necho two",
             result.pendingPaste
         )
 
