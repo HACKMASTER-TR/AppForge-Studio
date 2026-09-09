@@ -5680,7 +5680,15 @@ private fun AppForgeApp() {
                         }
                     }
 
-                    Row(
+                    /*
+                     * Bottom Builder actions observe live build/test state.
+                     * Keep their invalidation local instead of recomposing
+                     * the complete Builder content tree.
+                     */
+                    BuildRuntimeCompositionBoundary(
+                        runtime = buildRuntime
+                    ) {
+                        Row(
                         modifier =
                             Modifier
                                 .align(
@@ -5855,6 +5863,7 @@ private fun AppForgeApp() {
                                 }
                             )
                         }
+                    }
                     }
                 }
                     }
