@@ -5533,139 +5533,149 @@ private fun AppForgeApp() {
                         }
                     }
 
-                    if (
-                        step == 10 &&
-                        isFiveParallelBuildTester
+                    /*
+                     * High-frequency parallel-build progress is kept
+                     * inside its own child composition. Changes to the
+                     * five test slots do not need to invalidate the
+                     * rest of the Builder UI.
+                     */
+                    BuildRuntimeCompositionBoundary(
+                        runtime = buildRuntime
                     ) {
-                        Card(
-                            modifier =
-                                Modifier
-                                    .align(
-                                        Alignment.CenterHorizontally
-                                    )
-                                    .widthIn(
-                                        max =
-                                            builderContentMaxWidth
-                                    )
-                                    .fillMaxWidth()
-                                    .padding(
-                                        horizontal =
-                                            builderHorizontalPadding,
-                                        vertical =
-                                            6.dp
-                                    ),
-                            shape =
-                                RoundedCornerShape(
-                                    20.dp
-                                ),
-                            colors =
-                                CardDefaults
-                                    .cardColors(
-                                        containerColor =
-                                            Card2
-                                    )
+                        if (
+                            step == 10 &&
+                            isFiveParallelBuildTester
                         ) {
-                            Column(
+                            Card(
                                 modifier =
                                     Modifier
+                                        .align(
+                                            Alignment.CenterHorizontally
+                                        )
+                                        .widthIn(
+                                            max =
+                                                builderContentMaxWidth
+                                        )
                                         .fillMaxWidth()
                                         .padding(
-                                            16.dp
+                                            horizontal =
+                                                builderHorizontalPadding,
+                                            vertical =
+                                                6.dp
                                         ),
-                                verticalArrangement =
-                                    Arrangement.spacedBy(
-                                        8.dp
-                                    )
-                            ) {
-                                Text(
-                                    "5 Build Testi • Maks. 3 Paralel",
-                                    fontWeight =
-                                        FontWeight.Bold,
-                                    color =
-                                        Accent
-                                )
-
-                                Text(
-                                    "Yetkili 5'li Build Test hesabı",
-                                    color =
-                                        TextSecondary,
-                                    fontSize =
-                                        11.sp
-                                )
-
-                                Button(
-                                    enabled =
-                                        !fiveParallelBuildRunning &&
-                                        !buildBusy,
-                                    onClick = {
-                                        startFiveParallelBuildTest(
-                                            draft
+                                shape =
+                                    RoundedCornerShape(
+                                        20.dp
+                                    ),
+                                colors =
+                                    CardDefaults
+                                        .cardColors(
+                                            containerColor =
+                                                Card2
                                         )
-                                    },
+                            ) {
+                                Column(
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
+                                            .padding(
+                                                16.dp
+                                            ),
+                                    verticalArrangement =
+                                        Arrangement.spacedBy(
+                                            8.dp
+                                        )
                                 ) {
                                     Text(
-                                        if (
-                                            fiveParallelBuildRunning
-                                        ) {
-                                            "5 BUILD ÇALIŞIYOR"
-                                        } else {
-                                            "5 BUILD TESTİNİ BAŞLAT"
-                                        }
-                                    )
-                                }
-
-                                if (
-                                    isAdminOpsAccount
-                                ) {
-                                    Spacer(
-                                        modifier =
-                                            Modifier.height(
-                                                8.dp
-                                            )
+                                        "5 Build Testi • Maks. 3 Paralel",
+                                        fontWeight =
+                                            FontWeight.Bold,
+                                        color =
+                                            Accent
                                     )
 
-                                    OutlinedButton(
-                                        modifier =
-                                            Modifier.fillMaxWidth(),
+                                    Text(
+                                        "Yetkili 5'li Build Test hesabı",
+                                        color =
+                                            TextSecondary,
+                                        fontSize =
+                                            11.sp
+                                    )
+
+                                    Button(
+                                        enabled =
+                                            !fiveParallelBuildRunning &&
+                                            !buildBusy,
                                         onClick = {
-                                            screen =
-                                                AppScreen.ADMIN_OPS
-                                        }
+                                            startFiveParallelBuildTest(
+                                                draft
+                                            )
+                                        },
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
                                     ) {
                                         Text(
-                                            "YÖNETİCİ SİSTEM DURUMU / AUTOSCALE"
+                                            if (
+                                                fiveParallelBuildRunning
+                                            ) {
+                                                "5 BUILD ÇALIŞIYOR"
+                                            } else {
+                                                "5 BUILD TESTİNİ BAŞLAT"
+                                            }
                                         )
                                     }
-                                }
 
-                                fiveParallelBuildItems
-                                    .forEach {
-                                        item ->
-
-                                        val shortId =
-                                            item.buildId
-                                                ?.take(
-                                                    8
+                                    if (
+                                        isAdminOpsAccount
+                                    ) {
+                                        Spacer(
+                                            modifier =
+                                                Modifier.height(
+                                                    8.dp
                                                 )
-                                                ?.let {
-                                                    id ->
-                                                    " • $id"
-                                                }
-                                                .orEmpty()
-
-                                        Text(
-                                            "#${item.slot} • " +
-                                                "${item.status} • " +
-                                                "${item.progress}%$shortId",
-                                            color =
-                                                TextSecondary,
-                                            fontSize =
-                                                12.sp
                                         )
+
+                                        OutlinedButton(
+                                            modifier =
+                                                Modifier.fillMaxWidth(),
+                                            onClick = {
+                                                screen =
+                                                    AppScreen.ADMIN_OPS
+                                            }
+                                        ) {
+                                            Text(
+                                                "YÖNETİCİ SİSTEM DURUMU / AUTOSCALE"
+                                            )
+                                        }
                                     }
+
+                                    fiveParallelBuildItems
+                                        .forEach {
+                                            item ->
+
+                                            val shortId =
+                                                item.buildId
+                                                    ?.take(
+                                                        8
+                                                    )
+                                                    ?.let {
+                                                        id ->
+                                                        " • $id"
+                                                    }
+                                                    .orEmpty()
+
+                                            Text(
+                                                "#${item.slot} • " +
+                                                    "${item.status} • " +
+                                                    "${item.progress}%$shortId",
+                                                color =
+                                                    TextSecondary,
+                                                fontSize =
+                                                    12.sp
+                                            )
+                                        }
+                                }
                             }
                         }
                     }
