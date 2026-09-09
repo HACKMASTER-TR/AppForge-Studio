@@ -5204,7 +5204,11 @@ private fun AppForgeApp() {
                     }
                 )
 
-                AppScreen.BUILDER -> Column(Modifier.fillMaxSize()) {
+                AppScreen.BUILDER ->
+                    BuildRuntimeCompositionBoundary(
+                        runtime = buildRuntime
+                    ) {
+                        Column(Modifier.fillMaxSize()) {
                     TopAppBar(
                         title = {
                             Column {
@@ -5843,6 +5847,7 @@ private fun AppForgeApp() {
                         }
                     }
                 }
+                    }
             }
         }
     }
