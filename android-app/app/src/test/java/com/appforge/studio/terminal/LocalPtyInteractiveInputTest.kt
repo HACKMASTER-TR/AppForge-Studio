@@ -82,6 +82,58 @@ class LocalPtyInteractiveInputTest {
 
 
     @Test
+    fun imeCompositionIsNotWrappedAsBracketedPaste() {
+        val result =
+            localPtyBracketedPasteDispatch(
+                delta = "ab",
+                pendingPaste = null,
+                bracketedPasteEnabled = true,
+                imeComposing = true
+            )
+
+        assertEquals(
+            "ab",
+            result.ptyText
+        )
+
+        assertNull(
+            result.pendingPaste
+        )
+
+        assertFalse(
+            result.resetIme
+        )
+    }
+
+
+    @Test
+    fun realClipboardBurstStillUsesBracketedPaste() {
+        val result =
+            localPtyBracketedPasteDispatch(
+                delta = "ab",
+                pendingPaste = null,
+                bracketedPasteEnabled = true,
+                imeComposing = false
+            )
+
+        assertEquals(
+            "\u001b[200~ab\u001b[201~",
+            result.ptyText
+        )
+
+        assertEquals(
+            "ab",
+            result.pendingPaste
+        )
+
+        assertTrue(
+            result.resetIme
+        )
+    }
+
+
+
+    @Test
     fun rawYesNoPromptKeysPassThroughUnchanged() {
         listOf(
             "y",

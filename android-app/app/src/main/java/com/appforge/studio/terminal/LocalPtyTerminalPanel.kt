@@ -3618,7 +3618,10 @@ private fun LocalPtySurface(
                                 pendingBracketedPaste,
                             bracketedPasteEnabled =
                                 state.snapshot
-                                    .bracketedPasteEnabled
+                                    .bracketedPasteEnabled,
+                            imeComposing =
+                                imeValue.composition != null ||
+                                    next.composition != null
                         )
 
                     pendingBracketedPaste =
@@ -4059,7 +4062,8 @@ internal data class LocalPtyImeDispatch(
 internal fun localPtyBracketedPasteDispatch(
     delta: String,
     pendingPaste: String?,
-    bracketedPasteEnabled: Boolean
+    bracketedPasteEnabled: Boolean,
+    imeComposing: Boolean = false
 ): LocalPtyImeDispatch {
     val normalized =
         delta
@@ -4174,16 +4178,30 @@ internal fun localPtyBracketedPasteDispatch(
             normalized[1]
                 .isLowSurrogate()
 
+    /*
+     * Gboard can deliver ordinary typed/composing text as a
+     * multi-character delta (for example "ab").
+     *
+     * That is NOT clipboard paste. Wrapping such text with
+     * ESC[200~/ESC[201~ leaks bracketed-paste markers into
+     * interactive shells.
+     *
+     * Real clipboard paste normally has no active IME composition,
+     * so preserve the existing bracketed-paste behavior there.
+     */
     val bulkPaste =
-        normalized.contains(
-            '\n'
-        ) ||
+        !imeComposing &&
             (
-                normalized.length > 1 &&
-                    !singleUnicodeCharacter &&
-                    normalized.any {
-                        it != '\u007f'
-                    }
+                normalized.contains(
+                    '\n'
+                ) ||
+                    (
+                        normalized.length > 1 &&
+                            !singleUnicodeCharacter &&
+                            normalized.any {
+                                it != '\u007f'
+                            }
+                        )
                 )
 
     if (!bulkPaste) {
