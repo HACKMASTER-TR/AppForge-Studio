@@ -217,9 +217,30 @@ fun TerminalWorkspaceScreen(
                             .canonicalFile
                     }.getOrNull()
                 }
-                ?.takeIf {
-                    it.isDirectory &&
-                        it.canRead()
+                ?.takeIf { candidate ->
+                    if (
+                        !candidate.isDirectory ||
+                        !candidate.canRead()
+                    ) {
+                        false
+                    } else {
+                        runCatching {
+                            val root =
+                                workspace
+                                    .canonicalFile
+
+                            val current =
+                                candidate
+                                    .canonicalFile
+
+                            current == root ||
+                                current.absolutePath
+                                    .startsWith(
+                                        root.absolutePath +
+                                            File.separator
+                                    )
+                        }.getOrDefault(false)
+                    }
                 }
                 ?: workspace
         }
@@ -1086,7 +1107,9 @@ fun TerminalWorkspaceScreen(
                     TerminalWorkspaceTab.OWNER_FILES ->
                         OwnerFilesPanel(
                             accountEmail =
-                                accountEmail
+                                accountEmail,
+                            legacyWorkspace =
+                                filesWorkspace
                         )
 
                     TerminalWorkspaceTab.GIT ->
