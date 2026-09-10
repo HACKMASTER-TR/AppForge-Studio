@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.FileObserver
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -137,6 +139,44 @@ internal fun WorkspaceFilesPanel(
         remember {
             mutableStateOf(false)
         }
+
+    /*
+     * Terminal / Git / downloader aynı klasöre dışarıdan
+     * dosya eklediğinde Dosyalar ekranını otomatik yenile.
+     */
+    DisposableEffect(
+        currentDirectory.absolutePath
+    ) {
+        val watchedPath =
+            currentDirectory.absolutePath
+
+        val observer =
+            object : FileObserver(
+                watchedPath,
+                CREATE or
+                    DELETE or
+                    MOVED_FROM or
+                    MOVED_TO or
+                    CLOSE_WRITE
+            ) {
+                override fun onEvent(
+                    event: Int,
+                    path: String?
+                ) {
+                    refreshKey += 1
+                }
+            }
+
+        runCatching {
+            observer.startWatching()
+        }
+
+        onDispose {
+            runCatching {
+                observer.stopWatching()
+            }
+        }
+    }
 
     LaunchedEffect(
         workspace.absolutePath,
@@ -417,6 +457,14 @@ internal fun WorkspaceFilesPanel(
                     fontSize =
                         10.sp
                 )
+            }
+
+            OutlinedButton(
+                onClick = {
+                    refreshKey += 1
+                }
+            ) {
+                Text("↻")
             }
 
             OutlinedButton(
