@@ -62,6 +62,36 @@ internal fun OwnerFilesPanel(
                 )
 
             OwnerAccessPolicy
+                .secondBrainRoot(
+                    context,
+                    accountEmail
+                )
+
+            OwnerAccessPolicy
+                .dashboardRoot(
+                    context,
+                    accountEmail
+                )
+
+            OwnerAccessPolicy
+                .backupsRoot(
+                    context,
+                    accountEmail
+                )
+
+            OwnerAccessPolicy
+                .logsRoot(
+                    context,
+                    accountEmail
+                )
+
+            OwnerAccessPolicy
+                .configRoot(
+                    context,
+                    accountEmail
+                )
+
+            OwnerAccessPolicy
                 .filesRoot(
                     context,
                     accountEmail

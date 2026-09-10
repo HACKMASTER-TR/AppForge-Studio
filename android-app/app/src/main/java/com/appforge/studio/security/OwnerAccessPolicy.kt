@@ -146,6 +146,56 @@ object OwnerAccessPolicy {
             "GitHub"
         )
 
+    fun secondBrainRoot(
+        context: Context,
+        accountEmail: String? = null
+    ): File =
+        childRoot(
+            context,
+            accountEmail,
+            "SecondBrain"
+        )
+
+    fun dashboardRoot(
+        context: Context,
+        accountEmail: String? = null
+    ): File =
+        childRoot(
+            context,
+            accountEmail,
+            "Dashboard"
+        )
+
+    fun backupsRoot(
+        context: Context,
+        accountEmail: String? = null
+    ): File =
+        childRoot(
+            context,
+            accountEmail,
+            "Backups"
+        )
+
+    fun logsRoot(
+        context: Context,
+        accountEmail: String? = null
+    ): File =
+        childRoot(
+            context,
+            accountEmail,
+            "Logs"
+        )
+
+    fun configRoot(
+        context: Context,
+        accountEmail: String? = null
+    ): File =
+        childRoot(
+            context,
+            accountEmail,
+            "Config"
+        )
+
     private fun childRoot(
         context: Context,
         accountEmail: String?,
