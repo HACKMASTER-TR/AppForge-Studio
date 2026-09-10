@@ -117,6 +117,11 @@ internal fun OwnerFilesPanel(
                 legacyWorkspace =
                     legacyWorkspace
             )
+
+            OwnerPrivateFileSync.sync(
+                context = context,
+                accountEmail = accountEmail
+            )
         }
     }
 
