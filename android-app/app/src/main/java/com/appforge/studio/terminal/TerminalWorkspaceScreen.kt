@@ -54,6 +54,7 @@ import com.appforge.studio.io.ProjectLibrary
 import com.appforge.studio.io.SavedProject
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.security.SecureAccountStore
+import com.appforge.studio.security.OwnerAccessPolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -66,6 +67,7 @@ private enum class TerminalWorkspaceTab(
 ) {
     TERMINAL("Terminal", ">_"),
     FILES("Dosyalar", "▤"),
+    OWNER_FILES("AppForge Dosyaları", "▣"),
     GIT("Git", "⑂"),
     CONNECTIONS("Bağlantılar", "◎"),
     SSH("SSH", "⌁"),
@@ -91,6 +93,15 @@ fun TerminalWorkspaceScreen(
 
     val scope =
         rememberCoroutineScope()
+
+    val ownerAccessGranted =
+        remember(accountEmail) {
+            OwnerAccessPolicy
+                .isActiveOwner(
+                    context,
+                    accountEmail
+                )
+        }
 
     var startupAccessGranted by
         remember {
@@ -911,9 +922,43 @@ fun TerminalWorkspaceScreen(
                 }
             )
 
+            val visibleTabs =
+                remember(
+                    ownerAccessGranted
+                ) {
+                    TerminalWorkspaceTab
+                        .entries
+                        .filter { tab ->
+                            tab !=
+                                TerminalWorkspaceTab
+                                    .OWNER_FILES ||
+                                ownerAccessGranted
+                        }
+                }
+
+            LaunchedEffect(
+                ownerAccessGranted,
+                selectedTab
+            ) {
+                if (
+                    !ownerAccessGranted &&
+                    selectedTab ==
+                        TerminalWorkspaceTab
+                            .OWNER_FILES
+                ) {
+                    selectedTab =
+                        TerminalWorkspaceTab
+                            .FILES
+                }
+            }
+
             ScrollableTabRow(
                 selectedTabIndex =
-                    selectedTab.ordinal,
+                    visibleTabs
+                        .indexOf(
+                            selectedTab
+                        )
+                        .coerceAtLeast(0),
                 containerColor =
                     TerminalSurface,
                 contentColor =
@@ -927,7 +972,7 @@ fun TerminalWorkspaceScreen(
                     )
                 }
             ) {
-                TerminalWorkspaceTab.entries.forEach { tab ->
+                visibleTabs.forEach { tab ->
                     Tab(
                         selected =
                             selectedTab == tab,
@@ -1038,10 +1083,28 @@ fun TerminalWorkspaceScreen(
                                 filesWorkspace
                         )
 
+                    TerminalWorkspaceTab.OWNER_FILES ->
+                        OwnerFilesPanel(
+                            accountEmail =
+                                accountEmail
+                        )
+
                     TerminalWorkspaceTab.GIT ->
                         GitWorkspacePanel(
                             workspace =
-                                gitWorkspace
+                                gitWorkspace,
+                            cloneWorkspace =
+                                if (
+                                    ownerAccessGranted
+                                ) {
+                                    OwnerAccessPolicy
+                                        .githubRoot(
+                                            context,
+                                            accountEmail
+                                        )
+                                } else {
+                                    gitWorkspace
+                                }
                         )
 
                     TerminalWorkspaceTab.CONNECTIONS ->

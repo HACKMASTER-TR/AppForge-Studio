@@ -37,7 +37,9 @@ import java.io.File
 
 @Composable
 internal fun GitWorkspacePanel(
-    workspace: File
+    workspace: File,
+    cloneWorkspace: File =
+        workspace
 ) {
     val context = LocalContext.current
 
@@ -548,7 +550,7 @@ internal fun GitWorkspacePanel(
                             runAction {
                                 val folder =
                                     GitWorkspaceService.clone(
-                                        workspace,
+                                        cloneWorkspace,
                                         remoteUrl,
                                         credentials()
                                     )

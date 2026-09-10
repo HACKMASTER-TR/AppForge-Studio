@@ -5,6 +5,7 @@ import com.appforge.studio.build.BuildApiClient
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SourceMode
 import com.appforge.studio.security.SecureAccountStore
+import com.appforge.studio.security.OwnerAccessPolicy
 import com.appforge.studio.security.StudioDeviceIdentity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -51,9 +52,6 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
-
-private const val FULL_ADMIN_ACCOUNT =
-    "28550040284a@gmail.com"
 
 private val ADMIN_TERMINAL_STATES =
     setOf(
@@ -104,12 +102,40 @@ fun AdminOpsScreen(
         rememberCoroutineScope()
 
     val authorized =
-        accountEmail
-            .trim()
-            .equals(
-                FULL_ADMIN_ACCOUNT,
-                ignoreCase = true
+        OwnerAccessPolicy
+            .isActiveOwner(
+                context,
+                accountEmail
             )
+
+    /*
+     * Yetkisiz hesapta admin istemcileri dahi
+     * oluşturulmadan burada erişimi kes.
+     */
+    if (!authorized) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(20.dp),
+            verticalArrangement =
+                Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                "Erişim reddedildi",
+                style =
+                    MaterialTheme
+                        .typography
+                        .headlineSmall
+            )
+
+            Text(
+                "Bu yönetim alanı yalnız AppForge sahibi hesabına açıktır."
+            )
+        }
+
+        return
+    }
 
     val adminApi =
         remember(

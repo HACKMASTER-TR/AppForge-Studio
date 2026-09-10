@@ -276,6 +276,25 @@ app.use(
 
 app.use(
   "/admin",
+  authRequired,
+  adminRequired,
+  (_req, res, next) => {
+    /*
+     * Admin HTML/JS/CSS de hassas kabul edilir.
+     * Yetkisiz kullanıcıya panel dosyaları dahi verilmez.
+     */
+    res.set(
+      "Cache-Control",
+      "no-store, private"
+    );
+
+    res.set(
+      "X-Robots-Tag",
+      "noindex, nofollow, noarchive"
+    );
+
+    return next();
+  },
   express.static(
     path.resolve("./public/admin")
   )

@@ -5,6 +5,8 @@ import { query, tx } from "./db.js";
 import { config } from "./config.js";
 import { requireTeamRole } from "./teams.js";
 
+const APPFORGE_OWNER_ACCOUNT = "28550040284a@gmail.com";
+
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
@@ -666,11 +668,41 @@ export function requireScope(scope) {
   };
 }
 
-export function adminRequired(req, res, next) {
-  if (req.user?.role !== "admin") {
-    return res.status(403).json({ error: "Yönetici yetkisi gerekli." });
+export function adminRequired(
+  req,
+  res,
+  next
+) {
+  /*
+   * req.user yalnız authRequired tarafından oluşturulur.
+   * Kullanıcı JWT/API token içinden alınsa bile güncel
+   * hesap bilgileri veritabanından doğrulanır.
+   *
+   * Request body/query/header içindeki e-posta değerleri
+   * yönetici yetkisi için ASLA kullanılmaz.
+   */
+  const authenticatedEmail =
+    normalizeEmail(
+      req.user?.email
+    );
+
+  const authorized =
+    req.user?.role === "admin" &&
+    authenticatedEmail ===
+      APPFORGE_OWNER_ACCOUNT;
+
+  if (!authorized) {
+    return res
+      .status(403)
+      .json({
+        error:
+          "Bu yönetim alanına erişim yetkiniz yok.",
+        code:
+          "OWNER_ADMIN_REQUIRED"
+      });
   }
-  next();
+
+  return next();
 }
 
 export async function listApiTokens(userId, teamId = null) {

@@ -101,6 +101,7 @@ import com.appforge.studio.security.ProStatus
 import com.appforge.studio.security.StudioSecurityClient
 import com.appforge.studio.security.StudioBillingManager
 import com.appforge.studio.security.SecureAccountStore
+import com.appforge.studio.security.OwnerAccessPolicy
 import com.appforge.studio.security.StudioPlanPrice
 import com.appforge.studio.task.AppForgeTaskManager
 import com.hackmaster.videoforge.AppVisibility
@@ -1461,29 +1462,29 @@ private fun AppForgeApp() {
 
     val fiveParallelBuildTesterEmails =
         setOf(
-            "28550040284a@gmail.com",
             "heyomert@gmail.com"
         )
 
     val isFiveParallelBuildTester =
-        session
-            ?.email
-            ?.trim()
-            ?.lowercase()
-            ?.let {
-                email ->
-                email in
-                    fiveParallelBuildTesterEmails
-            } == true
+        OwnerAccessPolicy
+            .isOwnerEmail(
+                session?.email
+            ) ||
+            session
+                ?.email
+                ?.trim()
+                ?.lowercase()
+                ?.let { email ->
+                    email in
+                        fiveParallelBuildTesterEmails
+                } == true
 
     val isAdminOpsAccount =
-        session
-            ?.email
-            ?.trim()
-            ?.equals(
-                "28550040284a@gmail.com",
-                ignoreCase = true
-            ) == true
+        OwnerAccessPolicy
+            .isActiveOwner(
+                context,
+                session?.email
+            )
 
     var fiveParallelBuildRunning by
         remember {
@@ -4531,6 +4532,36 @@ private fun AppForgeApp() {
                                 .terminal
                                 .LocalPtySessionRegistry
                                 .closeAllForAccountSwitch()
+
+                            /*
+                             * Eski hesabın geçici APK/cache verisini
+                             * ve RAM'deki proje/credential durumunu
+                             * yeni hesaba taşımama.
+                             */
+                            clearAccountSwitchTransientArtifacts(
+                                context.applicationContext
+                            )
+
+                            apiKey = ""
+
+                            val clearedDraft =
+                                ProjectDraft()
+
+                            draft =
+                                clearedDraft
+
+                            serverUrl =
+                                clearedDraft
+                                    .buildServiceUrl
+
+                            sourceAnalysis =
+                                null
+
+                            currentProjectId =
+                                null
+
+                            status =
+                                ""
                         }
 
                         if (
@@ -19538,9 +19569,14 @@ private fun BuildStep(
                                                     fileName
                                             )
 
-                                        val published =
-                                            runCatching {
-                                                publishApkToDownloads(
+                                        val destination =
+                                            if (
+                                                OwnerAccessPolicy
+                                                    .isActiveOwner(
+                                                        context
+                                                    )
+                                            ) {
+                                                copyArtifactToOwnerVault(
                                                     context =
                                                         context,
                                                     sourceFile =
@@ -19548,14 +19584,34 @@ private fun BuildStep(
                                                     fileName =
                                                         fileName
                                                 )
+
+                                                "OWNER"
+                                            } else {
+                                                val published =
+                                                    runCatching {
+                                                        publishApkToDownloads(
+                                                            context =
+                                                                context,
+                                                            sourceFile =
+                                                                apkFile,
+                                                            fileName =
+                                                                fileName
+                                                        )
+                                                    }
+                                                        .getOrDefault(
+                                                            false
+                                                        )
+
+                                                if (published) {
+                                                    "DOWNLOADS"
+                                                } else {
+                                                    "CACHE"
+                                                }
                                             }
-                                                .getOrDefault(
-                                                    false
-                                                )
 
                                         Pair(
                                             apkFile,
-                                            published
+                                            destination
                                         )
                                     }
 
@@ -19574,22 +19630,32 @@ private fun BuildStep(
                                     )
 
                                 downloadMessage =
-                                    if (
+                                    when (
                                         result.second
                                     ) {
-                                        "✅ APK indirildi • " +
-                                        String.format(
-                                            "%.1f MB",
-                                            sizeMb
-                                        ) +
-                                        " • Downloads klasörüne kaydedildi."
-                                    } else {
-                                        "✅ APK indirildi • " +
-                                        String.format(
-                                            "%.1f MB",
-                                            sizeMb
-                                        ) +
-                                        " • Kuruluma hazır."
+                                        "OWNER" ->
+                                            "✅ APK indirildi • " +
+                                                String.format(
+                                                    "%.1f MB",
+                                                    sizeMb
+                                                ) +
+                                                " • AppForge Dosyaları/APK bölümüne kaydedildi."
+
+                                        "DOWNLOADS" ->
+                                            "✅ APK indirildi • " +
+                                                String.format(
+                                                    "%.1f MB",
+                                                    sizeMb
+                                                ) +
+                                                " • Downloads klasörüne kaydedildi."
+
+                                        else ->
+                                            "✅ APK indirildi • " +
+                                                String.format(
+                                                    "%.1f MB",
+                                                    sizeMb
+                                                ) +
+                                                " • Kuruluma hazır."
                                     }
 
                             } catch (
@@ -19684,6 +19750,38 @@ private fun BuildStep(
                                             )
                                     }
 
+                                val ownerFileName =
+                                    artifactDownloadName(
+                                        appName,
+                                        AppForgeBuildNumbers.label(buildNo),
+                                        "aab"
+                                    )
+
+                                if (
+                                    OwnerAccessPolicy
+                                        .isActiveOwner(
+                                            context
+                                        )
+                                ) {
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        downloadArtifactToOwnerVault(
+                                            context =
+                                                context,
+                                            url =
+                                                ticket.url,
+                                            fileName =
+                                                ownerFileName
+                                        )
+                                    }
+
+                                    downloadMessage =
+                                        "✅ AAB indirildi • AppForge Dosyaları/APK bölümüne kaydedildi."
+
+                                    return@launch
+                                }
+
                                 val request =
                                     DownloadManager.Request(
                                         Uri.parse(
@@ -19765,6 +19863,56 @@ private fun BuildStep(
                                             )
 
                         if (
+                            OwnerAccessPolicy
+                                .isActiveOwner(
+                                    context
+                                )
+                        ) {
+                            scope.launch {
+                                try {
+                                    downloadMessage =
+                                        "Windows EXE indiriliyor..."
+
+                                    val ticket =
+                                        withContext(
+                                            Dispatchers.IO
+                                        ) {
+                                            BuildApiClient(
+                                                context,
+                                                serverUrl,
+                                                apiKey
+                                            )
+                                                .createDownloadTicket(
+                                                    id,
+                                                    "exe"
+                                                )
+                                        }
+
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        downloadArtifactToOwnerVault(
+                                            context =
+                                                context,
+                                            url =
+                                                ticket.url,
+                                            fileName =
+                                                fileName
+                                        )
+                                    }
+
+                                    downloadMessage =
+                                        "✅ Windows EXE indirildi • AppForge Dosyaları/APK bölümüne kaydedildi."
+
+                                } catch (
+                                    t: Throwable
+                                ) {
+                                    downloadMessage =
+                                        "EXE indirme hatası: ${t.message}"
+                                }
+                            }
+
+                        } else if (
                             Build.VERSION.SDK_INT >=
                                 Build.VERSION_CODES.Q
                         ) {
@@ -19837,6 +19985,263 @@ private fun BuildStep(
     }
 }
 
+
+
+private fun copyArtifactToOwnerVault(
+    context: Context,
+    sourceFile: File,
+    fileName: String
+): File {
+    OwnerAccessPolicy
+        .requireActiveOwner(
+            context
+        )
+
+    require(
+        sourceFile.isFile &&
+            sourceFile.length() > 0L
+    ) {
+        "Owner artifact source invalid."
+    }
+
+    val safeName =
+        File(fileName).name
+
+    require(
+        safeName.isNotBlank() &&
+            safeName == fileName
+    ) {
+        "Owner artifact filename invalid."
+    }
+
+    val root =
+        OwnerAccessPolicy
+            .apkRoot(
+                context
+            )
+            .canonicalFile
+
+    val target =
+        File(
+            root,
+            safeName
+        ).canonicalFile
+
+    require(
+        target.parentFile ==
+            root
+    ) {
+        "Owner artifact path invalid."
+    }
+
+    val temporary =
+        File(
+            root,
+            ".$safeName.download"
+        ).canonicalFile
+
+    require(
+        temporary.parentFile ==
+            root
+    )
+
+    temporary.delete()
+
+    sourceFile.copyTo(
+        temporary,
+        overwrite = true
+    )
+
+    require(
+        temporary.length() ==
+            sourceFile.length()
+    ) {
+        "Owner artifact copy incomplete."
+    }
+
+    target.delete()
+
+    if (
+        !temporary.renameTo(
+            target
+        )
+    ) {
+        temporary.copyTo(
+            target,
+            overwrite = true
+        )
+
+        temporary.delete()
+    }
+
+    return target
+}
+
+
+private fun downloadArtifactToOwnerVault(
+    context: Context,
+    url: String,
+    fileName: String
+): File {
+
+    OwnerAccessPolicy
+        .requireActiveOwner(
+            context
+        )
+
+    require(
+        url.startsWith(
+            "https://",
+            ignoreCase = true
+        )
+    ) {
+        "Owner download URL must use HTTPS."
+    }
+
+    val safeName =
+        File(fileName).name
+
+    require(
+        safeName.isNotBlank() &&
+            safeName == fileName
+    ) {
+        "Invalid owner artifact filename."
+    }
+
+    val root =
+        OwnerAccessPolicy
+            .apkRoot(
+                context
+            )
+            .canonicalFile
+
+    val target =
+        File(
+            root,
+            safeName
+        ).canonicalFile
+
+    val temporary =
+        File(
+            root,
+            ".$safeName.download"
+        ).canonicalFile
+
+    require(
+        target.parentFile == root &&
+            temporary.parentFile == root
+    ) {
+        "Owner artifact escaped private root."
+    }
+
+    temporary.delete()
+
+    val connection =
+        java.net.URL(url)
+            .openConnection()
+            as java.net.HttpURLConnection
+
+    try {
+        connection.instanceFollowRedirects =
+            true
+
+        connection.connectTimeout =
+            20_000
+
+        connection.readTimeout =
+            900_000
+
+        connection.requestMethod =
+            "GET"
+
+        connection.setRequestProperty(
+            "Accept",
+            "application/octet-stream,*/*"
+        )
+
+        connection.setRequestProperty(
+            "User-Agent",
+            "AppForge-Studio-Android"
+        )
+
+        connection.connect()
+
+        val code =
+            connection.responseCode
+
+        require(
+            code in 200..299
+        ) {
+            "Owner artifact HTTP $code"
+        }
+
+        require(
+            connection.url.protocol
+                .equals(
+                    "https",
+                    ignoreCase = true
+                )
+        ) {
+            "Owner artifact redirect is not HTTPS."
+        }
+
+        connection
+            .inputStream
+            .buffered(
+                1024 * 1024
+            )
+            .use { input ->
+
+                temporary
+                    .outputStream()
+                    .buffered(
+                        1024 * 1024
+                    )
+                    .use { output ->
+
+                        input.copyTo(
+                            output,
+                            1024 * 1024
+                        )
+
+                        output.flush()
+                    }
+            }
+
+        require(
+            temporary.isFile &&
+                temporary.length() > 0L
+        ) {
+            "Owner artifact download incomplete."
+        }
+
+        target.delete()
+
+        if (
+            !temporary.renameTo(
+                target
+            )
+        ) {
+            temporary.copyTo(
+                target,
+                overwrite = true
+            )
+
+            temporary.delete()
+        }
+
+        return target
+
+    } catch (
+        t: Throwable
+    ) {
+        temporary.delete()
+        throw t
+
+    } finally {
+        connection.disconnect()
+    }
+}
 
 
 @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
@@ -20592,6 +20997,57 @@ private suspend fun waitForApkDownload(
         "APK indirmesi devam ediyor. " +
         "İndirme tamamlanınca tekrar APK'YI KUR'a bas."
     )
+}
+
+
+private fun clearAccountSwitchTransientArtifacts(
+    context: Context
+) {
+    /*
+     * Kalıcı owner vault'a dokunma.
+     * Yalnız hesaplar arasında taşınmaması gereken
+     * geçici installer verisini temizle.
+     */
+    runCatching {
+        val cacheRoot =
+            context
+                .cacheDir
+                .canonicalFile
+
+        val installerDir =
+            File(
+                cacheRoot,
+                "apk-installer"
+            ).canonicalFile
+
+        check(
+            installerDir.absolutePath
+                .startsWith(
+                    cacheRoot.absolutePath +
+                        File.separator
+                )
+        )
+
+        if (
+            installerDir.exists()
+        ) {
+            installerDir
+                .deleteRecursively()
+        }
+    }
+
+    runCatching {
+        context
+            .getSharedPreferences(
+                "appforge_installer",
+                Context.MODE_PRIVATE
+            )
+            .edit()
+            .remove(
+                "pending_apk_path"
+            )
+            .apply()
+    }
 }
 
 
