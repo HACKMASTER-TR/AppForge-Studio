@@ -36,7 +36,7 @@ internal data class AnsiTerminalSnapshot(
 internal class AnsiTerminalBuffer(
     initialRows: Int = 24,
     initialColumns: Int = 80,
-    private val maxScrollbackLines: Int = 5_000
+    private val maxScrollbackLines: Int = 20_000
 ) {
     private enum class ParserState {
         TEXT,

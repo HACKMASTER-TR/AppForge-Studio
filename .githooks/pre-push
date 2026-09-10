@@ -1,0 +1,13 @@
+#!/bin/sh
+
+echo
+echo "========================================"
+echo "APPFORGE SECOND BRAIN PUSH BLOCK"
+echo "========================================"
+echo "git push is disabled by operator policy."
+echo "Local development and commits are allowed."
+echo "Remote push policy: BLOCKED"
+echo "========================================"
+echo
+
+exit 1

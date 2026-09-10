@@ -158,6 +158,103 @@ class LocalPtyInteractiveInputTest {
 
 
 
+
+    @Test
+    fun twentyThousandLinePasteIsPreserved() {
+        val payload =
+            (1..20_000)
+                .joinToString(
+                    "\n"
+                ) { index ->
+                    "echo line-$index"
+                }
+
+        assertEquals(
+            20_000,
+            payload.count {
+                it == '\n'
+            } + 1
+        )
+
+        val dispatch =
+            localPtyBracketedPasteDispatch(
+                delta =
+                    payload,
+                pendingPaste =
+                    null,
+                bracketedPasteEnabled =
+                    true,
+                imeComposing =
+                    false
+            )
+
+        assertEquals(
+            "\u001b[200~" +
+                payload +
+                "\u001b[201~",
+            dispatch.ptyText
+        )
+
+        assertEquals(
+            payload,
+            dispatch.pendingPaste
+        )
+
+        assertTrue(
+            dispatch.resetIme
+        )
+
+        val chunks =
+            localPtyInputWriteChunks(
+                dispatch.ptyText
+            ).toList()
+
+        assertTrue(
+            chunks.size > 1
+        )
+
+        assertTrue(
+            chunks.all {
+                it.length <= 16_384
+            }
+        )
+
+        assertEquals(
+            dispatch.ptyText,
+            chunks.joinToString("")
+        )
+    }
+
+
+    @Test
+    fun chunkingDoesNotSplitUnicodeSurrogatePairs() {
+        val text =
+            "1234567😀ABCDEFG"
+
+        val chunks =
+            localPtyInputWriteChunks(
+                text = text,
+                maxChunkChars = 8
+            ).toList()
+
+        assertEquals(
+            text,
+            chunks.joinToString("")
+        )
+
+        chunks.forEach { chunk ->
+            if (
+                chunk.isNotEmpty()
+            ) {
+                assertFalse(
+                    chunk.last()
+                        .isHighSurrogate()
+                )
+            }
+        }
+    }
+
+
     @Test
     fun rawYesNoPromptKeysPassThroughUnchanged() {
         listOf(

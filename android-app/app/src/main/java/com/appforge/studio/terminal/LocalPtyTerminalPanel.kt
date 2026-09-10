@@ -215,7 +215,7 @@ internal object LocalPtySessionRegistry {
     /*
      * Phase 1:
      * Unchanged PTY sessions reuse their last rendered snapshot.
-     * This avoids rebuilding up to 5,000 history lines for every
+     * This avoids rebuilding up to 20,000 history lines for every
      * session whenever only one terminal receives output.
      */
     private val publishedSnapshots =
@@ -574,9 +574,23 @@ internal object LocalPtySessionRegistry {
             System.nanoTime()
 
         try {
-            session.write(
-                text
-            )
+            /*
+             * Large terminal pastes are streamed to the PTY in bounded
+             * chunks instead of one huge write.
+             *
+             * This keeps long code/script pastes stable while preserving
+             * byte order, newlines and bracketed-paste framing.
+             */
+            for (
+                chunk in
+                localPtyInputWriteChunks(
+                    text
+                )
+            ) {
+                session.write(
+                    chunk
+                )
+            }
         } finally {
             TerminalPerformanceMetrics
                 .recordInputWrite(
@@ -4553,6 +4567,77 @@ private val TerminalShortcutMatteText =
 
 private val TerminalShortcutMatteTextDisabled =
     Color(0xFF9DA2A8)
+
+internal fun localPtyInputWriteChunks(
+    text: String,
+    maxChunkChars: Int =
+        LOCAL_PTY_INPUT_WRITE_CHUNK_CHARS
+): Sequence<String> {
+    require(
+        maxChunkChars >= 2
+    )
+
+    if (text.isEmpty()) {
+        return emptySequence()
+    }
+
+    return sequence {
+        var start = 0
+
+        while (
+            start < text.length
+        ) {
+            var end =
+                minOf(
+                    text.length,
+                    start + maxChunkChars
+                )
+
+            /*
+             * Never split an UTF-16 surrogate pair between two PTY
+             * writes. Otherwise an emoji or supplementary Unicode
+             * character could be corrupted at the chunk boundary.
+             */
+            if (
+                end < text.length &&
+                end > start &&
+                text[end - 1]
+                    .isHighSurrogate() &&
+                text[end]
+                    .isLowSurrogate()
+            ) {
+                end -= 1
+            }
+
+            if (
+                end <= start
+            ) {
+                end =
+                    minOf(
+                        text.length,
+                        start + maxChunkChars
+                    )
+            }
+
+            yield(
+                text.substring(
+                    start,
+                    end
+                )
+            )
+
+            start = end
+        }
+    }
+}
+
+
+private const val LOCAL_PTY_INPUT_WRITE_CHUNK_CHARS =
+    16_384
+
+private const val LOCAL_PTY_VALIDATED_PASTE_LINES =
+    20_000
+
 
 private const val LOCAL_PTY_BRACKETED_PASTE_START =
     "\u001b[200~"
