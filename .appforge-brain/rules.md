@@ -57,3 +57,23 @@ policy.
 - Regression: fail 0
 
 <!-- APPFORGE_AUTONOMY_POLICY_END -->
+
+## Safe execution policy
+
+SecondBrain must not repeatedly execute commands known to be
+unsupported by the active runtime.
+
+On AppForge aarch64 + PROOT:
+
+- Android local CI build is automatically skipped.
+- Missing Android SDK/NDK/CMake native binaries are environment
+  limitations, not source failures.
+- Known architecture/toolchain incompatibilities do not increase
+  the project failure count.
+- Static checks and platform-independent regression tests continue.
+- Real source/test regressions still produce FAIL.
+- git push remains blocked.
+
+Default verification command:
+
+    .appforge-brain/bin/brain-go

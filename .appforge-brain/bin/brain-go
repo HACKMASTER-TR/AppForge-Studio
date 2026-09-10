@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec /root/AppForge-Studio/.appforge-brain/bin/brain-safe-check "$@"
