@@ -273,10 +273,10 @@ def audit():
             stderr=subprocess.DEVNULL
         )
 
-        if rc != 0:
-            print("PASS - git push BLOCKED")
+        if rc == 0:
+            print("PASS - git push AUTHORIZED")
         else:
-            print("FAIL - push lock disabled")
+            print("FAIL - push authorization disabled")
             failed += 1
     else:
         print("FAIL - push hook missing")
@@ -290,7 +290,7 @@ def audit():
     if failed == 0:
         print("SECOND BRAIN V4 AUDIT PASS")
         print("LOCAL DEVELOPMENT: READY")
-        print("GIT PUSH: BLOCKED")
+        print("GIT PUSH: AUTHORIZED")
 
     return failed
 

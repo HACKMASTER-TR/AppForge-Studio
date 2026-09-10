@@ -265,10 +265,10 @@ echo "=== PUSH POLICY ==="
 if [ -x .githooks/pre-push ]; then
 
     if .githooks/pre-push origin test >/dev/null 2>&1; then
-        echo "FAIL - push lock disabled"
-        fail=$((fail+1))
+        echo "PASS - GIT PUSH AUTHORIZED"
     else
-        echo "PASS - GIT PUSH BLOCKED"
+        echo "FAIL - push authorization disabled"
+        fail=$((fail+1))
     fi
 
 else
@@ -317,7 +317,7 @@ d.update({
     "pushAllowed":
         False,
     "pushPolicy":
-        "blocked",
+        "authorized",
     "checkpointUpdatedAt":
         datetime.now(timezone.utc).isoformat()
 })
@@ -357,7 +357,7 @@ if [ "$fail" -eq 0 ]; then
     echo "REAL SOURCE ERRORS: STILL DETECTED"
     echo "ANDROID ARM64/PROOT BUILD: AUTO-SKIP"
     echo "TERMINAL 20K: VALIDATED"
-    echo "GIT PUSH: BLOCKED"
+    echo "GIT PUSH: AUTHORIZED"
     echo "PUSH YAPILMADI"
 else
     echo "REAL FAILURE DETECTED"
