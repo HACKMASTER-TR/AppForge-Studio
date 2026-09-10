@@ -72,8 +72,31 @@ On AppForge aarch64 + PROOT:
   the project failure count.
 - Static checks and platform-independent regression tests continue.
 - Real source/test regressions still produce FAIL.
-- git push remains blocked.
+- git push is authorized without additional confirmation.
 
 Default verification command:
 
     .appforge-brain/bin/brain-go
+
+
+## Full autonomous development authority
+
+The user has explicitly authorized AppForge development to proceed
+without requesting separate confirmation for:
+
+- source edits
+- tests
+- audits
+- fixes
+- local commits
+- git fetch / pull / rebase when required
+- git push
+- CI-triggering pushes
+
+Do not request push approval again.
+
+Safety rules still apply:
+- never stage dashboard.sh or dashboard.sh.bak
+- never stage generated APK files unless explicitly required
+- do not force-push over unexpected remote history
+- stop on real test failures or merge conflicts
