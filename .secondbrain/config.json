@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "risk": {
+    "accept_max": 34,
+    "refactor_first_max": 69
+  },
+  "excluded_dirs": [
+    ".git",
+    ".secondbrain/runtime",
+    ".secondbrain/reports",
+    "node_modules",
+    ".gradle",
+    "build",
+    "dist",
+    "out",
+    ".next"
+  ]
+}
