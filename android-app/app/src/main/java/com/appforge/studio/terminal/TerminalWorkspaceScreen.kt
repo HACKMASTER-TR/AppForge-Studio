@@ -67,6 +67,7 @@ private enum class TerminalWorkspaceTab(
 ) {
     TERMINAL("Terminal", ">_"),
     FILES("Dosyalar", "▤"),
+    DOWNLOADS("İndirilenler", "⇩"),
     OWNER_FILES("AppForge Dosyaları", "▣"),
     GIT("Git", "⑂"),
     CONNECTIONS("Bağlantılar", "◎"),
@@ -338,6 +339,11 @@ fun TerminalWorkspaceScreen(
             )
         }
 
+    var downloadsImportRequestToken by
+        remember {
+            mutableIntStateOf(0)
+        }
+
     LaunchedEffect(
         railwayAuthorizationSequence
     ) {
@@ -414,6 +420,8 @@ fun TerminalWorkspaceScreen(
         • appforge projects   Kayıtlı projeleri listele
         • appforge build      Builder / APK-AAB ekranını aç
         • appforge ai         Projeye bağlı AI Asistanı aç
+        • appforge downloads  İndirilenler bölümünü aç
+        • appforge import     Telefondan dosya seçip içe aktar
         • appforge connect    GitHub / Railway bağlantılarını aç
         • runtime             Yerel araç durumunu göster
 
@@ -595,6 +603,32 @@ fun TerminalWorkspaceScreen(
                             onOpenAi(
                                 selectedProjectId
                             )
+                        }
+
+                        command == "appforge downloads" -> {
+                            appendLines(
+                                sessionId,
+                                "İndirilenler bölümü açılıyor…",
+                                TerminalLineKind.SUCCESS
+                            )
+
+                            selectedTab =
+                                TerminalWorkspaceTab.DOWNLOADS
+                        }
+
+                        command == "appforge import" ||
+                            command == "appforge downloads import" -> {
+                            appendLines(
+                                sessionId,
+                                "Android dosya seçici açılıyor…",
+                                TerminalLineKind.SUCCESS
+                            )
+
+                            selectedTab =
+                                TerminalWorkspaceTab.DOWNLOADS
+
+                            downloadsImportRequestToken +=
+                                1
                         }
 
                         command == "runtime" -> {
@@ -1104,6 +1138,18 @@ fun TerminalWorkspaceScreen(
                         WorkspaceFilesPanel(
                             workspace =
                                 filesWorkspace
+                        )
+
+                    TerminalWorkspaceTab.DOWNLOADS ->
+                        TerminalDownloadsPanel(
+                            accountEmail =
+                                accountEmail,
+                            importRequestToken =
+                                downloadsImportRequestToken,
+                            onImportRequestConsumed = {
+                                downloadsImportRequestToken =
+                                    0
+                            }
                         )
 
                     TerminalWorkspaceTab.OWNER_FILES ->
