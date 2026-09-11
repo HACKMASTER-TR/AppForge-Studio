@@ -4907,6 +4907,10 @@ private fun AppForgeApp() {
                         session
                             ?.email
                             .orEmpty(),
+                    onOpenSecondBrain = {
+                        screen =
+                            AppScreen.SECOND_BRAIN
+                    },
                     onBack = {
                         screen =
                             AppScreen.HOME

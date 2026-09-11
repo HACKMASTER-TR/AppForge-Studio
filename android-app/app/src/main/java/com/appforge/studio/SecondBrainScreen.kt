@@ -3,9 +3,13 @@ package com.appforge.studio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -47,10 +51,19 @@ fun SecondBrainScreen(
         modifier =
             Modifier
                 .fillMaxSize()
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing
+                )
+                .imePadding()
                 .verticalScroll(
                     rememberScrollState()
                 )
-                .padding(20.dp),
+                .padding(
+                    start = 20.dp,
+                    top = 20.dp,
+                    end = 20.dp,
+                    bottom = 140.dp
+                ),
         verticalArrangement =
             Arrangement.spacedBy(12.dp)
     ) {

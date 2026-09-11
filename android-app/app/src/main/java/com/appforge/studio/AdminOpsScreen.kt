@@ -93,6 +93,7 @@ fun AdminOpsScreen(
     serverUrl: String,
     apiKey: String,
     accountEmail: String,
+    onOpenSecondBrain: () -> Unit,
     onBack: () -> Unit
 ) {
     val context =
@@ -820,6 +821,19 @@ fun AdminOpsScreen(
             ) {
                 Text(
                     "HESAP YÖNETİMİ"
+                )
+            }
+        }
+
+        item {
+            Button(
+                modifier =
+                    Modifier.fillMaxWidth(),
+                onClick =
+                    onOpenSecondBrain
+            ) {
+                Text(
+                    "2. BEYİN"
                 )
             }
         }
