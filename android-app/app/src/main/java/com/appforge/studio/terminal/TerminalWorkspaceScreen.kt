@@ -179,12 +179,14 @@ fun TerminalWorkspaceScreen(
     val workspace =
         remember(
             selectedProjectId,
-            selectedDraft?.importedFolder
+            selectedDraft?.importedFolder,
+            accountEmail
         ) {
             TerminalWorkspaceResolver.resolve(
                 context = context,
                 projectId = selectedProjectId,
-                draft = selectedDraft
+                draft = selectedDraft,
+                accountEmail = accountEmail
             )
         }
 

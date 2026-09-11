@@ -2,18 +2,21 @@ package com.appforge.studio.terminal
 
 import android.content.Context
 import com.appforge.studio.model.ProjectDraft
+import com.appforge.studio.security.OwnerAccessPolicy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.file.Files
+import java.security.MessageDigest
 
 object TerminalWorkspaceResolver {
     fun resolve(
         context: Context,
         projectId: String?,
-        draft: ProjectDraft?
+        draft: ProjectDraft?,
+        accountEmail: String
     ): File {
         val imported =
             draft
@@ -43,14 +46,154 @@ object TerminalWorkspaceResolver {
                 }
                 ?: "scratch"
 
-        return File(
-            context.filesDir,
-            "terminal/workspaces/$safeId"
-        ).apply {
-            mkdirs()
-        }.canonicalFile
+        val accountScope =
+            accountScope(
+                accountEmail
+            )
+
+        val root =
+            File(
+                context.filesDir,
+                "terminal/workspaces/accounts/$accountScope"
+            ).apply {
+                mkdirs()
+            }.canonicalFile
+
+        val target =
+            File(
+                root,
+                safeId
+            )
+
+        /*
+         * Eski sürümlerde workspace hesaplar arasında ortaktı:
+         *
+         * terminal/workspaces/scratch
+         *
+         * Güvenlik nedeniyle bu legacy alanı SADECE owner hesabına
+         * aktar. Normal hesaplara hiçbir eski dosya kopyalanmaz.
+         */
+        if (
+            !target.exists() &&
+            OwnerAccessPolicy.isActiveOwner(
+                context,
+                accountEmail
+            )
+        ) {
+            migrateLegacyWorkspaceForOwner(
+                context = context,
+                safeId = safeId,
+                target = target
+            )
+        }
+
+        return target
+            .apply {
+                mkdirs()
+            }
+            .canonicalFile
+    }
+
+
+    private fun accountScope(
+        accountEmail: String
+    ): String {
+        val normalized =
+            accountEmail
+                .trim()
+                .lowercase()
+
+        require(
+            normalized.isNotBlank()
+        ) {
+            "Aktif hesap bulunamadı."
+        }
+
+        val digest =
+            MessageDigest
+                .getInstance(
+                    "SHA-256"
+                )
+                .digest(
+                    normalized
+                        .toByteArray(
+                            Charsets.UTF_8
+                        )
+                )
+
+        return digest
+            .take(16)
+            .joinToString("") {
+                "%02x".format(
+                    it.toInt() and 0xff
+                )
+            }
+    }
+
+
+    private fun migrateLegacyWorkspaceForOwner(
+        context: Context,
+        safeId: String,
+        target: File
+    ) {
+        val legacy =
+            File(
+                context.filesDir,
+                "terminal/workspaces/$safeId"
+            )
+
+        if (
+            !legacy.isDirectory
+        ) {
+            return
+        }
+
+        val canonicalLegacy =
+            runCatching {
+                legacy.canonicalFile
+            }.getOrNull()
+                ?: return
+
+        val canonicalTarget =
+            runCatching {
+                target.canonicalFile
+            }.getOrNull()
+                ?: return
+
+        canonicalTarget
+            .parentFile
+            ?.mkdirs()
+
+        /*
+         * Önce rename: aynı filesystem'de atomik.
+         */
+        if (
+            canonicalLegacy.renameTo(
+                canonicalTarget
+            )
+        ) {
+            return
+        }
+
+        /*
+         * Rename olmazsa copy + doğrulama + delete.
+         */
+        runCatching {
+            canonicalLegacy.copyRecursively(
+                canonicalTarget,
+                overwrite = false
+            )
+
+            if (
+                canonicalTarget.exists()
+            ) {
+                canonicalLegacy
+                    .deleteRecursively()
+            }
+        }
     }
 }
+
 data class WorkspaceEntry(
     val file: File,
     val relativePath: String,
