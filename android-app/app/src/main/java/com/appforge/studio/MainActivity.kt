@@ -5014,12 +5014,25 @@ private fun AppForgeApp() {
                     )
 
 
-                AppScreen.SECOND_BRAIN ->
-                    SecondBrainScreen(
-                        onBack = {
-                            screen = AppScreen.HOME
+                AppScreen.SECOND_BRAIN -> {
+                    if (
+                        isAdminOpsAccount
+                    ) {
+                        SecondBrainScreen(
+                            onBack = {
+                                screen =
+                                    AppScreen.HOME
+                            }
+                        )
+                    } else {
+                        LaunchedEffect(
+                            Unit
+                        ) {
+                            screen =
+                                AppScreen.HOME
                         }
-                    )
+                    }
+                }
 
 
 
