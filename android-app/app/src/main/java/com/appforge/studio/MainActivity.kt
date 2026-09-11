@@ -5092,6 +5092,8 @@ private fun AppForgeApp() {
                                     "AI analiz projesi seçildi: ${saved.name}"
                             }
                     },
+                    allowSecondBrain =
+                        isAdminOpsAccount,
                     runtimeContext =
                         AssistantRuntimeContext(
                             secondBrainContext =
@@ -10989,6 +10991,7 @@ private fun LocalAiAssistantScreen(
     currentProjectId: String?,
     onSelectProject: (SavedProject) -> Unit,
     runtimeContext: AssistantRuntimeContext,
+    allowSecondBrain: Boolean,
     buildLogs: List<String>,
     buildPreflight: List<String>,
     languageCode: String,
@@ -11527,7 +11530,9 @@ private fun LocalAiAssistantScreen(
             ) {
                 AppForgeAssistantIntegration
                     .quickGuidance(
-                        question
+                        question = question,
+                        allowSecondBrain =
+                            allowSecondBrain
                     )
             } else {
                 null

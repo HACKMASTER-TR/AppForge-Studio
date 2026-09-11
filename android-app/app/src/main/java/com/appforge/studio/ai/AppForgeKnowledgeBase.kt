@@ -914,51 +914,68 @@ object AppForgeKnowledgeBase {
     ): String =
         buildString {
             appendLine(
-                AppForgeAssistantIntegration
-                    .applicationMap()
-            )
-
-            appendLine()
-            appendLine(
-                "APPFORGE YEREL BİLGİ TABANI:"
+                "APPFORGE BAĞLAMI:"
             )
 
             retrieve(
                 question
             )
+                .take(2)
                 .forEach {
+                    val compactText =
+                        it.text
+                            .replace(
+                                Regex("\\s+"),
+                                " "
+                            )
+                            .take(280)
+
                     appendLine(
-                        "- ${it.title}: ${it.text}"
+                        "- ${it.title}: $compactText"
                     )
                 }
 
             if (
                 includeProjectContext
             ) {
-                appendLine()
                 appendLine(
-                    "MEVCUT PROJE ÖZETİ:"
-                )
-                append(
-                    projectContext(
-                        draft
-                    )
+                    "PROJE: " +
+                        "ad=${draft.appName.ifBlank { "Adsız" }}; " +
+                        "kaynak=${draft.sourceMode}; " +
+                        "teknoloji=${draft.sourceTechnologyLabel}; " +
+                        "sürüm=${draft.versionName}/${draft.versionCode}; " +
+                        "çıktı=${draft.buildOutput}"
                 )
             }
 
-            if (
-                runtimeContext != null
-            ) {
-                appendLine()
-                appendLine()
-                append(
-                    AppForgeAssistantIntegration
-                        .runtimeSummary(
-                            runtimeContext
-                        )
+            runtimeContext?.let {
+                runtime ->
+
+                appendLine(
+                    "DURUM: " +
+                        "alan=${runtime.workspace}; " +
+                        "build=${runtime.buildStatus}; " +
+                        "ilerleme=${runtime.buildProgress}%; " +
+                        "hazır=${runtime.sourceBuildReady}"
                 )
+
+                runtime.secondBrainContext
+                    ?.takeIf {
+                        value ->
+                        value.isNotBlank()
+                    }
+                    ?.let {
+                        value ->
+                        appendLine(
+                            "INTERNAL_CONTEXT: " +
+                                value.take(160)
+                        )
+                    }
             }
         }
+            .trim()
+            .take(900)
+
 
     fun projectContext(
         draft: ProjectDraft

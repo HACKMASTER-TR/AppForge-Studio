@@ -67,6 +67,23 @@ object AppForgeAssistantIntegration {
         val handbookLine: String
     )
 
+    private val secondBrainRoute =
+        FeatureRoute(
+            AssistantAppAction(
+                AssistantDestination.SECOND_BRAIN,
+                "2. Beyin",
+                "Yönetici proje zekâsını aç."
+            ),
+            setOf(
+                "2. beyin",
+                "2 beyin",
+                "second brain",
+                "proje zekası",
+                "proje zekâsı"
+            ),
+            "Yönetici proje zekâsı."
+        )
+
     private val routes =
         listOf(
             FeatureRoute(
@@ -228,11 +245,28 @@ object AppForgeAssistantIntegration {
                 }
         }.trim()
 
-    fun actionsFor(question: String, limit: Int = 3): List<AssistantAppAction> {
+    fun actionsFor(
+        question: String,
+        limit: Int = 3,
+        allowSecondBrain: Boolean = false
+    ): List<AssistantAppAction> {
         val normalized = normalize(question)
-        val tokens = normalized.split(" ").filter { it.length >= 3 }.toSet()
+        val tokens =
+            normalized
+                .split(" ")
+                .filter {
+                    it.length >= 3
+                }
+                .toSet()
 
-        return routes
+        val availableRoutes =
+            if (allowSecondBrain) {
+                routes + secondBrainRoute
+            } else {
+                routes
+            }
+
+        return availableRoutes
             .map { route ->
                 val score = route.keywords.sumOf { keyword ->
                     val key = normalize(keyword)
@@ -251,8 +285,32 @@ object AppForgeAssistantIntegration {
             .map { it.first.action }
     }
 
-    fun quickGuidance(question: String): AssistantQuickGuidance? {
+    fun quickGuidance(
+        question: String,
+        allowSecondBrain: Boolean = false
+    ): AssistantQuickGuidance? {
         val normalized = normalize(question)
+
+        val secondBrainRequested =
+            normalized.contains("2 beyin") ||
+            normalized.contains("second brain") ||
+            normalized.contains("proje zekası") ||
+            normalized.contains("proje zekâsı")
+
+        if (
+            allowSecondBrain &&
+            secondBrainRequested
+        ) {
+            return AssistantQuickGuidance(
+                answer =
+                    "Yönetici 2. Beyin erişimi hazır. " +
+                    "Proje zekâsını aşağıdaki kısayoldan açabilirsin.",
+                actions =
+                    listOf(
+                        secondBrainRoute.action
+                    )
+            )
+        }
         val navigationIntent =
             listOf(
                 "aç",
@@ -267,7 +325,13 @@ object AppForgeAssistantIntegration {
 
         if (!navigationIntent) return null
 
-        val actions = actionsFor(question, limit = 2)
+        val actions =
+            actionsFor(
+                question = question,
+                limit = 2,
+                allowSecondBrain =
+                    allowSecondBrain
+            )
         val primary = actions.firstOrNull() ?: return null
 
         return AssistantQuickGuidance(

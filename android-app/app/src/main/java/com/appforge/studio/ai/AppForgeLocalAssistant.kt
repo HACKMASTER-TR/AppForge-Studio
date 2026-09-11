@@ -613,10 +613,13 @@ class AppForgeLocalAssistant(
             answerLanguageInstruction()
 
         val studioSnapshot =
-            AppForgeAiSnapshotV2.build(
-                draft = draft,
-                runtime = runtimeContext
-            )
+            ""
+
+        val compactGrounding =
+            grounding.take(700)
+
+        val compactQuestion =
+            clean.take(240)
 
         val prompt =
             """
@@ -624,44 +627,37 @@ class AppForgeLocalAssistant(
 
             $languageInstruction
 
-            $studioSnapshot
+            $compactGrounding
 
-            Aşağıdaki yerel AppForge bilgisini yalnızca soruyla ilgiliyse kullan.
-            AppForge hakkında bağlamda olmayan hiçbir özellik uydurma.
-            Bilgi tabanında yazmayan bir özelliği varmış veya yokmuş gibi söyleme.
-            Proje özeti editördeki mevcut durumu gösterir.
+            SORU:
+            $compactQuestion
 
-            Cevabı gereksiz uzatma.
-            Normal sorularda 2-6 kısa cümle yeterlidir.
-
-            ÖNEMLİ:
-            Yukarıdaki YANIT DİLİ talimatına bu mesajda mutlaka uy.
-            Kullanıcıya yalnızca nihai cevabı göster.
-
-            $grounding
-
-            KULLANICI SORUSU:
-            $clean
-
-            ÇIKTI KURALI:
-            Kullanıcıya gösterilecek cevabı yalnızca aşağıdaki biçimde üret:
+            Yalnız kısa nihai cevabı üret.
+            Bilmediğin bilgiyi uydurma.
 
             <final_answer>
             Nihai cevap
             </final_answer>
-
-            <final_answer> etiketinden önce veya sonra hiçbir açıklama,
-            düşünme metni, analiz, reasoning veya çalışma notu yazma.
-
-            Şimdi yalnız nihai cevabı üret.
             """.trimIndent()
 
         mutex.withLock {
-            val current =
-                conversation
+            val currentEngine =
+                engine
                     ?: error(
                         "Yerel AI modeli başlatılmadı."
                     )
+
+            conversation
+                ?.close()
+
+            val current =
+                currentEngine
+                    .createConversation(
+                        conversationConfig()
+                    )
+
+            conversation =
+                current
 
             withTimeout(
                 180_000L
