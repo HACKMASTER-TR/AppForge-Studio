@@ -100,3 +100,86 @@ Safety rules still apply:
 - never stage generated APK files unless explicitly required
 - do not force-push over unexpected remote history
 - stop on real test failures or merge conflicts
+
+<!-- APPFORGE_REFERENCE_ARCHITECTURE_START -->
+## Mandatory architecture references
+
+SecondBrain must treat the following file as persistent architecture memory:
+
+    .appforge-brain/reference-projects.md
+
+Before planning or implementing a major AppForge feature, SecondBrain must consult
+the principles in that file.
+
+Primary references:
+
+- Renuvex Product Reviews -> engineering discipline
+- VS Code -> modular IDE architecture
+- Expo EAS -> build/release workflow
+- Turborepo -> incremental build and caching
+- n8n -> Connector SDK and credential boundaries
+- Coder/code-server -> persistent isolated development workspaces
+- Sentry -> Release Health and observability
+
+Long-term target:
+
+Renuvex engineering discipline
++ VS Code modularity
++ Expo EAS build experience
++ Turborepo performance
++ n8n integrations
++ Coder cloud workspace
++ Sentry observability
+= AppForge Studio target architecture.
+
+Major new features should not unnecessarily increase coupling or enlarge
+already oversized components.
+
+Prefer modular, independently testable and observable implementations.
+<!-- APPFORGE_REFERENCE_ARCHITECTURE_END -->
+
+<!-- APPFORGE_ARCHITECTURE_RISK_GATE_START -->
+## Architecture Risk Gate
+
+Status: ACTIVE
+
+Before implementing a major feature or architectural change,
+SecondBrain must evaluate it with:
+
+    .appforge-brain/bin/brain-risk "<feature description>"
+
+The risk gate evaluates:
+
+- coupling
+- regression risk
+- build impact
+- security impact
+- performance impact
+- data impact
+- required test coverage
+
+Possible decisions:
+
+### ACCEPT
+Implementation may proceed using normal safe-development rules.
+
+### REFACTOR_FIRST
+Do not add the feature directly to an already overloaded component.
+First establish the required module/interface/test boundary, then implement.
+
+### REJECT
+The proposed implementation contains an unacceptable architectural
+or security pattern. The goal may still be valid, but the proposed
+implementation method must be redesigned.
+
+Risk results are recorded in:
+
+    .appforge-brain/runtime/architecture-risk.json
+
+History is appended to:
+
+    .appforge-brain/runtime/architecture-risk-history.jsonl
+
+A high risk score is not permission to remove working functionality.
+Existing AppForge behavior and regression guarantees remain protected.
+<!-- APPFORGE_ARCHITECTURE_RISK_GATE_END -->

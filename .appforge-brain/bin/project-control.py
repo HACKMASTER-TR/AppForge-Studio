@@ -10,6 +10,7 @@ ROOT = Path("/root/AppForge-Studio")
 RUNTIME = ROOT / ".appforge-brain/runtime"
 CHECKPOINT = RUNTIME / "checkpoint.json"
 SESSIONS = RUNTIME / "sessions.jsonl"
+ARCH_RISK = RUNTIME / "architecture-risk.json"
 
 RUNTIME.mkdir(parents=True, exist_ok=True)
 
@@ -138,6 +139,77 @@ def next_action():
         print(
             "Run brain-test, then continue "
             "the current local development task."
+        )
+
+    print()
+    print("=== ARCHITECTURE RISK CONTEXT ===")
+
+    try:
+        risk = json.loads(
+            ARCH_RISK.read_text(encoding="utf-8")
+        )
+    except Exception:
+        risk = {}
+
+    if not risk:
+        print(
+            "No architecture risk report yet."
+        )
+        print(
+            "Run: .appforge-brain/bin/brain-risk "
+            "\"<feature description>\""
+        )
+        return
+
+    print("Feature :", risk.get("feature", "unknown"))
+    print(
+        "Risk    :",
+        str(risk.get("overallRisk", "?")) + "/10"
+    )
+    print(
+        "Decision:",
+        risk.get("decision", "unknown")
+    )
+    print(
+        "Tests   :",
+        risk.get("testCoverageRequired", "unknown")
+    )
+
+    refs = risk.get("recommendedReferences") or []
+
+    if refs:
+        print("References:")
+        for ref in refs:
+            print(" -", ref)
+
+    gates = risk.get("requiredGates") or []
+
+    if gates:
+        print("Required gates:")
+        for gate in gates:
+            print(" -", gate)
+
+    decision = risk.get("decision")
+
+    if decision == "REFACTOR_FIRST":
+        print()
+        print(
+            "NEXT POLICY: Establish module/test boundaries "
+            "before implementing the feature."
+        )
+
+    elif decision == "REJECT":
+        print()
+        print(
+            "NEXT POLICY: Redesign the implementation "
+            "before source changes."
+        )
+
+    elif decision == "ACCEPT":
+        print()
+        print(
+            "NEXT POLICY: Implementation may proceed "
+            "with normal safe-development checks."
         )
 
 

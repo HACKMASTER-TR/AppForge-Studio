@@ -34,6 +34,46 @@ fi
 
 
 echo
+echo "=== SECOND BRAIN ARCHITECTURE MEMORY ==="
+
+REFERENCE_FILE=".appforge-brain/reference-projects.md"
+
+if [ ! -s "$REFERENCE_FILE" ]; then
+    echo "FAIL - architecture reference memory missing"
+    fail=$((fail+1))
+else
+    echo "PASS - architecture reference memory loaded"
+
+    for REF in         "Renuvex Product Reviews"         "VS Code"         "Expo EAS"         "Turborepo"         "n8n"         "Coder"         "Sentry"
+    do
+        if grep -q "$REF" "$REFERENCE_FILE"; then
+            echo "PASS - reference: $REF"
+        else
+            echo "FAIL - missing reference: $REF"
+            fail=$((fail+1))
+        fi
+    done
+fi
+
+
+echo
+echo "=== ARCHITECTURE RISK GATE ==="
+
+if [ ! -x .appforge-brain/bin/brain-risk ]; then
+    echo "FAIL - brain-risk missing"
+    fail=$((fail+1))
+else
+    .appforge-brain/bin/brain-risk --self-test
+
+    if [ "$?" -ne 0 ]; then
+        fail=$((fail+1))
+    else
+        echo "PASS - Architecture Risk Gate active"
+    fi
+fi
+
+
+echo
 echo "=== TERMINAL 20K STATIC CHECK ==="
 
 python3 - <<'PY'
@@ -304,6 +344,29 @@ except Exception:
 
 d.update({
     "safeWorkflow": True,
+    "architectureMemoryFile":
+        ".appforge-brain/reference-projects.md",
+    "architectureMemoryEnabled":
+        True,
+    "architectureRiskGateEnabled":
+        True,
+    "architectureRiskTool":
+        ".appforge-brain/bin/brain-risk",
+    "architectureRiskDecisions": [
+        "ACCEPT",
+        "REFACTOR_FIRST",
+        "REJECT"
+    ],
+    "targetArchitecture":
+        "Renuvex discipline + VS Code modularity + Expo EAS release workflow + Turborepo caching + n8n connectors + Coder workspaces + Sentry observability",
+    "architecturePriorities": [
+        "VS Code modular architecture",
+        "Expo EAS build and release workflow",
+        "Turborepo incremental cache",
+        "n8n Connector SDK",
+        "Coder persistent cloud workspace",
+        "Sentry Release Health"
+    ],
     "hostArchitecture": arch,
     "isProot": proot,
     "androidLocalBuildPolicy":
