@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const projects =
+const quota =
   new URL(
-    "../src/projects.js",
+    "../src/projectQuotaV2.js",
     import.meta.url
   );
 
@@ -26,112 +26,125 @@ const buildClient =
     import.meta.url
   );
 
-test("free project limit defaults to five", async () => {
-  const text =
-    await readFile(
-      config,
-      "utf8"
+test(
+  "FREE successful-project limit defaults to one",
+  async () => {
+    const text =
+      await readFile(
+        config,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /FREE_PROJECT_LIMIT[\s\S]*\|\|[\s\S]*1/
+    );
+  }
+);
+
+test(
+  "quota is atomic and server enforced",
+  async () => {
+    const text =
+      await readFile(
+        quota,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /pg_advisory_xact_lock/
     );
 
-  assert.equal(
-    text.includes(
-      "FREE_PROJECT_LIMIT"
-    ),
-    true
-  );
-});
-
-test("quota is atomic and server enforced", async () => {
-  const text =
-    await readFile(
-      projects,
-      "utf8"
+    assert.match(
+      text,
+      /FREE_PROJECT_LIMIT_REACHED/
     );
 
-  assert.equal(
-    text.includes(
-      "pg_advisory_xact_lock"
-    ),
-    true
-  );
-
-  assert.equal(
-    text.includes(
-      "FREE_PROJECT_LIMIT_REACHED"
-    ),
-    true
-  );
-
-  assert.equal(
-    text.includes(
-      "quota.used >="
-    ),
-    true
-  );
-});
-
-test("raw build also reserves project slot", async () => {
-  const text =
-    await readFile(
-      server,
-      "utf8"
+    assert.match(
+      text,
+      /appforge_project_quota_reservations/
     );
 
-  const route =
-    text.indexOf(
-      '"/api/builds"'
+    assert.match(
+      text,
+      /quota\.used[\s\S]*quota\.reserved/
+    );
+  }
+);
+
+test(
+  "raw build reserves quota on backend",
+  async () => {
+    const text =
+      await readFile(
+        server,
+        "utf8"
+      );
+
+    const route =
+      text.indexOf(
+        '"/api/builds"'
+      );
+
+    const reserve =
+      text.indexOf(
+        "await reserveProjectQuota(",
+        route
+      );
+
+    assert.equal(
+      route >= 0,
+      true
     );
 
-  const call =
-    text.indexOf(
-      "await upsertProject(",
-      route
+    assert.equal(
+      reserve > route,
+      true
+    );
+  }
+);
+
+test(
+  "quota endpoint exists",
+  async () => {
+    const text =
+      await readFile(
+        server,
+        "utf8"
+      );
+
+    assert.equal(
+      text.includes(
+        '"/api/projects/quota"'
+      ),
+      true
+    );
+  }
+);
+
+test(
+  "build client sends saved bearer session",
+  async () => {
+    const text =
+      await readFile(
+        buildClient,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /SecureAccountStore/
     );
 
-  assert.equal(
-    call > route,
-    true
-  );
-});
-
-test("quota endpoint exists", async () => {
-  const text =
-    await readFile(
-      server,
-      "utf8"
+    assert.match(
+      text,
+      /"Authorization"/
     );
 
-  assert.equal(
-    text.includes(
-      '"/api/projects/quota"'
-    ),
-    true
-  );
-});
-
-test("free account build client sends the saved bearer session", async () => {
-  const text =
-    await readFile(
-      buildClient,
-      "utf8"
+    assert.match(
+      text,
+      /"Bearer \$it"/
     );
-
-  assert.equal(
-    text.includes(
-      "SecureAccountStore"
-    ),
-    true
-  );
-  assert.equal(
-    text.includes(
-      '"Authorization"'
-    ),
-    true
-  );
-  assert.equal(
-    text.includes(
-      '"Bearer $it"'
-    ),
-    true
-  );
-});
+  }
+);

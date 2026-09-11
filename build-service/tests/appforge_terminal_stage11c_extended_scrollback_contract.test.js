@@ -12,23 +12,33 @@ const panelUrl = new URL(
   import.meta.url
 );
 
-test("Stage 11C retains 5000 terminal scrollback lines", async () => {
-  const source =
-    await readFile(bufferUrl, "utf8");
+test("Stage 11C keeps 20000 terminal buffer lines and renders 5000", async () => {
+  const assert =
+    (await import("node:assert/strict")).default;
+
+  const { readFile } =
+    await import("node:fs/promises");
+
+  const [pty, buffer] =
+    await Promise.all([
+      readFile(
+        new URL("../../android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt", import.meta.url),
+        "utf8"
+      ),
+      readFile(
+        new URL("../../android-app/app/src/main/java/com/appforge/studio/terminal/AnsiTerminalBuffer.kt", import.meta.url),
+        "utf8"
+      )
+    ]);
 
   assert.match(
-    source,
-    /maxScrollbackLines:\s*Int\s*=\s*5_000/
+    buffer,
+    /maxScrollbackLines:[\s\S]*20_000/
   );
 
   assert.match(
-    source,
-    /scrollback\.size\s*>\s*maxScrollbackLines/
-  );
-
-  assert.match(
-    source,
-    /scrollback\.removeFirst\(\)/
+    pty,
+    /MAX_RENDERED_PTY_HISTORY_LINES[\s\S]*5_000/
   );
 });
 

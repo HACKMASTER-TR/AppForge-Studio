@@ -83,19 +83,35 @@ test("uploaded sources auto-detect every exposed permission", async () => {
     "navigator.wakelock",
     "ndefreader"
   ]) {
-    assert.ok(analyzer.toLowerCase().includes(marker), marker);
+    assert.ok(
+      analyzer.toLowerCase().includes(marker),
+      marker
+    );
   }
 
-  for (const assignment of [
-    "microphone =\n                            analysis.microphone",
-    "networkState =\n                            analysis.networkState",
-    "wakeLock =\n                            analysis.wakeLock",
-    "nfc =\n                            analysis.nfc"
+  for (const field of [
+    "microphone",
+    "networkState",
+    "wakeLock",
+    "nfc"
   ]) {
-    assert.ok(main.includes(assignment), assignment);
+    const assignment =
+      new RegExp(
+        `${field}\\s*=\\s*analysis\\.${field}`
+      );
+
+    assert.match(
+      main,
+      assignment,
+      `${field} auto-detection assignment`
+    );
   }
 
-  assert.ok(main.includes("otomatik algılanıp işaretlenir"));
+  assert.ok(
+    main.includes(
+      "otomatik algılanıp işaretlenir"
+    )
+  );
 });
 
 test("unchanged sources reuse ZIP and local AI uses fast routing", async () => {

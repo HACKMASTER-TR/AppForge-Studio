@@ -79,6 +79,11 @@ import {
   listLocalizations
 } from "./src/projects.js";
 import {
+  reserveProjectQuota,
+  recordSuccessfulProject,
+  releaseProjectQuotaReservation
+} from "./src/projectQuotaV2.js";
+import {
   createPublishDraft,
   listPublishDrafts
 } from "./src/publish.js";
@@ -3763,6 +3768,12 @@ app.post(
 
     mark("01 multer-complete");
 
+    let quotaReservedPackage =
+      null;
+
+    let quotaBuildAccepted =
+      false;
+
     try {
       const c =
         JSON.parse(
@@ -4036,6 +4047,16 @@ app.post(
 
       mark("10 cache-lookup-done");
 
+      await reserveProjectQuota(
+        req.user.id,
+        c.packageName
+      );
+
+      quotaReservedPackage =
+        c.packageName;
+
+      mark("10a quota-reserved");
+
       const buildId =
         uuidv4();
 
@@ -4105,6 +4126,17 @@ app.post(
             Number(c.priority || 100)
           ]
         );
+
+        await recordSuccessfulProject(
+          req.user.id,
+          c.packageName
+        );
+
+        quotaBuildAccepted =
+          true;
+
+        quotaReservedPackage =
+          null;
 
         mark("14 enqueue-done");
 
@@ -4257,6 +4289,9 @@ app.post(
         }
       });
 
+      quotaBuildAccepted =
+        true;
+
       await rememberIdempotency(
         req.user.id,
         normalizedIdempotencyKey,
@@ -4286,6 +4321,22 @@ app.post(
             finalQueueStats
         });
     } catch (error) {
+
+      if (
+        quotaReservedPackage &&
+        !quotaBuildAccepted
+      ) {
+        try {
+          await releaseProjectQuotaReservation(
+            req.user.id,
+            quotaReservedPackage,
+            {
+              force: true
+            }
+          );
+        } catch {}
+      }
+
       res
         .status(
           error?.code ===

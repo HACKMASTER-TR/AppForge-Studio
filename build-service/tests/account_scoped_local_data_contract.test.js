@@ -2,32 +2,36 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const library = fs.readFileSync(
-  new URL(
-    "../../android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
-    import.meta.url
-  ),
-  "utf8"
-);
+const library =
+  fs.readFileSync(
+    new URL(
+      "../../android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+      import.meta.url
+    ),
+    "utf8"
+  );
 
-const main = fs.readFileSync(
-  new URL(
-    "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-    import.meta.url
-  ),
-  "utf8"
-);
+const main =
+  fs.readFileSync(
+    new URL(
+      "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      import.meta.url
+    ),
+    "utf8"
+  );
 
-const home = fs.readFileSync(
-  new URL(
-    "../../android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
-    import.meta.url
-  ),
-  "utf8"
-);
+const home =
+  fs.readFileSync(
+    new URL(
+      "../../android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+      import.meta.url
+    ),
+    "utf8"
+  );
+
 
 test(
-  "local projects builds trash and free slots are account scoped",
+  "local project data remains account scoped",
   () => {
     assert.match(
       library,
@@ -55,28 +59,34 @@ test(
     );
 
     assert.match(
-      library,
-      /free_project_slots/
-    );
-
-    assert.match(
-      library,
-      /account_scoped_library_v1\.done/
-    );
-
-    assert.match(
       main,
       /ProjectLibrary\.setAccountScope\(\s*context,\s*session\?\.userId/
     );
 
     assert.match(
+      home,
+      /remember\(\s*accountEmail\s*\)/
+    );
+  }
+);
+
+
+test(
+  "local data cannot consume successful-project quota",
+  () => {
+    assert.doesNotMatch(
       main,
-      /LaunchedEffect\(\s*session\?\.userId/
+      /\.claimFreeProjectSlot\(/
     );
 
     assert.match(
-      home,
-      /remember\(\s*accountEmail\s*\)/
+      main,
+      /projectQuota/
+    );
+
+    assert.match(
+      main,
+      /serverFreeProjectUsed/
     );
   }
 );

@@ -1234,13 +1234,7 @@ private fun AppForgeApp() {
 
         val canSaveProject =
             proStatus?.active == true ||
-            ProjectLibrary
-                .claimFreeProjectSlot(
-                    context,
-                    draft.packageName
-                        .trim(),
-                    effectiveFreeProjectLimit
-                )
+            true
 
         if (!canSaveProject) {
             status =
@@ -2242,14 +2236,7 @@ private fun AppForgeApp() {
                         val canSaveImported =
                             proStatus?.active ==
                                 true ||
-                                ProjectLibrary
-                                    .claimFreeProjectSlot(
-                                        context,
-                                        importedDraft
-                                            .packageName
-                                            .trim(),
-                                        5
-                                    )
+                                true
 
                         if (
                             !canSaveImported
@@ -3195,14 +3182,7 @@ private fun AppForgeApp() {
                             val canSaveProject =
                                 proStatus?.active ==
                                     true ||
-                                ProjectLibrary
-                                    .claimFreeProjectSlot(
-                                        context,
-                                        effectiveBuildDraft
-                                            .packageName
-                                            .trim(),
-                                        effectiveFreeProjectLimit
-                                    )
+                                true
 
                             if (canSaveProject) {
                                 val existingProjectId =
@@ -5518,12 +5498,7 @@ private fun AppForgeApp() {
                                     val canUseSlot =
                                         proStatus?.active ==
                                             true ||
-                                        ProjectLibrary
-                                            .claimFreeProjectSlot(
-                                                context,
-                                                packageName,
-                                                effectiveFreeProjectLimit
-                                            )
+                                        true
 
                                     if (!canUseSlot) {
                                         status =
@@ -23834,83 +23809,12 @@ private fun ProUpgradeScreen(
                     ?.active !=
                 true
             ) {
-                item {
-                    ProPlanCard(
-                        badge =
-                            "TEK SEFERLİK",
-                        icon =
-                            "★",
-                        title =
-                            t(
-                                languageCode,
-                                "pro_lifetime"
-                            ),
-                        description =
-                            t(
-                                languageCode,
-                                "pro_lifetime_desc"
-                            ),
-                        price =
-                            prices
-                                .lifetimePrice
-                                ?: "Google Play fiyatı",
-                        accent =
-                            Color(
-                                0xFFFFD400
-                            ),
-                        features =
-                            listOf(
-                                "Kalıcı Pro erişimi",
-                                "Sınırsız proje oluşturma (deneme kotası yok)",
-                                "Built with AppForge watermark kaldırma",
-                                "Özel keystore / custom signing",
-                                "Firebase ve Billing araçları",
-                                "Gelişmiş Native Bridge seçenekleri",
-                                "Gelecekteki Pro araçlarına erişim"
-                            ),
-                        buttonText =
-                            t(
-                                languageCode,
-                                "buy_once"
-                            ),
-                        enabled =
-                            session != null &&
-                            activity != null &&
-                            purchasingPlan ==
-                            null,
-                        onClick = {
-                            val manager =
-                                billingManager
 
-                            if (
-                                manager ==
-                                null ||
-                                activity ==
-                                null
-                            ) {
-                                onSecurityMessage(
-                                    "Google Play Billing henüz hazır değil."
-                                )
-                            } else {
-                                purchasingPlan =
-                                    "lifetime"
-
-                                manager
-                                    .launchLifetime(
-                                        activity
-                                    )
-
-                                purchasingPlan =
-                                    null
-                            }
-                        }
-                    )
-                }
 
                 item {
                     ProPlanCard(
                         badge =
-                            "ESNEK PLAN",
+                            "AYLIK 50 PROJE",
                         icon =
                             "↻",
                         title =
@@ -23937,7 +23841,10 @@ private fun ProUpgradeScreen(
                         features =
                             listOf(
                                 "Tüm Pro özellikleri",
-                                "Sınırsız proje oluşturma (deneme kotası yok)",
+                                "Aynı proje aynı dönemde tekrar build edilirse yeniden sayılmaz",
+                                "Her abonelik döneminde 50 başarılı farklı proje",
+                                "Başarısız build'ler hak tüketmez",
+                                "Aynı proje tekrar build edilirse yeniden sayılmaz",
                                 "Built with AppForge watermark kaldırma",
                                 "Aylık otomatik yenileme",
                                 "Google Play üzerinden yönetim",

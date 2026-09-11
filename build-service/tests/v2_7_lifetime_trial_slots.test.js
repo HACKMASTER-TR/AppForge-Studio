@@ -2,15 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const projects =
+const quota =
   new URL(
-    "../src/projects.js",
+    "../src/projectQuotaV2.js",
     import.meta.url
   );
 
 const migration =
   new URL(
-    "../sql/010_permanent_project_trial_slots.sql",
+    "../sql/021_success_project_quotas.sql",
     import.meta.url
   );
 
@@ -26,43 +26,152 @@ const mainActivity =
     import.meta.url
   );
 
-test("quota counts permanent free slot ledger", async () => {
-  const text = await readFile(projects, "utf8");
-  assert.equal(text.includes("FROM appforge_free_project_slots"), true);
-  assert.equal(text.includes("deletionRestoresSlot"), true);
-});
 
-test("slot ledger survives active project deletion", async () => {
-  const text = await readFile(migration, "utf8");
-  assert.equal(text.includes("PRIMARY KEY(user_id, package_name)"), true);
-  assert.equal(text.includes("REFERENCES appforge_projects"), false);
-});
+test(
+  "FREE quota is consumed only by successful distinct projects",
+  async () => {
+    const text =
+      await readFile(
+        quota,
+        "utf8"
+      );
 
-test("android mirrors lifetime slot ledger", async () => {
-  const text = await readFile(library, "utf8");
-  assert.equal(text.includes("free_project_slots.json"), true);
-  assert.equal(text.includes("claimFreeProjectSlot"), true);
-  assert.equal(text.includes("freeProjectSlotsUsed"), true);
-});
+    assert.match(
+      text,
+      /recordSuccessfulProject/
+    );
 
-test("first real edit of an existing project claims one free slot", async () => {
-  const text = await readFile(mainActivity, "utf8");
-  assert.equal(text.includes("autosaveBaseline"), true);
-  assert.equal(text.includes("baseline.second == draft"), true);
+    assert.match(
+      text,
+      /appforge_free_project_slots/
+    );
 
-  const autosave = text.indexOf(
-    "LaunchedEffect(currentProjectId, draft)"
-  );
-  const claim = text.indexOf(
-    ".claimFreeProjectSlot(",
-    autosave
-  );
-  const save = text.indexOf(
-    "ProjectLibrary.save(",
-    claim
-  );
+    assert.match(
+      text,
+      /failedBuildsConsumeQuota/
+    );
+  }
+);
 
-  assert.equal(autosave >= 0, true);
-  assert.equal(claim > autosave, true);
-  assert.equal(save > claim, true);
-});
+
+test(
+  "failed and cancelled build reservations can be released",
+  async () => {
+    const text =
+      await readFile(
+        quota,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /releaseProjectQuotaReservation/
+    );
+
+    assert.match(
+      text,
+      /appforge_project_quota_reservations/
+    );
+  }
+);
+
+
+test(
+  "Pro Monthly quota is subscription-cycle scoped",
+  async () => {
+    const text =
+      await readFile(
+        quota,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /appforge_pro_monthly_project_slots/
+    );
+
+    assert.match(
+      text,
+      /cycle_end/
+    );
+
+    assert.match(
+      text,
+      /pro-monthly:/
+    );
+  }
+);
+
+
+test(
+  "legacy draft-slot cleanup is restart safe",
+  async () => {
+    const text =
+      await readFile(
+        migration,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /appforge_migration_markers/
+    );
+
+    assert.match(
+      text,
+      /success-project-quota-v2-legacy-slot-cleanup/
+    );
+
+    assert.match(
+      text,
+      /DELETE FROM appforge_free_project_slots/
+    );
+
+    assert.match(
+      text,
+      /status[\s\S]*'success'/
+    );
+  }
+);
+
+
+test(
+  "Android ProjectLibrary is storage only, not quota authority",
+  async () => {
+    const main =
+      await readFile(
+        mainActivity,
+        "utf8"
+      );
+
+    const localLibrary =
+      await readFile(
+        library,
+        "utf8"
+      );
+
+    assert.doesNotMatch(
+      main,
+      /\.claimFreeProjectSlot\(/
+    );
+
+    assert.match(
+      main,
+      /projectQuota/
+    );
+
+    assert.match(
+      main,
+      /serverFreeProjectUsed/
+    );
+
+    /*
+     * Legacy local data can remain for migration/account-scoped
+     * storage compatibility, but it cannot grant/deny quota.
+     */
+    assert.match(
+      localLibrary,
+      /activeAccountScope/
+    );
+  }
+);

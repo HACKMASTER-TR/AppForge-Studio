@@ -20,106 +20,180 @@ const pro =
     import.meta.url
   );
 
+const quota =
+  new URL(
+    "../src/projectQuotaV2.js",
+    import.meta.url
+  );
+
 const config =
   new URL(
     "../src/config.js",
     import.meta.url
   );
 
-test("Pro screen exposes lifetime and monthly plans", async () => {
-  const text =
-    await readFile(
-      main,
-      "utf8"
+
+test(
+  "Pro screen exposes monthly 50-project plan only",
+  async () => {
+    const text =
+      await readFile(
+        main,
+        "utf8"
+      );
+
+    const start =
+      text.indexOf(
+        "private fun ProUpgradeScreen("
+      );
+
+    assert.ok(
+      start >= 0,
+      "ProUpgradeScreen missing"
     );
 
-  assert.equal(
-    text.includes(
-      "ProPlanCard"
-    ),
-    true
-  );
+    const nextComposable =
+      text.indexOf(
+        "\n@Composable",
+        start + 20
+      );
 
-  assert.equal(
-    text.includes(
-      "pro_lifetime"
-    ),
-    true
-  );
+    const proScreen =
+      nextComposable > start
+        ? text.slice(
+            start,
+            nextComposable
+          )
+        : text.slice(
+            start
+          );
 
-  assert.equal(
-    text.includes(
-      "pro_monthly"
-    ),
-    true
-  );
-});
-
-test("Android uses Google Play Billing 9 plan manager", async () => {
-  const text =
-    await readFile(
-      billing,
-      "utf8"
+    assert.match(
+      proScreen,
+      /ProPlanCard/
     );
 
-  assert.equal(
-    text.includes(
-      "BillingClient"
-    ),
-    true
-  );
-
-  assert.match(
-    text,
-    /ProductType\s*\.\s*INAPP/
-  );
-
-  assert.match(
-    text,
-    /ProductType\s*\.\s*SUBS/
-  );
-});
-
-test("server supports monthly and lifetime entitlement activation", async () => {
-  const text =
-    await readFile(
-      pro,
-      "utf8"
+    assert.match(
+      proScreen,
+      /pro_monthly/
     );
 
-  assert.equal(
-    text.includes(
-      'plan === "monthly"'
-    ),
-    true
-  );
-
-  assert.equal(
-    text.includes(
-      '"subs"'
-    ),
-    true
-  );
-
-  assert.equal(
-    text.includes(
-      '"inapp"'
-    ),
-    true
-  );
-});
-
-test("monthly product id is configurable", async () => {
-  const text =
-    await readFile(
-      config,
-      "utf8"
+    assert.match(
+      proScreen,
+      /AYLIK 50 PROJE/
     );
 
-  assert.equal(
-    text.includes(
-      "STUDIO_PRO_MONTHLY_PRODUCT_ID"
-    ),
-    true
-  );
-});
+    assert.match(
+      proScreen,
+      /50 başarılı farklı proje/
+    );
+
+    assert.doesNotMatch(
+      proScreen,
+      /"TEK SEFERLİK"/
+    );
+
+    assert.doesNotMatch(
+      proScreen,
+      /\.launchLifetime\(/
+    );
+
+    assert.doesNotMatch(
+      proScreen,
+      /Sınırsız proje oluşturma/
+    );
+  }
+);
+
+
+test(
+  "Google Play monthly subscription uses SUBS",
+  async () => {
+    const text =
+      await readFile(
+        billing,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /BillingClient/
+    );
+
+    assert.match(
+      text,
+      /ProductType\s*\.\s*SUBS/
+    );
+  }
+);
+
+
+test(
+  "server rejects new lifetime Pro activation",
+  async () => {
+    const text =
+      await readFile(
+        pro,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /LIFETIME_PRO_RETIRED/
+    );
+
+    assert.match(
+      text,
+      /plan\s*!==\s*"monthly"/
+    );
+
+    assert.match(
+      text,
+      /productType:[\s\S]*"subs"/
+    );
+  }
+);
+
+
+test(
+  "legacy lifetime entitlement remains grandfathered",
+  async () => {
+    const text =
+      await readFile(
+        quota,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /planKind:[\s\S]*"legacy"/
+    );
+
+    assert.match(
+      text,
+      /unlimited:[\s\S]*true/
+    );
+  }
+);
+
+
+test(
+  "monthly plan has 50 successful-project quota",
+  async () => {
+    const text =
+      await readFile(
+        config,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /STUDIO_PRO_MONTHLY_PRODUCT_ID/
+    );
+
+    assert.match(
+      text,
+      /PRO_MONTHLY_PROJECT_LIMIT[\s\S]*\|\|[\s\S]*50/
+    );
+  }
+);

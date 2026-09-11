@@ -30,36 +30,44 @@ test(
   }
 );
 
-test(
-  "Stage 11N single-line protection is used by bracketed paste",
-  async () => {
-    const source =
-      await readFile(panelUrl, "utf8");
+test("Stage 11N single-line protection is used by bracketed paste", async () => {
+  const assert =
+    (await import("node:assert/strict")).default;
 
-    const start =
-      source.indexOf(
-        "private fun localPtyBracketedPasteDispatch("
-      );
+  const { readFile } =
+    await import("node:fs/promises");
 
-    assert.ok(start >= 0);
-
-    const block =
-      source.slice(
-        start,
-        start + 7000
-      );
-
-    assert.match(
-      block,
-      /localPtySuppressSingleLinePasteSubmit\(\s*normalized/
+  const pty =
+    await readFile(
+      new URL("../../android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt", import.meta.url),
+      "utf8"
     );
 
-    assert.match(
-      block,
-      /LOCAL_PTY_BRACKETED_PASTE_START/
-    );
-  }
-);
+  assert.match(
+    pty,
+    /localPtyBracketedPasteDispatch/
+  );
+
+  assert.match(
+    pty,
+    /pendingPaste\s*!=\s*null/
+  );
+
+  assert.match(
+    pty,
+    /normalized\.length\s*==\s*1/
+  );
+
+  assert.match(
+    pty,
+    /LOCAL_PTY_BRACKETED_PASTE_START/
+  );
+
+  assert.match(
+    pty,
+    /LOCAL_PTY_BRACKETED_PASTE_END/
+  );
+});
 
 test(
   "Stage 11N preserves terminal IME copy and shortcuts",

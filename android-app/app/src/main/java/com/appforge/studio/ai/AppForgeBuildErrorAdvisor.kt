@@ -36,6 +36,19 @@ object AppForgeBuildErrorAdvisor {
                 confidence = 99
             ),
             Rule(
+                category = "Plan / Kota",
+                title = "Pro Aylık başarılı proje hakkı doldu",
+                needles = listOf(
+                    "pro_monthly_project_limit_reached",
+                    "pro aylık paketinde bu abonelik döneminde",
+                    "50 başarılı farklı proje hakkı",
+                    "başarılı farklı proje hakkı vardır"
+                ),
+                reason = "Pro Aylık hesabın mevcut abonelik dönemindeki başarılı farklı proje kotasına ulaştı. Başarısız build'ler bu kotaya dahil değildir.",
+                solution = "Mevcut projelerini tekrar build edebilirsin; aynı proje yeniden hak tüketmez. Yeni başarılı farklı projeler için bir sonraki abonelik döneminde 50 hak otomatik yenilenir.",
+                confidence = 99
+            ),
+            Rule(
                 category = "Plan / Eşzamanlı Build",
                 title = "Aktif build sınırına ulaşıldı",
                 needles = listOf(

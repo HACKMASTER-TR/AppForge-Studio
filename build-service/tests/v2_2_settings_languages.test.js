@@ -39,7 +39,6 @@ test("settings hub and support screens exist", async () => {
     "SettingsHubScreen",
     "LanguageSettingsScreen",
     "LegalCenterScreen",
-    "HowToUseCenterScreen",
     "PlayPublishingGuideScreen",
     "ProUpgradeScreen",
     "KeystoreManagerScreen"

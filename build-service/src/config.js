@@ -478,11 +478,19 @@ export const config = {
     true
   ),
 
+  proMonthlyProjectLimit: Math.max(
+    1,
+    Number(
+      process.env.PRO_MONTHLY_PROJECT_LIMIT ||
+      50
+    )
+  ),
+
   freeProjectLimit: Math.max(
     1,
     Number(
       process.env.FREE_PROJECT_LIMIT ||
-      5
+      1
     )
   )
 };

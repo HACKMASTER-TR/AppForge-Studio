@@ -1,154 +1,19 @@
 import { query, tx } from "./db.js";
 import { config } from "./config.js";
 import { requirePermission } from "./permissions.js";
+import {
+  getProjectQuotaV2
+} from "./projectQuotaV2.js";
 
-
-async function projectQuotaFromClient(
-  client,
-  userId
-) {
-  const [
-    countResult,
-    proResult,
-    limitResult
-  ] =
-    await Promise.all([
-      client.query(
-        `SELECT COUNT(*)::int AS count
-         FROM appforge_free_project_slots
-         WHERE user_id = $1`,
-        [
-          userId
-        ]
-      ),
-      client.query(
-        `SELECT
-           status,
-           expires_at
-         FROM appforge_pro_entitlements
-         WHERE user_id = $1`,
-        [
-          userId
-        ]
-      ),
-      client.query(
-        `SELECT
-           free_project_limit
-         FROM appforge_user_project_limits
-         WHERE user_id = $1
-         LIMIT 1`,
-        [
-          userId
-        ]
-      )
-    ]);
-
-  const used =
-    Number(
-      countResult.rows[0]
-        ?.count ||
-      0
-    );
-
-  const customLimit =
-    Number(
-      limitResult.rows[0]
-        ?.free_project_limit ||
-      0
-    );
-
-  const effectiveFreeLimit =
-    Number.isFinite(
-      customLimit
-    ) &&
-    customLimit > 0
-      ? customLimit
-      : config.freeProjectLimit;
-
-  const pro =
-    proResult.rows[0];
-
-  const proNotExpired =
-    !pro?.expires_at ||
-    new Date(
-      pro.expires_at
-    ).getTime() >
-      Date.now();
-
-  const isPro =
-    pro?.status ===
-      "active" &&
-    proNotExpired;
-
-  return {
-    plan:
-      isPro
-        ? "pro"
-        : "free",
-
-    used,
-
-    limit:
-      isPro
-        ? null
-        : effectiveFreeLimit,
-
-    customLimit:
-      customLimit > 0
-        ? customLimit
-        : null,
-
-    remaining:
-      isPro
-        ? null
-        : Math.max(
-            0,
-            effectiveFreeLimit -
-              used
-          ),
-
-    unlimited:
-      isPro,
-
-    lifetimeTrial:
-      !isPro,
-
-    deletionRestoresSlot:
-      false
-  };
-}
 
 export async function getProjectQuota(
   userId
 ) {
-  return tx(
-    async client =>
-      projectQuotaFromClient(
-        client,
-        userId
-      )
+  return getProjectQuotaV2(
+    userId
   );
 }
 
-function freeProjectLimitError(
-  quota
-) {
-  const error =
-    new Error(
-      `Ücretsiz denemede toplam ${quota.limit} farklı proje hakkın vardır. Silinen proje hakkı geri gelmez. Pro ve Pro Aylık'ta proje sayısı sınırsızdır.`
-    );
-
-  error.statusCode =
-    403;
-
-  error.code =
-    "FREE_PROJECT_LIMIT_REACHED";
-
-  error.quota =
-    quota;
-
-  return error;
-}
 
 export async function listProjects(
   userId,
@@ -231,145 +96,65 @@ export async function upsertProject(
     throw error;
   }
 
-  return tx(
-    async client => {
-      // Allocate project slots serially per user.
-      // This prevents two parallel requests from both becoming project #6.
-      await client.query(
-        `SELECT pg_advisory_xact_lock(
-           hashtext($1)
-         )`,
-        [
-          `appforge-project-quota:${userId}`
-        ]
-      );
+  /*
+   * IMPORTANT:
+   *
+   * Proje oluşturmak, kaydetmek veya taslağı değiştirmek
+   * artık kota tüketmez.
+   *
+   * Kota yalnız gerçek başarılı build'de
+   * projectQuotaV2 tarafından işlenir.
+   */
+  const result =
+    await query(
+      `INSERT INTO appforge_projects(
+         user_id,
+         team_id,
+         name,
+         package_name,
+         config
+       )
+       VALUES(
+         $1,$2,$3,$4,$5::jsonb
+       )
+       ON CONFLICT(
+         user_id,
+         package_name
+       )
+       DO UPDATE SET
+         team_id =
+           EXCLUDED.team_id,
+         name =
+           EXCLUDED.name,
+         config =
+           EXCLUDED.config,
+         updated_at =
+           NOW()
+       RETURNING
+         id,
+         name,
+         package_name,
+         team_id,
+         config,
+         created_at,
+         updated_at`,
+      [
+        userId,
+        teamId,
+        String(
+          data.name ||
+          "Adsız Proje"
+        ),
+        packageName,
+        JSON.stringify(
+          data.config || {}
+        )
+      ]
+    );
 
-      const entitlement =
-        await client.query(
-          `SELECT
-             status,
-             expires_at
-           FROM appforge_pro_entitlements
-           WHERE user_id = $1`,
-          [
-            userId
-          ]
-        );
-
-      const pro =
-        entitlement.rows[0];
-
-      const proNotExpired =
-        !pro?.expires_at ||
-        new Date(
-          pro.expires_at
-        ).getTime() >
-          Date.now();
-
-      const isPro =
-        pro?.status ===
-          "active" &&
-        proNotExpired;
-
-      if (!isPro) {
-        const existingSlot =
-          await client.query(
-            `SELECT package_name
-             FROM appforge_free_project_slots
-             WHERE user_id = $1
-               AND package_name = $2
-             LIMIT 1`,
-            [
-              userId,
-              packageName
-            ]
-          );
-
-        if (!existingSlot.rowCount) {
-          const quota =
-            await projectQuotaFromClient(
-              client,
-              userId
-            );
-
-          if (
-            quota.used >=
-            quota.limit
-          ) {
-            throw freeProjectLimitError(
-              quota
-            );
-          }
-
-          await client.query(
-            `INSERT INTO appforge_free_project_slots(
-               user_id,
-               package_name
-             )
-             VALUES($1,$2)`,
-            [
-              userId,
-              packageName
-            ]
-          );
-        } else {
-          await client.query(
-            `UPDATE appforge_free_project_slots
-             SET last_seen_at = NOW()
-             WHERE user_id = $1
-               AND package_name = $2`,
-            [
-              userId,
-              packageName
-            ]
-          );
-        }
-      }
-
-      const result =
-        await client.query(
-          `INSERT INTO appforge_projects(
-             user_id,
-             team_id,
-             name,
-             package_name,
-             config
-           )
-           VALUES(
-             $1,$2,$3,$4,$5::jsonb
-           )
-           ON CONFLICT(user_id, package_name)
-           DO UPDATE SET
-             team_id = EXCLUDED.team_id,
-             name = EXCLUDED.name,
-             config = EXCLUDED.config,
-             updated_at = NOW()
-           RETURNING
-             id,
-             name,
-             package_name,
-             team_id,
-             config,
-             created_at,
-             updated_at`,
-          [
-            userId,
-            teamId,
-            String(
-              data.name ||
-              "Adsız Proje"
-            ),
-            packageName,
-            JSON.stringify(
-              data.config || {}
-            )
-          ]
-        );
-
-      return result.rows[0];
-    }
-  );
+  return result.rows[0];
 }
+
 
 export async function deleteProject(
   userId,

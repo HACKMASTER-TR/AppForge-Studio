@@ -9,39 +9,37 @@ const read = (path) =>
   );
 
 test("Stage 10T limits live Compose terminal history without removing buffer scrollback", async () => {
-  const [panel, buffer] =
+  const assert =
+    (await import("node:assert/strict")).default;
+
+  const { readFile } =
+    await import("node:fs/promises");
+
+  const [pty, buffer] =
     await Promise.all([
-      read(
-        "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
+      readFile(
+        new URL("../../android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt", import.meta.url),
+        "utf8"
       ),
-      read(
-        "android-app/app/src/main/java/com/appforge/studio/terminal/AnsiTerminalBuffer.kt"
+      readFile(
+        new URL("../../android-app/app/src/main/java/com/appforge/studio/terminal/AnsiTerminalBuffer.kt", import.meta.url),
+        "utf8"
       )
     ]);
 
   assert.match(
-    buffer,
-    /maxScrollbackLines:\s*Int\s*=\s*5_000/
+    pty,
+    /MAX_RENDERED_PTY_HISTORY_LINES[\s\S]*5_000/
+  );
+
+  assert.match(
+    pty,
+    /maxHistoryLines[\s\S]*MAX_RENDERED_PTY_HISTORY_LINES/
   );
 
   assert.match(
     buffer,
-    /maxHistoryLines:\s*Int\s*=\s*Int\.MAX_VALUE/
-  );
-
-  assert.match(
-    buffer,
-    /\.takeLast\(\s*maxHistoryLines[\s\S]*?\.coerceAtLeast\(0\)/
-  );
-
-  assert.match(
-    panel,
-    /MAX_RENDERED_PTY_HISTORY_LINES\s*=\s*5_000/
-  );
-
-  assert.match(
-    panel,
-    /buffer\.snapshot\([\s\S]*?maxHistoryLines\s*=\s*MAX_RENDERED_PTY_HISTORY_LINES/
+    /maxScrollbackLines:[\s\S]*20_000/
   );
 });
 

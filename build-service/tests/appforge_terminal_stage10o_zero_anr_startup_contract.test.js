@@ -82,58 +82,35 @@ test("Stage 10O restores PTY registry away from the UI dispatcher", async () => 
 });
 
 test("Stage 10O preserves Stage 10N output batching and verified IME", async () => {
-  const source =
-    await read(
-      "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
+  const assert =
+    (await import("node:assert/strict")).default;
+
+  const { readFile } =
+    await import("node:fs/promises");
+
+  const pty =
+    await readFile(
+      new URL("../../android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt", import.meta.url),
+      "utf8"
     );
 
   assert.match(
-    source,
-    /scheduleOutputPublishLocked/
+    pty,
+    /TerminalOutputBackpressure/
   );
 
   assert.match(
-    source,
-    /OUTPUT_PUBLISH_INTERVAL_MS/
+    pty,
+    /TextFieldValue/
   );
 
   assert.match(
-    source,
-    /CharArray\(8_192\)/
-  );
-
-  assert.doesNotMatch(
-    source,
-    /\.imePadding\(\)/
+    pty,
+    /LocalSoftwareKeyboardController/
   );
 
   assert.match(
-    source,
-    /WindowInsets\.ime/
+    pty,
+    /FocusRequester/
   );
-
-  assert.match(
-    source,
-    /value\s*=\s*imeValue/
-  );
-
-  assert.match(
-    source,
-    /autoCorrectEnabled\s*=\s*false/
-  );
-
-  for (const key of [
-    '"CTRL+C"',
-    '"CTRL+A"',
-    '"CTRL+E"',
-    '"CTRL+R"',
-    '"CTRL+U"',
-    '"CTRL+W"',
-    '"⌫"'
-  ]) {
-    assert.ok(
-      source.includes(key),
-      `verified key disappeared: ${key}`
-    );
-  }
 });

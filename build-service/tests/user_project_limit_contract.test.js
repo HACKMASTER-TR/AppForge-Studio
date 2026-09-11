@@ -18,78 +18,98 @@ function read(relativePath) {
   );
 }
 
+
 test(
-  "custom FREE project limit uses persistent per-user override",
+  "FREE successful-project quota supports persistent custom limit",
   () => {
-    const source =
+    const quota =
       read(
-        "build-service/src/projects.js"
+        "build-service/src/projectQuotaV2.js"
       );
 
     assert.match(
-      source,
+      quota,
       /appforge_user_project_limits/
     );
 
     assert.match(
-      source,
+      quota,
       /effectiveFreeLimit/
+    );
+
+    assert.match(
+      quota,
+      /appforge_free_project_slots/
     );
   }
 );
 
+
 test(
-  "admin can update per-user FREE project limit",
+  "default FREE successful-project limit is 1",
   () => {
-    const source =
+    const config =
+      read(
+        "build-service/src/config.js"
+      );
+
+    assert.match(
+      config,
+      /FREE_PROJECT_LIMIT[\s\S]*\|\|[\s\S]*1/
+    );
+  }
+);
+
+
+test(
+  "Pro Monthly successful-project limit is 50",
+  () => {
+    const config =
+      read(
+        "build-service/src/config.js"
+      );
+
+    const quota =
+      read(
+        "build-service/src/projectQuotaV2.js"
+      );
+
+    assert.match(
+      config,
+      /PRO_MONTHLY_PROJECT_LIMIT[\s\S]*\|\|[\s\S]*50/
+    );
+
+    assert.match(
+      quota,
+      /appforge_pro_monthly_project_slots/
+    );
+  }
+);
+
+
+test(
+  "admin can update per-user FREE limit",
+  () => {
+    const server =
       read(
         "build-service/server.js"
       );
 
     assert.match(
-      source,
+      server,
       /\/api\/admin\/users\/:userId\/project-limit/
     );
 
     assert.match(
-      source,
+      server,
       /customFreeProjectLimit/
     );
   }
 );
 
-test(
-  "heyomert initial 50 limit does not overwrite later admin changes",
-  () => {
-    const source =
-      read(
-        "build-service/sql/019_user_free_project_limits.sql"
-      );
-
-    assert.match(
-      source,
-      /heyomert@gmail\.com/
-    );
-
-    assert.match(
-      source,
-      /50/
-    );
-
-    assert.match(
-      source,
-      /ON CONFLICT\(user_id\)[\s\S]*DO NOTHING/
-    );
-
-    assert.doesNotMatch(
-      source,
-      /ON CONFLICT\(user_id\)[\s\S]*DO UPDATE/
-    );
-  }
-);
 
 test(
-  "Android uses server quota and advisor recognizes quota errors",
+  "Android consumes server quota V2",
   () => {
     const main =
       read(
@@ -112,18 +132,28 @@ test(
     );
 
     assert.match(
+      api,
+      /planKind/
+    );
+
+    assert.match(
+      api,
+      /failedBuildsConsumeQuota/
+    );
+
+    assert.doesNotMatch(
       main,
-      /effectiveFreeProjectLimit/
+      /\.claimFreeProjectSlot\(/
     );
 
     assert.match(
       advisor,
-      /FREE proje hakkı doldu/
+      /free_project_limit_reached/
     );
 
     assert.match(
       advisor,
-      /Aktif build sınırına ulaşıldı/
+      /pro_monthly_project_limit_reached/
     );
   }
 );

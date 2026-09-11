@@ -62,11 +62,17 @@ data class RemoteBuildHistoryItem(
 
 data class ProjectQuotaResult(
     val plan: String,
+    val planKind: String,
     val used: Int,
+    val reserved: Int,
     val limit: Int?,
     val remaining: Int?,
+    val availableToStart: Int?,
     val unlimited: Boolean,
-    val customLimit: Int?
+    val customLimit: Int?,
+    val successOnly: Boolean,
+    val failedBuildsConsumeQuota: Boolean,
+    val periodEndsAt: String?
 )
 
 
@@ -807,9 +813,21 @@ class BuildApiClient(
                     "free"
                 ),
 
+            planKind =
+                quota.optString(
+                    "planKind",
+                    "free"
+                ),
+
             used =
                 quota.optInt(
                     "used",
+                    0
+                ),
+
+            reserved =
+                quota.optInt(
+                    "reserved",
                     0
                 ),
 
@@ -819,6 +837,20 @@ class BuildApiClient(
             remaining =
                 remaining,
 
+            availableToStart =
+                if (
+                    quota.isNull(
+                        "availableToStart"
+                    )
+                ) {
+                    null
+                } else {
+                    quota.optInt(
+                        "availableToStart",
+                        0
+                    )
+                },
+
             unlimited =
                 quota.optBoolean(
                     "unlimited",
@@ -826,7 +858,27 @@ class BuildApiClient(
                 ),
 
             customLimit =
-                customLimit
+                customLimit,
+
+            successOnly =
+                quota.optBoolean(
+                    "successOnly",
+                    true
+                ),
+
+            failedBuildsConsumeQuota =
+                quota.optBoolean(
+                    "failedBuildsConsumeQuota",
+                    false
+                ),
+
+            periodEndsAt =
+                quota.optString(
+                    "periodEndsAt"
+                ).takeIf {
+                    it.isNotBlank() &&
+                    it != "null"
+                }
         )
     }
 

@@ -244,37 +244,52 @@ export async function activateProFromPlay({
   userId,
   purchaseToken,
   integritySession,
-  plan = "lifetime"
+  plan = "monthly"
 }) {
+  /*
+   * Lifetime Pro artık satılmıyor.
+   *
+   * Eski lifetime entitlement satırları
+   * getProEntitlement() tarafından çalışmaya devam eder.
+   */
+  if (
+    plan !==
+      "monthly"
+  ) {
+    const error =
+      new Error(
+        "Tek seferlik Pro satışı kaldırıldı. Pro Aylık aboneliğini kullan."
+      );
+
+    error.statusCode =
+      410;
+
+    error.code =
+      "LIFETIME_PRO_RETIRED";
+
+    throw error;
+  }
+
   verifyIntegritySession(
     integritySession,
     userId
   );
 
-  const safePlan =
-    plan === "monthly"
-      ? "monthly"
-      : "lifetime";
-
   const productId =
-    safePlan === "monthly"
-      ? config
-          .studioProMonthlyProductId
-      : config
-          .studioProProductId;
-
-  const productType =
-    safePlan === "monthly"
-      ? "subs"
-      : "inapp";
+    config
+      .studioProMonthlyProductId;
 
   const verification =
     await verifyPlayPurchase({
       packageName:
         config.studioAndroidPackage,
+
       productId,
+
       purchaseToken,
-      productType
+
+      productType:
+        "subs"
     });
 
   if (
@@ -283,7 +298,7 @@ export async function activateProFromPlay({
   ) {
     const error =
       new Error(
-        "Google Play satın alımı Pro hakkı vermiyor."
+        "Google Play Pro Aylık aboneliği doğrulanamadı."
       );
 
     error.statusCode =
@@ -294,16 +309,16 @@ export async function activateProFromPlay({
 
   return grantPro({
     userId,
+
     source:
-      safePlan === "monthly"
-        ? "google_play_subscription"
-        : "google_play",
+      "google_play_subscription",
+
     productId,
+
     purchaseToken,
+
     expiresAt:
-      safePlan === "monthly"
-        ? verification.expiryTime
-        : null
+      verification.expiryTime
   });
 }
 

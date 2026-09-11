@@ -10,6 +10,10 @@ import {
 } from "./buildCache.js";
 import { putInput } from "./storage.js";
 import { enqueueJob } from "./jobQueue.js";
+import {
+  reserveProjectQuota,
+  recordSuccessfulProject
+} from "./projectQuotaV2.js";
 import { enforceProForConfig, applyServerBranding } from "./proEntitlements.js";
 import {
   normalizeIdempotencyKey,
@@ -207,6 +211,14 @@ export async function submitWorkspaceBuild(
       cacheKey
     );
 
+  /*
+   * Taslak oluşturma değil, gerçek build başlangıcı reserve eder.
+   */
+  await reserveProjectQuota(
+    userId,
+    c.packageName
+  );
+
   const buildId =
     uuidv4();
 
@@ -263,6 +275,11 @@ export async function submitWorkspaceBuild(
         cacheKey,
         priority
       ]
+    );
+
+    await recordSuccessfulProject(
+      userId,
+      c.packageName
     );
 
     await rememberIdempotency(

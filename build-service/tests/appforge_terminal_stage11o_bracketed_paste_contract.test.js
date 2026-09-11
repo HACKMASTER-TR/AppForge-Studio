@@ -53,18 +53,39 @@ test(
   }
 );
 
-test(
-  "Stage 11O converts explicit Enter after paste to one PTY Enter",
-  async () => {
-    const source =
-      await readFile(panelUrl, "utf8");
+test("Stage 11O converts explicit Enter after paste to one PTY Enter", async () => {
+  const assert =
+    (await import("node:assert/strict")).default;
 
-    assert.match(
-      source,
-      /pendingPaste != null &&\s*normalized == "\\n"[\s\S]*?ptyText = "\\r"/
+  const { readFile } =
+    await import("node:fs/promises");
+
+  const pty =
+    await readFile(
+      new URL("../../android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt", import.meta.url),
+      "utf8"
     );
-  }
-);
+
+  assert.match(
+    pty,
+    /localPtyBracketedPasteDispatch/
+  );
+
+  assert.match(
+    pty,
+    /pendingPaste\s*\+\s*"\\n"/
+  );
+
+  assert.match(
+    pty,
+    /ptyText\s*=\s*"\\r"/
+  );
+
+  assert.match(
+    pty,
+    /pendingPaste\s*=\s*null/
+  );
+});
 
 test(
   "Stage 11O suppresses Gboard full-paste replay on Enter",

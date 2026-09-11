@@ -9,6 +9,10 @@ import {
 } from "./proEntitlements.js";
 import { signalBuildQueue } from "./redis.js";
 import {
+  recordSuccessfulBuild,
+  releaseBuildQuotaReservation
+} from "./projectQuotaV2.js";
+import {
   triggerWorkerAutoscale
 } from "./autoscaleDispatch.js";
 import {
@@ -965,6 +969,11 @@ export async function completeJob(jobId, buildId, userId, teamId) {
     [jobId]
   );
 
+  await recordSuccessfulBuild(
+    buildId,
+    userId
+  );
+
   await event(buildId, userId, teamId, "worker_completed", {});
 }
 
@@ -1025,6 +1034,10 @@ export async function failOrRequeueJob(job, error) {
          completed_at = NOW()
        WHERE id = $1`,
       [job.build_id, message]
+    );
+
+    await releaseBuildQuotaReservation(
+      job.build_id
     );
 
     await event(
@@ -1114,6 +1127,8 @@ export async function requestBuildCancellation(
     const buildResult =
       await client.query(
         `SELECT
+           user_id,
+           package_name,
            status,
            cancel_requested
          FROM appforge_builds
@@ -1194,6 +1209,29 @@ export async function requestBuildCancellation(
              )
          WHERE id = $1`,
         [buildId]
+      );
+
+      await client.query(
+        `DELETE FROM appforge_project_quota_reservations reservation
+         WHERE reservation.user_id = $1
+           AND reservation.package_name = $2
+           AND NOT EXISTS(
+             SELECT 1
+             FROM appforge_builds other
+             WHERE other.user_id = $1
+               AND other.package_name = $2
+               AND other.id <> $3
+               AND other.status NOT IN(
+                 'success',
+                 'failed',
+                 'cancelled'
+               )
+           )`,
+        [
+          build.user_id,
+          build.package_name,
+          buildId
+        ]
       );
 
       return {

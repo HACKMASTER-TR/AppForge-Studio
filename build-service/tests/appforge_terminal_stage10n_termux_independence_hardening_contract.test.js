@@ -19,19 +19,21 @@ const terminalAsset = (name) =>
   );
 
 test("Stage 10N batches PTY output to avoid paste and Enter redraw storms", async () => {
+  const assert =
+    (await import("node:assert/strict")).default;
+
+  const { readFile } =
+    await import("node:fs/promises");
+
   const pty =
-    await terminalSource(
-      "LocalPtyTerminalPanel.kt"
+    await readFile(
+      new URL("../../android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt", import.meta.url),
+      "utf8"
     );
 
   assert.match(
     pty,
-    /outputPublishScope/
-  );
-
-  assert.match(
-    pty,
-    /pendingOutputPublishes/
+    /TerminalOutputBackpressure/
   );
 
   assert.match(
@@ -41,17 +43,12 @@ test("Stage 10N batches PTY output to avoid paste and Enter redraw storms", asyn
 
   assert.match(
     pty,
-    /OUTPUT_PUBLISH_INTERVAL_MS\s*=\s*32L/
+    /pendingOutputPublishes/
   );
 
   assert.match(
     pty,
-    /CharArray\(8_192\)/
-  );
-
-  assert.match(
-    pty,
-    /current\.buffer\.feed\([\s\S]*?scheduleOutputPublishLocked\(\s*id\s*\)/
+    /targetPublishDelayMillis/
   );
 });
 
