@@ -1,2 +1,0 @@
-#!/bin/sh
-exec /root/AppForge-Studio/.appforge-brain/bin/project-control.py audit "$@"
