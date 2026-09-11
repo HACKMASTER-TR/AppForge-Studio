@@ -135,7 +135,7 @@ test("assistant technology guidance matches live source engines", async () => {
   );
 });
 
-test("assistant receives the complete application map and safe runtime context", async () => {
+test("assistant keeps navigation map available while prompt context stays compact and safe", async () => {
   const map = await readFile(integration, "utf8");
   const kb = await readFile(knowledge, "utf8");
   const runtimeText = await readFile(runtime, "utf8");
@@ -171,9 +171,13 @@ test("assistant receives the complete application map and safe runtime context",
     assert.equal(map.includes(destination), true, `Missing ${destination}`);
   }
 
-  assert.equal(kb.includes("applicationMap()"), true);
-  assert.equal(kb.includes("runtimeSummary("), true);
+  assert.equal(kb.includes("applicationMap()"), false);
+  assert.equal(kb.includes("APPFORGE BAĞLAMI:"), true);
+  assert.equal(kb.includes(".take(2)"), true);
+  assert.equal(kb.includes(".take(900)"), true);
   assert.equal(runtimeText.includes("runtimeContext"), true);
+  assert.equal(runtimeText.includes("compactGrounding"), true);
+  assert.equal(runtimeText.includes("currentEngine"), true);
 
   for (const secret of [
     "buildApiKey",
