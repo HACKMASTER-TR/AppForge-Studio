@@ -60,6 +60,7 @@ BRAIN_PATHS = (
     "scripts/wiki-audit.mjs",
     "scripts/wiki-secret-scan.py",
     "scripts/wiki-prune-report.py",
+    "android-app/app/src/main/assets/second_brain_snapshot.json",
 )
 
 def now():

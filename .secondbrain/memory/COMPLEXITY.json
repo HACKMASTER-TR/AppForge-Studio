@@ -1,0 +1,357 @@
+{
+  "generated_at": "2026-09-12T00:34:19+03:00",
+  "largest": [
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "lines": 24825,
+      "symbols": 122
+    },
+    {
+      "file": "build-service/src/buildEngine.js",
+      "lines": 8779,
+      "symbols": 119
+    },
+    {
+      "file": "build-service/server.js",
+      "lines": 6001,
+      "symbols": 9
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
+      "lines": 4691,
+      "symbols": 64
+    },
+    {
+      "file": "build-service/fast-runtime/FastActivity.java",
+      "lines": 2810,
+      "symbols": 24
+    },
+    {
+      "file": "build-service/src/windowsBuild.js",
+      "lines": 2477,
+      "symbols": 33
+    },
+    {
+      "file": "build-service/src/sourceBuildEngines.js",
+      "lines": 2474,
+      "symbols": 34
+    },
+    {
+      "file": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
+      "lines": 2201,
+      "symbols": 39
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+      "lines": 2103,
+      "symbols": 16
+    },
+    {
+      "file": "build-service/src/pythonWebFrameworkEngine.js",
+      "lines": 2063,
+      "symbols": 47
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxMultiSessionTerminalPanel.kt",
+      "lines": 1748,
+      "symbols": 10
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/ExternalConnectionsClient.kt",
+      "lines": 1644,
+      "symbols": 43
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+      "lines": 1628,
+      "symbols": 17
+    },
+    {
+      "file": "build-service/src/reactNativeBuildEngine.js",
+      "lines": 1617,
+      "symbols": 24
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+      "lines": 1569,
+      "symbols": 15
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/StudioHomeScreen.kt",
+      "lines": 1559,
+      "symbols": 13
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/io/TemplateProjectFactory.kt",
+      "lines": 1531,
+      "symbols": 141
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+      "lines": 1461,
+      "symbols": 33
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+      "lines": 1437,
+      "symbols": 11
+    },
+    {
+      "file": "build-service/src/jobQueue.js",
+      "lines": 1349,
+      "symbols": 15
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
+      "lines": 1330,
+      "symbols": 12
+    },
+    {
+      "file": "build-service/src/dotnetAndroidBuildEngine.js",
+      "lines": 1270,
+      "symbols": 17
+    },
+    {
+      "file": "build-service/src/flutterBuildEngine.js",
+      "lines": 1247,
+      "symbols": 16
+    },
+    {
+      "file": "build-service/src/cppAndroidBuildEngine.js",
+      "lines": 1246,
+      "symbols": 15
+    },
+    {
+      "file": "build-service/src/workspace.js",
+      "lines": 1234,
+      "symbols": 20
+    },
+    {
+      "file": "build-service/src/dotnetMauiBuildEngine.js",
+      "lines": 1223,
+      "symbols": 18
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "lines": 1204,
+      "symbols": 36
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
+      "lines": 1184,
+      "symbols": 14
+    },
+    {
+      "file": "build-service/src/projectQuotaV2.js",
+      "lines": 1179,
+      "symbols": 17
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFilesPanel.kt",
+      "lines": 1179,
+      "symbols": 8
+    },
+    {
+      "file": "build-service/src/fastBuild.js",
+      "lines": 1170,
+      "symbols": 7
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorPanel.kt",
+      "lines": 1140,
+      "symbols": 4
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/AdvancedGitPanel.kt",
+      "lines": 1131,
+      "symbols": 5
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/io/AppForgeExeConversion.kt",
+      "lines": 1113,
+      "symbols": 15
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/tools/excel/ExcelToolsScreen.kt",
+      "lines": 1097,
+      "symbols": 14
+    },
+    {
+      "file": ".github/scripts/railway_production.py",
+      "lines": 1091,
+      "symbols": 16
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+      "lines": 1072,
+      "symbols": 10
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
+      "lines": 1051,
+      "symbols": 15
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimatePanel.kt",
+      "lines": 1051,
+      "symbols": 3
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/AnsiTerminalBuffer.kt",
+      "lines": 1049,
+      "symbols": 32
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/SshWorkspacePanel.kt",
+      "lines": 1042,
+      "symbols": 3
+    },
+    {
+      "file": "build-service/src/unityLicensedBuild.js",
+      "lines": 1026,
+      "symbols": 11
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxLspSession.kt",
+      "lines": 992,
+      "symbols": 22
+    },
+    {
+      "file": "build-service/src/frameworkStaticBuildEngine.js",
+      "lines": 981,
+      "symbols": 21
+    },
+    {
+      "file": "build-service/src/phpRemoteBackendEngine.js",
+      "lines": 966,
+      "symbols": 14
+    },
+    {
+      "file": "build-service/src/androidSafeArea.js",
+      "lines": 947,
+      "symbols": 15
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt",
+      "lines": 931,
+      "symbols": 23
+    },
+    {
+      "file": "build-service/src/nodeRemoteBackendEngine.js",
+      "lines": 916,
+      "symbols": 14
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/task/AppForgeTaskCenterScreen.kt",
+      "lines": 903,
+      "symbols": 7
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/io/SourceCapabilityAnalyzer.kt",
+      "lines": 891,
+      "symbols": 5
+    },
+    {
+      "file": "build-service/src/unityAndroidBuildEngine.js",
+      "lines": 886,
+      "symbols": 13
+    },
+    {
+      "file": "build-service/src/storage.js",
+      "lines": 862,
+      "symbols": 25
+    },
+    {
+      "file": "build-service/src/buildCache.js",
+      "lines": 853,
+      "symbols": 21
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/VerifiedLinuxRootfsInstaller.kt",
+      "lines": 853,
+      "symbols": 17
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimateFoundation.kt",
+      "lines": 832,
+      "symbols": 18
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorCore.kt",
+      "lines": 828,
+      "symbols": 34
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/task/AppForgeTaskManager.kt",
+      "lines": 805,
+      "symbols": 21
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxPtySessionRegistry.kt",
+      "lines": 798,
+      "symbols": 23
+    },
+    {
+      "file": "build-service/tests/conversion_roundtrip_smoke.test.js",
+      "lines": 783,
+      "symbols": 5
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateProjectPipeline.kt",
+      "lines": 778,
+      "symbols": 26
+    }
+  ],
+  "refactor_candidates": [
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "lines": 24825,
+      "symbols": 122
+    },
+    {
+      "file": "build-service/src/buildEngine.js",
+      "lines": 8779,
+      "symbols": 119
+    },
+    {
+      "file": "build-service/server.js",
+      "lines": 6001,
+      "symbols": 9
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
+      "lines": 4691,
+      "symbols": 64
+    },
+    {
+      "file": "build-service/fast-runtime/FastActivity.java",
+      "lines": 2810,
+      "symbols": 24
+    },
+    {
+      "file": "build-service/src/windowsBuild.js",
+      "lines": 2477,
+      "symbols": 33
+    },
+    {
+      "file": "build-service/src/sourceBuildEngines.js",
+      "lines": 2474,
+      "symbols": 34
+    },
+    {
+      "file": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
+      "lines": 2201,
+      "symbols": 39
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+      "lines": 2103,
+      "symbols": 16
+    },
+    {
+      "file": "build-service/src/pythonWebFrameworkEngine.js",
+      "lines": 2063,
+      "symbols": 47
+    }
+  ]
+}

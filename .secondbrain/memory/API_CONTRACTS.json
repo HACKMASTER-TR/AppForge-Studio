@@ -1,0 +1,1955 @@
+{
+  "generated_at": "2026-09-12T00:34:19+03:00",
+  "count": 82,
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/ready",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/system-status",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_free_project_slots",
+        "appforge_pro_entitlements",
+        "appforge_user_project_limits",
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_admin_grant",
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:userId/pro",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_admin_grant",
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "userId"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:userId/legacy-device-login",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "userId"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:userId/project-limit",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_free_project_slots",
+        "appforge_user_project_limits",
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "userId"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/autoscale/dispatch",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/build-statuses",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [],
+        "body": [
+          "ids"
+        ],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/2fa/verify-login",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/device-transfer",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/auth/delete-account",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/delete-account",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/verify-email",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/resend-verification",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/reset-password",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/2fa/setup",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/2fa/confirm",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/auth/2fa",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/api-tokens",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/api-tokens",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/auth/api-tokens/:id",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teams",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teams",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teams/:id/members",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requirePermission"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teams/:id/invites",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requirePermission"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/team-invites/accept",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teams/:id/permissions",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teams/:id/permissions/:userId",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id",
+          "userId"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teams/:id/api-tokens",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requirePermission"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teams/:id/api-tokens",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requirePermission"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v5/scaffold",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [
+          "teamId"
+        ],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/quota",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/projects/:id",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/templates",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/:id/localizations",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/projects/:id/localizations/:locale",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id",
+          "locale"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/:id/files",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [
+          "path"
+        ],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/projects/:id/files",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/projects/:id/files",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [
+          "path"
+        ],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/:id/revisions",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/:id/revisions",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/:id/diff",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [
+          "fromRevision",
+          "path",
+          "toRevision"
+        ],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/:id/github/import",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/:id/builds",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "verifiedEmailRequired",
+        "requireScope",
+        "buildRateLimit"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/:id/revisions/:revisionId/restore",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id",
+          "revisionId"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/:id/search",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [
+          "q"
+        ],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analytics/builds",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requirePermission"
+      ],
+      "tables": [],
+      "request": {
+        "query": [
+          "days",
+          "teamId"
+        ],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/uploads/build-input",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "verifiedEmailRequired",
+        "requireScope"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/builds",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requireScope",
+        "requirePermission"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [
+          "teamId"
+        ],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/builds/:id",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requireScope",
+        "requirePermission"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/builds",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "verifiedEmailRequired",
+        "requireScope",
+        "requirePermission",
+        "buildRateLimit"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/builds/:id/test-lab",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requireScope"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/builds/compare",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requireScope"
+      ],
+      "tables": [],
+      "request": {
+        "query": [
+          "left",
+          "right"
+        ],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/builds/:id/release-notes",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requireScope"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [
+          "previous"
+        ],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/builds/:id/artifacts",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requireScope",
+        "requirePermission"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/builds/:id/logs",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requireScope",
+        "requirePermission"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [
+          "after",
+          "limit"
+        ],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/builds/:id/logs.txt",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requireScope",
+        "requirePermission"
+      ],
+      "tables": [
+        "appforge_build_log_lines",
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/builds/:id/events",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requireScope",
+        "requirePermission"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [
+          "after"
+        ],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/builds/:id/cancel",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requireScope",
+        "requirePermission"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/builds/:id/priority",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requireScope",
+        "requirePermission"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/builds/:id/download-ticket",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requireScope",
+        "requirePermission"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "id"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/download/:token",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "token"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/security/config",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/security/attest",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pro/status",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "requireIntegrityHeader"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pro/activate",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/pro/grant",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/pro/revoke",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/verify-purchase",
+      "auth": false,
+      "admin": false,
+      "middleware": [
+        "purchaseVerifyRateLimit"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/publish-drafts",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/publish-drafts",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/purchases",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_play_purchases"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/workers",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_workers"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/overview",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_builds",
+        "appforge_teams",
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    }
+  ],
+  "public_routes": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/ready",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/2fa/verify-login",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/device-transfer",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/api/auth/delete-account",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/delete-account",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/verify-email",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/reset-password",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/download/:token",
+      "auth": false,
+      "admin": false,
+      "middleware": [],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "token"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/verify-purchase",
+      "auth": false,
+      "admin": false,
+      "middleware": [
+        "purchaseVerifyRateLimit"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    }
+  ],
+  "admin_routes": [
+    {
+      "method": "GET",
+      "path": "/api/admin/system-status",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_free_project_slots",
+        "appforge_pro_entitlements",
+        "appforge_user_project_limits",
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_admin_grant",
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:userId/pro",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_admin_grant",
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "userId"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:userId/legacy-device-login",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "userId"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/:userId/project-limit",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_free_project_slots",
+        "appforge_user_project_limits",
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": [
+          "userId"
+        ]
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/autoscale/dispatch",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/build-statuses",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_builds"
+      ],
+      "request": {
+        "query": [],
+        "body": [
+          "ids"
+        ],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/pro/grant",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/pro/revoke",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/purchases",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_play_purchases"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/workers",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_workers"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/overview",
+      "auth": true,
+      "admin": true,
+      "middleware": [
+        "authRequired",
+        "adminRequired"
+      ],
+      "tables": [
+        "appforge_builds",
+        "appforge_teams",
+        "appforge_users"
+      ],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    }
+  ]
+}

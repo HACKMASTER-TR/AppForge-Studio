@@ -1,0 +1,19 @@
+{
+  "version": "3.0.0",
+  "fail_safe": true,
+  "unknown_values": [
+    "UNKNOWN",
+    "NOT_VERIFIED",
+    "NOT_MEASURED",
+    "NOT_CHECKED",
+    "NOT_CONFIGURED"
+  ],
+  "live_health": {
+    "github": "automatic public API; optional GITHUB_TOKEN",
+    "railway": "APPFORGE_BUILD_SERVICE_URL / RAILWAY_SERVICE_URL / RAILWAY_PUBLIC_DOMAIN / Railway CLI"
+  },
+  "performance": {
+    "storage": ".secondbrain/memory/PERFORMANCE_SAMPLES.json",
+    "never_invent_values": true
+  }
+}

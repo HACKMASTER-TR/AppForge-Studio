@@ -599,7 +599,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 private data class ParallelBuildTestItem(
     val slot: Int,
@@ -1437,6 +1437,7 @@ private fun AppForgeApp() {
                 AssistantDestination.PLAY_GUIDE -> AppScreen.PLAY_GUIDE
                 AssistantDestination.PRO -> AppScreen.PRO
                 AssistantDestination.KEYSTORES -> AppScreen.KEYSTORES
+                AssistantDestination.SECOND_BRAIN -> AppScreen.SECOND_BRAIN
                 else -> AppScreen.HOME
             }
 
@@ -5013,6 +5014,16 @@ private fun AppForgeApp() {
                     )
 
 
+                AppScreen.SECOND_BRAIN ->
+                    SecondBrainScreen(
+                        onBack = {
+                            screen = AppScreen.HOME
+                        }
+                    )
+
+
+
+
                 AppScreen.AI_ASSISTANT ->
                     BuildRuntimeCompositionBoundary(
                         runtime =
@@ -5070,6 +5081,8 @@ private fun AppForgeApp() {
                     },
                     runtimeContext =
                         AssistantRuntimeContext(
+                            secondBrainContext =
+                                com.appforge.studio.ai.SecondBrainBridge.summary(context),
                             workspace =
                                 workspaceReturnScreen.name,
                             builderStep =

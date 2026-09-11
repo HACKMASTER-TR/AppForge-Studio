@@ -2,3 +2,4 @@ runtime/
 reports/
 __pycache__/
 *.pyc
+ui/dashboard.json

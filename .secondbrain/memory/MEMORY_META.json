@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-09-12T00:34:21+03:00",
+  "version": "3.0.0",
+  "confidence": {
+    "source_maps": "verified-from-source",
+    "live_health": "live-verified-when-available",
+    "performance": "measured-only",
+    "heuristic_dependency_graph": "inferred",
+    "risk_decision": "advisory"
+  },
+  "architecture_fingerprint": "c043bf94e828081d0eeb03a586c7653ed26537ecec3d2bcf2c360071b5bcb876",
+  "previous_fingerprint": "c043bf94e828081d0eeb03a586c7653ed26537ecec3d2bcf2c360071b5bcb876",
+  "architecture_drift_detected": false
+}

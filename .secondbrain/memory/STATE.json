@@ -1,0 +1,5284 @@
+{
+  "generated_at": "2026-09-12T00:34:21+03:00",
+  "version": "3.0.0",
+  "manifest": {
+    "files": 571,
+    "changed_since_cache": [
+      "android-app/app/src/main/assets/second_brain_snapshot.json"
+    ],
+    "removed_since_cache": [],
+    "incremental": true
+  },
+  "dependency": {
+    "generated_at": "2026-09-12T00:34:19+03:00",
+    "node_count": 571,
+    "edge_count": 80,
+    "edges": [
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAssistantIntegration.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeProjectAdvisor.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeSmartSuggestions.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/ai/BuildDiagnosisPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiChatStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelDownloader.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/AppForgeApkConversion.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/AppForgeExeConversion.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/AppIconProcessor.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/AppSettingsStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/FirebaseConfigInspector.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/KeystoreVault.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectImporter.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/PwaInspector.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/SourceCapabilityAnalyzer.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/TemplateProjectFactory.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/ZipUtils.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/AppSignatureVerifier.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/task/AppForgeTaskManager.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "to": "android-app/app/src/main/java/com/hackmaster/videoforge/AppVisibility.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/StudioHomeScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AppForgeHelpCenterScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/AppSettingsStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeProjectAdvisor.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeSmartSuggestions.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiSnapshotV2.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/AppForgeBuildNumbers.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/AppSettingsStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
+        "to": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/tools/excel/ExcelToolsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspacePanel.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
+        "to": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
+        "to": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalStandaloneDeveloperBootstrap.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerFilesPanel.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerPrivateFileSync.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+        "kind": "import"
+      }
+    ],
+    "hotspots": [
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "fan_in": 2,
+        "fan_out": 35,
+        "score": 37
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "fan_in": 12,
+        "fan_out": 0,
+        "score": 12
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "fan_in": 9,
+        "fan_out": 0,
+        "score": 9
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "fan_in": 7,
+        "fan_out": 0,
+        "score": 7
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+        "fan_in": 4,
+        "fan_out": 1,
+        "score": 5
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+        "fan_in": 4,
+        "fan_out": 0,
+        "score": 4
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "fan_in": 0,
+        "fan_out": 4,
+        "score": 4
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        "fan_in": 0,
+        "fan_out": 4,
+        "score": 4
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/io/AppSettingsStore.kt",
+        "fan_in": 3,
+        "fan_out": 0,
+        "score": 3
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+        "fan_in": 3,
+        "fan_out": 0,
+        "score": 3
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+        "fan_in": 2,
+        "fan_out": 1,
+        "score": 3
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
+        "fan_in": 1,
+        "fan_out": 2,
+        "score": 3
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+        "fan_in": 0,
+        "fan_out": 3,
+        "score": 3
+      },
+      {
+        "file": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+        "fan_in": 2,
+        "fan_out": 0,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
+        "fan_in": 2,
+        "fan_out": 0,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
+        "fan_in": 1,
+        "fan_out": 1,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
+        "fan_in": 1,
+        "fan_out": 1,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeProjectAdvisor.kt",
+        "fan_in": 1,
+        "fan_out": 1,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeSmartSuggestions.kt",
+        "fan_in": 1,
+        "fan_out": 1,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
+        "fan_in": 1,
+        "fan_out": 1,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+        "fan_in": 1,
+        "fan_out": 1,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
+        "fan_in": 1,
+        "fan_out": 1,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
+        "fan_in": 0,
+        "fan_out": 2,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
+        "fan_in": 0,
+        "fan_out": 2,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
+        "fan_in": 0,
+        "fan_out": 2,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
+        "fan_in": 0,
+        "fan_out": 2,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
+        "fan_in": 0,
+        "fan_out": 2,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
+        "fan_in": 0,
+        "fan_out": 2,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/AppForgeBuildNumbers.kt",
+        "fan_in": 1,
+        "fan_out": 0,
+        "score": 1
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt",
+        "fan_in": 1,
+        "fan_out": 0,
+        "score": 1
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
+        "fan_in": 1,
+        "fan_out": 0,
+        "score": 1
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/security/AppSignatureVerifier.kt",
+        "fan_in": 1,
+        "fan_out": 0,
+        "score": 1
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelStore.kt",
+        "fan_in": 1,
+        "fan_out": 0,
+        "score": 1
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelDownloader.kt",
+        "fan_in": 1,
+        "fan_out": 0,
+        "score": 1
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt",
+        "fan_in": 1,
+        "fan_out": 0,
+        "score": 1
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiChatStore.kt",
+        "fan_in": 1,
+        "fan_out": 0,
+        "score": 1
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAssistantIntegration.kt",
+        "fan_in": 1,
+        "fan_out": 0,
+        "score": 1
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/BuildDiagnosisPolicy.kt",
+        "fan_in": 1,
+        "fan_out": 0,
+        "score": 1
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectImporter.kt",
+        "fan_in": 1,
+        "fan_out": 0,
+        "score": 1
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/io/PwaInspector.kt",
+        "fan_in": 1,
+        "fan_out": 0,
+        "score": 1
+      }
+    ],
+    "external_dependencies": [
+      [
+        "androidx",
+        1096
+      ],
+      [
+        "android",
+        322
+      ],
+      [
+        "java",
+        291
+      ],
+      [
+        "assert",
+        199
+      ],
+      [
+        "node:assert",
+        199
+      ],
+      [
+        "node:test",
+        195
+      ],
+      [
+        "test",
+        195
+      ],
+      [
+        "kotlinx",
+        172
+      ],
+      [
+        "org",
+        162
+      ],
+      [
+        "node:fs",
+        134
+      ],
+      [
+        "com",
+        107
+      ],
+      [
+        "path",
+        65
+      ],
+      [
+        "fs",
+        42
+      ],
+      [
+        "AdmZip",
+        41
+      ],
+      [
+        "adm-zip",
+        41
+      ],
+      [
+        "os",
+        38
+      ],
+      [
+        "kotlin",
+        22
+      ],
+      [
+        "crypto",
+        15
+      ],
+      [
+        "child_process",
+        10
+      ],
+      [
+        "javax",
+        6
+      ],
+      [
+        "node:path",
+        5
+      ],
+      [
+        "json",
+        5
+      ],
+      [
+        "express",
+        4
+      ],
+      [
+        "url",
+        4
+      ],
+      [
+        "googleapis",
+        3
+      ],
+      [
+        "node:os",
+        3
+      ],
+      [
+        "traceback",
+        3
+      ],
+      [
+        "net",
+        3
+      ],
+      [
+        "sys",
+        3
+      ],
+      [
+        "subprocess",
+        3
+      ],
+      [
+        "uuid",
+        2
+      ],
+      [
+        "*",
+        2
+      ],
+      [
+        "@sentry",
+        2
+      ],
+      [
+        "django",
+        2
+      ],
+      [
+        "jsonwebtoken",
+        2
+      ],
+      [
+        "jwt",
+        2
+      ],
+      [
+        "pathlib",
+        2
+      ],
+      [
+        "dns",
+        2
+      ],
+      [
+        "time",
+        2
+      ],
+      [
+        "multer",
+        1
+      ],
+      [
+        "bcrypt",
+        1
+      ],
+      [
+        "bcryptjs",
+        1
+      ],
+      [
+        "pg",
+        1
+      ],
+      [
+        "nodemailer",
+        1
+      ],
+      [
+        "QRCode",
+        1
+      ],
+      [
+        "qrcode",
+        1
+      ],
+      [
+        "util",
+        1
+      ],
+      [
+        "electron",
+        1
+      ],
+      [
+        "threading",
+        1
+      ],
+      [
+        "wsgiref",
+        1
+      ],
+      [
+        "importlib",
+        1
+      ],
+      [
+        "re",
+        1
+      ],
+      [
+        "argparse",
+        1
+      ],
+      [
+        "math",
+        1
+      ]
+    ]
+  },
+  "api": {
+    "generated_at": "2026-09-12T00:34:19+03:00",
+    "count": 82,
+    "routes": [
+      {
+        "method": "GET",
+        "path": "/health",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/ready",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/system-status",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/users",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_free_project_slots",
+          "appforge_pro_entitlements",
+          "appforge_user_project_limits",
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/users",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_admin_grant",
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/users/:userId/pro",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_admin_grant",
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "userId"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/users/:userId/legacy-device-login",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "userId"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/users/:userId/project-limit",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_free_project_slots",
+          "appforge_user_project_limits",
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "userId"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/autoscale/dispatch",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/build-statuses",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [],
+          "body": [
+            "ids"
+          ],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/register",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/2fa/verify-login",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/device-transfer",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "OPTIONS",
+        "path": "/api/auth/delete-account",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/delete-account",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/verify-email",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/resend-verification",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/forgot-password",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/reset-password",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/me",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/2fa/setup",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/2fa/confirm",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/auth/2fa",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/api-tokens",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/api-tokens",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/auth/api-tokens/:id",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/teams",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/teams",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/teams/:id/members",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requirePermission"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/teams/:id/invites",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requirePermission"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/team-invites/accept",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/teams/:id/permissions",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/teams/:id/permissions/:userId",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id",
+            "userId"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/teams/:id/api-tokens",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requirePermission"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/teams/:id/api-tokens",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requirePermission"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/v5/scaffold",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [
+            "teamId"
+          ],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/quota",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/projects/:id",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/templates",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/:id/localizations",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/projects/:id/localizations/:locale",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id",
+            "locale"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/:id/files",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [
+            "path"
+          ],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/projects/:id/files",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/projects/:id/files",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [
+            "path"
+          ],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/:id/revisions",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/:id/revisions",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/:id/diff",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [
+            "fromRevision",
+            "path",
+            "toRevision"
+          ],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/:id/github/import",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/:id/builds",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "verifiedEmailRequired",
+          "requireScope",
+          "buildRateLimit"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/:id/revisions/:revisionId/restore",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id",
+            "revisionId"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/:id/search",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [
+            "q"
+          ],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/analytics/builds",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requirePermission"
+        ],
+        "tables": [],
+        "request": {
+          "query": [
+            "days",
+            "teamId"
+          ],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/uploads/build-input",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "verifiedEmailRequired",
+          "requireScope"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/builds",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requireScope",
+          "requirePermission"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [
+            "teamId"
+          ],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/builds/:id",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requireScope",
+          "requirePermission"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/builds",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "verifiedEmailRequired",
+          "requireScope",
+          "requirePermission",
+          "buildRateLimit"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/builds/:id/test-lab",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requireScope"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/builds/compare",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requireScope"
+        ],
+        "tables": [],
+        "request": {
+          "query": [
+            "left",
+            "right"
+          ],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/builds/:id/release-notes",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requireScope"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [
+            "previous"
+          ],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/builds/:id/artifacts",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requireScope",
+          "requirePermission"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/builds/:id/logs",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requireScope",
+          "requirePermission"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [
+            "after",
+            "limit"
+          ],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/builds/:id/logs.txt",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requireScope",
+          "requirePermission"
+        ],
+        "tables": [
+          "appforge_build_log_lines",
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/builds/:id/events",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requireScope",
+          "requirePermission"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [
+            "after"
+          ],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/builds/:id/cancel",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requireScope",
+          "requirePermission"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/builds/:id/priority",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requireScope",
+          "requirePermission"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/builds/:id/download-ticket",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requireScope",
+          "requirePermission"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "id"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/download/:token",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "token"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/security/config",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/security/attest",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/pro/status",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "requireIntegrityHeader"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/pro/activate",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/pro/grant",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/pro/revoke",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/verify-purchase",
+        "auth": false,
+        "admin": false,
+        "middleware": [
+          "purchaseVerifyRateLimit"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/publish-drafts",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/publish-drafts",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/purchases",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_play_purchases"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/workers",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_workers"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/overview",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_builds",
+          "appforge_teams",
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      }
+    ],
+    "public_routes": [
+      {
+        "method": "GET",
+        "path": "/health",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/ready",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/register",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/2fa/verify-login",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/device-transfer",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "OPTIONS",
+        "path": "/api/auth/delete-account",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/delete-account",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/verify-email",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/forgot-password",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/reset-password",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/download/:token",
+        "auth": false,
+        "admin": false,
+        "middleware": [],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "token"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/verify-purchase",
+        "auth": false,
+        "admin": false,
+        "middleware": [
+          "purchaseVerifyRateLimit"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      }
+    ],
+    "admin_routes": [
+      {
+        "method": "GET",
+        "path": "/api/admin/system-status",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/users",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_free_project_slots",
+          "appforge_pro_entitlements",
+          "appforge_user_project_limits",
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/users",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_admin_grant",
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/users/:userId/pro",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_admin_grant",
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "userId"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/users/:userId/legacy-device-login",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "userId"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/users/:userId/project-limit",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_free_project_slots",
+          "appforge_user_project_limits",
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": [
+            "userId"
+          ]
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/autoscale/dispatch",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/build-statuses",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_builds"
+        ],
+        "request": {
+          "query": [],
+          "body": [
+            "ids"
+          ],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/pro/grant",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/pro/revoke",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/purchases",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_play_purchases"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/workers",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_workers"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/overview",
+        "auth": true,
+        "admin": true,
+        "middleware": [
+          "authRequired",
+          "adminRequired"
+        ],
+        "tables": [
+          "appforge_builds",
+          "appforge_teams",
+          "appforge_users"
+        ],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      }
+    ]
+  },
+  "database": {
+    "generated_at": "2026-09-12T00:34:19+03:00",
+    "migration_count": 22,
+    "table_count": 30,
+    "tables": [
+      "appforge_account_devices",
+      "appforge_api_tokens",
+      "appforge_auth_tokens",
+      "appforge_build_cache",
+      "appforge_build_events",
+      "appforge_build_jobs",
+      "appforge_build_log_lines",
+      "appforge_builds",
+      "appforge_download_tickets",
+      "appforge_free_project_slots",
+      "appforge_idempotency_keys",
+      "appforge_integrity_audits",
+      "appforge_localizations",
+      "appforge_migration_markers",
+      "appforge_permission_audit",
+      "appforge_play_purchases",
+      "appforge_pro_entitlements",
+      "appforge_pro_monthly_project_slots",
+      "appforge_project_files",
+      "appforge_project_quota_reservations",
+      "appforge_project_revisions",
+      "appforge_projects",
+      "appforge_publish_jobs",
+      "appforge_team_invites",
+      "appforge_team_members",
+      "appforge_teams",
+      "appforge_templates",
+      "appforge_user_project_limits",
+      "appforge_users",
+      "appforge_workers"
+    ],
+    "migrations": [
+      {
+        "file": "build-service/sql/001_init.sql",
+        "creates": [
+          "appforge_api_tokens",
+          "appforge_builds",
+          "appforge_localizations",
+          "appforge_projects",
+          "appforge_publish_jobs",
+          "appforge_templates",
+          "appforge_users"
+        ],
+        "alters": [],
+        "indexes": [
+          "idx_builds_status_created",
+          "idx_builds_user_created"
+        ],
+        "references": [
+          "appforge_builds",
+          "appforge_projects",
+          "appforge_users"
+        ],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/002_teams_workers.sql",
+        "creates": [
+          "appforge_build_events",
+          "appforge_build_jobs",
+          "appforge_team_invites",
+          "appforge_team_members",
+          "appforge_teams"
+        ],
+        "alters": [
+          "appforge_builds",
+          "appforge_projects"
+        ],
+        "indexes": [
+          "idx_build_events_team_created",
+          "idx_build_events_user_created",
+          "idx_build_jobs_claim",
+          "idx_build_jobs_worker",
+          "idx_builds_team",
+          "idx_projects_team"
+        ],
+        "references": [
+          "appforge_builds",
+          "appforge_teams",
+          "appforge_users"
+        ],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/003_security_storage_workers.sql",
+        "creates": [
+          "appforge_auth_tokens",
+          "appforge_workers"
+        ],
+        "alters": [
+          "appforge_api_tokens",
+          "appforge_build_jobs",
+          "appforge_users"
+        ],
+        "indexes": [
+          "idx_api_tokens_team",
+          "idx_auth_tokens_user_type",
+          "idx_workers_last_seen"
+        ],
+        "references": [
+          "appforge_teams",
+          "appforge_users"
+        ],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/004_permissions_cache.sql",
+        "creates": [
+          "appforge_build_cache",
+          "appforge_permission_audit"
+        ],
+        "alters": [
+          "appforge_builds",
+          "appforge_team_invites",
+          "appforge_team_members"
+        ],
+        "indexes": [
+          "idx_build_cache_expires",
+          "idx_builds_cache_key",
+          "idx_permission_audit_team"
+        ],
+        "references": [
+          "appforge_builds",
+          "appforge_teams",
+          "appforge_users"
+        ],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/005_workspace_build_control.sql",
+        "creates": [
+          "appforge_project_files",
+          "appforge_project_revisions"
+        ],
+        "alters": [
+          "appforge_builds",
+          "appforge_projects"
+        ],
+        "indexes": [
+          "idx_builds_cancel_requested",
+          "idx_project_files_updated",
+          "idx_project_revisions_project_created"
+        ],
+        "references": [
+          "appforge_projects",
+          "appforge_users"
+        ],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/006_worker_toolchain_artifacts.sql",
+        "creates": [],
+        "alters": [
+          "appforge_builds",
+          "appforge_workers"
+        ],
+        "indexes": [
+          "idx_builds_worker_id",
+          "idx_workers_toolchain"
+        ],
+        "references": [],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/007_live_operations.sql",
+        "creates": [
+          "appforge_build_log_lines",
+          "appforge_download_tickets",
+          "appforge_idempotency_keys"
+        ],
+        "alters": [
+          "appforge_builds"
+        ],
+        "indexes": [
+          "idx_build_log_lines_build_id",
+          "idx_download_tickets_expiry",
+          "idx_idempotency_expiry"
+        ],
+        "references": [
+          "appforge_builds",
+          "appforge_users"
+        ],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/008_secure_commerce.sql",
+        "creates": [
+          "appforge_play_purchases"
+        ],
+        "alters": [],
+        "indexes": [
+          "idx_play_purchases_entitlement",
+          "idx_play_purchases_package_product"
+        ],
+        "references": [],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/009_pro_integrity_security.sql",
+        "creates": [
+          "appforge_integrity_audits",
+          "appforge_pro_entitlements"
+        ],
+        "alters": [],
+        "indexes": [
+          "idx_integrity_audits_failed",
+          "idx_integrity_audits_user_created",
+          "idx_pro_entitlements_status"
+        ],
+        "references": [
+          "appforge_users"
+        ],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/010_permanent_project_trial_slots.sql",
+        "creates": [
+          "appforge_free_project_slots"
+        ],
+        "alters": [],
+        "indexes": [
+          "idx_free_project_slots_user"
+        ],
+        "references": [
+          "appforge_users"
+        ],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/011_build_numbers.sql",
+        "creates": [],
+        "alters": [
+          "appforge_builds"
+        ],
+        "indexes": [
+          "idx_appforge_builds_build_no"
+        ],
+        "references": [],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/011_more_system_templates.sql",
+        "creates": [],
+        "alters": [],
+        "indexes": [],
+        "references": [],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/012_template_feature_profiles.sql",
+        "creates": [],
+        "alters": [],
+        "indexes": [],
+        "references": [],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/013_expanded_system_templates.sql",
+        "creates": [],
+        "alters": [],
+        "indexes": [],
+        "references": [],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/014_more_system_templates.sql",
+        "creates": [],
+        "alters": [],
+        "indexes": [],
+        "references": [],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/015_single_account_device.sql",
+        "creates": [
+          "appforge_account_devices"
+        ],
+        "alters": [],
+        "indexes": [
+          "idx_account_devices_user"
+        ],
+        "references": [
+          "appforge_users"
+        ],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/016_multi_account_devices.sql",
+        "creates": [],
+        "alters": [
+          "appforge_account_devices"
+        ],
+        "indexes": [
+          "idx_account_devices_user_last_seen"
+        ],
+        "references": [],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/017_queue_scale_protection.sql",
+        "creates": [],
+        "alters": [],
+        "indexes": [
+          "idx_build_jobs_queued_priority",
+          "idx_build_jobs_user_active"
+        ],
+        "references": [],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/018_full_admin_access.sql",
+        "creates": [],
+        "alters": [],
+        "indexes": [],
+        "references": [],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/019_user_free_project_limits.sql",
+        "creates": [
+          "appforge_user_project_limits"
+        ],
+        "alters": [],
+        "indexes": [
+          "idx_appforge_user_project_limits_limit"
+        ],
+        "references": [
+          "appforge_users"
+        ],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/020_legacy_device_login_permission.sql",
+        "creates": [],
+        "alters": [
+          "appforge_users"
+        ],
+        "indexes": [],
+        "references": [],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/021_success_project_quotas.sql",
+        "creates": [
+          "appforge_migration_markers",
+          "appforge_pro_monthly_project_slots",
+          "appforge_project_quota_reservations"
+        ],
+        "alters": [],
+        "indexes": [
+          "idx_appforge_pro_monthly_slots_user_cycle",
+          "idx_appforge_quota_reservations_expiry"
+        ],
+        "references": [
+          "appforge_users"
+        ],
+        "destructive": [
+          "DELETE FROM"
+        ]
+      }
+    ],
+    "destructive_migrations": [
+      {
+        "file": "build-service/sql/021_success_project_quotas.sql",
+        "operations": [
+          "DELETE FROM"
+        ]
+      }
+    ],
+    "usage": {
+      "appforge_account_devices": [
+        "build-service/src/auth.js",
+        "build-service/tests/multi_device_account.test.js",
+        "build-service/tests/single_device_account.test.js"
+      ],
+      "appforge_api_tokens": [
+        "build-service/src/auth.js"
+      ],
+      "appforge_auth_tokens": [
+        "build-service/src/security.js"
+      ],
+      "appforge_build_cache": [
+        "build-service/src/buildCache.js"
+      ],
+      "appforge_build_events": [
+        "build-service/src/jobQueue.js"
+      ],
+      "appforge_build_jobs": [
+        "build-service/src/accountDeletion.js",
+        "build-service/src/jobQueue.js"
+      ],
+      "appforge_build_log_lines": [
+        "build-service/server.js",
+        "build-service/src/buildLogs.js"
+      ],
+      "appforge_builds": [
+        "build-service/server.js",
+        "build-service/src/accountDeletion.js",
+        "build-service/src/analytics.js",
+        "build-service/src/buildEngine.js",
+        "build-service/src/buildLogs.js",
+        "build-service/src/jobQueue.js",
+        "build-service/src/projectQuotaV2.js",
+        "build-service/src/publish.js",
+        "build-service/src/unityLicensedBuild.js",
+        "build-service/src/windowsBuild.js",
+        "build-service/src/workspaceBuild.js"
+      ],
+      "appforge_download_tickets": [
+        "build-service/src/downloadTickets.js"
+      ],
+      "appforge_free_project_slots": [
+        "build-service/server.js",
+        "build-service/src/projectQuotaV2.js",
+        "build-service/tests/user_project_limit_contract.test.js",
+        "build-service/tests/v2_7_lifetime_trial_slots.test.js"
+      ],
+      "appforge_idempotency_keys": [
+        "build-service/src/idempotency.js"
+      ],
+      "appforge_integrity_audits": [
+        "build-service/src/studioIntegrity.js"
+      ],
+      "appforge_localizations": [
+        "build-service/src/projects.js"
+      ],
+      "appforge_migration_markers": [
+        "build-service/tests/v2_7_lifetime_trial_slots.test.js"
+      ],
+      "appforge_permission_audit": [
+        "build-service/src/permissions.js"
+      ],
+      "appforge_play_purchases": [
+        "build-service/server.js",
+        "build-service/src/playVerifier.js"
+      ],
+      "appforge_pro_entitlements": [
+        "build-service/server.js",
+        "build-service/src/proEntitlements.js"
+      ],
+      "appforge_pro_monthly_project_slots": [
+        "build-service/src/projectQuotaV2.js",
+        "build-service/tests/user_project_limit_contract.test.js",
+        "build-service/tests/v2_7_lifetime_trial_slots.test.js"
+      ],
+      "appforge_project_files": [
+        "build-service/src/workspace.js"
+      ],
+      "appforge_project_quota_reservations": [
+        "build-service/src/jobQueue.js",
+        "build-service/src/projectQuotaV2.js",
+        "build-service/tests/v2_6_project_quota.test.js",
+        "build-service/tests/v2_7_lifetime_trial_slots.test.js"
+      ],
+      "appforge_project_revisions": [
+        "build-service/src/workspace.js"
+      ],
+      "appforge_projects": [
+        "build-service/src/projects.js",
+        "build-service/src/workspace.js"
+      ],
+      "appforge_publish_jobs": [
+        "build-service/src/publish.js"
+      ],
+      "appforge_team_invites": [
+        "build-service/src/teams.js"
+      ],
+      "appforge_team_members": [
+        "build-service/src/permissions.js",
+        "build-service/src/teams.js"
+      ],
+      "appforge_teams": [
+        "build-service/server.js",
+        "build-service/src/teams.js"
+      ],
+      "appforge_templates": [
+        "build-service/src/projects.js"
+      ],
+      "appforge_user_project_limits": [
+        "build-service/server.js",
+        "build-service/src/projectQuotaV2.js",
+        "build-service/tests/user_project_limit_contract.test.js"
+      ],
+      "appforge_users": [
+        "build-service/server.js",
+        "build-service/src/accountDeletion.js",
+        "build-service/src/auth.js",
+        "build-service/src/jobQueue.js",
+        "build-service/src/permissions.js",
+        "build-service/src/proEntitlements.js",
+        "build-service/src/projectQuotaV2.js",
+        "build-service/src/security.js",
+        "build-service/src/teams.js",
+        "build-service/src/workspace.js"
+      ],
+      "appforge_workers": [
+        "build-service/server.js",
+        "build-service/src/jobQueue.js"
+      ]
+    }
+  },
+  "workers": {
+    "generated_at": "2026-09-12T00:34:19+03:00",
+    "runtime_scripts": [
+      {
+        "name": "start",
+        "command": "node --import ./instrument.mjs server.js"
+      },
+      {
+        "name": "worker",
+        "command": "node --import ./instrument.mjs worker.js"
+      },
+      {
+        "name": "worker:unity",
+        "command": "node --import ./instrument.mjs unity-worker.js"
+      },
+      {
+        "name": "worker:source",
+        "command": "node --import ./instrument.mjs source-worker.js"
+      }
+    ],
+    "dockerfiles": [
+      "build-service/Dockerfile",
+      "build-service/Dockerfile.api",
+      "build-service/Dockerfile.source-worker",
+      "build-service/Dockerfile.windows-worker",
+      "build-service/Dockerfile.worker"
+    ],
+    "workflows": [
+      {
+        "file": ".github/workflows/android-debug.yml",
+        "worker_related": false,
+        "railway_related": true,
+        "android_related": true
+      },
+      {
+        "file": ".github/workflows/android-play-release.yml",
+        "worker_related": false,
+        "railway_related": true,
+        "android_related": true
+      },
+      {
+        "file": ".github/workflows/cleanup-old-runs.yml",
+        "worker_related": false,
+        "railway_related": true,
+        "android_related": false
+      },
+      {
+        "file": ".github/workflows/conversion-smoke.yml",
+        "worker_related": false,
+        "railway_related": true,
+        "android_related": false
+      },
+      {
+        "file": ".github/workflows/production-automation.yml",
+        "worker_related": true,
+        "railway_related": true,
+        "android_related": true
+      },
+      {
+        "file": ".github/workflows/source-worker-image.yml",
+        "worker_related": true,
+        "railway_related": true,
+        "android_related": false
+      },
+      {
+        "file": ".github/workflows/windows-worker-image.yml",
+        "worker_related": true,
+        "railway_related": true,
+        "android_related": false
+      },
+      {
+        "file": ".github/workflows/worker-autoscale.yml",
+        "worker_related": true,
+        "railway_related": true,
+        "android_related": false
+      },
+      {
+        "file": ".github/workflows/worker-image.yml",
+        "worker_related": true,
+        "railway_related": true,
+        "android_related": false
+      }
+    ]
+  },
+  "tests": {
+    "generated_at": "2026-09-12T00:34:19+03:00",
+    "discovered": 227,
+    "domains": [
+      "android"
+    ],
+    "selected_tests": [
+      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectPipelineTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectAutomationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateLspProtocolTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateCodeEditorCoreTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalWorkingDirectoryTrackerTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPerformanceMetricsTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalOutputBackpressureTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalCommandPolicyTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/ProrootRuntimeContractTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/LocalPtyInteractiveInputTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/LinuxTarGzExtractorTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/LinuxRuntimeFoundationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/GitWorkingTreeStatusCacheTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/AppForgeGitInternalExcludesTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/AnsiTerminalBufferTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/task/AppForgeTaskManagerTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/BuildRuntimeStateTest.kt",
+      "android-app/app/src/main/assets/terminal/appforge-test",
+      "build-service/tests/android_queue_ui_regression.test.js",
+      "build-service/tests/unity_android_build_engine.test.js",
+      "build-service/tests/python_web_android_smoke.js",
+      "build-service/tests/python_android_template.test.js",
+      "build-service/tests/native_android_gradle_profile.test.js",
+      "build-service/tests/dotnet_maui_android_smoke.js",
+      "build-service/tests/dotnet_android_smoke.js",
+      "build-service/tests/dotnet_android_live_build_engine.test.js",
+      "build-service/tests/dotnet_android_build_engine.test.js",
+      "build-service/tests/cpp_android_template_build_smoke.js",
+      "build-service/tests/cpp_android_live_build_engine.test.js",
+      "build-service/tests/cpp_android_build_engine.test.js",
+      "build-service/tests/android_sdk_selection.test.js",
+      "build-service/tests/android_safe_area.test.js",
+      "build-service/tests/android_local_problem_explainer.test.js",
+      "build-service/tests/android_gradle_source_engine.test.js",
+      "build-service/tests/android_app_category.test.js",
+      "build-service/tests/worker_presence_cancel_regression.test.js",
+      "build-service/tests/windows_exe_regression.test.js",
+      "build-service/tests/project_technology_detector_regression.test.js",
+      "build-service/tests/monetization_navigation_regression.test.js",
+      "build-service/tests/media3_regression.test.js",
+      "build-service/tests/fcm_warning_regression.test.js",
+      "build-service/tests/build_error_advisor_ui_regression.test.js"
+    ],
+    "critical_regression_tests": [
+      "android-app/app/src/main/assets/terminal/appforge-test",
+      "android-app/app/src/test/java/com/appforge/studio/BuildRuntimeStateTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/AnsiTerminalBufferTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/AppForgeGitInternalExcludesTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/GitWorkingTreeStatusCacheTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/LinuxRuntimeFoundationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/LinuxTarGzExtractorTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/LocalPtyInteractiveInputTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/ProrootRuntimeContractTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalCommandPolicyTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalOutputBackpressureTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPerformanceMetricsTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalWorkingDirectoryTrackerTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateCodeEditorCoreTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateLspProtocolTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectAutomationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectPipelineTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt",
+      "build-service/tests/account_scoped_local_data_contract.test.js",
+      "build-service/tests/admin_account_management.test.js",
+      "build-service/tests/admin_granted_pro_status_contract.test.js",
+      "build-service/tests/admin_home_entry_contract.test.js",
+      "build-service/tests/admin_navigation_contract.test.js",
+      "build-service/tests/admin_ops_contract.test.js",
+      "build-service/tests/admin_system_insets_contract.test.js",
+      "build-service/tests/admob_optional_units.test.js",
+      "build-service/tests/android_app_category.test.js",
+      "build-service/tests/android_gradle_source_engine.test.js",
+      "build-service/tests/android_local_problem_explainer.test.js",
+      "build-service/tests/android_queue_ui_regression.test.js",
+      "build-service/tests/android_safe_area.test.js",
+      "build-service/tests/android_sdk_selection.test.js",
+      "build-service/tests/appforge_production_cancelled_image_contract.test.js",
+      "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_backspace_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
+      "build-service/tests/appforge_terminal_integration.test.js",
+      "build-service/tests/appforge_terminal_linux_multisession_contract.test.js",
+      "build-service/tests/appforge_terminal_linux_pty_contract.test.js",
+      "build-service/tests/appforge_terminal_linux_runtime_contract.test.js",
+      "build-service/tests/appforge_terminal_lsp_contract.test.js",
+      "build-service/tests/appforge_terminal_native_pty_cleanup_contract.test.js",
+      "build-service/tests/appforge_terminal_packaged_linux_engine_contract.test.js",
+      "build-service/tests/appforge_terminal_project_automation_contract.test.js",
+      "build-service/tests/appforge_terminal_project_pipeline_contract.test.js",
+      "build-service/tests/appforge_terminal_proroot_bind_contract.test.js",
+      "build-service/tests/appforge_terminal_proroot_workspace_contract.test.js",
+      "build-service/tests/appforge_terminal_pty_lifecycle_contract.test.js",
+      "build-service/tests/appforge_terminal_pty_reader_lifecycle_contract.test.js",
+      "build-service/tests/appforge_terminal_security_restore_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10c_local_terminal_input_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10d_terminal_surface_input_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10e_real_local_pty_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10f_ime_accessory_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10g_batch_hardening_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10h_10i_final_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10j_termux_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10k_bootstrap_resilience_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10l_productivity_keys_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10m_standalone_workstation_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10n_termux_independence_hardening_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10o_zero_anr_startup_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10p_accessory_collision_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10q_cursor_autofollow_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10r_true_ime_occlusion_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10s_matte_shortcuts_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10t_fast_scrollback_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10u_virtualized_renderer_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10v_copy_mode_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10w_snapshot_restore_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10x_session_copy_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10y_native_repo_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10z_ci_toolchain_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11a_interaction_performance_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11b_apk_install_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11c_extended_scrollback_contract.test.js"
+    ],
+    "commands": [
+      "Android CI / Gradle compile verification"
+    ],
+    "last_execution": {
+      "status": "NOT_RUN"
+    },
+    "regression_rules": {
+      "version": 1,
+      "protected_features": [
+        {
+          "name": "Terminal",
+          "keywords": [
+            "terminal",
+            "pty",
+            "ime",
+            "paste"
+          ]
+        },
+        {
+          "name": "Files",
+          "keywords": [
+            "file",
+            "workspace",
+            "storage"
+          ]
+        },
+        {
+          "name": "Git",
+          "keywords": [
+            "git",
+            "github"
+          ]
+        },
+        {
+          "name": "Connections",
+          "keywords": [
+            "connection",
+            "railway",
+            "authorization"
+          ]
+        },
+        {
+          "name": "SSH",
+          "keywords": [
+            "ssh",
+            "hostkey"
+          ]
+        },
+        {
+          "name": "Tools",
+          "keywords": [
+            "toolchain",
+            "tools"
+          ]
+        },
+        {
+          "name": "Builder",
+          "keywords": [
+            "builder",
+            "build",
+            "gradle"
+          ]
+        },
+        {
+          "name": "AI",
+          "keywords": [
+            "assistant",
+            "ai",
+            "litert"
+          ]
+        }
+      ]
+    }
+  },
+  "integrations": {
+    "generated_at": "2026-09-12T00:34:19+03:00",
+    "detected_services": [
+      "AWS/S3",
+      "Email",
+      "GitHub",
+      "Google APIs",
+      "JWT",
+      "PostgreSQL",
+      "Railway",
+      "Redis",
+      "Sentry"
+    ],
+    "environment_variable_names": [
+      "ADMIN_ACTIVE_BUILD_LIMIT",
+      "ADMIN_BUILD_PRIORITY",
+      "APPFORGE_MAX_ACCOUNT_DEVICES",
+      "AUTOSCALE_DISPATCH_COOLDOWN_SECONDS",
+      "AUTOSCALE_DISPATCH_ENABLED",
+      "AUTOSCALE_DISPATCH_QUEUE_THRESHOLD",
+      "AUTOSCALE_DISPATCH_REF",
+      "AUTOSCALE_DISPATCH_REPOSITORY",
+      "AUTOSCALE_DISPATCH_WORKFLOW",
+      "AUTOSCALE_MAX_REPLICAS",
+      "AUTOSCALE_MIN_REPLICAS",
+      "BUILD_CACHE_ENABLED",
+      "BUILD_CACHE_TTL_HOURS",
+      "BUILD_CONCURRENCY",
+      "DATABASE_URL",
+      "DOWNLOAD_TICKET_MINUTES",
+      "EMAIL_FROM",
+      "EXPECTED_ANDROID_API",
+      "EXPECTED_BUILD_TOOLS",
+      "EXPECTED_GRADLE",
+      "EXPECTED_JDK_MAJOR",
+      "FREE_ACTIVE_BUILD_LIMIT",
+      "FREE_BUILD_PRIORITY",
+      "FREE_PROJECT_LIMIT",
+      "GITHUB_AUTOSCALE_TOKEN",
+      "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON",
+      "GRADLE_BIN",
+      "GRADLE_CACHE_ROOT",
+      "GRADLE_PERFORMANCE_PROFILE",
+      "IDEMPOTENCY_TTL_HOURS",
+      "JWT_EXPIRES_IN",
+      "JWT_SECRET",
+      "LIVE_LOG_MAX_MINUTES",
+      "LIVE_LOG_POLL_MS",
+      "MAX_JOB_ATTEMPTS",
+      "MAX_QUEUE_SIZE",
+      "NODE_ENV",
+      "OUTPUT_RETENTION_HOURS",
+      "OUTPUT_ROOT",
+      "PG_POOL_MAX",
+      "PG_SSL",
+      "PLAY_ALLOWED_PACKAGES",
+      "PLAY_CONSUMABLE_PRODUCTS",
+      "PLAY_INAPP_PRODUCTS",
+      "PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER",
+      "PLAY_INTEGRITY_ENABLED",
+      "PLAY_SUBSCRIPTION_PRODUCTS",
+      "PLAY_VERIFIER_ENABLED",
+      "PLAY_VERIFY_RATE_PER_HOUR",
+      "PORT",
+      "PRO_ACTIVE_BUILD_LIMIT",
+      "PRO_BUILD_PRIORITY",
+      "PRO_REQUIRE_INTEGRITY",
+      "PUBLIC_BASE_URL",
+      "RATE_LIMIT_PER_HOUR",
+      "REDIS_CONNECT_TIMEOUT_MS",
+      "REDIS_PREFIX",
+      "REDIS_REQUIRED",
+      "REDIS_URL",
+      "REGISTRATION_ENABLED",
+      "REQUIRE_VERIFIED_EMAIL_FOR_BUILD",
+      "RUN_INLINE_WORKER",
+      "S3_ACCESS_KEY_ID",
+      "S3_BUCKET",
+      "S3_ENDPOINT",
+      "S3_FORCE_PATH_STYLE",
+      "S3_REGION",
+      "S3_SECRET_ACCESS_KEY",
+      "SENDGRID_API_KEY",
+      "SENDGRID_SENDER_EMAIL",
+      "SENDGRID_SENDER_NAME",
+      "SENTRY_DSN",
+      "SENTRY_ENVIRONMENT",
+      "SENTRY_RELEASE",
+      "SENTRY_TRACES_SAMPLE_RATE",
+      "SHARED_INPUT_ROOT",
+      "SMTP_HOST",
+      "SMTP_PASS",
+      "SMTP_PORT",
+      "SMTP_REQUIRED",
+      "SMTP_SECURE",
+      "SMTP_USER",
+      "SOURCE_BUILD_ISOLATION_CAPABILITY",
+      "SOURCE_BUILD_ISOLATION_MODE",
+      "SOURCE_BUILD_REQUIRE_ISOLATION",
+      "STORAGE_DRIVER",
+      "STUDIO_ANDROID_PACKAGE",
+      "STUDIO_PRO_MONTHLY_PRODUCT_ID",
+      "STUDIO_PRO_PRODUCT_ID",
+      "STUDIO_RELEASE_CERT_SHA256",
+      "TOTP_ENCRYPTION_KEY",
+      "UNITY_ANDROID_MODULE_PATH",
+      "UNITY_BUILD_ENABLED",
+      "UNITY_BUILD_TIMEOUT_MS",
+      "UNITY_EDITOR_PATH",
+      "UNITY_EDITOR_VERSION",
+      "UNITY_WORKER_HOME",
+      "WORKER_CAPABILITIES",
+      "WORKER_HEARTBEAT_MS",
+      "WORKER_ID",
+      "WORKER_POLL_MS",
+      "WORKER_STALE_AFTER_MS",
+      "WORKER_STRICT_TOOLCHAIN",
+      "WORK_ROOT"
+    ],
+    "sources": {
+      "AWS/S3": [
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+        "build-service/docker-compose.yml",
+        "build-service/package-lock.json",
+        "build-service/package.json",
+        "build-service/server.js",
+        "build-service/src/accountDeletion.js",
+        "build-service/src/buildEngine.js",
+        "build-service/src/config.js",
+        "build-service/src/storage.js",
+        "build-service/tests/cache_artifact_aware.test.js",
+        "build-service/tests/direct_s3_cache_identity.test.js",
+        "build-service/tests/unity_licensed_build_engine.test.js",
+        "build-service/tests/v2_9_test_lab_inspector.test.js",
+        "docs/PRODUCTION_INFRASTRUCTURE.md",
+        "docs/S3_OBJECT_STORAGE.md",
+        "docs/V1_7_DURABLE_DOWNLOADS.md",
+        "docs/V2_9_TEST_LAB_INSPECTOR.md"
+      ],
+      "Email": [
+        "build-service/docker-compose.yml",
+        "build-service/package-lock.json",
+        "build-service/package.json",
+        "build-service/server.js",
+        "build-service/src/config.js",
+        "build-service/src/mail.js",
+        "build-service/src/teams.js",
+        "build-service/tests/production_infrastructure.test.js",
+        "docs/PRODUCTION_INFRASTRUCTURE.md",
+        "docs/TEAM_INVITE_EMAIL.md"
+      ],
+      "GitHub": [
+        ".github/workflows/android-debug.yml",
+        ".github/workflows/android-play-release.yml",
+        ".github/workflows/cleanup-old-runs.yml",
+        ".github/workflows/conversion-smoke.yml",
+        ".github/workflows/production-automation.yml",
+        ".github/workflows/source-worker-image.yml",
+        ".github/workflows/windows-worker-image.yml",
+        ".github/workflows/worker-autoscale.yml",
+        ".github/workflows/worker-image.yml",
+        "AGENTS.md",
+        "README.md",
+        "SECOND_BRAIN.md",
+        "android-app/app/build.gradle.kts",
+        "android-app/app/src/main/assets/second_brain_snapshot.json",
+        "android-app/app/src/main/java/com/appforge/studio/SecondBrainScreen.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+        "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/AdvancedGitPanel.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/AdvancedGitService.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/ExternalConnectionsClient.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/GitHubDevOpsClient.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspacePanel.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerFilesPanel.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerPrivateFileSync.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/ProrootRuntimeContract.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalStandaloneDeveloperBootstrap.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalToolsPanel.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimateFoundation.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimatePanel.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        "android-app/app/src/main/java/com/hackmaster/videoforge/ModelManager.kt",
+        "android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt",
+        "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest.kt",
+        "build-service/Dockerfile.source-worker",
+        "build-service/Dockerfile.source-worker.cache-hardening-phase-b.bak",
+        "build-service/Dockerfile.worker.before-lighten.bak",
+        "build-service/package-lock.json",
+        "build-service/server.js",
+        "build-service/sql/005_workspace_build_control.sql",
+        "build-service/src/autoscaleDispatch.js",
+        "build-service/src/config.js",
+        "build-service/src/jobQueue.js",
+        "build-service/src/workspace.js",
+        "build-service/tests/appforge_production_cancelled_image_contract.test.js",
+        "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
+        "build-service/tests/appforge_terminal_integration.test.js",
+        "build-service/tests/appforge_terminal_packaged_linux_engine_contract.test.js",
+        "build-service/tests/appforge_terminal_stage10m_standalone_workstation_contract.test.js",
+        "build-service/tests/appforge_terminal_stage10n_termux_independence_hardening_contract.test.js",
+        "build-service/tests/appforge_terminal_stage10z_ci_toolchain_contract.test.js",
+        "build-service/tests/appforge_terminal_stage11j_account_scoped_vault_contract.test.js",
+        "build-service/tests/appforge_terminal_stage9b_pre_ci_native_contract.test.js",
+        "build-service/tests/firebase_cloud_messaging.test.js",
+        "build-service/tests/repository_maintenance.test.js",
+        "build-service/tests/source_worker_ci_contract.test.js",
+        "build-service/tests/v5_studio.test.js",
+        "dashboard.sh",
+        "docs/CI_INTEGRATION.md",
+        "docs/FIREBASE_AUTOWIRING.md",
+        "docs/GITHUB_IMPORT.md",
+        "docs/V5_1_APPFORGE_TERMINAL.md",
+        "docs/privacy.html",
+        "examples/github-actions/appforge-build.yml"
+      ],
+      "Google APIs": [
+        ".github/workflows/android-debug.yml",
+        ".github/workflows/android-play-release.yml",
+        "README.md",
+        "android-app/app/build.gradle.kts",
+        "android-app/app/src/main/AndroidManifest.xml",
+        "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
+        "android-app/app/src/main/java/com/appforge/studio/AppForgeFirebaseMessagingService.kt",
+        "android-app/app/src/main/java/com/appforge/studio/AppForgeGuideScreens.kt",
+        "android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAssistantIntegration.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeProjectAdvisor.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeSmartSuggestions.kt",
+        "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+        "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt",
+        "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalRestorePointManager.kt",
+        "android-app/app/src/main/java/com/hackmaster/videoforge/OfflineDubEngine.kt",
+        "android-app/build.gradle.kts",
+        "android-app/settings.gradle.kts",
+        "build-service/Dockerfile.source-worker",
+        "build-service/Dockerfile.source-worker.cache-hardening-phase-b.bak",
+        "build-service/Dockerfile.worker",
+        "build-service/Dockerfile.worker.before-lighten.bak",
+        "build-service/fast-extended-template/app/build.gradle.kts",
+        "build-service/fast-extended-template/app/src/main/java/com/appforge/extended/ExtendedActivity.java",
+        "build-service/fast-extended-template/build.gradle.kts",
+        "build-service/fast-extended-template/settings.gradle.kts",
+        "build-service/fast-runtime/FastQrRuntime.java",
+        "build-service/fast-sdk-bundle/build.gradle.kts",
+        "build-service/fast-sdk-bundle/settings.gradle.kts",
+        "build-service/package-lock.json",
+        "build-service/package.json",
+        "build-service/python-android-template/settings.gradle.kts",
+        "build-service/scripts/build-fast-qr-pack.sh",
+        "build-service/server.js",
+        "build-service/sql/009_pro_integrity_security.sql",
+        "build-service/src/buildEngine.js",
+        "build-service/src/buildErrorClassifier.js",
+        "build-service/src/config.js",
+        "build-service/src/cppAndroidBuildEngine.js",
+        "build-service/src/fastBuild.js",
+        "build-service/src/playVerifier.js",
+        "build-service/src/proEntitlements.js",
+        "build-service/src/problemExplainer.js",
+        "build-service/src/projectQuotaV2.js",
+        "build-service/src/studioIntegrity.js",
+        "build-service/src/validators.js",
+        "build-service/tests/admin_account_management.test.js",
+        "build-service/tests/admin_granted_pro_status_contract.test.js",
+        "build-service/tests/android_gradle_source_engine.test.js",
+        "build-service/tests/android_local_problem_explainer.test.js",
+        "build-service/tests/firebase_cloud_messaging.test.js",
+        "build-service/tests/monetization_navigation_regression.test.js",
+        "build-service/tests/pro_feature_surface_gate_contract.test.js",
+        "build-service/tests/repository_maintenance.test.js",
+        "build-service/tests/v2_4_pro_plans.test.js",
+        "build-service/tests/v3_0_local_ai.test.js",
+        "build-service/tests/validators.test.js",
+        "docs/COMMERCE_BRIDGE.md",
+        "docs/FIREBASE_AUTOWIRING.md",
+        "docs/PLAY_PUBLISH_ASSISTANT.md",
+        "docs/PLAY_STORE_PREFLIGHT.md",
+        "docs/PURCHASE_VERIFICATION.md",
+        "docs/QR_SCANNER.md",
+        "docs/SUBSCRIPTION_OFFERS.md",
+        "docs/UMP_AND_PRIVACY.md",
+        "docs/V1_5_UPLOAD_SECURITY.md",
+        "docs/V1_8_SECURE_PLAY_BILLING.md",
+        "docs/V1_ARCHITECTURE.md",
+        "docs/V2_3_ANTI_MOD_SECURITY.md",
+        "docs/V2_3_PRO_ENTITLEMENTS.md",
+        "docs/V2_4_PRO_PLANS.md",
+        "docs/V3_0_LOCAL_AI_ASSISTANT.md",
+        "docs/delete-account.html",
+        "docs/privacy.html"
+      ],
+      "JWT": [
+        "build-service/docker-compose.yml",
+        "build-service/package-lock.json",
+        "build-service/package.json",
+        "build-service/public/admin/index.html",
+        "build-service/src/auth.js",
+        "build-service/src/config.js",
+        "build-service/src/security.js",
+        "build-service/src/studioIntegrity.js",
+        "build-service/tests/source_build_env.test.js",
+        "docs/ACCOUNTS_AND_TOKENS.md",
+        "docs/V1_ARCHITECTURE.md"
+      ],
+      "PostgreSQL": [
+        ".github/scripts/railway_production.py",
+        ".github/workflows/production-automation.yml",
+        "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxMultiSessionTerminalPanel.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalRestorePointManager.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalSecurityCenterPanel.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorCore.kt",
+        "build-service/docker-compose.yml",
+        "build-service/fast-runtime/FastActivity.java",
+        "build-service/package-lock.json",
+        "build-service/package.json",
+        "build-service/sql/001_init.sql",
+        "build-service/src/androidAppCategory.js",
+        "build-service/src/artifactAnalysis.js",
+        "build-service/src/auth.js",
+        "build-service/src/buildEngine.js",
+        "build-service/src/config.js",
+        "build-service/src/db.js",
+        "build-service/src/jobQueue.js",
+        "build-service/src/projectQuotaV2.js",
+        "build-service/src/pythonWebFrameworkEngine.js",
+        "build-service/tests/appforge_terminal_stage8a_terminal_ux_contract.test.js",
+        "build-service/tests/build_queue_scale_protection.test.js",
+        "build-service/tests/source_build_env.test.js",
+        "build-service/tests/v2_2_settings_languages.test.js",
+        "build-service/tests/v2_4_pro_plans.test.js",
+        "build-service/tests/v2_6_project_quota.test.js",
+        "build-service/video-downloader/Dockerfile",
+        "docs/ACCOUNTS_AND_TOKENS.md",
+        "docs/PRODUCTION_INFRASTRUCTURE.md",
+        "docs/PROJECT_REVISIONS.md",
+        "docs/QUEUE_AND_CONCURRENCY.md",
+        "docs/TEAM_INVITE_EMAIL.md",
+        "docs/V1_1_DISTRIBUTED_BUILDS.md",
+        "docs/V1_7_DURABLE_DOWNLOADS.md",
+        "docs/V1_8_SECURE_PLAY_BILLING.md",
+        "docs/V1_ARCHITECTURE.md",
+        "docs/V2_2_SETTINGS_AND_LANGUAGES.md",
+        "docs/V2_6_PROJECT_LIMITS.md",
+        "docs/WORKSPACE_BUILD.md"
+      ],
+      "Railway": [
+        ".github/scripts/railway_production.py",
+        ".github/scripts/worker_autoscale.py",
+        ".github/workflows/android-debug.yml",
+        ".github/workflows/android-play-release.yml",
+        ".github/workflows/cleanup-old-runs.yml",
+        ".github/workflows/conversion-smoke.yml",
+        ".github/workflows/production-automation.yml",
+        ".github/workflows/source-worker-image.yml",
+        ".github/workflows/windows-worker-image.yml",
+        ".github/workflows/worker-autoscale.yml",
+        ".github/workflows/worker-image.yml",
+        "AGENTS.md",
+        "README.md",
+        "SECOND_BRAIN.md",
+        "android-app/app/build.gradle.kts",
+        "android-app/app/src/main/assets/second_brain_snapshot.json",
+        "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "android-app/app/src/main/java/com/appforge/studio/SecondBrainScreen.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+        "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/ExternalConnectionsClient.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerPrivateFileSync.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalToolsPanel.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimatePanel.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateProjectAutomation.kt",
+        "build-service/instrument.mjs",
+        "build-service/server.js",
+        "build-service/src/config.js",
+        "build-service/src/mail.js",
+        "build-service/src/proEntitlements.js",
+        "build-service/src/windowsBuild.js",
+        "build-service/tests/appforge_terminal_integration.test.js",
+        "build-service/tests/appforge_terminal_project_automation_contract.test.js",
+        "build-service/tests/appforge_terminal_stage11g_railway_read_contract.test.js",
+        "build-service/tests/appforge_terminal_stage11h_owner_quick_actions_contract.test.js",
+        "build-service/tests/appforge_terminal_stage11i_account_switch_contract.test.js",
+        "build-service/tests/appforge_terminal_stage11j_account_scoped_vault_contract.test.js",
+        "build-service/tests/appforge_terminal_stage11l_railway_workspace_discovery_contract.test.js",
+        "build-service/tests/appforge_terminal_stage11m_railway_query_fix_contract.test.js",
+        "build-service/tests/v5_studio.test.js",
+        "build-service/video-downloader/public/index.html",
+        "docs/PRODUCTION_INFRASTRUCTURE.md",
+        "docs/V5_1_APPFORGE_TERMINAL.md",
+        "docs/privacy.html"
+      ],
+      "Redis": [
+        "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "build-service/docker-compose.yml",
+        "build-service/package-lock.json",
+        "build-service/package.json",
+        "build-service/server.js",
+        "build-service/src/autoscaleDispatch.js",
+        "build-service/src/buildCache.js",
+        "build-service/src/config.js",
+        "build-service/src/jobQueue.js",
+        "build-service/src/rateLimit.js",
+        "build-service/src/redis.js",
+        "build-service/src/workerRuntime.js",
+        "build-service/tests/production_infrastructure.test.js",
+        "build-service/tests/source_build_env.test.js",
+        "docs/PRODUCTION_INFRASTRUCTURE.md"
+      ],
+      "Sentry": [
+        "AGENTS.md",
+        "android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt",
+        "build-service/instrument.mjs",
+        "build-service/package-lock.json",
+        "build-service/package.json",
+        "build-service/server.js",
+        "build-service/src/config.js",
+        "build-service/src/observability.js",
+        "build-service/tests/production_infrastructure.test.js",
+        "docs/PRODUCTION_INFRASTRUCTURE.md"
+      ]
+    },
+    "credential_values_stored": false
+  },
+  "surfaces": {
+    "android": {
+      "detected": true,
+      "paths": [
+        "android-app"
+      ]
+    },
+    "desktop": {
+      "detected": true,
+      "paths": [
+        "desktop-app"
+      ]
+    },
+    "web": {
+      "detected": false,
+      "paths": []
+    }
+  },
+  "complexity": {
+    "generated_at": "2026-09-12T00:34:19+03:00",
+    "largest": [
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "lines": 24825,
+        "symbols": 122
+      },
+      {
+        "file": "build-service/src/buildEngine.js",
+        "lines": 8779,
+        "symbols": 119
+      },
+      {
+        "file": "build-service/server.js",
+        "lines": 6001,
+        "symbols": 9
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
+        "lines": 4691,
+        "symbols": 64
+      },
+      {
+        "file": "build-service/fast-runtime/FastActivity.java",
+        "lines": 2810,
+        "symbols": 24
+      },
+      {
+        "file": "build-service/src/windowsBuild.js",
+        "lines": 2477,
+        "symbols": 33
+      },
+      {
+        "file": "build-service/src/sourceBuildEngines.js",
+        "lines": 2474,
+        "symbols": 34
+      },
+      {
+        "file": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
+        "lines": 2201,
+        "symbols": 39
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+        "lines": 2103,
+        "symbols": 16
+      },
+      {
+        "file": "build-service/src/pythonWebFrameworkEngine.js",
+        "lines": 2063,
+        "symbols": 47
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxMultiSessionTerminalPanel.kt",
+        "lines": 1748,
+        "symbols": 10
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/ExternalConnectionsClient.kt",
+        "lines": 1644,
+        "symbols": 43
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "lines": 1628,
+        "symbols": 17
+      },
+      {
+        "file": "build-service/src/reactNativeBuildEngine.js",
+        "lines": 1617,
+        "symbols": 24
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+        "lines": 1569,
+        "symbols": 15
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/StudioHomeScreen.kt",
+        "lines": 1559,
+        "symbols": 13
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/io/TemplateProjectFactory.kt",
+        "lines": 1531,
+        "symbols": 141
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+        "lines": 1461,
+        "symbols": 33
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        "lines": 1437,
+        "symbols": 11
+      },
+      {
+        "file": "build-service/src/jobQueue.js",
+        "lines": 1349,
+        "symbols": 15
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
+        "lines": 1330,
+        "symbols": 12
+      },
+      {
+        "file": "build-service/src/dotnetAndroidBuildEngine.js",
+        "lines": 1270,
+        "symbols": 17
+      },
+      {
+        "file": "build-service/src/flutterBuildEngine.js",
+        "lines": 1247,
+        "symbols": 16
+      },
+      {
+        "file": "build-service/src/cppAndroidBuildEngine.js",
+        "lines": 1246,
+        "symbols": 15
+      },
+      {
+        "file": "build-service/src/workspace.js",
+        "lines": 1234,
+        "symbols": 20
+      },
+      {
+        "file": "build-service/src/dotnetMauiBuildEngine.js",
+        "lines": 1223,
+        "symbols": 18
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "lines": 1204,
+        "symbols": 36
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
+        "lines": 1184,
+        "symbols": 14
+      },
+      {
+        "file": "build-service/src/projectQuotaV2.js",
+        "lines": 1179,
+        "symbols": 17
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFilesPanel.kt",
+        "lines": 1179,
+        "symbols": 8
+      },
+      {
+        "file": "build-service/src/fastBuild.js",
+        "lines": 1170,
+        "symbols": 7
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorPanel.kt",
+        "lines": 1140,
+        "symbols": 4
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/AdvancedGitPanel.kt",
+        "lines": 1131,
+        "symbols": 5
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/io/AppForgeExeConversion.kt",
+        "lines": 1113,
+        "symbols": 15
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/tools/excel/ExcelToolsScreen.kt",
+        "lines": 1097,
+        "symbols": 14
+      },
+      {
+        "file": ".github/scripts/railway_production.py",
+        "lines": 1091,
+        "symbols": 16
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+        "lines": 1072,
+        "symbols": 10
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
+        "lines": 1051,
+        "symbols": 15
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimatePanel.kt",
+        "lines": 1051,
+        "symbols": 3
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/AnsiTerminalBuffer.kt",
+        "lines": 1049,
+        "symbols": 32
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/SshWorkspacePanel.kt",
+        "lines": 1042,
+        "symbols": 3
+      },
+      {
+        "file": "build-service/src/unityLicensedBuild.js",
+        "lines": 1026,
+        "symbols": 11
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxLspSession.kt",
+        "lines": 992,
+        "symbols": 22
+      },
+      {
+        "file": "build-service/src/frameworkStaticBuildEngine.js",
+        "lines": 981,
+        "symbols": 21
+      },
+      {
+        "file": "build-service/src/phpRemoteBackendEngine.js",
+        "lines": 966,
+        "symbols": 14
+      },
+      {
+        "file": "build-service/src/androidSafeArea.js",
+        "lines": 947,
+        "symbols": 15
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt",
+        "lines": 931,
+        "symbols": 23
+      },
+      {
+        "file": "build-service/src/nodeRemoteBackendEngine.js",
+        "lines": 916,
+        "symbols": 14
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/task/AppForgeTaskCenterScreen.kt",
+        "lines": 903,
+        "symbols": 7
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/io/SourceCapabilityAnalyzer.kt",
+        "lines": 891,
+        "symbols": 5
+      },
+      {
+        "file": "build-service/src/unityAndroidBuildEngine.js",
+        "lines": 886,
+        "symbols": 13
+      },
+      {
+        "file": "build-service/src/storage.js",
+        "lines": 862,
+        "symbols": 25
+      },
+      {
+        "file": "build-service/src/buildCache.js",
+        "lines": 853,
+        "symbols": 21
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/VerifiedLinuxRootfsInstaller.kt",
+        "lines": 853,
+        "symbols": 17
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimateFoundation.kt",
+        "lines": 832,
+        "symbols": 18
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorCore.kt",
+        "lines": 828,
+        "symbols": 34
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/task/AppForgeTaskManager.kt",
+        "lines": 805,
+        "symbols": 21
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxPtySessionRegistry.kt",
+        "lines": 798,
+        "symbols": 23
+      },
+      {
+        "file": "build-service/tests/conversion_roundtrip_smoke.test.js",
+        "lines": 783,
+        "symbols": 5
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateProjectPipeline.kt",
+        "lines": 778,
+        "symbols": 26
+      }
+    ],
+    "refactor_candidates": [
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "lines": 24825,
+        "symbols": 122
+      },
+      {
+        "file": "build-service/src/buildEngine.js",
+        "lines": 8779,
+        "symbols": 119
+      },
+      {
+        "file": "build-service/server.js",
+        "lines": 6001,
+        "symbols": 9
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
+        "lines": 4691,
+        "symbols": 64
+      },
+      {
+        "file": "build-service/fast-runtime/FastActivity.java",
+        "lines": 2810,
+        "symbols": 24
+      },
+      {
+        "file": "build-service/src/windowsBuild.js",
+        "lines": 2477,
+        "symbols": 33
+      },
+      {
+        "file": "build-service/src/sourceBuildEngines.js",
+        "lines": 2474,
+        "symbols": 34
+      },
+      {
+        "file": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
+        "lines": 2201,
+        "symbols": 39
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+        "lines": 2103,
+        "symbols": 16
+      },
+      {
+        "file": "build-service/src/pythonWebFrameworkEngine.js",
+        "lines": 2063,
+        "symbols": 47
+      }
+    ]
+  },
+  "subsystems": {
+    "ai": [
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiSnapshotV2.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAssistantIntegration.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeProjectAdvisor.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeSmartSuggestions.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/BuildDiagnosisPolicy.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiChatStore.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelDownloader.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelStore.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/SecondBrainBridge.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt",
+      "build-service/tests/build_error_advisor_ui_regression.test.js",
+      "docs/PLAY_PUBLISH_ASSISTANT.md",
+      "docs/V3_0_LOCAL_AI_ASSISTANT.md"
+    ],
+    "auth": [
+      "android-app/app/src/main/java/com/appforge/studio/AppForgeUiTokens.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalNotificationPermission.kt",
+      "build-service/sql/004_permissions_cache.sql",
+      "build-service/sql/020_legacy_device_login_permission.sql",
+      "build-service/src/auth.js",
+      "build-service/src/permissions.js",
+      "build-service/tests/legacy_device_login_permission.test.js",
+      "build-service/tests/permissions.test.js",
+      "docs/ACCOUNTS_AND_TOKENS.md",
+      "docs/PERMISSION_MATRIX.md"
+    ],
+    "builder": [
+      "android-app/app/build.gradle.kts",
+      "android-app/app/src/main/java/com/appforge/studio/AppForgeBuildNumbers.kt",
+      "android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt",
+      "android-app/app/src/main/java/com/appforge/studio/BuildRuntimeState.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/BuildDiagnosisPolicy.kt",
+      "android-app/app/src/test/java/com/appforge/studio/BuildRuntimeStateTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt",
+      "android-app/build.gradle.kts",
+      "android-app/gradle.properties",
+      "android-app/settings.gradle.kts",
+      "build-service/Dockerfile",
+      "build-service/Dockerfile.api",
+      "build-service/Dockerfile.source-worker",
+      "build-service/Dockerfile.source-worker.cache-hardening-phase-b.bak",
+      "build-service/Dockerfile.windows-worker",
+      "build-service/Dockerfile.worker",
+      "build-service/Dockerfile.worker.before-lighten.bak",
+      "build-service/docker-compose.yml",
+      "build-service/fast-extended-template/app/build.gradle.kts",
+      "build-service/fast-extended-template/app/src/main/AndroidManifest.xml",
+      "build-service/fast-extended-template/app/src/main/java/com/appforge/extended/ExtendedActivity.java",
+      "build-service/fast-extended-template/build.gradle.kts",
+      "build-service/fast-extended-template/gradle.properties",
+      "build-service/fast-extended-template/settings.gradle.kts",
+      "build-service/fast-runtime/FastActivity.java",
+      "build-service/fast-runtime/FastQrRuntime.java",
+      "build-service/fast-sdk-bundle/build.gradle.kts",
+      "build-service/fast-sdk-bundle/settings.gradle.kts",
+      "build-service/instrument.mjs",
+      "build-service/package-lock.json",
+      "build-service/package.json",
+      "build-service/public/admin/index.html",
+      "build-service/python-android-template/app/build.gradle.kts",
+      "build-service/python-android-template/app/src/main/AndroidManifest.xml",
+      "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+      "build-service/python-android-template/app/src/main/python/appforge_entry.py",
+      "build-service/python-android-template/app/src/main/python/main.py",
+      "build-service/python-android-template/app/src/main/res/values/styles.xml",
+      "build-service/python-android-template/build.gradle.kts",
+      "build-service/python-android-template/settings.gradle.kts",
+      "build-service/scripts/build-fast-qr-pack.sh",
+      "build-service/scripts/fast-apk-runtime-smoke.js",
+      "build-service/scripts/patch-flutter-readonly-sdk.sh",
+      "build-service/scripts/source-worker-runtime-smoke.sh",
+      "build-service/scripts/toolchain-doctor.js",
+      "build-service/server.js",
+      "build-service/source-worker.js",
+      "build-service/sql/001_init.sql",
+      "build-service/sql/002_teams_workers.sql",
+      "build-service/sql/003_security_storage_workers.sql",
+      "build-service/sql/004_permissions_cache.sql",
+      "build-service/sql/005_workspace_build_control.sql",
+      "build-service/sql/006_worker_toolchain_artifacts.sql",
+      "build-service/sql/007_live_operations.sql",
+      "build-service/sql/008_secure_commerce.sql",
+      "build-service/sql/009_pro_integrity_security.sql",
+      "build-service/sql/010_permanent_project_trial_slots.sql",
+      "build-service/sql/011_build_numbers.sql",
+      "build-service/sql/011_more_system_templates.sql",
+      "build-service/sql/012_template_feature_profiles.sql",
+      "build-service/sql/013_expanded_system_templates.sql",
+      "build-service/sql/014_more_system_templates.sql",
+      "build-service/sql/015_single_account_device.sql",
+      "build-service/sql/016_multi_account_devices.sql",
+      "build-service/sql/017_queue_scale_protection.sql",
+      "build-service/sql/018_full_admin_access.sql",
+      "build-service/sql/019_user_free_project_limits.sql",
+      "build-service/sql/020_legacy_device_login_permission.sql",
+      "build-service/sql/021_success_project_quotas.sql",
+      "build-service/src/accountDeletion.js",
+      "build-service/src/analytics.js",
+      "build-service/src/androidAppCategory.js",
+      "build-service/src/androidSafeArea.js",
+      "build-service/src/artifactAnalysis.js",
+      "build-service/src/auth.js",
+      "build-service/src/autoscaleDispatch.js",
+      "build-service/src/buildCache.js",
+      "build-service/src/buildCompare.js",
+      "build-service/src/buildEngine.js",
+      "build-service/src/buildErrorClassifier.js",
+      "build-service/src/buildLogs.js",
+      "build-service/src/config.js",
+      "build-service/src/cppAndroidBuildEngine.js",
+      "build-service/src/db.js",
+      "build-service/src/dotnetAndroidBuildEngine.js",
+      "build-service/src/dotnetMauiBuildEngine.js",
+      "build-service/src/downloadTickets.js",
+      "build-service/src/fastBuild.js",
+      "build-service/src/fastSigningKey.js",
+      "build-service/src/flutterBuildEngine.js",
+      "build-service/src/flutterGradleMirror.js",
+      "build-service/src/frameworkStaticBuildEngine.js",
+      "build-service/src/gradlePerformance.js",
+      "build-service/src/idempotency.js",
+      "build-service/src/jobQueue.js",
+      "build-service/src/mail.js",
+      "build-service/src/nodeRemoteBackendEngine.js",
+      "build-service/src/observability.js",
+      "build-service/src/permissions.js",
+      "build-service/src/phpRemoteBackendEngine.js",
+      "build-service/src/playVerifier.js",
+      "build-service/src/proEntitlements.js",
+      "build-service/src/problemExplainer.js",
+      "build-service/src/projectQuotaV2.js",
+      "build-service/src/projects.js",
+      "build-service/src/publish.js",
+      "build-service/src/pythonWebFrameworkEngine.js",
+      "build-service/src/queue.js",
+      "build-service/src/queueEstimate.js",
+      "build-service/src/rateLimit.js",
+      "build-service/src/reactNativeBuildEngine.js",
+      "build-service/src/redis.js",
+      "build-service/src/security.js",
+      "build-service/src/sourceBuildEngines.js",
+      "build-service/src/sourceBuildEnv.js",
+      "build-service/src/sourceBuildIsolation.js",
+      "build-service/src/storage.js",
+      "build-service/src/studioIntegrity.js",
+      "build-service/src/teams.js",
+      "build-service/src/toolchain.js",
+      "build-service/src/unityAndroidBuildEngine.js",
+      "build-service/src/unityLicensedBuild.js",
+      "build-service/src/unityWorkerContract.js",
+      "build-service/src/v5Studio.js",
+      "build-service/src/validators.js",
+      "build-service/src/windowsBuild.js",
+      "build-service/src/workerRuntime.js",
+      "build-service/src/workspace.js",
+      "build-service/src/workspaceBuild.js",
+      "build-service/tests/account_scoped_local_data_contract.test.js",
+      "build-service/tests/admin_account_management.test.js",
+      "build-service/tests/admin_granted_pro_status_contract.test.js",
+      "build-service/tests/admin_home_entry_contract.test.js",
+      "build-service/tests/admin_navigation_contract.test.js",
+      "build-service/tests/admin_ops_contract.test.js",
+      "build-service/tests/admin_system_insets_contract.test.js",
+      "build-service/tests/admob_optional_units.test.js",
+      "build-service/tests/android_app_category.test.js",
+      "build-service/tests/android_gradle_source_engine.test.js",
+      "build-service/tests/android_local_problem_explainer.test.js",
+      "build-service/tests/android_queue_ui_regression.test.js",
+      "build-service/tests/android_safe_area.test.js",
+      "build-service/tests/android_sdk_selection.test.js",
+      "build-service/tests/appforge_production_cancelled_image_contract.test.js",
+      "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_backspace_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
+      "build-service/tests/appforge_terminal_integration.test.js",
+      "build-service/tests/appforge_terminal_linux_multisession_contract.test.js",
+      "build-service/tests/appforge_terminal_linux_pty_contract.test.js",
+      "build-service/tests/appforge_terminal_linux_runtime_contract.test.js",
+      "build-service/tests/appforge_terminal_lsp_contract.test.js",
+      "build-service/tests/appforge_terminal_native_pty_cleanup_contract.test.js",
+      "build-service/tests/appforge_terminal_packaged_linux_engine_contract.test.js",
+      "build-service/tests/appforge_terminal_project_automation_contract.test.js",
+      "build-service/tests/appforge_terminal_project_pipeline_contract.test.js",
+      "build-service/tests/appforge_terminal_proroot_bind_contract.test.js",
+      "build-service/tests/appforge_terminal_proroot_workspace_contract.test.js",
+      "build-service/tests/appforge_terminal_pty_lifecycle_contract.test.js",
+      "build-service/tests/appforge_terminal_pty_reader_lifecycle_contract.test.js",
+      "build-service/tests/appforge_terminal_security_restore_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10c_local_terminal_input_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10d_terminal_surface_input_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10e_real_local_pty_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10f_ime_accessory_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10g_batch_hardening_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10h_10i_final_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10j_termux_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10k_bootstrap_resilience_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10l_productivity_keys_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10m_standalone_workstation_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10n_termux_independence_hardening_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10o_zero_anr_startup_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10p_accessory_collision_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10q_cursor_autofollow_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10r_true_ime_occlusion_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10s_matte_shortcuts_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10t_fast_scrollback_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10u_virtualized_renderer_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10v_copy_mode_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10w_snapshot_restore_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10x_session_copy_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10y_native_repo_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10z_ci_toolchain_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11a_interaction_performance_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11b_apk_install_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11c_extended_scrollback_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11d_safe_copy_mode_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11e_lightweight_copy_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11f_paged_copy_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11g_railway_read_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11h_owner_quick_actions_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11i_account_switch_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11j_account_scoped_vault_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11k_account_scoped_sessions_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11l_railway_workspace_discovery_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11m_railway_query_fix_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11n_safe_single_line_paste_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11o_bracketed_paste_contract.test.js",
+      "build-service/tests/appforge_terminal_stage7b_background_lock_contract.test.js",
+      "build-service/tests/appforge_terminal_stage8a_terminal_ux_contract.test.js",
+      "build-service/tests/appforge_terminal_stage8b_session_productivity_contract.test.js",
+      "build-service/tests/appforge_terminal_stage9a_build_readiness_contract.test.js",
+      "build-service/tests/appforge_terminal_stage9b_pre_ci_native_contract.test.js",
+      "build-service/tests/appforge_terminal_ubuntu_rootfs_compat_contract.test.js",
+      "build-service/tests/appforge_terminal_ultimate_editor_contract.test.js",
+      "build-service/tests/appforge_terminal_verified_rootfs_contract.test.js",
+      "build-service/tests/appforge_usage_guides_contract.test.js",
+      "build-service/tests/archive_limits.test.js",
+      "build-service/tests/artifact_manifest.test.js",
+      "build-service/tests/build_control.test.js",
+      "build-service/tests/build_error_advisor_ui_regression.test.js",
+      "build-service/tests/build_error_classifier.test.js",
+      "build-service/tests/build_progress_flow.test.js",
+      "build-service/tests/build_queue_position_eta.test.js",
+      "build-service/tests/build_queue_scale_protection.test.js",
+      "build-service/tests/cache_artifact_aware.test.js",
+      "build-service/tests/cache_stable.test.js",
+      "build-service/tests/capabilities.test.js",
+      "build-service/tests/conversion_manifest.test.js",
+      "build-service/tests/conversion_roundtrip_smoke.test.js",
+      "build-service/tests/cpp_android_build_engine.test.js",
+      "build-service/tests/cpp_android_live_build_engine.test.js",
+      "build-service/tests/cpp_android_template_build_smoke.js",
+      "build-service/tests/deterministic_project_zip.test.js",
+      "build-service/tests/direct_s3_cache_identity.test.js",
+      "build-service/tests/dotnet_android_build_engine.test.js",
+      "build-service/tests/dotnet_android_live_build_engine.test.js",
+      "build-service/tests/dotnet_android_smoke.js",
+      "build-service/tests/dotnet_maui_android_smoke.js",
+      "build-service/tests/dotnet_maui_build_engine.test.js",
+      "build-service/tests/dotnet_maui_live_build_engine.test.js",
+      "build-service/tests/fast_signing_key.test.js",
+      "build-service/tests/fcm_warning_regression.test.js",
+      "build-service/tests/firebase_cloud_messaging.test.js",
+      "build-service/tests/five_build_test_accounts_contract.test.js",
+      "build-service/tests/flutter_build_engine.test.js",
+      "build-service/tests/flutter_gradle_mirror.test.js",
+      "build-service/tests/flutter_live_build_engine.test.js",
+      "build-service/tests/framework_static_build_engine.test.js",
+      "build-service/tests/framework_static_live_build_engine.test.js",
+      "build-service/tests/free_release_keystore_gate_contract.test.js",
+      "build-service/tests/git_workspace_missing_repo_contract.test.js",
+      "build-service/tests/gradle_client_memory_budget.test.js",
+      "build-service/tests/gradle_low_memory_no_daemon.test.js",
+      "build-service/tests/gradle_memory_profile.test.js",
+      "build-service/tests/gradle_performance.test.js",
+      "build-service/tests/gradle_runtime_cache_home.test.js",
+      "build-service/tests/gradle_stall_watchdog.test.js",
+      "build-service/tests/guest_mode_contract.test.js",
+      "build-service/tests/home_project_transfer_menu.test.js",
+      "build-service/tests/idempotency.test.js",
+      "build-service/tests/legacy_device_login_permission.test.js",
+      "build-service/tests/log_redaction.test.js",
+      "build-service/tests/media3_regression.test.js",
+      "build-service/tests/monetization_navigation_regression.test.js",
+      "build-service/tests/multi_device_account.test.js",
+      "build-service/tests/native_android_gradle_profile.test.js",
+      "build-service/tests/native_bridge_limits_v191.test.js",
+      "build-service/tests/native_bridge_v2.test.js",
+      "build-service/tests/native_file_chooser_media.test.js",
+      "build-service/tests/native_media_v3.test.js",
+      "build-service/tests/node_remote_backend_engine.test.js",
+      "build-service/tests/node_remote_backend_live_engine.test.js",
+      "build-service/tests/node_web_build_engine.test.js",
+      "build-service/tests/permissions.test.js",
+      "build-service/tests/php_remote_backend_engine.test.js",
+      "build-service/tests/php_remote_backend_live_engine.test.js",
+      "build-service/tests/play_verifier.test.js",
+      "build-service/tests/pro_feature_surface_gate_contract.test.js",
+      "build-service/tests/problem_explainer.test.js",
+      "build-service/tests/problem_explainer_integration.test.js",
+      "build-service/tests/production_infrastructure.test.js",
+      "build-service/tests/project_archive_cache_identity.test.js",
+      "build-service/tests/project_backup_import.test.js",
+      "build-service/tests/project_clone_menu.test.js",
+      "build-service/tests/project_technology_detector_regression.test.js",
+      "build-service/tests/public_build_number.test.js",
+      "build-service/tests/python_android_template.test.js",
+      "build-service/tests/python_source_build_engine.test.js",
+      "build-service/tests/python_web_android_smoke.js",
+      "build-service/tests/python_web_framework_engine.test.js",
+      "build-service/tests/python_web_framework_live_build_engine.test.js",
+      "build-service/tests/queue_eta_math.test.js",
+      "build-service/tests/react_native_build_engine.test.js",
+      "build-service/tests/react_native_live_build_engine.test.js",
+      "build-service/tests/repository_maintenance.test.js",
+      "build-service/tests/scopes.test.js",
+      "build-service/tests/single_device_account.test.js",
+      "build-service/tests/source_build_env.test.js",
+      "build-service/tests/source_build_isolation.test.js",
+      "build-service/tests/source_capability_analyzer.test.js",
+      "build-service/tests/source_worker_ci_contract.test.js",
+      "build-service/tests/source_worker_contract.test.js",
+      "build-service/tests/source_worker_queue_reservation.test.js",
+      "build-service/tests/source_worker_queue_routing.test.js",
+      "build-service/tests/storage_keys.test.js",
+      "build-service/tests/studio_project_lifecycle.test.js",
+      "build-service/tests/studio_project_persistence.test.js",
+      "build-service/tests/team_slug.test.js",
+      "build-service/tests/technology_support_matrix.test.js",
+      "build-service/tests/terminal_bracketed_paste_mode_contract.test.js",
+      "build-service/tests/toolchain.test.js",
+      "build-service/tests/unity_android_build_engine.test.js",
+      "build-service/tests/unity_licensed_build_engine.test.js",
+      "build-service/tests/unity_worker_contract.test.js",
+      "build-service/tests/unknown_web_fallback.test.js",
+      "build-service/tests/user_project_limit_contract.test.js",
+      "build-service/tests/v2_1_template_browser.test.js",
+      "build-service/tests/v2_2_settings_languages.test.js",
+      "build-service/tests/v2_3_anti_mod.test.js",
+      "build-service/tests/v2_4_pro_plans.test.js",
+      "build-service/tests/v2_5_watermark.test.js",
+      "build-service/tests/v2_6_project_quota.test.js",
+      "build-service/tests/v2_7_lifetime_trial_slots.test.js",
+      "build-service/tests/v2_8_production_preview.test.js",
+      "build-service/tests/v2_9_test_lab_inspector.test.js",
+      "build-service/tests/v2_create_modes.test.js",
+      "build-service/tests/v3_0_local_ai.test.js",
+      "build-service/tests/v3_1_expansion_performance.test.js",
+      "build-service/tests/v5_studio.test.js",
+      "build-service/tests/validators.test.js",
+      "build-service/tests/webview_pro_settings.test.js",
+      "build-service/tests/windows_exe_regression.test.js",
+      "build-service/tests/windows_exe_source_guard.test.js",
+      "build-service/tests/windows_exe_studio.test.js",
+      "build-service/tests/worker_presence_cancel_regression.test.js",
+      "build-service/tests/workspace.test.js",
+      "build-service/toolchain.json",
+      "build-service/unity-worker.js",
+      "build-service/video-downloader/Dockerfile",
+      "build-service/video-downloader/README.md",
+      "build-service/video-downloader/dub.js",
+      "build-service/video-downloader/package.json",
+      "build-service/video-downloader/public/index.html",
+      "build-service/video-downloader/server.js",
+      "build-service/windows-worker.js",
+      "build-service/worker.js",
+      "docs/BUILD_CACHE.md",
+      "docs/BUILD_CANCELLATION.md",
+      "docs/BUILD_SERVICE_SECURITY.md",
+      "docs/GRADLE_SHARED_CACHE.md",
+      "docs/V1_1_DISTRIBUTED_BUILDS.md",
+      "docs/WORKSPACE_BUILD.md",
+      "examples/github-actions/appforge-build.yml"
+    ],
+    "connections": [
+      ".github/scripts/railway_production.py",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/ExternalConnectionsClient.kt",
+      "build-service/tests/appforge_terminal_stage11g_railway_read_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11l_railway_workspace_discovery_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11m_railway_query_fix_contract.test.js"
+    ],
+    "database": [
+      "build-service/sql/001_init.sql",
+      "build-service/sql/002_teams_workers.sql",
+      "build-service/sql/003_security_storage_workers.sql",
+      "build-service/sql/004_permissions_cache.sql",
+      "build-service/sql/005_workspace_build_control.sql",
+      "build-service/sql/006_worker_toolchain_artifacts.sql",
+      "build-service/sql/007_live_operations.sql",
+      "build-service/sql/008_secure_commerce.sql",
+      "build-service/sql/009_pro_integrity_security.sql",
+      "build-service/sql/010_permanent_project_trial_slots.sql",
+      "build-service/sql/011_build_numbers.sql",
+      "build-service/sql/011_more_system_templates.sql",
+      "build-service/sql/012_template_feature_profiles.sql",
+      "build-service/sql/013_expanded_system_templates.sql",
+      "build-service/sql/014_more_system_templates.sql",
+      "build-service/sql/015_single_account_device.sql",
+      "build-service/sql/016_multi_account_devices.sql",
+      "build-service/sql/017_queue_scale_protection.sql",
+      "build-service/sql/018_full_admin_access.sql",
+      "build-service/sql/019_user_free_project_limits.sql",
+      "build-service/sql/020_legacy_device_login_permission.sql",
+      "build-service/sql/021_success_project_quotas.sql",
+      "build-service/src/db.js"
+    ],
+    "desktop": [
+      ".github/workflows/windows-worker-image.yml",
+      "build-service/Dockerfile.windows-worker",
+      "build-service/src/windowsBuild.js",
+      "build-service/tests/windows_exe_regression.test.js",
+      "build-service/tests/windows_exe_source_guard.test.js",
+      "build-service/tests/windows_exe_studio.test.js",
+      "build-service/windows-worker.js"
+    ],
+    "files": [
+      "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspacePanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspaceService.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerFilesPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerPrivateFileSync.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/SshWorkspacePanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCache.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFilesPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspacePagination.kt",
+      "android-app/app/src/main/java/com/hackmaster/videoforge/StorageGuard.kt",
+      "android-app/app/src/main/res/xml/apk_file_paths.xml",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt",
+      "build-service/Dockerfile",
+      "build-service/Dockerfile.api",
+      "build-service/Dockerfile.source-worker",
+      "build-service/Dockerfile.source-worker.cache-hardening-phase-b.bak",
+      "build-service/Dockerfile.windows-worker",
+      "build-service/Dockerfile.worker",
+      "build-service/Dockerfile.worker.before-lighten.bak",
+      "build-service/sql/003_security_storage_workers.sql",
+      "build-service/sql/005_workspace_build_control.sql",
+      "build-service/sql/012_template_feature_profiles.sql",
+      "build-service/src/storage.js",
+      "build-service/src/workspace.js",
+      "build-service/src/workspaceBuild.js",
+      "build-service/tests/appforge_terminal_proroot_workspace_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11l_railway_workspace_discovery_contract.test.js",
+      "build-service/tests/git_workspace_missing_repo_contract.test.js",
+      "build-service/tests/gradle_memory_profile.test.js",
+      "build-service/tests/native_android_gradle_profile.test.js",
+      "build-service/tests/native_file_chooser_media.test.js",
+      "build-service/tests/storage_keys.test.js",
+      "build-service/tests/workspace.test.js",
+      "build-service/video-downloader/Dockerfile",
+      "docs/S3_OBJECT_STORAGE.md",
+      "docs/WORKSPACE_BUILD.md"
+    ],
+    "git": [
+      ".github/scripts/railway_production.py",
+      ".github/scripts/worker_autoscale.py",
+      ".github/workflows/android-debug.yml",
+      ".github/workflows/android-play-release.yml",
+      ".github/workflows/cleanup-old-runs.yml",
+      ".github/workflows/conversion-smoke.yml",
+      ".github/workflows/production-automation.yml",
+      ".github/workflows/source-worker-image.yml",
+      ".github/workflows/windows-worker-image.yml",
+      ".github/workflows/worker-autoscale.yml",
+      ".github/workflows/worker-image.yml",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/AdvancedGitPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/AdvancedGitService.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/AppForgeGitInternalExcludes.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/GitHubDevOpsClient.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkingTreeStatusCache.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspacePanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspaceService.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/AppForgeGitInternalExcludesTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/GitWorkingTreeStatusCacheTest.kt",
+      "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
+      "build-service/tests/git_workspace_missing_repo_contract.test.js",
+      "docs/GITHUB_IMPORT.md",
+      "examples/github-actions/appforge-build.yml"
+    ],
+    "terminal": [
+      "android-app/app/src/main/java/com/appforge/studio/terminal/AdvancedGitPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/AdvancedGitService.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/AnsiTerminalBuffer.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/AppForgeGitInternalExcludes.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/AppForgePtyBridge.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/ExternalConnectionsClient.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/GitHubDevOpsClient.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkingTreeStatusCache.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspacePanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspaceService.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/InteractiveLinuxPtySession.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxBackgroundJobStore.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxInteractiveTerminalPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxLspSession.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxMultiSessionTerminalPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxPtySessionRegistry.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxRuntimeFoundation.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxRuntimePanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxShellEngine.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LocalTerminalEngine.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LocalTerminalPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerFilesPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerPrivateFileSync.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/PackagedLinuxEngine.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/ProrootRuntimeContract.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/RuntimeInspector.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/SshTerminalClient.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/SshWorkspacePanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalBiometricGuard.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalCommandPolicy.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalDevelopmentEnvironment.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalModels.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalNotificationPermission.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalOutputBackpressure.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalPerformanceMetrics.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalRestorePointManager.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalSecurityCenterPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalStandaloneDeveloperBootstrap.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalStartupBiometricLock.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalStore.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalToolsPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUiTheme.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimateFoundation.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimatePanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUxPreferences.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkingDirectoryTracker.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorCore.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateLspProtocol.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateProjectAutomation.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateProjectAutomationPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateProjectPipeline.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateProjectPipelinePanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/VerifiedLinuxRootfsInstaller.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCache.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFilesPanel.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspacePagination.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/AnsiTerminalBufferTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/AppForgeGitInternalExcludesTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/GitWorkingTreeStatusCacheTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/LinuxRuntimeFoundationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/LinuxTarGzExtractorTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/LocalPtyInteractiveInputTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/ProrootRuntimeContractTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalCommandPolicyTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalOutputBackpressureTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPerformanceMetricsTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalWorkingDirectoryTrackerTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateCodeEditorCoreTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateLspProtocolTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectAutomationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectPipelineTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt",
+      "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_backspace_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
+      "build-service/tests/appforge_terminal_integration.test.js",
+      "build-service/tests/appforge_terminal_linux_multisession_contract.test.js",
+      "build-service/tests/appforge_terminal_linux_pty_contract.test.js",
+      "build-service/tests/appforge_terminal_linux_runtime_contract.test.js",
+      "build-service/tests/appforge_terminal_lsp_contract.test.js",
+      "build-service/tests/appforge_terminal_native_pty_cleanup_contract.test.js",
+      "build-service/tests/appforge_terminal_packaged_linux_engine_contract.test.js",
+      "build-service/tests/appforge_terminal_project_automation_contract.test.js",
+      "build-service/tests/appforge_terminal_project_pipeline_contract.test.js",
+      "build-service/tests/appforge_terminal_proroot_bind_contract.test.js",
+      "build-service/tests/appforge_terminal_proroot_workspace_contract.test.js",
+      "build-service/tests/appforge_terminal_pty_lifecycle_contract.test.js",
+      "build-service/tests/appforge_terminal_pty_reader_lifecycle_contract.test.js",
+      "build-service/tests/appforge_terminal_security_restore_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10c_local_terminal_input_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10d_terminal_surface_input_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10e_real_local_pty_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10f_ime_accessory_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10g_batch_hardening_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10h_10i_final_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10j_termux_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10k_bootstrap_resilience_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10l_productivity_keys_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10m_standalone_workstation_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10n_termux_independence_hardening_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10o_zero_anr_startup_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10p_accessory_collision_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10q_cursor_autofollow_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10r_true_ime_occlusion_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10s_matte_shortcuts_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10t_fast_scrollback_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10u_virtualized_renderer_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10v_copy_mode_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10w_snapshot_restore_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10x_session_copy_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10y_native_repo_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10z_ci_toolchain_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11a_interaction_performance_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11b_apk_install_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11c_extended_scrollback_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11d_safe_copy_mode_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11e_lightweight_copy_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11f_paged_copy_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11g_railway_read_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11h_owner_quick_actions_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11i_account_switch_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11j_account_scoped_vault_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11k_account_scoped_sessions_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11l_railway_workspace_discovery_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11m_railway_query_fix_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11n_safe_single_line_paste_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11o_bracketed_paste_contract.test.js",
+      "build-service/tests/appforge_terminal_stage7b_background_lock_contract.test.js",
+      "build-service/tests/appforge_terminal_stage8a_terminal_ux_contract.test.js",
+      "build-service/tests/appforge_terminal_stage8b_session_productivity_contract.test.js",
+      "build-service/tests/appforge_terminal_stage9a_build_readiness_contract.test.js",
+      "build-service/tests/appforge_terminal_stage9b_pre_ci_native_contract.test.js",
+      "build-service/tests/appforge_terminal_ubuntu_rootfs_compat_contract.test.js",
+      "build-service/tests/appforge_terminal_ultimate_editor_contract.test.js",
+      "build-service/tests/appforge_terminal_verified_rootfs_contract.test.js",
+      "build-service/tests/terminal_bracketed_paste_mode_contract.test.js",
+      "docs/V5_1_APPFORGE_TERMINAL.md"
+    ],
+    "web": [
+      "android-app/app/src/main/java/com/appforge/studio/io/PwaInspector.kt",
+      "build-service/src/pythonWebFrameworkEngine.js",
+      "build-service/tests/node_web_build_engine.test.js",
+      "build-service/tests/python_web_android_smoke.js",
+      "build-service/tests/python_web_framework_engine.test.js",
+      "build-service/tests/python_web_framework_live_build_engine.test.js",
+      "build-service/tests/unknown_web_fallback.test.js",
+      "build-service/tests/webview_pro_settings.test.js"
+    ],
+    "workers": [
+      ".github/scripts/worker_autoscale.py",
+      ".github/workflows/source-worker-image.yml",
+      ".github/workflows/windows-worker-image.yml",
+      ".github/workflows/worker-autoscale.yml",
+      ".github/workflows/worker-image.yml",
+      "build-service/Dockerfile.source-worker",
+      "build-service/Dockerfile.source-worker.cache-hardening-phase-b.bak",
+      "build-service/Dockerfile.windows-worker",
+      "build-service/Dockerfile.worker",
+      "build-service/Dockerfile.worker.before-lighten.bak",
+      "build-service/scripts/source-worker-runtime-smoke.sh",
+      "build-service/source-worker.js",
+      "build-service/sql/002_teams_workers.sql",
+      "build-service/sql/003_security_storage_workers.sql",
+      "build-service/sql/006_worker_toolchain_artifacts.sql",
+      "build-service/sql/017_queue_scale_protection.sql",
+      "build-service/src/jobQueue.js",
+      "build-service/src/queue.js",
+      "build-service/src/queueEstimate.js",
+      "build-service/src/unityWorkerContract.js",
+      "build-service/src/workerRuntime.js",
+      "build-service/tests/android_queue_ui_regression.test.js",
+      "build-service/tests/build_queue_position_eta.test.js",
+      "build-service/tests/build_queue_scale_protection.test.js",
+      "build-service/tests/queue_eta_math.test.js",
+      "build-service/tests/source_worker_ci_contract.test.js",
+      "build-service/tests/source_worker_contract.test.js",
+      "build-service/tests/source_worker_queue_reservation.test.js",
+      "build-service/tests/source_worker_queue_routing.test.js",
+      "build-service/tests/unity_worker_contract.test.js",
+      "build-service/tests/worker_presence_cancel_regression.test.js",
+      "build-service/unity-worker.js",
+      "build-service/windows-worker.js",
+      "build-service/worker.js",
+      "docs/QUEUE_AND_CONCURRENCY.md",
+      "docs/V1_6_PRODUCTION_WORKER.md",
+      "docs/V1_6_WORKER_DIAGNOSTICS.md",
+      "docs/WORKER_CAPABILITIES.md"
+    ]
+  },
+  "git": {
+    "generated_at": "2026-09-12T00:34:19+03:00",
+    "branch": "main",
+    "head": "9853706",
+    "ahead": 0,
+    "behind": 0,
+    "staged": [
+      "secondbrain/.gitignore"
+    ],
+    "unstaged": [
+      ".secondbrain/VERSION",
+      ".secondbrain/engine/brain.py",
+      ".secondbrain/memory/ARCHITECTURE.md",
+      ".secondbrain/memory/BACKEND_API.md",
+      ".secondbrain/memory/DATABASE.md",
+      ".secondbrain/memory/DEEP_MAP.json",
+      ".secondbrain/memory/DEEP_MAP.md",
+      ".secondbrain/memory/HOT_CONTEXT.md",
+      ".secondbrain/memory/INDEX.md",
+      ".secondbrain/memory/INTEGRATIONS.md",
+      ".secondbrain/memory/PERFORMANCE.md",
+      ".secondbrain/memory/RELEASES.md",
+      ".secondbrain/memory/SECURITY.md",
+      ".secondbrain/memory/TESTS.md",
+      "AGENTS.md",
+      "SECOND_BRAIN.md",
+      "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAssistantIntegration.kt",
+      "scripts/brain"
+    ],
+    "untracked": [
+      ".secondbrain/REGRESSION_RULES.json",
+      ".secondbrain/checkpoints/20260912-003141-all-second-brain-v3-final.json",
+      ".secondbrain/config-v3.json",
+      ".secondbrain/engine/brain_v3.py",
+      ".secondbrain/memory/API_CONTRACTS.json",
+      ".secondbrain/memory/API_CONTRACTS.md",
+      ".secondbrain/memory/COMPLEXITY.json",
+      ".secondbrain/memory/DATABASE_INTELLIGENCE.json",
+      ".secondbrain/memory/DATABASE_INTELLIGENCE.md",
+      ".secondbrain/memory/DEPENDENCY_GRAPH.json",
+      ".secondbrain/memory/DEPENDENCY_GRAPH.md",
+      ".secondbrain/memory/INTEGRATION_INTELLIGENCE.json",
+      ".secondbrain/memory/LIVE_HEALTH.json",
+      ".secondbrain/memory/LIVE_HEALTH.md",
+      ".secondbrain/memory/MEMORY_META.json",
+      ".secondbrain/memory/PERFORMANCE_SAMPLES.json",
+      ".secondbrain/memory/RELEASE_READINESS.json",
+      ".secondbrain/memory/RELEASE_READINESS.md",
+      ".secondbrain/memory/STATE.json",
+      ".secondbrain/memory/SUBSYSTEMS.json",
+      ".secondbrain/memory/TEST_INTELLIGENCE.json",
+      ".secondbrain/memory/WORKER_TOPOLOGY.json",
+      "AppForgeStudio-5.0.13.apk",
+      "MISS.save",
+      "android-app/app/src/main/assets/second_brain_snapshot.json",
+      "android-app/app/src/main/java/com/appforge/studio/SecondBrainScreen.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/SecondBrainBridge.kt",
+      "dashboard.sh"
+    ],
+    "forbidden_staged": [],
+    "recent_commits": [
+      "9853706 Upgrade Second Brain to V2.1 deep project mapping",
+      "38a3f8c Replace project wiki with Second Brain V2",
+      "7af8d90 Replace legacy SecondBrain with project wiki memory",
+      "b1f59b9 Add SecondBrain architecture references and risk gate",
+      "37e5607 Route public AppForge API through failover domain",
+      "9d2e6ff Adopt success-only monthly project quotas",
+      "00b0b81 Isolate Linux runtime by account",
+      "b8c4fd2 Isolate terminal workspaces by account",
+      "22dcb8c Sync owner private AppForge files",
+      "2861fcb Expand owner private AppForge files"
+    ]
+  },
+  "security": {
+    "generated_at": "2026-09-12T00:34:20+03:00",
+    "scope": "changed",
+    "health": "GREEN",
+    "findings": []
+  },
+  "risk": {
+    "generated_at": "2026-09-12T00:34:20+03:00",
+    "score": 15,
+    "decision": "ACCEPT",
+    "changed_files": 4,
+    "added_lines": 42,
+    "deleted_lines": 3,
+    "domains": [
+      "android"
+    ],
+    "reasons": [
+      "android subsystem affected",
+      "high dependency fan-out"
+    ],
+    "dependency_edges_impacted": 37,
+    "security": "GREEN"
+  },
+  "live": {
+    "generated_at": "2026-09-12T00:34:21+03:00",
+    "github": {
+      "status": "NOT_CHECKED"
+    },
+    "railway": {
+      "status": "NOT_CHECKED"
+    },
+    "build_service": {
+      "status": "NOT_CHECKED"
+    }
+  },
+  "performance": {
+    "generated_at": "2026-09-12T00:34:21+03:00",
+    "metrics": {
+      "brain_all": {
+        "samples": 4,
+        "p50_ms": 8610.54,
+        "p95_ms": 14199.16,
+        "latest_ms": 4107.11,
+        "regression_vs_prior_p50_pct": "NOT_ENOUGH_DATA"
+      },
+      "app_build": {
+        "samples": 0,
+        "p50_ms": "NOT_MEASURED",
+        "p95_ms": "NOT_MEASURED",
+        "latest_ms": "NOT_MEASURED"
+      },
+      "worker_job": {
+        "samples": 0,
+        "p50_ms": "NOT_MEASURED",
+        "p95_ms": "NOT_MEASURED",
+        "latest_ms": "NOT_MEASURED"
+      },
+      "terminal_latency": {
+        "samples": 0,
+        "p50_ms": "NOT_MEASURED",
+        "p95_ms": "NOT_MEASURED",
+        "latest_ms": "NOT_MEASURED"
+      }
+    }
+  },
+  "release_gate": {
+    "status": "REVIEW_REQUIRED",
+    "blockers": [],
+    "review": [
+      "Live health not checked"
+    ]
+  },
+  "architecture_drift": false,
+  "brain_all_ms": 4107.11
+}

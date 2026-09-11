@@ -1,0 +1,867 @@
+{
+  "generated_at": "2026-09-12T00:34:19+03:00",
+  "node_count": 571,
+  "edge_count": 80,
+  "edges": [
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAssistantIntegration.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeProjectAdvisor.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeSmartSuggestions.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/BuildDiagnosisPolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiChatStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelDownloader.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/AppForgeApkConversion.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/AppForgeExeConversion.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/AppIconProcessor.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/AppSettingsStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/FirebaseConfigInspector.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/KeystoreVault.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectImporter.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/PwaInspector.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/SourceCapabilityAnalyzer.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/TemplateProjectFactory.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/ZipUtils.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/AppSignatureVerifier.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/task/AppForgeTaskManager.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "to": "android-app/app/src/main/java/com/hackmaster/videoforge/AppVisibility.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/StudioHomeScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AppForgeHelpCenterScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/AppSettingsStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeProjectAdvisor.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeSmartSuggestions.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiSnapshotV2.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/AppForgeBuildNumbers.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/AppSettingsStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
+      "to": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/tools/excel/ExcelToolsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspacePanel.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
+      "to": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
+      "to": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalStandaloneDeveloperBootstrap.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerFilesPanel.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerPrivateFileSync.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+      "kind": "import"
+    }
+  ],
+  "hotspots": [
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "fan_in": 2,
+      "fan_out": 35,
+      "score": 37
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "fan_in": 12,
+      "fan_out": 0,
+      "score": 12
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "fan_in": 9,
+      "fan_out": 0,
+      "score": 9
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+      "fan_in": 7,
+      "fan_out": 0,
+      "score": 7
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+      "fan_in": 4,
+      "fan_out": 1,
+      "score": 5
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+      "fan_in": 4,
+      "fan_out": 0,
+      "score": 4
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+      "fan_in": 0,
+      "fan_out": 4,
+      "score": 4
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+      "fan_in": 0,
+      "fan_out": 4,
+      "score": 4
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/io/AppSettingsStore.kt",
+      "fan_in": 3,
+      "fan_out": 0,
+      "score": 3
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+      "fan_in": 3,
+      "fan_out": 0,
+      "score": 3
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+      "fan_in": 2,
+      "fan_out": 1,
+      "score": 3
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
+      "fan_in": 1,
+      "fan_out": 2,
+      "score": 3
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+      "fan_in": 0,
+      "fan_out": 3,
+      "score": 3
+    },
+    {
+      "file": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+      "fan_in": 2,
+      "fan_out": 0,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
+      "fan_in": 2,
+      "fan_out": 0,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
+      "fan_in": 1,
+      "fan_out": 1,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
+      "fan_in": 1,
+      "fan_out": 1,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeProjectAdvisor.kt",
+      "fan_in": 1,
+      "fan_out": 1,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeSmartSuggestions.kt",
+      "fan_in": 1,
+      "fan_out": 1,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
+      "fan_in": 1,
+      "fan_out": 1,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+      "fan_in": 1,
+      "fan_out": 1,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
+      "fan_in": 1,
+      "fan_out": 1,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
+      "fan_in": 0,
+      "fan_out": 2,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
+      "fan_in": 0,
+      "fan_out": 2,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
+      "fan_in": 0,
+      "fan_out": 2,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
+      "fan_in": 0,
+      "fan_out": 2,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
+      "fan_in": 0,
+      "fan_out": 2,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
+      "fan_in": 0,
+      "fan_out": 2,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/AppForgeBuildNumbers.kt",
+      "fan_in": 1,
+      "fan_out": 0,
+      "score": 1
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt",
+      "fan_in": 1,
+      "fan_out": 0,
+      "score": 1
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
+      "fan_in": 1,
+      "fan_out": 0,
+      "score": 1
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/security/AppSignatureVerifier.kt",
+      "fan_in": 1,
+      "fan_out": 0,
+      "score": 1
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelStore.kt",
+      "fan_in": 1,
+      "fan_out": 0,
+      "score": 1
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelDownloader.kt",
+      "fan_in": 1,
+      "fan_out": 0,
+      "score": 1
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt",
+      "fan_in": 1,
+      "fan_out": 0,
+      "score": 1
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiChatStore.kt",
+      "fan_in": 1,
+      "fan_out": 0,
+      "score": 1
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAssistantIntegration.kt",
+      "fan_in": 1,
+      "fan_out": 0,
+      "score": 1
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/BuildDiagnosisPolicy.kt",
+      "fan_in": 1,
+      "fan_out": 0,
+      "score": 1
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectImporter.kt",
+      "fan_in": 1,
+      "fan_out": 0,
+      "score": 1
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/io/PwaInspector.kt",
+      "fan_in": 1,
+      "fan_out": 0,
+      "score": 1
+    }
+  ],
+  "external_dependencies": [
+    [
+      "androidx",
+      1096
+    ],
+    [
+      "android",
+      322
+    ],
+    [
+      "java",
+      291
+    ],
+    [
+      "assert",
+      199
+    ],
+    [
+      "node:assert",
+      199
+    ],
+    [
+      "node:test",
+      195
+    ],
+    [
+      "test",
+      195
+    ],
+    [
+      "kotlinx",
+      172
+    ],
+    [
+      "org",
+      162
+    ],
+    [
+      "node:fs",
+      134
+    ],
+    [
+      "com",
+      107
+    ],
+    [
+      "path",
+      65
+    ],
+    [
+      "fs",
+      42
+    ],
+    [
+      "AdmZip",
+      41
+    ],
+    [
+      "adm-zip",
+      41
+    ],
+    [
+      "os",
+      38
+    ],
+    [
+      "kotlin",
+      22
+    ],
+    [
+      "crypto",
+      15
+    ],
+    [
+      "child_process",
+      10
+    ],
+    [
+      "javax",
+      6
+    ],
+    [
+      "node:path",
+      5
+    ],
+    [
+      "json",
+      5
+    ],
+    [
+      "express",
+      4
+    ],
+    [
+      "url",
+      4
+    ],
+    [
+      "googleapis",
+      3
+    ],
+    [
+      "node:os",
+      3
+    ],
+    [
+      "traceback",
+      3
+    ],
+    [
+      "net",
+      3
+    ],
+    [
+      "sys",
+      3
+    ],
+    [
+      "subprocess",
+      3
+    ],
+    [
+      "uuid",
+      2
+    ],
+    [
+      "*",
+      2
+    ],
+    [
+      "@sentry",
+      2
+    ],
+    [
+      "django",
+      2
+    ],
+    [
+      "jsonwebtoken",
+      2
+    ],
+    [
+      "jwt",
+      2
+    ],
+    [
+      "pathlib",
+      2
+    ],
+    [
+      "dns",
+      2
+    ],
+    [
+      "time",
+      2
+    ],
+    [
+      "multer",
+      1
+    ],
+    [
+      "bcrypt",
+      1
+    ],
+    [
+      "bcryptjs",
+      1
+    ],
+    [
+      "pg",
+      1
+    ],
+    [
+      "nodemailer",
+      1
+    ],
+    [
+      "QRCode",
+      1
+    ],
+    [
+      "qrcode",
+      1
+    ],
+    [
+      "util",
+      1
+    ],
+    [
+      "electron",
+      1
+    ],
+    [
+      "threading",
+      1
+    ],
+    [
+      "wsgiref",
+      1
+    ],
+    [
+      "importlib",
+      1
+    ],
+    [
+      "re",
+      1
+    ],
+    [
+      "argparse",
+      1
+    ],
+    [
+      "math",
+      1
+    ]
+  ]
+}

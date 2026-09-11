@@ -28,7 +28,8 @@ enum class AssistantDestination {
     HELP,
     PLAY_GUIDE,
     PRO,
-    KEYSTORES
+    KEYSTORES,
+    SECOND_BRAIN
 }
 
 data class AssistantAppAction(
@@ -54,7 +55,8 @@ data class AssistantRuntimeContext(
     val hasApk: Boolean,
     val hasAab: Boolean,
     val hasExe: Boolean,
-    val buildDiagnosis: String? = null
+    val buildDiagnosis: String? = null,
+    val secondBrainContext: String? = null
 )
 
 object AppForgeAssistantIntegration {
@@ -193,6 +195,25 @@ object AppForgeAssistantIntegration {
                 "Keystore Yöneticisi: güvenli JKS kayıtları, alias bilgisi ve sertifika parmak izleri."
             ),
             FeatureRoute(
+                AssistantAppAction(
+                    AssistantDestination.SECOND_BRAIN,
+                    "2. Beyin",
+                    "Risk, test, mimari, canlı durum ve proje hafızasını aç."
+                ),
+                setOf(
+                    "2. beyin",
+                    "second brain",
+                    "risk",
+                    "mimari",
+                    "architecture",
+                    "release gate",
+                    "dependency",
+                    "veritabanı haritası",
+                    "api haritası"
+                ),
+                "2. Beyin: kaynak kodu, API, veritabanı, worker, test, güvenlik, risk ve release durumunu kalıcı proje hafızasıyla birleştirir."
+            ),
+            FeatureRoute(
                 AssistantAppAction(AssistantDestination.SETTINGS, "Ayarları aç", "Dil, güvenlik, yardım ve uygulama ayarlarını yönet."),
                 setOf("ayarlar", "dil", "önbellek", "gizlilik", "yardım"),
                 "Ayarlar: dil, keystore, Pro, yardım, Play rehberi, yasal bilgiler, geri bildirim ve cache temizliği."
@@ -219,6 +240,11 @@ object AppForgeAssistantIntegration {
             context.buildDiagnosis?.takeIf { it.isNotBlank() }?.let {
                 appendLine("- Güvenli build tanısı: $it")
             }
+            context.secondBrainContext
+                ?.takeIf { it.isNotBlank() }
+                ?.let {
+                    appendLine("- Second Brain: $it")
+                }
         }.trim()
 
     fun actionsFor(question: String, limit: Int = 3): List<AssistantAppAction> {

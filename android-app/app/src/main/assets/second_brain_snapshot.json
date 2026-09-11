@@ -1,0 +1,15 @@
+{
+  "version": "3.0.0",
+  "head": "9853706",
+  "branch": "main",
+  "risk": "ACCEPT",
+  "riskScore": 15,
+  "security": "GREEN",
+  "apiRoutes": 82,
+  "databaseTables": 30,
+  "migrations": 22,
+  "tests": 227,
+  "release": "REVIEW_REQUIRED",
+  "liveGithub": "NOT_CHECKED",
+  "liveRailway": "NOT_CHECKED"
+}

@@ -1,10 +1,10 @@
 # Test Map
 
-Generated: 2026-09-12T00:11:12+03:00
+Generated: 2026-09-12T00:34:18+03:00
 
 ## Recommended for current change
 
-- `Run tests for the nearest affected module`
+- `Android CI / Gradle compile verification`
 
 ## Discovered test files
 

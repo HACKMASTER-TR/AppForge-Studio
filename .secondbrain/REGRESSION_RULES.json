@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "protected_features": [
+    {
+      "name": "Terminal",
+      "keywords": [
+        "terminal",
+        "pty",
+        "ime",
+        "paste"
+      ]
+    },
+    {
+      "name": "Files",
+      "keywords": [
+        "file",
+        "workspace",
+        "storage"
+      ]
+    },
+    {
+      "name": "Git",
+      "keywords": [
+        "git",
+        "github"
+      ]
+    },
+    {
+      "name": "Connections",
+      "keywords": [
+        "connection",
+        "railway",
+        "authorization"
+      ]
+    },
+    {
+      "name": "SSH",
+      "keywords": [
+        "ssh",
+        "hostkey"
+      ]
+    },
+    {
+      "name": "Tools",
+      "keywords": [
+        "toolchain",
+        "tools"
+      ]
+    },
+    {
+      "name": "Builder",
+      "keywords": [
+        "builder",
+        "build",
+        "gradle"
+      ]
+    },
+    {
+      "name": "AI",
+      "keywords": [
+        "assistant",
+        "ai",
+        "litert"
+      ]
+    }
+  ]
+}

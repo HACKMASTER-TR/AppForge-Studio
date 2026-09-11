@@ -1,0 +1,211 @@
+{
+  "generated_at": "2026-09-12T00:34:19+03:00",
+  "discovered": 227,
+  "domains": [
+    "android"
+  ],
+  "selected_tests": [
+    "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectPipelineTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectAutomationTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateLspProtocolTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateCodeEditorCoreTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalWorkingDirectoryTrackerTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPerformanceMetricsTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalOutputBackpressureTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalCommandPolicyTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/ProrootRuntimeContractTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/LocalPtyInteractiveInputTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/LinuxTarGzExtractorTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/LinuxRuntimeFoundationTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/GitWorkingTreeStatusCacheTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/AppForgeGitInternalExcludesTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/AnsiTerminalBufferTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/task/AppForgeTaskManagerTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/BuildRuntimeStateTest.kt",
+    "android-app/app/src/main/assets/terminal/appforge-test",
+    "build-service/tests/android_queue_ui_regression.test.js",
+    "build-service/tests/unity_android_build_engine.test.js",
+    "build-service/tests/python_web_android_smoke.js",
+    "build-service/tests/python_android_template.test.js",
+    "build-service/tests/native_android_gradle_profile.test.js",
+    "build-service/tests/dotnet_maui_android_smoke.js",
+    "build-service/tests/dotnet_android_smoke.js",
+    "build-service/tests/dotnet_android_live_build_engine.test.js",
+    "build-service/tests/dotnet_android_build_engine.test.js",
+    "build-service/tests/cpp_android_template_build_smoke.js",
+    "build-service/tests/cpp_android_live_build_engine.test.js",
+    "build-service/tests/cpp_android_build_engine.test.js",
+    "build-service/tests/android_sdk_selection.test.js",
+    "build-service/tests/android_safe_area.test.js",
+    "build-service/tests/android_local_problem_explainer.test.js",
+    "build-service/tests/android_gradle_source_engine.test.js",
+    "build-service/tests/android_app_category.test.js",
+    "build-service/tests/worker_presence_cancel_regression.test.js",
+    "build-service/tests/windows_exe_regression.test.js",
+    "build-service/tests/project_technology_detector_regression.test.js",
+    "build-service/tests/monetization_navigation_regression.test.js",
+    "build-service/tests/media3_regression.test.js",
+    "build-service/tests/fcm_warning_regression.test.js",
+    "build-service/tests/build_error_advisor_ui_regression.test.js"
+  ],
+  "critical_regression_tests": [
+    "android-app/app/src/main/assets/terminal/appforge-test",
+    "android-app/app/src/test/java/com/appforge/studio/BuildRuntimeStateTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/AnsiTerminalBufferTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/AppForgeGitInternalExcludesTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/GitWorkingTreeStatusCacheTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/LinuxRuntimeFoundationTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/LinuxTarGzExtractorTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/LocalPtyInteractiveInputTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/ProrootRuntimeContractTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalCommandPolicyTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalOutputBackpressureTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPerformanceMetricsTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalWorkingDirectoryTrackerTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateCodeEditorCoreTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateLspProtocolTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectAutomationTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectPipelineTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt",
+    "build-service/tests/account_scoped_local_data_contract.test.js",
+    "build-service/tests/admin_account_management.test.js",
+    "build-service/tests/admin_granted_pro_status_contract.test.js",
+    "build-service/tests/admin_home_entry_contract.test.js",
+    "build-service/tests/admin_navigation_contract.test.js",
+    "build-service/tests/admin_ops_contract.test.js",
+    "build-service/tests/admin_system_insets_contract.test.js",
+    "build-service/tests/admob_optional_units.test.js",
+    "build-service/tests/android_app_category.test.js",
+    "build-service/tests/android_gradle_source_engine.test.js",
+    "build-service/tests/android_local_problem_explainer.test.js",
+    "build-service/tests/android_queue_ui_regression.test.js",
+    "build-service/tests/android_safe_area.test.js",
+    "build-service/tests/android_sdk_selection.test.js",
+    "build-service/tests/appforge_production_cancelled_image_contract.test.js",
+    "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
+    "build-service/tests/appforge_terminal_ime_backspace_contract.test.js",
+    "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
+    "build-service/tests/appforge_terminal_integration.test.js",
+    "build-service/tests/appforge_terminal_linux_multisession_contract.test.js",
+    "build-service/tests/appforge_terminal_linux_pty_contract.test.js",
+    "build-service/tests/appforge_terminal_linux_runtime_contract.test.js",
+    "build-service/tests/appforge_terminal_lsp_contract.test.js",
+    "build-service/tests/appforge_terminal_native_pty_cleanup_contract.test.js",
+    "build-service/tests/appforge_terminal_packaged_linux_engine_contract.test.js",
+    "build-service/tests/appforge_terminal_project_automation_contract.test.js",
+    "build-service/tests/appforge_terminal_project_pipeline_contract.test.js",
+    "build-service/tests/appforge_terminal_proroot_bind_contract.test.js",
+    "build-service/tests/appforge_terminal_proroot_workspace_contract.test.js",
+    "build-service/tests/appforge_terminal_pty_lifecycle_contract.test.js",
+    "build-service/tests/appforge_terminal_pty_reader_lifecycle_contract.test.js",
+    "build-service/tests/appforge_terminal_security_restore_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10c_local_terminal_input_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10d_terminal_surface_input_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10e_real_local_pty_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10f_ime_accessory_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10g_batch_hardening_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10h_10i_final_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10j_termux_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10k_bootstrap_resilience_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10l_productivity_keys_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10m_standalone_workstation_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10n_termux_independence_hardening_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10o_zero_anr_startup_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10p_accessory_collision_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10q_cursor_autofollow_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10r_true_ime_occlusion_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10s_matte_shortcuts_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10t_fast_scrollback_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10u_virtualized_renderer_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10v_copy_mode_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10w_snapshot_restore_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10x_session_copy_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10y_native_repo_contract.test.js",
+    "build-service/tests/appforge_terminal_stage10z_ci_toolchain_contract.test.js",
+    "build-service/tests/appforge_terminal_stage11a_interaction_performance_contract.test.js",
+    "build-service/tests/appforge_terminal_stage11b_apk_install_contract.test.js",
+    "build-service/tests/appforge_terminal_stage11c_extended_scrollback_contract.test.js"
+  ],
+  "commands": [
+    "Android CI / Gradle compile verification"
+  ],
+  "last_execution": {
+    "status": "NOT_RUN"
+  },
+  "regression_rules": {
+    "version": 1,
+    "protected_features": [
+      {
+        "name": "Terminal",
+        "keywords": [
+          "terminal",
+          "pty",
+          "ime",
+          "paste"
+        ]
+      },
+      {
+        "name": "Files",
+        "keywords": [
+          "file",
+          "workspace",
+          "storage"
+        ]
+      },
+      {
+        "name": "Git",
+        "keywords": [
+          "git",
+          "github"
+        ]
+      },
+      {
+        "name": "Connections",
+        "keywords": [
+          "connection",
+          "railway",
+          "authorization"
+        ]
+      },
+      {
+        "name": "SSH",
+        "keywords": [
+          "ssh",
+          "hostkey"
+        ]
+      },
+      {
+        "name": "Tools",
+        "keywords": [
+          "toolchain",
+          "tools"
+        ]
+      },
+      {
+        "name": "Builder",
+        "keywords": [
+          "builder",
+          "build",
+          "gradle"
+        ]
+      },
+      {
+        "name": "AI",
+        "keywords": [
+          "assistant",
+          "ai",
+          "litert"
+        ]
+      }
+    ]
+  }
+}

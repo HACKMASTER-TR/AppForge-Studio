@@ -1,0 +1,506 @@
+{
+  "generated_at": "2026-09-12T00:34:19+03:00",
+  "migration_count": 22,
+  "table_count": 30,
+  "tables": [
+    "appforge_account_devices",
+    "appforge_api_tokens",
+    "appforge_auth_tokens",
+    "appforge_build_cache",
+    "appforge_build_events",
+    "appforge_build_jobs",
+    "appforge_build_log_lines",
+    "appforge_builds",
+    "appforge_download_tickets",
+    "appforge_free_project_slots",
+    "appforge_idempotency_keys",
+    "appforge_integrity_audits",
+    "appforge_localizations",
+    "appforge_migration_markers",
+    "appforge_permission_audit",
+    "appforge_play_purchases",
+    "appforge_pro_entitlements",
+    "appforge_pro_monthly_project_slots",
+    "appforge_project_files",
+    "appforge_project_quota_reservations",
+    "appforge_project_revisions",
+    "appforge_projects",
+    "appforge_publish_jobs",
+    "appforge_team_invites",
+    "appforge_team_members",
+    "appforge_teams",
+    "appforge_templates",
+    "appforge_user_project_limits",
+    "appforge_users",
+    "appforge_workers"
+  ],
+  "migrations": [
+    {
+      "file": "build-service/sql/001_init.sql",
+      "creates": [
+        "appforge_api_tokens",
+        "appforge_builds",
+        "appforge_localizations",
+        "appforge_projects",
+        "appforge_publish_jobs",
+        "appforge_templates",
+        "appforge_users"
+      ],
+      "alters": [],
+      "indexes": [
+        "idx_builds_status_created",
+        "idx_builds_user_created"
+      ],
+      "references": [
+        "appforge_builds",
+        "appforge_projects",
+        "appforge_users"
+      ],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/002_teams_workers.sql",
+      "creates": [
+        "appforge_build_events",
+        "appforge_build_jobs",
+        "appforge_team_invites",
+        "appforge_team_members",
+        "appforge_teams"
+      ],
+      "alters": [
+        "appforge_builds",
+        "appforge_projects"
+      ],
+      "indexes": [
+        "idx_build_events_team_created",
+        "idx_build_events_user_created",
+        "idx_build_jobs_claim",
+        "idx_build_jobs_worker",
+        "idx_builds_team",
+        "idx_projects_team"
+      ],
+      "references": [
+        "appforge_builds",
+        "appforge_teams",
+        "appforge_users"
+      ],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/003_security_storage_workers.sql",
+      "creates": [
+        "appforge_auth_tokens",
+        "appforge_workers"
+      ],
+      "alters": [
+        "appforge_api_tokens",
+        "appforge_build_jobs",
+        "appforge_users"
+      ],
+      "indexes": [
+        "idx_api_tokens_team",
+        "idx_auth_tokens_user_type",
+        "idx_workers_last_seen"
+      ],
+      "references": [
+        "appforge_teams",
+        "appforge_users"
+      ],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/004_permissions_cache.sql",
+      "creates": [
+        "appforge_build_cache",
+        "appforge_permission_audit"
+      ],
+      "alters": [
+        "appforge_builds",
+        "appforge_team_invites",
+        "appforge_team_members"
+      ],
+      "indexes": [
+        "idx_build_cache_expires",
+        "idx_builds_cache_key",
+        "idx_permission_audit_team"
+      ],
+      "references": [
+        "appforge_builds",
+        "appforge_teams",
+        "appforge_users"
+      ],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/005_workspace_build_control.sql",
+      "creates": [
+        "appforge_project_files",
+        "appforge_project_revisions"
+      ],
+      "alters": [
+        "appforge_builds",
+        "appforge_projects"
+      ],
+      "indexes": [
+        "idx_builds_cancel_requested",
+        "idx_project_files_updated",
+        "idx_project_revisions_project_created"
+      ],
+      "references": [
+        "appforge_projects",
+        "appforge_users"
+      ],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/006_worker_toolchain_artifacts.sql",
+      "creates": [],
+      "alters": [
+        "appforge_builds",
+        "appforge_workers"
+      ],
+      "indexes": [
+        "idx_builds_worker_id",
+        "idx_workers_toolchain"
+      ],
+      "references": [],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/007_live_operations.sql",
+      "creates": [
+        "appforge_build_log_lines",
+        "appforge_download_tickets",
+        "appforge_idempotency_keys"
+      ],
+      "alters": [
+        "appforge_builds"
+      ],
+      "indexes": [
+        "idx_build_log_lines_build_id",
+        "idx_download_tickets_expiry",
+        "idx_idempotency_expiry"
+      ],
+      "references": [
+        "appforge_builds",
+        "appforge_users"
+      ],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/008_secure_commerce.sql",
+      "creates": [
+        "appforge_play_purchases"
+      ],
+      "alters": [],
+      "indexes": [
+        "idx_play_purchases_entitlement",
+        "idx_play_purchases_package_product"
+      ],
+      "references": [],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/009_pro_integrity_security.sql",
+      "creates": [
+        "appforge_integrity_audits",
+        "appforge_pro_entitlements"
+      ],
+      "alters": [],
+      "indexes": [
+        "idx_integrity_audits_failed",
+        "idx_integrity_audits_user_created",
+        "idx_pro_entitlements_status"
+      ],
+      "references": [
+        "appforge_users"
+      ],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/010_permanent_project_trial_slots.sql",
+      "creates": [
+        "appforge_free_project_slots"
+      ],
+      "alters": [],
+      "indexes": [
+        "idx_free_project_slots_user"
+      ],
+      "references": [
+        "appforge_users"
+      ],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/011_build_numbers.sql",
+      "creates": [],
+      "alters": [
+        "appforge_builds"
+      ],
+      "indexes": [
+        "idx_appforge_builds_build_no"
+      ],
+      "references": [],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/011_more_system_templates.sql",
+      "creates": [],
+      "alters": [],
+      "indexes": [],
+      "references": [],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/012_template_feature_profiles.sql",
+      "creates": [],
+      "alters": [],
+      "indexes": [],
+      "references": [],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/013_expanded_system_templates.sql",
+      "creates": [],
+      "alters": [],
+      "indexes": [],
+      "references": [],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/014_more_system_templates.sql",
+      "creates": [],
+      "alters": [],
+      "indexes": [],
+      "references": [],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/015_single_account_device.sql",
+      "creates": [
+        "appforge_account_devices"
+      ],
+      "alters": [],
+      "indexes": [
+        "idx_account_devices_user"
+      ],
+      "references": [
+        "appforge_users"
+      ],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/016_multi_account_devices.sql",
+      "creates": [],
+      "alters": [
+        "appforge_account_devices"
+      ],
+      "indexes": [
+        "idx_account_devices_user_last_seen"
+      ],
+      "references": [],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/017_queue_scale_protection.sql",
+      "creates": [],
+      "alters": [],
+      "indexes": [
+        "idx_build_jobs_queued_priority",
+        "idx_build_jobs_user_active"
+      ],
+      "references": [],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/018_full_admin_access.sql",
+      "creates": [],
+      "alters": [],
+      "indexes": [],
+      "references": [],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/019_user_free_project_limits.sql",
+      "creates": [
+        "appforge_user_project_limits"
+      ],
+      "alters": [],
+      "indexes": [
+        "idx_appforge_user_project_limits_limit"
+      ],
+      "references": [
+        "appforge_users"
+      ],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/020_legacy_device_login_permission.sql",
+      "creates": [],
+      "alters": [
+        "appforge_users"
+      ],
+      "indexes": [],
+      "references": [],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/021_success_project_quotas.sql",
+      "creates": [
+        "appforge_migration_markers",
+        "appforge_pro_monthly_project_slots",
+        "appforge_project_quota_reservations"
+      ],
+      "alters": [],
+      "indexes": [
+        "idx_appforge_pro_monthly_slots_user_cycle",
+        "idx_appforge_quota_reservations_expiry"
+      ],
+      "references": [
+        "appforge_users"
+      ],
+      "destructive": [
+        "DELETE FROM"
+      ]
+    }
+  ],
+  "destructive_migrations": [
+    {
+      "file": "build-service/sql/021_success_project_quotas.sql",
+      "operations": [
+        "DELETE FROM"
+      ]
+    }
+  ],
+  "usage": {
+    "appforge_account_devices": [
+      "build-service/src/auth.js",
+      "build-service/tests/multi_device_account.test.js",
+      "build-service/tests/single_device_account.test.js"
+    ],
+    "appforge_api_tokens": [
+      "build-service/src/auth.js"
+    ],
+    "appforge_auth_tokens": [
+      "build-service/src/security.js"
+    ],
+    "appforge_build_cache": [
+      "build-service/src/buildCache.js"
+    ],
+    "appforge_build_events": [
+      "build-service/src/jobQueue.js"
+    ],
+    "appforge_build_jobs": [
+      "build-service/src/accountDeletion.js",
+      "build-service/src/jobQueue.js"
+    ],
+    "appforge_build_log_lines": [
+      "build-service/server.js",
+      "build-service/src/buildLogs.js"
+    ],
+    "appforge_builds": [
+      "build-service/server.js",
+      "build-service/src/accountDeletion.js",
+      "build-service/src/analytics.js",
+      "build-service/src/buildEngine.js",
+      "build-service/src/buildLogs.js",
+      "build-service/src/jobQueue.js",
+      "build-service/src/projectQuotaV2.js",
+      "build-service/src/publish.js",
+      "build-service/src/unityLicensedBuild.js",
+      "build-service/src/windowsBuild.js",
+      "build-service/src/workspaceBuild.js"
+    ],
+    "appforge_download_tickets": [
+      "build-service/src/downloadTickets.js"
+    ],
+    "appforge_free_project_slots": [
+      "build-service/server.js",
+      "build-service/src/projectQuotaV2.js",
+      "build-service/tests/user_project_limit_contract.test.js",
+      "build-service/tests/v2_7_lifetime_trial_slots.test.js"
+    ],
+    "appforge_idempotency_keys": [
+      "build-service/src/idempotency.js"
+    ],
+    "appforge_integrity_audits": [
+      "build-service/src/studioIntegrity.js"
+    ],
+    "appforge_localizations": [
+      "build-service/src/projects.js"
+    ],
+    "appforge_migration_markers": [
+      "build-service/tests/v2_7_lifetime_trial_slots.test.js"
+    ],
+    "appforge_permission_audit": [
+      "build-service/src/permissions.js"
+    ],
+    "appforge_play_purchases": [
+      "build-service/server.js",
+      "build-service/src/playVerifier.js"
+    ],
+    "appforge_pro_entitlements": [
+      "build-service/server.js",
+      "build-service/src/proEntitlements.js"
+    ],
+    "appforge_pro_monthly_project_slots": [
+      "build-service/src/projectQuotaV2.js",
+      "build-service/tests/user_project_limit_contract.test.js",
+      "build-service/tests/v2_7_lifetime_trial_slots.test.js"
+    ],
+    "appforge_project_files": [
+      "build-service/src/workspace.js"
+    ],
+    "appforge_project_quota_reservations": [
+      "build-service/src/jobQueue.js",
+      "build-service/src/projectQuotaV2.js",
+      "build-service/tests/v2_6_project_quota.test.js",
+      "build-service/tests/v2_7_lifetime_trial_slots.test.js"
+    ],
+    "appforge_project_revisions": [
+      "build-service/src/workspace.js"
+    ],
+    "appforge_projects": [
+      "build-service/src/projects.js",
+      "build-service/src/workspace.js"
+    ],
+    "appforge_publish_jobs": [
+      "build-service/src/publish.js"
+    ],
+    "appforge_team_invites": [
+      "build-service/src/teams.js"
+    ],
+    "appforge_team_members": [
+      "build-service/src/permissions.js",
+      "build-service/src/teams.js"
+    ],
+    "appforge_teams": [
+      "build-service/server.js",
+      "build-service/src/teams.js"
+    ],
+    "appforge_templates": [
+      "build-service/src/projects.js"
+    ],
+    "appforge_user_project_limits": [
+      "build-service/server.js",
+      "build-service/src/projectQuotaV2.js",
+      "build-service/tests/user_project_limit_contract.test.js"
+    ],
+    "appforge_users": [
+      "build-service/server.js",
+      "build-service/src/accountDeletion.js",
+      "build-service/src/auth.js",
+      "build-service/src/jobQueue.js",
+      "build-service/src/permissions.js",
+      "build-service/src/proEntitlements.js",
+      "build-service/src/projectQuotaV2.js",
+      "build-service/src/security.js",
+      "build-service/src/teams.js",
+      "build-service/src/workspace.js"
+    ],
+    "appforge_workers": [
+      "build-service/server.js",
+      "build-service/src/jobQueue.js"
+    ]
+  }
+}

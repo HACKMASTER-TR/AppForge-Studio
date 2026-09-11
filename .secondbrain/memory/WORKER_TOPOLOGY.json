@@ -1,0 +1,84 @@
+{
+  "generated_at": "2026-09-12T00:34:19+03:00",
+  "runtime_scripts": [
+    {
+      "name": "start",
+      "command": "node --import ./instrument.mjs server.js"
+    },
+    {
+      "name": "worker",
+      "command": "node --import ./instrument.mjs worker.js"
+    },
+    {
+      "name": "worker:unity",
+      "command": "node --import ./instrument.mjs unity-worker.js"
+    },
+    {
+      "name": "worker:source",
+      "command": "node --import ./instrument.mjs source-worker.js"
+    }
+  ],
+  "dockerfiles": [
+    "build-service/Dockerfile",
+    "build-service/Dockerfile.api",
+    "build-service/Dockerfile.source-worker",
+    "build-service/Dockerfile.windows-worker",
+    "build-service/Dockerfile.worker"
+  ],
+  "workflows": [
+    {
+      "file": ".github/workflows/android-debug.yml",
+      "worker_related": false,
+      "railway_related": true,
+      "android_related": true
+    },
+    {
+      "file": ".github/workflows/android-play-release.yml",
+      "worker_related": false,
+      "railway_related": true,
+      "android_related": true
+    },
+    {
+      "file": ".github/workflows/cleanup-old-runs.yml",
+      "worker_related": false,
+      "railway_related": true,
+      "android_related": false
+    },
+    {
+      "file": ".github/workflows/conversion-smoke.yml",
+      "worker_related": false,
+      "railway_related": true,
+      "android_related": false
+    },
+    {
+      "file": ".github/workflows/production-automation.yml",
+      "worker_related": true,
+      "railway_related": true,
+      "android_related": true
+    },
+    {
+      "file": ".github/workflows/source-worker-image.yml",
+      "worker_related": true,
+      "railway_related": true,
+      "android_related": false
+    },
+    {
+      "file": ".github/workflows/windows-worker-image.yml",
+      "worker_related": true,
+      "railway_related": true,
+      "android_related": false
+    },
+    {
+      "file": ".github/workflows/worker-autoscale.yml",
+      "worker_related": true,
+      "railway_related": true,
+      "android_related": false
+    },
+    {
+      "file": ".github/workflows/worker-image.yml",
+      "worker_related": true,
+      "railway_related": true,
+      "android_related": false
+    }
+  ]
+}
