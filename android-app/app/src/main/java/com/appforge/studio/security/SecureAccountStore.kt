@@ -725,6 +725,13 @@ object SecureAccountStore {
             .apply()
     }
 
+    fun activeAccountScope(
+        context: Context
+    ): String =
+        accountScope(
+            context
+        )
+
     private fun accountScope(
         context: Context
     ): String =

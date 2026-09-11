@@ -1483,6 +1483,24 @@ private class LocalInteractivePtySession(
                         null
                     }
 
+                /*
+                 * SECURITY:
+                 * Logged-in accounts must never fall back to the shared
+                 * Android host shell. A new account waits for its own
+                 * isolated Linux rootfs instead.
+                 */
+                if (
+                    SecureAccountStore
+                        .loadSession(
+                            appContext
+                        ) != null &&
+                    linuxRootfs == null
+                ) {
+                    error(
+                        "Hesaba özel Linux terminal ortamı henüz hazır değil."
+                    )
+                }
+
                 val spawned =
                     if (linuxRootfs != null) {
                         linuxMode = true
@@ -1523,8 +1541,9 @@ private class LocalInteractivePtySession(
 
                         val runtimeTemp =
                             File(
-                                appContext.filesDir,
-                                "terminal/linux/proroot-tmp"
+                                linuxRootfs.parentFile
+                                    ?: linuxRootfs,
+                                "proroot-tmp"
                             ).apply {
                                 mkdirs()
                             }

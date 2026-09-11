@@ -3,6 +3,8 @@ package com.appforge.studio.terminal
 import android.content.Context
 import android.os.Build
 import android.net.ConnectivityManager
+import com.appforge.studio.security.OwnerAccessPolicy
+import com.appforge.studio.security.SecureAccountStore
 import java.io.File
 import java.security.MessageDigest
 import java.nio.file.Files
@@ -29,10 +31,35 @@ internal class AndroidLinuxRuntimeManager(
         context.applicationContext
 
     private val linuxBaseDirectory =
-        File(
-            appContext.noBackupFilesDir,
-            "terminal/linux"
-        )
+        if (
+            OwnerAccessPolicy.isActiveOwner(
+                appContext
+            )
+        ) {
+            /*
+             * Owner keeps the existing trusted Linux environment.
+             * This preserves the current AppForge development workspace.
+             */
+            File(
+                appContext.noBackupFilesDir,
+                "terminal/linux"
+            )
+        } else {
+            /*
+             * Every non-owner account receives a physically separate
+             * rootfs. No owner /root contents are shared or mounted.
+             */
+            File(
+                File(
+                    appContext.noBackupFilesDir,
+                    "terminal/linux-accounts"
+                ),
+                SecureAccountStore
+                    .activeAccountScope(
+                        appContext
+                    )
+            )
+        }
 
     private val packagedLinuxEngine =
         PackagedLinuxEngine(

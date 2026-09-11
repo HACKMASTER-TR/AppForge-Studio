@@ -101,8 +101,9 @@ internal class InteractiveLinuxPtySession(
 
                 val runtimeTemp =
                     File(
-                        appContext.filesDir,
-                        "terminal/linux/proroot-tmp"
+                        rootfs.parentFile
+                            ?: rootfs,
+                        "proroot-tmp"
                     ).apply {
                         mkdirs()
                     }.canonicalFile
