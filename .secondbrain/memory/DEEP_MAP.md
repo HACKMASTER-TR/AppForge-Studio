@@ -1,15 +1,193 @@
-# Test Map
+# AppForge Studio — Deep Project Map
 
 Generated: 2026-09-12T00:11:12+03:00
 
-## Recommended for current change
+## API Routes
 
-- `Run tests for the nearest affected module`
+| Method | Route | Source |
+| --- | --- | --- |
+| GET | /health | build-service/server.js |
+| GET | /ready | build-service/server.js |
+| GET | /api/admin/system-status | build-service/server.js |
+| GET | /api/admin/users | build-service/server.js |
+| POST | /api/admin/users | build-service/server.js |
+| POST | /api/admin/users/:userId/pro | build-service/server.js |
+| POST | /api/admin/users/:userId/legacy-device-login | build-service/server.js |
+| POST | /api/admin/users/:userId/project-limit | build-service/server.js |
+| POST | /api/admin/autoscale/dispatch | build-service/server.js |
+| POST | /api/admin/build-statuses | build-service/server.js |
+| POST | /api/auth/register | build-service/server.js |
+| POST | /api/auth/login | build-service/server.js |
+| POST | /api/auth/2fa/verify-login | build-service/server.js |
+| POST | /api/auth/device-transfer | build-service/server.js |
+| OPTIONS | /api/auth/delete-account | build-service/server.js |
+| POST | /api/auth/delete-account | build-service/server.js |
+| POST | /api/auth/verify-email | build-service/server.js |
+| POST | /api/auth/resend-verification | build-service/server.js |
+| POST | /api/auth/forgot-password | build-service/server.js |
+| POST | /api/auth/reset-password | build-service/server.js |
+| GET | /api/auth/me | build-service/server.js |
+| POST | /api/auth/2fa/setup | build-service/server.js |
+| POST | /api/auth/2fa/confirm | build-service/server.js |
+| DELETE | /api/auth/2fa | build-service/server.js |
+| GET | /api/auth/api-tokens | build-service/server.js |
+| POST | /api/auth/api-tokens | build-service/server.js |
+| DELETE | /api/auth/api-tokens/:id | build-service/server.js |
+| GET | /api/teams | build-service/server.js |
+| POST | /api/teams | build-service/server.js |
+| GET | /api/teams/:id/members | build-service/server.js |
+| POST | /api/teams/:id/invites | build-service/server.js |
+| POST | /api/team-invites/accept | build-service/server.js |
+| GET | /api/teams/:id/permissions | build-service/server.js |
+| PUT | /api/teams/:id/permissions/:userId | build-service/server.js |
+| GET | /api/teams/:id/api-tokens | build-service/server.js |
+| POST | /api/teams/:id/api-tokens | build-service/server.js |
+| POST | /api/v5/scaffold | build-service/server.js |
+| GET | /api/projects | build-service/server.js |
+| GET | /api/projects/quota | build-service/server.js |
+| POST | /api/projects | build-service/server.js |
+| DELETE | /api/projects/:id | build-service/server.js |
+| GET | /api/templates | build-service/server.js |
+| GET | /api/projects/:id/localizations | build-service/server.js |
+| PUT | /api/projects/:id/localizations/:locale | build-service/server.js |
+| GET | /api/projects/:id/files | build-service/server.js |
+| PUT | /api/projects/:id/files | build-service/server.js |
+| DELETE | /api/projects/:id/files | build-service/server.js |
+| GET | /api/projects/:id/revisions | build-service/server.js |
+| POST | /api/projects/:id/revisions | build-service/server.js |
+| GET | /api/projects/:id/diff | build-service/server.js |
+| POST | /api/projects/:id/github/import | build-service/server.js |
+| POST | /api/projects/:id/builds | build-service/server.js |
+| POST | /api/projects/:id/revisions/:revisionId/restore | build-service/server.js |
+| GET | /api/projects/:id/search | build-service/server.js |
+| GET | /api/analytics/builds | build-service/server.js |
+| POST | /api/uploads/build-input | build-service/server.js |
+| GET | /api/builds | build-service/server.js |
+| GET | /api/builds/:id | build-service/server.js |
+| POST | /api/builds | build-service/server.js |
+| GET | /api/builds/:id/test-lab | build-service/server.js |
+| GET | /api/builds/compare | build-service/server.js |
+| GET | /api/builds/:id/release-notes | build-service/server.js |
+| GET | /api/builds/:id/artifacts | build-service/server.js |
+| GET | /api/builds/:id/logs | build-service/server.js |
+| GET | /api/builds/:id/logs.txt | build-service/server.js |
+| GET | /api/builds/:id/events | build-service/server.js |
+| POST | /api/builds/:id/cancel | build-service/server.js |
+| PATCH | /api/builds/:id/priority | build-service/server.js |
+| POST | /api/builds/:id/download-ticket | build-service/server.js |
+| GET | /download/:token | build-service/server.js |
+| GET | /api/security/config | build-service/server.js |
+| POST | /api/security/attest | build-service/server.js |
+| GET | /api/pro/status | build-service/server.js |
+| POST | /api/pro/activate | build-service/server.js |
+| POST | /api/admin/pro/grant | build-service/server.js |
+| POST | /api/admin/pro/revoke | build-service/server.js |
+| POST | /api/verify-purchase | build-service/server.js |
+| GET | /api/publish-drafts | build-service/server.js |
+| POST | /api/publish-drafts | build-service/server.js |
+| GET | /api/admin/purchases | build-service/server.js |
+| GET | /api/admin/workers | build-service/server.js |
+| GET | /api/admin/overview | build-service/server.js |
 
-## Discovered test files
+
+## Database
+
+Detected tables / schema objects: **30**
+
+- `appforge_account_devices`
+- `appforge_api_tokens`
+- `appforge_auth_tokens`
+- `appforge_build_cache`
+- `appforge_build_events`
+- `appforge_build_jobs`
+- `appforge_build_log_lines`
+- `appforge_builds`
+- `appforge_download_tickets`
+- `appforge_free_project_slots`
+- `appforge_idempotency_keys`
+- `appforge_integrity_audits`
+- `appforge_localizations`
+- `appforge_migration_markers`
+- `appforge_permission_audit`
+- `appforge_play_purchases`
+- `appforge_pro_entitlements`
+- `appforge_pro_monthly_project_slots`
+- `appforge_project_files`
+- `appforge_project_quota_reservations`
+- `appforge_project_revisions`
+- `appforge_projects`
+- `appforge_publish_jobs`
+- `appforge_team_invites`
+- `appforge_team_members`
+- `appforge_teams`
+- `appforge_templates`
+- `appforge_user_project_limits`
+- `appforge_users`
+- `appforge_workers`
+
+### Migrations
+
+| Migration | Creates | Alters |
+| --- | --- | --- |
+| build-service/sql/001_init.sql | appforge_api_tokens, appforge_builds, appforge_localizations, appforge_projects, appforge_publish_jobs, appforge_templates, appforge_users | - |
+| build-service/sql/002_teams_workers.sql | appforge_build_events, appforge_build_jobs, appforge_team_invites, appforge_team_members, appforge_teams | appforge_builds, appforge_projects |
+| build-service/sql/003_security_storage_workers.sql | appforge_auth_tokens, appforge_workers | appforge_api_tokens, appforge_build_jobs, appforge_users |
+| build-service/sql/004_permissions_cache.sql | appforge_build_cache, appforge_permission_audit | appforge_builds, appforge_team_invites, appforge_team_members |
+| build-service/sql/005_workspace_build_control.sql | appforge_project_files, appforge_project_revisions | appforge_builds, appforge_projects |
+| build-service/sql/006_worker_toolchain_artifacts.sql | - | appforge_builds, appforge_workers |
+| build-service/sql/007_live_operations.sql | appforge_build_log_lines, appforge_download_tickets, appforge_idempotency_keys | appforge_builds |
+| build-service/sql/008_secure_commerce.sql | appforge_play_purchases | - |
+| build-service/sql/009_pro_integrity_security.sql | appforge_integrity_audits, appforge_pro_entitlements | - |
+| build-service/sql/010_permanent_project_trial_slots.sql | appforge_free_project_slots | - |
+| build-service/sql/011_build_numbers.sql | - | appforge_builds |
+| build-service/sql/011_more_system_templates.sql | - | - |
+| build-service/sql/012_template_feature_profiles.sql | - | - |
+| build-service/sql/013_expanded_system_templates.sql | - | - |
+| build-service/sql/014_more_system_templates.sql | - | - |
+| build-service/sql/015_single_account_device.sql | appforge_account_devices | - |
+| build-service/sql/016_multi_account_devices.sql | - | appforge_account_devices |
+| build-service/sql/017_queue_scale_protection.sql | - | - |
+| build-service/sql/018_full_admin_access.sql | - | - |
+| build-service/sql/019_user_free_project_limits.sql | appforge_user_project_limits | - |
+| build-service/sql/020_legacy_device_login_permission.sql | - | appforge_users |
+| build-service/sql/021_success_project_quotas.sql | appforge_migration_markers, appforge_pro_monthly_project_slots, appforge_project_quota_reservations | - |
+
+
+## Worker Runtime
+
+| Script | Command |
+| --- | --- |
+| start | node --import ./instrument.mjs server.js |
+| worker | node --import ./instrument.mjs worker.js |
+| worker:unity | node --import ./instrument.mjs unity-worker.js |
+| worker:source | node --import ./instrument.mjs source-worker.js |
+
+
+### Worker Dockerfiles
+
+- `build-service/Dockerfile`
+- `build-service/Dockerfile.api`
+- `build-service/Dockerfile.source-worker`
+- `build-service/Dockerfile.windows-worker`
+- `build-service/Dockerfile.worker`
+
+## GitHub Actions
+
+- `.github/workflows/android-debug.yml`
+- `.github/workflows/android-play-release.yml`
+- `.github/workflows/cleanup-old-runs.yml`
+- `.github/workflows/conversion-smoke.yml`
+- `.github/workflows/production-automation.yml`
+- `.github/workflows/source-worker-image.yml`
+- `.github/workflows/windows-worker-image.yml`
+- `.github/workflows/worker-autoscale.yml`
+- `.github/workflows/worker-image.yml`
+
+## Tests
+
+Detected test files: **225**
 
 - `AppForgeStudio-latest.apk`
-- `android-app/app/src/main/assets/terminal/appforge-test`
 - `android-app/app/src/test/java/com/appforge/studio/BuildRuntimeStateTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/task/AppForgeTaskManagerTest.kt`
@@ -209,29 +387,16 @@ Generated: 2026-09-12T00:11:12+03:00
 - `build-service/tests/technology_support_matrix.test.js`
 - `build-service/tests/terminal_bracketed_paste_mode_contract.test.js`
 - `build-service/tests/toolchain.test.js`
-- `build-service/tests/unity_android_build_engine.test.js`
-- `build-service/tests/unity_licensed_build_engine.test.js`
-- `build-service/tests/unity_worker_contract.test.js`
-- `build-service/tests/unknown_web_fallback.test.js`
-- `build-service/tests/user_project_limit_contract.test.js`
-- `build-service/tests/v2_1_template_browser.test.js`
-- `build-service/tests/v2_2_settings_languages.test.js`
-- `build-service/tests/v2_3_anti_mod.test.js`
-- `build-service/tests/v2_4_pro_plans.test.js`
-- `build-service/tests/v2_5_watermark.test.js`
-- `build-service/tests/v2_6_project_quota.test.js`
-- `build-service/tests/v2_7_lifetime_trial_slots.test.js`
-- `build-service/tests/v2_8_production_preview.test.js`
-- `build-service/tests/v2_9_test_lab_inspector.test.js`
-- `build-service/tests/v2_create_modes.test.js`
-- `build-service/tests/v3_0_local_ai.test.js`
-- `build-service/tests/v3_1_expansion_performance.test.js`
-- `build-service/tests/v5_studio.test.js`
-- `build-service/tests/validators.test.js`
-- `build-service/tests/webview_pro_settings.test.js`
-- `build-service/tests/windows_exe_regression.test.js`
-- `build-service/tests/windows_exe_source_guard.test.js`
-- `build-service/tests/windows_exe_studio.test.js`
-- `build-service/tests/worker_presence_cancel_regression.test.js`
-- `build-service/tests/workspace.test.js`
-- `docs/V2_9_TEST_LAB_INSPECTOR.md`
+
+## Product Surfaces
+
+- Android: `{'detected': True, 'paths': ['android-app']}`
+- Web: `{'detected': False, 'paths': []}`
+- Desktop: `{'detected': True, 'paths': ['desktop-app']}`
+
+## Rules
+
+- This map is generated from repository evidence.
+- Missing Web/Desktop paths are reported as missing, not guessed.
+- Database schema is derived from SQL migrations.
+- Live deployment health is not inferred from this file.

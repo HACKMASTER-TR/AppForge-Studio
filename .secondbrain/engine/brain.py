@@ -18,6 +18,8 @@ MEM = SB / "memory"
 REPORTS = SB / "reports"
 RUNTIME = SB / "runtime"
 CHECKPOINTS = SB / "checkpoints"
+DEEP_MAP_ENGINE = SB / "engine" / "deep_map.py"
+DEEP_MAP_JSON = MEM / "DEEP_MAP.json"
 
 TEXT_EXTS = {
     ".kt", ".kts", ".java", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx",
@@ -155,10 +157,36 @@ CORE_UNTRACKED_PREFIXES = (
 
 
 def is_brain_path(name):
-    return any(
-        name == x or name.startswith(x)
-        for x in BRAIN_PATHS
-    )
+    normalized = str(name).replace("\\", "/").strip()
+
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+
+    variants = {normalized}
+
+    # Bazı terminal/git ortamlarında ".secondbrain" başındaki nokta
+    # normalize edilmiş biçimde dönebiliyor. İki formu da brain kabul et.
+    if normalized == "secondbrain":
+        variants.add(".secondbrain")
+
+    if normalized.startswith("secondbrain/"):
+        variants.add("." + normalized)
+
+    for candidate in variants:
+        if (
+            candidate == ".secondbrain"
+            or candidate.startswith(".secondbrain/")
+        ):
+            return True
+
+        if any(
+            candidate == x
+            or candidate.startswith(x)
+            for x in BRAIN_PATHS
+        ):
+            return True
+
+    return False
 
 
 def is_analyzable_path(name):
@@ -918,6 +946,7 @@ def write_memory():
     security = security_data(full=False)
     release = release_data()
     perf = performance_data()
+    deep = run_deep_map()
 
     branch = release["branch"]
     head = release["head"]
@@ -937,6 +966,8 @@ Generated: {now()}
 - SECURITY.md
 - PERFORMANCE.md
 - RELEASES.md
+- DEEP_MAP.md
+- DEEP_MAP.json
 - DECISIONS.md
 - BUGS.md
 
@@ -1094,7 +1125,8 @@ This page is generated from repository structure and must not override source.
         "tests": tests,
         "security": security,
         "release": release,
-        "performance": perf
+        "performance": perf,
+        "deep_map": deep
     }
 
 def checkpoint(label):
@@ -1125,6 +1157,7 @@ def latest_report(label="analysis"):
     plan = task_plan_data()
     release = release_data()
     perf = performance_data()
+    deep = load_deep_map()
 
     data = {
         "generated_at": now(),
@@ -1135,7 +1168,8 @@ def latest_report(label="analysis"):
         "tests": tests,
         "plan": plan,
         "release": release,
-        "performance": perf
+        "performance": perf,
+        "deep_map": deep
     }
 
     (REPORTS / "LATEST.json").write_text(
@@ -1171,6 +1205,31 @@ def latest_report(label="analysis"):
         f"- HEAD: `{release['head']}`",
         "- Live production health: `NOT_CHECKED`",
         "",
+        "## Deep Project Map",
+        (
+            f"- API routes: {len((deep or {}).get('api', []))}"
+        ),
+        (
+            "- Database tables: "
+            f"{len(((deep or {}).get('database') or {}).get('tables', []))}"
+        ),
+        (
+            "- SQL migrations: "
+            f"{len(((deep or {}).get('database') or {}).get('migrations', []))}"
+        ),
+        (
+            "- Worker runtime scripts: "
+            f"{len(((deep or {}).get('workers') or {}).get('runtime_scripts', []))}"
+        ),
+        (
+            "- GitHub workflows: "
+            f"{len((deep or {}).get('workflows', []))}"
+        ),
+        (
+            "- Test files: "
+            f"{len((deep or {}).get('tests', []))}"
+        ),
+        "",
         "## Performance",
         f"- Brain scan: {perf['brain_scan_ms']} ms",
         "- Application build P50/P95: NOT_MEASURED",
@@ -1188,7 +1247,8 @@ def doctor():
         "README": (ROOT / "README.md").is_file(),
         "old .appforge-brain absent": not (ROOT / ".appforge-brain").exists(),
         "old docs/wiki absent": not (ROOT / "docs/wiki").exists(),
-        "engine": Path(__file__).exists()
+        "engine": Path(__file__).exists(),
+        "deep-map engine": DEEP_MAP_ENGINE.is_file()
     }
 
     ok = True
@@ -1197,18 +1257,71 @@ def doctor():
         ok = ok and result
 
     print("Python:", sys.version.split()[0])
-    print("Second Brain:", "2.0.0")
+    print("Second Brain:", "2.1.0")
     return 0 if ok else 1
+
+def run_deep_map():
+    if not DEEP_MAP_ENGINE.is_file():
+        raise RuntimeError(
+            "Deep Map engine missing: "
+            + rel(DEEP_MAP_ENGINE)
+        )
+
+    result = run([
+        sys.executable,
+        str(DEEP_MAP_ENGINE)
+    ])
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            result.stderr.strip()
+            or result.stdout.strip()
+            or "Deep Map failed"
+        )
+
+    if not DEEP_MAP_JSON.is_file():
+        raise RuntimeError(
+            "Deep Map output missing: "
+            + rel(DEEP_MAP_JSON)
+        )
+
+    try:
+        return json.loads(
+            DEEP_MAP_JSON.read_text(
+                encoding="utf-8"
+            )
+        )
+    except Exception as error:
+        raise RuntimeError(
+            "Deep Map JSON invalid: "
+            + str(error)
+        )
+
+
+def load_deep_map():
+    if not DEEP_MAP_JSON.is_file():
+        return None
+
+    try:
+        return json.loads(
+            DEEP_MAP_JSON.read_text(
+                encoding="utf-8"
+            )
+        )
+    except Exception:
+        return None
+
 
 def print_json(data):
     print(json.dumps(data, indent=2, ensure_ascii=False))
+
 
 def main():
     parser = argparse.ArgumentParser(prog="brain")
     parser.add_argument("command", choices=[
         "doctor", "scan", "impact", "risk", "security",
         "test-plan", "plan", "next", "gate", "maps",
-        "release", "performance", "sync", "checkpoint",
+        "release", "performance", "deep-map", "sync", "checkpoint",
         "session", "all"
     ])
     parser.add_argument("label", nargs="?", default="")
@@ -1241,6 +1354,25 @@ def main():
 
     elif args.command == "performance":
         print_json(performance_data())
+
+    elif args.command == "deep-map":
+        data = run_deep_map()
+        print("PASS - Deep Project Map generated")
+        print("API routes:", len(data.get("api", [])))
+        print(
+            "Database tables:",
+            len((data.get("database") or {}).get("tables", []))
+        )
+        print(
+            "Migrations:",
+            len((data.get("database") or {}).get("migrations", []))
+        )
+        print(
+            "Worker scripts:",
+            len((data.get("workers") or {}).get("runtime_scripts", []))
+        )
+        print("Workflows:", len(data.get("workflows", [])))
+        print("Tests:", len(data.get("tests", [])))
 
     elif args.command in ("maps", "sync"):
         data = write_memory()
@@ -1282,6 +1414,25 @@ def main():
         print("Security:", data["security"]["health"])
         print("Changed source files:", len(data["impact"]["changed_files"]))
         print("Domains:", ", ".join(data["impact"]["domains"]) or "none")
+
+        deep = data.get("deep_map") or {}
+
+        print("API routes:", len(deep.get("api", [])))
+        print(
+            "Database tables:",
+            len((deep.get("database") or {}).get("tables", []))
+        )
+        print(
+            "Migrations:",
+            len((deep.get("database") or {}).get("migrations", []))
+        )
+        print(
+            "Worker scripts:",
+            len((deep.get("workers") or {}).get("runtime_scripts", []))
+        )
+        print("Workflows:", len(deep.get("workflows", [])))
+        print("Tests:", len(deep.get("tests", [])))
+
         print("Checkpoint:", rel(p))
         print("Report: .secondbrain/reports/LATEST.md")
 

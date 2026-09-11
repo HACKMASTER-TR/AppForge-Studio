@@ -1,6 +1,6 @@
 # Second Brain V2 — Index
 
-Generated: 2026-09-11T23:57:58+03:00
+Generated: 2026-09-12T00:11:12+03:00
 
 ## Core memory
 
@@ -13,6 +13,8 @@ Generated: 2026-09-11T23:57:58+03:00
 - SECURITY.md
 - PERFORMANCE.md
 - RELEASES.md
+- DEEP_MAP.md
+- DEEP_MAP.json
 - DECISIONS.md
 - BUGS.md
 

@@ -1,10 +1,12 @@
 # AppForge Studio — Second Brain V2
 
-Version: 2.0.0
+Version: 2.1.0
 
 This is the clean replacement for all previous AppForge Second Brain systems.
 
 ## Engines
+
+- Deep Project Mapper
 
 - Code Analyzer
 - Dependency Analyzer
@@ -38,6 +40,7 @@ This is the clean replacement for all previous AppForge Second Brain systems.
 ./scripts/brain maps
 ./scripts/brain release
 ./scripts/brain performance
+./scripts/brain deep-map
 ./scripts/brain sync
 ./scripts/brain checkpoint "name"
 ./scripts/brain session
