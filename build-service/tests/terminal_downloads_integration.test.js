@@ -122,3 +122,19 @@ test(
     );
   },
 );
+
+
+test(
+  "downloads panel avoids invalid Compose weight import",
+  () => {
+    assert.doesNotMatch(
+      panel,
+      /^import androidx\.compose\.foundation\.layout\.weight$/m,
+    );
+
+    assert.match(
+      panel,
+      /\.weight\(1f\)/,
+    );
+  },
+);
