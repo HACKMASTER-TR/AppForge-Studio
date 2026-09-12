@@ -16,7 +16,11 @@ data class StudioPlanPrice(
     val lifetimePrice: String? = null,
     val monthlyPrice: String? = null,
     val lifetimeAvailable: Boolean = false,
-    val monthlyAvailable: Boolean = false
+    val monthlyAvailable: Boolean = false,
+    val quotaAddonPrices: Map<String, String> =
+        emptyMap(),
+    val quotaAddonAvailability: Map<String, Boolean> =
+        emptyMap()
 )
 
 data class StudioPurchaseResult(
@@ -29,7 +33,9 @@ class StudioBillingManager(
     private val lifetimeProductId: String,
     private val monthlyProductId: String,
     private val onPurchase: (StudioPurchaseResult) -> Unit,
-    private val onMessage: (String) -> Unit
+    private val onMessage: (String) -> Unit,
+    private val quotaAddonProductIds: List<String> =
+        emptyList()
 ) : PurchasesUpdatedListener {
     private val appContext =
         context.applicationContext
@@ -41,6 +47,13 @@ class StudioBillingManager(
     private var monthlyDetails:
         ProductDetails? =
         null
+
+
+    private val quotaAddonDetails =
+        linkedMapOf<
+            String,
+            ProductDetails
+        >()
 
     private val billingClient =
         BillingClient
@@ -112,6 +125,9 @@ class StudioBillingManager(
         monthlyDetails =
             null
 
+        quotaAddonDetails
+            .clear()
+
         fun finish() {
             val lifetimePrice =
                 lifetimeDetails
@@ -131,6 +147,33 @@ class StudioBillingManager(
                     ?.firstOrNull()
                     ?.formattedPrice
 
+            val addonPrices =
+                quotaAddonDetails
+                    .mapValues {
+                        (_, details) ->
+                        details
+                            .oneTimePurchaseOfferDetailsList
+                            ?.firstOrNull()
+                            ?.formattedPrice
+                            ?: details
+                                .oneTimePurchaseOfferDetails
+                                ?.formattedPrice
+                            ?: ""
+                    }
+                    .filterValues {
+                        it.isNotBlank()
+                    }
+
+            val addonAvailability =
+                quotaAddonProductIds
+                    .associateWith {
+                        productId ->
+                        quotaAddonDetails
+                            .containsKey(
+                                productId
+                            )
+                    }
+
             onResult(
                 StudioPlanPrice(
                     lifetimePrice =
@@ -142,7 +185,11 @@ class StudioBillingManager(
                         null,
                     monthlyAvailable =
                         monthlyDetails !=
-                        null
+                        null,
+                    quotaAddonPrices =
+                        addonPrices,
+                    quotaAddonAvailability =
+                        addonAvailability
                 )
             )
         }
@@ -214,41 +261,63 @@ class StudioBillingManager(
                 }
         }
 
+        val inAppProductIds =
+            buildList {
+                if (
+                    lifetimeProductId
+                        .isNotBlank()
+                ) {
+                    add(
+                        lifetimeProductId
+                    )
+                }
+
+                addAll(
+                    quotaAddonProductIds
+                        .filter {
+                            it.isNotBlank()
+                        }
+                        .distinct()
+                )
+            }
+
         if (
-            lifetimeProductId
-                .isBlank()
+            inAppProductIds
+                .isEmpty()
         ) {
             queryMonthly()
             return
         }
 
-        val lifetimeProduct =
-            QueryProductDetailsParams
-                .Product
-                .newBuilder()
-                .setProductId(
-                    lifetimeProductId
-                )
-                .setProductType(
-                    BillingClient
-                        .ProductType
-                        .INAPP
-                )
-                .build()
+        val inAppProducts =
+            inAppProductIds
+                .map {
+                    productId ->
+                    QueryProductDetailsParams
+                        .Product
+                        .newBuilder()
+                        .setProductId(
+                            productId
+                        )
+                        .setProductType(
+                            BillingClient
+                                .ProductType
+                                .INAPP
+                        )
+                        .build()
+                }
 
-        val lifetimeParams =
+        val inAppParams =
             QueryProductDetailsParams
                 .newBuilder()
                 .setProductList(
-                    listOf(
-                        lifetimeProduct
-                    )
+                    inAppProducts
                 )
                 .build()
 
         billingClient
             .queryProductDetailsAsync(
-                lifetimeParams
+                inAppParams
             ) {
                 result,
                 detailsResult ->
@@ -259,19 +328,35 @@ class StudioBillingManager(
                         .BillingResponseCode
                         .OK
                 ) {
-                    lifetimeDetails =
-                        detailsResult
-                            .productDetailsList
-                            .firstOrNull {
-                                it.productId ==
+                    detailsResult
+                        .productDetailsList
+                        .forEach {
+                            details ->
+
+                            if (
+                                details.productId ==
                                     lifetimeProductId
+                            ) {
+                                lifetimeDetails =
+                                    details
                             }
+
+                            if (
+                                details.productId in
+                                    quotaAddonProductIds
+                            ) {
+                                quotaAddonDetails[
+                                    details.productId
+                                ] =
+                                    details
+                            }
+                        }
                 } else {
                     onMessage(
                         result
                             .debugMessage
                             .ifBlank {
-                                "Tek seferlik Pro fiyatı alınamadı."
+                                "Google Play tek seferlik ürünleri alınamadı."
                             }
                     )
                 }
@@ -321,6 +406,64 @@ class StudioBillingManager(
             builder.build()
         )
     }
+
+    fun launchQuotaAddon(
+        activity: Activity,
+        productId: String
+    ) {
+        if (
+            productId !in
+                quotaAddonProductIds
+        ) {
+            onMessage(
+                "Geçersiz AppForge ek kota ürünü."
+            )
+            return
+        }
+
+        val details =
+            quotaAddonDetails[
+                productId
+            ]
+
+        if (
+            details == null
+        ) {
+            onMessage(
+                "Ek kota ürünü Google Play'den henüz yüklenmedi."
+            )
+            return
+        }
+
+        val builder =
+            BillingFlowParams
+                .ProductDetailsParams
+                .newBuilder()
+                .setProductDetails(
+                    details
+                )
+
+        val offerToken =
+            details
+                .oneTimePurchaseOfferDetailsList
+                ?.firstOrNull()
+                ?.offerToken
+
+        if (
+            !offerToken
+                .isNullOrBlank()
+        ) {
+            builder.setOfferToken(
+                offerToken
+            )
+        }
+
+        launch(
+            activity,
+            builder.build()
+        )
+    }
+
 
     fun launchMonthly(
         activity: Activity

@@ -80,6 +80,7 @@ async function projectAccess(projectId, userId, permission) {
        team_id,
        name,
        package_name,
+       package_locked_at,
        config,
        source_repository
      FROM appforge_projects

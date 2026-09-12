@@ -12,8 +12,15 @@ import { putInput } from "./storage.js";
 import { enqueueJob } from "./jobQueue.js";
 import {
   reserveProjectQuota,
-  recordSuccessfulProject
+  recordSuccessfulBuild,
+  releaseBuildQuotaReservation,
+  releaseProjectQuotaReservation
 } from "./projectQuotaV2.js";
+
+import {
+  reserveMonthlyBuildQuota,
+  releaseMonthlyBuildQuotaReservation
+} from "./monthlyBuildQuota.js";
 import { enforceProForConfig, applyServerBranding } from "./proEntitlements.js";
 import {
   normalizeIdempotencyKey,
@@ -48,6 +55,129 @@ export async function submitWorkspaceBuild(
       "build.create"
     );
 
+  const storedPackageName =
+    String(
+      project.package_name ||
+      ""
+    ).trim();
+
+  const requestedPackageName =
+    String(
+      configOverride?.packageName ||
+      storedPackageName
+    ).trim();
+
+  if (!requestedPackageName) {
+    const error =
+      new Error(
+        "packageName gerekli."
+      );
+
+    error.statusCode = 400;
+    error.code =
+      "PACKAGE_NAME_REQUIRED";
+
+    throw error;
+  }
+
+  /*
+   * İlk başarılı build'den sonra aynı project_id artık
+   * başka package adına geçirilemez.
+   */
+  if (
+    project.package_locked_at &&
+    requestedPackageName !==
+      storedPackageName
+  ) {
+    const error =
+      new Error(
+        "Bu proje başarılı build aldığı için packageName kilitlidir. " +
+        "Yeni packageName kullanmak için yeni proje oluştur."
+      );
+
+    error.statusCode = 409;
+    error.code =
+      "PROJECT_PACKAGE_LOCKED";
+
+    throw error;
+  }
+
+  /*
+   * Henüz SUCCESS almamış taslak proje package adını
+   * değiştirebilir. Kimlik değişikliği DB'ye de yazılır.
+   */
+  if (
+    !project.package_locked_at &&
+    requestedPackageName !==
+      storedPackageName
+  ) {
+    try {
+      const updated =
+        await query(
+          `UPDATE appforge_projects
+           SET
+             package_name = $2,
+             config =
+               jsonb_set(
+                 COALESCE(
+                   config,
+                   '{}'::jsonb
+                 ),
+                 '{packageName}',
+                 to_jsonb($2::text),
+                 TRUE
+               ),
+             updated_at = NOW()
+           WHERE id = $1
+           RETURNING
+             package_name,
+             config`,
+          [
+            projectId,
+            requestedPackageName
+          ]
+        );
+
+      if (!updated.rowCount) {
+        const error =
+          new Error(
+            "Proje bulunamadı."
+          );
+
+        error.statusCode = 404;
+        throw error;
+      }
+
+      project.package_name =
+        updated.rows[0]
+          .package_name;
+
+      project.config =
+        updated.rows[0]
+          .config || {};
+    } catch (error) {
+      if (
+        String(
+          error?.code ||
+          ""
+        ) === "23505"
+      ) {
+        const conflict =
+          new Error(
+            "Bu packageName başka bir projede kullanılıyor."
+          );
+
+        conflict.statusCode = 409;
+        conflict.code =
+          "PROJECT_PACKAGE_CONFLICT";
+
+        throw conflict;
+      }
+
+      throw error;
+    }
+  }
+
   const tempDir =
     path.join(
       config.workRoot,
@@ -78,7 +208,6 @@ export async function submitWorkspaceBuild(
       configOverride.appName ||
       project.name,
     packageName:
-      configOverride.packageName ||
       project.package_name,
     sourceMode: "LOCAL",
     buildOutput,
@@ -223,6 +352,19 @@ export async function submitWorkspaceBuild(
     uuidv4();
 
   if (cached) {
+    /*
+     * Cache HIT de kullanıcıya teslim edilmiş başarılı build'dir.
+     */
+    await reserveMonthlyBuildQuota(
+      buildId,
+      userId,
+      {
+        projectId,
+        packageName:
+          c.packageName
+      }
+    );
+
     await fs.rm(
       tempZip,
       { force: true }
@@ -277,10 +419,30 @@ export async function submitWorkspaceBuild(
       ]
     );
 
-    await recordSuccessfulProject(
-      userId,
-      c.packageName
-    );
+    try {
+      await recordSuccessfulBuild(
+        buildId,
+        userId
+      );
+    } catch (error) {
+      try {
+        await releaseMonthlyBuildQuotaReservation(
+          buildId
+        );
+      } catch {}
+
+      try {
+        await releaseProjectQuotaReservation(
+          userId,
+          c.packageName,
+          {
+            force: true
+          }
+        );
+      } catch {}
+
+      throw error;
+    }
 
     await rememberIdempotency(
       userId,
@@ -354,22 +516,35 @@ export async function submitWorkspaceBuild(
           "gradle"
         ];
 
-  await enqueueJob({
-    buildId,
-    userId,
-    teamId:
-      project.team_id,
-    priority,
-    requiredCapabilities,
-    payload: {
-      config: c,
-      cacheKey,
-      projectRef,
-      keystoreRef: null,
-      iconRef: null,
-      firebaseConfigRef: null
-    }
-  });
+  try {
+    await enqueueJob({
+      buildId,
+      userId,
+      teamId:
+        project.team_id,
+      priority,
+      requiredCapabilities,
+      payload: {
+        config: c,
+        cacheKey,
+        projectRef,
+        keystoreRef: null,
+        iconRef: null,
+        firebaseConfigRef: null
+      }
+    });
+  } catch (error) {
+    try {
+      await releaseBuildQuotaReservation(
+        buildId,
+        {
+          force: true
+        }
+      );
+    } catch {}
+
+    throw error;
+  }
 
   await rememberIdempotency(
     userId,

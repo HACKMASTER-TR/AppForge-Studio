@@ -19,7 +19,23 @@ data class SecurityConfig(
     val cloudProjectNumber: Long,
     val proProductId: String,
     val proMonthlyProductId: String,
+    val quota10ProductId: String,
+    val quota25ProductId: String,
+    val quota50ProductId: String,
     val strictProIntegrity: Boolean
+)
+
+data class QuotaAddonRedemption(
+    val productId: String,
+    val projectBonus: Int,
+    val buildBonus: Int,
+    val cycleEnd: String?,
+    val testPurchase: Boolean,
+    val idempotent: Boolean,
+    val projectUsed: Int?,
+    val projectLimit: Int?,
+    val buildUsed: Int?,
+    val buildLimit: Int?
 )
 
 data class ProStatus(
@@ -29,6 +45,17 @@ data class ProStatus(
     val expiresAt: String?,
     val integrityRequired: Boolean
 )
+
+data class QuotaStatus(
+    val projectUsed: Int,
+    val projectLimit: Int?,
+    val projectAddonBonus: Int,
+    val buildUsed: Int?,
+    val buildLimit: Int?,
+    val buildAddonBonus: Int,
+    val periodEndsAt: String?
+)
+
 
 class StudioSecurityClient(
     context: Context,
@@ -74,6 +101,21 @@ class StudioSecurityClient(
             proMonthlyProductId =
                 json.optString(
                     "proMonthlyProductId",
+                    ""
+                ),
+            quota10ProductId =
+                json.optString(
+                    "quota10ProductId",
+                    ""
+                ),
+            quota25ProductId =
+                json.optString(
+                    "quota25ProductId",
+                    ""
+                ),
+            quota50ProductId =
+                json.optString(
+                    "quota50ProductId",
                     ""
                 ),
             strictProIntegrity =
@@ -295,6 +337,244 @@ class StudioSecurityClient(
                 cfg.strictProIntegrity
         )
     }
+
+    suspend fun quotaStatus(): QuotaStatus {
+        val json =
+            request(
+                path =
+                    "/api/projects/quota",
+                method =
+                    "GET",
+                body =
+                    null,
+                integritySession =
+                    null
+            )
+
+        val quota =
+            json.optJSONObject(
+                "quota"
+            )
+                ?: error(
+                    "Kota yanıtı geçersiz."
+                )
+
+        val buildQuota =
+            quota.optJSONObject(
+                "buildQuota"
+            )
+
+        fun nullableInt(
+            source: JSONObject?,
+            key: String
+        ): Int? {
+            if (
+                source == null ||
+                !source.has(key) ||
+                source.isNull(key)
+            ) {
+                return null
+            }
+
+            return source.optInt(
+                key
+            )
+        }
+
+        return QuotaStatus(
+            projectUsed =
+                quota.optInt(
+                    "used",
+                    0
+                ),
+
+            projectLimit =
+                nullableInt(
+                    quota,
+                    "limit"
+                ),
+
+            projectAddonBonus =
+                quota.optInt(
+                    "addonProjectBonus",
+                    0
+                ),
+
+            buildUsed =
+                nullableInt(
+                    buildQuota,
+                    "used"
+                ),
+
+            buildLimit =
+                nullableInt(
+                    buildQuota,
+                    "limit"
+                ),
+
+            buildAddonBonus =
+                buildQuota
+                    ?.optInt(
+                        "addonBuildBonus",
+                        0
+                    )
+                    ?: 0,
+
+            periodEndsAt =
+                quota.optString(
+                    "periodEndsAt"
+                ).takeIf {
+                    it.isNotBlank() &&
+                    it != "null"
+                }
+        )
+    }
+
+
+    suspend fun redeemQuotaAddon(
+        userId: String,
+        productId: String,
+        purchaseToken: String
+    ): QuotaAddonRedemption {
+        val cfg =
+            config()
+
+        val allowedProducts =
+            setOf(
+                cfg.quota10ProductId,
+                cfg.quota25ProductId,
+                cfg.quota50ProductId
+            )
+                .filter {
+                    it.isNotBlank()
+                }
+                .toSet()
+
+        require(
+            productId in
+                allowedProducts
+        ) {
+            "Geçersiz AppForge ek kota ürünü."
+        }
+
+        val integritySession =
+            if (
+                cfg.integrityEnabled &&
+                cfg.strictProIntegrity
+            ) {
+                attest(
+                    userId,
+                    "quota_addon_redeem"
+                )
+            } else {
+                null
+            }
+
+        val json =
+            request(
+                path =
+                    "/api/quota/addons/redeem",
+                method =
+                    "POST",
+                body =
+                    JSONObject()
+                        .put(
+                            "productId",
+                            productId
+                        )
+                        .put(
+                            "purchaseToken",
+                            purchaseToken
+                        ),
+                integritySession =
+                    integritySession
+            )
+
+        val redemption =
+            json.optJSONObject(
+                "redemption"
+            )
+                ?: error(
+                    "Ek kota satın alma yanıtı geçersiz."
+                )
+
+        val quota =
+            json.optJSONObject(
+                "quota"
+            )
+
+        val buildQuota =
+            quota?.optJSONObject(
+                "buildQuota"
+            )
+
+        return QuotaAddonRedemption(
+            productId =
+                redemption.optString(
+                    "productId"
+                ),
+            projectBonus =
+                redemption.optInt(
+                    "projectBonus",
+                    0
+                ),
+            buildBonus =
+                redemption.optInt(
+                    "buildBonus",
+                    0
+                ),
+            cycleEnd =
+                redemption.optString(
+                    "cycleEnd"
+                ).takeIf {
+                    it.isNotBlank() &&
+                    it != "null"
+                },
+            testPurchase =
+                redemption.optBoolean(
+                    "testPurchase",
+                    false
+                ),
+            idempotent =
+                redemption.optBoolean(
+                    "idempotent",
+                    false
+                ),
+            projectUsed =
+                quota
+                    ?.takeIf {
+                        it.has("used")
+                    }
+                    ?.optInt(
+                        "used"
+                    ),
+            projectLimit =
+                quota
+                    ?.takeIf {
+                        it.has("limit")
+                    }
+                    ?.optInt(
+                        "limit"
+                    ),
+            buildUsed =
+                buildQuota
+                    ?.takeIf {
+                        it.has("used")
+                    }
+                    ?.optInt(
+                        "used"
+                    ),
+            buildLimit =
+                buildQuota
+                    ?.takeIf {
+                        it.has("limit")
+                    }
+                    ?.optInt(
+                        "limit"
+                    )
+        )
+    }
+
 
     suspend fun proStatus(
         userId: String

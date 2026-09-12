@@ -80,9 +80,14 @@ import {
 } from "./src/projects.js";
 import {
   reserveProjectQuota,
-  recordSuccessfulProject,
+  recordSuccessfulBuild,
   releaseProjectQuotaReservation
 } from "./src/projectQuotaV2.js";
+
+import {
+  reserveMonthlyBuildQuota,
+  releaseMonthlyBuildQuotaReservation
+} from "./src/monthlyBuildQuota.js";
 import {
   createPublishDraft,
   listPublishDrafts
@@ -176,6 +181,10 @@ import {
   appForgeProblemEnvelope
 } from "./src/problemExplainer.js";
 
+import {
+  redeemQuotaAddon
+} from "./src/quotaAddons.js";
+
 assertCriticalConfig();
 
 await fs.mkdir(
@@ -221,7 +230,7 @@ app.use("/api", (req, res, next) => {
 
   if (origin && isAllowedWebStudioOrigin(origin)) {
     res.set("Access-Control-Allow-Origin", origin);
-    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, X-AppForge-Device-ID, Idempotency-Key");
+    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, X-AppForge-Device-ID, X-AppForge-Integrity, Idempotency-Key");
     res.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
     res.set("Vary", "Origin");
 
@@ -3774,6 +3783,9 @@ app.post(
     let quotaBuildAccepted =
       false;
 
+    let monthlyQuotaReservedBuildId =
+      null;
+
     try {
       const c =
         JSON.parse(
@@ -3857,19 +3869,20 @@ app.post(
       // Rebuilding the same package updates the same project and does not consume a new slot.
       mark("05 project-upsert-start");
 
-      await upsertProject(
-        req.user.id,
-        {
-          name:
-            c.appName ||
-            "Adsız Proje",
-          packageName:
-            c.packageName,
-          teamId,
-          config:
-            c
-        }
-      );
+      const project =
+        await upsertProject(
+          req.user.id,
+          {
+            name:
+              c.appName ||
+              "Adsız Proje",
+            packageName:
+              c.packageName,
+            teamId,
+            config:
+              c
+          }
+        );
 
       mark("06 project-upsert-done");
 
@@ -4061,6 +4074,25 @@ app.post(
         uuidv4();
 
       if (cached) {
+        /*
+         * Cache HIT teknik olarak worker çalıştırmasa da
+         * kullanıcı açısından başarılı bir build'dir.
+         * Bu nedenle Pro Monthly başarılı-build kotasına dahildir.
+         */
+        await reserveMonthlyBuildQuota(
+          buildId,
+          req.user.id,
+          {
+            projectId:
+              project.id,
+            packageName:
+              c.packageName
+          }
+        );
+
+        monthlyQuotaReservedBuildId =
+          buildId;
+
         for (const f of [
           incomingProject,
           incomingKeystore,
@@ -4082,6 +4114,7 @@ app.post(
              id,
              user_id,
              team_id,
+             project_id,
              app_name,
              package_name,
              status,
@@ -4097,16 +4130,17 @@ app.post(
              completed_at
            )
            VALUES(
-             $1,$2,$3,$4,$5,
-             'success',100,$6,
-             $7::jsonb,$8::jsonb,
-             $9::jsonb,$10,TRUE,$11,
+             $1,$2,$3,$4,$5,$6,
+             'success',100,$7,
+             $8::jsonb,$9::jsonb,
+             $10::jsonb,$11,TRUE,$12,
              NOW(),NOW()
            )`,
           [
             buildId,
             req.user.id,
             teamId,
+            project.id,
             c.appName,
             c.packageName,
             c.buildOutput ||
@@ -4127,10 +4161,13 @@ app.post(
           ]
         );
 
-        await recordSuccessfulProject(
-          req.user.id,
-          c.packageName
+        await recordSuccessfulBuild(
+          buildId,
+          req.user.id
         );
+
+        monthlyQuotaReservedBuildId =
+          null;
 
         quotaBuildAccepted =
           true;
@@ -4216,6 +4253,7 @@ app.post(
            id,
            user_id,
            team_id,
+           project_id,
            app_name,
            package_name,
            status,
@@ -4227,14 +4265,15 @@ app.post(
            priority
          )
          VALUES(
-           $1,$2,$3,$4,$5,
-           'queued',0,$6,
-           $7::jsonb,$8::jsonb,$9,$10
+           $1,$2,$3,$4,$5,$6,
+           'queued',0,$7,
+           $8::jsonb,$9::jsonb,$10,$11
          )`,
         [
           buildId,
           req.user.id,
           teamId,
+          project.id,
           c.appName,
           c.packageName,
           c.buildOutput ||
@@ -4321,6 +4360,17 @@ app.post(
             finalQueueStats
         });
     } catch (error) {
+
+      if (
+        monthlyQuotaReservedBuildId &&
+        !quotaBuildAccepted
+      ) {
+        try {
+          await releaseMonthlyBuildQuotaReservation(
+            monthlyQuotaReservedBuildId
+          );
+        } catch {}
+      }
 
       if (
         quotaReservedPackage &&
@@ -5353,7 +5403,13 @@ app.get(
       proProductId:
         config.studioProProductId,
       proMonthlyProductId:
-        config.studioProMonthlyProductId
+        config.studioProMonthlyProductId,
+      quota10ProductId:
+        config.studioQuota10ProductId,
+      quota25ProductId:
+        config.studioQuota25ProductId,
+      quota50ProductId:
+        config.studioQuota50ProductId
     });
   }
 );
@@ -5487,6 +5543,65 @@ app.get(
     }
   }
 );
+
+/*
+ * Google Play consumable quota add-ons.
+ *
+ * Purchase token istemcide güvenilir sayılmaz:
+ * resmi Google Play verifier + Play Integrity + server ledger.
+ */
+app.post(
+  "/api/quota/addons/redeem",
+  authRequired,
+  purchaseVerifyRateLimit,
+  async (req, res) => {
+    try {
+      requireIntegrityHeader(
+        req
+      );
+
+      const redemption =
+        await redeemQuotaAddon({
+          userId:
+            req.user.id,
+          productId:
+            req.body
+              ?.productId,
+          purchaseToken:
+            req.body
+              ?.purchaseToken
+        });
+
+      res.json({
+        ok: true,
+        redemption,
+        quota:
+          await getProjectQuota(
+            req.user.id
+          )
+      });
+    } catch (error) {
+      res
+        .status(
+          Number(
+            error?.statusCode ||
+            400
+          )
+        )
+        .json({
+          error:
+            String(
+              error?.message ||
+              error
+            ),
+          code:
+            error?.code ||
+            null
+        });
+    }
+  }
+);
+
 
 app.post(
   "/api/pro/activate",

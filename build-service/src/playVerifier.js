@@ -2,6 +2,9 @@ import crypto from "crypto";
 import { google } from "googleapis";
 import { query } from "./db.js";
 import { config } from "./config.js";
+import {
+  quotaAddonProductIds
+} from "./quotaAddonProducts.js";
 
 const SUBSCRIPTION_ENTITLED_STATES =
   new Set([
@@ -10,10 +13,14 @@ const SUBSCRIPTION_ENTITLED_STATES =
     "SUBSCRIPTION_STATE_CANCELED"
   ]);
 
-function tokenHash(token) {
+export function purchaseTokenHash(
+  token
+) {
   return crypto
     .createHash("sha256")
-    .update(String(token))
+    .update(
+      String(token)
+    )
     .digest("hex");
 }
 
@@ -78,8 +85,14 @@ function assertProductAllowed(type, productId) {
   const studioProductAllowed =
     (
       type === "inapp" &&
-      productId ===
-        config.studioProProductId
+      (
+        productId ===
+          config.studioProProductId ||
+        quotaAddonProductIds()
+          .includes(
+            productId
+          )
+      )
     ) ||
     (
       type === "subs" &&
@@ -317,6 +330,8 @@ async function processOneTime({
 
   const consumable =
     config.playConsumableProducts
+      .includes(productId) ||
+    quotaAddonProductIds()
       .includes(productId);
 
   if (consumable) {
@@ -417,7 +432,7 @@ async function persistResult({
   processing
 }) {
   const hash =
-    tokenHash(
+    purchaseTokenHash(
       purchaseToken
     );
 
@@ -520,6 +535,55 @@ async function persistResult({
     ]
   );
 }
+
+export async function getStoredPlayPurchaseByHash(
+  hash
+) {
+  const normalized =
+    String(
+      hash || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    !/^[a-f0-9]{64}$/
+      .test(
+        normalized
+      )
+  ) {
+    return null;
+  }
+
+  const result =
+    await query(
+      `SELECT
+         purchase_token_hash AS "purchaseTokenHash",
+         package_name AS "packageName",
+         product_id AS "productId",
+         product_type AS "productType",
+         play_state AS "state",
+         entitlement,
+         acknowledgement_state AS "acknowledgementState",
+         consumption_state AS "consumptionState",
+         expiry_time AS "expiryTime",
+         test_purchase AS "testPurchase",
+         processed_by_server AS "processedByServer",
+         last_verified_at AS "lastVerifiedAt"
+       FROM appforge_play_purchases
+       WHERE purchase_token_hash = $1
+       LIMIT 1`,
+      [
+        normalized
+      ]
+    );
+
+  return (
+    result.rows[0] ||
+    null
+  );
+}
+
 
 export async function verifyPlayPurchase({
   packageName,

@@ -8452,6 +8452,25 @@ private fun AppPreviewScreen(
             )
         }
 
+    LaunchedEffect(
+        serverUrl,
+        session?.token,
+        currentStatus?.active,
+        currentStatus?.source,
+        currentStatus?.productId
+    ) {
+        if (
+            session ==
+                null
+        ) {
+            quotaStatus =
+                null
+        } else {
+            refreshQuotaStatus()
+        }
+    }
+
+
     DisposableEffect(
         Unit
     ) {
@@ -23461,6 +23480,15 @@ private fun ProUpgradeScreen(
             )
         }
 
+    var quotaStatus by
+        remember {
+            mutableStateOf<
+                com.appforge.studio.security.QuotaStatus?
+            >(
+                null
+            )
+        }
+
     var billingManager by
         remember {
             mutableStateOf<
@@ -23475,6 +23503,45 @@ private fun ProUpgradeScreen(
             AppSignatureVerifier
                 .check(context)
         }
+
+    fun refreshQuotaStatus() {
+        val current =
+            session
+
+        if (
+            current == null
+        ) {
+            quotaStatus =
+                null
+
+            return
+        }
+
+        scope.launch {
+            try {
+                quotaStatus =
+                    withContext(
+                        Dispatchers.IO
+                    ) {
+                        StudioSecurityClient(
+                            context =
+                                context,
+                            baseUrl =
+                                serverUrl,
+                            accessToken =
+                                current.token
+                        ).quotaStatus()
+                    }
+            } catch (
+                t: Throwable
+            ) {
+                onSecurityMessage(
+                    "Kota durumu alınamadı: ${t.message}"
+                )
+            }
+        }
+    }
+
 
     fun refreshProStatus() {
         val current =
@@ -23525,6 +23592,100 @@ private fun ProUpgradeScreen(
         }
     }
 
+    fun redeemAddonPurchase(
+        productId: String,
+        purchaseToken: String
+    ) {
+        val current =
+            session
+
+        val cfg =
+            securityConfig
+
+        if (
+            current == null ||
+            cfg == null
+        ) {
+            onSecurityMessage(
+                "Hesap veya ek kota ürün bilgisi hazır değil."
+            )
+            return
+        }
+
+        val addonProducts =
+            setOf(
+                cfg.quota10ProductId,
+                cfg.quota25ProductId,
+                cfg.quota50ProductId
+            )
+
+        if (
+            productId !in
+                addonProducts
+        ) {
+            onSecurityMessage(
+                "Geçersiz ek kota ürünü."
+            )
+            return
+        }
+
+        purchasingPlan =
+            productId
+
+        scope.launch {
+            try {
+                val client =
+                    StudioSecurityClient(
+                        context =
+                            context,
+                        baseUrl =
+                            serverUrl,
+                        accessToken =
+                            current.token
+                    )
+
+                val redemption =
+                    withContext(
+                        Dispatchers.IO
+                    ) {
+                        client
+                            .redeemQuotaAddon(
+                                userId =
+                                    current.userId,
+                                productId =
+                                    productId,
+                                purchaseToken =
+                                    purchaseToken
+                            )
+                    }
+
+                quotaStatus =
+                    withContext(
+                        Dispatchers.IO
+                    ) {
+                        client
+                            .quotaStatus()
+                    }
+
+                onSecurityMessage(
+                    "Ek paket aktif: +" +
+                        "${redemption.projectBonus} proje • +" +
+                        "${redemption.buildBonus} başarılı build."
+                )
+            } catch (
+                t: Throwable
+            ) {
+                onSecurityMessage(
+                    "Ek paket doğrulaması başarısız: ${t.message}"
+                )
+            } finally {
+                purchasingPlan =
+                    null
+            }
+        }
+    }
+
+
     fun activatePurchase(
         productId: String,
         purchaseToken: String
@@ -23545,15 +23706,39 @@ private fun ProUpgradeScreen(
             return
         }
 
-        val plan =
-            if (
-                productId ==
+        val addonProducts =
+            setOf(
+                cfg.quota10ProductId,
+                cfg.quota25ProductId,
+                cfg.quota50ProductId
+            )
+
+        if (
+            productId in
+                addonProducts
+        ) {
+            redeemAddonPurchase(
+                productId =
+                    productId,
+                purchaseToken =
+                    purchaseToken
+            )
+
+            return
+        }
+
+        if (
+            productId !=
                 cfg.proMonthlyProductId
-            ) {
-                "monthly"
-            } else {
-                "lifetime"
-            }
+        ) {
+            onSecurityMessage(
+                "Bu ürün artık AppForge tarafından satılmıyor."
+            )
+            return
+        }
+
+        val plan =
+            "monthly"
 
         purchasingPlan =
             plan
@@ -23586,15 +23771,10 @@ private fun ProUpgradeScreen(
                 )
 
                 onSecurityMessage(
-                    if (
-                        plan ==
-                        "monthly"
-                    ) {
-                        "Pro Aylık doğrulandı ve hesabına tanımlandı."
-                    } else {
-                        "Tek seferlik Pro doğrulandı ve hesabına tanımlandı."
-                    }
+                    "Pro Aylık doğrulandı ve hesabına tanımlandı."
                 )
+
+                refreshQuotaStatus()
             } catch (
                 t: Throwable
             ) {
@@ -23669,7 +23849,16 @@ private fun ProUpgradeScreen(
                         )
                     },
                     onMessage =
-                        onSecurityMessage
+                        onSecurityMessage,
+                    quotaAddonProductIds =
+                        listOf(
+                            cfg.quota10ProductId,
+                            cfg.quota25ProductId,
+                            cfg.quota50ProductId
+                        )
+                            .filter {
+                                it.isNotBlank()
+                            }
                 )
 
             billingManager
@@ -23702,6 +23891,76 @@ private fun ProUpgradeScreen(
                 ?.close()
         }
     }
+
+    val quotaCfg =
+        securityConfig
+
+    val monthlyProActive =
+        currentStatus
+            ?.active == true &&
+        quotaCfg != null &&
+        (
+            currentStatus.source ==
+                "google_play_subscription" ||
+            currentStatus.productId ==
+                quotaCfg.proMonthlyProductId
+        )
+
+    val projectQuotaLabel =
+        quotaStatus
+            ?.projectLimit
+            ?.let {
+                limit ->
+                "${quotaStatus?.projectUsed ?: 0} / $limit proje"
+            }
+            ?: "Proje kotası yükleniyor..."
+
+    val buildQuotaLabel =
+        quotaStatus
+            ?.buildLimit
+            ?.let {
+                limit ->
+                "${quotaStatus?.buildUsed ?: 0} / $limit başarılı build"
+            }
+            ?: "Build kotası yükleniyor..."
+
+    fun launchQuotaProduct(
+        productId: String
+    ) {
+        val manager =
+            billingManager
+
+        if (
+            !monthlyProActive
+        ) {
+            onSecurityMessage(
+                "Ek paketler yalnız aktif Pro Aylık aboneliğinde kullanılabilir."
+            )
+            return
+        }
+
+        if (
+            manager == null ||
+            activity == null
+        ) {
+            onSecurityMessage(
+                "Google Play Billing henüz hazır değil."
+            )
+            return
+        }
+
+        purchasingPlan =
+            productId
+
+        manager.launchQuotaAddon(
+            activity,
+            productId
+        )
+
+        purchasingPlan =
+            null
+    }
+
 
     Column(
         Modifier.fillMaxSize()
@@ -23828,7 +24087,7 @@ private fun ProUpgradeScreen(
                                         "Pro yetkin resmi AppForge sunucusunda doğrulandı."
                                 }
                             } else {
-                                "İki plan da aynı Pro özelliklerini açar. Tek seferlik satın alma kalıcıdır; aylık plan otomatik yenilenir."
+                                "Pro Aylık: her abonelik döneminde 50 farklı başarılı proje ve 100 başarılı build hakkı. İhtiyaç halinde ek kota paketi alınabilir."
                             },
                             color =
                                 TextSecondary,
@@ -23849,7 +24108,7 @@ private fun ProUpgradeScreen(
                 item {
                     ProPlanCard(
                         badge =
-                            "AYLIK 50 PROJE",
+                            "AYLIK 50 PROJE • 100 BUILD",
                         icon =
                             "↻",
                         title =
@@ -23876,15 +24135,15 @@ private fun ProUpgradeScreen(
                         features =
                             listOf(
                                 "Tüm Pro özellikleri",
-                                "Aynı proje aynı dönemde tekrar build edilirse yeniden sayılmaz",
                                 "Her abonelik döneminde 50 başarılı farklı proje",
-                                "Başarısız build'ler hak tüketmez",
-                                "Aynı proje tekrar build edilirse yeniden sayılmaz",
+                                "Her abonelik döneminde 100 başarılı build",
+                                "Aynı projectId tekrar build edilirse proje hakkı yeniden düşmez",
+                                "Her başarılı build build kotasından 1 düşer",
+                                "Başarısız ve iptal build'ler build hakkı tüketmez",
                                 "Built with AppForge watermark kaldırma",
                                 "Aylık otomatik yenileme",
                                 "Google Play üzerinden yönetim",
-                                "İstediğin zaman iptal edebilme",
-                                "Aktif abonelik süresince tam erişim"
+                                "İstediğin zaman iptal edebilme"
                             ),
                         buttonText =
                             t(
@@ -23922,6 +24181,252 @@ private fun ProUpgradeScreen(
                                     null
                             }
                         }
+                    )
+                }
+            }
+
+            if (
+                monthlyProActive &&
+                quotaCfg != null
+            ) {
+                item {
+                    Card(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth(),
+                        colors =
+                            CardDefaults
+                                .cardColors(
+                                    containerColor =
+                                        Card2
+                                ),
+                        shape =
+                            RoundedCornerShape(
+                                if (proCompact) 20.dp else 26.dp
+                            )
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        if (proCompact) 16.dp else 22.dp
+                                    ),
+                            verticalArrangement =
+                                Arrangement
+                                    .spacedBy(
+                                        8.dp
+                                    )
+                        ) {
+                            Text(
+                                "KULLANIM KOTAN",
+                                fontWeight =
+                                    FontWeight.Bold,
+                                color =
+                                    Accent
+                            )
+
+                            Text(
+                                projectQuotaLabel,
+                                fontSize =
+                                    if (proCompact) 20.sp else 24.sp,
+                                fontWeight =
+                                    FontWeight.Bold
+                            )
+
+                            Text(
+                                buildQuotaLabel,
+                                fontSize =
+                                    if (proCompact) 18.sp else 22.sp,
+                                fontWeight =
+                                    FontWeight.SemiBold
+                            )
+
+                            val addonProjectBonus =
+                                quotaStatus
+                                    ?.projectAddonBonus
+                                    ?: 0
+
+                            val addonBuildBonus =
+                                quotaStatus
+                                    ?.buildAddonBonus
+                                    ?: 0
+
+                            if (
+                                addonProjectBonus > 0 ||
+                                addonBuildBonus > 0
+                            ) {
+                                Text(
+                                    "Bu dönem ek paket: +$addonProjectBonus proje • +$addonBuildBonus build",
+                                    color =
+                                        TextSecondary
+                                )
+                            }
+
+                            quotaStatus
+                                ?.periodEndsAt
+                                ?.let {
+                                    end ->
+                                    Text(
+                                        "Kota dönemi sonu: $end",
+                                        color =
+                                            TextSecondary,
+                                        fontSize =
+                                            12.sp
+                                    )
+                                }
+                        }
+                    }
+                }
+
+                item {
+                    Text(
+                        "Ek Kota Paketleri",
+                        fontSize =
+                            if (proCompact) 20.sp else 24.sp,
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+                }
+
+                item {
+                    ProPlanCard(
+                        badge =
+                            "+10 PROJE • +20 BUILD",
+                        icon =
+                            "＋",
+                        title =
+                            "+10 Ek Kota",
+                        description =
+                            "Mevcut Pro Aylık dönemine +10 proje ve +20 başarılı build ekler.",
+                        price =
+                            prices
+                                .quotaAddonPrices[
+                                    quotaCfg.quota10ProductId
+                                ]
+                                ?: "Google Play fiyatı",
+                        accent =
+                            Color(
+                                0xFF8BE9A8
+                            ),
+                        features =
+                            listOf(
+                                "+10 farklı proje",
+                                "+20 başarılı build",
+                                "Yalnız mevcut abonelik dönemi için",
+                                "Sonraki aya devretmez"
+                            ),
+                        buttonText =
+                            "EK PAKETİ AL",
+                        enabled =
+                            session != null &&
+                            activity != null &&
+                            purchasingPlan == null &&
+                            prices
+                                .quotaAddonAvailability[
+                                    quotaCfg.quota10ProductId
+                                ] == true,
+                        onClick = {
+                            launchQuotaProduct(
+                                quotaCfg.quota10ProductId
+                            )
+                        }
+                    )
+                }
+
+                item {
+                    ProPlanCard(
+                        badge =
+                            "+25 PROJE • +50 BUILD",
+                        icon =
+                            "＋",
+                        title =
+                            "+25 Ek Kota",
+                        description =
+                            "Mevcut Pro Aylık dönemine +25 proje ve +50 başarılı build ekler.",
+                        price =
+                            prices
+                                .quotaAddonPrices[
+                                    quotaCfg.quota25ProductId
+                                ]
+                                ?: "Google Play fiyatı",
+                        accent =
+                            Color(
+                                0xFF84C8FF
+                            ),
+                        features =
+                            listOf(
+                                "+25 farklı proje",
+                                "+50 başarılı build",
+                                "Yalnız mevcut abonelik dönemi için",
+                                "Sonraki aya devretmez"
+                            ),
+                        buttonText =
+                            "EK PAKETİ AL",
+                        enabled =
+                            session != null &&
+                            activity != null &&
+                            purchasingPlan == null &&
+                            prices
+                                .quotaAddonAvailability[
+                                    quotaCfg.quota25ProductId
+                                ] == true,
+                        onClick = {
+                            launchQuotaProduct(
+                                quotaCfg.quota25ProductId
+                            )
+                        }
+                    )
+                }
+
+                item {
+                    ProPlanCard(
+                        badge =
+                            "+50 PROJE • +100 BUILD",
+                        icon =
+                            "＋",
+                        title =
+                            "+50 Ek Kota",
+                        description =
+                            "Mevcut Pro Aylık dönemine +50 proje ve +100 başarılı build ekler.",
+                        price =
+                            prices
+                                .quotaAddonPrices[
+                                    quotaCfg.quota50ProductId
+                                ]
+                                ?: "Google Play fiyatı",
+                        accent =
+                            Color(
+                                0xFFFFD166
+                            ),
+                        features =
+                            listOf(
+                                "+50 farklı proje",
+                                "+100 başarılı build",
+                                "Yalnız mevcut abonelik dönemi için",
+                                "Sonraki aya devretmez"
+                            ),
+                        buttonText =
+                            "EK PAKETİ AL",
+                        enabled =
+                            session != null &&
+                            activity != null &&
+                            purchasingPlan == null &&
+                            prices
+                                .quotaAddonAvailability[
+                                    quotaCfg.quota50ProductId
+                                ] == true,
+                        onClick = {
+                            launchQuotaProduct(
+                                quotaCfg.quota50ProductId
+                            )
+                        }
+                    )
+                }
+
+                item {
+                    NoteCard(
+                        "Ek kota paketleri yalnız aktif Pro Aylık aboneliğine eklenir. Kullanılmayan ek haklar abonelik dönemi sonunda silinir ve sonraki döneme devretmez."
                     )
                 }
             }

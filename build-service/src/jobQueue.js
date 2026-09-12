@@ -12,6 +12,10 @@ import {
   recordSuccessfulBuild,
   releaseBuildQuotaReservation
 } from "./projectQuotaV2.js";
+
+import {
+  reserveMonthlyBuildQuotaInTransaction
+} from "./monthlyBuildQuota.js";
 import {
   triggerWorkerAutoscale
 } from "./autoscaleDispatch.js";
@@ -285,6 +289,88 @@ export async function enqueueJob({
             activeLimit,
             plan
           };
+        }
+
+        /*
+         * Pro Monthly successful-build reservation.
+         *
+         * Aynı transaction içinde tutulduğu için job INSERT
+         * başarısız olursa reservation da rollback olur.
+         */
+        try {
+          await reserveMonthlyBuildQuotaInTransaction(
+            client,
+            {
+              buildId,
+              userId,
+              entitlement,
+              isAdmin
+            }
+          );
+        } catch (error) {
+          if (
+            error?.code ===
+              "PRO_MONTHLY_BUILD_LIMIT_REACHED"
+          ) {
+            const message =
+              String(
+                error?.message ||
+                "Aylık başarılı build kotası doldu."
+              );
+
+            await client.query(
+              `UPDATE appforge_builds
+               SET
+                 status = 'failed',
+                 progress = 0,
+                 error = $2,
+                 completed_at = NOW()
+               WHERE id = $1`,
+              [
+                buildId,
+                message
+              ]
+            );
+
+            await client.query(
+              `INSERT INTO appforge_build_events(
+                 build_id,
+                 user_id,
+                 team_id,
+                 event_type,
+                 payload
+               )
+               VALUES(
+                 $1,$2,$3,
+                 'build_quota_rejected',
+                 $4::jsonb
+               )`,
+              [
+                buildId,
+                userId,
+                teamId,
+                JSON.stringify({
+                  code:
+                    error.code,
+                  quota:
+                    error.quota || null
+                })
+              ]
+            );
+
+            return {
+              rejected: true,
+              code:
+                error.code,
+              statusCode:
+                error.statusCode || 403,
+              message,
+              quota:
+                error.quota || null
+            };
+          }
+
+          throw error;
         }
 
         await client.query(
@@ -1212,6 +1298,12 @@ export async function requestBuildCancellation(
       );
 
       await client.query(
+        `DELETE FROM appforge_pro_monthly_build_reservations
+         WHERE build_id = $1`,
+        [buildId]
+      );
+
+      await client.query(
         `DELETE FROM appforge_project_quota_reservations reservation
          WHERE reservation.user_id = $1
            AND reservation.package_name = $2
@@ -1274,6 +1366,13 @@ export async function markCancelledJob(
        completed_at = NOW()
      WHERE id = $1`,
     [job.build_id]
+  );
+
+  await releaseBuildQuotaReservation(
+    job.build_id,
+    {
+      force: true
+    }
   );
 
   await event(

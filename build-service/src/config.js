@@ -465,6 +465,18 @@ export const config = {
     process.env.STUDIO_PRO_MONTHLY_PRODUCT_ID ||
     "appforge_pro_monthly"
   ),
+  studioQuota10ProductId: String(
+    process.env.STUDIO_QUOTA_10_PRODUCT_ID ||
+    "appforge_quota_10"
+  ),
+  studioQuota25ProductId: String(
+    process.env.STUDIO_QUOTA_25_PRODUCT_ID ||
+    "appforge_quota_25"
+  ),
+  studioQuota50ProductId: String(
+    process.env.STUDIO_QUOTA_50_PRODUCT_ID ||
+    "appforge_quota_50"
+  ),
   playIntegrityEnabled: boolEnv(
     "PLAY_INTEGRITY_ENABLED",
     false
@@ -483,6 +495,14 @@ export const config = {
     Number(
       process.env.PRO_MONTHLY_PROJECT_LIMIT ||
       50
+    )
+  ),
+
+  proMonthlyBuildLimit: Math.max(
+    1,
+    Number(
+      process.env.PRO_MONTHLY_BUILD_LIMIT ||
+      100
     )
   ),
 

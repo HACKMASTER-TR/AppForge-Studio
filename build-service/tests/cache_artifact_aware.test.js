@@ -43,7 +43,7 @@ test(
 
     assert.match(
       serverSource,
-      /cache_key,\s*cache_hit,\s*priority,\s*started_at,\s*completed_at[\s\S]*?\$9::jsonb,\$10,TRUE,\$11,\s*NOW\(\),NOW\(\)/
+      /project_id,[\s\S]*?cache_key,\s*cache_hit,\s*priority,\s*started_at,\s*completed_at[\s\S]*?\$10::jsonb,\$11,TRUE,\$12,\s*NOW\(\),NOW\(\)/
     );
   }
 );

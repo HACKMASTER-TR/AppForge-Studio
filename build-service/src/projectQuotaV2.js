@@ -11,6 +11,12 @@ import {
   getProEntitlement
 } from "./proEntitlements.js";
 
+import {
+  consumeMonthlyBuildQuota,
+  getMonthlyBuildQuota,
+  releaseMonthlyBuildQuotaReservation
+} from "./monthlyBuildQuota.js";
+
 
 const RESERVATION_MINUTES =
   Math.max(
@@ -66,6 +72,38 @@ function validDate(
   )
     ? date
     : null;
+}
+
+
+async function addonProjectBonusFromClient(
+  client,
+  userId,
+  cycleEnd
+) {
+  const result =
+    await client.query(
+      `SELECT
+         COALESCE(
+           SUM(project_bonus),
+           0
+         )::int AS bonus
+       FROM appforge_quota_addon_redemptions
+       WHERE user_id = $1
+         AND cycle_end = $2
+         AND status = 'granted'`,
+      [
+        userId,
+        cycleEnd
+      ]
+    );
+
+  return Math.max(
+    0,
+    Number(
+      result.rows[0]
+        ?.bonus || 0
+    )
+  );
 }
 
 
@@ -214,6 +252,16 @@ async function quotaContextFromClient(
       ) ||
       fallbackMonthlyCycleEnd();
 
+    const cycleEndIso =
+      cycleEnd.toISOString();
+
+    const addonProjectBonus =
+      await addonProjectBonusFromClient(
+        client,
+        userId,
+        cycleEndIso
+      );
+
     return {
       plan:
         "pro",
@@ -224,21 +272,26 @@ async function quotaContextFromClient(
       unlimited:
         false,
 
-      limit:
+      baseLimit:
         config
           .proMonthlyProjectLimit,
+
+      addonProjectBonus,
+
+      limit:
+        config
+          .proMonthlyProjectLimit +
+        addonProjectBonus,
 
       customLimit:
         null,
 
       cycleEnd:
-        cycleEnd
-          .toISOString(),
+        cycleEndIso,
 
       quotaKey:
         "pro-monthly:" +
-        cycleEnd
-          .toISOString()
+        cycleEndIso
     };
   }
 
@@ -534,6 +587,14 @@ async function snapshotFromClient(
     limit:
       context.limit,
 
+    baseLimit:
+      context.baseLimit ??
+      context.limit,
+
+    addonProjectBonus:
+      context.addonProjectBonus ||
+      0,
+
     remaining:
       Math.max(
         0,
@@ -634,27 +695,37 @@ export async function getProjectQuotaV2(
       userId
     );
 
-  return tx(
-    async client => {
-      await cleanupExpiredReservations(
-        client,
-        userId
-      );
-
-      const context =
-        await quotaContextFromClient(
+  const projectQuota =
+    await tx(
+      async client => {
+        await cleanupExpiredReservations(
           client,
-          userId,
-          entitlement
+          userId
         );
 
-      return snapshotFromClient(
-        client,
-        userId,
-        context
-      );
-    }
-  );
+        const context =
+          await quotaContextFromClient(
+            client,
+            userId,
+            entitlement
+          );
+
+        return snapshotFromClient(
+          client,
+          userId,
+          context
+        );
+      }
+    );
+
+  return {
+    ...projectQuota,
+
+    buildQuota:
+      await getMonthlyBuildQuota(
+        userId
+      )
+  };
 }
 
 
@@ -1109,6 +1180,7 @@ export async function recordSuccessfulBuild(
     await query(
       `SELECT
          user_id,
+         project_id,
          package_name
        FROM appforge_builds
        WHERE id = $1
@@ -1135,6 +1207,37 @@ export async function recordSuccessfulBuild(
     );
   }
 
+  /*
+   * Her başarılı build yalnız bir kez tüketilir.
+   * Free/admin/legacy lifetime için reservation
+   * bulunmadığından consume no-op olur.
+   */
+  await consumeMonthlyBuildQuota(
+    buildId,
+    build.user_id
+  );
+
+  /*
+   * İlk gerçek SUCCESS sonrasında proje package
+   * kimliği kilitli kabul edilir.
+   */
+  if (build.project_id) {
+    await query(
+      `UPDATE appforge_projects
+       SET package_locked_at =
+         COALESCE(
+           package_locked_at,
+           NOW()
+         )
+       WHERE id = $1
+         AND package_name = $2`,
+      [
+        build.project_id,
+        build.package_name
+      ]
+    );
+  }
+
   return recordSuccessfulProject(
     build.user_id,
     build.package_name
@@ -1148,6 +1251,11 @@ export async function releaseBuildQuotaReservation(
     force = false
   } = {}
 ) {
+  const monthlyReleased =
+    await releaseMonthlyBuildQuotaReservation(
+      buildId
+    );
+
   const result =
     await query(
       `SELECT
@@ -1165,14 +1273,20 @@ export async function releaseBuildQuotaReservation(
     result.rows[0];
 
   if (!build) {
-    return false;
+    return monthlyReleased;
   }
 
-  return releaseProjectQuotaReservation(
-    build.user_id,
-    build.package_name,
-    {
-      force
-    }
+  const projectReleased =
+    await releaseProjectQuotaReservation(
+      build.user_id,
+      build.package_name,
+      {
+        force
+      }
+    );
+
+  return (
+    monthlyReleased ||
+    projectReleased
   );
 }
