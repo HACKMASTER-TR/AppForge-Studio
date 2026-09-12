@@ -540,58 +540,432 @@ class Lock:
     def __exit__(self, exc_type, exc, tb):
         LOCK_PATH.unlink(missing_ok=True)
 
+def branch_change_files():
+    run(
+        ["git", "fetch", "origin", "main"],
+        check=False,
+    )
+
+    p = git(
+        "diff",
+        "--name-only",
+        "origin/main...HEAD",
+        check=False,
+    )
+
+    return sorted(
+        line.strip()
+        for line in (p.stdout or "").splitlines()
+        if line.strip()
+    )
+
+
+def require_remote_sync(branch):
+    run(
+        ["git", "fetch", "origin"],
+        check=True,
+    )
+
+    local_sha = git_out(
+        "rev-parse",
+        "HEAD",
+    )
+
+    remote_ref = f"origin/{branch}"
+
+    remote_sha = git_out(
+        "rev-parse",
+        remote_ref,
+    )
+
+    if not remote_sha:
+        raise SystemExit(
+            "BLOCKED: remote branch bulunamadı."
+        )
+
+    if local_sha != remote_sha:
+        raise SystemExit(
+            "BLOCKED: local HEAD ile remote HEAD farklı."
+        )
+
+    print(
+        "COMMIT/PUSH: ALREADY COMPLETE"
+    )
+    print(
+        "HEAD:",
+        local_sha[:12],
+    )
+
+    return local_sha
+
+
+def required_main_workflows(files):
+    required = []
+
+    if any(
+        f.startswith("android-app/")
+        for f in files
+    ):
+        required.append(
+            "Android Debug"
+        )
+
+    worker_change = any(
+        f.startswith("build-service/src/")
+        or "/worker" in f.lower()
+        or "worker-" in f.lower()
+        for f in files
+    )
+
+    if worker_change:
+        required.extend(
+            [
+                "Build AppForge Worker Image",
+                "Source Worker Image",
+            ]
+        )
+
+    conversion_change = any(
+        "conversion" in f.lower()
+        for f in files
+    )
+
+    if conversion_change:
+        required.append(
+            "AppForge Conversion Smoke"
+        )
+
+    deploy_change = any(
+        f.startswith("railway")
+        or f.startswith("render")
+        or f.startswith("vercel")
+        or "deploy" in f.lower()
+        for f in files
+    )
+
+    if deploy_change:
+        required.append(
+            "Production Deploy"
+        )
+
+    return list(
+        dict.fromkeys(required)
+    )
+
+
+def workflow_names():
+    p = run(
+        [
+            "gh",
+            "workflow",
+            "list",
+            "--all",
+            "--json",
+            "name",
+        ],
+        check=False,
+        capture=True,
+    )
+
+    if p.returncode != 0:
+        return set()
+
+    try:
+        data = json.loads(
+            p.stdout or "[]"
+        )
+    except json.JSONDecodeError:
+        return set()
+
+    return {
+        str(item.get("name", ""))
+        for item in data
+        if item.get("name")
+    }
+
+
+def continue_after_push(branch):
+    source_files = branch_change_files()
+    source_groups = classify(source_files)
+
+    print("\n=== PIPELINE IMPACT ===")
+    print(
+        "Files:",
+        len(source_files),
+    )
+    print(
+        "Groups:",
+        ", ".join(source_groups)
+        or "none",
+    )
+
+    gh_required()
+
+    state_write(
+        "OPENING_PR"
+    )
+
+    num = ensure_pr()
+
+    print(
+        f"PR #{num}: READY"
+    )
+
+    state_write(
+        "WAITING_CI",
+        pr=num,
+    )
+
+    ci_watch()
+
+    print(
+        "\nPR REQUIRED CI: SUCCESS"
+    )
+
+    state_write(
+        "MERGING",
+        pr=num,
+    )
+
+    merge_pr(num)
+
+    print(
+        f"PR #{num}: MERGED"
+    )
+
+    run([
+        "git",
+        "switch",
+        "main",
+    ])
+
+    run([
+        "git",
+        "pull",
+        "--ff-only",
+        "origin",
+        "main",
+    ])
+
+    main_sha = git_out(
+        "rev-parse",
+        "HEAD",
+    )
+
+    available = workflow_names()
+
+    required_workflows = (
+        required_main_workflows(
+            source_files
+        )
+    )
+
+    ci_result = {}
+
+    print(
+        "\n=== MAIN REQUIRED CI ==="
+    )
+
+    for workflow in required_workflows:
+        if (
+            available and
+            workflow not in available
+        ):
+            raise SystemExit(
+                "BLOCKED: required workflow "
+                f"bulunamadı: {workflow}"
+            )
+
+        state_write(
+            "BUILDING",
+            workflow=workflow,
+            pr=num,
+        )
+
+        ci_result[workflow] = (
+            wait_workflow(
+                workflow,
+                main_sha,
+            )
+        )
+
+    if not required_workflows:
+        print(
+            "No conditional main workflows required."
+        )
+
+    rel = release_info()
+
+    if (
+        "Android Debug"
+        in required_workflows
+        and rel.get("status") != "READY"
+    ):
+        raise SystemExit(
+            "Latest APK release henüz READY değil."
+        )
+
+    state_write(
+        "COMPLETE",
+        pr=num,
+        release=rel,
+        source_files=source_files,
+        source_groups=source_groups,
+        required_workflows=required_workflows,
+    )
+
+    jp, mp = generate_report(
+        "SUCCESS",
+        pr=num,
+        source_branch=branch,
+        source_files=source_files,
+        source_groups=source_groups,
+        required_workflows=required_workflows,
+        ci=ci_result,
+        release=rel,
+    )
+
+    print(
+        "\nAPPFORGE PIPELINE COMPLETE ✅"
+    )
+    print(
+        "JSON:",
+        jp,
+    )
+    print(
+        "REPORT:",
+        mp,
+    )
+
+
 def submit():
-    branch = git_out("branch", "--show-current")
+    branch = git_out(
+        "branch",
+        "--show-current",
+    )
+
     if branch == "main":
-        raise SystemExit("main üzerinde submit yasak.")
+        raise SystemExit(
+            "main üzerinde submit yasak."
+        )
 
     with Lock():
-        state_write("TESTING")
+        state_write(
+            "TESTING"
+        )
+
         local_gate()
 
-        safe_stage()
-        run(["git", "diff", "--cached", "--check"])
-        run(["./scripts/appforge-stability-gate", "local"])
+        files = changed_files()
 
-        msg = os.environ.get("APPFORGE_COMMIT_MESSAGE") or default_commit_message()
-        state_write("COMMITTING", commit_message=msg)
-        run(["git", "commit", "-m", msg])
+        if files:
+            print(
+                "\n=== NEW LOCAL CHANGES ==="
+            )
 
-        state_write("PUSHING")
-        run(["git", "push", "-u", "origin", branch])
+            safe_stage()
 
-        gh_required()
-        state_write("OPENING_PR")
-        num = ensure_pr()
+            run([
+                "git",
+                "diff",
+                "--cached",
+                "--check",
+            ])
 
-        state_write("WAITING_CI", pr=num)
-        ci_watch()
+            run([
+                "./scripts/appforge-stability-gate",
+                "local",
+            ])
 
-        state_write("MERGING", pr=num)
-        merge_pr(num)
+            msg = (
+                os.environ.get(
+                    "APPFORGE_COMMIT_MESSAGE"
+                )
+                or default_commit_message()
+            )
 
-        run(["git", "switch", "main"])
-        run(["git", "pull", "--ff-only", "origin", "main"])
-        main_sha = git_out("rev-parse", "HEAD")
+            state_write(
+                "COMMITTING",
+                commit_message=msg,
+            )
 
-        ci_result = {}
-        state_write("BUILDING", workflow="Android Debug")
-        ci_result["Android Debug"] = wait_workflow("Android Debug", main_sha)
+            run([
+                "git",
+                "commit",
+                "-m",
+                msg,
+            ])
 
-        rel = release_info()
-        if rel.get("status") != "READY":
-            raise SystemExit("Latest APK release henüz READY değil.")
+            state_write(
+                "PUSHING"
+            )
 
-        state_write("COMPLETE", pr=num, release=rel)
-        jp, mp = generate_report(
-            "SUCCESS",
-            pr=num,
-            ci=ci_result,
-            release=rel,
+            run([
+                "git",
+                "push",
+                "-u",
+                "origin",
+                branch,
+            ])
+
+            print(
+                "COMMIT/PUSH: SUCCESS"
+            )
+
+        else:
+            print(
+                "\n=== RESUME DETECTED ==="
+            )
+
+            require_remote_sync(
+                branch
+            )
+
+        continue_after_push(
+            branch
         )
-        print("\nAPPFORGE PIPELINE COMPLETE ✅")
-        print("JSON:", jp)
-        print("REPORT:", mp)
+
+
+def resume():
+    branch = git_out(
+        "branch",
+        "--show-current",
+    )
+
+    if branch == "main":
+        raise SystemExit(
+            "main üzerinde resume yapılamaz."
+        )
+
+    if changed_files():
+        raise SystemExit(
+            "BLOCKED: resume için worktree "
+            "temiz olmalı. Yeni değişiklik varsa "
+            "'appforge submit' kullan."
+        )
+
+    with Lock():
+        print(
+            "=== APPFORGE RESUME ==="
+        )
+
+        require_remote_sync(
+            branch
+        )
+
+        state_write(
+            "RESUMING"
+        )
+
+        print(
+            "\n=== REVALIDATION ==="
+        )
+
+        local_gate()
+
+        continue_after_push(
+            branch
+        )
 
 def dashboard():
     refresh = int(policy().get("dashboard_refresh_seconds", 30))
@@ -702,7 +1076,7 @@ def main():
 
     for name in [
         "status", "doctor", "test", "security", "dashboard",
-        "ci", "report", "submit", "release", "deploy", "rollback"
+        "ci", "report", "submit", "resume", "release", "deploy", "rollback"
     ]:
         sub.add_parser(name)
 
@@ -715,6 +1089,7 @@ def main():
         "ci",
         "report",
         "submit",
+        "resume",
         "release",
         "deploy",
         "rollback",
@@ -744,6 +1119,8 @@ def main():
         report()
     elif args.cmd == "submit":
         submit()
+    elif args.cmd == "resume":
+        resume()
     elif args.cmd == "release":
         release()
     elif args.cmd == "deploy":

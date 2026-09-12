@@ -10,7 +10,7 @@ test("AppForge Autopilot exposes the admin control-plane commands", async () => 
 
   for (const command of [
     "status", "doctor", "test", "security", "dashboard",
-    "ci", "report", "submit", "release", "deploy", "rollback"
+    "ci", "report", "submit", "resume", "release", "deploy", "rollback"
   ]) {
     assert.match(source, new RegExp(`["']${command}["']`));
   }
