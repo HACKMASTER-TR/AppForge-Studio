@@ -135,9 +135,7 @@ async function monthlyContextWithAddons(
   entitlement
 ) {
   const context =
-    await monthlyContextWithAddons(
-      client,
-      userId,
+    monthlyContext(
       entitlement
     );
 
