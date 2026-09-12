@@ -3156,8 +3156,14 @@ private fun LocalPtySurface(
      * - when new output really leaves the visible area, keep the final
      *   terminal row near the bottom instead of pinning it to the top.
      */
+    /*
+     * Character echo, Readline redraws and shortcut keys must never
+     * reposition the terminal viewport.
+     *
+     * Follow only structural line-count changes.
+     */
     LaunchedEffect(
-        state.outputRevision,
+        state.id,
         state.snapshot.lines.size
     ) {
         if (copyMode) {
