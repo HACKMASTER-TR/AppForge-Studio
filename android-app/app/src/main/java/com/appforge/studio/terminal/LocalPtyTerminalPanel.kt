@@ -3298,6 +3298,146 @@ private fun LocalPtySurface(
         )
     }
 
+
+    /*
+     * Keyboard-open visibility correction.
+     *
+     * Opening the IME increases bottomContentPaddingPx without changing
+     * terminal output. LazyColumn correctly reserves the covered area,
+     * but its existing scroll position does not automatically move.
+     *
+     * Correct only that transition:
+     * - never react to ordinary typing/outputRevision,
+     * - never steal copy mode,
+     * - never pull a user out of scrollback,
+     * - do nothing when the final row is already above the IME,
+     * - do not force-scroll when the keyboard closes.
+     */
+    var previousBottomContentPaddingPx by
+        remember(state.id) {
+            mutableStateOf(
+                bottomContentPaddingPx
+                    .coerceAtLeast(0)
+            )
+        }
+
+    LaunchedEffect(
+        state.id,
+        bottomContentPaddingPx
+    ) {
+        val previousPaddingPx =
+            previousBottomContentPaddingPx
+
+        val currentPaddingPx =
+            bottomContentPaddingPx
+                .coerceAtLeast(0)
+
+        previousBottomContentPaddingPx =
+            currentPaddingPx
+
+        /*
+         * Only keyboard/accessory reserve growth needs correction.
+         * Closing the keyboard must not move the viewport.
+         */
+        if (
+            currentPaddingPx <= previousPaddingPx ||
+            copyMode ||
+            outputListState.isScrollInProgress
+        ) {
+            return@LaunchedEffect
+        }
+
+        delay(16L)
+
+        val lineCount =
+            state.snapshot.lines.size
+
+        val lastIndex =
+            lineCount - 1
+
+        if (lastIndex < 0) {
+            return@LaunchedEffect
+        }
+
+        val layoutInfo =
+            outputListState.layoutInfo
+
+        val visibleItems =
+            layoutInfo.visibleItemsInfo
+
+        val visibleLastIndex =
+            visibleItems
+                .lastOrNull()
+                ?.index
+                ?: -1
+
+        /*
+         * Do not drag a user who intentionally scrolled into history
+         * back to the prompt merely because the keyboard opened.
+         */
+        if (
+            visibleLastIndex >= 0 &&
+            visibleLastIndex <
+                (
+                    lastIndex -
+                        AUTO_FOLLOW_MARGIN_LINES
+                ).coerceAtLeast(0)
+        ) {
+            return@LaunchedEffect
+        }
+
+        val rowHeightPx =
+            lineHeightPx
+                .toInt()
+                .coerceAtLeast(1)
+
+        val viewportBottomPx =
+            surfaceSize.height
+                .takeIf {
+                    it > 0
+                }
+                ?: layoutInfo.viewportEndOffset
+
+        val effectiveBottomPx =
+            (
+                viewportBottomPx -
+                    currentPaddingPx
+            )
+                .coerceAtLeast(
+                    rowHeightPx
+                )
+
+        val lastVisibleItem =
+            visibleItems
+                .firstOrNull {
+                    it.index == lastIndex
+                }
+
+        val lastRowAlreadyVisible =
+            lastVisibleItem
+                ?.let {
+                    it.offset + it.size <=
+                        effectiveBottomPx
+                }
+                ?: false
+
+        if (lastRowAlreadyVisible) {
+            return@LaunchedEffect
+        }
+
+        val targetTopPx =
+            (
+                effectiveBottomPx -
+                    rowHeightPx
+            )
+                .coerceAtLeast(0)
+
+        outputListState.scrollToItem(
+            index = lastIndex,
+            scrollOffset = -targetTopPx
+        )
+    }
+
     LaunchedEffect(
         surfaceSize,
         fontSizeSp,
