@@ -404,15 +404,67 @@ def ci_watch():
 def merge_pr(num):
     run(["gh", "pr", "merge", str(num), "--merge", "--delete-branch"])
 
-def wait_workflow(name, head_sha, timeout=3600):
+def workflow_display_name(workflow_file):
+    path = (
+        ROOT /
+        ".github" /
+        "workflows" /
+        workflow_file
+    )
+
+    if not path.is_file():
+        raise SystemExit(
+            "BLOCKED: workflow file bulunamadı: "
+            f"{workflow_file}"
+        )
+
+    for raw in path.read_text(
+        encoding="utf-8"
+    ).splitlines():
+        line = raw.strip()
+
+        if line.startswith("name:"):
+            name = (
+                line.split(":", 1)[1]
+                .strip()
+                .strip('"')
+                .strip("'")
+            )
+
+            if name:
+                return name
+
+    raise SystemExit(
+        "BLOCKED: workflow name çözülemedi: "
+        f"{workflow_file}"
+    )
+
+
+def wait_workflow(
+    workflow_file,
+    head_sha,
+    timeout=5400,
+    min_count=1,
+):
+    name = workflow_display_name(
+        workflow_file
+    )
+
     started = time.time()
+
     while time.time() - started < timeout:
         p = run([
-            "gh", "run", "list",
-            "--workflow", name,
-            "--branch", "main",
-            "--limit", "10",
-            "--json", "databaseId,headSha,status,conclusion,url",
+            "gh",
+            "run",
+            "list",
+            "--workflow",
+            workflow_file,
+            "--branch",
+            "main",
+            "--limit",
+            "30",
+            "--json",
+            "databaseId,headSha,status,conclusion,url",
         ], check=False, capture=True)
 
         if p.returncode != 0:
@@ -420,28 +472,66 @@ def wait_workflow(name, head_sha, timeout=3600):
             continue
 
         try:
-            runs = json.loads(p.stdout or "[]")
+            runs = json.loads(
+                p.stdout or "[]"
+            )
         except json.JSONDecodeError:
             runs = []
 
-        match = next((r for r in runs if r.get("headSha") == head_sha), None)
-        if not match:
-            print(f"{name}: waiting for matching main run...")
+        matches = [
+            r for r in runs
+            if r.get("headSha") == head_sha
+        ]
+
+        if len(matches) < min_count:
+            print(
+                f"{name}: waiting "
+                f"({len(matches)}/{min_count} runs found)"
+            )
             time.sleep(30)
             continue
 
-        status = match.get("status")
-        conclusion = match.get("conclusion")
-        print(f"{name}: {status} / {conclusion}")
+        failed = [
+            r for r in matches
+            if (
+                r.get("status") == "completed"
+                and r.get("conclusion")
+                not in ("success",)
+            )
+        ]
 
-        if status == "completed":
-            if conclusion == "success":
-                return match
-            raise SystemExit(f"{name}: {conclusion}")
+        if failed:
+            conclusions = ", ".join(
+                str(r.get("conclusion"))
+                for r in failed
+            )
+            raise SystemExit(
+                f"{name}: {conclusions}"
+            )
+
+        pending = [
+            r for r in matches
+            if r.get("status") != "completed"
+        ]
+
+        print(
+            f"{name}: "
+            f"{len(matches) - len(pending)}/"
+            f"{len(matches)} completed"
+        )
+
+        if not pending:
+            if all(
+                r.get("conclusion") == "success"
+                for r in matches
+            ):
+                return matches
 
         time.sleep(30)
 
-    raise SystemExit(f"{name}: timeout")
+    raise SystemExit(
+        f"{name}: timeout"
+    )
 
 def release_info():
     gh_required()
@@ -602,50 +692,70 @@ def require_remote_sync(branch):
 def required_main_workflows(files):
     required = []
 
-    if any(
+    android_change = any(
         f.startswith("android-app/")
-        for f in files
-    ):
-        required.append(
-            "Android Debug"
-        )
-
-    worker_change = any(
-        f.startswith("build-service/src/")
-        or "/worker" in f.lower()
-        or "worker-" in f.lower()
         for f in files
     )
 
-    if worker_change:
-        required.extend(
-            [
-                "Build AppForge Worker Image",
-                "Source Worker Image",
-            ]
+    if android_change:
+        required.append(
+            "android-debug.yml"
         )
 
-    conversion_change = any(
-        "conversion" in f.lower()
-        for f in files
+    build_service_files = [
+        f for f in files
+        if f.startswith("build-service/")
+    ]
+
+    worker_excluded = (
+        "build-service/Dockerfile.source-worker",
+        "build-service/source-worker.js",
+        "build-service/scripts/patch-flutter-readonly-sdk.sh",
+        "build-service/scripts/source-worker-runtime-smoke.sh",
+        "build-service/tests/source_build_isolation.test.js",
+    )
+
+    normal_worker_change = any(
+        (
+            f not in worker_excluded
+            and not (
+                f.startswith(
+                    "build-service/tests/source_worker_"
+                )
+                and f.endswith(".test.js")
+            )
+        )
+        for f in build_service_files
+    )
+
+    if normal_worker_change:
+        required.append(
+            "worker-image.yml"
+        )
+
+    if build_service_files:
+        required.append(
+            "source-worker-image.yml"
+        )
+
+    conversion_change = (
+        bool(build_service_files)
+        or any(
+            f in {
+                "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+                "android-app/app/src/main/java/com/appforge/studio/io/AppForgeApkConversion.kt",
+                "android-app/app/src/main/java/com/appforge/studio/io/AppForgeExeConversion.kt",
+                ".github/workflows/conversion-smoke.yml",
+                ".github/scripts/railway_production.py",
+                ".github/workflows/production-automation.yml",
+            }
+            for f in files
+        )
     )
 
     if conversion_change:
         required.append(
-            "AppForge Conversion Smoke"
-        )
-
-    deploy_change = any(
-        f.startswith("railway")
-        or f.startswith("render")
-        or f.startswith("vercel")
-        or "deploy" in f.lower()
-        for f in files
-    )
-
-    if deploy_change:
-        required.append(
-            "Production Deploy"
+            "conversion-smoke.yml"
         )
 
     return list(
@@ -653,35 +763,68 @@ def required_main_workflows(files):
     )
 
 
-def workflow_names():
-    p = run(
-        [
-            "gh",
-            "workflow",
-            "list",
-            "--all",
-            "--json",
-            "name",
-        ],
-        check=False,
-        capture=True,
+def wait_required_main_ci(
+    head_sha,
+    source_files,
+):
+    required = required_main_workflows(
+        source_files
     )
 
-    if p.returncode != 0:
-        return set()
+    results = {}
 
-    try:
-        data = json.loads(
-            p.stdout or "[]"
+    print(
+        "\n=== MAIN REQUIRED CI ==="
+    )
+
+    for workflow_file in required:
+        state_write(
+            "BUILDING",
+            workflow=workflow_file,
+            main_sha=head_sha,
         )
-    except json.JSONDecodeError:
-        return set()
 
-    return {
-        str(item.get("name", ""))
-        for item in data
-        if item.get("name")
-    }
+        results[workflow_file] = (
+            wait_workflow(
+                workflow_file,
+                head_sha,
+            )
+        )
+
+    deploy_count = sum(
+        1
+        for workflow_file in required
+        if workflow_file in {
+            "worker-image.yml",
+            "source-worker-image.yml",
+        }
+    )
+
+    if deploy_count:
+        print(
+            "\n=== PRODUCTION AUTOMATION ==="
+        )
+
+        state_write(
+            "DEPLOYING",
+            workflow="production-automation.yml",
+            main_sha=head_sha,
+        )
+
+        results[
+            "production-automation.yml"
+        ] = wait_workflow(
+            "production-automation.yml",
+            head_sha,
+            min_count=deploy_count,
+        )
+
+    if not required:
+        print(
+            "No conditional main workflows required."
+        )
+
+    return required, results
 
 
 def continue_after_push(branch):
@@ -752,52 +895,17 @@ def continue_after_push(branch):
         "HEAD",
     )
 
-    available = workflow_names()
-
-    required_workflows = (
-        required_main_workflows(
-            source_files
+    required_workflows, ci_result = (
+        wait_required_main_ci(
+            main_sha,
+            source_files,
         )
     )
-
-    ci_result = {}
-
-    print(
-        "\n=== MAIN REQUIRED CI ==="
-    )
-
-    for workflow in required_workflows:
-        if (
-            available and
-            workflow not in available
-        ):
-            raise SystemExit(
-                "BLOCKED: required workflow "
-                f"bulunamadı: {workflow}"
-            )
-
-        state_write(
-            "BUILDING",
-            workflow=workflow,
-            pr=num,
-        )
-
-        ci_result[workflow] = (
-            wait_workflow(
-                workflow,
-                main_sha,
-            )
-        )
-
-    if not required_workflows:
-        print(
-            "No conditional main workflows required."
-        )
 
     rel = release_info()
 
     if (
-        "Android Debug"
+        "android-debug.yml"
         in required_workflows
         and rel.get("status") != "READY"
     ):
@@ -837,6 +945,119 @@ def continue_after_push(branch):
         mp,
     )
 
+
+def recover():
+    if git_out(
+        "branch",
+        "--show-current",
+    ) != "main":
+        raise SystemExit(
+            "recover yalnız main üzerinde çalışır."
+        )
+
+    sha = (
+        os.environ.get(
+            "APPFORGE_RECOVERY_SHA"
+        )
+        or ""
+    ).strip()
+
+    if not sha:
+        raise SystemExit(
+            "APPFORGE_RECOVERY_SHA gerekli."
+        )
+
+    run([
+        "git",
+        "fetch",
+        "origin",
+        "main",
+    ])
+
+    if not git_out(
+        "cat-file",
+        "-t",
+        sha,
+    ):
+        raise SystemExit(
+            "Recovery SHA bulunamadı."
+        )
+
+    first_parent = git_out(
+        "rev-parse",
+        f"{sha}^1",
+    )
+
+    diff = git_out(
+        "diff",
+        "--name-only",
+        first_parent,
+        sha,
+    )
+
+    files = [
+        line.strip()
+        for line in diff.splitlines()
+        if line.strip()
+    ]
+
+    print(
+        "=== APPFORGE MAIN RECOVERY ==="
+    )
+    print(
+        "SHA:",
+        sha,
+    )
+    print(
+        "Files:",
+        len(files),
+    )
+
+    required, ci_result = (
+        wait_required_main_ci(
+            sha,
+            files,
+        )
+    )
+
+    rel = release_info()
+
+    if (
+        "android-debug.yml"
+        in required
+        and rel.get("status") != "READY"
+    ):
+        raise SystemExit(
+            "APK release READY değil."
+        )
+
+    state_write(
+        "COMPLETE",
+        recovery_sha=sha,
+        required_workflows=required,
+        release=rel,
+    )
+
+    jp, mp = generate_report(
+        "SUCCESS",
+        recovery_sha=sha,
+        source_files=files,
+        required_workflows=required,
+        ci=ci_result,
+        release=rel,
+    )
+
+    print(
+        "\nAPPFORGE RECOVERY COMPLETE ✅"
+    )
+    print(
+        "JSON:",
+        jp,
+    )
+    print(
+        "REPORT:",
+        mp,
+    )
 
 def submit():
     branch = git_out(
@@ -1076,7 +1297,7 @@ def main():
 
     for name in [
         "status", "doctor", "test", "security", "dashboard",
-        "ci", "report", "submit", "resume", "release", "deploy", "rollback"
+        "ci", "report", "submit", "resume", "recover", "release", "deploy", "rollback"
     ]:
         sub.add_parser(name)
 
@@ -1090,6 +1311,7 @@ def main():
         "report",
         "submit",
         "resume",
+        "recover",
         "release",
         "deploy",
         "rollback",
@@ -1121,6 +1343,8 @@ def main():
         submit()
     elif args.cmd == "resume":
         resume()
+    elif args.cmd == "recover":
+        recover()
     elif args.cmd == "release":
         release()
     elif args.cmd == "deploy":

@@ -10,7 +10,7 @@ test("AppForge Autopilot exposes the admin control-plane commands", async () => 
 
   for (const command of [
     "status", "doctor", "test", "security", "dashboard",
-    "ci", "report", "submit", "resume", "release", "deploy", "rollback"
+    "ci", "report", "submit", "resume", "recover", "release", "deploy", "rollback"
   ]) {
     assert.match(source, new RegExp(`["']${command}["']`));
   }
@@ -18,7 +18,9 @@ test("AppForge Autopilot exposes the admin control-plane commands", async () => 
   assert.match(source, /dashboard_refresh_seconds/);
   assert.match(source, /gh", "pr", "checks"/);
   assert.match(source, /gh", "pr", "merge"/);
-  assert.match(source, /Android Debug/);
+  assert.match(source, /android-debug\.yml/);
+  assert.match(source, /workflow_display_name/);
+  assert.match(source, /wait_required_main_ci/);
   assert.match(source, /Latest APK release/);
   assert.match(source, /stale_contracts/);
   assert.match(source, /scan_secrets/);
