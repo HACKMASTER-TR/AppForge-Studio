@@ -39,7 +39,7 @@ test(
     for (
       const marker of [
         "Dockerfile.source-worker",
-        "load: true",
+        "load: false",
         "ANDROID_SDK_LICENSE_ACCEPTED=true",
         "10001:10001",
         "--network none",
@@ -52,14 +52,17 @@ test(
         "source-worker-runtime-smoke.sh",
         "ghcr.io/hackmaster-tr/appforge-source-worker",
         "Resolve immutable image tag",
-        "push: false",
+        "push: true",
         "provenance: false",
-        "Publish already-verified source Worker image",
+        "Build and publish immutable source Worker candidate",
+        "Pull immutable source Worker candidate",
+        "Promote verified source Worker image",
         'SHA_IMAGE="${IMAGE_NAME}:${{ steps.image-tag.outputs.sha_tag }}"',
-        'docker tag "${LOCAL_IMAGE}"',
-        'docker push "${SHA_IMAGE}"',
+        'docker pull "${SHA_IMAGE}"',
+        'docker tag "${SHA_IMAGE}" "${LOCAL_IMAGE}"',
         'docker push "${LATEST_IMAGE}"',
-        "cache-from: type=gha,scope=source-worker"
+        "cache-from: type=gha,scope=source-worker",
+        "cache-to: type=gha,mode=min,scope=source-worker"
       ]
     ) {
       assert.ok(
@@ -80,7 +83,23 @@ test(
     assert.equal(
       buildPushActionCount,
       1,
-      "Source Worker image yalnız bir kez build edilmeli; smoke sonrası aynı doğrulanmış image push edilmeli."
+      "Source Worker image yalnız bir kez BuildKit ile build edilmeli."
+    );
+
+    assert.equal(
+      workflow.includes(
+        'docker push "${SHA_IMAGE}"'
+      ),
+      false,
+      "Immutable SHA image Docker CLI ile ikinci kez push edilmemeli."
+    );
+
+    assert.equal(
+      workflow.includes(
+        "cache-to: type=gha,mode=max,scope=source-worker"
+      ),
+      false,
+      "Source Worker dev GHA cache export mode=max kullanmamalı."
     );
   }
 );
