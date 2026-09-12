@@ -13,7 +13,7 @@ test("Stage 10H fixes phone terminal UX without regressing native PTY", async ()
   assert.match(pty, /outputRevision/);
   assert.match(
     pty,
-    /LaunchedEffect\(\s*state\.id,\s*state\.snapshot\.lines\.size\s*\)/
+    /LaunchedEffect\(\s*state\.id,\s*state\.snapshot\.lines\.size,\s*state\.snapshot\.cursorLine\s*\)/
   );
 
   assert.match(
