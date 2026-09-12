@@ -8452,25 +8452,6 @@ private fun AppPreviewScreen(
             )
         }
 
-    LaunchedEffect(
-        serverUrl,
-        session?.token,
-        currentStatus?.active,
-        currentStatus?.source,
-        currentStatus?.productId
-    ) {
-        if (
-            session ==
-                null
-        ) {
-            quotaStatus =
-                null
-        } else {
-            refreshQuotaStatus()
-        }
-    }
-
-
     DisposableEffect(
         Unit
     ) {
@@ -23882,6 +23863,25 @@ private fun ProUpgradeScreen(
             )
         }
     }
+
+    LaunchedEffect(
+        serverUrl,
+        session?.token,
+        currentStatus?.active,
+        currentStatus?.source,
+        currentStatus?.productId
+    ) {
+        if (
+            session ==
+                null
+        ) {
+            quotaStatus =
+                null
+        } else {
+            refreshQuotaStatus()
+        }
+    }
+
 
     DisposableEffect(
         Unit

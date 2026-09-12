@@ -43,6 +43,44 @@ test(
 
 
 test(
+  "quota refresh effect stays inside ProUpgradeScreen scope",
+  () => {
+    const proStart =
+      main.indexOf(
+        "@Composable\\nprivate fun ProUpgradeScreen("
+      );
+
+    assert.ok(
+      proStart >= 0
+    );
+
+    const marker =
+      "LaunchedEffect(\\n        serverUrl,\\n        session?.token";
+
+    const first =
+      main.indexOf(
+        marker
+      );
+
+    const insidePro =
+      main.indexOf(
+        marker,
+        proStart
+      );
+
+    assert.ok(
+      insidePro > proStart
+    );
+
+    assert.equal(
+      first,
+      insidePro
+    );
+  }
+);
+
+
+test(
   "purchase callback separates add-ons from Pro subscription",
   () => {
     assert.match(
