@@ -350,6 +350,8 @@ androidComponents {
 }
 
 dependencies {
+    implementation(project(":termux-terminal-view"))
+
     val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
 
     implementation(composeBom)

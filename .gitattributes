@@ -15,3 +15,5 @@
 *.p12 binary
 *.zip binary
 *.xz binary
+android-app/termux-terminal-emulator/** -whitespace
+android-app/termux-terminal-view/** -whitespace
