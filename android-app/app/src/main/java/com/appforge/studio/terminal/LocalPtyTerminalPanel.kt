@@ -3160,11 +3160,20 @@ private fun LocalPtySurface(
      * Character echo, Readline redraws and shortcut keys must never
      * reposition the terminal viewport.
      *
-     * Follow only structural line-count changes.
+     * Follow structural line-count OR cursor-row changes.
+     *
+     * A shell may publish the next prompt by redrawing the existing final
+     * row instead of appending another line. In that case lines.size stays
+     * unchanged, but cursorLine advances/changes.
+     *
+     * Do NOT use outputRevision here: ordinary typing, Readline redraws and
+     * shortcut keys change outputRevision and would reintroduce viewport
+     * jumps while the user is typing.
      */
     LaunchedEffect(
         state.id,
-        state.snapshot.lines.size
+        state.snapshot.lines.size,
+        state.snapshot.cursorLine
     ) {
         if (copyMode) {
             return@LaunchedEffect
