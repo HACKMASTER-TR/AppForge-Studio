@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import json, re, sys
+
+ROOT = Path(__file__).resolve().parents[1]
+checks = []
+
+def check(name, ok, detail=""):
+    checks.append((name, bool(ok), detail))
+
+def text(rel):
+    return (ROOT / rel).read_text(encoding="utf-8")
+
+try:
+    gradle = text("android-app/app/build.gradle.kts")
+    manifest = text("android-app/app/src/main/AndroidManifest.xml")
+    gate = text("android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt")
+    app = text("android-app/app/src/main/java/com/appforge/studio/AppForgeApplication.kt")
+    billing = text("android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt")
+    pro = text("android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt")
+    legal = text("android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt")
+    ai = text("android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt")
+    backend = text("build-service/src/clientHardening.js")
+    bootstrap = text("build-service/bootstrap.js")
+    pkg = json.loads(text("build-service/package.json"))
+    policy = json.loads(text(".secondbrain/APP_UPDATE_PLAY_SECURITY_POLICY.json"))
+except Exception as exc:
+    print(f"FAIL  contract inputs: {exc}")
+    sys.exit(1)
+
+check("Android versionCode 522", re.search(r"versionCode\s*=\s*522\b", gradle))
+check("Android versionName 5.0.22", 'versionName = "5.0.22"' in gradle)
+check("Play in-app update dependency", 'com.google.android.play:app-update:2.1.0' in gradle)
+check("Update gate is launcher", '.UpdateGateActivity' in manifest and 'android.intent.category.LAUNCHER' in manifest)
+check("MainActivity external launch closed", re.search(r'android:name="\.MainActivity"[\s\S]{0,180}?android:exported="false"', manifest))
+check("Application lifecycle guard installed", 'android:name=".AppForgeApplication"' in manifest and 'ActivityLifecycleCallbacks' in app)
+check("No admin update bypass", 'admin' not in gate.lower())
+check("Forced update uses immediate flow", 'AppUpdateType.IMMEDIATE' in gate and 'DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS' in gate)
+check("Billing raw debug text not shown", '.debugMessage' not in billing)
+check("Billing restore purchases", 'restorePurchases' in billing and 'queryPurchasesAsync' in billing)
+check("Billing subscription management", 'openManageSubscription' in billing and 'subscriptions' in billing)
+check("Pro center uses server truth", 'StudioSecurityClient' in pro and 'proStatus' in pro and 'quotaStatus' in pro)
+check("AI V2 snapshot grounded", 'AppForgeAiSnapshotV2.build' in ai)
+check("AI secret-safe instruction", 'API anahtarı' in ai and 'keystore' in ai.lower())
+check("Legal describes cloud Build Service", 'Build Service' in legal and 'sunucu' in legal.lower())
+check("False local-only legal removed", 'Tüm APK oluşturma işlemi cihazınızda yerel olarak gerçekleşir' not in legal)
+check("Public Android policy endpoint", '/api/client/android/policy' in backend)
+check("Backend old client rejection", 'APP_UPDATE_REQUIRED' in backend and '426' in backend)
+check("Integrity action binding", 'expectedAction' in backend and 'INTEGRITY_ACTION_MISMATCH' in backend)
+check("Integrity real version check", 'versionCode' in backend and 'version_too_old' in backend)
+check("Play token account ownership", 'appforge_play_purchase_owners' in backend and 'PLAY_PURCHASE_OWNER_MISMATCH' in backend)
+check("RTDN endpoint", '/api/play/rtdn' in backend and 'subscriptionNotification' in backend)
+check("Server starts through hardening bootstrap", pkg.get('scripts',{}).get('start') == 'node --import ./instrument.mjs bootstrap.js' and 'server.js' in bootstrap)
+check("SecondBrain permanent policy", policy.get('policy') == 'APPFORGE_5_0_22_UPDATE_PLAY_SECURITY' and policy.get('principles',{}).get('admin_is_not_pro') is True)
+
+failed = [c for c in checks if not c[1]]
+for name, ok, detail in checks:
+    print(("PASS" if ok else "FAIL") + "  " + name + (f" -- {detail}" if detail else ""))
+print(f"\ncontracts: {len(checks)-len(failed)}/{len(checks)} PASS")
+if failed:
+    print(f"fail {len(failed)}")
+    sys.exit(1)
+print("fail 0")

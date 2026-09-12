@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "policy": "APPFORGE_5_0_22_UPDATE_PLAY_SECURITY",
+  "effective_version_code": 522,
+  "principles": {
+    "admin_is_not_pro": true,
+    "server_is_entitlement_authority": true,
+    "play_prices_are_localized_by_google_play": true,
+    "forced_update_has_no_admin_bypass": true,
+    "old_android_clients_must_be_rejected_server_side": true,
+    "integrity_sessions_are_action_bound": true,
+    "integrity_must_validate_real_play_version_code": true,
+    "purchase_tokens_are_single_account_bound": true,
+    "rtdn_revalidates_google_play_state": true,
+    "refund_revoke_expiry_remove_only_matching_play_entitlement": true,
+    "successful_builds_consume_monthly_quota": true,
+    "failed_or_cancelled_builds_do_not_consume_monthly_quota": true,
+    "ai_context_must_exclude_secrets": true,
+    "ai_must_not_invent_live_play_or_internet_state": true
+  },
+  "update_rollout": {
+    "latest_version_code": 522,
+    "safe_initial_min_supported_version_code": 521,
+    "force_5_0_22_after_play_release": "Set STUDIO_MIN_SUPPORTED_VERSION_CODE=522 only after versionCode 522 is available to the intended Google Play audience.",
+    "states": ["NORMAL", "OPTIONAL", "FORCED", "MAINTENANCE"]
+  },
+  "protected_existing_behavior": [
+    "Terminal, Files, Git, Connections, SSH and Tools",
+    "Admin build capacity and admin quota exemption",
+    "Admin-granted Pro entitlements",
+    "Quota add-on cycle binding and idempotency",
+    "Successful-build-only monthly quota accounting",
+    "Existing Build Service queue and worker behavior",
+    "Existing Help Center search and categories",
+    "Existing LiteRT local assistant FAQ fast path and final-answer filtering"
+  ],
+  "mandatory_verification": [
+    "npm test",
+    ":app:testDebugUnitTest in Android CI",
+    "scripts/brain selftest",
+    "scripts/brain doctor",
+    "scripts/appforge-stability-gate local",
+    "git diff --check"
+  ]
+}

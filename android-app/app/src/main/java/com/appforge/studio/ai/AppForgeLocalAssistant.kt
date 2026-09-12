@@ -20,386 +20,80 @@ import java.io.Closeable
 import java.io.File
 import java.nio.charset.Charset
 
+private fun cleanAssistantOutput(raw: String): String {
+    var text = raw
 
-private fun cleanAssistantOutput(
-    raw: String
-): String {
-
-    var text =
-        raw
-
-    /*
-     * Bazı LiteRT-LM çıktılarında UTF-8 metin
-     * Windows-1252 olarak yorumlanmış görünebiliyor:
-     *
-     * geÃ§erli -> geçerli
-     * GÃ¶rev    -> Görev
-     * seÃ§      -> seç
-     */
-    val looksBroken =
+    if (
         text.contains("Ã") ||
         text.contains("Ä") ||
         text.contains("Å") ||
         text.contains("Â")
-
-    if (looksBroken) {
-        text =
-            runCatching {
-                String(
-                    text.toByteArray(
-                        Charset.forName(
-                            "windows-1252"
-                        )
-                    ),
-                    Charsets.UTF_8
-                )
-            }.getOrDefault(
-                text
+    ) {
+        text = runCatching {
+            String(
+                text.toByteArray(Charset.forName("windows-1252")),
+                Charsets.UTF_8
             )
+        }.getOrDefault(text)
     }
 
-    /*
-     * Modelin kullanıcıya gösterilmemesi gereken
-     * düşünme bölümünü kaldır.
-     */
-    text =
-        text.replace(
-            Regex(
-                "(?is)<think>.*?</think>"
-            ),
-            ""
-        )
-
-    /*
-     * Streaming sırasında </think> henüz gelmediyse
-     * yarım düşünme içeriğini de ekranda gösterme.
-     */
-    text =
-        text.replace(
-            Regex(
-                "(?is)<think>.*$"
-            ),
-            ""
-        )
-
-    text =
-        text.replace(
-            "</think>",
-            "",
-            ignoreCase = true
-        )
-
-    /*
-     * UI henüz Markdown renderer kullanmadığı için
-     * ham Markdown işaretlerini temizle.
-     */
-    text =
-        text.replace(
-            "**",
-            ""
-        )
-
-    text =
-        text.replace(
-            "__",
-            ""
-        )
-
-    text =
-        text.replace(
-            "`",
-            ""
-        )
-
-    /*
-     * ÖNEMLİ:
-     *
-     * sendMessageAsync() cevabı streaming parçalar halinde verir.
-     * Birçok parça başında gerçek bir boşluk taşır:
-     *
-     * "Merhaba"
-     * " kullanıcı"
-     * ", nasılsın?"
-     *
-     * Burada trimStart() kullanılırsa sonuç:
-     * "Merhabakullanıcı,nasılsın?"
-     *
-     * olur. Bu nedenle streaming parçasının başındaki boşluğu
-     * kesinlikle silmiyoruz.
-     */
     return text
-        .replace(
-            "\r\n",
-            "\n"
-        )
-        .replace(
-            Regex(
-                "\n{3,}"
-            ),
-            "\n\n"
-        )
+        .replace(Regex("(?is)<think>.*?</think>"), "")
+        .replace(Regex("(?is)<think>.*$"), "")
+        .replace("</think>", "", ignoreCase = true)
+        .replace("**", "")
+        .replace("__", "")
+        .replace("`", "")
+        .replace("\r\n", "\n")
+        .replace(Regex("\n{3,}"), "\n\n")
 }
 
 private fun extractFinalAssistantAnswer(
     raw: String,
     languageCode: String
 ): String {
+    val cleaned = cleanAssistantOutput(raw).trim()
 
-    val cleaned =
-        cleanAssistantOutput(
-            raw
-        ).trim()
+    Regex("(?is)<final_answer>\\s*(.*?)\\s*</final_answer>")
+        .findAll(cleaned)
+        .lastOrNull()
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.trim()
+        ?.takeIf { it.isNotBlank() }
+        ?.let { return it }
 
-    /*
-     * Tercih edilen yöntem:
-     * Model nihai cevabı özel etiket içine koyar.
-     */
-    val tagged =
-        Regex(
-            "(?is)<final_answer>\\s*(.*?)\\s*</final_answer>"
-        )
-            .findAll(
-                cleaned
-            )
-            .lastOrNull()
-            ?.groupValues
-            ?.getOrNull(
-                1
-            )
-            ?.trim()
-
-    if (
-        !tagged.isNullOrBlank()
-    ) {
-        return tagged
-    }
-
-    /*
-     * Kapanış etiketi unutulursa başlangıçtan sonrasını al.
-     */
-    val openTag =
-        cleaned.lastIndexOf(
-            "<final_answer>",
-            ignoreCase = true
-        )
-
-    if (
-        openTag >= 0
-    ) {
+    val openTag = cleaned.lastIndexOf("<final_answer>", ignoreCase = true)
+    if (openTag >= 0) {
         return cleaned
-            .substring(
-                openTag +
-                    "<final_answer>".length
-            )
-            .replace(
-                "</final_answer>",
-                "",
-                ignoreCase = true
-            )
+            .substring(openTag + "<final_answer>".length)
+            .replace("</final_answer>", "", ignoreCase = true)
             .trim()
     }
 
-    /*
-     * Bazı reasoning modelleri etikete uymayıp önce
-     * İngilizce çalışma notlarını yazabiliyor.
-     *
-     * Türkçe seçiliyse sondaki gerçek Türkçe cevap
-     * bölümünü cümle bazında buluyoruz.
-     */
+    val filtered = cleaned
+        .lineSequence()
+        .filterNot { line ->
+            val value = line.trim().lowercase()
+            value.startsWith("okay,") ||
+                value.startsWith("the user") ||
+                value.startsWith("first, i need") ||
+                value.startsWith("i need to") ||
+                value.startsWith("looking at") ||
+                value.startsWith("let me")
+        }
+        .joinToString("\n")
+        .trim()
+
     if (
-        languageCode == "tr" ||
-        languageCode == "system"
+        (languageCode == "tr" || languageCode == "system") &&
+        filtered.isBlank()
     ) {
-        val sentences =
-            cleaned
-                .split(
-                    Regex(
-                        "(?<=[.!?])\\s+|\\n+"
-                    )
-                )
-                .map {
-                    it.trim()
-                }
-                .filter {
-                    it.isNotBlank()
-                }
-
-        val englishMetaWords =
-            setOf(
-                "the",
-                "user",
-                "asking",
-                "need",
-                "answer",
-                "should",
-                "first",
-                "looking",
-                "following",
-                "guidelines",
-                "structure",
-                "ensure",
-                "clear",
-                "meets",
-                "requirements",
-                "let",
-                "think"
-            )
-
-        val turkishWords =
-            setOf(
-                "ve",
-                "ile",
-                "için",
-                "bir",
-                "bu",
-                "daha",
-                "olarak",
-                "fark",
-                "arasındaki",
-                "proje",
-                "projeler",
-                "özellik",
-                "özellikler",
-                "hesap",
-                "plan",
-                "planı",
-                "ücretsiz",
-                "kullanıcı",
-                "kullanabilir",
-                "sunar",
-                "oluşturma",
-                "derleme",
-                "uygulama"
-            )
-
-        fun words(
-            value: String
-        ): List<String> =
-            Regex(
-                "[\\p{L}]+"
-            )
-                .findAll(
-                    value.lowercase()
-                )
-                .map {
-                    it.value
-                }
-                .toList()
-
-        fun isTurkishSentence(
-            value: String
-        ): Boolean {
-            val lower =
-                value.lowercase()
-
-            val tokens =
-                words(
-                    value
-                )
-
-            val trScore =
-                tokens.count {
-                    it in turkishWords
-                } +
-                if (
-                    lower.any {
-                        it in
-                            "çğıöşü"
-                    }
-                ) {
-                    2
-                } else {
-                    0
-                }
-
-            val enScore =
-                tokens.count {
-                    it in englishMetaWords
-                }
-
-            return trScore >= 2 &&
-                trScore > enScore
-        }
-
-        /*
-         * Cevabın sonundan başlayarak kesintisiz Türkçe
-         * nihai cevap bölümünü bul.
-         */
-        var start =
-            sentences.size
-
-        for (
-            i in sentences.indices.reversed()
-        ) {
-            if (
-                isTurkishSentence(
-                    sentences[i]
-                )
-            ) {
-                start =
-                    i
-            } else if (
-                start <
-                    sentences.size
-            ) {
-                break
-            }
-        }
-
-        if (
-            start <
-                sentences.size
-        ) {
-            return sentences
-                .subList(
-                    start,
-                    sentences.size
-                )
-                .joinToString(
-                    " "
-                )
-                .trim()
-        }
+        return "Geçerli bir Türkçe yanıt üretilemedi."
     }
 
-    /*
-     * Son güvenli fallback:
-     * reasoning başlangıçlarını satır bazında temizle.
-     */
-    return cleaned
-        .lineSequence()
-        .filterNot {
-            line ->
-            val l =
-                line
-                    .trim()
-                    .lowercase()
-
-            l.startsWith(
-                "okay,"
-            ) ||
-            l.startsWith(
-                "the user"
-            ) ||
-            l.startsWith(
-                "first, i need"
-            ) ||
-            l.startsWith(
-                "i need to"
-            ) ||
-            l.startsWith(
-                "looking at"
-            ) ||
-            l.startsWith(
-                "let me"
-            )
-        }
-        .joinToString(
-            "\n"
-        )
-        .trim()
+    return filtered
 }
-
 
 data class LocalAiInitResult(
     val backend: LocalAiBackend,
@@ -409,146 +103,75 @@ data class LocalAiInitResult(
 class AppForgeLocalAssistant(
     context: Context
 ) : Closeable {
-    private val appContext =
-        context.applicationContext
+    private val appContext = context.applicationContext
+    private val mutex = Mutex()
 
-    private val mutex =
-        Mutex()
-
-    private var engine:
-        Engine? =
-        null
-
-    private var conversation:
-        Conversation? =
-        null
+    private var engine: Engine? = null
+    private var conversation: Conversation? = null
 
     val isReady: Boolean
-        get() =
-            engine !=
-                null &&
-            conversation !=
-                null
+        get() = engine != null && conversation != null
 
     suspend fun initialize(
         model: LocalAiModelInfo,
         requestedBackend: LocalAiBackend
-    ): LocalAiInitResult =
-        mutex.withLock {
-            closeInternal()
+    ): LocalAiInitResult = mutex.withLock {
+        closeInternal()
 
-            require(
-                File(
-                    model.path
-                ).exists()
-            ) {
-                "Yerel model dosyası bulunamadı."
+        require(File(model.path).exists()) {
+            "Yerel model dosyası bulunamadı."
+        }
+
+        val actual = if (requestedBackend == LocalAiBackend.GPU) {
+            runCatching {
+                initializeWithBackend(model, LocalAiBackend.GPU)
+                LocalAiBackend.GPU
+            }.getOrElse {
+                closeInternal()
+                initializeWithBackend(model, LocalAiBackend.CPU)
+                LocalAiBackend.CPU
             }
-
-            val actual =
-                if (
-                    requestedBackend ==
-                    LocalAiBackend.GPU
-                ) {
-                    runCatching {
-                        initializeWithBackend(
-                            model,
-                            LocalAiBackend.GPU
-                        )
-
-                        LocalAiBackend.GPU
-                    }.getOrElse {
-                        closeInternal()
-
-                        initializeWithBackend(
-                            model,
-                            LocalAiBackend.CPU
-                        )
-
-                        LocalAiBackend.CPU
-                    }
-                } else {
-                    initializeWithBackend(
-                        model,
-                        LocalAiBackend.CPU
-                    )
-
-                    LocalAiBackend.CPU
-                }
-
-            LocalAiInitResult(
-                backend =
-                    actual,
-                modelName =
-                    model.name
-            )
+        } else {
+            initializeWithBackend(model, LocalAiBackend.CPU)
+            LocalAiBackend.CPU
         }
 
-    private fun answerLanguageInstruction(): String {
-        val selected =
-            AppSettingsStore
-                .load(
-                    appContext
-                )
-                .languageCode
-
-        /*
-         * StudioI18n şu anda "system" seçimini Türkçe arayüz
-         * olarak kullanıyor. Yerel AI de aynı davranışı izler.
-         */
-        return when (
-            selected
-        ) {
-            "en" ->
-                """
-                RESPONSE LANGUAGE: ENGLISH.
-                Answer entirely in English from the very first word.
-                Do not output internal reasoning or a thinking preamble.
-                Do not start with phrases such as "Okay, let's see",
-                "The user is asking", "I need to", or "We need to".
-                Show only the final answer.
-                """.trimIndent()
-
-            "de" ->
-                """
-                ANTWORTSPRACHE: DEUTSCH.
-                Antworte vom ersten Wort an ausschließlich auf Deutsch.
-                Zeige keine internen Überlegungen oder Denkprozesse.
-                Zeige nur die endgültige Antwort.
-                """.trimIndent()
-
-            "ar" ->
-                """
-                لغة الإجابة: العربية.
-                أجب باللغة العربية فقط من أول كلمة.
-                لا تعرض التفكير الداخلي أو خطوات الاستدلال.
-                اعرض الإجابة النهائية فقط.
-                """.trimIndent()
-
-            else ->
-                """
-                YANIT DİLİ KESİNLİKLE TÜRKÇEDİR.
-
-                Yalnızca Türkçe yaz.
-                Başka hiçbir dilde kelime veya cümle kurma.
-                İlk kelimeden son kelimeye kadar Türkçe kal.
-
-                Kullanıcıya yalnız nihai cevabı ver.
-                Düşünme sürecini, analizini veya çalışma notlarını yazma.
-
-                Türkçe karakterleri doğru kullan:
-                ç, ğ, ı, İ, ö, ş, ü.
-
-                Kısa, açık ve doğal cümleler kullan.
-                Kelimeler arasındaki boşlukları koru.
-
-                AppForge hakkında yalnız verilen yerel bilgi tabanındaki
-                gerçekleri kullan. Bilgi tabanında bulunmayan özellik,
-                avantaj veya kısıtlama uydurma.
-                """.trimIndent()
-        }
+        LocalAiInitResult(
+            backend = actual,
+            modelName = model.name
+        )
     }
 
+    private fun answerLanguageInstruction(): String {
+        return when (
+            AppSettingsStore.load(appContext).languageCode
+        ) {
+            "en" -> """
+                RESPONSE LANGUAGE: ENGLISH.
+                Answer entirely in English from the first word.
+                Show only the final answer; never expose internal reasoning.
+            """.trimIndent()
+
+            "de" -> """
+                ANTWORTSPRACHE: DEUTSCH.
+                Antworte ausschließlich auf Deutsch und zeige nur die endgültige Antwort.
+            """.trimIndent()
+
+            "ar" -> """
+                لغة الإجابة: العربية.
+                أجب باللغة العربية فقط واعرض الإجابة النهائية فقط.
+            """.trimIndent()
+
+            else -> """
+                YANIT DİLİ KESİNLİKLE TÜRKÇEDİR.
+                İlk kelimeden son kelimeye kadar yalnız Türkçe yaz.
+                Kullanıcıya yalnız nihai cevabı ver; düşünme sürecini gösterme.
+                Türkçe karakterleri doğru kullan ve doğal boşlukları koru.
+                AppForge hakkında yalnız verilen doğrulanmış yerel bağlamı kullan.
+                Bilgi tabanında veya güvenli proje snapshot'ında bulunmayan özelliği uydurma.
+            """.trimIndent()
+        }
+    }
 
     suspend fun ask(
         question: String,
@@ -557,63 +180,27 @@ class AppForgeLocalAssistant(
         runtimeContext: AssistantRuntimeContext? = null,
         onPartial: (String) -> Unit
     ) {
-        val clean =
-            question.trim()
+        val clean = question.trim()
+        require(clean.isNotBlank()) { "Soru boş olamaz." }
 
-        require(
-            clean.isNotBlank()
-        ) {
-            "Soru boş olamaz."
-        }
+        val selectedLanguage = AppSettingsStore.load(appContext).languageCode
 
-        val selectedLanguage =
-            AppSettingsStore
-                .load(
-                    appContext
-                )
-                .languageCode
-
-        /*
-         * Türkçe AppForge FAQ sorularında LLM çalıştırılmaz.
-         * Bilgi tabanındaki doğrulanmış cevap doğrudan gösterilir.
-         *
-         * Bu yol milisaniyeler içinde cevap verir.
-         */
-        if (
-            selectedLanguage == "tr" ||
-            selectedLanguage == "system"
-        ) {
-            val directAnswer =
-                AppForgeKnowledgeBase
-                    .directTurkishAnswer(
-                        clean
-                    )
-
-            if (
-                !directAnswer.isNullOrBlank()
-            ) {
-                onPartial(
-                    directAnswer
-                )
-
-                return
-            }
-        }
-
-        val grounding =
+        if (selectedLanguage == "tr" || selectedLanguage == "system") {
             AppForgeKnowledgeBase
-                .promptContext(
-                    clean,
-                    draft,
-                    includeProjectContext,
-                    runtimeContext
-                )
+                .directTurkishAnswer(clean)
+                ?.takeIf { it.isNotBlank() }
+                ?.let {
+                    onPartial(it)
+                    return
+                }
+        }
 
-        val languageInstruction =
-            answerLanguageInstruction()
-
-        val studioSnapshot =
-            ""
+        val grounding = AppForgeKnowledgeBase.promptContext(
+            clean,
+            draft,
+            includeProjectContext,
+            runtimeContext
+        )
 
         val compactGrounding =
             grounding.take(700)
@@ -621,426 +208,189 @@ class AppForgeLocalAssistant(
         val compactQuestion =
             clean.take(240)
 
-        val prompt =
-            """
+        val snapshot = if (includeProjectContext || runtimeContext != null) {
+            AppForgeAiSnapshotV2.build(
+                draft = draft,
+                runtime = runtimeContext
+            )
+        } else {
+            "APPFORGE STUDIO COPILOT V2 - proje bağlamı kullanıcı tarafından kapatıldı."
+        }
+
+        val prompt = """
             /no_think
 
-            $languageInstruction
+            ${answerLanguageInstruction()}
 
-            $compactGrounding
+            DOĞRULANMIŞ APPFORGE SNAPSHOT V2:
+            ${snapshot.take(2200)}
+
+            İLGİLİ YARDIM BİLGİSİ:
+            ${compactGrounding}
 
             SORU:
-            $compactQuestion
+            ${compactQuestion}
 
-            Yalnız kısa nihai cevabı üret.
-            Bilmediğin bilgiyi uydurma.
+            Kurallar:
+            - Snapshot ve yardım bilgisini gerçek kaynak olarak kullan.
+            - Parola, API anahtarı, token veya keystore şifresi isteme/uydurma.
+            - Güncel internet bilgisi yoksa varmış gibi davranma.
+            - Yalnız kısa ve uygulanabilir nihai cevabı üret.
 
             <final_answer>
             Nihai cevap
             </final_answer>
-            """.trimIndent()
+        """.trimIndent()
 
         mutex.withLock {
-            val currentEngine =
-                engine
-                    ?: error(
-                        "Yerel AI modeli başlatılmadı."
-                    )
+            val currentEngine = engine
+                ?: error("Yerel AI modeli başlatılmadı.")
 
-            conversation
-                ?.close()
+            conversation?.close()
+            val current = currentEngine.createConversation(conversationConfig())
+            conversation = current
 
-            val current =
-                currentEngine
-                    .createConversation(
-                        conversationConfig()
-                    )
+            withTimeout(180_000L) {
+                val rawResult = StringBuilder()
+                val streamBuffer = StringBuilder()
+                val openTag = "<final_answer>"
+                val closeTag = "</final_answer>"
+                var finalStarted = false
+                var finalEmitted = false
 
-            conversation =
-                current
+                current.sendMessageAsync(prompt).collect { part ->
+                    val chunk = part.toString()
+                    rawResult.append(chunk)
 
-            withTimeout(
-                180_000L
-            ) {
-                /*
-                 * Reasoning modellerinde ilk streaming parçaları
-                 * iç çalışma notları olabilir.
-                 *
-                 * Kullanıcıya bunları canlı göstermiyoruz.
-                 * Tam cevap cihaz RAM'inde toplanır ve yalnız
-                 * nihai cevap ayıklanıp UI'ye gönderilir.
-                 */
-                val rawResult =
-                    StringBuilder()
+                    if (finalEmitted) return@collect
+                    streamBuffer.append(chunk)
 
-                val streamBuffer =
-                    StringBuilder()
-
-                val openTag =
-                    "<final_answer>"
-
-                val closeTag =
-                    "</final_answer>"
-
-                var finalStarted =
-                    false
-
-                var finalEmitted =
-                    false
-
-                current
-                    .sendMessageAsync(
-                        prompt
-                    )
-                    .collect {
-                        part ->
-
-                        val chunk =
-                            part.toString()
-
-                        rawResult.append(
-                            chunk
-                        )
-
-                        if (
-                            finalEmitted
-                        ) {
+                    if (!finalStarted) {
+                        val start = streamBuffer.indexOf(openTag, ignoreCase = true)
+                        if (start >= 0) {
+                            streamBuffer.delete(0, start + openTag.length)
+                            finalStarted = true
+                        } else {
+                            val keep = openTag.length + 4
+                            if (streamBuffer.length > keep) {
+                                streamBuffer.delete(0, streamBuffer.length - keep)
+                            }
                             return@collect
-                        }
-
-                        streamBuffer.append(
-                            chunk
-                        )
-
-                        if (
-                            !finalStarted
-                        ) {
-                            val start =
-                                streamBuffer
-                                    .indexOf(
-                                        openTag,
-                                        ignoreCase = true
-                                    )
-
-                            if (
-                                start >= 0
-                            ) {
-                                streamBuffer.delete(
-                                    0,
-                                    start +
-                                        openTag.length
-                                )
-
-                                finalStarted =
-                                    true
-                            } else {
-                                /*
-                                 * Etiket iki streaming parçasının
-                                 * arasından bölünebilir.
-                                 * Yalnız son karakterleri sakla.
-                                 */
-                                val keep =
-                                    openTag.length +
-                                        4
-
-                                if (
-                                    streamBuffer.length >
-                                        keep
-                                ) {
-                                    streamBuffer.delete(
-                                        0,
-                                        streamBuffer.length -
-                                            keep
-                                    )
-                                }
-
-                                return@collect
-                            }
-                        }
-
-                        val end =
-                            streamBuffer
-                                .indexOf(
-                                    closeTag,
-                                    ignoreCase = true
-                                )
-
-                        if (
-                            end >= 0
-                        ) {
-                            val visible =
-                                streamBuffer
-                                    .substring(
-                                        0,
-                                        end
-                                    )
-
-                            val cleaned =
-                                cleanAssistantOutput(
-                                    visible
-                                )
-
-                            if (
-                                cleaned.isNotEmpty()
-                            ) {
-                                onPartial(
-                                    cleaned
-                                )
-                            }
-
-                            streamBuffer.clear()
-
-                            finalEmitted =
-                                true
-
-                            return@collect
-                        }
-
-                        /*
-                         * Kapanış etiketi streaming sırasında
-                         * bölünebileceği için son birkaç karakteri
-                         * tamponda tut.
-                         */
-                        val safeLength =
-                            streamBuffer.length -
-                                (
-                                    closeTag.length +
-                                        2
-                                )
-
-                        if (
-                            safeLength >
-                                0
-                        ) {
-                            val visible =
-                                streamBuffer
-                                    .substring(
-                                        0,
-                                        safeLength
-                                    )
-
-                            streamBuffer.delete(
-                                0,
-                                safeLength
-                            )
-
-                            val cleaned =
-                                cleanAssistantOutput(
-                                    visible
-                                )
-
-                            if (
-                                cleaned.isNotEmpty()
-                            ) {
-                                onPartial(
-                                    cleaned
-                                )
-                            }
                         }
                     }
 
-                /*
-                 * Model final_answer etiketine uymazsa
-                 * eski güvenli ayıklayıcı devreye girer.
-                 */
-                if (
-                    !finalStarted
-                ) {
-                    val selectedLanguage =
-                        AppSettingsStore
-                            .load(
-                                appContext
-                            )
-                            .languageCode
-
-                    val finalAnswer =
-                        extractFinalAssistantAnswer(
-                            rawResult.toString(),
-                            selectedLanguage
+                    val end = streamBuffer.indexOf(closeTag, ignoreCase = true)
+                    if (end >= 0) {
+                        val visible = cleanAssistantOutput(
+                            streamBuffer.substring(0, end)
                         )
+                        if (visible.isNotEmpty()) onPartial(visible)
+                        streamBuffer.clear()
+                        finalEmitted = true
+                        return@collect
+                    }
 
-                    if (
-                        finalAnswer.isNotBlank()
-                    ) {
-                        onPartial(
-                            finalAnswer
+                    val safeLength = streamBuffer.length - (closeTag.length + 2)
+                    if (safeLength > 0) {
+                        val visible = cleanAssistantOutput(
+                            streamBuffer.substring(0, safeLength)
                         )
+                        streamBuffer.delete(0, safeLength)
+                        if (visible.isNotEmpty()) onPartial(visible)
+                    }
+                }
+
+                if (!finalStarted) {
+                    val finalAnswer = extractFinalAssistantAnswer(
+                        rawResult.toString(),
+                        selectedLanguage
+                    )
+                    if (finalAnswer.isNotBlank()) {
+                        onPartial(finalAnswer)
                     } else {
-                        error(
-                            "Yerel AI geçerli bir nihai cevap üretemedi."
-                        )
+                        error("Yerel AI geçerli bir nihai cevap üretemedi.")
                     }
-                } else if (
-                    !finalEmitted &&
-                    streamBuffer.isNotEmpty()
-                ) {
-                    val cleaned =
-                        cleanAssistantOutput(
-                            streamBuffer.toString()
-                        )
-
-                    if (
-                        cleaned.isNotEmpty()
-                    ) {
-                        onPartial(
-                            cleaned
-                        )
-                    }
+                } else if (!finalEmitted && streamBuffer.isNotEmpty()) {
+                    val visible = cleanAssistantOutput(streamBuffer.toString())
+                    if (visible.isNotEmpty()) onPartial(visible)
                 }
             }
         }
     }
 
-    suspend fun resetConversation() =
-        mutex.withLock {
-            val current =
-                engine
-                    ?: return@withLock
+    suspend fun resetConversation() = mutex.withLock {
+        val current = engine ?: return@withLock
+        conversation?.close()
+        conversation = current.createConversation(conversationConfig())
+    }
 
-            conversation
-                ?.close()
-
-            conversation =
-                current
-                    .createConversation(
-                        conversationConfig()
-                    )
-        }
-
-    suspend fun unload() =
-        mutex.withLock {
-            closeInternal()
-        }
+    suspend fun unload() = mutex.withLock {
+        closeInternal()
+    }
 
     private suspend fun initializeWithBackend(
         model: LocalAiModelInfo,
         backend: LocalAiBackend
     ) {
-        val config =
-            EngineConfig(
-                modelPath =
-                    model.path,
-                backend =
-                    when (
-                        backend
-                    ) {
-                        LocalAiBackend.CPU ->
-                            Backend.CPU()
+        val config = EngineConfig(
+            modelPath = model.path,
+            backend = when (backend) {
+                LocalAiBackend.CPU -> Backend.CPU()
+                LocalAiBackend.GPU -> Backend.GPU()
+            },
+            maxNumTokens = 768,
+            cacheDir = File(appContext.cacheDir, "litertlm")
+                .apply { mkdirs() }
+                .absolutePath
+        )
 
-                        LocalAiBackend.GPU ->
-                            Backend.GPU()
-                    },
-                /*
-                 * Yerel yardım asistanı için 4096 token gereksizdi.
-                 * Daha kısa sınır Qwen3'ün gereksiz uzun üretimini
-                 * azaltır ve yanıt süresini iyileştirir.
-                 */
-                maxNumTokens =
-                    768,
-                cacheDir =
-                    File(
-                        appContext.cacheDir,
-                        "litertlm"
-                    ).apply {
-                        mkdirs()
-                    }.absolutePath
-            )
-
-        val created =
-            Engine(
-                config
-            )
+        val created = Engine(config)
 
         try {
-            withContext(
-                Dispatchers.Default
-            ) {
-                created
-                    .initialize()
+            withContext(Dispatchers.Default) {
+                created.initialize()
             }
-
-            engine =
-                created
-
-            conversation =
-                created
-                    .createConversation(
-                        conversationConfig()
-                    )
-        } catch (
-            t: Throwable
-        ) {
-            runCatching {
-                created.close()
-            }
-
-            throw t
+            engine = created
+            conversation = created.createConversation(conversationConfig())
+        } catch (error: Throwable) {
+            runCatching { created.close() }
+            throw error
         }
     }
 
-    private fun conversationConfig() =
-        ConversationConfig(
-            systemInstruction =
-                Contents.of(
-                    """
-                    Sen AppForge Studio içindeki yerel yardım asistanısın.
-                    AppForge Studio, Android build, HTML/WebView, Preview, Test Lab,
-                    imzalama, sürümleme, Pro planları ve proje ayarları konusunda
-                    uygulama içi yardım sağla.
+    private fun conversationConfig() = ConversationConfig(
+        systemInstruction = Contents.of(
+            """
+                Sen AppForge Studio içindeki yerel yardım asistanısın.
+                AppForge Studio, Android build, HTML/WebView, Preview, Test Lab,
+                imzalama, sürümleme, Pro planları ve proje ayarlarında uygulama içi yardım sağla.
 
-                    Sana her soruda uygulamanın modül haritası verilir. Kullanıcının
-                    sorusuyla ilgili ekranı, mevcut proje durumunu ve güvenli çalışma
-                    bağlamını birlikte değerlendir. Bir ayarın nerede olduğunu sorarsa
-                    açık ekran yolunu söyle. Mevcut build/proje durumu verilmişse genel
-                    cevap yerine o duruma göre somut sonraki adımı öner.
+                Her soruda sana doğrulanmış AppForge bilgi tabanı ve güvenli AppForge Studio Copilot V2
+                proje/runtime snapshot'ı verilebilir. Kullanıcının sorusuyla ilgili ekranı, mevcut proje
+                durumunu ve güvenli çalışma bağlamını birlikte değerlendir. Bağlam yoksa özellik uydurma.
+                Güncel internet/Play bilgisine erişemiyorsan bunu açıkça belirt.
 
-                    AppForge yerel bağlamıyla çelişme ve bilmediğin AppForge özelliğini uydurma.
-                    Güncel internet bilgisine erişemediğin durumlarda bunu açıkça belirt.
-                    Parola, API anahtarı ve keystore şifresi isteme veya yanıt içinde tekrarlama.
-
-                    Kullanıcıya yalnızca nihai cevabı göster.
-                    İç düşünme, reasoning, chain-of-thought veya <think> bölümü gösterme.
-                    Nihai cevabı <final_answer> ve </final_answer> etiketleri arasında üret.
-                    Bu etiketlerin dışında hiçbir kullanıcıya dönük metin üretme.
-                    Uygulamanın seçili yanıt diline kesin olarak uy.
-                    Türkçe istendiğinde ilk kelimeden itibaren yalnız Türkçe cevap ver.
-                    İngilizce iç düşünme veya "Okay, let's see" gibi girişler gösterme.
-                    Düzgün UTF-8 Türkçe karakterleri kullan.
-                    Kelimeler arasında doğal boşlukları koru.
-                    Gereksiz Markdown işaretleri kullanma.
-                    Kısa paragraflar ve okunabilir maddeler kullan.
-                    """.trimIndent()
-                ),
-            samplerConfig =
-                SamplerConfig(
-                    topK =
-                        12,
-                    topP =
-                        0.80,
-                    temperature =
-                        0.10
-                )
+                Parola, API anahtarı, oturum tokenı ve keystore şifresi isteme veya tekrarlama.
+                İç düşünme, reasoning, chain-of-thought veya <think> içeriği gösterme.
+                Nihai cevabı <final_answer> ve </final_answer> etiketleri arasında üret.
+                Etiketlerin dışında kullanıcıya dönük metin üretme ve seçili yanıt diline kesin uy.
+            """.trimIndent()
+        ),
+        samplerConfig = SamplerConfig(
+            topK = 12,
+            topP = 0.80,
+            temperature = 0.10
         )
+    )
 
     override fun close() {
         closeInternal()
     }
 
     private fun closeInternal() {
-        runCatching {
-            conversation
-                ?.close()
-        }
-
-        conversation =
-            null
-
-        runCatching {
-            engine
-                ?.close()
-        }
-
-        engine =
-            null
+        runCatching { conversation?.close() }
+        conversation = null
+        runCatching { engine?.close() }
+        engine = null
     }
 }
