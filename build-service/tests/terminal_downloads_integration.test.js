@@ -247,3 +247,59 @@ test(
     );
   },
 );
+
+
+test(
+  "downloads actions use the real PTY terminal",
+  () => {
+    assert.match(
+      screen,
+      /LocalPtySessionRegistry/,
+    );
+
+    assert.match(
+      screen,
+      /\.appforge-downloads/,
+    );
+
+    assert.match(
+      screen,
+      /LocalPtySessionRegistry[\s\S]*?\.write\(/,
+    );
+
+    assert.match(
+      screen,
+      /TerminalCommandPolicy\.review/,
+    );
+
+    assert.match(
+      screen,
+      /sourceRoot\.absolutePath/,
+    );
+
+    assert.match(
+      screen,
+      /\/workspace\/\.appforge-downloads/,
+    );
+  },
+);
+
+test(
+  "downloads PTY bridge stays account isolated",
+  () => {
+    assert.match(
+      screen,
+      /MessageDigest[\s\S]*?SHA-256/,
+    );
+
+    assert.match(
+      screen,
+      /accountKey/,
+    );
+
+    assert.match(
+      screen,
+      /terminal-downloads\/\$accountKey/,
+    );
+  },
+);

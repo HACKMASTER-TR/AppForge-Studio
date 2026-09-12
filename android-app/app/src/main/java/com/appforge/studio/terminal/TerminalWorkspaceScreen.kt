@@ -56,9 +56,12 @@ import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.security.SecureAccountStore
 import com.appforge.studio.security.OwnerAccessPolicy
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.security.MessageDigest
 import java.util.UUID
 
 private enum class TerminalWorkspaceTab(
@@ -1154,10 +1157,184 @@ fun TerminalWorkspaceScreen(
                                 selectedTab =
                                     TerminalWorkspaceTab.TERMINAL
 
-                                runCommand(
-                                    activeSession.id,
-                                    command
-                                )
+                                scope.launch {
+                                    try {
+                                        val normalizedAccount =
+                                            accountEmail
+                                                .trim()
+                                                .lowercase()
+                                                .ifBlank {
+                                                    "anonymous"
+                                                }
+
+                                        val accountKey =
+                                            MessageDigest
+                                                .getInstance("SHA-256")
+                                                .digest(
+                                                    normalizedAccount
+                                                        .toByteArray(
+                                                            Charsets.UTF_8
+                                                        )
+                                                )
+                                                .joinToString("") {
+                                                    "%02x".format(
+                                                        it.toInt() and 0xff
+                                                    )
+                                                }
+                                                .take(24)
+
+                                        val sourceRoot =
+                                            File(
+                                                context.filesDir,
+                                                "terminal-downloads/$accountKey"
+                                            ).canonicalFile
+
+                                        val workspaceRoot =
+                                            workspace.canonicalFile
+
+                                        val bridgeRoot =
+                                            File(
+                                                workspaceRoot,
+                                                ".appforge-downloads/$accountKey"
+                                            ).canonicalFile
+
+                                        check(
+                                            bridgeRoot.absolutePath
+                                                .startsWith(
+                                                    workspaceRoot.absolutePath +
+                                                        File.separator
+                                                )
+                                        ) {
+                                            "Downloads köprü yolu çalışma alanı dışında."
+                                        }
+
+                                        withContext(
+                                            Dispatchers.IO
+                                        ) {
+                                            check(
+                                                sourceRoot.isDirectory
+                                            ) {
+                                                "İndirilenler klasörü bulunamadı."
+                                            }
+
+                                            check(
+                                                bridgeRoot.exists() ||
+                                                    bridgeRoot.mkdirs()
+                                            ) {
+                                                "Downloads köprüsü oluşturulamadı."
+                                            }
+
+                                            fun copyEntry(
+                                                source: File,
+                                                target: File
+                                            ) {
+                                                if (source.isDirectory) {
+                                                    check(
+                                                        target.exists() ||
+                                                            target.mkdirs()
+                                                    )
+
+                                                    source.listFiles()
+                                                        ?.forEach { child ->
+                                                            copyEntry(
+                                                                child,
+                                                                File(
+                                                                    target,
+                                                                    child.name
+                                                                )
+                                                            )
+                                                        }
+
+                                                    return
+                                                }
+
+                                                target.parentFile
+                                                    ?.mkdirs()
+
+                                                source.copyTo(
+                                                    target,
+                                                    overwrite = true
+                                                )
+
+                                                target.setLastModified(
+                                                    source.lastModified()
+                                                )
+                                            }
+
+                                            sourceRoot.listFiles()
+                                                ?.forEach { source ->
+                                                    copyEntry(
+                                                        source,
+                                                        File(
+                                                            bridgeRoot,
+                                                            source.name
+                                                        )
+                                                    )
+                                                }
+                                        }
+
+                                        val linuxRoot =
+                                            "/workspace/.appforge-downloads/$accountKey"
+
+                                        val ptyCommand =
+                                            command.replace(
+                                                sourceRoot.absolutePath,
+                                                linuxRoot
+                                            )
+
+                                        val review =
+                                            TerminalCommandPolicy.review(
+                                                ptyCommand
+                                            )
+
+                                        check(
+                                            review.allowed
+                                        ) {
+                                            review.message
+                                        }
+
+                                        val runningSession =
+                                            LocalPtySessionRegistry
+                                                .matching(
+                                                    workspace
+                                                )
+                                                .filter {
+                                                    it.running
+                                                }
+                                                .maxByOrNull {
+                                                    it.lastActivatedAt
+                                                }
+
+                                        val ptyId =
+                                            runningSession?.id
+                                                ?: LocalPtySessionRegistry
+                                                    .ensureStarted(
+                                                        context,
+                                                        workspace
+                                                    )
+
+                                        LocalPtySessionRegistry
+                                            .markActivated(
+                                                ptyId
+                                            )
+
+                                        LocalPtySessionRegistry
+                                            .write(
+                                                ptyId,
+                                                ptyCommand + "\n"
+                                            )
+                                    } catch (error: Throwable) {
+                                        appendLines(
+                                            activeSession.id,
+                                            "İndirilenler terminal hatası: " +
+                                                (
+                                                    error.message
+                                                        ?: error.javaClass.simpleName
+                                                ),
+                                            TerminalLineKind.ERROR
+                                        )
+                                    }
+                                }
                             }
                         )
 
