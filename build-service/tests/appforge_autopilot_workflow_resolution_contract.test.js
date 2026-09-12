@@ -42,6 +42,21 @@ test(
 
     assert.match(
       source,
+      /production_targets/
+    );
+
+    assert.match(
+      source,
+      /event_filter="workflow_run"/
+    );
+
+    assert.match(
+      source,
+      /display_title=title/
+    );
+
+    assert.doesNotMatch(
+      source,
       /min_count=deploy_count/
     );
 

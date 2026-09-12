@@ -435,55 +435,126 @@ def get_json(url):
     )
 
 
+def wait_json_gate(
+    url,
+    label,
+    validator,
+    timeout=180,
+    interval=5,
+    consecutive=3
+):
+    deadline = time.time() + timeout
+    streak = 0
+    last_error = None
+
+    while True:
+        try:
+            payload = get_json(url)
+
+            if validator(payload):
+                streak += 1
+
+                print(
+                    f"{label} OK "
+                    f"{streak}/{consecutive}",
+                    flush=True
+                )
+
+                if streak >= consecutive:
+                    return payload
+            else:
+                streak = 0
+                last_error = (
+                    f"{label} payload "
+                    "henüz hazır değil"
+                )
+
+        except Exception as exc:
+            streak = 0
+            last_error = str(exc)
+
+            print(
+                f"{label} bekleniyor: "
+                f"{last_error}",
+                flush=True
+            )
+
+        if time.time() >= deadline:
+            raise RuntimeError(
+                f"{label} stabil olmadı: "
+                f"{last_error}"
+            )
+
+        time.sleep(interval)
+
+
 def health_gate(
     studio_url,
-    heartbeat_token=None
+    heartbeat_token=None,
+    warmup_seconds=0
 ):
-    base = (
-        studio_url
-        .rstrip("/")
-    )
+    base = studio_url.rstrip("/")
 
-    ready = get_json(
-        base + "/ready"
-    )
-
-    if not ready.get("ok"):
-        raise RuntimeError(
-            "/ready başarısız."
+    if warmup_seconds > 0:
+        print(
+            "Production warm-up:",
+            f"{warmup_seconds}s",
+            flush=True
         )
 
-    health = get_json(
-        base + "/health"
+        time.sleep(warmup_seconds)
+
+    wait_json_gate(
+        base + "/ready",
+        "/ready",
+        lambda data:
+            data.get("ok") is True,
+        timeout=180,
+        interval=5,
+        consecutive=3
     )
 
-    if not health.get("ok"):
-        raise RuntimeError(
-            "/health başarısız."
-        )
-
-    if not health.get(
-        "database",
-        False
-    ):
-        raise RuntimeError(
-            "Database health başarısız."
-        )
+    wait_json_gate(
+        base + "/health",
+        "/health",
+        lambda data:
+            (
+                data.get("ok") is True
+                and
+                data.get("database", False)
+                is True
+            ),
+        timeout=180,
+        interval=5,
+        consecutive=3
+    )
 
     if heartbeat_token:
-        token = (
-            heartbeat_token
-            .lower()
-        )
-
-        deadline = (
-            time.time() + 120
-        )
+        token = heartbeat_token.lower()
+        deadline = time.time() + 180
 
         while True:
-            health = get_json(
-                base + "/health"
-            )
+            try:
+                health = get_json(
+                    base + "/health"
+                )
+
+            except Exception as exc:
+                if time.time() >= deadline:
+                    raise RuntimeError(
+                        "Heartbeat endpoint "
+                        "stabil olmadı: "
+                        + str(exc)
+                    )
+
+                print(
+                    "Heartbeat health bekleniyor:",
+                    str(exc),
+                    flush=True
+                )
+
+                time.sleep(5)
+                continue
 
             workers = (
                 health
@@ -496,8 +567,7 @@ def health_gate(
                 for worker in workers
                 if (
                     token
-                    in
-                    str(
+                    in str(
                         worker.get(
                             "worker_id",
                             ""
@@ -522,7 +592,8 @@ def health_gate(
 
             if time.time() >= deadline:
                 raise RuntimeError(
-                    "Yeni Worker heartbeat görülmedi: "
+                    "Yeni Worker heartbeat "
+                    "görülmedi: "
                     + heartbeat_token
                 )
 
@@ -537,7 +608,6 @@ def health_gate(
     print(
         "Production health gate SUCCESS."
     )
-
 
 def rollback(
     previous_success_id,
@@ -588,7 +658,8 @@ def rollback(
 
     health_gate(
         studio_url,
-        None
+        None,
+        warmup_seconds=10
     )
 
     print(
@@ -749,7 +820,8 @@ def deploy(args):
         # heartbeat ile görülmeden production SUCCESS değil.
         health_gate(
             args.studio_url,
-            args.heartbeat
+            args.heartbeat,
+            warmup_seconds=30
         )
 
         print(

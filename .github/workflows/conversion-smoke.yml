@@ -9,12 +9,10 @@ on:
 
     paths:
       - "build-service/**"
+      - "!build-service/tests/**"
       - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
       - "android-app/app/src/main/java/com/appforge/studio/io/AppForgeApkConversion.kt"
       - "android-app/app/src/main/java/com/appforge/studio/io/AppForgeExeConversion.kt"
-      - ".github/workflows/conversion-smoke.yml"
-      - ".github/scripts/railway_production.py"
-      - ".github/workflows/production-automation.yml"
 
   pull_request:
     branches:
@@ -22,10 +20,10 @@ on:
 
     paths:
       - "build-service/**"
+      - "!build-service/tests/**"
       - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
       - "android-app/app/src/main/java/com/appforge/studio/io/AppForgeApkConversion.kt"
       - "android-app/app/src/main/java/com/appforge/studio/io/AppForgeExeConversion.kt"
-      - ".github/workflows/conversion-smoke.yml"
 
 permissions:
   contents: read

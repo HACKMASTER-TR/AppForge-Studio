@@ -6,9 +6,7 @@ on:
       - main
     paths:
       - "build-service/**"
-      - ".github/workflows/source-worker-image.yml"
-      - ".github/scripts/railway_production.py"
-      - ".github/workflows/production-automation.yml"
+      - "!build-service/tests/**"
   workflow_dispatch:
 
 permissions:
