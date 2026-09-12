@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.appforge.studio.build.BuildApiClient
+import com.appforge.studio.build.BuildApiException
 import com.appforge.studio.build.BuildCompareResult
 import com.appforge.studio.build.TestLabResult
 import com.appforge.studio.ai.AppForgeKnowledgeBase
@@ -3240,16 +3241,78 @@ private fun AppForgeApp() {
                     }
                 }
             } catch (t: Throwable) {
-                status =
-                    "Hata: ${t.message}"
+                val quotaError =
+                    t as?
+                        BuildApiException
 
-                progress = 0
+                val quotaCode =
+                    quotaError
+                        ?.errorCode
 
-                screen =
-                    AppScreen.BUILDER
+                val recoveryAction =
+                    quotaError
+                        ?.recoveryAction
 
-                step = 10
+                when {
+                    recoveryAction ==
+                        "UPGRADE_PRO" ||
+                    quotaCode ==
+                        "FREE_PROJECT_LIMIT_REACHED" -> {
 
+                        proSecurityMessage =
+                            "Ücretsiz kotan doldu. " +
+                            "Devam etmek için aşağıdan " +
+                            "Pro Aylık paketine geç."
+
+                        status =
+                            "Ücretsiz kota doldu • " +
+                            "Pro'ya yükselt."
+
+                        progress =
+                            0
+
+                        screen =
+                            AppScreen.PRO
+                    }
+
+                    recoveryAction ==
+                        "BUY_QUOTA_ADDON" ||
+                    quotaCode ==
+                        "PRO_MONTHLY_PROJECT_LIMIT_REACHED" ||
+                    quotaCode ==
+                        "PRO_MONTHLY_BUILD_LIMIT_REACHED" -> {
+
+                        proSecurityMessage =
+                            "Pro Aylık kotan doldu. " +
+                            "Devam etmek için aşağıdan " +
+                            "+10, +25 veya +50 ek kota " +
+                            "paketlerinden birini seç."
+
+                        status =
+                            "Pro kotası doldu • " +
+                            "ek kota paketi seç."
+
+                        progress =
+                            0
+
+                        screen =
+                            AppScreen.PRO
+                    }
+
+                    else -> {
+                        status =
+                            "Hata: ${t.message}"
+
+                        progress =
+                            0
+
+                        screen =
+                            AppScreen.BUILDER
+
+                        step =
+                            10
+                    }
+                }
             } finally {
                 buildBusy =
                     false

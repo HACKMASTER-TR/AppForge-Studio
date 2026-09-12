@@ -4400,7 +4400,30 @@ app.post(
             String(
               error.message ||
               error
-            )
+            ),
+
+          code:
+            error?.code ||
+            null,
+
+          quota:
+            error?.quota ||
+            null,
+
+          recoveryAction:
+            error?.code ===
+              "FREE_PROJECT_LIMIT_REACHED"
+              ? "UPGRADE_PRO"
+              : (
+                  [
+                    "PRO_MONTHLY_PROJECT_LIMIT_REACHED",
+                    "PRO_MONTHLY_BUILD_LIMIT_REACHED"
+                  ].includes(
+                    error?.code
+                  )
+                    ? "BUY_QUOTA_ADDON"
+                    : null
+                )
         });
     }
   }

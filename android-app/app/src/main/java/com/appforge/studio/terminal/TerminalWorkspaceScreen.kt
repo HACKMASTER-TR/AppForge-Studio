@@ -1,5 +1,6 @@
 package com.appforge.studio.terminal
 
+import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -78,6 +79,179 @@ private enum class TerminalWorkspaceTab(
     TOOLS("Araçlar", "◆"),
     ULTIMATE("Ultimate", "★")
 }
+
+internal fun prepareTerminalDownloadCommand(
+    context: Context,
+    workspace: File,
+    accountEmail: String,
+    rawCommand: String
+): String {
+    val normalizedAccount =
+        accountEmail
+            .trim()
+            .lowercase()
+            .ifBlank {
+                "anonymous"
+            }
+
+    val accountKey =
+        MessageDigest
+            .getInstance(
+                "SHA-256"
+            )
+            .digest(
+                normalizedAccount
+                    .toByteArray(
+                        Charsets.UTF_8
+                    )
+            )
+            .joinToString("") {
+                "%02x".format(
+                    it.toInt() and
+                        0xff
+                )
+            }
+            .take(24)
+
+    val sourceRoot =
+        File(
+            context.filesDir,
+            "terminal-downloads/$accountKey"
+        ).canonicalFile
+
+    val workspaceRoot =
+        workspace
+            .canonicalFile
+
+    val bridgeRoot =
+        File(
+            workspaceRoot,
+            ".appforge-downloads/$accountKey"
+        ).canonicalFile
+
+    check(
+        bridgeRoot.absolutePath
+            .startsWith(
+                workspaceRoot.absolutePath +
+                    File.separator
+            )
+    ) {
+        "Downloads köprü yolu çalışma alanı dışında."
+    }
+
+    check(
+        sourceRoot.isDirectory
+    ) {
+        "İndirilenler klasörü bulunamadı."
+    }
+
+    check(
+        rawCommand.contains(
+            sourceRoot.absolutePath
+        )
+    ) {
+        "Downloads komutu hesaba özel inbox yolunu içermiyor."
+    }
+
+    check(
+        bridgeRoot.exists() ||
+            bridgeRoot.mkdirs()
+    ) {
+        "Downloads köprüsü oluşturulamadı."
+    }
+
+    fun copyEntry(
+        source: File,
+        target: File
+    ) {
+        if (
+            source.isDirectory
+        ) {
+            check(
+                target.exists() ||
+                    target.mkdirs()
+            ) {
+                "Köprü klasörü oluşturulamadı: ${target.name}"
+            }
+
+            source.listFiles()
+                ?.forEach { child ->
+                    copyEntry(
+                        child,
+                        File(
+                            target,
+                            child.name
+                        )
+                    )
+                }
+
+            return
+        }
+
+        target.parentFile
+            ?.mkdirs()
+
+        source.copyTo(
+            target,
+            overwrite = true
+        )
+
+        target.setLastModified(
+            source.lastModified()
+        )
+    }
+
+    sourceRoot
+        .listFiles()
+        ?.forEach { source ->
+            copyEntry(
+                source,
+                File(
+                    bridgeRoot,
+                    source.name
+                )
+            )
+        }
+
+    val guestRoot =
+        "/workspace/.appforge-downloads/$accountKey"
+
+    val ptyCommand =
+        rawCommand.replace(
+            sourceRoot.absolutePath,
+            guestRoot
+        )
+
+    val privateDownloadsRoot =
+        File(
+            context.filesDir,
+            "terminal-downloads"
+        )
+            .canonicalFile
+            .absolutePath
+
+    check(
+        !ptyCommand.contains(
+            sourceRoot.absolutePath
+        ) &&
+        !ptyCommand.contains(
+            privateDownloadsRoot
+        )
+    ) {
+        "Android özel dosya yolu PTY komutuna sızdı."
+    }
+
+    check(
+        ptyCommand.contains(
+            guestRoot
+        )
+    ) {
+        "Downloads komutu Linux çalışma alanına çevrilemedi."
+    }
+
+    return ptyCommand
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1159,128 +1333,21 @@ fun TerminalWorkspaceScreen(
 
                                 scope.launch {
                                     try {
-                                        val normalizedAccount =
-                                            accountEmail
-                                                .trim()
-                                                .lowercase()
-                                                .ifBlank {
-                                                    "anonymous"
-                                                }
-
-                                        val accountKey =
-                                            MessageDigest
-                                                .getInstance("SHA-256")
-                                                .digest(
-                                                    normalizedAccount
-                                                        .toByteArray(
-                                                            Charsets.UTF_8
-                                                        )
-                                                )
-                                                .joinToString("") {
-                                                    "%02x".format(
-                                                        it.toInt() and 0xff
-                                                    )
-                                                }
-                                                .take(24)
-
-                                        val sourceRoot =
-                                            File(
-                                                context.filesDir,
-                                                "terminal-downloads/$accountKey"
-                                            ).canonicalFile
-
-                                        val workspaceRoot =
-                                            workspace.canonicalFile
-
-                                        val bridgeRoot =
-                                            File(
-                                                workspaceRoot,
-                                                ".appforge-downloads/$accountKey"
-                                            ).canonicalFile
-
-                                        check(
-                                            bridgeRoot.absolutePath
-                                                .startsWith(
-                                                    workspaceRoot.absolutePath +
-                                                        File.separator
-                                                )
-                                        ) {
-                                            "Downloads köprü yolu çalışma alanı dışında."
-                                        }
-
-                                        withContext(
-                                            Dispatchers.IO
-                                        ) {
-                                            check(
-                                                sourceRoot.isDirectory
-                                            ) {
-                                                "İndirilenler klasörü bulunamadı."
-                                            }
-
-                                            check(
-                                                bridgeRoot.exists() ||
-                                                    bridgeRoot.mkdirs()
-                                            ) {
-                                                "Downloads köprüsü oluşturulamadı."
-                                            }
-
-                                            fun copyEntry(
-                                                source: File,
-                                                target: File
-                                            ) {
-                                                if (source.isDirectory) {
-                                                    check(
-                                                        target.exists() ||
-                                                            target.mkdirs()
-                                                    )
-
-                                                    source.listFiles()
-                                                        ?.forEach { child ->
-                                                            copyEntry(
-                                                                child,
-                                                                File(
-                                                                    target,
-                                                                    child.name
-                                                                )
-                                                            )
-                                                        }
-
-                                                    return
-                                                }
-
-                                                target.parentFile
-                                                    ?.mkdirs()
-
-                                                source.copyTo(
-                                                    target,
-                                                    overwrite = true
-                                                )
-
-                                                target.setLastModified(
-                                                    source.lastModified()
-                                                )
-                                            }
-
-                                            sourceRoot.listFiles()
-                                                ?.forEach { source ->
-                                                    copyEntry(
-                                                        source,
-                                                        File(
-                                                            bridgeRoot,
-                                                            source.name
-                                                        )
-                                                    )
-                                                }
-                                        }
-
-                                        val linuxRoot =
-                                            "/workspace/.appforge-downloads/$accountKey"
-
                                         val ptyCommand =
-                                            command.replace(
-                                                sourceRoot.absolutePath,
-                                                linuxRoot
-                                            )
+                                            withContext(
+                                                Dispatchers.IO
+                                            ) {
+                                                prepareTerminalDownloadCommand(
+                                                    context =
+                                                        context,
+                                                    workspace =
+                                                        workspace,
+                                                    accountEmail =
+                                                        accountEmail,
+                                                    rawCommand =
+                                                        command
+                                                )
+                                            }
 
                                         val review =
                                             TerminalCommandPolicy.review(
@@ -1323,7 +1390,9 @@ fun TerminalWorkspaceScreen(
                                                 ptyId,
                                                 ptyCommand + "\n"
                                             )
-                                    } catch (error: Throwable) {
+                                    } catch (
+                                        error: Throwable
+                                    ) {
                                         appendLines(
                                             activeSession.id,
                                             "İndirilenler terminal hatası: " +

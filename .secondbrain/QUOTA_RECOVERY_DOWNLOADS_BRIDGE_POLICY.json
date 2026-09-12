@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "name": "Quota Recovery + Downloads PTY Bridge",
+  "quota_recovery": {
+    "FREE_PROJECT_LIMIT_REACHED": "UPGRADE_PRO",
+    "PRO_MONTHLY_PROJECT_LIMIT_REACHED": "BUY_QUOTA_ADDON",
+    "PRO_MONTHLY_BUILD_LIMIT_REACHED": "BUY_QUOTA_ADDON",
+    "generic_403": "NO_AUTOMATIC_PURCHASE_ROUTE",
+    "purchase_rule": "Purchase must remain user-initiated through Google Play Billing."
+  },
+  "downloads_bridge": {
+    "private_android_path_to_pty": false,
+    "guest_root": "/workspace/.appforge-downloads/<accountKey>",
+    "python": "python3",
+    "shell": "sh",
+    "node": "node",
+    "jar": "java -jar",
+    "terminal_use_executes_file": false,
+    "fail_closed_on_rewrite_error": true
+  },
+  "regression": {
+    "required": true,
+    "fail_on_regression": true
+  }
+}

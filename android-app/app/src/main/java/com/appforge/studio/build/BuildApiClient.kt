@@ -22,6 +22,17 @@ data class BuildCreateResult(
     val status: String
 )
 
+class BuildApiException(
+    val statusCode: Int,
+    val errorCode: String?,
+    val recoveryAction: String?,
+    val quota: JSONObject?,
+    message: String
+) : IllegalStateException(
+    message
+)
+
+
 data class BuildCancelResult(
     val status: String,
     val immediate: Boolean
@@ -1682,28 +1693,130 @@ class BuildApiClient(
     private fun readResponse(
         conn: HttpURLConnection
     ): String {
+        val statusCode =
+            conn.responseCode
+
         val stream =
             if (
-                conn.responseCode in 200..299
+                statusCode in
+                    200..299
             ) {
                 conn.inputStream
             } else {
                 conn.errorStream
             }
 
-        val body = stream
-            ?.bufferedReader()
-            ?.use { it.readText() }
-            .orEmpty()
+        val body =
+            stream
+                ?.bufferedReader()
+                ?.use {
+                    it.readText()
+                }
+                .orEmpty()
 
         if (
-            conn.responseCode !in 200..299
+            statusCode !in
+                200..299
         ) {
-            throw IllegalStateException(
-                "Sunucu hatası ${conn.responseCode}: $body"
+            val json =
+                runCatching {
+                    if (
+                        body.isBlank()
+                    ) {
+                        null
+                    } else {
+                        JSONObject(
+                            body
+                        )
+                    }
+                }.getOrNull()
+
+            val errorCode =
+                json
+                    ?.optString(
+                        "code",
+                        ""
+                    )
+                    ?.takeIf {
+                        it.isNotBlank() &&
+                            it != "null"
+                    }
+
+            val recoveryAction =
+                json
+                    ?.optString(
+                        "recoveryAction",
+                        ""
+                    )
+                    ?.takeIf {
+                        it.isNotBlank() &&
+                            it != "null"
+                    }
+
+            val quota =
+                json
+                    ?.optJSONObject(
+                        "quota"
+                    )
+
+            val rawError =
+                json?.opt(
+                    "error"
+                )
+
+            val message =
+                when (
+                    rawError
+                ) {
+                    is String ->
+                        rawError
+                            .takeIf {
+                                it.isNotBlank()
+                            }
+
+                    is JSONObject ->
+                        rawError
+                            .optString(
+                                "message",
+                                ""
+                            )
+                            .takeIf {
+                                it.isNotBlank()
+                            }
+
+                    else ->
+                        null
+                }
+                    ?: json
+                        ?.optString(
+                            "message",
+                            ""
+                        )
+                        ?.takeIf {
+                            it.isNotBlank()
+                        }
+                    ?: body
+                        .take(1000)
+                        .takeIf {
+                            it.isNotBlank()
+                        }
+                    ?: "Sunucu isteği başarısız."
+
+            throw BuildApiException(
+                statusCode =
+                    statusCode,
+                errorCode =
+                    errorCode,
+                recoveryAction =
+                    recoveryAction,
+                quota =
+                    quota,
+                message =
+                    message
             )
         }
 
         return body
     }
+
 }
