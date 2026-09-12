@@ -1342,8 +1342,16 @@ fun TerminalWorkspaceScreen(
                         OwnerFilesPanel(
                             accountEmail =
                                 accountEmail,
+                            /*
+                             * appforge-apk always writes to:
+                             * /workspace/AppForgeDownloads
+                             *
+                             * Therefore legacy import must always inspect the
+                             * selected workspace root, never the PTY's current
+                             * subdirectory (filesWorkspace).
+                             */
                             legacyWorkspace =
-                                filesWorkspace
+                                workspace
                         )
 
                     TerminalWorkspaceTab.GIT ->
