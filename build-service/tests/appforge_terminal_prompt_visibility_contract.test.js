@@ -20,7 +20,7 @@ test(
     // Structural output AND prompt/cursor-row movement can trigger follow.
     assert.match(
       source,
-      /LaunchedEffect\(\s*state\.id,\s*state\.snapshot\.lines\.size,\s*state\.snapshot\.cursorLine\s*\)/
+      /LaunchedEffect\(\s*state\.id,\s*state\.snapshot\.lines\.size,\s*state\.snapshot\.cursorLine,\s*directInputRevision\s*\)/
     );
 
     // Never return to outputRevision-triggered scrolling.

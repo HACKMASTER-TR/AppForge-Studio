@@ -1,0 +1,755 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+POLICY_PATH = ROOT / ".appforge" / "policy.json"
+STATE_DIR = ROOT / ".appforge" / "state"
+REPORT_DIR = ROOT / ".appforge" / "reports"
+LOCK_PATH = STATE_DIR / "autopilot.lock"
+LATEST_STATE = STATE_DIR / "latest.json"
+
+SECRET_PATTERNS = [
+    re.compile(r"ghp_[A-Za-z0-9]{20,}"),
+    re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
+    re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
+]
+
+OBSOLETE_AUTOFOLLOW = (
+    r"/LaunchedEffect\(\s*state\.id,"
+    r"\s*state\.snapshot\.lines\.size,"
+    r"\s*state\.snapshot\.cursorLine\s*\)/"
+)
+
+def policy():
+    return json.loads(POLICY_PATH.read_text(encoding="utf-8"))
+
+def run(cmd, *, check=True, capture=False, env=None):
+    proc = subprocess.run(
+        cmd,
+        cwd=ROOT,
+        text=True,
+        shell=isinstance(cmd, str),
+        capture_output=capture,
+        env=env,
+    )
+    if check and proc.returncode != 0:
+        if capture:
+            sys.stdout.write(proc.stdout or "")
+            sys.stderr.write(proc.stderr or "")
+        raise SystemExit(proc.returncode)
+    return proc
+
+def git(*args, check=True):
+    return run(["git", *args], check=check, capture=True)
+
+def git_out(*args):
+    p = git(*args, check=False)
+    return (p.stdout or "").strip()
+
+def now_iso():
+    return dt.datetime.now().astimezone().isoformat(timespec="seconds")
+
+def state_write(status, **extra):
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    data = {
+        "status": status,
+        "updated_at": now_iso(),
+        "branch": git_out("branch", "--show-current"),
+        "head": git_out("rev-parse", "HEAD"),
+        **extra,
+    }
+    LATEST_STATE.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return data
+
+def changed_files():
+    names = set()
+    for args in [
+        ("diff", "--name-only"),
+        ("diff", "--cached", "--name-only"),
+        ("ls-files", "--others", "--exclude-standard"),
+    ]:
+        text = git_out(*args)
+        for line in text.splitlines():
+            line = line.strip()
+            if line:
+                names.add(line)
+    return sorted(names)
+
+def status_files():
+    return changed_files()
+
+def forbidden_files(files):
+    regs = [re.compile(p) for p in policy()["forbidden_patterns"]]
+    return [f for f in files if any(r.search(f) for r in regs)]
+
+def scan_secrets():
+    data = ""
+    for args in [("diff", "--"), ("diff", "--cached", "--")]:
+        p = git(*args, check=False)
+        data += "\n" + (p.stdout or "")
+    return [rx.pattern for rx in SECRET_PATTERNS if rx.search(data)]
+
+def repair_known_stale_contracts():
+    """
+    Only exact, previously verified contract migrations are auto-fixed.
+    Unknown stale assertions remain BLOCKED rather than being guessed.
+    """
+    tests = ROOT / "build-service" / "tests"
+    repaired = []
+
+    known = {
+        (
+            tests /
+            "appforge_terminal_stage11h_owner_quick_actions_contract.test.js"
+        ): [
+            (
+                """  assert.ok(
+    source.includes('"./dashboard.sh; else "')
+  );
+""",
+                """  assert.ok(
+    source.includes('"./scripts/appforge dashboard\\\\r"')
+  );
+
+  assert.doesNotMatch(
+    source,
+    /\\.\\/dashboard\\.sh/
+  );
+"""
+            )
+        ]
+    }
+
+    for path, migrations in known.items():
+        if not path.exists():
+            continue
+
+        text = path.read_text(
+            encoding="utf-8",
+            errors="ignore"
+        )
+
+        original = text
+
+        for old, new in migrations:
+            if old in text:
+                text = text.replace(
+                    old,
+                    new,
+                    1
+                )
+
+        if text != original:
+            path.write_text(
+                text,
+                encoding="utf-8"
+            )
+            repaired.append(
+                str(
+                    path.relative_to(ROOT)
+                )
+            )
+
+    if repaired:
+        print(
+            "AUTO-REPAIRED STALE CONTRACTS:"
+        )
+        for item in repaired:
+            print(" -", item)
+
+    return repaired
+
+
+def stale_contracts():
+    hits = []
+    tests = ROOT / "build-service" / "tests"
+
+    for path in tests.glob(
+        "appforge_terminal_*.test.js"
+    ):
+        text = path.read_text(
+            encoding="utf-8",
+            errors="ignore"
+        )
+
+        reasons = []
+
+        if OBSOLETE_AUTOFOLLOW in text:
+            reasons.append(
+                "obsolete-autofollow-regex"
+            )
+
+        if '"./dashboard.sh; else "' in text:
+            reasons.append(
+                "legacy-dashboard-command"
+            )
+
+        if reasons:
+            hits.append(
+                {
+                    "path": str(
+                        path.relative_to(ROOT)
+                    ),
+                    "reasons": reasons,
+                }
+            )
+
+    return hits
+
+def classify(files):
+    groups = set()
+    for f in files:
+        if f.startswith("android-app/"):
+            groups.add("android")
+        if "worker" in f.lower() or f.startswith("build-service/"):
+            groups.add("worker")
+        if f.startswith(".github/") or "deploy" in f.lower():
+            groups.add("deploy")
+        if "conversion" in f.lower():
+            groups.add("conversion")
+        if f.startswith("android-app/app/src/main/java/com/appforge/studio/terminal/"):
+            groups.add("terminal")
+        if f.startswith(".secondbrain/") or f.startswith("SECOND_BRAIN"):
+            groups.add("secondbrain")
+    return sorted(groups)
+
+def targeted_tests(files):
+    tests_dir = ROOT / "build-service" / "tests"
+    selected = set()
+
+    if "terminal" in classify(files):
+        selected.update(tests_dir.glob("appforge_terminal_*.test.js"))
+
+    if any(".appforge/" in f or f == "scripts/appforge" for f in files):
+        selected.update(tests_dir.glob("appforge_autopilot_*.test.js"))
+        p = tests_dir / "appforge_admin_autopilot_controls_contract.test.js"
+        if p.exists():
+            selected.add(p)
+
+    for name in [
+        "appforge_terminal_shortcut_viewport_suppression_contract.test.js",
+        "appforge_terminal_viewport_stability_contract.test.js",
+        "appforge_terminal_ime_open_visibility_contract.test.js",
+        "appforge_terminal_prompt_visibility_contract.test.js",
+    ]:
+        p = tests_dir / name
+        if p.exists():
+            selected.add(p)
+
+    return sorted(selected)
+
+def security_gate(files):
+    repair_known_stale_contracts()
+
+    files = changed_files()
+
+    bad = forbidden_files(files)
+    if bad:
+        print("FORBIDDEN FILES:")
+        for f in bad:
+            print(" -", f)
+        return False
+
+    secrets = scan_secrets()
+    if secrets:
+        print("SECRET SCAN: BLOCKED")
+        for hit in secrets:
+            print(" -", hit)
+        return False
+
+    stale = stale_contracts()
+    if stale:
+        print("STALE CONTRACT DETECTED:")
+        for item in stale:
+            print(
+                " -",
+                item["path"],
+                ":",
+                ",".join(
+                    item["reasons"]
+                )
+            )
+        return False
+
+    print("SECURITY / STALE CONTRACT SCAN: PASS")
+    return True
+
+def local_gate():
+    repair_known_stale_contracts()
+
+    files = changed_files()
+    print("=== CHANGE IMPACT ===")
+    print("Files:", len(files))
+    print("Groups:", ", ".join(classify(files)) or "none")
+
+    if not security_gate(files):
+        raise SystemExit(10)
+
+    print("\n=== DIFF CHECK ===")
+    run(["git", "diff", "--check"])
+
+    selected = targeted_tests(files)
+    print("\n=== TARGETED REGRESSION ===")
+    if selected:
+        run(["node", "--test", *[str(p.relative_to(ROOT)) for p in selected]])
+    else:
+        print("No targeted tests selected.")
+
+    print("\n=== FULL REGRESSION ===")
+    run(["npm", "--prefix", "build-service", "test"])
+
+    print("\n=== SECOND BRAIN SELFTEST ===")
+    run(["./scripts/brain", "selftest"])
+
+    print("\n=== SECOND BRAIN DOCTOR ===")
+    doctor = run(["./scripts/brain", "doctor"], capture=True)
+    sys.stdout.write(doctor.stdout or "")
+    if '"status": "PASS"' not in (doctor.stdout or ""):
+        raise SystemExit(11)
+
+    print("\n=== HARD STABILITY GATE ===")
+    run(["./scripts/appforge-stability-gate", "local"])
+
+    print("\nLOCAL_GATES: PASS")
+    print("fail 0")
+
+def safe_stage():
+    files = changed_files()
+    bad = forbidden_files(files)
+    if bad:
+        raise SystemExit("Forbidden file present; refusing to stage.")
+    if not files:
+        raise SystemExit("No changes to stage.")
+    run(["git", "add", "--", *files])
+
+def default_commit_message():
+    branch = git_out("branch", "--show-current")
+    tail = branch.split("/", 1)[-1].replace("-", " ").strip()
+    if branch.startswith("fix/"):
+        return f"Fix {tail}"
+    if branch.startswith("feat/") or branch.startswith("feature/"):
+        return f"Add {tail}"
+    return f"Update {tail or 'AppForge'}"
+
+def gh_required():
+    if not shutil.which("gh"):
+        raise SystemExit("gh CLI bulunamadı; PR/CI otomasyonu BLOCKED.")
+    p = run(["gh", "auth", "status"], check=False, capture=True)
+    if p.returncode != 0:
+        sys.stdout.write(p.stdout or "")
+        sys.stderr.write(p.stderr or "")
+        raise SystemExit("GitHub auth geçersiz; PR/CI otomasyonu BLOCKED.")
+
+def pr_number():
+    p = run(
+        ["gh", "pr", "view", "--json", "number", "--jq", ".number"],
+        check=False,
+        capture=True,
+    )
+    value = (p.stdout or "").strip()
+    return int(value) if p.returncode == 0 and value.isdigit() else None
+
+def ensure_pr():
+    num = pr_number()
+    if num:
+        return num
+
+    title = default_commit_message()
+    body = (
+        "## AppForge Autopilot\n\n"
+        "- Local targeted regression: PASS\n"
+        "- Full regression: PASS\n"
+        "- Second Brain: PASS\n"
+        "- Hard stability gate: PASS\n"
+        "- fail 0\n"
+        "- Security/stale-contract scan: PASS\n\n"
+        "Do not merge unless all required CI checks are SUCCESS."
+    )
+    run([
+        "gh", "pr", "create",
+        "--base", "main",
+        "--title", title,
+        "--body", body,
+    ])
+
+    num = pr_number()
+    if not num:
+        raise SystemExit("PR oluşturuldu ancak numarası çözülemedi.")
+    return num
+
+def ci_watch():
+    gh_required()
+    num = pr_number()
+    if not num:
+        raise SystemExit("Aktif branch için PR bulunamadı.")
+    print(f"Watching PR #{num} checks every 30 seconds...")
+    run(["gh", "pr", "checks", str(num), "--watch", "--interval", "30"])
+
+def merge_pr(num):
+    run(["gh", "pr", "merge", str(num), "--merge", "--delete-branch"])
+
+def wait_workflow(name, head_sha, timeout=3600):
+    started = time.time()
+    while time.time() - started < timeout:
+        p = run([
+            "gh", "run", "list",
+            "--workflow", name,
+            "--branch", "main",
+            "--limit", "10",
+            "--json", "databaseId,headSha,status,conclusion,url",
+        ], check=False, capture=True)
+
+        if p.returncode != 0:
+            time.sleep(30)
+            continue
+
+        try:
+            runs = json.loads(p.stdout or "[]")
+        except json.JSONDecodeError:
+            runs = []
+
+        match = next((r for r in runs if r.get("headSha") == head_sha), None)
+        if not match:
+            print(f"{name}: waiting for matching main run...")
+            time.sleep(30)
+            continue
+
+        status = match.get("status")
+        conclusion = match.get("conclusion")
+        print(f"{name}: {status} / {conclusion}")
+
+        if status == "completed":
+            if conclusion == "success":
+                return match
+            raise SystemExit(f"{name}: {conclusion}")
+
+        time.sleep(30)
+
+    raise SystemExit(f"{name}: timeout")
+
+def release_info():
+    gh_required()
+    p = run([
+        "gh", "release", "view", "appforge-studio-latest",
+        "--json", "tagName,publishedAt,url,assets",
+    ], check=False, capture=True)
+
+    if p.returncode != 0:
+        return {"status": "NOT_READY"}
+
+    data = json.loads(p.stdout or "{}")
+    apks = [
+        a for a in data.get("assets", [])
+        if str(a.get("name", "")).lower().endswith(".apk")
+    ]
+    return {
+        "status": "READY" if apks else "NO_APK",
+        "tag": data.get("tagName"),
+        "publishedAt": data.get("publishedAt"),
+        "url": data.get("url"),
+        "apk_assets": [
+            {
+                "name": a.get("name"),
+                "size": a.get("size"),
+                "downloadCount": a.get("downloadCount"),
+            }
+            for a in apks
+        ],
+    }
+
+def generate_report(result, **extra):
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    data = {
+        "result": result,
+        "timestamp": now_iso(),
+        "branch": git_out("branch", "--show-current"),
+        "head": git_out("rev-parse", "HEAD"),
+        "main": git_out("rev-parse", "main"),
+        "changed_files": changed_files(),
+        "groups": classify(changed_files()),
+        **extra,
+    }
+
+    json_path = REPORT_DIR / f"{stamp}-pipeline.json"
+    md_path = REPORT_DIR / f"{stamp}-pipeline.md"
+
+    json_path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    md = [
+        "# AppForge Pipeline Report",
+        "",
+        f"- Result: **{result}**",
+        f"- Timestamp: `{data['timestamp']}`",
+        f"- Branch: `{data['branch']}`",
+        f"- HEAD: `{data['head']}`",
+        f"- Main: `{data['main']}`",
+        f"- Groups: `{', '.join(data['groups']) or 'none'}`",
+        "",
+        "## Validation",
+        "",
+        "- Targeted regression: PASS",
+        "- Full regression: PASS",
+        "- Second Brain: PASS",
+        "- Hard Stability Gate: PASS",
+        "- fail 0",
+        "",
+        "## Extra",
+        "",
+        "```json",
+        json.dumps(extra, ensure_ascii=False, indent=2),
+        "```",
+        "",
+    ]
+    md_path.write_text("\n".join(md), encoding="utf-8")
+    return json_path, md_path
+
+class Lock:
+    def __enter__(self):
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        if LOCK_PATH.exists():
+            age = time.time() - LOCK_PATH.stat().st_mtime
+            if age < 6 * 3600:
+                raise SystemExit("Başka bir AppForge pipeline kilidi aktif.")
+            LOCK_PATH.unlink(missing_ok=True)
+        LOCK_PATH.write_text(
+            json.dumps({"pid": os.getpid(), "started_at": now_iso()}) + "\n",
+            encoding="utf-8",
+        )
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        LOCK_PATH.unlink(missing_ok=True)
+
+def submit():
+    branch = git_out("branch", "--show-current")
+    if branch == "main":
+        raise SystemExit("main üzerinde submit yasak.")
+
+    with Lock():
+        state_write("TESTING")
+        local_gate()
+
+        safe_stage()
+        run(["git", "diff", "--cached", "--check"])
+        run(["./scripts/appforge-stability-gate", "local"])
+
+        msg = os.environ.get("APPFORGE_COMMIT_MESSAGE") or default_commit_message()
+        state_write("COMMITTING", commit_message=msg)
+        run(["git", "commit", "-m", msg])
+
+        state_write("PUSHING")
+        run(["git", "push", "-u", "origin", branch])
+
+        gh_required()
+        state_write("OPENING_PR")
+        num = ensure_pr()
+
+        state_write("WAITING_CI", pr=num)
+        ci_watch()
+
+        state_write("MERGING", pr=num)
+        merge_pr(num)
+
+        run(["git", "switch", "main"])
+        run(["git", "pull", "--ff-only", "origin", "main"])
+        main_sha = git_out("rev-parse", "HEAD")
+
+        ci_result = {}
+        state_write("BUILDING", workflow="Android Debug")
+        ci_result["Android Debug"] = wait_workflow("Android Debug", main_sha)
+
+        rel = release_info()
+        if rel.get("status") != "READY":
+            raise SystemExit("Latest APK release henüz READY değil.")
+
+        state_write("COMPLETE", pr=num, release=rel)
+        jp, mp = generate_report(
+            "SUCCESS",
+            pr=num,
+            ci=ci_result,
+            release=rel,
+        )
+        print("\nAPPFORGE PIPELINE COMPLETE ✅")
+        print("JSON:", jp)
+        print("REPORT:", mp)
+
+def dashboard():
+    refresh = int(policy().get("dashboard_refresh_seconds", 30))
+    while True:
+        os.system("clear")
+        latest = {}
+        if LATEST_STATE.exists():
+            try:
+                latest = json.loads(LATEST_STATE.read_text(encoding="utf-8"))
+            except Exception:
+                latest = {}
+
+        print("APPFORGE ADMIN CONTROL CENTER")
+        print("=" * 44)
+        print("Time:   ", now_iso())
+        print("Branch: ", git_out("branch", "--show-current"))
+        print("HEAD:   ", git_out("rev-parse", "--short", "HEAD"))
+        print("Dirty:  ", "YES" if status_files() else "NO")
+        print("State:  ", latest.get("status", "IDLE"))
+        print("Refresh:", f"{refresh}s")
+
+        if shutil.which("gh"):
+            p = run(
+                ["gh", "pr", "view", "--json", "number,url,state,mergeStateStatus"],
+                check=False,
+                capture=True,
+            )
+            if p.returncode == 0:
+                try:
+                    pr = json.loads(p.stdout or "{}")
+                    print(
+                        "PR:     ",
+                        f"#{pr.get('number')} {pr.get('state')} "
+                        f"{pr.get('mergeStateStatus')}",
+                    )
+                except Exception:
+                    pass
+
+        print("\nChanged groups:", ", ".join(classify(changed_files())) or "none")
+        stale = stale_contracts()
+        print("Stale contracts:", "0 ✅" if not stale else f"{len(stale)} ❌")
+
+        if latest.get("status") == "COMPLETE":
+            print("\nOVERALL: COMPLETE ✅")
+            return
+
+        print("\nOVERALL:", latest.get("status", "IDLE"))
+        print(f"\nNext refresh in {refresh}s")
+        time.sleep(refresh)
+
+def ci():
+    gh_required()
+    num = pr_number()
+    if not num:
+        print("Aktif branch için PR yok.")
+        return
+    run(["gh", "pr", "checks", str(num)])
+
+def report():
+    if not REPORT_DIR.exists():
+        print("Henüz pipeline raporu yok.")
+        return
+    reports = sorted(REPORT_DIR.glob("*-pipeline.md"))
+    if not reports:
+        print("Henüz pipeline raporu yok.")
+        return
+    print(reports[-1].read_text(encoding="utf-8"))
+
+def status():
+    latest = {}
+    if LATEST_STATE.exists():
+        try:
+            latest = json.loads(LATEST_STATE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    print("Branch:", git_out("branch", "--show-current"))
+    print("HEAD:  ", git_out("rev-parse", "--short", "HEAD"))
+    print("State: ", latest.get("status", "IDLE"))
+    print("Files: ", len(changed_files()))
+    print("Groups:", ", ".join(classify(changed_files())) or "none")
+    print("Stale: ", len(stale_contracts()))
+    print("Forbidden:", len(forbidden_files(changed_files())))
+
+def release():
+    print(json.dumps(release_info(), ensure_ascii=False, indent=2))
+
+def deploy():
+    adapters = policy().get("external_adapters", {})
+    print("DEPLOY ADAPTERS")
+    for name, mode in adapters.items():
+        print(f"{name:12} {mode.upper()} / NOT_CONFIGURED until credentials are available")
+
+def rollback():
+    print(
+        "ROLLBACK is policy-gated. "
+        "Use a reviewed revert branch; direct destructive rollback is not automatic."
+    )
+
+def require_admin_session():
+    if os.environ.get("APPFORGE_ADMIN_SESSION") != "1":
+        print("PERMISSION_DENIED")
+        raise SystemExit(77)
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="appforge")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    for name in [
+        "status", "doctor", "test", "security", "dashboard",
+        "ci", "report", "submit", "release", "deploy", "rollback"
+    ]:
+        sub.add_parser(name)
+
+    args = parser.parse_args()
+    os.chdir(ROOT)
+
+    admin_commands = {
+        "status",
+        "dashboard",
+        "ci",
+        "report",
+        "submit",
+        "release",
+        "deploy",
+        "rollback",
+    }
+
+    if args.cmd in admin_commands:
+        require_admin_session()
+
+    if args.cmd == "status":
+        status()
+    elif args.cmd == "doctor":
+        local_gate()
+    elif args.cmd == "test":
+        files = changed_files()
+        selected = targeted_tests(files)
+        if selected:
+            run(["node", "--test", *[str(p.relative_to(ROOT)) for p in selected]])
+        run(["npm", "--prefix", "build-service", "test"])
+    elif args.cmd == "security":
+        if not security_gate(changed_files()):
+            raise SystemExit(10)
+    elif args.cmd == "dashboard":
+        dashboard()
+    elif args.cmd == "ci":
+        ci()
+    elif args.cmd == "report":
+        report()
+    elif args.cmd == "submit":
+        submit()
+    elif args.cmd == "release":
+        release()
+    elif args.cmd == "deploy":
+        deploy()
+    elif args.cmd == "rollback":
+        rollback()
+
+if __name__ == "__main__":
+    main()

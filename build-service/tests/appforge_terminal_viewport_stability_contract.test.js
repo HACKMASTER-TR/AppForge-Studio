@@ -17,7 +17,7 @@ test(
     // not every echoed character / Readline redraw.
     assert.match(
       source,
-      /LaunchedEffect\(\s*state\.id,\s*state\.snapshot\.lines\.size,\s*state\.snapshot\.cursorLine\s*\)/
+      /LaunchedEffect\(\s*state\.id,\s*state\.snapshot\.lines\.size,\s*state\.snapshot\.cursorLine,\s*directInputRevision\s*\)/
     );
 
     assert.doesNotMatch(

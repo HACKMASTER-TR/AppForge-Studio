@@ -22,7 +22,7 @@ test("Stage 10Q follows new terminal output with virtualized scrolling", async (
 
   assert.match(
     source,
-    /LaunchedEffect\(\s*state\.id,\s*state\.snapshot\.lines\.size,\s*state\.snapshot\.cursorLine\s*\)/
+    /LaunchedEffect\(\s*state\.id,\s*state\.snapshot\.lines\.size,\s*state\.snapshot\.cursorLine,\s*directInputRevision\s*\)/
   );
 
   assert.match(

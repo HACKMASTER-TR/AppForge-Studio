@@ -63,7 +63,12 @@ test("Stage 11H adds APK and Dashboard terminal shortcuts", async () => {
   );
 
   assert.ok(
-    source.includes('"./dashboard.sh; else "')
+    source.includes('"./scripts/appforge dashboard\\r"')
+  );
+
+  assert.doesNotMatch(
+    source,
+    /\.\/dashboard\.sh/
   );
 });
 
