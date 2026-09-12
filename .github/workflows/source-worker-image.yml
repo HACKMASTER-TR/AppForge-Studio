@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "build-service/**"
+      - ".github/workflows/source-worker-image.yml"
       - "!build-service/tests/**"
   workflow_dispatch:
 
@@ -34,10 +35,12 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: build-service/package-lock.json
 
       - name: Install Worker dependencies
         working-directory: ./build-service
-        run: npm install
+        run: npm ci --prefer-offline --no-audit --fund=false
 
       - name: Run source worker regression suite
         working-directory: ./build-service
@@ -58,6 +61,7 @@ jobs:
           file: ./build-service/Dockerfile.source-worker
           load: true
           push: false
+          provenance: false
           build-args: |
             ANDROID_SDK_LICENSE_ACCEPTED=true
           tags: ${{ env.LOCAL_IMAGE }}
@@ -121,16 +125,33 @@ jobs:
         shell: bash
         run: echo "sha_tag=sha-${GITHUB_SHA::12}" >> "${GITHUB_OUTPUT}"
 
-      - name: Publish verified source Worker image
-        uses: docker/build-push-action@v7
-        with:
-          context: ./build-service
-          file: ./build-service/Dockerfile.source-worker
-          push: true
-          provenance: false
-          build-args: |
-            ANDROID_SDK_LICENSE_ACCEPTED=true
-          tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.sha_tag }}
-          cache-from: type=gha,scope=source-worker
+      - name: Publish already-verified source Worker image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SHA_IMAGE="${IMAGE_NAME}:${{ steps.image-tag.outputs.sha_tag }}"
+          LATEST_IMAGE="${IMAGE_NAME}:latest"
+
+          LOCAL_ID="$(
+            docker image inspect               --format '{{.Id}}'               "${LOCAL_IMAGE}"
+          )"
+
+          docker tag "${LOCAL_IMAGE}" "${SHA_IMAGE}"
+          docker tag "${LOCAL_IMAGE}" "${LATEST_IMAGE}"
+
+          SHA_ID="$(
+            docker image inspect               --format '{{.Id}}'               "${SHA_IMAGE}"
+          )"
+
+          LATEST_ID="$(
+            docker image inspect               --format '{{.Id}}'               "${LATEST_IMAGE}"
+          )"
+
+          test "${LOCAL_ID}" = "${SHA_ID}"
+          test "${LOCAL_ID}" = "${LATEST_ID}"
+
+          echo "Publishing exact smoke-tested image: ${LOCAL_ID}"
+
+          docker push "${SHA_IMAGE}"
+          docker push "${LATEST_IMAGE}"

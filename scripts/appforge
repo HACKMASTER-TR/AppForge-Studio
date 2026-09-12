@@ -62,6 +62,171 @@ def git_out(*args):
 def now_iso():
     return dt.datetime.now().astimezone().isoformat(timespec="seconds")
 
+
+def parse_gh_datetime(value):
+    value = str(value or "").strip()
+
+    if not value:
+        return None
+
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+
+    try:
+        return dt.datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def format_elapsed(seconds):
+    seconds = max(
+        0,
+        int(seconds or 0),
+    )
+
+    hours, remainder = divmod(
+        seconds,
+        3600,
+    )
+
+    minutes, seconds = divmod(
+        remainder,
+        60,
+    )
+
+    return (
+        f"{hours:02d}:"
+        f"{minutes:02d}:"
+        f"{seconds:02d}"
+    )
+
+
+def workflow_run_seconds(run_data):
+    started = (
+        parse_gh_datetime(
+            run_data.get("startedAt")
+        )
+        or parse_gh_datetime(
+            run_data.get("createdAt")
+        )
+    )
+
+    finished = parse_gh_datetime(
+        run_data.get("updatedAt")
+    )
+
+    if not started or not finished:
+        return None
+
+    return max(
+        0,
+        int(
+            (
+                finished
+                - started
+            ).total_seconds()
+        ),
+    )
+
+
+def ci_timing_label(key):
+    labels = {
+        "android-debug.yml":
+            "AppForge Android Debug",
+
+        "worker-image.yml":
+            "Build AppForge Worker Image",
+
+        "source-worker-image.yml":
+            "Build AppForge Source Worker Image",
+
+        "conversion-smoke.yml":
+            "AppForge Conversion Smoke",
+
+        "production:worker-image.yml":
+            "Production Automation · Worker",
+
+        "production:source-worker-image.yml":
+            "Production Automation · Source Worker",
+    }
+
+    return labels.get(
+        key,
+        key,
+    )
+
+
+def ci_timing_summary(results):
+    workflows = []
+    starts = []
+    finishes = []
+
+    for key, runs in results.items():
+        if not isinstance(runs, list):
+            continue
+
+        for run_data in runs:
+            started = (
+                parse_gh_datetime(
+                    run_data.get("startedAt")
+                )
+                or parse_gh_datetime(
+                    run_data.get("createdAt")
+                )
+            )
+
+            finished = parse_gh_datetime(
+                run_data.get("updatedAt")
+            )
+
+            seconds = workflow_run_seconds(
+                run_data
+            )
+
+            if (
+                started is None
+                or finished is None
+                or seconds is None
+            ):
+                continue
+
+            starts.append(started)
+            finishes.append(finished)
+
+            workflows.append(
+                {
+                    "key": key,
+                    "label": ci_timing_label(key),
+                    "seconds": seconds,
+                    "duration":
+                        format_elapsed(seconds),
+                    "started_at":
+                        started.isoformat(),
+                    "finished_at":
+                        finished.isoformat(),
+                }
+            )
+
+    total_seconds = 0
+
+    if starts and finishes:
+        total_seconds = max(
+            0,
+            int(
+                (
+                    max(finishes)
+                    - min(starts)
+                ).total_seconds()
+            ),
+        )
+
+    return {
+        "workflows": workflows,
+        "total_seconds": total_seconds,
+        "total_duration":
+            format_elapsed(total_seconds),
+    }
+
 def state_write(status, **extra):
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     data = {
@@ -470,6 +635,7 @@ def wait_workflow(
             (
                 "databaseId,headSha,status,"
                 "conclusion,url,createdAt,"
+                "startedAt,updatedAt,"
                 "event,displayTitle"
             ),
         ], check=False, capture=True)
@@ -563,6 +729,17 @@ def wait_workflow(
             f"{len(selected)}/"
             f"{len(selected)} SUCCESS"
         )
+
+        for run_data in selected:
+            elapsed = workflow_run_seconds(
+                run_data
+            )
+
+            if elapsed is not None:
+                print(
+                    f"⏱ {name}: "
+                    f"{format_elapsed(elapsed)}"
+                )
 
         return selected
 
@@ -827,7 +1004,15 @@ def required_main_workflows(files):
             "worker-image.yml"
         )
 
-    if build_runtime_files:
+    source_worker_ci_change = (
+        ".github/workflows/source-worker-image.yml"
+        in files
+    )
+
+    if (
+        build_runtime_files
+        or source_worker_ci_change
+    ):
         required.append(
             "source-worker-image.yml"
         )
@@ -965,6 +1150,31 @@ def wait_required_main_ci(
             event_filter="workflow_run",
             display_title=title,
         )
+
+    timing = ci_timing_summary(
+        results
+    )
+
+    print(
+        "\n=== PIPELINE TIMING ==="
+    )
+
+    for item in timing["workflows"]:
+        print(
+            f"⏱ {item['label']}: "
+            f"{item['duration']}"
+        )
+
+    print(
+        "----------------------------------------"
+    )
+
+    print(
+        "🏁 FULL PIPELINE TOTAL: "
+        f"{timing['total_duration']}"
+    )
+
+    results["_timing"] = timing
 
     return required, results
 
