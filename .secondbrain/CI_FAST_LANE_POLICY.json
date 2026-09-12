@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "AppForge CI Fast Lane",
+  "rules": {
+    "control_plane": "FAST",
+    "tests": "FAST",
+    "contracts": "FAST",
+    "secondbrain": "FAST",
+    "android_runtime": "ANDROID_DEBUG",
+    "worker_runtime": "WORKER_IMAGE_PRODUCTION",
+    "source_worker_runtime": "SOURCE_WORKER_IMAGE_PRODUCTION",
+    "conversion_runtime": "CONVERSION_SMOKE"
+  },
+  "production_health": {
+    "warmup_seconds": 30,
+    "consecutive_successes": 3,
+    "retry_seconds": 5,
+    "timeout_seconds": 180,
+    "latest_matching_run_wins": true
+  }
+}

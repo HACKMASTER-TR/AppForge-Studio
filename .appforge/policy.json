@@ -48,5 +48,29 @@
     "render": "conditional",
     "vercel": "conditional",
     "play_console": "conditional"
+  },
+  "fast_lane": {
+    "enabled": true,
+    "control_plane_patterns": [
+      "build-service/tests/**",
+      "scripts/appforge",
+      "scripts/appforge-stability-gate",
+      ".github/workflows/**",
+      ".github/scripts/railway_production.py",
+      ".secondbrain/**",
+      ".appforge/**",
+      "docs/**",
+      "*.md"
+    ],
+    "heavy_runtime_only": true,
+    "pr_poll_seconds": 10,
+    "main_ci_poll_seconds": 15,
+    "production_health": {
+      "warmup_seconds": 30,
+      "consecutive_successes": 3,
+      "retry_interval_seconds": 5,
+      "retry_timeout_seconds": 180,
+      "latest_matching_run_wins": true
+    }
   }
 }

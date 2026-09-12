@@ -1,5 +1,8 @@
 name: AppForge Production Automation
 
+run-name: >-
+  Production · ${{ github.event.workflow_run.name || github.event_name }}
+
 on:
   workflow_run:
     workflows:

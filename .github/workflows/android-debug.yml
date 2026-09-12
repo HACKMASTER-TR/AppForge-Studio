@@ -7,9 +7,6 @@ on:
       - main
     paths:
       - "android-app/**"
-      - ".github/workflows/android-debug.yml"
-      - ".github/scripts/railway_production.py"
-      - ".github/workflows/production-automation.yml"
 
 permissions:
   contents: write

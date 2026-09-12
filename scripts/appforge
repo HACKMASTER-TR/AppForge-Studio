@@ -136,6 +136,7 @@ def repair_known_stale_contracts():
         ]
     }
 
+
     for path, migrations in known.items():
         if not path.exists():
             continue
@@ -399,7 +400,7 @@ def ci_watch():
     if not num:
         raise SystemExit("Aktif branch için PR bulunamadı.")
     print(f"Watching PR #{num} checks every 30 seconds...")
-    run(["gh", "pr", "checks", str(num), "--watch", "--interval", "30"])
+    run(["gh", "pr", "checks", str(num), "--watch", "--interval", "10"])
 
 def merge_pr(num):
     run(["gh", "pr", "merge", str(num), "--merge", "--delete-branch"])
@@ -445,6 +446,8 @@ def wait_workflow(
     head_sha,
     timeout=5400,
     min_count=1,
+    event_filter=None,
+    display_title=None,
 ):
     name = workflow_display_name(
         workflow_file
@@ -462,13 +465,17 @@ def wait_workflow(
             "--branch",
             "main",
             "--limit",
-            "30",
+            "40",
             "--json",
-            "databaseId,headSha,status,conclusion,url",
+            (
+                "databaseId,headSha,status,"
+                "conclusion,url,createdAt,"
+                "event,displayTitle"
+            ),
         ], check=False, capture=True)
 
         if p.returncode != 0:
-            time.sleep(30)
+            time.sleep(15)
             continue
 
         try:
@@ -479,55 +486,85 @@ def wait_workflow(
             runs = []
 
         matches = [
-            r for r in runs
-            if r.get("headSha") == head_sha
+            r
+            for r in runs
+            if (
+                r.get("headSha") == head_sha
+                and (
+                    event_filter is None
+                    or r.get("event") == event_filter
+                )
+                and (
+                    display_title is None
+                    or r.get("displayTitle")
+                    == display_title
+                )
+            )
         ]
 
-        if len(matches) < min_count:
+        matches.sort(
+            key=lambda r:
+                int(
+                    r.get(
+                        "databaseId"
+                    )
+                    or 0
+                ),
+            reverse=True,
+        )
+
+        selected = matches[:min_count]
+
+        if len(selected) < min_count:
             print(
                 f"{name}: waiting "
-                f"({len(matches)}/{min_count} runs found)"
+                f"({len(selected)}/{min_count})"
             )
-            time.sleep(30)
+            time.sleep(15)
+            continue
+
+        pending = [
+            r
+            for r in selected
+            if r.get("status")
+            != "completed"
+        ]
+
+        if pending:
+            print(
+                f"{name}: "
+                f"{len(selected) - len(pending)}/"
+                f"{len(selected)} completed"
+            )
+            time.sleep(15)
             continue
 
         failed = [
-            r for r in matches
-            if (
-                r.get("status") == "completed"
-                and r.get("conclusion")
-                not in ("success",)
-            )
+            r
+            for r in selected
+            if r.get("conclusion")
+            != "success"
         ]
 
         if failed:
-            conclusions = ", ".join(
-                str(r.get("conclusion"))
+            states = ", ".join(
+                str(
+                    r.get("conclusion")
+                )
                 for r in failed
             )
-            raise SystemExit(
-                f"{name}: {conclusions}"
-            )
 
-        pending = [
-            r for r in matches
-            if r.get("status") != "completed"
-        ]
+            raise SystemExit(
+                f"{name}: {states}"
+            )
 
         print(
             f"{name}: "
-            f"{len(matches) - len(pending)}/"
-            f"{len(matches)} completed"
+            f"{len(selected)}/"
+            f"{len(selected)} SUCCESS"
         )
 
-        if not pending:
-            if all(
-                r.get("conclusion") == "success"
-                for r in matches
-            ):
-                return matches
-
-        time.sleep(30)
+        return selected
 
     raise SystemExit(
         f"{name}: timeout"
@@ -689,12 +726,69 @@ def require_remote_sync(branch):
     return local_sha
 
 
+def is_fast_lane_file(path):
+    if path.startswith(
+        "build-service/tests/"
+    ):
+        return True
+
+    if path in {
+        "scripts/appforge",
+        "scripts/appforge-stability-gate",
+        ".github/scripts/railway_production.py",
+    }:
+        return True
+
+    if path.startswith(
+        ".github/workflows/"
+    ):
+        return True
+
+    if path.startswith(
+        ".secondbrain/"
+    ):
+        return True
+
+    if path.startswith(
+        ".appforge/"
+    ):
+        return True
+
+    if path.startswith(
+        "docs/"
+    ):
+        return True
+
+    if path.endswith(".md"):
+        return True
+
+    return False
+
+
+def pipeline_mode(files):
+    return (
+        "FAST"
+        if not required_main_workflows(
+            files
+        )
+        else "FULL"
+    )
+
+
 def required_main_workflows(files):
+    runtime_files = [
+        f
+        for f in files
+        if not is_fast_lane_file(f)
+    ]
+
     required = []
 
     android_change = any(
-        f.startswith("android-app/")
-        for f in files
+        f.startswith(
+            "android-app/"
+        )
+        for f in runtime_files
     )
 
     if android_change:
@@ -702,30 +796,30 @@ def required_main_workflows(files):
             "android-debug.yml"
         )
 
-    build_service_files = [
-        f for f in files
-        if f.startswith("build-service/")
+    build_runtime_files = [
+        f
+        for f in runtime_files
+        if f.startswith(
+            "build-service/"
+        )
     ]
 
-    worker_excluded = (
+    source_only = {
         "build-service/Dockerfile.source-worker",
         "build-service/source-worker.js",
-        "build-service/scripts/patch-flutter-readonly-sdk.sh",
-        "build-service/scripts/source-worker-runtime-smoke.sh",
-        "build-service/tests/source_build_isolation.test.js",
-    )
+        (
+            "build-service/scripts/"
+            "patch-flutter-readonly-sdk.sh"
+        ),
+        (
+            "build-service/scripts/"
+            "source-worker-runtime-smoke.sh"
+        ),
+    }
 
     normal_worker_change = any(
-        (
-            f not in worker_excluded
-            and not (
-                f.startswith(
-                    "build-service/tests/source_worker_"
-                )
-                and f.endswith(".test.js")
-            )
-        )
-        for f in build_service_files
+        f not in source_only
+        for f in build_runtime_files
     )
 
     if normal_worker_change:
@@ -733,23 +827,34 @@ def required_main_workflows(files):
             "worker-image.yml"
         )
 
-    if build_service_files:
+    if build_runtime_files:
         required.append(
             "source-worker-image.yml"
         )
 
+    conversion_android_files = {
+        (
+            "android-app/app/src/main/java/"
+            "com/appforge/studio/"
+            "MainActivity.kt"
+        ),
+        (
+            "android-app/app/src/main/java/"
+            "com/appforge/studio/io/"
+            "AppForgeApkConversion.kt"
+        ),
+        (
+            "android-app/app/src/main/java/"
+            "com/appforge/studio/io/"
+            "AppForgeExeConversion.kt"
+        ),
+    }
+
     conversion_change = (
-        bool(build_service_files)
+        bool(build_runtime_files)
         or any(
-            f in {
-                "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-                "android-app/app/src/main/java/com/appforge/studio/io/AppForgeApkConversion.kt",
-                "android-app/app/src/main/java/com/appforge/studio/io/AppForgeExeConversion.kt",
-                ".github/workflows/conversion-smoke.yml",
-                ".github/scripts/railway_production.py",
-                ".github/workflows/production-automation.yml",
-            }
-            for f in files
+            f in conversion_android_files
+            for f in runtime_files
         )
     )
 
@@ -771,11 +876,27 @@ def wait_required_main_ci(
         source_files
     )
 
+    mode = pipeline_mode(
+        source_files
+    )
+
+    print(
+        f"\nPIPELINE MODE: {mode}"
+    )
+
     results = {}
 
     print(
         "\n=== MAIN REQUIRED CI ==="
     )
+
+    if not required:
+        print(
+            "FAST LANE: "
+            "heavy runtime CI skipped."
+        )
+
+        return required, results
 
     for workflow_file in required:
         state_write(
@@ -791,47 +912,74 @@ def wait_required_main_ci(
             )
         )
 
-    deploy_count = sum(
-        1
-        for workflow_file in required
-        if workflow_file in {
-            "worker-image.yml",
-            "source-worker-image.yml",
-        }
-    )
+    production_map = {
+        "worker-image.yml":
+            (
+                "Production · "
+                "Build AppForge Worker Image"
+            ),
 
-    if deploy_count:
+        "source-worker-image.yml":
+            (
+                "Production · "
+                "Build AppForge Source Worker Image"
+            ),
+    }
+
+    production_targets = [
+        (
+            workflow_file,
+            production_map[
+                workflow_file
+            ],
+        )
+        for workflow_file in required
+        if workflow_file
+        in production_map
+    ]
+
+    if production_targets:
         print(
             "\n=== PRODUCTION AUTOMATION ==="
         )
 
+    for (
+        upstream_workflow,
+        title
+    ) in production_targets:
+        key = (
+            "production:"
+            + upstream_workflow
+        )
+
         state_write(
             "DEPLOYING",
-            workflow="production-automation.yml",
+            workflow=key,
             main_sha=head_sha,
         )
 
-        results[
-            "production-automation.yml"
-        ] = wait_workflow(
+        results[key] = wait_workflow(
             "production-automation.yml",
             head_sha,
-            min_count=deploy_count,
-        )
-
-    if not required:
-        print(
-            "No conditional main workflows required."
+            min_count=1,
+            event_filter="workflow_run",
+            display_title=title,
         )
 
     return required, results
 
-
 def continue_after_push(branch):
     source_files = branch_change_files()
     source_groups = classify(source_files)
+    source_mode = pipeline_mode(
+        source_files
+    )
 
     print("\n=== PIPELINE IMPACT ===")
+    print(
+        "PIPELINE MODE:",
+        source_mode,
+    )
     print(
         "Files:",
         len(source_files),
