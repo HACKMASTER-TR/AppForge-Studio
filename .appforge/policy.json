@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "name": "AppForge Autopilot",
+  "admin_email_sha256": "1249d3064d7f482d584f75caf93ea01649f13e4a26d183c4729d2fae5d205589",
+  "dashboard_refresh_seconds": 30,
+  "hard_gate": true,
+  "require_fail_zero": true,
+  "auto_merge": true,
+  "require_pr_ci_success": true,
+  "generate_markdown_report": true,
+  "generate_json_report": true,
+  "forbidden_patterns": [
+    "(^|/)dashboard\\.sh$",
+    "(^|/)dashboard\\.sh\\.bak$",
+    "\\.apk$",
+    "\\.aab$",
+    "\\.save$",
+    "\\.bak$",
+    "(^|/)\\.env($|\\.)",
+    "(^|/)id_rsa$",
+    "(^|/)id_ed25519$"
+  ],
+  "required_local": [
+    "git diff --check",
+    "targeted regression",
+    "full regression",
+    "Second Brain selftest",
+    "Second Brain doctor",
+    "hard stability gate"
+  ],
+  "conditional_ci": {
+    "android": [
+      "Android Debug"
+    ],
+    "worker": [
+      "Worker Image",
+      "Source Worker Image"
+    ],
+    "deploy": [
+      "Production Deploy"
+    ],
+    "conversion": [
+      "Conversion Smoke"
+    ]
+  },
+  "external_adapters": {
+    "railway": "conditional",
+    "render": "conditional",
+    "vercel": "conditional",
+    "play_console": "conditional"
+  }
+}

@@ -2407,6 +2407,21 @@ internal fun LocalPtyTerminalPanel(
         }
 
         active?.let { state ->
+            fun dispatchDirectPtyInput(
+                text: String
+            ) {
+                directInputRevision +=
+                    1L
+
+                scope.launch {
+                    LocalPtySessionRegistry
+                        .write(
+                            state.id,
+                            text
+                        )
+                }
+            }
+
             if (state.running) {
                 Row(
                     modifier =
@@ -2463,9 +2478,68 @@ internal fun LocalPtyTerminalPanel(
                                     .write(
                                         state.id,
                                         "cd /root/AppForge-Studio && " +
-                                            "if [ -x ./dashboard.sh ]; then " +
-                                            "./dashboard.sh; else " +
-                                            "echo 'dashboard.sh bulunamadı'; fi\r"
+                                            "APPFORGE_ADMIN_SESSION=1 " +
+                                            "./scripts/appforge dashboard\r"
+                                    )
+                            }
+                        }
+
+                        PtyKey(
+                            "SUBMIT",
+                            true
+                        ) {
+                            scope.launch {
+                                LocalPtySessionRegistry
+                                    .write(
+                                        state.id,
+                                        "cd /root/AppForge-Studio && " +
+                                            "APPFORGE_ADMIN_SESSION=1 " +
+                                            "./scripts/appforge submit\r"
+                                    )
+                            }
+                        }
+
+                        PtyKey(
+                            "PIPELINE",
+                            true
+                        ) {
+                            scope.launch {
+                                LocalPtySessionRegistry
+                                    .write(
+                                        state.id,
+                                        "cd /root/AppForge-Studio && " +
+                                            "APPFORGE_ADMIN_SESSION=1 " +
+                                            "./scripts/appforge status\r"
+                                    )
+                            }
+                        }
+
+                        PtyKey(
+                            "CI",
+                            true
+                        ) {
+                            scope.launch {
+                                LocalPtySessionRegistry
+                                    .write(
+                                        state.id,
+                                        "cd /root/AppForge-Studio && " +
+                                            "APPFORGE_ADMIN_SESSION=1 " +
+                                            "./scripts/appforge ci\r"
+                                    )
+                            }
+                        }
+
+                        PtyKey(
+                            "REPORT",
+                            true
+                        ) {
+                            scope.launch {
+                                LocalPtySessionRegistry
+                                    .write(
+                                        state.id,
+                                        "cd /root/AppForge-Studio && " +
+                                            "APPFORGE_ADMIN_SESSION=1 " +
+                                            "./scripts/appforge report\r"
                                     )
                             }
                         }
@@ -2482,90 +2556,57 @@ internal fun LocalPtyTerminalPanel(
                     }
 
                     PtyKey("ESC", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\u001b"
-                            )
-                        }
+                        dispatchDirectPtyInput(
+                            "\u001b"
+                        )
                     }
                     PtyKey("TAB", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\t"
-                            )
-                        }
+                        dispatchDirectPtyInput(
+                            "\t"
+                        )
                     }
                     PtyKey("CTRL+C", true) {
-                        directInputRevision +=
-                            1L
-
-                        scope.launch {
-                            LocalPtySessionRegistry
-                                .sendControlC(
-                                    state.id
-                                )
-                        }
+                        dispatchDirectPtyInput(
+                            "\u0003"
+                        )
                     }
                     PtyKey("CTRL+L", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\u000c"
-                            )
-                        }
+                        dispatchDirectPtyInput(
+                            "\u000c"
+                        )
                     }
                     if (
                         ownerQuickActionsEnabled
                     ) {
                         PtyKey("CTRL+A", true) {
-                            scope.launch {
-                                LocalPtySessionRegistry.write(
-                                    state.id,
-                                    "\u0001"
-                                )
-                            }
+                            dispatchDirectPtyInput(
+                                "\u0001"
+                            )
                         }
                         PtyKey("CTRL+E", true) {
-                            scope.launch {
-                                LocalPtySessionRegistry.write(
-                                    state.id,
-                                    "\u0005"
-                                )
-                            }
+                            dispatchDirectPtyInput(
+                                "\u0005"
+                            )
                         }
                         PtyKey("CTRL+R", true) {
-                            scope.launch {
-                                LocalPtySessionRegistry.write(
-                                    state.id,
-                                    "\u0012"
-                                )
-                            }
+                            dispatchDirectPtyInput(
+                                "\u0012"
+                            )
                         }
                         PtyKey("CTRL+U", true) {
-                            scope.launch {
-                                LocalPtySessionRegistry.write(
-                                    state.id,
-                                    "\u0015"
-                                )
-                            }
+                            dispatchDirectPtyInput(
+                                "\u0015"
+                            )
                         }
                         PtyKey("CTRL+W", true) {
-                            scope.launch {
-                                LocalPtySessionRegistry.write(
-                                    state.id,
-                                    "\u0017"
-                                )
-                            }
+                            dispatchDirectPtyInput(
+                                "\u0017"
+                            )
                         }
                         PtyKey("⌫", true) {
-                            scope.launch {
-                                LocalPtySessionRegistry.write(
-                                    state.id,
-                                    "\u007f"
-                                )
-                            }
+                            dispatchDirectPtyInput(
+                                "\u007f"
+                            )
                         }
 
                         /*
@@ -2574,77 +2615,47 @@ internal fun LocalPtyTerminalPanel(
                          * confirmation prompts.
                          */
                         PtyKey("Y", true) {
-                            directInputRevision +=
-                                1L
-
-                            scope.launch {
-                                LocalPtySessionRegistry.write(
-                                    state.id,
-                                    localPtyPromptAnswer(
-                                        'y'
-                                    )
+                            dispatchDirectPtyInput(
+                                localPtyPromptAnswer(
+                                    'y'
                                 )
-                            }
+                            )
                         }
 
                         PtyKey("N", true) {
-                            directInputRevision +=
-                                1L
-
-                            scope.launch {
-                                LocalPtySessionRegistry.write(
-                                    state.id,
-                                    localPtyPromptAnswer(
-                                        'n'
-                                    )
+                            dispatchDirectPtyInput(
+                                localPtyPromptAnswer(
+                                    'n'
                                 )
-                            }
+                            )
                         }
 
                         PtyKey("↵", true) {
-                            directInputRevision +=
-                                1L
-
-                            scope.launch {
-                                LocalPtySessionRegistry.write(
-                                    state.id,
-                                    "\r"
-                                )
-                            }
+                            dispatchDirectPtyInput(
+                                "\r"
+                            )
                         }
                     }
 
                     PtyKey("←", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\u001b[D"
-                            )
-                        }
+                        dispatchDirectPtyInput(
+                            "\u001b[D"
+                        )
                     }
                     PtyKey("↑", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\u001b[A"
-                            )
-                        }
+                        dispatchDirectPtyInput(
+                            "\u001b[A"
+                        )
                     }
                     PtyKey("↓", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\u001b[B"
-                            )
-                        }
+                        dispatchDirectPtyInput(
+                            "\u001b[B"
+                        )
                     }
                     PtyKey("→", true) {
-                        scope.launch {
-                            LocalPtySessionRegistry.write(
-                                state.id,
-                                "\u001b[C"
-                            )
-                        }
+                        dispatchDirectPtyInput(
+                            "\u001b[C"
+                        )
                     }
                     if (
                         ownerQuickActionsEnabled
@@ -3170,19 +3181,114 @@ private fun LocalPtySurface(
      * shortcut keys change outputRevision and would reintroduce viewport
      * jumps while the user is typing.
      */
+    var observedDirectInputRevision by
+        remember(state.id) {
+            mutableStateOf(
+                directInputRevision
+            )
+        }
+
+    var suppressNextCursorOnlyAutoFollow by
+        remember(state.id) {
+            mutableStateOf(false)
+        }
+
+    var autoFollowObservationInitialized by
+        remember(state.id) {
+            mutableStateOf(false)
+        }
+
+    var lastObservedAutoFollowLineCount by
+        remember(state.id) {
+            mutableStateOf(
+                state.snapshot.lines.size
+            )
+        }
+
+    var lastObservedAutoFollowCursorLine by
+        remember(state.id) {
+            mutableStateOf(
+                state.snapshot.cursorLine
+            )
+        }
+
     LaunchedEffect(
         state.id,
         state.snapshot.lines.size,
-        state.snapshot.cursorLine
+        state.snapshot.cursorLine,
+        directInputRevision
     ) {
         if (copyMode) {
             return@LaunchedEffect
         }
 
-        delay(16L)
-
         val lineCount =
             state.snapshot.lines.size
+
+        val cursorLine =
+            state.snapshot.cursorLine
+
+        val directInputChanged =
+            directInputRevision !=
+                observedDirectInputRevision
+
+        if (directInputChanged) {
+            observedDirectInputRevision =
+                directInputRevision
+
+            suppressNextCursorOnlyAutoFollow =
+                true
+        }
+
+        val lineCountChanged =
+            !autoFollowObservationInitialized ||
+                lineCount !=
+                    lastObservedAutoFollowLineCount
+
+        val cursorLineChanged =
+            !autoFollowObservationInitialized ||
+                cursorLine !=
+                    lastObservedAutoFollowCursorLine
+
+        lastObservedAutoFollowLineCount =
+            lineCount
+
+        lastObservedAutoFollowCursorLine =
+            cursorLine
+
+        autoFollowObservationInitialized =
+            true
+
+        if (
+            !lineCountChanged &&
+            !cursorLineChanged
+        ) {
+            return@LaunchedEffect
+        }
+
+        if (
+            !lineCountChanged &&
+            cursorLineChanged &&
+            suppressNextCursorOnlyAutoFollow
+        ) {
+            suppressNextCursorOnlyAutoFollow =
+                false
+
+            lastAutoFollowLineCount =
+                lineCount
+
+            autoFollowInitialized =
+                true
+
+            return@LaunchedEffect
+        }
+
+        if (lineCountChanged) {
+            suppressNextCursorOnlyAutoFollow =
+                false
+        }
+
+        delay(16L)
 
         val lastIndex =
             lineCount - 1

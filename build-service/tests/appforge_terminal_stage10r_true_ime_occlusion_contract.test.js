@@ -45,7 +45,7 @@ test("Stage 10R follows the active line with the virtualized renderer", async ()
 
   assert.match(
     source,
-    /LaunchedEffect\(\s*state\.id,\s*state\.snapshot\.lines\.size,\s*state\.snapshot\.cursorLine\s*\)/
+    /LaunchedEffect\(\s*state\.id,\s*state\.snapshot\.lines\.size,\s*state\.snapshot\.cursorLine,\s*directInputRevision\s*\)/
   );
 
   assert.match(

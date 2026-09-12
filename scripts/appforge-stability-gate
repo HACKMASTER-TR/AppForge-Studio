@@ -7,6 +7,24 @@ cd "$ROOT"
 MODE="${1:-local}"
 FAIL=0
 
+# Portable runtime temp area.
+# Android/Termux environments may not provide a writable /tmp.
+APPFORGE_TMPDIR="${APPFORGE_TMPDIR:-$ROOT/.appforge/tmp}"
+
+if ! mkdir -p "$APPFORGE_TMPDIR"; then
+    echo "FAIL  Cannot create AppForge temp directory: $APPFORGE_TMPDIR"
+    exit 1
+fi
+
+DIFF_LOG="$APPFORGE_TMPDIR/diff-check-$$.log"
+BRAIN_LOG="$APPFORGE_TMPDIR/brain-selftest-$$.log"
+
+cleanup_tmp() {
+    rm -f "$DIFF_LOG" "$BRAIN_LOG"
+}
+
+trap cleanup_tmp EXIT HUP INT TERM
+
 pass() {
     printf 'PASS  %s\n' "$1"
 }
@@ -52,10 +70,10 @@ else
     fail "Regression rules invalid"
 fi
 
-if git diff --check >/tmp/appforge-diff-check.log 2>&1; then
+if git diff --check >"$DIFF_LOG" 2>&1; then
     pass "git diff --check"
 else
-    cat /tmp/appforge-diff-check.log
+    cat "$DIFF_LOG"
     fail "git diff --check"
 fi
 
@@ -90,10 +108,10 @@ else
     fail "Second Brain Python syntax"
 fi
 
-if ./scripts/brain selftest >/tmp/appforge-brain-selftest.log 2>&1; then
+if ./scripts/brain selftest >"$BRAIN_LOG" 2>&1; then
     pass "Second Brain selftest"
 else
-    cat /tmp/appforge-brain-selftest.log
+    cat "$BRAIN_LOG"
     fail "Second Brain selftest"
 fi
 

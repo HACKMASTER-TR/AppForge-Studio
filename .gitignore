@@ -39,3 +39,10 @@ build-service/cache/
 *.keystore
 *.p12
 .appforge-brain/runtime/
+.appforge/backups/
+.appforge/state/
+.appforge/reports/
+.appforge/tmp/
+__pycache__/
+*.pyc
+*.pyo
