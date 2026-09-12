@@ -52,8 +52,13 @@ test(
         "source-worker-runtime-smoke.sh",
         "ghcr.io/hackmaster-tr/appforge-source-worker",
         "Resolve immutable image tag",
-        "push: true",
+        "push: false",
         "provenance: false",
+        "Publish already-verified source Worker image",
+        'SHA_IMAGE="${IMAGE_NAME}:${{ steps.image-tag.outputs.sha_tag }}"',
+        'docker tag "${LOCAL_IMAGE}"',
+        'docker push "${SHA_IMAGE}"',
+        'docker push "${LATEST_IMAGE}"',
         "cache-from: type=gha,scope=source-worker"
       ]
     ) {
@@ -64,6 +69,19 @@ test(
         marker
       );
     }
+
+    const buildPushActionCount =
+      workflow
+        .split(
+          "uses: docker/build-push-action@v7"
+        )
+        .length - 1;
+
+    assert.equal(
+      buildPushActionCount,
+      1,
+      "Source Worker image yalnız bir kez build edilmeli; smoke sonrası aynı doğrulanmış image push edilmeli."
+    );
   }
 );
 
