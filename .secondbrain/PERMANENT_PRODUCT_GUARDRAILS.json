@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "priority": "MANDATORY",
+  "name": "AppForge Permanent Product Guardrails",
+
+  "stability": {
+    "preserve_working_features": true,
+    "preserve_admin_features": true,
+    "regression_required": true,
+    "hard_gate_required": true,
+    "main_acceptance": "fail 0",
+    "never_commit": [
+      "*.apk",
+      "*.aab",
+      "dashboard.sh",
+      "dashboard.sh.bak"
+    ]
+  },
+
+  "admin": {
+    "pro_is_not_admin": true,
+    "admin_is_not_pro": true,
+    "preserve_admin_ops": true,
+    "preserve_secondbrain": true,
+    "preserve_admin_terminal": true,
+    "preserve_dash_submit_pipeline_ci_report": true,
+    "preserve_test_tools": true,
+    "preserve_admin_quota_exemptions": true,
+    "server_authority_required": true,
+    "client_admin_flags_never_authoritative": true,
+    "admin_regression_blocks_merge": true
+  },
+
+  "server_authority": {
+    "client_never_authoritative": true,
+    "server_controls": [
+      "pro_status",
+      "subscription",
+      "project_quota",
+      "build_quota",
+      "quota_addons",
+      "paid_features",
+      "admin_role",
+      "critical_operations"
+    ],
+    "never_trust_client_values": [
+      "isPro",
+      "plan",
+      "quota",
+      "price",
+      "role",
+      "admin"
+    ],
+    "google_play_purchase_server_verification": true,
+    "replay_protection": true,
+    "refund_cancel_revoke_sync": true,
+    "play_integrity": true,
+    "release_signature_validation": true,
+    "modded_apk_cannot_unlock_server_features": true
+  },
+
+  "forced_update": {
+    "required": true,
+    "mode": "GOOGLE_PLAY_IMMEDIATE",
+    "server_fields": [
+      "latestVersionCode",
+      "minimumVersionCode",
+      "forceUpdate",
+      "releaseChannel",
+      "maintenanceMode"
+    ],
+    "unsupported_error": "CLIENT_VERSION_UNSUPPORTED",
+    "critical_backend_operations_reject_unsupported_client": true,
+    "resume_interrupted_update": true,
+    "forced_update_blocks_app": true,
+    "optional_update_supported": true
+  },
+
+  "quota_recovery": {
+    "free_exhausted": "UPGRADE_PRO",
+    "pro_exhausted": "BUY_QUOTA_ADDON",
+    "purchase_must_be_user_initiated": true,
+    "no_raw_quota_json_for_normal_users": true
+  },
+
+  "content_ux": {
+    "audit_entire_app": true,
+    "classification": [
+      "KEEP",
+      "IMPROVE",
+      "REMOVE"
+    ],
+    "remove_redundant_text": true,
+    "remove_debug_text": true,
+    "remove_internal_paths": true,
+    "remove_raw_json": true,
+    "remove_stack_traces": true,
+    "remove_internal_endpoint_details": true,
+    "mask_secrets_in_logs": true,
+    "safe_user_error_codes": true,
+    "contextual_help_everywhere_needed": true,
+    "user_must_not_get_stuck": true,
+    "detailed_but_not_cluttered": true
+  },
+
+  "pro_and_addons": {
+    "complete_product_explanations": true,
+    "server_controlled_catalog": true,
+    "google_play_localized_prices": true,
+    "explain_limits": true,
+    "explain_success_only_quota": true,
+    "explain_renewal": true,
+    "show_period_end": true,
+    "restore_purchases": true,
+    "subscription_management": true
+  },
+
+  "legal": {
+    "complete": true,
+    "sections": [
+      "terms",
+      "privacy",
+      "subscription_auto_renewal",
+      "cancellation_refunds",
+      "pro_quota_rules",
+      "addon_terms",
+      "data_retention_deletion",
+      "account_deletion",
+      "third_party_services",
+      "google_play_billing",
+      "ai_disclosure",
+      "source_code_processing",
+      "build_infrastructure",
+      "permission_explanations",
+      "open_source_licenses"
+    ]
+  },
+
+  "ai": {
+    "no_hallucinations": true,
+    "no_random_answers": true,
+    "no_fake_root_causes": true,
+    "check_real_project_context": true,
+    "check_real_feature_state": true,
+    "use_appforge_knowledge_base": true,
+    "ask_only_missing_information": true,
+    "terminal_commands_match_real_runtime": true,
+    "answer_structure": [
+      "Sorun",
+      "Muhtemel neden",
+      "Yapılacak işlem",
+      "Beklenen sonuç"
+    ],
+    "focus_on_finishing_task": true,
+    "remove_useless_generic_text": true
+  },
+
+  "terminal": {
+    "preserve_shortcut_viewport_fix": true,
+    "preserve_multi_session": true,
+    "preserve_account_isolation": true,
+    "downloads_private_path_never_reaches_pty": true,
+    "downloads_workspace_bridge_required": true,
+    "python": "python3",
+    "shell": "sh",
+    "javascript": "node",
+    "jar": "java -jar",
+    "fail_closed_on_bridge_error": true
+  },
+
+  "performance": {
+    "terminal_v2": [
+      "update_only_changed_session",
+      "reduce_background_refresh",
+      "reduce_long_log_latency",
+      "reduce_keyboard_latency",
+      "multi_session_stress_test"
+    ],
+    "ui_v2": [
+      "split_MainActivity",
+      "ViewModel_components",
+      "reduce_Compose_recomposition",
+      "improve_startup",
+      "improve_navigation"
+    ],
+    "files_git": [
+      "folder_pagination",
+      "git_status_debounce",
+      "git_status_cache",
+      "prevent_large_repo_freeze",
+      "lazy_preview",
+      "lazy_search"
+    ]
+  },
+
+  "delivery_order": [
+    "current_quota_downloads_package",
+    "forced_google_play_update",
+    "product_hardening_server_authority",
+    "full_content_ux_audit",
+    "ai_quality_v2",
+    "real_device_end_to_end_regression",
+    "terminal_performance_v2",
+    "ui_performance_v2",
+    "files_git_performance",
+    "terminal_ultimate_scale_tests"
+  ],
+
+  "merge_blockers": [
+    "admin_regression",
+    "pro_becomes_admin",
+    "client_side_admin_bypass",
+    "client_side_pro_bypass",
+    "paid_feature_without_server_authorization",
+    "secret_or_internal_code_leak_to_normal_user",
+    "forced_update_backend_bypass",
+    "terminal_regression",
+    "regression_failure",
+    "hard_gate_failure"
+  ]
+}

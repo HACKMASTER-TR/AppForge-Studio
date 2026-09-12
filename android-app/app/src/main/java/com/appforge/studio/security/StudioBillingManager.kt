@@ -2,6 +2,8 @@ package com.appforge.studio.security
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
 import com.android.billingclient.api.BillingFlowParams
@@ -11,16 +13,15 @@ import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
+import com.android.billingclient.api.QueryPurchasesParams
 
 data class StudioPlanPrice(
     val lifetimePrice: String? = null,
     val monthlyPrice: String? = null,
     val lifetimeAvailable: Boolean = false,
     val monthlyAvailable: Boolean = false,
-    val quotaAddonPrices: Map<String, String> =
-        emptyMap(),
-    val quotaAddonAvailability: Map<String, Boolean> =
-        emptyMap()
+    val quotaAddonPrices: Map<String, String> = emptyMap(),
+    val quotaAddonAvailability: Map<String, Boolean> = emptyMap()
 )
 
 data class StudioPurchaseResult(
@@ -34,517 +35,338 @@ class StudioBillingManager(
     private val monthlyProductId: String,
     private val onPurchase: (StudioPurchaseResult) -> Unit,
     private val onMessage: (String) -> Unit,
-    private val quotaAddonProductIds: List<String> =
-        emptyList()
+    private val quotaAddonProductIds: List<String> = emptyList()
 ) : PurchasesUpdatedListener {
-    private val appContext =
-        context.applicationContext
+    private val appContext = context.applicationContext
 
-    private var lifetimeDetails:
-        ProductDetails? =
-        null
+    private var lifetimeDetails: ProductDetails? = null
+    private var monthlyDetails: ProductDetails? = null
+    private val quotaAddonDetails = linkedMapOf<String, ProductDetails>()
 
-    private var monthlyDetails:
-        ProductDetails? =
-        null
+    private val billingClient = BillingClient
+        .newBuilder(appContext)
+        .setListener(this)
+        .enableAutoServiceReconnection()
+        .enablePendingPurchases(
+            PendingPurchasesParams
+                .newBuilder()
+                .enableOneTimeProducts()
+                .build()
+        )
+        .build()
 
-
-    private val quotaAddonDetails =
-        linkedMapOf<
-            String,
-            ProductDetails
-        >()
-
-    private val billingClient =
-        BillingClient
-            .newBuilder(
-                appContext
-            )
-            .setListener(this)
-            .enableAutoServiceReconnection()
-            .enablePendingPurchases(
-                PendingPurchasesParams
-                    .newBuilder()
-                    .enableOneTimeProducts()
-                    .build()
-            )
-            .build()
-
-    fun start(
-        onReady: () -> Unit
-    ) {
-        if (
-            billingClient
-                .isReady
-        ) {
+    fun start(onReady: () -> Unit) {
+        if (billingClient.isReady) {
             onReady()
             return
         }
 
-        billingClient
-            .startConnection(
-                object :
-                    BillingClientStateListener {
-                    override fun onBillingSetupFinished(
-                        billingResult: BillingResult
-                    ) {
-                        if (
-                            billingResult
-                                .responseCode ==
-                            BillingClient
-                                .BillingResponseCode
-                                .OK
-                        ) {
-                            onReady()
-                        } else {
-                            onMessage(
-                                billingResult
-                                    .debugMessage
-                                    .ifBlank {
-                                        "Google Play Billing başlatılamadı."
-                                    }
-                            )
-                        }
-                    }
-
-                    override fun onBillingServiceDisconnected() {
-                        onMessage(
-                            "Google Play Billing bağlantısı kesildi; otomatik yeniden bağlanma açık."
-                        )
+        billingClient.startConnection(
+            object : BillingClientStateListener {
+                override fun onBillingSetupFinished(billingResult: BillingResult) {
+                    if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                        onReady()
+                    } else {
+                        onMessage(userMessage(billingResult, "Google Play Billing başlatılamadı."))
                     }
                 }
-            )
+
+                override fun onBillingServiceDisconnected() {
+                    onMessage("Google Play bağlantısı kesildi. Bağlantı otomatik olarak yeniden denenecek.")
+                }
+            }
+        )
     }
 
-    fun queryPlans(
-        onResult: (StudioPlanPrice) -> Unit
-    ) {
-        lifetimeDetails =
-            null
-
-        monthlyDetails =
-            null
-
-        quotaAddonDetails
-            .clear()
+    fun queryPlans(onResult: (StudioPlanPrice) -> Unit) {
+        lifetimeDetails = null
+        monthlyDetails = null
+        quotaAddonDetails.clear()
 
         fun finish() {
-            val lifetimePrice =
-                lifetimeDetails
-                    ?.oneTimePurchaseOfferDetailsList
-                    ?.firstOrNull()
+            val lifetimePrice = lifetimeDetails
+                ?.oneTimePurchaseOfferDetailsList
+                ?.firstOrNull()
+                ?.formattedPrice
+                ?: lifetimeDetails
+                    ?.oneTimePurchaseOfferDetails
                     ?.formattedPrice
-                    ?: lifetimeDetails
-                        ?.oneTimePurchaseOfferDetails
+
+            val monthlyPrice = monthlyDetails
+                ?.subscriptionOfferDetails
+                ?.firstOrNull()
+                ?.pricingPhases
+                ?.pricingPhaseList
+                ?.firstOrNull()
+                ?.formattedPrice
+
+            val addonPrices = quotaAddonDetails
+                .mapValues { (_, details) ->
+                    details.oneTimePurchaseOfferDetailsList
+                        ?.firstOrNull()
                         ?.formattedPrice
-
-            val monthlyPrice =
-                monthlyDetails
-                    ?.subscriptionOfferDetails
-                    ?.firstOrNull()
-                    ?.pricingPhases
-                    ?.pricingPhaseList
-                    ?.firstOrNull()
-                    ?.formattedPrice
-
-            val addonPrices =
-                quotaAddonDetails
-                    .mapValues {
-                        (_, details) ->
-                        details
-                            .oneTimePurchaseOfferDetailsList
-                            ?.firstOrNull()
-                            ?.formattedPrice
-                            ?: details
-                                .oneTimePurchaseOfferDetails
-                                ?.formattedPrice
-                            ?: ""
-                    }
-                    .filterValues {
-                        it.isNotBlank()
-                    }
-
-            val addonAvailability =
-                quotaAddonProductIds
-                    .associateWith {
-                        productId ->
-                        quotaAddonDetails
-                            .containsKey(
-                                productId
-                            )
-                    }
+                        ?: details.oneTimePurchaseOfferDetails?.formattedPrice
+                        ?: ""
+                }
+                .filterValues { it.isNotBlank() }
 
             onResult(
                 StudioPlanPrice(
-                    lifetimePrice =
-                        lifetimePrice,
-                    monthlyPrice =
-                        monthlyPrice,
-                    lifetimeAvailable =
-                        lifetimeDetails !=
-                        null,
-                    monthlyAvailable =
-                        monthlyDetails !=
-                        null,
-                    quotaAddonPrices =
-                        addonPrices,
-                    quotaAddonAvailability =
-                        addonAvailability
+                    lifetimePrice = lifetimePrice,
+                    monthlyPrice = monthlyPrice,
+                    lifetimeAvailable = lifetimeDetails != null,
+                    monthlyAvailable = monthlyDetails != null,
+                    quotaAddonPrices = addonPrices,
+                    quotaAddonAvailability = quotaAddonProductIds
+                        .associateWith { quotaAddonDetails.containsKey(it) }
                 )
             )
         }
 
         fun queryMonthly() {
-            if (
-                monthlyProductId
-                    .isBlank()
-            ) {
+            if (monthlyProductId.isBlank()) {
                 finish()
                 return
             }
 
-            val product =
-                QueryProductDetailsParams
-                    .Product
-                    .newBuilder()
-                    .setProductId(
-                        monthlyProductId
+            val params = QueryProductDetailsParams
+                .newBuilder()
+                .setProductList(
+                    listOf(
+                        QueryProductDetailsParams.Product
+                            .newBuilder()
+                            .setProductId(monthlyProductId)
+                            .setProductType(BillingClient.ProductType.SUBS)
+                            .build()
                     )
-                    .setProductType(
-                        BillingClient
-                            .ProductType
-                            .SUBS
-                    )
-                    .build()
+                )
+                .build()
 
-            val params =
-                QueryProductDetailsParams
-                    .newBuilder()
-                    .setProductList(
-                        listOf(
-                            product
-                        )
-                    )
-                    .build()
-
-            billingClient
-                .queryProductDetailsAsync(
-                    params
-                ) {
-                    result,
-                    detailsResult ->
-
-                    if (
-                        result.responseCode ==
-                        BillingClient
-                            .BillingResponseCode
-                            .OK
-                    ) {
-                        monthlyDetails =
-                            detailsResult
-                                .productDetailsList
-                                .firstOrNull {
-                                    it.productId ==
-                                        monthlyProductId
-                                }
-                    } else {
-                        onMessage(
-                            result
-                                .debugMessage
-                                .ifBlank {
-                                    "Pro Aylık fiyatı alınamadı."
-                                }
-                        )
-                    }
-
-                    finish()
+            billingClient.queryProductDetailsAsync(params) { result, detailsResult ->
+                if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+                    monthlyDetails = detailsResult.productDetailsList
+                        .firstOrNull { it.productId == monthlyProductId }
+                } else {
+                    onMessage(userMessage(result, "Pro Aylık fiyatı alınamadı."))
                 }
+                finish()
+            }
         }
 
-        val inAppProductIds =
-            buildList {
-                if (
-                    lifetimeProductId
-                        .isNotBlank()
-                ) {
-                    add(
-                        lifetimeProductId
-                    )
-                }
+        val inAppIds = buildList {
+            if (lifetimeProductId.isNotBlank()) add(lifetimeProductId)
+            addAll(quotaAddonProductIds.filter { it.isNotBlank() }.distinct())
+        }
 
-                addAll(
-                    quotaAddonProductIds
-                        .filter {
-                            it.isNotBlank()
-                        }
-                        .distinct()
-                )
-            }
-
-        if (
-            inAppProductIds
-                .isEmpty()
-        ) {
+        if (inAppIds.isEmpty()) {
             queryMonthly()
             return
         }
 
-        val inAppProducts =
-            inAppProductIds
-                .map {
-                    productId ->
-                    QueryProductDetailsParams
-                        .Product
+        val params = QueryProductDetailsParams
+            .newBuilder()
+            .setProductList(
+                inAppIds.map { productId ->
+                    QueryProductDetailsParams.Product
                         .newBuilder()
-                        .setProductId(
-                            productId
-                        )
-                        .setProductType(
-                            BillingClient
-                                .ProductType
-                                .INAPP
-                        )
+                        .setProductId(productId)
+                        .setProductType(BillingClient.ProductType.INAPP)
                         .build()
                 }
+            )
+            .build()
 
-        val inAppParams =
-            QueryProductDetailsParams
-                .newBuilder()
-                .setProductList(
-                    inAppProducts
-                )
-                .build()
-
-        billingClient
-            .queryProductDetailsAsync(
-                inAppParams
-            ) {
-                result,
-                detailsResult ->
-
-                if (
-                    result.responseCode ==
-                    BillingClient
-                        .BillingResponseCode
-                        .OK
-                ) {
-                    detailsResult
-                        .productDetailsList
-                        .forEach {
-                            details ->
-
-                            if (
-                                details.productId ==
-                                    lifetimeProductId
-                            ) {
-                                lifetimeDetails =
-                                    details
-                            }
-
-                            if (
-                                details.productId in
-                                    quotaAddonProductIds
-                            ) {
-                                quotaAddonDetails[
-                                    details.productId
-                                ] =
-                                    details
-                            }
-                        }
-                } else {
-                    onMessage(
-                        result
-                            .debugMessage
-                            .ifBlank {
-                                "Google Play tek seferlik ürünleri alınamadı."
-                            }
-                    )
+        billingClient.queryProductDetailsAsync(params) { result, detailsResult ->
+            if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+                detailsResult.productDetailsList.forEach { details ->
+                    if (details.productId == lifetimeProductId) {
+                        lifetimeDetails = details
+                    }
+                    if (details.productId in quotaAddonProductIds) {
+                        quotaAddonDetails[details.productId] = details
+                    }
                 }
-
-                queryMonthly()
+            } else {
+                onMessage(userMessage(result, "Google Play ürünleri alınamadı."))
             }
+            queryMonthly()
+        }
     }
 
-    fun launchLifetime(
-        activity: Activity
-    ) {
-        val details =
-            lifetimeDetails
-
+    fun launchLifetime(activity: Activity) {
+        val details = lifetimeDetails
         if (details == null) {
-            onMessage(
-                "Tek seferlik Pro ürünü Google Play'den henüz yüklenmedi."
-            )
+            onMessage("Tek seferlik Pro ürünü Google Play'de kullanılamıyor.")
             return
         }
 
-        val builder =
-            BillingFlowParams
-                .ProductDetailsParams
-                .newBuilder()
-                .setProductDetails(
-                    details
-                )
+        val builder = BillingFlowParams.ProductDetailsParams
+            .newBuilder()
+            .setProductDetails(details)
 
-        val offerToken =
-            details
-                .oneTimePurchaseOfferDetailsList
-                ?.firstOrNull()
-                ?.offerToken
+        details.oneTimePurchaseOfferDetailsList
+            ?.firstOrNull()
+            ?.offerToken
+            ?.takeIf { it.isNotBlank() }
+            ?.let(builder::setOfferToken)
 
-        if (
-            !offerToken
-                .isNullOrBlank()
-        ) {
-            builder.setOfferToken(
-                offerToken
-            )
-        }
-
-        launch(
-            activity,
-            builder.build()
-        )
+        launch(activity, builder.build())
     }
 
     fun launchQuotaAddon(
         activity: Activity,
         productId: String
     ) {
-        if (
-            productId !in
-                quotaAddonProductIds
-        ) {
-            onMessage(
-                "Geçersiz AppForge ek kota ürünü."
-            )
+        if (productId !in quotaAddonProductIds) {
+            onMessage("Geçersiz AppForge ek kota ürünü.")
             return
         }
 
-        val details =
-            quotaAddonDetails[
-                productId
-            ]
-
-        if (
-            details == null
-        ) {
-            onMessage(
-                "Ek kota ürünü Google Play'den henüz yüklenmedi."
-            )
+        val details = quotaAddonDetails[productId]
+        if (details == null) {
+            onMessage("Ek kota ürünü Google Play'de şu anda kullanılamıyor.")
             return
         }
 
-        val builder =
-            BillingFlowParams
-                .ProductDetailsParams
-                .newBuilder()
-                .setProductDetails(
-                    details
-                )
+        val builder = BillingFlowParams.ProductDetailsParams
+            .newBuilder()
+            .setProductDetails(details)
 
-        val offerToken =
-            details
-                .oneTimePurchaseOfferDetailsList
-                ?.firstOrNull()
-                ?.offerToken
+        details.oneTimePurchaseOfferDetailsList
+            ?.firstOrNull()
+            ?.offerToken
+            ?.takeIf { it.isNotBlank() }
+            ?.let(builder::setOfferToken)
 
-        if (
-            !offerToken
-                .isNullOrBlank()
-        ) {
-            builder.setOfferToken(
-                offerToken
-            )
+        launch(activity, builder.build())
+    }
+
+    fun launchMonthly(activity: Activity) {
+        val details = monthlyDetails
+        if (details == null) {
+            onMessage("Pro Aylık ürünü Google Play'de şu anda kullanılamıyor.")
+            return
+        }
+
+        val offerToken = details.subscriptionOfferDetails
+            ?.firstOrNull()
+            ?.offerToken
+
+        if (offerToken.isNullOrBlank()) {
+            onMessage("Pro Aylık için kullanılabilir bir Google Play planı bulunamadı.")
+            return
         }
 
         launch(
             activity,
-            builder.build()
+            BillingFlowParams.ProductDetailsParams
+                .newBuilder()
+                .setProductDetails(details)
+                .setOfferToken(offerToken)
+                .build()
         )
     }
 
-
-    fun launchMonthly(
-        activity: Activity
+    fun restorePurchases(
+        onComplete: (Int) -> Unit = {}
     ) {
-        val details =
-            monthlyDetails
-
-        if (details == null) {
-            onMessage(
-                "Pro Aylık ürünü Google Play'den henüz yüklenmedi."
-            )
+        if (!billingClient.isReady) {
+            start { restorePurchases(onComplete) }
             return
         }
 
-        val offerToken =
-            details
-                .subscriptionOfferDetails
-                ?.firstOrNull()
-                ?.offerToken
+        val restoredTokens = linkedSetOf<String>()
+        var remainingQueries = 2
+        var hadError = false
 
-        if (
-            offerToken
-                .isNullOrBlank()
-        ) {
-            onMessage(
-                "Pro Aylık için uygun base plan / offer bulunamadı."
-            )
-            return
+        fun finishOne() {
+            remainingQueries -= 1
+            if (remainingQueries != 0) return
+
+            if (hadError && restoredTokens.isEmpty()) {
+                onMessage("Satın almalar şu anda geri yüklenemedi. Daha sonra tekrar deneyebilirsin.")
+            } else if (restoredTokens.isEmpty()) {
+                onMessage("Geri yüklenecek aktif satın alma bulunamadı.")
+            } else {
+                onMessage("${restoredTokens.size} satın alma bulundu ve doğrulama için gönderildi.")
+            }
+
+            onComplete(restoredTokens.size)
         }
 
-        val params =
-            BillingFlowParams
-                .ProductDetailsParams
+        fun query(type: String) {
+            val params = QueryPurchasesParams
                 .newBuilder()
-                .setProductDetails(
-                    details
-                )
-                .setOfferToken(
-                    offerToken
-                )
+                .setProductType(type)
                 .build()
 
-        launch(
-            activity,
-            params
+            billingClient.queryPurchasesAsync(params) { result, purchases ->
+                if (result.responseCode != BillingClient.BillingResponseCode.OK) {
+                    hadError = true
+                    finishOne()
+                    return@queryPurchasesAsync
+                }
+
+                purchases
+                    .filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
+                    .forEach { purchase ->
+                        if (!restoredTokens.add(purchase.purchaseToken)) {
+                            return@forEach
+                        }
+
+                        purchase.products
+                            .firstOrNull()
+                            ?.let { productId ->
+                                onPurchase(
+                                    StudioPurchaseResult(
+                                        productId = productId,
+                                        purchaseToken = purchase.purchaseToken
+                                    )
+                                )
+                            }
+                    }
+
+                finishOne()
+            }
+        }
+
+        query(BillingClient.ProductType.SUBS)
+        query(BillingClient.ProductType.INAPP)
+    }
+
+    fun openManageSubscription(activity: Activity) {
+        if (monthlyProductId.isBlank()) {
+            onMessage("Yönetilecek Pro Aylık ürünü bulunamadı.")
+            return
+        }
+
+        val uri = Uri.parse(
+            "https://play.google.com/store/account/subscriptions" +
+                "?sku=${Uri.encode(monthlyProductId)}" +
+                "&package=${Uri.encode(appContext.packageName)}"
         )
+
+        runCatching {
+            activity.startActivity(Intent(Intent.ACTION_VIEW, uri))
+        }.onFailure {
+            onMessage("Google Play abonelik yönetimi açılamadı.")
+        }
     }
 
     private fun launch(
         activity: Activity,
-        product:
-            BillingFlowParams
-                .ProductDetailsParams
+        product: BillingFlowParams.ProductDetailsParams
     ) {
-        val result =
-            billingClient
-                .launchBillingFlow(
-                    activity,
-                    BillingFlowParams
-                        .newBuilder()
-                        .setProductDetailsParamsList(
-                            listOf(
-                                product
-                            )
-                        )
-                        .build()
-                )
+        val result = billingClient.launchBillingFlow(
+            activity,
+            BillingFlowParams
+                .newBuilder()
+                .setProductDetailsParamsList(listOf(product))
+                .build()
+        )
 
-        if (
-            result.responseCode !=
-            BillingClient
-                .BillingResponseCode
-                .OK
-        ) {
-            onMessage(
-                result
-                    .debugMessage
-                    .ifBlank {
-                        "Google Play satın alma ekranı açılamadı."
-                    }
-            )
+        if (result.responseCode != BillingClient.BillingResponseCode.OK) {
+            onMessage(userMessage(result, "Google Play satın alma ekranı açılamadı."))
         }
     }
 
@@ -552,60 +374,70 @@ class StudioBillingManager(
         billingResult: BillingResult,
         purchases: MutableList<Purchase>?
     ) {
-        when (
-            billingResult.responseCode
-        ) {
-            BillingClient
-                .BillingResponseCode
-                .OK -> {
-                purchases
+        when (billingResult.responseCode) {
+            BillingClient.BillingResponseCode.OK -> {
+                val completed = purchases
                     .orEmpty()
-                    .filter {
-                        it.purchaseState ==
-                        Purchase
-                            .PurchaseState
-                            .PURCHASED
-                    }
-                    .forEach {
-                        purchase ->
-                        val productId =
-                            purchase
-                                .products
-                                .firstOrNull()
-                                ?: return@forEach
+                    .filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
 
+                if (completed.isEmpty() && purchases.orEmpty().any {
+                        it.purchaseState == Purchase.PurchaseState.PENDING
+                    }
+                ) {
+                    onMessage("Satın alma beklemede. Google Play işlemi tamamlandığında haklar doğrulanacak.")
+                    return
+                }
+
+                completed.forEach { purchase ->
+                    purchase.products.firstOrNull()?.let { productId ->
                         onPurchase(
                             StudioPurchaseResult(
-                                productId =
-                                    productId,
-                                purchaseToken =
-                                    purchase
-                                        .purchaseToken
+                                productId = productId,
+                                purchaseToken = purchase.purchaseToken
                             )
                         )
                     }
+                }
             }
 
-            BillingClient
-                .BillingResponseCode
-                .USER_CANCELED ->
-                onMessage(
-                    "Satın alma iptal edildi."
-                )
+            BillingClient.BillingResponseCode.USER_CANCELED ->
+                onMessage("Satın alma iptal edildi.")
 
             else ->
-                onMessage(
-                    billingResult
-                        .debugMessage
-                        .ifBlank {
-                            "Google Play satın alma işlemi tamamlanamadı."
-                        }
-                )
+                onMessage(userMessage(billingResult, "Google Play satın alma işlemi tamamlanamadı."))
         }
     }
 
     fun close() {
-        billingClient
-            .endConnection()
+        billingClient.endConnection()
+    }
+
+    private fun userMessage(
+        result: BillingResult,
+        fallback: String
+    ): String = when (result.responseCode) {
+        BillingClient.BillingResponseCode.SERVICE_DISCONNECTED ->
+            "Google Play bağlantısı kesildi. Tekrar deneyebilirsin."
+
+        BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE,
+        BillingClient.BillingResponseCode.NETWORK_ERROR ->
+            "Google Play'e ulaşılamıyor. İnternet bağlantını kontrol edip tekrar dene."
+
+        BillingClient.BillingResponseCode.BILLING_UNAVAILABLE ->
+            "Google Play satın alma bu cihaz veya hesapta kullanılamıyor."
+
+        BillingClient.BillingResponseCode.ITEM_UNAVAILABLE ->
+            "Bu ürün Google Play'de şu anda kullanılamıyor."
+
+        BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED ->
+            "Bu ürün zaten hesabında. Satın almaları geri yükleyebilirsin."
+
+        BillingClient.BillingResponseCode.DEVELOPER_ERROR ->
+            "Google Play ürün yapılandırması tamamlanamadı."
+
+        BillingClient.BillingResponseCode.ERROR ->
+            fallback
+
+        else -> fallback
     }
 }

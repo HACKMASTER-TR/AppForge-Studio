@@ -8,10 +8,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-        <uses-permission android:name="android.permission.WAKE_LOCK" />
-
-<application
+    <application
+        android:name=".AppForgeApplication"
         android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -20,14 +20,16 @@
         android:label="AppForge Studio"
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.AppForgeStudio">
+
         <uses-native-library
             android:name="libvndksupport.so"
             android:required="false" />
         <uses-native-library
             android:name="libOpenCL.so"
             android:required="false" />
+
         <activity
-            android:name=".MainActivity"
+            android:name=".UpdateGateActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|uiMode">
@@ -35,7 +37,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -45,6 +46,17 @@
                     android:host="auth" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|uiMode" />
+
+        <activity
+            android:name=".ProPurchasesActivity"
+            android:exported="false" />
+
         <service
             android:name=".AppForgeFirebaseMessagingService"
             android:exported="false">
@@ -52,6 +64,7 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+
         <service
             android:name=".BuildProgressService"
             android:exported="false"
@@ -88,6 +101,5 @@
             android:name="com.hackmaster.videoforge.DubForegroundService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
-
     </application>
 </manifest>

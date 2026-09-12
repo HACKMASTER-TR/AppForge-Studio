@@ -4,11 +4,18 @@
 
 package com.appforge.studio
 
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,12 +30,7 @@ import com.appforge.studio.i18n.StudioI18n
 private fun settingsT(
     languageCode: String,
     key: String
-): String =
-    StudioI18n.t(
-        languageCode,
-        key
-    )
-
+): String = StudioI18n.t(languageCode, key)
 
 private data class SettingsEntry(
     val icon: String,
@@ -51,36 +53,17 @@ internal fun SettingsHubScreen(
     onFeedback: () -> Unit,
     onClearCache: () -> Unit
 ) {
-    val settingsConfiguration =
-        LocalConfiguration.current
-
-    val settingsScreenWidthDp =
-        settingsConfiguration.screenWidthDp
-
-    val settingsScreenHeightDp =
-        settingsConfiguration.screenHeightDp
-
-    val settingsCompact =
-        settingsScreenWidthDp < 380
-
-    val settingsTablet =
-        minOf(
-            settingsScreenWidthDp,
-            settingsScreenHeightDp
-        ) >= 600
-
-    val settingsWide =
-        settingsScreenWidthDp >= 600
-
-    val settingsContentMaxWidth =
-        if (settingsWide) 880.dp else 10000.dp
-
-    val settingsHorizontalPadding =
-        when {
-            settingsCompact -> 10.dp
-            settingsTablet -> 28.dp
-            else -> 16.dp
-        }
+    val configuration = LocalConfiguration.current
+    val context = LocalContext.current
+    val compact = configuration.screenWidthDp < 380
+    val tablet = minOf(configuration.screenWidthDp, configuration.screenHeightDp) >= 600
+    val wide = configuration.screenWidthDp >= 600
+    val maxWidth = if (wide) 880.dp else 10000.dp
+    val horizontalPadding = when {
+        compact -> 10.dp
+        tablet -> 28.dp
+        else -> 16.dp
+    }
 
     val entries = listOf(
         SettingsEntry(
@@ -102,6 +85,19 @@ internal fun SettingsHubScreen(
             onOpenPro
         ),
         SettingsEntry(
+            "🛒",
+            "Pro ve Satın Almalar",
+            "Play fiyatları, kota, ek paketler, geri yükleme ve abonelik yönetimi",
+            {
+                context.startActivity(
+                    Intent(
+                        context,
+                        ProPurchasesActivity::class.java
+                    )
+                )
+            }
+        ),
+        SettingsEntry(
             "❓",
             settingsT(languageCode, "how_to_use"),
             "AppForge, Terminal, Excel Tools ve VideoForge kullanım rehberi",
@@ -116,7 +112,7 @@ internal fun SettingsHubScreen(
         SettingsEntry(
             "🛡",
             settingsT(languageCode, "legal"),
-            "Kullanım koşulları ve gizlilik",
+            "Kullanım koşulları, gizlilik, bulut build, ödeme ve AI açıklamaları",
             onOpenLegal
         ),
         SettingsEntry(
@@ -137,7 +133,10 @@ internal fun SettingsHubScreen(
         TopAppBar(
             title = {
                 Column {
-                    Text(settingsT(languageCode, "settings"), fontWeight = FontWeight.Bold)
+                    Text(
+                        settingsT(languageCode, "settings"),
+                        fontWeight = FontWeight.Bold
+                    )
                     Text(
                         settingsT(languageCode, "settings_subtitle"),
                         fontSize = 12.sp,
@@ -145,24 +144,21 @@ internal fun SettingsHubScreen(
                     )
                 }
             },
-            navigationIcon = { IconButton(onClick = onBack) { Text("←") } },
+            navigationIcon = {
+                IconButton(onClick = onBack) { Text("←") }
+            },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
         )
 
         LazyColumn(
-            modifier =
-                Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .widthIn(
-                        max = settingsContentMaxWidth
-                    )
-                    .fillMaxWidth(),
-            contentPadding =
-                PaddingValues(
-                    horizontal = settingsHorizontalPadding,
-                    vertical =
-                        if (settingsCompact) 10.dp else 16.dp
-                ),
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .widthIn(max = maxWidth)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(
+                horizontal = horizontalPadding,
+                vertical = if (compact) 10.dp else 16.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(entries) { item ->
@@ -174,20 +170,20 @@ internal fun SettingsHubScreen(
 
 @Composable
 private fun SettingsCardRow(entry: SettingsEntry) {
-    val settingsCardCompact =
-        LocalConfiguration.current
-            .screenWidthDp < 380
+    val compact = LocalConfiguration.current.screenWidthDp < 380
 
     Card(
         onClick = entry.onClick,
         colors = CardDefaults.cardColors(containerColor = Card2),
-        shape = RoundedCornerShape(if (settingsCardCompact) 18.dp else 22.dp)
+        shape = RoundedCornerShape(if (compact) 18.dp else 22.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(
-                horizontal = if (settingsCardCompact) 12.dp else 16.dp,
-                vertical = if (settingsCardCompact) 14.dp else 18.dp
-            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = if (compact) 12.dp else 16.dp,
+                    vertical = if (compact) 14.dp else 18.dp
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Card(
@@ -195,35 +191,37 @@ private fun SettingsCardRow(entry: SettingsEntry) {
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Box(
-                    modifier = Modifier.size(if (settingsCardCompact) 44.dp else 52.dp),
+                    modifier = Modifier.size(if (compact) 44.dp else 52.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                    entry.icon,
-                    fontSize = if (settingsCardCompact) 21.sp else 24.sp
-                )
+                        entry.icon,
+                        fontSize = if (compact) 21.sp else 24.sp
+                    )
                 }
             }
 
-            Spacer(Modifier.width(if (settingsCardCompact) 10.dp else 14.dp))
+            androidx.compose.foundation.layout.Spacer(
+                Modifier.width(if (compact) 10.dp else 14.dp)
+            )
 
             Column(Modifier.weight(1f)) {
                 Text(
                     entry.title,
                     fontWeight = FontWeight.Bold,
-                    fontSize = if (settingsCardCompact) 16.sp else 18.sp
+                    fontSize = if (compact) 16.sp else 18.sp
                 )
                 Text(
                     entry.subtitle,
                     color = TextSecondary,
-                    lineHeight = if (settingsCardCompact) 16.sp else 18.sp,
-                    fontSize = if (settingsCardCompact) 12.sp else 14.sp
+                    lineHeight = if (compact) 16.sp else 18.sp,
+                    fontSize = if (compact) 12.sp else 14.sp
                 )
             }
 
             Text(
                 "›",
-                fontSize = if (settingsCardCompact) 24.sp else 28.sp,
+                fontSize = if (compact) 24.sp else 28.sp,
                 color = TextSecondary
             )
         }
@@ -236,75 +234,67 @@ internal fun LanguageSettingsScreen(
     onBack: () -> Unit,
     onSelect: (String) -> Unit
 ) {
-    val languageConfiguration =
-        LocalConfiguration.current
-
-    val languageScreenWidthDp =
-        languageConfiguration.screenWidthDp
-
-    val languageScreenHeightDp =
-        languageConfiguration.screenHeightDp
-
-    val languageCompact =
-        languageScreenWidthDp < 380
-
-    val languageTablet =
-        minOf(
-            languageScreenWidthDp,
-            languageScreenHeightDp
-        ) >= 600
-
-    val languageWide =
-        languageScreenWidthDp >= 600
-
-    val languageContentMaxWidth =
-        if (languageWide) 880.dp else 10000.dp
-
-    val languageHorizontalPadding =
-        when {
-            languageCompact -> 10.dp
-            languageTablet -> 28.dp
-            else -> 16.dp
-        }
+    val configuration = LocalConfiguration.current
+    val compact = configuration.screenWidthDp < 380
+    val tablet = minOf(configuration.screenWidthDp, configuration.screenHeightDp) >= 600
+    val wide = configuration.screenWidthDp >= 600
+    val maxWidth = if (wide) 880.dp else 10000.dp
+    val horizontalPadding = when {
+        compact -> 10.dp
+        tablet -> 28.dp
+        else -> 16.dp
+    }
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(settingsT(languageCode, "choose_language"), fontWeight = FontWeight.Bold) },
-            navigationIcon = { IconButton(onClick = onBack) { Text("←") } },
+            title = {
+                Text(
+                    settingsT(languageCode, "choose_language"),
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            navigationIcon = {
+                IconButton(onClick = onBack) { Text("←") }
+            },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
         )
 
         LazyColumn(
-            modifier =
-                Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .widthIn(
-                        max = languageContentMaxWidth
-                    )
-                    .fillMaxWidth(),
-            contentPadding =
-                PaddingValues(
-                    horizontal = languageHorizontalPadding,
-                    vertical =
-                        if (languageCompact) 10.dp else 16.dp
-                ),
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .widthIn(max = maxWidth)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(
+                horizontal = horizontalPadding,
+                vertical = if (compact) 10.dp else 16.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(StudioI18n.languages) { lang ->
                 Card(
                     onClick = { onSelect(lang.code) },
                     colors = CardDefaults.cardColors(
-                        containerColor = if (lang.code == languageCode) Color(0xFF1B3158) else Card2
+                        containerColor = if (lang.code == languageCode) {
+                            Color(0xFF1B3158)
+                        } else {
+                            Card2
+                        }
                     ),
-                    shape = RoundedCornerShape(if (languageCompact) 17.dp else 20.dp)
+                    shape = RoundedCornerShape(if (compact) 17.dp else 20.dp)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(lang.nativeLabel, fontWeight = FontWeight.Bold)
-                            Text(lang.englishLabel, color = TextSecondary, fontSize = 12.sp)
+                            Text(
+                                lang.englishLabel,
+                                color = TextSecondary,
+                                fontSize = 12.sp
+                            )
                         }
                         RadioButton(
                             selected = lang.code == languageCode,
@@ -322,72 +312,80 @@ internal fun LegalCenterScreen(
     languageCode: String,
     onBack: () -> Unit
 ) {
-    val legalConfiguration =
-        LocalConfiguration.current
+    val configuration = LocalConfiguration.current
+    val compact = configuration.screenWidthDp < 380
+    val tablet = minOf(configuration.screenWidthDp, configuration.screenHeightDp) >= 600
+    val wide = configuration.screenWidthDp >= 600
+    val maxWidth = if (wide) 860.dp else 10000.dp
+    val horizontalPadding = when {
+        compact -> 10.dp
+        tablet -> 28.dp
+        else -> 16.dp
+    }
 
-    val legalScreenWidthDp =
-        legalConfiguration.screenWidthDp
-
-    val legalScreenHeightDp =
-        legalConfiguration.screenHeightDp
-
-    val legalCompact =
-        legalScreenWidthDp < 380
-
-    val legalTablet =
-        minOf(
-            legalScreenWidthDp,
-            legalScreenHeightDp
-        ) >= 600
-
-    val legalWide =
-        legalScreenWidthDp >= 600
-
-    val legalContentMaxWidth =
-        if (legalWide) 860.dp else 10000.dp
-
-    val legalHorizontalPadding =
-        when {
-            legalCompact -> 10.dp
-            legalTablet -> 28.dp
-            else -> 16.dp
-        }
-
-    val context = LocalContext.current
+    val sections = listOf(
+        Triple(
+            "📄",
+            settingsT(languageCode, "terms_of_use"),
+            "AppForge ile dönüştürdüğün veya derlediğin kaynak, içerik, marka, izin ve dağıtım haklarından sen sorumlusun. Yalnız sana ait olan veya kullanma hakkın bulunan içerikleri işle. AppForge'ın güvenlik, kota, imzalama ve mağaza doğrulamalarını aşmaya çalışma."
+        ),
+        Triple(
+            "☁️",
+            "Bulut build ve proje verileri",
+            "Build Service kullandığında gerekli proje kaynakları, build ayarları ve teknik metadata resmi AppForge sunucusuna gönderilebilir. Build logları ve çıktılar hizmetin çalışma ve saklama politikası kapsamında tutulabilir. Yerel araçlar yalnız cihazda çalıştıkları ölçüde buluta veri göndermez; kullanılan özelliğe göre davranış değişir."
+        ),
+        Triple(
+            "🔐",
+            settingsT(languageCode, "privacy_policy"),
+            "Hesap, oturum, cihaz güvenliği, build geçmişi, kota ve satın alma doğrulaması için gerekli teknik veriler işlenebilir. Parolalar, API anahtarları ve keystore parolaları Yerel AI bağlamına eklenmez. Android istemcisindeki hassas hesap bağlantıları güvenli depoda tutulur. Hesap silme akışı sunucudaki hesap verilerinin silinmesini başlatır; üçüncü tarafların kendi saklama yükümlülükleri ayrıca geçerli olabilir."
+        ),
+        Triple(
+            "🛒",
+            "Google Play ödemeleri ve abonelikler",
+            "Ödemeyi Google Play işler. AppForge sunucusu purchase token, ürün, abonelik durumu ve entitlement bilgisini Google Play ile doğrular. İptal, süre dolumu, refund veya revoke sonrası Pro erişimi sunucu gerçeğine göre kaldırılabilir. Ek kota paketleri yalnız uygun aktif Pro Aylık döneminde geçerlidir ve sonraki döneme devretmez."
+        ),
+        Triple(
+            "✨",
+            "Yerel AI ve otomasyon",
+            "Yerel AI, desteklenen cihazlarda LiteRT-LM ile cihaz üzerinde çalışır ve AppForge'ın güvenli proje/runtime özetini kullanabilir. Gizli anahtarlar bu özete eklenmez. Yerel model internetteki güncel Play kurallarını veya dış servis durumunu kendiliğinden bilemez; emin olmadığı AppForge özelliğini uydurmaması gerekir."
+        ),
+        Triple(
+            "🔌",
+            "Üçüncü taraf hizmetleri ve açık kaynak",
+            "Google Play, Firebase, AdMob, GitHub, Railway ve benzeri entegrasyonlar yalnız kullandığın özelliğe göre devreye girebilir ve kendi şartlarına tabidir. AppForge içinde kullanılan açık kaynak bileşenlerin lisans koşulları dağıtım ve kullanım sırasında geçerliliğini korur."
+        )
+    )
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(settingsT(languageCode, "legal_title"), fontWeight = FontWeight.Bold) },
-            navigationIcon = { IconButton(onClick = onBack) { Text("←") } },
+            title = {
+                Text(
+                    settingsT(languageCode, "legal_title"),
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            navigationIcon = {
+                IconButton(onClick = onBack) { Text("←") }
+            },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
         )
 
         LazyColumn(
-            modifier =
-                Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .widthIn(max = legalContentMaxWidth)
-                    .fillMaxWidth(),
-            contentPadding =
-                PaddingValues(
-                    horizontal = legalHorizontalPadding,
-                    vertical =
-                        if (legalCompact) 10.dp else 16.dp
-                ),
-            verticalArrangement = Arrangement.spacedBy(if (legalCompact) 9.dp else 14.dp)
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .widthIn(max = maxWidth)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(
+                horizontal = horizontalPadding,
+                vertical = if (compact) 10.dp else 16.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 9.dp else 14.dp)
         ) {
-            item {
+            items(sections) { section ->
                 LegalInfoCard(
-                    icon = "📄",
-                    title = settingsT(languageCode, "terms_of_use"),
-                    body = "1. APK'ya dönüştürdüğünüz içerikten yalnız siz sorumlusunuz.\n2. Yalnızca size ait olan veya kullanım izni aldığınız içerikleri dönüştürün.\n3. Dönüştürülen APK'lar sunucularımızda saklanmaz veya dağıtılmaz.\n4. Tüm APK oluşturma işlemi cihazınızda yerel olarak gerçekleşir.\n5. Uygulamanın kötüye kullanımından sorumlu değiliz."
-                )
-            }
-            item {
-                LegalInfoCard(
-                    icon = "🛡",
-                    title = settingsT(languageCode, "privacy_policy"),
-                    body = "1. Kişisel veri toplamıyoruz.\n2. Tüm proje verileri cihazınızda yerel olarak saklanır.\n3. İnternet izni yalnız sizin isteğiniz üzerine URL içeriği getirmek veya Build Service ile iletişim kurmak için kullanılır.\n4. Verilerinizi üçüncü taraflarla paylaşmayız."
+                    icon = section.first,
+                    title = section.second,
+                    body = section.third
                 )
             }
         }
@@ -400,27 +398,28 @@ internal fun LegalInfoCard(
     title: String,
     body: String
 ) {
-    val legalCardCompact =
-        LocalConfiguration.current.screenWidthDp < 380
+    val compact = LocalConfiguration.current.screenWidthDp < 380
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Card2),
-        shape = RoundedCornerShape(if (legalCardCompact) 19.dp else 24.dp)
+        shape = RoundedCornerShape(if (compact) 19.dp else 24.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(if (legalCardCompact) 13.dp else 18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(if (compact) 13.dp else 18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 "$icon  $title",
                 fontWeight = FontWeight.Bold,
-                fontSize = if (legalCardCompact) 18.sp else 22.sp
+                fontSize = if (compact) 18.sp else 22.sp
             )
             Text(
                 body,
                 color = TextSecondary,
-                lineHeight = if (legalCardCompact) 19.sp else 21.sp,
-                fontSize = if (legalCardCompact) 13.sp else 14.sp
+                lineHeight = if (compact) 19.sp else 21.sp,
+                fontSize = if (compact) 13.sp else 14.sp
             )
         }
     }
