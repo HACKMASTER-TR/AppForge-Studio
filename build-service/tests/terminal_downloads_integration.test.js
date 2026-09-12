@@ -138,3 +138,112 @@ test(
     );
   },
 );
+
+test(
+  "download files expose explicit action menu",
+  () => {
+    assert.match(
+      panel,
+      /TerminalDownloadActionDialog/,
+    );
+
+    assert.match(
+      panel,
+      /Terminalde kullan/,
+    );
+
+    assert.match(
+      panel,
+      /Çıkart/,
+    );
+
+    assert.match(
+      panel,
+      /Görüntüle/,
+    );
+  },
+);
+
+test(
+  "download archive actions support common formats",
+  () => {
+    assert.match(
+      panel,
+      /\.tar\.gz/,
+    );
+
+    assert.match(
+      panel,
+      /\.tgz/,
+    );
+
+    assert.match(
+      panel,
+      /\.tar/,
+    );
+
+    assert.match(
+      panel,
+      /\.zip/,
+    );
+  },
+);
+
+test(
+  "download runnable actions use terminal commands",
+  () => {
+    assert.match(
+      panel,
+      /sh \$path/,
+    );
+
+    assert.match(
+      panel,
+      /python3 \$path/,
+    );
+
+    assert.match(
+      panel,
+      /node \$path/,
+    );
+
+    assert.match(
+      panel,
+      /java -jar \$path/,
+    );
+
+    assert.doesNotMatch(
+      panel,
+      /Runtime\.getRuntime\(\)\.exec/,
+    );
+
+    assert.doesNotMatch(
+      panel,
+      /ProcessBuilder\(/,
+    );
+  },
+);
+
+test(
+  "download actions are routed through terminal command policy",
+  () => {
+    const screen =
+      fs.readFileSync(
+        path.join(
+          repo,
+          "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        ),
+        "utf8",
+      );
+
+    assert.match(
+      screen,
+      /onRunCommand = \{ command ->/,
+    );
+
+    assert.match(
+      screen,
+      /runCommand\(/,
+    );
+  },
+);

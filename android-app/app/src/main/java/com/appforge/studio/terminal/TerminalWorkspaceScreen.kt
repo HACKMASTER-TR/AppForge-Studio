@@ -1149,6 +1149,15 @@ fun TerminalWorkspaceScreen(
                             onImportRequestConsumed = {
                                 downloadsImportRequestToken =
                                     0
+                            },
+                            onRunCommand = { command ->
+                                selectedTab =
+                                    TerminalWorkspaceTab.TERMINAL
+
+                                runCommand(
+                                    activeSession.id,
+                                    command
+                                )
                             }
                         )
 

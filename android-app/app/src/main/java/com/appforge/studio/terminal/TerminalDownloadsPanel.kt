@@ -5,6 +5,9 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +15,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -21,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -55,7 +61,8 @@ private data class DownloadImportSummary(
 internal fun TerminalDownloadsPanel(
     accountEmail: String,
     importRequestToken: Int,
-    onImportRequestConsumed: () -> Unit
+    onImportRequestConsumed: () -> Unit,
+    onRunCommand: (String) -> Unit
 ) {
     val context =
         LocalContext.current
@@ -83,6 +90,16 @@ internal fun TerminalDownloadsPanel(
     var importing by
         remember {
             mutableStateOf(false)
+        }
+
+    var refreshToken by
+        remember {
+            mutableIntStateOf(0)
+        }
+
+    var selectedEntry by
+        remember {
+            mutableStateOf<File?>(null)
         }
 
     val picker =
@@ -164,6 +181,9 @@ internal fun TerminalDownloadsPanel(
 
                     importing =
                         false
+
+                    refreshToken +=
+                        1
                 }
             }
         }
@@ -273,6 +293,17 @@ internal fun TerminalDownloadsPanel(
                 )
             }
 
+            OutlinedButton(
+                onClick = {
+                    refreshToken +=
+                        1
+                }
+            ) {
+                Text(
+                    "Yenile"
+                )
+            }
+
             if (importing) {
                 CircularProgressIndicator()
             }
@@ -310,13 +341,590 @@ internal fun TerminalDownloadsPanel(
                     .fillMaxWidth()
                     .weight(1f)
         ) {
-            WorkspaceFilesPanel(
-                workspace =
-                    inbox
+            TerminalDownloadFileList(
+                inbox = inbox,
+                refreshToken = refreshToken,
+                onEntryClick = {
+                    selectedEntry =
+                        it
+                }
+            )
+        }
+
+        selectedEntry?.let { entry ->
+            TerminalDownloadActionDialog(
+                entry = entry,
+                onDismiss = {
+                    selectedEntry =
+                        null
+                },
+                onRunCommand = { command ->
+                    selectedEntry =
+                        null
+
+                    onRunCommand(
+                        command
+                    )
+                }
             )
         }
     }
 }
+
+
+@Composable
+private fun TerminalDownloadFileList(
+    inbox: File,
+    refreshToken: Int,
+    onEntryClick: (File) -> Unit
+) {
+    val entries =
+        remember(
+            inbox.absolutePath,
+            refreshToken
+        ) {
+            inbox
+                .listFiles()
+                ?.sortedWith(
+                    compareBy<File> {
+                        !it.isDirectory
+                    }.thenBy {
+                        it.name.lowercase(
+                            Locale.ROOT
+                        )
+                    }
+                )
+                .orEmpty()
+        }
+
+    if (entries.isEmpty()) {
+        Box(
+            modifier =
+                Modifier.fillMaxSize(),
+            contentAlignment =
+                Alignment.Center
+        ) {
+            Text(
+                "Henüz içe aktarılmış dosya yok.",
+                color =
+                    TerminalMuted,
+                fontSize =
+                    12.sp
+            )
+        }
+
+        return
+    }
+
+    LazyColumn(
+        modifier =
+            Modifier.fillMaxSize(),
+        verticalArrangement =
+            Arrangement.spacedBy(
+                8.dp
+            )
+    ) {
+        items(
+            items =
+                entries,
+            key = {
+                it.absolutePath
+            }
+        ) { entry ->
+            Card(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            onEntryClick(
+                                entry
+                            )
+                        },
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor =
+                            TerminalSurface
+                    )
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            14.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            4.dp
+                        )
+                ) {
+                    Text(
+                        if (entry.isDirectory) {
+                            "📁 ${entry.name}"
+                        } else {
+                            "▤ ${entry.name}"
+                        },
+                        color =
+                            TerminalText,
+                        fontWeight =
+                            FontWeight.SemiBold
+                    )
+
+                    Text(
+                        if (entry.isDirectory) {
+                            "Klasör • Dokun: işlemler"
+                        } else {
+                            "${formatDownloadSize(entry.length())} • Dokun: işlemler"
+                        },
+                        color =
+                            TerminalMuted,
+                        fontSize =
+                            10.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TerminalDownloadActionDialog(
+    entry: File,
+    onDismiss: () -> Unit,
+    onRunCommand: (String) -> Unit
+) {
+    val archive =
+        archiveCommand(
+            entry
+        )
+
+    val runnable =
+        runnableCommand(
+            entry
+        )
+
+    val preview =
+        previewCommand(
+            entry
+        )
+
+    AlertDialog(
+        onDismissRequest =
+            onDismiss,
+        title = {
+            Text(
+                entry.name
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement =
+                    Arrangement.spacedBy(
+                        6.dp
+                    )
+            ) {
+                Text(
+                    if (entry.isDirectory) {
+                        "Bu klasörü Terminalde kullanabilirsin."
+                    } else {
+                        "Dosya türüne uygun işlemi seç."
+                    },
+                    fontSize =
+                        12.sp
+                )
+
+                archive?.let { command ->
+                    Button(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+                        onClick = {
+                            onRunCommand(
+                                command
+                            )
+                        }
+                    ) {
+                        Text(
+                            "Çıkart"
+                        )
+                    }
+                }
+
+                runnable?.let { command ->
+                    Button(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+                        onClick = {
+                            onRunCommand(
+                                command
+                            )
+                        }
+                    ) {
+                        Text(
+                            runnableLabel(
+                                entry
+                            )
+                        )
+                    }
+                }
+
+                preview?.let { command ->
+                    OutlinedButton(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+                        onClick = {
+                            onRunCommand(
+                                command
+                            )
+                        }
+                    ) {
+                        Text(
+                            "Görüntüle"
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onRunCommand(
+                        terminalUseCommand(
+                            entry
+                        )
+                    )
+                }
+            ) {
+                Text(
+                    "Terminalde kullan"
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick =
+                    onDismiss
+            ) {
+                Text(
+                    "Kapat"
+                )
+            }
+        }
+    )
+}
+
+private fun archiveCommand(
+    file: File
+): String? {
+    if (
+        !file.isFile
+    ) {
+        return null
+    }
+
+    val lower =
+        file.name.lowercase(
+            Locale.ROOT
+        )
+
+    val baseName =
+        when {
+            lower.endsWith(
+                ".tar.gz"
+            ) ->
+                file.name
+                    .dropLast(7)
+
+            lower.endsWith(
+                ".tgz"
+            ) ->
+                file.name
+                    .dropLast(4)
+
+            lower.endsWith(
+                ".tar"
+            ) ->
+                file.name
+                    .dropLast(4)
+
+            lower.endsWith(
+                ".zip"
+            ) ->
+                file.name
+                    .dropLast(4)
+
+            else ->
+                return null
+        }
+            .ifBlank {
+                "extracted"
+            }
+
+    val output =
+        File(
+            file.parentFile,
+            "$baseName-extracted"
+        )
+
+    val sourceQ =
+        shellQuote(
+            file.absolutePath
+        )
+
+    val outputQ =
+        shellQuote(
+            output.absolutePath
+        )
+
+    return when {
+        lower.endsWith(
+            ".tar.gz"
+        ) ||
+            lower.endsWith(
+                ".tgz"
+            ) ->
+            "mkdir -p $outputQ && " +
+                "tar -xzf $sourceQ -C $outputQ && " +
+                "cd $outputQ && ls -la"
+
+        lower.endsWith(
+            ".tar"
+        ) ->
+            "mkdir -p $outputQ && " +
+                "tar -xf $sourceQ -C $outputQ && " +
+                "cd $outputQ && ls -la"
+
+        lower.endsWith(
+            ".zip"
+        ) ->
+            "mkdir -p $outputQ && " +
+                "unzip -q $sourceQ -d $outputQ && " +
+                "cd $outputQ && ls -la"
+
+        else ->
+            null
+    }
+}
+
+private fun runnableCommand(
+    file: File
+): String? {
+    if (
+        !file.isFile
+    ) {
+        return null
+    }
+
+    val lower =
+        file.name.lowercase(
+            Locale.ROOT
+        )
+
+    val path =
+        shellQuote(
+            file.absolutePath
+        )
+
+    return when {
+        lower.endsWith(
+            ".sh"
+        ) ->
+            "sh $path"
+
+        lower.endsWith(
+            ".py"
+        ) ->
+            "python3 $path"
+
+        lower.endsWith(
+            ".js"
+        ) ||
+            lower.endsWith(
+                ".mjs"
+            ) ||
+            lower.endsWith(
+                ".cjs"
+            ) ->
+            "node $path"
+
+        lower.endsWith(
+            ".jar"
+        ) ->
+            "java -jar $path"
+
+        else ->
+            null
+    }
+}
+
+private fun runnableLabel(
+    file: File
+): String {
+    val lower =
+        file.name.lowercase(
+            Locale.ROOT
+        )
+
+    return when {
+        lower.endsWith(
+            ".py"
+        ) ->
+            "Python ile çalıştır"
+
+        lower.endsWith(
+            ".js"
+        ) ||
+            lower.endsWith(
+                ".mjs"
+            ) ||
+            lower.endsWith(
+                ".cjs"
+            ) ->
+            "Node ile çalıştır"
+
+        lower.endsWith(
+            ".jar"
+        ) ->
+            "Java ile çalıştır"
+
+        else ->
+            "Çalıştır"
+    }
+}
+
+private fun previewCommand(
+    file: File
+): String? {
+    if (
+        !file.isFile
+    ) {
+        return null
+    }
+
+    val lower =
+        file.name.lowercase(
+            Locale.ROOT
+        )
+
+    val supported =
+        listOf(
+            ".txt",
+            ".md",
+            ".json",
+            ".yaml",
+            ".yml",
+            ".xml",
+            ".kt",
+            ".kts",
+            ".java",
+            ".py",
+            ".js",
+            ".mjs",
+            ".cjs",
+            ".ts",
+            ".tsx",
+            ".jsx",
+            ".html",
+            ".css",
+            ".sh",
+            ".gradle",
+            ".properties",
+            ".toml",
+            ".ini",
+            ".conf",
+            ".log"
+        ).any {
+            lower.endsWith(
+                it
+            )
+        }
+
+    if (!supported) {
+        return null
+    }
+
+    return "sed -n '1,220p' ${
+        shellQuote(
+            file.absolutePath
+        )
+    }"
+}
+
+private fun terminalUseCommand(
+    entry: File
+): String {
+    if (entry.isDirectory) {
+        return "cd ${
+            shellQuote(
+                entry.absolutePath
+            )
+        } && pwd && ls -la"
+    }
+
+    val parent =
+        entry.parentFile
+            ?.absolutePath
+            ?: "."
+
+    return "cd ${
+        shellQuote(
+            parent
+        )
+    } && pwd && ls -lh ${
+        shellQuote(
+            entry.name
+        )
+    }"
+}
+
+private fun shellQuote(
+    value: String
+): String =
+    "'" +
+        value.replace(
+            "'",
+            "'\"'\"'"
+        ) +
+        "'"
+
+private fun formatDownloadSize(
+    bytes: Long
+): String =
+    when {
+        bytes >=
+            1024L * 1024L * 1024L ->
+            String.format(
+                Locale.ROOT,
+                "%.2f GB",
+                bytes.toDouble() /
+                    (
+                        1024.0 *
+                            1024.0 *
+                            1024.0
+                    )
+            )
+
+        bytes >=
+            1024L * 1024L ->
+            String.format(
+                Locale.ROOT,
+                "%.2f MB",
+                bytes.toDouble() /
+                    (
+                        1024.0 *
+                            1024.0
+                    )
+            )
+
+        bytes >=
+            1024L ->
+            String.format(
+                Locale.ROOT,
+                "%.1f KB",
+                bytes.toDouble() /
+                    1024.0
+            )
+
+        else ->
+            "$bytes B"
+    }
 
 private object TerminalDownloadInbox {
     fun resolve(
