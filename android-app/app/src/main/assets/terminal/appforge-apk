@@ -3,6 +3,17 @@ set -eu
 
 native_repo="/root/AppForge-Studio"
 
+is_github_origin() {
+    case "${1:-}" in
+        https://github.com/*|git@github.com:*|ssh://git@github.com/*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 
 if [ -z "$repo_root" ] &&
@@ -17,6 +28,31 @@ fi
 
 origin="$(git -C "$repo_root" remote get-url origin 2>/dev/null || true)"
 
+# Scratch/project çalışma alanı bir Git deposu olabilir fakat GitHub
+# origin'i olmayabilir. APK hızlı eylemi bu durumda AppForge Studio'nun
+# yerel/native deposuna güvenli biçimde geri düşmelidir.
+if ! is_github_origin "$origin" &&
+   [ "$repo_root" != "$native_repo" ] &&
+   [ -d "$native_repo/.git" ]; then
+
+    native_origin="$(
+        git -C "$native_repo" \
+            remote get-url origin \
+            2>/dev/null ||
+            true
+    )"
+
+    if is_github_origin "$native_origin"; then
+        repo_root="$native_repo"
+        origin="$native_origin"
+    fi
+fi
+
+if ! is_github_origin "$origin"; then
+    printf '%s\n' "GitHub origin bulunamadı: $origin" >&2
+    exit 2
+fi
+
 case "$origin" in
     https://github.com/*)
         repo="${origin#https://github.com/}"
@@ -26,10 +62,6 @@ case "$origin" in
         ;;
     ssh://git@github.com/*)
         repo="${origin#ssh://git@github.com/}"
-        ;;
-    *)
-        printf '%s\n' "GitHub origin bulunamadı: $origin" >&2
-        exit 2
         ;;
 esac
 
