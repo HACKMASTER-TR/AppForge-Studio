@@ -45,17 +45,17 @@ test("Stage 10R follows the active line with the virtualized renderer", async ()
 
   assert.match(
     source,
-    /LaunchedEffect\(\s*state\.outputRevision,\s*bottomContentPaddingPx,\s*state\.snapshot\.lines\.size\s*\)/
+    /LaunchedEffect\(\s*state\.id,\s*state\.snapshot\.lines\.size\s*\)/
   );
 
   assert.match(
     source,
-    /val lastIndex\s*=\s*state\.snapshot\.lines\.lastIndex/
+    /val lastIndex\s*=\s*(?:state\.snapshot\.lines\.lastIndex|lineCount\s*-\s*1)/
   );
 
   assert.match(
     source,
-    /outputListState\.scrollToItem\(\s*lastIndex\s*\)/
+    /outputListState\.scrollToItem\(\s*index\s*=\s*lastIndex,\s*scrollOffset\s*=\s*-targetTopPx\s*\)/
   );
 });
 
