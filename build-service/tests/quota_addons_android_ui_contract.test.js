@@ -47,7 +47,7 @@ test(
   () => {
     const proStart =
       main.indexOf(
-        "@Composable\\nprivate fun ProUpgradeScreen("
+        "@Composable\nprivate fun ProUpgradeScreen("
       );
 
     assert.ok(
@@ -55,7 +55,7 @@ test(
     );
 
     const marker =
-      "LaunchedEffect(\\n        serverUrl,\\n        session?.token";
+      "LaunchedEffect(\n        serverUrl,\n        session?.token";
 
     const first =
       main.indexOf(
