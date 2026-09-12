@@ -3147,14 +3147,17 @@ private fun LocalPtySurface(
             }
 
     /*
-     * Follow the active PTY line after new output.
+     * Follow new PTY output without moving an already-visible prompt.
      *
-     * LazyColumn never lays out off-screen history, so moving to the final
-     * line is cheap even after hundreds of terminal lines.
+     * Important:
+     * - typing/echo must not reposition the viewport,
+     * - IME open/close must not trigger an auto-scroll by itself,
+     * - a user who scrolled into history must stay there,
+     * - when new output really leaves the visible area, keep the final
+     *   terminal row near the bottom instead of pinning it to the top.
      */
     LaunchedEffect(
         state.outputRevision,
-        bottomContentPaddingPx,
         state.snapshot.lines.size
     ) {
         if (copyMode) {
@@ -3163,18 +3166,26 @@ private fun LocalPtySurface(
 
         delay(16L)
 
+        val lineCount =
+            state.snapshot.lines.size
+
         val lastIndex =
-            state.snapshot.lines.lastIndex
+            lineCount - 1
 
         if (lastIndex < 0) {
             lastAutoFollowLineCount = 0
+            autoFollowInitialized = false
             return@LaunchedEffect
         }
 
+        val layoutInfo =
+            outputListState.layoutInfo
+
+        val visibleItems =
+            layoutInfo.visibleItemsInfo
+
         val visibleLastIndex =
-            outputListState
-                .layoutInfo
-                .visibleItemsInfo
+            visibleItems
                 .lastOrNull()
                 ?.index
                 ?: -1
@@ -3193,18 +3204,83 @@ private fun LocalPtySurface(
                     ).coerceAtLeast(0)
 
         lastAutoFollowLineCount =
-            state.snapshot.lines.size
+            lineCount
 
-        autoFollowInitialized = true
+        autoFollowInitialized =
+            true
 
         if (
-            wasNearBottom &&
-            !outputListState.isScrollInProgress
+            !wasNearBottom ||
+            outputListState.isScrollInProgress
         ) {
-            outputListState.scrollToItem(
-                lastIndex
-            )
+            return@LaunchedEffect
         }
+
+        val rowHeightPx =
+            lineHeightPx
+                .toInt()
+                .coerceAtLeast(1)
+
+        val viewportBottomPx =
+            surfaceSize.height
+                .takeIf {
+                    it > 0
+                }
+                ?: layoutInfo.viewportEndOffset
+
+        /*
+         * Android keyboard overlays the terminal instead of resizing the
+         * PTY. Treat the covered area as unavailable when deciding whether
+         * the active line is already visible.
+         */
+        val effectiveBottomPx =
+            (
+                viewportBottomPx -
+                    bottomContentPaddingPx.coerceAtLeast(0)
+                )
+                .coerceAtLeast(
+                    rowHeightPx
+                )
+
+        val lastVisibleItem =
+            visibleItems
+                .firstOrNull {
+                    it.index == lastIndex
+                }
+
+        val lastRowAlreadyVisible =
+            lastVisibleItem
+                ?.let {
+                    it.offset + it.size <=
+                        effectiveBottomPx
+                }
+                ?: false
+
+        /*
+         * Most important fix: ordinary typing changes outputRevision because
+         * the shell echoes characters. If the prompt is already visible,
+         * leave the viewport completely untouched.
+         */
+        if (lastRowAlreadyVisible) {
+            return@LaunchedEffect
+        }
+
+        val targetTopPx =
+            (
+                effectiveBottomPx -
+                    rowHeightPx
+                )
+                .coerceAtLeast(0)
+
+        /*
+         * Negative scrollOffset places the requested final row lower in the
+         * viewport. The old scrollToItem(lastIndex) placed it at the top and
+         * caused the visible "jump" on typing, Enter, paste and IME changes.
+         */
+        outputListState.scrollToItem(
+            index = lastIndex,
+            scrollOffset = -targetTopPx
+        )
     }
 
     LaunchedEffect(
