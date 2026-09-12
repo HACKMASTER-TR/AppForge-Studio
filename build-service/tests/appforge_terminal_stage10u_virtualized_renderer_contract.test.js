@@ -78,12 +78,12 @@ test("Stage 10U follows new output with LazyListState", async () => {
 
   assert.match(
     source,
-    /val lastIndex\s*=\s*state\.snapshot\.lines\.lastIndex/
+    /val lastIndex\s*=\s*(?:state\.snapshot\.lines\.lastIndex|lineCount\s*-\s*1)/
   );
 
   assert.match(
     source,
-    /outputListState\.scrollToItem\(\s*lastIndex\s*\)/
+    /outputListState\.scrollToItem\(\s*index\s*=\s*lastIndex,\s*scrollOffset\s*=\s*-targetTopPx\s*\)/
   );
 });
 

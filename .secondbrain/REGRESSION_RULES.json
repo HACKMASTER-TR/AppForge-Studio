@@ -1,5 +1,22 @@
 {
-  "version": 1,
+  "version": 2,
+  "policy": "HARD_STABILITY_GATE_V1",
+  "hard_gate": true,
+  "fail_on_regression": true,
+  "main_is_stable_only": true,
+  "require_diff_check": true,
+  "require_secondbrain_selftest": true,
+  "require_regression_validation": true,
+  "compile_success_is_not_runtime_proof": true,
+  "exact_sha_artifacts": true,
+  "forbidden_staged_patterns": [
+    "*.apk",
+    "*.aab",
+    "*.save",
+    "*.bak",
+    "dashboard.sh",
+    "dashboard.sh.bak"
+  ],
   "protected_features": [
     {
       "name": "Terminal",
@@ -7,7 +24,10 @@
         "terminal",
         "pty",
         "ime",
-        "paste"
+        "keyboard",
+        "paste",
+        "shortcut",
+        "scroll"
       ]
     },
     {
@@ -15,7 +35,8 @@
       "keywords": [
         "file",
         "workspace",
-        "storage"
+        "storage",
+        "download"
       ]
     },
     {
@@ -29,6 +50,7 @@
       "name": "Connections",
       "keywords": [
         "connection",
+        "oauth",
         "railway",
         "authorization"
       ]
@@ -44,7 +66,8 @@
       "name": "Tools",
       "keywords": [
         "toolchain",
-        "tools"
+        "tools",
+        "runtime"
       ]
     },
     {
@@ -52,7 +75,9 @@
       "keywords": [
         "builder",
         "build",
-        "gradle"
+        "gradle",
+        "apk",
+        "aab"
       ]
     },
     {
@@ -60,8 +85,210 @@
       "keywords": [
         "assistant",
         "ai",
-        "litert"
+        "litert",
+        "secondbrain"
+      ]
+    },
+    {
+      "name": "Auth",
+      "keywords": [
+        "auth",
+        "login",
+        "account",
+        "token"
+      ]
+    },
+    {
+      "name": "OwnerIsolation",
+      "keywords": [
+        "owner",
+        "isolation",
+        "account"
+      ]
+    },
+    {
+      "name": "FreePro",
+      "keywords": [
+        "free",
+        "pro",
+        "entitlement",
+        "subscription"
+      ]
+    },
+    {
+      "name": "BillingQuota",
+      "keywords": [
+        "billing",
+        "purchase",
+        "quota",
+        "play"
+      ]
+    },
+    {
+      "name": "BuildService",
+      "keywords": [
+        "build-service",
+        "api",
+        "server"
+      ]
+    },
+    {
+      "name": "Database",
+      "keywords": [
+        "sql",
+        "database",
+        "postgres",
+        "migration"
+      ]
+    },
+    {
+      "name": "Workers",
+      "keywords": [
+        "worker",
+        "queue",
+        "job"
+      ]
+    },
+    {
+      "name": "RailwayRender",
+      "keywords": [
+        "railway",
+        "render",
+        "deploy"
+      ]
+    },
+    {
+      "name": "Web",
+      "keywords": [
+        "web",
+        "pwa",
+        "browser"
+      ]
+    },
+    {
+      "name": "Desktop",
+      "keywords": [
+        "desktop",
+        "windows",
+        "electron",
+        "exe"
+      ]
+    },
+    {
+      "name": "ExcelTools",
+      "keywords": [
+        "excel",
+        "xlsx",
+        "spreadsheet"
+      ]
+    },
+    {
+      "name": "VideoForge",
+      "keywords": [
+        "videoforge",
+        "video",
+        "ffmpeg"
+      ]
+    },
+    {
+      "name": "Notifications",
+      "keywords": [
+        "notification",
+        "push",
+        "fcm"
+      ]
+    },
+    {
+      "name": "CIRelease",
+      "keywords": [
+        "workflow",
+        "ci",
+        "release",
+        "deploy"
+      ]
+    },
+    {
+      "name": "Security",
+      "keywords": [
+        "security",
+        "permission",
+        "credential",
+        "secret"
+      ]
+    },
+    {
+      "name": "Performance",
+      "keywords": [
+        "performance",
+        "latency",
+        "memory",
+        "jank"
       ]
     }
-  ]
+  ],
+  "gate_version": 2,
+  "require_pull_request_for_main": true,
+  "direct_main_push_forbidden": true,
+  "all_mandatory_gates_must_pass": true,
+  "mandatory_ci_gates": [
+    "Second Brain / Policy",
+    "Build Service Regression",
+    "Android Regression",
+    "Static Smoke",
+    "AppForge Stability Summary"
+  ],
+  "domain_gates": {
+    "android_terminal": {
+      "paths": [
+        "android-app/**"
+      ],
+      "tests": [
+        ":app:testDebugUnitTest"
+      ],
+      "runtime_validation_required": true,
+      "ci": "AppForge Android Debug"
+    },
+    "backend_api_auth_billing": {
+      "paths": [
+        "build-service/**"
+      ],
+      "tests": [
+        "npm test"
+      ]
+    },
+    "workers_conversion": {
+      "paths": [
+        "build-service/*worker*",
+        "build-service/scripts/*smoke*",
+        ".github/workflows/*worker*",
+        ".github/workflows/conversion-smoke.yml"
+      ],
+      "tests": [
+        "build-service regression",
+        "worker/smoke syntax"
+      ]
+    },
+    "secondbrain": {
+      "paths": [
+        ".secondbrain/**",
+        "SECOND_BRAIN.md",
+        "AGENTS.md",
+        "scripts/brain",
+        "scripts/appforge-stability-gate"
+      ],
+      "tests": [
+        "brain selftest",
+        "brain doctor"
+      ]
+    },
+    "ci_release": {
+      "paths": [
+        ".github/**"
+      ],
+      "tests": [
+        "workflow validation",
+        "stability summary"
+      ]
+    }
+  }
 }

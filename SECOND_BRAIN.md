@@ -77,3 +77,27 @@ Source code, configuration, migrations, tests, CI and runtime behavior remain au
 Secret values are never stored in durable Second Brain memory.
 Unknown live or performance state is never invented.
 Commit / push / deploy / publish require explicit user request.
+
+
+## HARD STABILITY GATE V1
+
+This rule is mandatory for every meaningful AppForge change.
+
+- main is stable-only.
+- Existing working behavior is a protected contract.
+- A new fix or feature may not regress another working feature.
+- Before change: evaluate impact, risk and affected tests.
+- After change: run stability/regression validation.
+- Compile success alone is not runtime proof.
+- Skipping/removing/weaking tests to get PASS is forbidden.
+- Any mandatory FAIL blocks progression.
+- Generated binaries/backups must not be staged.
+- Artifacts must be traceable to an exact commit SHA.
+- Source/config/tests/CI/runtime remain authoritative.
+- Commit/push/merge/deploy/publish require explicit user request.
+
+Canonical policy:
+`.secondbrain/STABILITY_POLICY.md`
+
+Machine-readable rules:
+`.secondbrain/REGRESSION_RULES.json`

@@ -106,7 +106,7 @@ test("Stage 10V does not auto-follow while the user is selecting text", async ()
 
   assert.match(
     source,
-    /outputListState\.scrollToItem\(\s*lastIndex\s*\)/
+    /outputListState\.scrollToItem\(\s*index\s*=\s*lastIndex,\s*scrollOffset\s*=\s*-targetTopPx\s*\)/
   );
 });
 

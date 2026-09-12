@@ -22,7 +22,7 @@ test("Stage 10Q follows new terminal output with virtualized scrolling", async (
 
   assert.match(
     source,
-    /LaunchedEffect\(\s*state\.outputRevision,\s*bottomContentPaddingPx,\s*state\.snapshot\.lines\.size\s*\)/
+    /LaunchedEffect\(\s*state\.id,\s*state\.snapshot\.lines\.size\s*\)/
   );
 
   assert.match(
@@ -32,7 +32,7 @@ test("Stage 10Q follows new terminal output with virtualized scrolling", async (
 
   assert.match(
     source,
-    /outputListState\.scrollToItem\(\s*lastIndex\s*\)/
+    /outputListState\.scrollToItem\(\s*index\s*=\s*lastIndex,\s*scrollOffset\s*=\s*-targetTopPx\s*\)/
   );
 });
 

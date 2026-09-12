@@ -46,3 +46,27 @@ These are advisory engineering gates, not proof of correctness.
 - Never store secrets, tokens, passwords or credential values in memory.
 - `READY`, `REVIEW_REQUIRED`, `BLOCKED`, `ACCEPT`, `REFACTOR_FIRST`, and `REJECT` are advisory engineering decisions.
 - Do not commit, push, deploy or publish unless explicitly requested.
+
+
+## HARD STABILITY GATE V1
+
+This rule is mandatory for every meaningful AppForge change.
+
+- main is stable-only.
+- Existing working behavior is a protected contract.
+- A new fix or feature may not regress another working feature.
+- Before change: evaluate impact, risk and affected tests.
+- After change: run stability/regression validation.
+- Compile success alone is not runtime proof.
+- Skipping/removing/weaking tests to get PASS is forbidden.
+- Any mandatory FAIL blocks progression.
+- Generated binaries/backups must not be staged.
+- Artifacts must be traceable to an exact commit SHA.
+- Source/config/tests/CI/runtime remain authoritative.
+- Commit/push/merge/deploy/publish require explicit user request.
+
+Canonical policy:
+`.secondbrain/STABILITY_POLICY.md`
+
+Machine-readable rules:
+`.secondbrain/REGRESSION_RULES.json`

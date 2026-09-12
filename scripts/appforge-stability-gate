@@ -1,0 +1,120 @@
+#!/bin/sh
+set -eu
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+cd "$ROOT"
+
+MODE="${1:-local}"
+FAIL=0
+
+pass() {
+    printf 'PASS  %s\n' "$1"
+}
+
+fail() {
+    printf 'FAIL  %s\n' "$1"
+    FAIL=$((FAIL + 1))
+}
+
+echo "========================================"
+echo " APPFORGE HARD STABILITY GATE V1"
+echo " Mode: $MODE"
+echo "========================================"
+
+BRANCH="$(git branch --show-current 2>/dev/null || true)"
+HEAD="$(git rev-parse --short HEAD 2>/dev/null || true)"
+
+echo "Branch: $BRANCH"
+echo "HEAD:   $HEAD"
+echo
+
+if [ -f .secondbrain/STABILITY_POLICY.md ]; then
+    pass "Stability policy exists"
+else
+    fail "Stability policy missing"
+fi
+
+if python3 - <<'PY'
+import json
+from pathlib import Path
+
+p = Path(".secondbrain/REGRESSION_RULES.json")
+d = json.loads(p.read_text(encoding="utf-8"))
+
+assert d.get("version", 0) >= 2
+assert d.get("hard_gate") is True
+assert d.get("fail_on_regression") is True
+assert len(d.get("protected_features", [])) >= 20
+PY
+then
+    pass "Regression rules V2 valid"
+else
+    fail "Regression rules invalid"
+fi
+
+if git diff --check >/tmp/appforge-diff-check.log 2>&1; then
+    pass "git diff --check"
+else
+    cat /tmp/appforge-diff-check.log
+    fail "git diff --check"
+fi
+
+FORBIDDEN="$(
+    git diff --cached --name-only |
+    grep -E '(^|/)(dashboard\.sh|dashboard\.sh\.bak)$|\.apk$|\.aab$|\.save$|\.bak$' ||
+    true
+)"
+
+if [ -z "$FORBIDDEN" ]; then
+    pass "No forbidden staged files"
+else
+    echo "$FORBIDDEN"
+    fail "Forbidden files are staged"
+fi
+
+TRACKED_DIRTY="$(git status --porcelain --untracked-files=no || true)"
+
+if [ "$BRANCH" = "main" ] && [ -n "$TRACKED_DIRTY" ]; then
+    fail "Tracked development change detected directly on main"
+else
+    pass "Branch policy"
+fi
+
+if python3 -m py_compile \
+    .secondbrain/engine/brain.py \
+    .secondbrain/engine/brain_v3.py \
+    .secondbrain/engine/deep_map.py
+then
+    pass "Second Brain Python syntax"
+else
+    fail "Second Brain Python syntax"
+fi
+
+if ./scripts/brain selftest >/tmp/appforge-brain-selftest.log 2>&1; then
+    pass "Second Brain selftest"
+else
+    cat /tmp/appforge-brain-selftest.log
+    fail "Second Brain selftest"
+fi
+
+DOCTOR="$(./scripts/brain doctor 2>&1 || true)"
+
+if printf '%s\n' "$DOCTOR" | grep -q '"status": "PASS"'; then
+    pass "Second Brain doctor"
+else
+    printf '%s\n' "$DOCTOR"
+    fail "Second Brain doctor"
+fi
+
+echo
+echo "========================================"
+
+if [ "$FAIL" -eq 0 ]; then
+    echo "APPFORGE STABILITY GATE: PASS"
+    echo "fail 0"
+    exit 0
+fi
+
+echo "APPFORGE STABILITY GATE: BLOCKED"
+echo "fail $FAIL"
+exit 1

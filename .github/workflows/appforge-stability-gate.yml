@@ -1,0 +1,177 @@
+name: AppForge Stability Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+
+  policy:
+    name: Second Brain / Policy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/brain
+          chmod +x scripts/appforge-stability-gate
+          chmod +x .githooks/pre-push
+
+      - name: Run Hard Stability Gate
+        run: ./scripts/appforge-stability-gate ci
+
+
+  backend-regression:
+    name: Build Service Regression
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: build-service/package-lock.json
+
+      - name: Install dependencies
+        working-directory: build-service
+        run: npm ci
+
+      - name: Run complete backend regression suite
+        working-directory: build-service
+        run: npm test
+
+
+  android-regression:
+    name: Android Regression
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.3.1"
+
+      - name: Install Android native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SDKMANAGER="$(
+            find "$ANDROID_HOME/cmdline-tools" \
+              -type f \
+              -name sdkmanager \
+              | sort -V \
+              | tail -n 1
+          )"
+
+          test -x "$SDKMANAGER"
+
+          "$SDKMANAGER" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+          test -d "$ANDROID_HOME/ndk/28.2.13676358"
+          test -d "$ANDROID_HOME/cmake/3.22.1"
+
+      - name: Run Android regression tests
+        run: |
+          gradle \
+            -p android-app \
+            :app:testDebugUnitTest \
+            --no-daemon \
+            --stacktrace
+
+
+  static-smoke:
+    name: Static Smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Shell syntax
+        shell: bash
+        run: |
+          bash -n scripts/appforge-stability-gate
+          bash -n .githooks/pre-push
+
+          if [ -f build-service/scripts/source-worker-runtime-smoke.sh ]; then
+            bash -n build-service/scripts/source-worker-runtime-smoke.sh
+          fi
+
+      - name: Node syntax
+        shell: bash
+        run: |
+          if [ -f build-service/scripts/fast-apk-runtime-smoke.js ]; then
+            node --check build-service/scripts/fast-apk-runtime-smoke.js
+          fi
+
+          if [ -f build-service/scripts/toolchain-doctor.js ]; then
+            node --check build-service/scripts/toolchain-doctor.js
+          fi
+
+
+  stability-summary:
+    name: AppForge Stability Summary
+    runs-on: ubuntu-latest
+    if: always()
+
+    needs:
+      - policy
+      - backend-regression
+      - android-regression
+      - static-smoke
+
+    steps:
+      - name: Require fail 0
+        shell: bash
+        run: |
+          echo "Policy:  ${{ needs.policy.result }}"
+          echo "Backend: ${{ needs.backend-regression.result }}"
+          echo "Android: ${{ needs.android-regression.result }}"
+          echo "Smoke:   ${{ needs.static-smoke.result }}"
+
+          FAIL=0
+
+          [ "${{ needs.policy.result }}" = "success" ] || FAIL=$((FAIL + 1))
+          [ "${{ needs.backend-regression.result }}" = "success" ] || FAIL=$((FAIL + 1))
+          [ "${{ needs.android-regression.result }}" = "success" ] || FAIL=$((FAIL + 1))
+          [ "${{ needs.static-smoke.result }}" = "success" ] || FAIL=$((FAIL + 1))
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo "APPFORGE GLOBAL REGRESSION GATE: BLOCKED"
+            echo "fail $FAIL"
+            exit 1
+          fi
+
+          echo "APPFORGE GLOBAL REGRESSION GATE: PASS"
+          echo "fail 0"
