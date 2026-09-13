@@ -1048,22 +1048,15 @@ def wait_workflow(
     started = time.time()
 
     while time.time() - started < timeout:
+        repo = github_repo()
+
         p = run([
             "gh",
-            "run",
-            "list",
-            "--workflow",
-            workflow_file,
-            "--branch",
-            "main",
-            "--limit",
-            "40",
-            "--json",
+            "api",
             (
-                "databaseId,headSha,status,"
-                "conclusion,url,createdAt,"
-                "startedAt,updatedAt,"
-                "event,displayTitle"
+                f"repos/{repo}/actions/workflows/"
+                f"{workflow_file}/runs"
+                "?branch=main&per_page=40"
             ),
         ], check=False, capture=True)
 
@@ -1072,9 +1065,43 @@ def wait_workflow(
             continue
 
         try:
-            runs = json.loads(
-                p.stdout or "[]"
+            payload = json.loads(
+                p.stdout or "{}"
             )
+
+            api_runs = payload.get(
+                "workflow_runs",
+                [],
+            )
+
+            runs = [
+                {
+                    "databaseId":
+                        item.get("id"),
+                    "headSha":
+                        item.get("head_sha"),
+                    "status":
+                        item.get("status"),
+                    "conclusion":
+                        item.get("conclusion"),
+                    "url":
+                        item.get("html_url"),
+                    "createdAt":
+                        item.get("created_at"),
+                    "startedAt":
+                        (
+                            item.get("run_started_at")
+                            or item.get("created_at")
+                        ),
+                    "updatedAt":
+                        item.get("updated_at"),
+                    "event":
+                        item.get("event"),
+                    "displayTitle":
+                        item.get("display_title"),
+                }
+                for item in api_runs
+            ]
         except json.JSONDecodeError:
             runs = []
 
@@ -1176,33 +1203,74 @@ def wait_workflow(
 
 def release_info():
     gh_required()
+
+    repo = github_repo()
+
     p = run([
-        "gh", "release", "view", "appforge-studio-latest",
-        "--json", "tagName,publishedAt,url,assets",
+        "gh",
+        "api",
+        (
+            f"repos/{repo}/releases/tags/"
+            "appforge-studio-latest"
+        ),
     ], check=False, capture=True)
 
     if p.returncode != 0:
-        return {"status": "NOT_READY"}
+        return {
+            "status": "NOT_READY"
+        }
 
-    data = json.loads(p.stdout or "{}")
+    try:
+        data = json.loads(
+            p.stdout or "{}"
+        )
+    except json.JSONDecodeError:
+        return {
+            "status": "NOT_READY"
+        }
+
     apks = [
-        a for a in data.get("assets", [])
-        if str(a.get("name", "")).lower().endswith(".apk")
+        asset
+        for asset in data.get(
+            "assets",
+            [],
+        )
+        if str(
+            asset.get(
+                "name",
+                "",
+            )
+        ).lower().endswith(
+            ".apk"
+        )
     ]
+
     return {
-        "status": "READY" if apks else "NO_APK",
-        "tag": data.get("tagName"),
-        "publishedAt": data.get("publishedAt"),
-        "url": data.get("url"),
+        "status":
+            "READY"
+            if apks
+            else "NO_APK",
+        "tag":
+            data.get("tag_name"),
+        "publishedAt":
+            data.get("published_at"),
+        "url":
+            data.get("html_url"),
         "apk_assets": [
             {
-                "name": a.get("name"),
-                "size": a.get("size"),
-                "downloadCount": a.get("downloadCount"),
+                "name":
+                    asset.get("name"),
+                "size":
+                    asset.get("size"),
+                "downloadCount":
+                    asset.get(
+                        "download_count"
+                    ),
             }
-            for a in apks
+            for asset in apks
         ],
     }
+
 
 def generate_report(result, **extra):
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
