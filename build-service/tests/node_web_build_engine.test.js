@@ -104,6 +104,24 @@ test(
           }
         );
 
+      const compileCache =
+        path.join(
+          root,
+          "work",
+          ".tmp",
+          "node-compile-cache"
+        );
+
+      await assert.rejects(
+        fs.stat(
+          compileCache
+        ),
+        error =>
+          error?.code ===
+            "ENOENT",
+        "Node/Web source builds must not create a Node compile cache inside workDir"
+      );
+
       const outputZip =
         new AdmZip(
           result.projectZip

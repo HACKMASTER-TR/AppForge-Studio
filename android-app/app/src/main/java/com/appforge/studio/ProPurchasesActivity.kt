@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -234,8 +235,23 @@ class ProPurchasesActivity : ComponentActivity() {
 
     private fun cleanMessage(error: Throwable): String {
         val text = error.message.orEmpty().trim()
+
+        val connectionFailure =
+            generateSequence(error as Throwable?) {
+                it?.cause
+            }.filterNotNull().any { cause ->
+                cause is java.net.UnknownHostException ||
+                    cause is java.net.ConnectException ||
+                    cause is java.net.SocketTimeoutException ||
+                    cause is java.net.NoRouteToHostException
+            }
+
+        if (connectionFailure) {
+            return "İnternet bağlantısı kurulamadı. Bağlantını kontrol edip tekrar dene."
+        }
+
         return if (text.isBlank()) {
-            "İşlem tamamlanamadı. İnternet bağlantını kontrol edip tekrar deneyebilirsin."
+            "İşlem tamamlanamadı. Lütfen tekrar dene."
         } else {
             text.take(300)
         }
@@ -257,6 +273,7 @@ private fun ProPurchasesContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .verticalScroll(scroll)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
