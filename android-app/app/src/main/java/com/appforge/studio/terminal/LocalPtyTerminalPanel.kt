@@ -3563,6 +3563,7 @@ private fun LocalPtySurface(
     LaunchedEffect(
         surfaceSize,
         fontSizeSp,
+        bottomContentPaddingPx,
         state.id
     ) {
         if (
@@ -3595,10 +3596,28 @@ private fun LocalPtySurface(
                     charWidthPx
                 )
 
+        /*
+         * Keep the real PTY geometry identical to the visible Termux
+         * TerminalView geometry.
+         *
+         * TerminalView receives:
+         *   top = 12dp
+         *   bottom = 12dp + accessory/IME reserve
+         *
+         * The old PTY calculation removed only the fixed 24dp and therefore
+         * advertised more rows than were actually visible. The shell could
+         * then place its prompt one or more rows below the viewport and a
+         * lifecycle/inset change caused terminal reflow on resume.
+         */
+        val reservedBottomPx =
+            bottomContentPaddingPx
+                .coerceAtLeast(0)
+
         val availableHeightPx =
             (
                 surfaceSize.height -
-                    verticalPaddingPx
+                    verticalPaddingPx -
+                    reservedBottomPx
                 )
                 .coerceAtLeast(
                     lineHeightPx

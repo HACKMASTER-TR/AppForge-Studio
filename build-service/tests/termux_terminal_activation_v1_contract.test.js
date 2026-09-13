@@ -111,3 +111,34 @@ test("normal terminal viewport uses Termux while Compose renderer remains fallba
     "Compose auto-scroll must be disabled while Termux owns viewport",
   );
 });
+
+
+test("PTY geometry matches Termux visible viewport", async () => {
+  const panel = await read(
+    "android-app",
+    "app",
+    "src",
+    "main",
+    "java",
+    "com",
+    "appforge",
+    "studio",
+    "terminal",
+    "LocalPtyTerminalPanel.kt",
+  );
+
+  assert.match(
+    panel,
+    /LaunchedEffect\(\s*surfaceSize,\s*fontSizeSp,\s*bottomContentPaddingPx,\s*state\.id\s*\)/,
+  );
+
+  assert.match(
+    panel,
+    /val reservedBottomPx\s*=\s*bottomContentPaddingPx\s*\.coerceAtLeast\(0\)/,
+  );
+
+  assert.match(
+    panel,
+    /surfaceSize\.height\s*-\s*verticalPaddingPx\s*-\s*reservedBottomPx/,
+  );
+});
