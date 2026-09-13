@@ -65,10 +65,41 @@ test("normal terminal viewport uses Termux while Compose renderer remains fallba
   );
 
   assert.match(panel, /val useTermuxViewport\s*=\s*true/);
-  assert.match(panel, /userScrollEnabled\s*=\s*!useTermuxViewport/);
-  assert.match(panel, /listOf\(-1\)/);
-  assert.match(panel, /TermuxTerminalMirrorHost/);
-  assert.match(panel, /return@items/);
+
+  /*
+   * Termux must own the viewport directly.
+   * Nesting TerminalView inside LazyColumn caused foreground/resume
+   * repositioning and could leave the prompt below the visible area.
+   */
+  assert.match(
+    panel,
+    /}\s*else if\s*\(useTermuxViewport\)\s*\{[\s\S]{0,1600}?TermuxTerminalMirrorHost/,
+  );
+
+  assert.match(
+    panel,
+    /TermuxTerminalMirrorHost[\s\S]{0,900}\.fillMaxSize\(\)[\s\S]{0,500}bottom\s*=\s*bottomContentPadding/,
+  );
+
+  assert.doesNotMatch(
+    panel,
+    /listOf\(-1\)/,
+  );
+
+  assert.doesNotMatch(
+    panel,
+    /TermuxTerminalMirrorHost[\s\S]{0,900}\.fillParentMaxHeight\(\)/,
+  );
+
+  assert.doesNotMatch(
+    panel,
+    /userScrollEnabled\s*=\s*!useTermuxViewport/,
+  );
+
+  assert.match(
+    panel,
+    /Legacy Compose terminal renderer/,
+  );
 
   const guards =
     panel.match(

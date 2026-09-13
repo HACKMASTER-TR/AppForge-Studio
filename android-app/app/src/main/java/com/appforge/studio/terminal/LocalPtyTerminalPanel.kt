@@ -3870,15 +3870,47 @@ private fun LocalPtySurface(
                     }
                 }
             }
+        } else if (useTermuxViewport) {
+            /*
+             * Termux owns the active viewport directly.
+             *
+             * Do not wrap TerminalView in LazyColumn. LazyColumn can
+             * re-anchor its single child after Android lifecycle/layout
+             * changes, which moves the visible terminal rows on resume
+             * and can leave the live prompt below the viewport.
+             *
+             * Padding is applied to the AndroidView's measured area so
+             * Termux itself receives the final usable terminal size.
+             */
+            TermuxTerminalMirrorHost(
+                sessionId =
+                    state.id,
+                onSingleTap = {
+                    inputFocusRequester
+                        .requestFocus()
+
+                    keyboardController
+                        ?.show()
+                },
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(
+                            start = 16.dp,
+                            top = 12.dp,
+                            end = 12.dp,
+                            bottom =
+                                bottomContentPadding
+                        ),
+            )
         } else {
             /*
-             * Normal terminal remains virtualized. Only visible rows are
-             * composed, preserving Stage 10U scroll/Enter performance.
+             * Legacy Compose terminal renderer.
+             *
+             * Kept as a fallback during Termux Activation rollout.
              */
             LazyColumn(
                 state = outputListState,
-                userScrollEnabled =
-                    !useTermuxViewport,
                 modifier =
                     Modifier.fillMaxSize(),
                 contentPadding =
@@ -3892,39 +3924,12 @@ private fun LocalPtySurface(
             ) {
                 items(
                     items =
-                        if (useTermuxViewport) {
-                            listOf(-1)
-                        } else {
-                            state.snapshot.lines.indices
-                                .toList()
-                        },
+                        state.snapshot.lines.indices
+                            .toList(),
                     key = { lineIndex ->
                         lineIndex
                     }
                 ) { lineIndex ->
-                    if (
-                        useTermuxViewport &&
-                        lineIndex == -1
-                    ) {
-                        TermuxTerminalMirrorHost(
-                            sessionId =
-                                state.id,
-                            onSingleTap = {
-                                inputFocusRequester
-                                    .requestFocus()
-
-                                keyboardController
-                                    ?.show()
-                            },
-                            modifier =
-                                Modifier
-                                    .fillParentMaxHeight()
-                                    .fillMaxWidth(),
-                        )
-
-                        return@items
-                    }
-
                     val line =
                         state.snapshot.lines[
                             lineIndex
