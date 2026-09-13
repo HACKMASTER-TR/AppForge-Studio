@@ -86,3 +86,35 @@ test(
     );
   }
 );
+
+
+test(
+  "backup restore uses production build service fallback",
+  async () => {
+    const text =
+      await readFile(
+        backup,
+        "utf8"
+      );
+
+    assert.match(
+      text,
+      /import com\.appforge\.studio\.model\.DEFAULT_BUILD_SERVICE_URL/
+    );
+
+    assert.match(
+      text,
+      /"buildServiceUrl",\s*DEFAULT_BUILD_SERVICE_URL/
+    );
+
+    assert.match(
+      text,
+      /\.ifBlank\s*\{\s*DEFAULT_BUILD_SERVICE_URL\s*\}/
+    );
+
+    assert.doesNotMatch(
+      text,
+      /http:\/\/10\.0\.2\.2:8080/
+    );
+  }
+);

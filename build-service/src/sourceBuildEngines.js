@@ -411,6 +411,8 @@ function commandEnv(
         "true",
       NODE_ENV:
         "development",
+      NODE_DISABLE_COMPILE_CACHE:
+        "1",
       NPM_CONFIG_AUDIT:
         "false",
       NPM_CONFIG_FUND:
