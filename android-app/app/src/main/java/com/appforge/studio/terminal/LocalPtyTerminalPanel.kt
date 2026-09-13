@@ -2855,6 +2855,14 @@ private fun LocalPtySurface(
     val keyboardController = LocalSoftwareKeyboardController.current
     val inputFocusRequester = remember(state.id) { FocusRequester() }
     val tapInteraction = remember(state.id) { MutableInteractionSource() }
+
+    /*
+     * Activation V1:
+     * Termux TerminalView owns normal-mode viewport/scrollback.
+     * The previous Compose renderer remains below as a fallback path.
+     */
+    val useTermuxViewport =
+        true
     /*
      * Virtualized terminal output:
      * only visible lines are composed while scrolling.
@@ -3398,6 +3406,10 @@ private fun LocalPtySurface(
          * viewport. The old scrollToItem(lastIndex) placed it at the top and
          * caused the visible "jump" on typing, Enter, paste and IME changes.
          */
+        if (useTermuxViewport) {
+            return@LaunchedEffect
+        }
+
         outputListState.scrollToItem(
             index = lastIndex,
             scrollOffset = -targetTopPx
@@ -3537,6 +3549,10 @@ private fun LocalPtySurface(
                     rowHeightPx
             )
                 .coerceAtLeast(0)
+
+        if (useTermuxViewport) {
+            return@LaunchedEffect
+        }
 
         outputListState.scrollToItem(
             index = lastIndex,
@@ -3861,6 +3877,8 @@ private fun LocalPtySurface(
              */
             LazyColumn(
                 state = outputListState,
+                userScrollEnabled =
+                    !useTermuxViewport,
                 modifier =
                     Modifier.fillMaxSize(),
                 contentPadding =
@@ -3874,12 +3892,39 @@ private fun LocalPtySurface(
             ) {
                 items(
                     items =
-                        state.snapshot.lines.indices
-                            .toList(),
+                        if (useTermuxViewport) {
+                            listOf(-1)
+                        } else {
+                            state.snapshot.lines.indices
+                                .toList()
+                        },
                     key = { lineIndex ->
                         lineIndex
                     }
                 ) { lineIndex ->
+                    if (
+                        useTermuxViewport &&
+                        lineIndex == -1
+                    ) {
+                        TermuxTerminalMirrorHost(
+                            sessionId =
+                                state.id,
+                            onSingleTap = {
+                                inputFocusRequester
+                                    .requestFocus()
+
+                                keyboardController
+                                    ?.show()
+                            },
+                            modifier =
+                                Modifier
+                                    .fillParentMaxHeight()
+                                    .fillMaxWidth(),
+                        )
+
+                        return@items
+                    }
+
                     val line =
                         state.snapshot.lines[
                             lineIndex

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.termux.terminal.TerminalSession
@@ -26,6 +27,7 @@ internal data class TermuxTerminalLaunchSpec(
     val arguments: List<String>,
     val environment: List<String>,
     val transcriptRows: Int = 5_000,
+    val inputEnabled: Boolean = true,
 )
 
 /**
@@ -36,6 +38,7 @@ internal data class TermuxTerminalCallbacks(
     val onSessionFinished: () -> Unit = {},
     val onBell: () -> Unit = {},
     val onCopyText: (String) -> Unit = {},
+    val onSingleTap: () -> Unit = {},
 )
 
 /**
@@ -48,7 +51,7 @@ internal data class TermuxTerminalCallbacks(
  * - AppForge product/session management remains outside this class.
  */
 internal class TermuxTerminalCoreController(
-    spec: TermuxTerminalLaunchSpec,
+    private val spec: TermuxTerminalLaunchSpec,
     private val callbacks: TermuxTerminalCallbacks =
         TermuxTerminalCallbacks(),
 ) : AutoCloseable {
@@ -121,6 +124,11 @@ internal class TermuxTerminalCoreController(
             TerminalViewClient::class.java,
         ) { method, _ ->
             when (method.name) {
+                "onSingleTapUp" -> {
+                    callbacks.onSingleTap()
+                    null
+                }
+
                 "onScale" ->
                     1.0f
 
@@ -137,11 +145,13 @@ internal class TermuxTerminalCoreController(
                 "readAltKey",
                 "readShiftKey",
                 "readFnKey",
-                "onKeyDown",
-                "onKeyUp",
-                "onCodePoint",
                 "onLongPress" ->
                     false
+
+                "onKeyDown",
+                "onKeyUp",
+                "onCodePoint" ->
+                    !spec.inputEnabled
 
                 else ->
                     defaultValue(
@@ -167,9 +177,15 @@ internal class TermuxTerminalCoreController(
                 session,
             )
 
-            view.isFocusable = true
-            view.isFocusableInTouchMode = true
-            view.requestFocus()
+            view.isFocusable =
+                spec.inputEnabled
+
+            view.isFocusableInTouchMode =
+                spec.inputEnabled
+
+            if (spec.inputEnabled) {
+                view.requestFocus()
+            }
         }
 
     fun write(
@@ -257,6 +273,121 @@ internal class TermuxTerminalCoreController(
 
 
 /**
+ * Bridges the already-running AppForge PTY into Termux's emulator.
+ *
+ * It intentionally does not own the real Linux shell. A bounded raw-output
+ * backlog lets a newly attached TerminalView reconstruct its scrollback.
+ */
+internal object TermuxTerminalMirrorRegistry {
+
+    private const val MAX_BACKLOG_CHARS =
+        256 * 1024
+
+    private data class Listener(
+        val token: Any,
+        val consumer: (String) -> Unit,
+    )
+
+    private data class Channel(
+        val backlog: StringBuilder =
+            StringBuilder(),
+        var listener: Listener? = null,
+    )
+
+    private val lock = Any()
+
+    private val channels =
+        mutableMapOf<String, Channel>()
+
+    fun publish(
+        sessionId: String,
+        text: String,
+    ) {
+        if (text.isEmpty()) return
+
+        val listener =
+            synchronized(lock) {
+                val channel =
+                    channels.getOrPut(
+                        sessionId,
+                    ) {
+                        Channel()
+                    }
+
+                channel.backlog.append(
+                    text,
+                )
+
+                val overflow =
+                    channel.backlog.length -
+                        MAX_BACKLOG_CHARS
+
+                if (overflow > 0) {
+                    channel.backlog.delete(
+                        0,
+                        overflow,
+                    )
+                }
+
+                channel.listener
+            }
+
+        listener
+            ?.consumer
+            ?.invoke(text)
+    }
+
+    fun register(
+        sessionId: String,
+        consumer: (String) -> Unit,
+    ): AutoCloseable {
+        val token = Any()
+
+        synchronized(lock) {
+            val channel =
+                channels.getOrPut(
+                    sessionId,
+                ) {
+                    Channel()
+                }
+
+            /*
+             * Replay before publishing the live listener while holding the
+             * bridge lock. This prevents a chunk from being duplicated or
+             * lost between backlog replay and live delivery.
+             */
+            if (channel.backlog.isNotEmpty()) {
+                consumer(
+                    channel.backlog.toString(),
+                )
+            }
+
+            channel.listener =
+                Listener(
+                    token = token,
+                    consumer = consumer,
+                )
+        }
+
+        return AutoCloseable {
+            synchronized(lock) {
+                val channel =
+                    channels[sessionId]
+                        ?: return@synchronized
+
+                if (
+                    channel.listener
+                        ?.token === token
+                ) {
+                    channel.listener = null
+                }
+            }
+        }
+    }
+}
+
+
+/**
  * Compose only hosts the Android TerminalView.
  *
  * Terminal output, scrollback and viewport do not live in Compose state.
@@ -267,6 +398,7 @@ internal fun TermuxTerminalCoreHost(
     modifier: Modifier = Modifier,
     callbacks: TermuxTerminalCallbacks =
         TermuxTerminalCallbacks(),
+    mirrorSessionId: String? = null,
     controllerConsumer: (
         TermuxTerminalCoreController,
     ) -> Unit = {},
@@ -283,12 +415,26 @@ internal fun TermuxTerminalCoreHost(
 
     DisposableEffect(
         controller,
+        mirrorSessionId,
     ) {
         controllerConsumer(
             controller,
         )
 
+        val mirrorRegistration =
+            mirrorSessionId
+                ?.let { sessionId ->
+                    TermuxTerminalMirrorRegistry
+                        .register(
+                            sessionId,
+                            controller::write,
+                        )
+                }
+
         onDispose {
+            mirrorRegistration
+                ?.close()
+
             controller.close()
         }
     }
@@ -310,5 +456,71 @@ internal fun TermuxTerminalCoreHost(
                 )
             }
         },
+    )
+}
+
+
+
+/**
+ * Termux-backed viewport for an AppForge-owned PTY session.
+ *
+ * /system/bin/cat is only a byte relay into Termux TerminalEmulator.
+ * The real Linux shell remains InteractiveLinuxPtySession.
+ */
+@Composable
+internal fun TermuxTerminalMirrorHost(
+    sessionId: String,
+    onSingleTap: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val currentOnSingleTap =
+        rememberUpdatedState(
+            onSingleTap,
+        )
+
+    val spec =
+        remember(
+            sessionId,
+        ) {
+            TermuxTerminalLaunchSpec(
+                executable =
+                    "/system/bin/sh",
+                workingDirectory =
+                    "/",
+                arguments =
+                    listOf(
+                        "-c",
+                        "stty raw -echo 2>/dev/null; exec /system/bin/cat",
+                    ),
+                environment =
+                    listOf(
+                        "TERM=xterm-256color",
+                        "PATH=/system/bin:/system/xbin",
+                    ),
+                transcriptRows =
+                    5_000,
+                inputEnabled =
+                    false,
+            )
+        }
+
+    val callbacks =
+        remember(
+            sessionId,
+        ) {
+            TermuxTerminalCallbacks(
+                onSingleTap = {
+                    currentOnSingleTap
+                        .value
+                        .invoke()
+                },
+            )
+        }
+
+    TermuxTerminalCoreHost(
+        spec = spec,
+        modifier = modifier,
+        callbacks = callbacks,
+        mirrorSessionId = sessionId,
     )
 }
