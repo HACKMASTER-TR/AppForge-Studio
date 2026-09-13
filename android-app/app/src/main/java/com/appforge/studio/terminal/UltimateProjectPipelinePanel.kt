@@ -52,6 +52,13 @@ internal fun UltimateProjectPipelinePanel(
             )
         }
 
+    val agentEngine =
+        remember {
+            UltimateAgentModeEngine(
+                context.applicationContext
+            )
+        }
+
     var health by
         remember(
             workspace.absolutePath,
@@ -78,6 +85,11 @@ internal fun UltimateProjectPipelinePanel(
         }
 
     var confirmPipeline by
+        remember {
+            mutableStateOf(false)
+        }
+
+    var confirmAgentMode by
         remember {
             mutableStateOf(false)
         }
@@ -247,6 +259,148 @@ internal fun UltimateProjectPipelinePanel(
         )
     }
 
+    if (confirmAgentMode) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!busy) {
+                    confirmAgentMode = false
+                }
+            },
+            title = {
+                Text(
+                    "AppForge Agent Mode"
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            8.dp
+                        )
+                ) {
+                    Text(
+                        "Plan → sağlık → araçlar → install → test → build akışını yönetir. Geçici kurulum/ağ hatalarında en fazla 2 güvenli tekrar yapar."
+                    )
+
+                    Text(
+                        "Kaynak kodu değişikliği gereken test/build hatalarında rastgele komut çalıştırmaz; durur ve maskelenmiş hata paketini Ultimate AI'ya aktarır.",
+                        color =
+                            TerminalSecondary,
+                        fontSize =
+                            10.sp
+                    )
+
+                    Text(
+                        "Deploy otomatik değildir. Build başarılı olsa bile Deployment Merkezi'nin mevcut kullanıcı onayı korunur.",
+                        color =
+                            TerminalWarning,
+                        fontSize =
+                            10.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        confirmAgentMode = false
+
+                        if (busy) {
+                            return@Button
+                        }
+
+                        busy = true
+                        result = null
+
+                        scope.launch {
+                            runCatching {
+                                agentEngine.run(
+                                    workspace = workspace,
+                                    distribution = distribution,
+                                    plan = plan,
+                                    selectedToolchains =
+                                        selectedToolchains,
+                                    confirmed = true,
+                                    config =
+                                        UltimateAgentModeConfig(
+                                            maxRepairAttempts = 2
+                                        ),
+                                    onProgress = { progress ->
+                                        message =
+                                            progress.message
+                                    }
+                                )
+                            }
+                                .onSuccess { agent ->
+                                    result =
+                                        agent.pipeline
+                                    health =
+                                        agent.pipeline.health
+
+                                    message =
+                                        if (agent.success) {
+                                            "Agent Mode tamamlandı. Güvenli tekrar: ${agent.repairAttempts}. Deploy onay kapısı açılıyor."
+                                        } else {
+                                            when (
+                                                agent.lastDecision
+                                                    ?.disposition
+                                            ) {
+                                                UltimateAgentRepairDisposition.AI_PATCH_REQUIRED ->
+                                                    "Agent Mode kod/yapılandırma düzeltmesi gereken noktada durdu. Maskelenmiş paket Ultimate AI için hazır."
+
+                                                UltimateAgentRepairDisposition.MANUAL_REQUIRED ->
+                                                    "Agent Mode güvenlik sınırında durdu: ${agent.lastDecision?.reason.orEmpty()}"
+
+                                                UltimateAgentRepairDisposition.RETRY_SAFE ->
+                                                    "Agent Mode güvenli tekrar sonrasında durdu."
+
+                                                null ->
+                                                    "Agent Mode tamamlanamadı."
+                                            }
+                                        }
+                                }
+                                .onFailure { error ->
+                                    message =
+                                        "Agent Mode başlatılamadı: ${error.message ?: "Bilinmeyen hata"}"
+                                }
+
+                            busy = false
+
+                            val completed =
+                                result
+
+                            if (
+                                completed?.success == true &&
+                                completed.deployReady
+                            ) {
+                                onOpenDeployment()
+                            }
+                        }
+                    },
+                    enabled =
+                        !busy &&
+                            selectedToolchains
+                                .isNotEmpty()
+                ) {
+                    Text(
+                        "Agent Mode'u Başlat"
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        confirmAgentMode = false
+                    },
+                    enabled = !busy
+                ) {
+                    Text(
+                        "Vazgeç"
+                    )
+                }
+            }
+        )
+    }
+
     Card(
         modifier =
             Modifier.fillMaxWidth(),
@@ -331,6 +485,20 @@ internal fun UltimateProjectPipelinePanel(
                 ) {
                     Text(
                         "Tüm Pipeline…"
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        confirmAgentMode = true
+                    },
+                    enabled =
+                        !busy &&
+                            selectedToolchains
+                                .isNotEmpty()
+                ) {
+                    Text(
+                        "Agent Mode…"
                     )
                 }
             }
