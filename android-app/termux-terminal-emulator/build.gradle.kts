@@ -9,7 +9,6 @@ android {
 
     defaultConfig {
         minSdk = 26
-        targetSdk = 37
 
         externalNativeBuild {
             ndkBuild {
