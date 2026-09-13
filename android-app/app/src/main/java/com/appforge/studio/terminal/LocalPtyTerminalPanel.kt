@@ -3563,9 +3563,17 @@ private fun LocalPtySurface(
     LaunchedEffect(
         surfaceSize,
         fontSizeSp,
-        bottomContentPaddingPx,
         state.id
     ) {
+        /*
+         * Termux TerminalView is the geometry authority in V1.3.
+         * Do not let the old Compose font approximation resize the
+         * AppForge PTY while the Termux viewport is active.
+         */
+        if (useTermuxViewport) {
+            return@LaunchedEffect
+        }
+
         if (
             surfaceSize.width <= 0 ||
             surfaceSize.height <= 0
@@ -3596,28 +3604,10 @@ private fun LocalPtySurface(
                     charWidthPx
                 )
 
-        /*
-         * Keep the real PTY geometry identical to the visible Termux
-         * TerminalView geometry.
-         *
-         * TerminalView receives:
-         *   top = 12dp
-         *   bottom = 12dp + accessory/IME reserve
-         *
-         * The old PTY calculation removed only the fixed 24dp and therefore
-         * advertised more rows than were actually visible. The shell could
-         * then place its prompt one or more rows below the viewport and a
-         * lifecycle/inset change caused terminal reflow on resume.
-         */
-        val reservedBottomPx =
-            bottomContentPaddingPx
-                .coerceAtLeast(0)
-
         val availableHeightPx =
             (
                 surfaceSize.height -
-                    verticalPaddingPx -
-                    reservedBottomPx
+                    verticalPaddingPx
                 )
                 .coerceAtLeast(
                     lineHeightPx
@@ -3902,26 +3892,54 @@ private fun LocalPtySurface(
              * Termux itself receives the final usable terminal size.
              */
             TermuxTerminalMirrorHost(
-                sessionId =
-                    state.id,
-                onSingleTap = {
-                    inputFocusRequester
-                        .requestFocus()
+            sessionId =
+                state.id,
+            onSingleTap = {
+                inputFocusRequester
+                    .requestFocus()
 
-                    keyboardController
-                        ?.show()
-                },
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(
-                            start = 16.dp,
-                            top = 12.dp,
-                            end = 12.dp,
-                            bottom =
-                                bottomContentPadding
-                        ),
-            )
+                keyboardController
+                    ?.show()
+            },
+            onGeometryChanged = {
+                    rows,
+                    columns,
+                ->
+                scope.launch {
+                    LocalPtySessionRegistry
+                        .resize(
+                            state.id,
+                            rows,
+                            columns,
+                        )
+                }
+            },
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    /*
+                     * Keep TerminalView measurement independent from IME.
+                     * Keyboard occlusion must never resize/reflow the PTY.
+                     */
+                    .padding(
+                        start = 16.dp,
+                        top = 12.dp,
+                        end = 12.dp,
+                        bottom = 12.dp,
+                    )
+                    /*
+                     * IME overlays the terminal. Move the already-measured
+                     * viewport instead of changing rows/columns.
+                     */
+                    .offset {
+                        IntOffset(
+                            x = 0,
+                            y =
+                                -bottomContentPaddingPx
+                                    .coerceAtLeast(0),
+                        )
+                    },
+        )
         } else {
             /*
              * Legacy Compose terminal renderer.

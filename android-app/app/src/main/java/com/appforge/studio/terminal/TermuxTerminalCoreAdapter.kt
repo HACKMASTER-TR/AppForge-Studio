@@ -399,6 +399,10 @@ internal fun TermuxTerminalCoreHost(
     callbacks: TermuxTerminalCallbacks =
         TermuxTerminalCallbacks(),
     mirrorSessionId: String? = null,
+    onGeometryChanged: (
+        rows: Int,
+        columns: Int,
+    ) -> Unit = { _, _ -> },
     controllerConsumer: (
         TermuxTerminalCoreController,
     ) -> Unit = {},
@@ -412,6 +416,40 @@ internal fun TermuxTerminalCoreHost(
                 callbacks = callbacks,
             )
         }
+
+    val currentOnGeometryChanged =
+        rememberUpdatedState(
+            onGeometryChanged,
+        )
+
+    fun reportGeometry(
+        view: TerminalView,
+    ) {
+        view.post {
+            if (
+                view.width <= 0 ||
+                view.height <= 0
+            ) {
+                return@post
+            }
+
+            /*
+             * Let Termux calculate its real character-cell geometry first.
+             * Then make the AppForge-owned PTY use those exact rows/columns.
+             */
+            view.updateSize()
+
+            val emulator =
+                view.mEmulator
+                    ?: return@post
+
+            currentOnGeometryChanged
+                .value(
+                    emulator.mRows,
+                    emulator.mColumns,
+                )
+        }
+    }
 
     DisposableEffect(
         controller,
@@ -442,9 +480,31 @@ internal fun TermuxTerminalCoreHost(
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            controller.createView(
-                context,
-            )
+            controller
+                .createView(
+                    context,
+                )
+                .also { view ->
+                    view.addOnLayoutChangeListener {
+                            changedView,
+                            _,
+                            _,
+                            _,
+                            _,
+                            _,
+                            _,
+                            _,
+                            _,
+                        ->
+                        reportGeometry(
+                            changedView as TerminalView,
+                        )
+                    }
+
+                    reportGeometry(
+                        view,
+                    )
+                }
         },
         update = { view ->
             if (
@@ -455,6 +515,10 @@ internal fun TermuxTerminalCoreHost(
                     controller.session,
                 )
             }
+
+            reportGeometry(
+                view,
+            )
         },
     )
 }
@@ -471,6 +535,10 @@ internal fun TermuxTerminalCoreHost(
 internal fun TermuxTerminalMirrorHost(
     sessionId: String,
     onSingleTap: () -> Unit,
+    onGeometryChanged: (
+        rows: Int,
+        columns: Int,
+    ) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val currentOnSingleTap =
@@ -522,5 +590,7 @@ internal fun TermuxTerminalMirrorHost(
         modifier = modifier,
         callbacks = callbacks,
         mirrorSessionId = sessionId,
+        onGeometryChanged =
+            onGeometryChanged,
     )
 }

@@ -76,9 +76,56 @@ test("normal terminal viewport uses Termux while Compose renderer remains fallba
     /}\s*else if\s*\(useTermuxViewport\)\s*\{[\s\S]{0,1600}?TermuxTerminalMirrorHost/,
   );
 
+  /*
+   * V1.3 keeps TerminalView measured independently from IME.
+   * The stable viewport has fixed padding; IME occlusion is handled
+   * only by placement offset, not by changing terminal rows.
+   */
+  const v13DirectHostStart =
+    panel.indexOf(
+      "TermuxTerminalMirrorHost(",
+    );
+
+  const v13LegacyRendererStart =
+    panel.indexOf(
+      "LazyColumn(",
+      v13DirectHostStart,
+    );
+
+  assert.ok(
+    v13DirectHostStart >= 0,
+    "direct Termux host must exist",
+  );
+
+  assert.ok(
+    v13LegacyRendererStart > v13DirectHostStart,
+    "legacy Compose renderer must remain after Termux host",
+  );
+
+  const v13DirectHostBlock =
+    panel.slice(
+      v13DirectHostStart,
+      v13LegacyRendererStart,
+    );
+
   assert.match(
-    panel,
-    /TermuxTerminalMirrorHost[\s\S]{0,900}\.fillMaxSize\(\)[\s\S]{0,500}bottom\s*=\s*bottomContentPadding/,
+    v13DirectHostBlock,
+    /\.fillMaxSize\(\)/,
+  );
+
+  assert.match(
+    v13DirectHostBlock,
+    /bottom\s*=\s*12\.dp/,
+  );
+
+  assert.match(
+    v13DirectHostBlock,
+    /-bottomContentPaddingPx/,
+  );
+
+  assert.doesNotMatch(
+    v13DirectHostBlock,
+    /bottom\s*=\s*bottomContentPadding\b/,
   );
 
   assert.doesNotMatch(
@@ -113,7 +160,7 @@ test("normal terminal viewport uses Termux while Compose renderer remains fallba
 });
 
 
-test("PTY geometry matches Termux visible viewport", async () => {
+test("Termux V1.3 geometry follows the real TerminalView", async () => {
   const panel = await read(
     "android-app",
     "app",
@@ -127,18 +174,160 @@ test("PTY geometry matches Termux visible viewport", async () => {
     "LocalPtyTerminalPanel.kt",
   );
 
+  const adapter = await read(
+    "android-app",
+    "app",
+    "src",
+    "main",
+    "java",
+    "com",
+    "appforge",
+    "studio",
+    "terminal",
+    "TermuxTerminalCoreAdapter.kt",
+  );
+
+  /*
+   * Termux is the geometry authority in Termux viewport mode.
+   * The old Compose font-size approximation must not resize the real PTY.
+   */
+  const resizeEffectAnchor =
+    "LaunchedEffect(\n" +
+    "        surfaceSize,\n" +
+    "        fontSizeSp,\n" +
+    "        state.id\n" +
+    "    ) {";
+
+  const resizeEffectIndex =
+    panel.indexOf(resizeEffectAnchor);
+
+  assert.notEqual(
+    resizeEffectIndex,
+    -1,
+    "PTY resize LaunchedEffect must exist",
+  );
+
+  const termuxGuardIndex =
+    panel.indexOf(
+      "if (useTermuxViewport)",
+      resizeEffectIndex,
+    );
+
+  const legacySizeGuardIndex =
+    panel.indexOf(
+      "surfaceSize.width <= 0",
+      resizeEffectIndex,
+    );
+
+  assert.ok(
+    termuxGuardIndex > resizeEffectIndex,
+    "Termux geometry guard must exist inside PTY resize effect",
+  );
+
+  assert.ok(
+    legacySizeGuardIndex > termuxGuardIndex,
+    "Termux guard must run before legacy Compose size calculation",
+  );
+
+  const guardBlock =
+    panel.slice(
+      termuxGuardIndex,
+      legacySizeGuardIndex,
+    );
+
   assert.match(
-    panel,
-    /LaunchedEffect\(\s*surfaceSize,\s*fontSizeSp,\s*bottomContentPaddingPx,\s*state\.id\s*\)/,
+    guardBlock,
+    /return@LaunchedEffect/,
+  );
+
+  const geometryCallbackStart =
+    panel.indexOf(
+      "onGeometryChanged = {",
+    );
+
+  assert.notEqual(
+    geometryCallbackStart,
+    -1,
+    "Termux geometry callback must exist",
+  );
+
+  const geometryCallbackEnd =
+    panel.indexOf(
+      "modifier =",
+      geometryCallbackStart,
+    );
+
+  assert.ok(
+    geometryCallbackEnd > geometryCallbackStart,
+    "geometry callback must end before modifier",
+  );
+
+  const geometryCallbackBlock =
+    panel.slice(
+      geometryCallbackStart,
+      geometryCallbackEnd,
+    );
+
+  assert.match(
+    geometryCallbackBlock,
+    /\brows\b/,
   );
 
   assert.match(
-    panel,
-    /val reservedBottomPx\s*=\s*bottomContentPaddingPx\s*\.coerceAtLeast\(0\)/,
+    geometryCallbackBlock,
+    /\bcolumns\b/,
   );
 
   assert.match(
+    geometryCallbackBlock,
+    /LocalPtySessionRegistry/,
+  );
+
+  assert.match(
+    geometryCallbackBlock,
+    /\.resize\(/,
+  );
+
+  assert.ok(
+    geometryCallbackBlock.indexOf("rows") <
+      geometryCallbackBlock.indexOf(".resize("),
+    "rows must feed PTY resize",
+  );
+
+  assert.ok(
+    geometryCallbackBlock.indexOf("columns") <
+      geometryCallbackBlock.indexOf(".resize("),
+    "columns must feed PTY resize",
+  );
+
+  /*
+   * IME may translate the viewport but must not change its measured size.
+   */
+  assert.match(
     panel,
-    /surfaceSize\.height\s*-\s*verticalPaddingPx\s*-\s*reservedBottomPx/,
+    /TermuxTerminalMirrorHost[\s\S]{0,1400}?bottom\s*=\s*12\.dp[\s\S]{0,900}?\.offset\s*\{[\s\S]{0,400}?-bottomContentPaddingPx/,
+  );
+
+  assert.doesNotMatch(
+    panel,
+    /TermuxTerminalMirrorHost[\s\S]{0,1400}?bottom\s*=\s*bottomContentPadding/,
+  );
+
+  /*
+   * TerminalView's real emulator rows/columns are reported upstream.
+   */
+  assert.match(
+    adapter,
+    /onGeometryChanged:\s*\(\s*rows:\s*Int,\s*columns:\s*Int,\s*\)\s*->\s*Unit/,
+  );
+
+  assert.match(
+    adapter,
+    /mEmulator[\s\S]{0,500}?mRows[\s\S]{0,300}?mColumns/,
+  );
+
+  assert.match(
+    adapter,
+    /addOnLayoutChangeListener/,
   );
 });
