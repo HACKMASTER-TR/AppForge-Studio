@@ -16,8 +16,21 @@ test("AppForge Autopilot exposes the admin control-plane commands", async () => 
   }
 
   assert.match(source, /dashboard_refresh_seconds/);
-  assert.match(source, /gh", "pr", "checks"/);
-  assert.match(source, /gh", "pr", "merge"/);
+  assert.match(source, /def github_repo\(\):/);
+  assert.ok(
+    source.includes('f"repos/{repo}/commits/"')
+  );
+  assert.ok(
+    source.includes('f"{head_sha}/check-runs"')
+  );
+  assert.ok(
+    source.includes('f"repos/{repo}/pulls/{num}/merge"')
+  );
+
+  assert.doesNotMatch(
+    source,
+    /\["gh",\s*"pr"/
+  );
   assert.match(source, /android-debug\.yml/);
   assert.match(source, /workflow_display_name/);
   assert.match(source, /wait_required_main_ci/);
