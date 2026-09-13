@@ -564,10 +564,6 @@ def gh_required():
 
 def pr_number():
     repo = github_repo()
-    owner = repo.split(
-        "/",
-        1,
-    )[0]
 
     branch = git_out(
         "branch",
@@ -577,30 +573,72 @@ def pr_number():
     p = run([
         "gh",
         "api",
-        "-X",
-        "GET",
-        f"repos/{repo}/pulls",
-        "-f",
-        "state=open",
-        "-f",
-        f"head={owner}:{branch}",
-        "-f",
-        "base=main",
-        "--jq",
-        ".[0].number // empty",
+        (
+            f"repos/{repo}/pulls"
+            "?state=open&per_page=100"
+        ),
     ], check=False, capture=True)
 
-    value = (
-        p.stdout
-        or ""
-    ).strip()
+    if p.returncode != 0:
+        return None
+
+    try:
+        pulls = json.loads(
+            p.stdout or "[]"
+        )
+    except json.JSONDecodeError:
+        return None
+
+    matches = []
+
+    for pr in pulls:
+        head = (
+            pr.get("head")
+            or {}
+        )
+
+        base = (
+            pr.get("base")
+            or {}
+        )
+
+        head_repo = (
+            head.get("repo")
+            or {}
+        )
+
+        if (
+            head.get("ref") == branch
+            and base.get("ref") == "main"
+            and str(
+                head_repo.get(
+                    "full_name"
+                )
+                or ""
+            ).lower()
+            == repo.lower()
+        ):
+            matches.append(pr)
+
+    if not matches:
+        return None
+
+    matches.sort(
+        key=lambda pr:
+            int(
+                pr.get("number")
+                or 0
+            ),
+        reverse=True,
+    )
+
+    value = matches[0].get(
+        "number"
+    )
 
     return (
         int(value)
-        if (
-            p.returncode == 0
-            and value.isdigit()
-        )
+        if value is not None
         else None
     )
 
@@ -650,12 +688,25 @@ def ensure_pr():
     ], check=False, capture=True)
 
     if p.returncode != 0:
+        # GitHub returns 422 when an open PR already
+        # exists for the same head/base pair. Resolve
+        # the existing PR before treating it as fatal.
+        existing = pr_number()
+
+        if existing:
+            print(
+                f"PR #{existing}: "
+                "existing open PR reused"
+            )
+            return existing
+
         sys.stdout.write(
             p.stdout or ""
         )
         sys.stderr.write(
             p.stderr or ""
         )
+
         raise SystemExit(
             "PR oluşturma başarısız."
         )

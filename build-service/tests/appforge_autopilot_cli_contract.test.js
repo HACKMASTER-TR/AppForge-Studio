@@ -18,6 +18,24 @@ test("AppForge Autopilot exposes the admin control-plane commands", async () => 
   assert.match(source, /dashboard_refresh_seconds/);
   assert.match(source, /def github_repo\(\):/);
   assert.ok(
+    source.includes(
+      'f"repos/{repo}/pulls"'
+    )
+  );
+  assert.ok(
+    source.includes(
+      '"?state=open&per_page=100"'
+    )
+  );
+  assert.match(
+    source,
+    /head\.get\("ref"\)\s*==\s*branch/
+  );
+  assert.match(
+    source,
+    /existing\s*=\s*pr_number\(\)/
+  );
+  assert.ok(
     source.includes('f"repos/{repo}/commits/"')
   );
   assert.ok(
