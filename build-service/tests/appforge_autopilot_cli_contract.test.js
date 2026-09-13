@@ -49,6 +49,26 @@ test("AppForge Autopilot exposes the admin control-plane commands", async () => 
     source,
     /\["gh",\s*"pr"/
   );
+
+  assert.doesNotMatch(
+    source,
+    /\["gh",\s*"run"/
+  );
+
+  assert.doesNotMatch(
+    source,
+    /\["gh",\s*"release"/
+  );
+
+  assert.match(
+    source,
+    /actions\/workflows/
+  );
+
+  assert.match(
+    source,
+    /releases\/tags/
+  );
   assert.match(source, /android-debug\.yml/);
   assert.match(source, /workflow_display_name/);
   assert.match(source, /wait_required_main_ci/);
