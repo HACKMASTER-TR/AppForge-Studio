@@ -15,3 +15,5 @@ dependencyResolutionManagement {
 }
 rootProject.name = "AppForgeStudio"
 include(":app")
+include(":termux-terminal-emulator")
+include(":termux-terminal-view")

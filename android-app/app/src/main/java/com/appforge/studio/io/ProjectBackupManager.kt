@@ -2,6 +2,7 @@ package com.appforge.studio.io
 
 import android.content.Context
 import android.net.Uri
+import com.appforge.studio.model.DEFAULT_BUILD_SERVICE_URL
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
@@ -2095,8 +2096,12 @@ gelişmiş üretim özelliklerinin yapılandırma bilgileri $META içinde korunu
             buildServiceUrl =
                 o.optString(
                     "buildServiceUrl",
-                    "http://10.0.2.2:8080"
+                    DEFAULT_BUILD_SERVICE_URL
                 )
+                    .trim()
+                    .ifBlank {
+                        DEFAULT_BUILD_SERVICE_URL
+                    }
         )
     }
 }

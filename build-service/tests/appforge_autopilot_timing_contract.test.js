@@ -32,7 +32,10 @@ test(
       );
 
     for (const marker of [
-      "startedAt,updatedAt",
+      '"startedAt":',
+      'item.get("run_started_at")',
+      '"updatedAt":',
+      'item.get("updated_at")',
       "workflow_run_seconds",
       "ci_timing_summary",
       "=== PIPELINE TIMING ===",

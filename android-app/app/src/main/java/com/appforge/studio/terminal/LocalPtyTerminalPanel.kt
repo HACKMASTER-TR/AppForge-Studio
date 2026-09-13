@@ -2855,6 +2855,14 @@ private fun LocalPtySurface(
     val keyboardController = LocalSoftwareKeyboardController.current
     val inputFocusRequester = remember(state.id) { FocusRequester() }
     val tapInteraction = remember(state.id) { MutableInteractionSource() }
+
+    /*
+     * Activation V1:
+     * Termux TerminalView owns normal-mode viewport/scrollback.
+     * The previous Compose renderer remains below as a fallback path.
+     */
+    val useTermuxViewport =
+        true
     /*
      * Virtualized terminal output:
      * only visible lines are composed while scrolling.
@@ -3398,6 +3406,10 @@ private fun LocalPtySurface(
          * viewport. The old scrollToItem(lastIndex) placed it at the top and
          * caused the visible "jump" on typing, Enter, paste and IME changes.
          */
+        if (useTermuxViewport) {
+            return@LaunchedEffect
+        }
+
         outputListState.scrollToItem(
             index = lastIndex,
             scrollOffset = -targetTopPx
@@ -3538,6 +3550,10 @@ private fun LocalPtySurface(
             )
                 .coerceAtLeast(0)
 
+        if (useTermuxViewport) {
+            return@LaunchedEffect
+        }
+
         outputListState.scrollToItem(
             index = lastIndex,
             scrollOffset = -targetTopPx
@@ -3549,6 +3565,15 @@ private fun LocalPtySurface(
         fontSizeSp,
         state.id
     ) {
+        /*
+         * Termux TerminalView is the geometry authority in V1.3.
+         * Do not let the old Compose font approximation resize the
+         * AppForge PTY while the Termux viewport is active.
+         */
+        if (useTermuxViewport) {
+            return@LaunchedEffect
+        }
+
         if (
             surfaceSize.width <= 0 ||
             surfaceSize.height <= 0
@@ -3854,10 +3879,72 @@ private fun LocalPtySurface(
                     }
                 }
             }
+        } else if (useTermuxViewport) {
+            /*
+             * Termux owns the active viewport directly.
+             *
+             * Do not wrap TerminalView in LazyColumn. LazyColumn can
+             * re-anchor its single child after Android lifecycle/layout
+             * changes, which moves the visible terminal rows on resume
+             * and can leave the live prompt below the viewport.
+             *
+             * Padding is applied to the AndroidView's measured area so
+             * Termux itself receives the final usable terminal size.
+             */
+            TermuxTerminalMirrorHost(
+            sessionId =
+                state.id,
+            onSingleTap = {
+                inputFocusRequester
+                    .requestFocus()
+
+                keyboardController
+                    ?.show()
+            },
+            onGeometryChanged = {
+                    rows,
+                    columns,
+                ->
+                scope.launch {
+                    LocalPtySessionRegistry
+                        .resize(
+                            state.id,
+                            rows,
+                            columns,
+                        )
+                }
+            },
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    /*
+                     * Keep TerminalView measurement independent from IME.
+                     * Keyboard occlusion must never resize/reflow the PTY.
+                     */
+                    .padding(
+                        start = 16.dp,
+                        top = 12.dp,
+                        end = 12.dp,
+                        bottom = 12.dp,
+                    )
+                    /*
+                     * IME overlays the terminal. Move the already-measured
+                     * viewport instead of changing rows/columns.
+                     */
+                    .offset {
+                        IntOffset(
+                            x = 0,
+                            y =
+                                -bottomContentPaddingPx
+                                    .coerceAtLeast(0),
+                        )
+                    },
+        )
         } else {
             /*
-             * Normal terminal remains virtualized. Only visible rows are
-             * composed, preserving Stage 10U scroll/Enter performance.
+             * Legacy Compose terminal renderer.
+             *
+             * Kept as a fallback during Termux Activation rollout.
              */
             LazyColumn(
                 state = outputListState,
