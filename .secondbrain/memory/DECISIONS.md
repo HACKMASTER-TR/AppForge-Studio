@@ -12,7 +12,7 @@ For every important decision record:
 - Tests
 ## 2026-09-13 — Agent Mode + Design Blueprint V1
 
-Status: LOCAL VALIDATED — CI REQUIRED
+Status: CI VALIDATED
 
 ### Decision
 AppForge Studio will evolve toward a combined FireVibe-style visual design workflow and Emergent-style full-stack agent workflow without replacing the existing verified AppForge pipeline.
@@ -73,3 +73,14 @@ Prompt -> AI Blueprint -> deterministic consistent multi-screen generation -> pi
 - SecondBrain doctor: PASS
 - Android Gradle/JUnit: CI REQUIRED
 - Reason: Termux Gradle native process aborts with exit 134; this is not recorded as an application test failure.
+
+### CI validation
+- GitHub Actions workflow: AppForge Android Debug
+- Run ID: 34778077043
+- Result: SUCCESS
+- Android unit tests: PASS
+- Debug APK build: PASS
+- Signing verification: PASS
+- APK SDK/package verification: PASS
+- Local AppForge Hard Stability Gate: PASS / fail 0
+- Termux native Gradle exit 134 is an environment limitation, not an application test failure.
