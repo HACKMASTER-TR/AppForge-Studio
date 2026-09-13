@@ -513,6 +513,46 @@ def default_commit_message():
         return f"Add {tail}"
     return f"Update {tail or 'AppForge'}"
 
+def github_repo():
+    remote = git_out(
+        "remote",
+        "get-url",
+        "origin",
+    ).strip()
+
+    if remote.startswith(
+        "git@github.com:"
+    ):
+        slug = remote.split(
+            ":",
+            1,
+        )[1]
+    elif "github.com/" in remote:
+        slug = remote.split(
+            "github.com/",
+            1,
+        )[1]
+    else:
+        raise SystemExit(
+            "BLOCKED: origin GitHub repository "
+            "olarak çözülemedi."
+        )
+
+    slug = (
+        slug
+        .removesuffix(".git")
+        .strip("/")
+    )
+
+    if slug.count("/") != 1:
+        raise SystemExit(
+            "BLOCKED: GitHub repository slug "
+            "geçersiz."
+        )
+
+    return slug
+
+
 def gh_required():
     if not shutil.which("gh"):
         raise SystemExit("gh CLI bulunamadı; PR/CI otomasyonu BLOCKED.")
@@ -523,20 +563,100 @@ def gh_required():
         raise SystemExit("GitHub auth geçersiz; PR/CI otomasyonu BLOCKED.")
 
 def pr_number():
-    p = run(
-        ["gh", "pr", "view", "--json", "number", "--jq", ".number"],
-        check=False,
-        capture=True,
+    repo = github_repo()
+
+    branch = git_out(
+        "branch",
+        "--show-current",
     )
-    value = (p.stdout or "").strip()
-    return int(value) if p.returncode == 0 and value.isdigit() else None
+
+    p = run([
+        "gh",
+        "api",
+        (
+            f"repos/{repo}/pulls"
+            "?state=open&per_page=100"
+        ),
+    ], check=False, capture=True)
+
+    if p.returncode != 0:
+        return None
+
+    try:
+        pulls = json.loads(
+            p.stdout or "[]"
+        )
+    except json.JSONDecodeError:
+        return None
+
+    matches = []
+
+    for pr in pulls:
+        head = (
+            pr.get("head")
+            or {}
+        )
+
+        base = (
+            pr.get("base")
+            or {}
+        )
+
+        head_repo = (
+            head.get("repo")
+            or {}
+        )
+
+        if (
+            head.get("ref") == branch
+            and base.get("ref") == "main"
+            and str(
+                head_repo.get(
+                    "full_name"
+                )
+                or ""
+            ).lower()
+            == repo.lower()
+        ):
+            matches.append(pr)
+
+    if not matches:
+        return None
+
+    matches.sort(
+        key=lambda pr:
+            int(
+                pr.get("number")
+                or 0
+            ),
+        reverse=True,
+    )
+
+    value = matches[0].get(
+        "number"
+    )
+
+    return (
+        int(value)
+        if value is not None
+        else None
+    )
+
 
 def ensure_pr():
     num = pr_number()
+
     if num:
         return num
 
+    repo = github_repo()
+    branch = git_out(
+        "branch",
+        "--show-current",
+    )
+
     title = default_commit_message()
+
     body = (
         "## AppForge Autopilot\n\n"
         "- Local targeted regression: PASS\n"
@@ -545,30 +665,337 @@ def ensure_pr():
         "- Hard stability gate: PASS\n"
         "- fail 0\n"
         "- Security/stale-contract scan: PASS\n\n"
-        "Do not merge unless all required CI checks are SUCCESS."
+        "Do not merge unless all required CI "
+        "checks are SUCCESS."
     )
-    run([
-        "gh", "pr", "create",
-        "--base", "main",
-        "--title", title,
-        "--body", body,
-    ])
 
-    num = pr_number()
-    if not num:
-        raise SystemExit("PR oluşturuldu ancak numarası çözülemedi.")
-    return num
+    p = run([
+        "gh",
+        "api",
+        "-X",
+        "POST",
+        f"repos/{repo}/pulls",
+        "-f",
+        f"head={branch}",
+        "-f",
+        "base=main",
+        "-f",
+        f"title={title}",
+        "-f",
+        f"body={body}",
+        "--jq",
+        ".number",
+    ], check=False, capture=True)
+
+    if p.returncode != 0:
+        # GitHub returns 422 when an open PR already
+        # exists for the same head/base pair. Resolve
+        # the existing PR before treating it as fatal.
+        existing = pr_number()
+
+        if existing:
+            print(
+                f"PR #{existing}: "
+                "existing open PR reused"
+            )
+            return existing
+
+        sys.stdout.write(
+            p.stdout or ""
+        )
+        sys.stderr.write(
+            p.stderr or ""
+        )
+
+        raise SystemExit(
+            "PR oluşturma başarısız."
+        )
+
+    value = (
+        p.stdout
+        or ""
+    ).strip()
+
+    if not value.isdigit():
+        raise SystemExit(
+            "PR oluşturuldu ancak "
+            "numarası çözülemedi."
+        )
+
+    return int(value)
+
+
+def pr_head_sha(num):
+    repo = github_repo()
+
+    p = run([
+        "gh",
+        "api",
+        f"repos/{repo}/pulls/{num}",
+        "--jq",
+        ".head.sha",
+    ], check=False, capture=True)
+
+    value = (
+        p.stdout
+        or ""
+    ).strip()
+
+    if (
+        p.returncode != 0
+        or not value
+    ):
+        raise SystemExit(
+            "PR HEAD SHA çözülemedi."
+        )
+
+    return value
+
+
+def latest_check_runs(head_sha):
+    repo = github_repo()
+
+    p = run([
+        "gh",
+        "api",
+        (
+            f"repos/{repo}/commits/"
+            f"{head_sha}/check-runs"
+            "?per_page=100"
+        ),
+    ], check=False, capture=True)
+
+    if p.returncode != 0:
+        return None
+
+    try:
+        payload = json.loads(
+            p.stdout or "{}"
+        )
+    except json.JSONDecodeError:
+        return None
+
+    latest = {}
+
+    for item in payload.get(
+        "check_runs",
+        [],
+    ):
+        name = str(
+            item.get("name")
+            or ""
+        )
+
+        if not name:
+            continue
+
+        current = latest.get(name)
+
+        if (
+            current is None
+            or int(
+                item.get("id")
+                or 0
+            )
+            > int(
+                current.get("id")
+                or 0
+            )
+        ):
+            latest[name] = item
+
+    return list(
+        latest.values()
+    )
+
 
 def ci_watch():
     gh_required()
+
     num = pr_number()
+
     if not num:
-        raise SystemExit("Aktif branch için PR bulunamadı.")
-    print(f"Watching PR #{num} checks every 30 seconds...")
-    run(["gh", "pr", "checks", str(num), "--watch", "--interval", "10"])
+        raise SystemExit(
+            "Aktif branch için PR bulunamadı."
+        )
+
+    head_sha = pr_head_sha(num)
+
+    print(
+        f"Watching PR #{num} checks "
+        "every 10 seconds..."
+    )
+
+    started = time.time()
+
+    while time.time() - started < 5400:
+        checks = latest_check_runs(
+            head_sha
+        )
+
+        if checks is None:
+            time.sleep(10)
+            continue
+
+        if not checks:
+            print(
+                "Checks henüz başlamadı..."
+            )
+            time.sleep(10)
+            continue
+
+        running = [
+            item
+            for item in checks
+            if item.get("status")
+            != "completed"
+        ]
+
+        failed = [
+            item
+            for item in checks
+            if (
+                item.get("status")
+                == "completed"
+                and item.get("conclusion")
+                not in {
+                    "success",
+                    "neutral",
+                    "skipped",
+                }
+            )
+        ]
+
+        print(
+            "Checks:",
+            f"total={len(checks)}",
+            f"running={len(running)}",
+            f"failed={len(failed)}",
+        )
+
+        if failed:
+            for item in failed:
+                print(
+                    "FAILED:",
+                    item.get("name"),
+                    item.get("conclusion"),
+                )
+
+            raise SystemExit(
+                "PR REQUIRED CI FAILED."
+            )
+
+        if not running:
+            for item in sorted(
+                checks,
+                key=lambda value:
+                    str(
+                        value.get("name")
+                        or ""
+                    ),
+            ):
+                print(
+                    item.get("name"),
+                    item.get("conclusion"),
+                )
+
+            return
+
+        time.sleep(10)
+
+    raise SystemExit(
+        "PR CI timeout."
+    )
+
 
 def merge_pr(num):
-    run(["gh", "pr", "merge", str(num), "--merge", "--delete-branch"])
+    repo = github_repo()
+
+    p = run([
+        "gh",
+        "api",
+        f"repos/{repo}/pulls/{num}",
+    ], check=True, capture=True)
+
+    try:
+        pr = json.loads(
+            p.stdout or "{}"
+        )
+    except json.JSONDecodeError:
+        raise SystemExit(
+            "PR metadata çözülemedi."
+        )
+
+    head = (
+        pr.get("head")
+        or {}
+    )
+
+    head_sha = str(
+        head.get("sha")
+        or ""
+    )
+
+    head_ref = str(
+        head.get("ref")
+        or ""
+    )
+
+    if not head_sha:
+        raise SystemExit(
+            "PR merge için HEAD SHA yok."
+        )
+
+    result = run([
+        "gh",
+        "api",
+        "-X",
+        "PUT",
+        f"repos/{repo}/pulls/{num}/merge",
+        "-f",
+        "merge_method=merge",
+        "-f",
+        f"sha={head_sha}",
+    ], check=False, capture=True)
+
+    try:
+        data = json.loads(
+            result.stdout or "{}"
+        )
+    except json.JSONDecodeError:
+        data = {}
+
+    if (
+        result.returncode != 0
+        or data.get("merged")
+        is not True
+    ):
+        sys.stdout.write(
+            result.stdout or ""
+        )
+        sys.stderr.write(
+            result.stderr or ""
+        )
+
+        raise SystemExit(
+            "PR merge başarısız."
+        )
+
+    if head_ref:
+        delete = run([
+            "git",
+            "push",
+            "origin",
+            "--delete",
+            head_ref,
+        ], check=False, capture=True)
+
+        if delete.returncode != 0:
+            print(
+                "WARN: merged branch remote "
+                "üzerinden silinemedi."
+            )
+
 
 def workflow_display_name(workflow_file):
     path = (
@@ -1567,21 +1994,31 @@ def dashboard():
         print("Refresh:", f"{refresh}s")
 
         if shutil.which("gh"):
-            p = run(
-                ["gh", "pr", "view", "--json", "number,url,state,mergeStateStatus"],
-                check=False,
-                capture=True,
-            )
-            if p.returncode == 0:
-                try:
-                    pr = json.loads(p.stdout or "{}")
-                    print(
-                        "PR:     ",
-                        f"#{pr.get('number')} {pr.get('state')} "
-                        f"{pr.get('mergeStateStatus')}",
-                    )
-                except Exception:
-                    pass
+            num = pr_number()
+
+            if num:
+                repo = github_repo()
+
+                p = run([
+                    "gh",
+                    "api",
+                    f"repos/{repo}/pulls/{num}",
+                ], check=False, capture=True)
+
+                if p.returncode == 0:
+                    try:
+                        pr = json.loads(
+                            p.stdout or "{}"
+                        )
+
+                        print(
+                            "PR:     ",
+                            f"#{pr.get('number')} "
+                            f"{pr.get('state')} "
+                            f"{pr.get('mergeable_state')}",
+                        )
+                    except Exception:
+                        pass
 
         print("\nChanged groups:", ", ".join(classify(changed_files())) or "none")
         stale = stale_contracts()
@@ -1597,11 +2034,46 @@ def dashboard():
 
 def ci():
     gh_required()
+
     num = pr_number()
+
     if not num:
-        print("Aktif branch için PR yok.")
+        print(
+            "Aktif branch için PR yok."
+        )
         return
-    run(["gh", "pr", "checks", str(num)])
+
+    head_sha = pr_head_sha(num)
+
+    checks = latest_check_runs(
+        head_sha
+    )
+
+    if checks is None:
+        raise SystemExit(
+            "PR checks alınamadı."
+        )
+
+    if not checks:
+        print(
+            "PR checks henüz başlamadı."
+        )
+        return
+
+    for item in sorted(
+        checks,
+        key=lambda value:
+            str(
+                value.get("name")
+                or ""
+            ),
+    ):
+        print(
+            item.get("name"),
+            item.get("status"),
+            item.get("conclusion")
+            or "-",
+        )
 
 def report():
     if not REPORT_DIR.exists():

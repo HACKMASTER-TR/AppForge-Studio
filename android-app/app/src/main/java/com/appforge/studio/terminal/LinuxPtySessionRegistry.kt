@@ -326,17 +326,31 @@ internal object LinuxPtySessionRegistry {
                 columns =
                     record.columns,
                 onOutput = { chunk ->
-                    synchronized(lock) {
-                        val current =
-                            records[id]
-                                ?: return@synchronized
-
-                        current.buffer.feed(
-                            TerminalSecretMasker.redact(
-                                chunk
-                            )
+                    val safeChunk =
+                        TerminalSecretMasker.redact(
+                            chunk
                         )
-                        publishLocked()
+
+                    val accepted =
+                        synchronized(lock) {
+                            val current =
+                                records[id]
+                                    ?: return@synchronized false
+
+                            current.buffer.feed(
+                                safeChunk
+                            )
+
+                            publishLocked()
+                            true
+                        }
+
+                    if (accepted) {
+                        TermuxTerminalMirrorRegistry
+                            .publish(
+                                id,
+                                safeChunk,
+                            )
                     }
                 },
                 onExit = { exitCode ->
