@@ -1,22 +1,21 @@
 {
-  "generated_at": "2026-09-14T11:43:01+03:00",
+  "generated_at": "2026-09-14T12:19:42+03:00",
   "version": "3.0.0",
   "manifest": {
-    "files": 763,
+    "files": 766,
     "changed_since_cache": [
       "android-app/app/src/main/assets/second_brain_snapshot.json",
-      "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintJson.kt",
       "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintPrompt.kt",
-      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
-      "build-service/tests/appforge_unified_agent_blueprint_token_budget_contract.test.js",
-      "build-service/tests/v3_1_expansion_performance.test.js"
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt",
+      "build-service/tests/appforge_unified_agent_blueprint_control_char_contract.test.js"
     ],
     "removed_since_cache": [],
     "incremental": true
   },
   "dependency": {
-    "generated_at": "2026-09-14T11:43:00+03:00",
-    "node_count": 763,
+    "generated_at": "2026-09-14T12:19:41+03:00",
+    "node_count": 766,
     "edge_count": 127,
     "edges": [
       {
@@ -916,19 +915,19 @@
       ],
       [
         "assert",
-        241
+        242
       ],
       [
         "node:assert",
-        241
+        242
       ],
       [
         "node:test",
-        237
+        238
       ],
       [
         "test",
-        237
+        238
       ],
       [
         "kotlinx",
@@ -936,7 +935,7 @@
       ],
       [
         "node:fs",
-        169
+        170
       ],
       [
         "com",
@@ -948,7 +947,7 @@
       ],
       [
         "fs",
-        65
+        66
       ],
       [
         "AdmZip",
@@ -1149,7 +1148,7 @@
     ]
   },
   "api": {
-    "generated_at": "2026-09-14T11:43:00+03:00",
+    "generated_at": "2026-09-14T12:19:41+03:00",
     "count": 83,
     "routes": [
       {
@@ -3122,7 +3121,7 @@
     ]
   },
   "database": {
-    "generated_at": "2026-09-14T11:43:00+03:00",
+    "generated_at": "2026-09-14T12:19:41+03:00",
     "migration_count": 25,
     "table_count": 34,
     "tables": [
@@ -3711,7 +3710,7 @@
     }
   },
   "workers": {
-    "generated_at": "2026-09-14T11:43:00+03:00",
+    "generated_at": "2026-09-14T12:19:41+03:00",
     "runtime_scripts": [
       {
         "name": "start",
@@ -3801,15 +3800,15 @@
     ]
   },
   "tests": {
-    "generated_at": "2026-09-14T11:43:00+03:00",
+    "generated_at": "2026-09-14T12:19:41+03:00",
     "discovered": 300,
     "domains": [
       "android",
-      "auth",
       "build-service"
     ],
     "selected_tests": [
-      "build-service/tests/appforge_unified_agent_blueprint_token_budget_contract.test.js",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt",
+      "build-service/tests/appforge_unified_agent_blueprint_control_char_contract.test.js",
       "build-service/tests/android_queue_ui_regression.test.js",
       "build-service/tests/unity_android_build_engine.test.js",
       "build-service/tests/quota_addons_android_ui_contract.test.js",
@@ -3887,8 +3886,7 @@
       "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRecoveryPolicyTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentQualityGateTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProjectMemoryTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt"
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt"
     ],
     "critical_regression_tests": [
       "android-app/app/src/main/assets/terminal/appforge-test",
@@ -3974,8 +3972,7 @@
     ],
     "commands": [
       "cd build-service && npm test",
-      "Android CI / Gradle compile verification",
-      "Run authentication/credential regression tests"
+      "Android CI / Gradle compile verification"
     ],
     "last_execution": {
       "status": "NOT_RUN"
@@ -4276,7 +4273,7 @@
     }
   },
   "integrations": {
-    "generated_at": "2026-09-14T11:43:00+03:00",
+    "generated_at": "2026-09-14T12:19:41+03:00",
     "detected_services": [
       "AWS/S3",
       "Email",
@@ -4439,6 +4436,8 @@
         ".appforge/reports/20260914-103609-pipeline.md",
         ".appforge/reports/20260914-112416-pipeline.json",
         ".appforge/reports/20260914-112416-pipeline.md",
+        ".appforge/reports/20260914-120029-pipeline.json",
+        ".appforge/reports/20260914-120029-pipeline.md",
         ".appforge/state/latest.json",
         ".github/workflows/android-debug.yml",
         ".github/workflows/android-play-release.yml",
@@ -4505,9 +4504,7 @@
         "build-service/sql/005_workspace_build_control.sql",
         "build-service/src/autoscaleDispatch.js",
         "build-service/src/config.js",
-        "build-service/src/jobQueue.js",
-        "build-service/src/workspace.js",
-        "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js"
+        "build-service/src/jobQueue.js"
       ],
       "Google APIs": [
         ".github/workflows/android-debug.yml",
@@ -4761,7 +4758,7 @@
     }
   },
   "complexity": {
-    "generated_at": "2026-09-14T11:43:00+03:00",
+    "generated_at": "2026-09-14T12:19:41+03:00",
     "largest": [
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
@@ -5465,6 +5462,7 @@
       "build-service/tests/appforge_terminal_ultimate_editor_contract.test.js",
       "build-service/tests/appforge_terminal_verified_rootfs_contract.test.js",
       "build-service/tests/appforge_terminal_viewport_stability_contract.test.js",
+      "build-service/tests/appforge_unified_agent_blueprint_control_char_contract.test.js",
       "build-service/tests/appforge_unified_agent_blueprint_token_budget_contract.test.js",
       "build-service/tests/appforge_unified_agent_device_test_bugfix_contract.test.js",
       "build-service/tests/appforge_unified_agent_v11_e2e_contract.test.js",
@@ -6016,9 +6014,9 @@
     ]
   },
   "git": {
-    "generated_at": "2026-09-14T11:43:00+03:00",
-    "branch": "fix/v15-blueprint-token-budget",
-    "head": "5e1a5b4",
+    "generated_at": "2026-09-14T12:19:41+03:00",
+    "branch": "fix/v15-blueprint-control-characters",
+    "head": "65d8879",
     "ahead": 0,
     "behind": 0,
     "staged": [
@@ -6054,60 +6052,55 @@
       ".secondbrain/memory/TEST_INTELLIGENCE.json",
       ".secondbrain/memory/WORKER_TOPOLOGY.json",
       "android-app/app/src/main/assets/second_brain_snapshot.json",
-      "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintJson.kt",
       "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintPrompt.kt",
-      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
-      "build-service/tests/v3_1_expansion_performance.test.js"
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt"
     ],
     "untracked": [
-      ".secondbrain/checkpoints/20260914-113730-start-v15-blueprint-token-budget.json",
-      ".secondbrain/checkpoints/20260914-113741-all-Unified-Agent-Blueprint-token-budget-LiteRTLM-input-token-overflow-compact-structured-prompt.json",
-      "build-service/tests/appforge_unified_agent_blueprint_token_budget_contract.test.js"
+      ".secondbrain/checkpoints/20260914-121807-start-v15-blueprint-control-characters.json",
+      ".secondbrain/checkpoints/20260914-121818-all-Unified-Agent-Blueprint-raw-JSON-string-control-characters-safe-escaping-strict-parser-device-test.json",
+      "build-service/tests/appforge_unified_agent_blueprint_control_char_contract.test.js"
     ],
     "forbidden_staged": [],
     "recent_commits": [
+      "65d8879 Merge pull request #25 from HACKMASTER-TR/fix/v15-blueprint-token-budget",
+      "71dc5ca Update blueprint compact prompt contracts",
+      "d46ec55 Fix Unified Agent blueprint token budget",
       "5e1a5b4 Merge pull request #24 from HACKMASTER-TR/fix/v15-device-test-bugs",
       "6927fe6 Fix V15 real device test issues",
       "42aa8e9 Merge pull request #23 from HACKMASTER-TR/feat/unified-agent-v13-v15-final",
       "09d3782 Complete Unified Agent V13-V15 final",
       "e5028e3 Merge pull request #22 from HACKMASTER-TR/feat/unified-agent-v12-persistent-sessions",
       "d2b81bb Fix V12 JVM JSON test runtime",
-      "d2e57bc Fix V12 Android regression",
-      "7cd76e4 Add Unified Agent V12 persistent sessions",
-      "e9fcda6 Merge pull request #21 from HACKMASTER-TR/fix/manual-merge-gate",
-      "fc6600d Require explicit manual merge approval"
+      "d2e57bc Fix V12 Android regression"
     ]
   },
   "security": {
-    "generated_at": "2026-09-14T11:43:00+03:00",
+    "generated_at": "2026-09-14T12:19:41+03:00",
     "scope": "changed",
     "health": "GREEN",
     "findings": []
   },
   "risk": {
-    "generated_at": "2026-09-14T11:43:01+03:00",
-    "score": 47,
-    "decision": "REFACTOR_FIRST",
-    "changed_files": 5,
-    "added_lines": 42,
-    "deleted_lines": 64,
+    "generated_at": "2026-09-14T12:19:42+03:00",
+    "score": 11,
+    "decision": "ACCEPT",
+    "changed_files": 4,
+    "added_lines": 113,
+    "deleted_lines": 2,
     "domains": [
       "android",
-      "auth",
       "build-service"
     ],
     "reasons": [
       "android subsystem affected",
-      "auth subsystem affected",
-      "build-service subsystem affected",
-      "high dependency fan-out",
-      "multiple source files changed"
+      "build-service subsystem affected"
     ],
-    "dependency_edges_impacted": 20,
+    "dependency_edges_impacted": 2,
     "security": "GREEN"
   },
   "live": {
-    "generated_at": "2026-09-14T11:43:01+03:00",
+    "generated_at": "2026-09-14T12:19:42+03:00",
     "github": {
       "status": "NOT_CHECKED"
     },
@@ -6119,14 +6112,14 @@
     }
   },
   "performance": {
-    "generated_at": "2026-09-14T11:43:01+03:00",
+    "generated_at": "2026-09-14T12:19:42+03:00",
     "metrics": {
       "brain_all": {
-        "samples": 36,
-        "p50_ms": 3976.25,
-        "p95_ms": 15174.22,
-        "latest_ms": 3679.46,
-        "regression_vs_prior_p50_pct": -10.41
+        "samples": 40,
+        "p50_ms": 3805.38,
+        "p95_ms": 14547.38,
+        "latest_ms": 2748.5,
+        "regression_vs_prior_p50_pct": -28.52
       },
       "app_build": {
         "samples": 0,
@@ -6156,5 +6149,5 @@
     ]
   },
   "architecture_drift": true,
-  "brain_all_ms": 3679.46
+  "brain_all_ms": 2748.5
 }

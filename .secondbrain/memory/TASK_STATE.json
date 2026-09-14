@@ -1,8 +1,8 @@
 {
-  "label": "v15-blueprint-token-budget",
-  "started_at": "2026-09-14T11:37:30+03:00",
-  "start_checkpoint": ".secondbrain/checkpoints/20260914-113730-start-v15-blueprint-token-budget.json",
+  "label": "v15-blueprint-control-characters",
+  "started_at": "2026-09-14T12:18:07+03:00",
+  "start_checkpoint": ".secondbrain/checkpoints/20260914-121807-start-v15-blueprint-control-characters.json",
   "status": "DONE",
-  "finished_at": "2026-09-14T11:43:01+03:00",
-  "end_checkpoint": ".secondbrain/checkpoints/20260914-114301-finish-v15-blueprint-token-budget.json"
+  "finished_at": "2026-09-14T12:19:42+03:00",
+  "end_checkpoint": ".secondbrain/checkpoints/20260914-121942-finish-v15-blueprint-control-characters.json"
 }

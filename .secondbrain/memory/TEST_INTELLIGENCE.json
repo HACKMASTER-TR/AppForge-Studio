@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-09-14T11:43:00+03:00",
+  "generated_at": "2026-09-14T12:19:41+03:00",
   "discovered": 300,
   "domains": [
     "android",
-    "auth",
     "build-service"
   ],
   "selected_tests": [
-    "build-service/tests/appforge_unified_agent_blueprint_token_budget_contract.test.js",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt",
+    "build-service/tests/appforge_unified_agent_blueprint_control_char_contract.test.js",
     "build-service/tests/android_queue_ui_regression.test.js",
     "build-service/tests/unity_android_build_engine.test.js",
     "build-service/tests/quota_addons_android_ui_contract.test.js",
@@ -85,8 +85,7 @@
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRecoveryPolicyTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentQualityGateTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProjectMemoryTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt"
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt"
   ],
   "critical_regression_tests": [
     "android-app/app/src/main/assets/terminal/appforge-test",
@@ -172,8 +171,7 @@
   ],
   "commands": [
     "cd build-service && npm test",
-    "Android CI / Gradle compile verification",
-    "Run authentication/credential regression tests"
+    "Android CI / Gradle compile verification"
   ],
   "last_execution": {
     "status": "NOT_RUN"
