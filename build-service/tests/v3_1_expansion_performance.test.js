@@ -127,7 +127,7 @@ test("unchanged sources reuse ZIP and local AI uses fast routing", async () => {
   assert.ok(main.includes("hızlı ZIP önbelleği"));
   assert.ok(integration.includes("quickGuidance"));
   assert.ok(main.includes("hızlı yönlendirme"));
-  assert.match(assistant, /maxNumTokens\s*=\s*768/);
+  assert.match(assistant, /maxNumTokens\s*=\s*2_048/);
 });
 
 test("v3 complete pack adds validated Firebase, instant commands and safe build defaults", async () => {

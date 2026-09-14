@@ -1449,6 +1449,23 @@ private fun studioSafeMessage(
             )
         ) {
             "Yerel AI oturumu çakıştı. Lütfen işlemi yeniden deneyin."
+        } else if (
+            raw.contains(
+                "Input token ids are too long",
+                ignoreCase = true
+            ) ||
+            (
+                raw.contains(
+                    "maximum number of tokens allowed",
+                    ignoreCase = true
+                ) &&
+                raw.contains(
+                    "token",
+                    ignoreCase = true
+                )
+            )
+        ) {
+            "Uygulama açıklaması yerel AI bağlam sınırını aştı. Açıklamayı kısaltıp tekrar deneyin."
         } else {
             raw
         }

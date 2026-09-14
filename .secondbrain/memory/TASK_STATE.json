@@ -1,8 +1,8 @@
 {
-  "label": "v15-device-test-bugs",
-  "started_at": "2026-09-14T11:12:13+03:00",
-  "start_checkpoint": ".secondbrain/checkpoints/20260914-111213-start-v15-device-test-bugs.json",
+  "label": "v15-blueprint-token-budget",
+  "started_at": "2026-09-14T11:37:30+03:00",
+  "start_checkpoint": ".secondbrain/checkpoints/20260914-113730-start-v15-blueprint-token-budget.json",
   "status": "DONE",
-  "finished_at": "2026-09-14T11:13:00+03:00",
-  "end_checkpoint": ".secondbrain/checkpoints/20260914-111300-finish-v15-device-test-bugs.json"
+  "finished_at": "2026-09-14T11:43:01+03:00",
+  "end_checkpoint": ".secondbrain/checkpoints/20260914-114301-finish-v15-blueprint-token-budget.json"
 }
