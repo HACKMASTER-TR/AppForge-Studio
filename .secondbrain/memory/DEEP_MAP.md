@@ -1,6 +1,6 @@
 # AppForge Studio — Deep Project Map
 
-Generated: 2026-09-14T10:18:29+03:00
+Generated: 2026-09-14T11:12:58+03:00
 
 ## API Routes
 
@@ -194,7 +194,7 @@ Detected tables / schema objects: **34**
 
 ## Tests
 
-Detected test files: **312**
+Detected test files: **313**
 
 - `.appforge/state/latest.json`
 - `AppForgeStudio-latest.apk`
@@ -364,6 +364,7 @@ Detected test files: **312**
 - `build-service/tests/appforge_terminal_ultimate_editor_contract.test.js`
 - `build-service/tests/appforge_terminal_verified_rootfs_contract.test.js`
 - `build-service/tests/appforge_terminal_viewport_stability_contract.test.js`
+- `build-service/tests/appforge_unified_agent_device_test_bugfix_contract.test.js`
 - `build-service/tests/appforge_unified_agent_v11_e2e_contract.test.js`
 - `build-service/tests/appforge_unified_agent_v12_final_acceptance.test.js`
 - `build-service/tests/appforge_unified_agent_v12_recovery_center_contract.test.js`
@@ -395,7 +396,6 @@ Detected test files: **312**
 - `build-service/tests/dotnet_android_smoke.js`
 - `build-service/tests/dotnet_maui_android_smoke.js`
 - `build-service/tests/dotnet_maui_build_engine.test.js`
-- `build-service/tests/dotnet_maui_live_build_engine.test.js`
 
 ## Product Surfaces
 

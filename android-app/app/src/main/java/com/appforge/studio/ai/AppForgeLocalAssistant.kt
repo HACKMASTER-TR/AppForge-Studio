@@ -332,8 +332,12 @@ class AppForgeLocalAssistant(
         val currentEngine = engine
             ?: error("Yerel AI modeli başlatılmadı.")
 
-        val structuredConversation = currentEngine.createConversation(
-            ConversationConfig(
+        conversation?.close()
+        conversation = null
+
+        val structuredConversation = try {
+            currentEngine.createConversation(
+                ConversationConfig(
                 systemInstruction = Contents.of(
                     """
                     Sen AppForge Unified Agent için yapılandırılmış JSON üreten yerel modelsin.
@@ -345,13 +349,21 @@ class AppForgeLocalAssistant(
                     Bilinmeyen alan ekleme.
                     """.trimIndent()
                 ),
-                samplerConfig = SamplerConfig(
-                    topK = 8,
-                    topP = 0.72,
-                    temperature = 0.05
+                    samplerConfig = SamplerConfig(
+                        topK = 8,
+                        topP = 0.72,
+                        temperature = 0.05
+                    )
                 )
             )
-        )
+        } catch (error: Throwable) {
+            conversation = runCatching {
+                currentEngine.createConversation(
+                    conversationConfig()
+                )
+            }.getOrNull()
+            throw error
+        }
 
         try {
             val raw = StringBuilder()
@@ -380,6 +392,12 @@ class AppForgeLocalAssistant(
             runCatching {
                 structuredConversation.close()
             }
+
+            conversation = runCatching {
+                currentEngine.createConversation(
+                    conversationConfig()
+                )
+            }.getOrNull()
         }
     }
 
