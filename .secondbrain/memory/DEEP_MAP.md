@@ -1,6 +1,6 @@
 # AppForge Studio — Deep Project Map
 
-Generated: 2026-09-14T09:30:15+03:00
+Generated: 2026-09-14T10:18:29+03:00
 
 ## API Routes
 
@@ -194,7 +194,7 @@ Detected tables / schema objects: **34**
 
 ## Tests
 
-Detected test files: **308**
+Detected test files: **312**
 
 - `.appforge/state/latest.json`
 - `AppForgeStudio-latest.apk`
@@ -205,9 +205,12 @@ Detected test files: **308**
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBuildProjectPreparerTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentCodegenTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFinalAcceptanceTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProjectMemoryTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentQualityGateTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRecoveryPolicyTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentReleaseReadinessEvaluatorTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRemoteBuildResumePolicyTest.kt`
@@ -366,6 +369,7 @@ Detected test files: **308**
 - `build-service/tests/appforge_unified_agent_v12_recovery_center_contract.test.js`
 - `build-service/tests/appforge_unified_agent_v12_resume_contract.test.js`
 - `build-service/tests/appforge_unified_agent_v12_session_history_contract.test.js`
+- `build-service/tests/appforge_unified_agent_v13_v15_final_contract.test.js`
 - `build-service/tests/appforge_usage_guides_contract.test.js`
 - `build-service/tests/archive_limits.test.js`
 - `build-service/tests/artifact_manifest.test.js`
@@ -392,10 +396,6 @@ Detected test files: **308**
 - `build-service/tests/dotnet_maui_android_smoke.js`
 - `build-service/tests/dotnet_maui_build_engine.test.js`
 - `build-service/tests/dotnet_maui_live_build_engine.test.js`
-- `build-service/tests/fast_signing_key.test.js`
-- `build-service/tests/fcm_warning_regression.test.js`
-- `build-service/tests/firebase_cloud_messaging.test.js`
-- `build-service/tests/five_build_test_accounts_contract.test.js`
 
 ## Product Surfaces
 

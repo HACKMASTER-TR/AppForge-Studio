@@ -1,18 +1,14 @@
 {
-  "generated_at": "2026-09-14T09:30:16+03:00",
+  "generated_at": "2026-09-14T10:18:30+03:00",
   "discovered": 300,
   "domains": [
     "android",
-    "auth",
     "build-service"
   ],
   "selected_tests": [
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionStoreTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionRuntimePolicyTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRecoveryPolicyTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionManagementTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionHistoryTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRemoteBuildResumePolicyTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentQualityGateTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProjectMemoryTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFinalAcceptanceTest.kt",
     "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/WcWidthTest.java",
     "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/UnicodeInputTest.java",
     "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TextStyleTest.java",
@@ -60,8 +56,14 @@
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStudioStateV11Test.kt",
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStudioOrchestratorTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStructuredPatchTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionStoreTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionRuntimePolicyTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionManagementTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionHistoryTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRepairLoopTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRemoteBuildResumePolicyTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentReleaseReadinessEvaluatorTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRecoveryPolicyTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt",
@@ -73,10 +75,7 @@
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentArtifactContractsTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/BuildRuntimeStateTest.kt",
     "android-app/app/src/main/assets/terminal/appforge-test",
-    "build-service/tests/appforge_unified_agent_v12_session_history_contract.test.js",
-    "build-service/tests/appforge_unified_agent_v12_resume_contract.test.js",
-    "build-service/tests/appforge_unified_agent_v12_recovery_center_contract.test.js",
-    "build-service/tests/appforge_unified_agent_v12_final_acceptance.test.js",
+    "build-service/tests/appforge_unified_agent_v13_v15_final_contract.test.js",
     "build-service/tests/android_queue_ui_regression.test.js",
     "build-service/tests/unity_android_build_engine.test.js",
     "build-service/tests/quota_addons_android_ui_contract.test.js",
@@ -172,8 +171,7 @@
   ],
   "commands": [
     "cd build-service && npm test",
-    "Android CI / Gradle compile verification",
-    "Run authentication/credential regression tests"
+    "Android CI / Gradle compile verification"
   ],
   "last_execution": {
     "status": "NOT_RUN"
