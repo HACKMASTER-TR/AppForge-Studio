@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-09-12T00:34:19+03:00",
-  "migration_count": 22,
-  "table_count": 30,
+  "generated_at": "2026-09-14T03:45:36+03:00",
+  "migration_count": 25,
+  "table_count": 34,
   "tables": [
     "appforge_account_devices",
     "appforge_api_tokens",
@@ -18,14 +18,18 @@
     "appforge_localizations",
     "appforge_migration_markers",
     "appforge_permission_audit",
+    "appforge_play_purchase_owners",
     "appforge_play_purchases",
     "appforge_pro_entitlements",
+    "appforge_pro_monthly_build_reservations",
+    "appforge_pro_monthly_build_usage",
     "appforge_pro_monthly_project_slots",
     "appforge_project_files",
     "appforge_project_quota_reservations",
     "appforge_project_revisions",
     "appforge_projects",
     "appforge_publish_jobs",
+    "appforge_quota_addon_redemptions",
     "appforge_team_invites",
     "appforge_team_members",
     "appforge_teams",
@@ -362,6 +366,56 @@
       "destructive": [
         "DELETE FROM"
       ]
+    },
+    {
+      "file": "build-service/sql/022_monthly_build_quota.sql",
+      "creates": [
+        "appforge_pro_monthly_build_reservations",
+        "appforge_pro_monthly_build_usage"
+      ],
+      "alters": [
+        "appforge_projects"
+      ],
+      "indexes": [
+        "idx_appforge_monthly_build_res_user_cycle",
+        "idx_appforge_monthly_build_usage_user_cycle",
+        "idx_appforge_projects_package_locked"
+      ],
+      "references": [
+        "appforge_projects",
+        "appforge_users"
+      ],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/023_quota_addons.sql",
+      "creates": [
+        "appforge_quota_addon_redemptions"
+      ],
+      "alters": [],
+      "indexes": [
+        "idx_appforge_quota_addons_product",
+        "idx_appforge_quota_addons_user_cycle"
+      ],
+      "references": [
+        "appforge_users"
+      ],
+      "destructive": []
+    },
+    {
+      "file": "build-service/sql/024_client_hardening.sql",
+      "creates": [
+        "appforge_play_purchase_owners"
+      ],
+      "alters": [],
+      "indexes": [
+        "idx_appforge_play_purchase_owners_product",
+        "idx_appforge_play_purchase_owners_user"
+      ],
+      "references": [
+        "appforge_users"
+      ],
+      "destructive": []
     }
   ],
   "destructive_migrations": [
@@ -392,7 +446,8 @@
     ],
     "appforge_build_jobs": [
       "build-service/src/accountDeletion.js",
-      "build-service/src/jobQueue.js"
+      "build-service/src/jobQueue.js",
+      "build-service/tests/pro_monthly_build_quota_runtime.test.js"
     ],
     "appforge_build_log_lines": [
       "build-service/server.js",
@@ -405,11 +460,13 @@
       "build-service/src/buildEngine.js",
       "build-service/src/buildLogs.js",
       "build-service/src/jobQueue.js",
+      "build-service/src/monthlyBuildQuota.js",
       "build-service/src/projectQuotaV2.js",
       "build-service/src/publish.js",
       "build-service/src/unityLicensedBuild.js",
       "build-service/src/windowsBuild.js",
-      "build-service/src/workspaceBuild.js"
+      "build-service/src/workspaceBuild.js",
+      "build-service/tests/pro_monthly_build_quota_foundation.test.js"
     ],
     "appforge_download_tickets": [
       "build-service/src/downloadTickets.js"
@@ -424,6 +481,7 @@
       "build-service/src/idempotency.js"
     ],
     "appforge_integrity_audits": [
+      "build-service/src/clientHardening.js",
       "build-service/src/studioIntegrity.js"
     ],
     "appforge_localizations": [
@@ -435,13 +493,28 @@
     "appforge_permission_audit": [
       "build-service/src/permissions.js"
     ],
+    "appforge_play_purchase_owners": [
+      "build-service/src/clientHardening.js"
+    ],
     "appforge_play_purchases": [
       "build-service/server.js",
       "build-service/src/playVerifier.js"
     ],
     "appforge_pro_entitlements": [
       "build-service/server.js",
+      "build-service/src/clientHardening.js",
       "build-service/src/proEntitlements.js"
+    ],
+    "appforge_pro_monthly_build_reservations": [
+      "build-service/src/jobQueue.js",
+      "build-service/src/monthlyBuildQuota.js",
+      "build-service/tests/pro_monthly_build_quota_foundation.test.js",
+      "build-service/tests/pro_monthly_build_quota_runtime.test.js"
+    ],
+    "appforge_pro_monthly_build_usage": [
+      "build-service/src/monthlyBuildQuota.js",
+      "build-service/tests/pro_monthly_build_quota_foundation.test.js",
+      "build-service/tests/pro_monthly_build_quota_runtime.test.js"
     ],
     "appforge_pro_monthly_project_slots": [
       "build-service/src/projectQuotaV2.js",
@@ -461,11 +534,20 @@
       "build-service/src/workspace.js"
     ],
     "appforge_projects": [
+      "build-service/src/projectQuotaV2.js",
       "build-service/src/projects.js",
-      "build-service/src/workspace.js"
+      "build-service/src/workspace.js",
+      "build-service/src/workspaceBuild.js",
+      "build-service/tests/pro_monthly_build_quota_identity.test.js"
     ],
     "appforge_publish_jobs": [
       "build-service/src/publish.js"
+    ],
+    "appforge_quota_addon_redemptions": [
+      "build-service/src/monthlyBuildQuota.js",
+      "build-service/src/projectQuotaV2.js",
+      "build-service/src/quotaAddons.js",
+      "build-service/tests/quota_addons_redemption.test.js"
     ],
     "appforge_team_invites": [
       "build-service/src/teams.js"
@@ -491,6 +573,7 @@
       "build-service/src/accountDeletion.js",
       "build-service/src/auth.js",
       "build-service/src/jobQueue.js",
+      "build-service/src/monthlyBuildQuota.js",
       "build-service/src/permissions.js",
       "build-service/src/proEntitlements.js",
       "build-service/src/projectQuotaV2.js",

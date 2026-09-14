@@ -420,6 +420,137 @@ def targeted_tests(files):
 
     return sorted(selected)
 
+def android_unit_test_inventory():
+    tests_root = (
+        ROOT / "android-app" / "app" / "src" /
+        "test" / "java"
+    )
+
+    total = 0
+    agent_total = 0
+    files = []
+
+    if tests_root.exists():
+        for path in sorted(tests_root.rglob("*.kt")):
+            text = path.read_text(
+                encoding="utf-8",
+                errors="ignore",
+            )
+            count = len(
+                re.findall(
+                    r"(?m)^\s*@Test\b",
+                    text,
+                )
+            )
+            if count:
+                files.append(
+                    str(path.relative_to(ROOT))
+                )
+                total += count
+                if (
+                    "/com/appforge/studio/ai/"
+                    in "/" + str(path.relative_to(ROOT)).replace("\\", "/")
+                ):
+                    agent_total += count
+
+    return {
+        "total": total,
+        "agent": agent_total,
+        "files": files,
+    }
+
+
+def android_unit_ci_contract():
+    workflow = (
+        ROOT / ".github" / "workflows" /
+        "android-debug.yml"
+    )
+
+    if not workflow.exists():
+        return False
+
+    text = workflow.read_text(
+        encoding="utf-8",
+        errors="ignore",
+    )
+
+    return ":app:testDebugUnitTest" in text
+
+
+def is_termux_environment():
+    prefix = str(
+        os.environ.get("PREFIX")
+        or ""
+    ).lower()
+
+    return (
+        "com.termux" in prefix
+        or bool(
+            os.environ.get("TERMUX_VERSION")
+        )
+    )
+
+
+def android_unit_test_gate():
+    inventory = android_unit_test_inventory()
+
+    print("\n=== ANDROID / KOTLIN UNIT TESTS ===")
+    print(
+        "Registered:",
+        inventory["total"],
+    )
+    print(
+        "Agent tests:",
+        inventory["agent"],
+    )
+
+    if not android_unit_ci_contract():
+        print(
+            "ANDROID UNIT CI CONTRACT: BLOCKED"
+        )
+        raise SystemExit(12)
+
+    if inventory["total"] == 0:
+        print(
+            "ANDROID UNIT TEST DISCOVERY: BLOCKED"
+        )
+        raise SystemExit(12)
+
+    gradle = shutil.which("gradle")
+
+    if is_termux_environment():
+        print(
+            "Local execution: DEFERRED (Termux)"
+        )
+        print(
+            "Required CI: android-debug.yml -> "
+            ":app:testDebugUnitTest"
+        )
+        return inventory
+
+    if gradle:
+        run([
+            gradle,
+            "-p",
+            "android-app",
+            ":app:testDebugUnitTest",
+            "--stacktrace",
+        ])
+        print(
+            "Android/Kotlin unit execution: PASS"
+        )
+        return inventory
+
+    print(
+        "Local execution: DEFERRED (Gradle unavailable)"
+    )
+    print(
+        "Required CI: android-debug.yml -> "
+        ":app:testDebugUnitTest"
+    )
+    return inventory
+
+
 def security_gate(files):
     repair_known_stale_contracts()
 
@@ -479,6 +610,8 @@ def local_gate():
 
     print("\n=== FULL REGRESSION ===")
     run(["npm", "--prefix", "build-service", "test"])
+
+    android_unit_test_gate()
 
     print("\n=== SECOND BRAIN SELFTEST ===")
     run(["./scripts/brain", "selftest"])
@@ -2228,6 +2361,7 @@ def main():
         if selected:
             run(["node", "--test", *[str(p.relative_to(ROOT)) for p in selected]])
         run(["npm", "--prefix", "build-service", "test"])
+        android_unit_test_gate()
     elif args.cmd == "security":
         if not security_gate(changed_files()):
             raise SystemExit(10)

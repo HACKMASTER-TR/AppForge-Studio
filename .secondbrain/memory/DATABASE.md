@@ -1,6 +1,6 @@
 # Database Map
 
-Generated: 2026-09-12T00:34:18+03:00
+Generated: 2026-09-14T03:45:36+03:00
 
 ## Detected table/query candidates
 
@@ -27,14 +27,18 @@ Generated: 2026-09-12T00:34:18+03:00
 - `appforge_localizations`
 - `appforge_migration_markers`
 - `appforge_permission_audit`
+- `appforge_play_purchase_owners`
 - `appforge_play_purchases`
 - `appforge_pro_entitlements`
+- `appforge_pro_monthly_build_reservations`
+- `appforge_pro_monthly_build_usage`
 - `appforge_pro_monthly_project_slots`
 - `appforge_project_files`
 - `appforge_project_quota_reservations`
 - `appforge_project_revisions`
 - `appforge_projects`
 - `appforge_publish_jobs`
+- `appforge_quota_addon_redemptions`
 - `appforge_team_invites`
 - `appforge_team_members`
 - `appforge_teams`
@@ -43,6 +47,7 @@ Generated: 2026-09-12T00:34:18+03:00
 - `appforge_users`
 - `appforge_workers`
 - `automatic`
+- `exceeding`
 - `exhausting`
 - `express`
 - `fs`
@@ -62,6 +67,11 @@ Generated: 2026-09-12T00:34:18+03:00
 
 - `.github/scripts/railway_production.py`
 - `.github/workflows/production-automation.yml`
+- `android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentFullStackCodegen.kt`
+- `android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentFullStackContract.kt`
+- `android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentIntelligence.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt`
 - `build-service/docker-compose.yml`
 - `build-service/package-lock.json`
 - `build-service/sql/001_init.sql`
@@ -86,11 +96,15 @@ Generated: 2026-09-12T00:34:18+03:00
 - `build-service/sql/019_user_free_project_limits.sql`
 - `build-service/sql/020_legacy_device_login_permission.sql`
 - `build-service/sql/021_success_project_quotas.sql`
+- `build-service/sql/022_monthly_build_quota.sql`
+- `build-service/sql/023_quota_addons.sql`
+- `build-service/sql/024_client_hardening.sql`
 - `build-service/src/config.js`
 - `build-service/src/db.js`
 - `build-service/src/jobQueue.js`
 - `build-service/src/pythonWebFrameworkEngine.js`
 - `build-service/src/v5Studio.js`
+- `build-service/tests/pro_monthly_build_quota_foundation.test.js`
 - `build-service/tests/source_build_env.test.js`
 - `build-service/tests/v5_studio.test.js`
 - `docs/ACCOUNTS_AND_TOKENS.md`

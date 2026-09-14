@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-12T00:34:19+03:00",
-  "count": 82,
+  "generated_at": "2026-09-14T03:45:36+03:00",
+  "count": 83,
   "routes": [
     {
       "method": "GET",
@@ -1330,6 +1330,24 @@
       "admin": false,
       "middleware": [
         "authRequired",
+        "requireIntegrityHeader"
+      ],
+      "tables": [],
+      "request": {
+        "query": [],
+        "body": [],
+        "params": []
+      },
+      "source": "build-service/server.js"
+    },
+    {
+      "method": "POST",
+      "path": "/api/quota/addons/redeem",
+      "auth": true,
+      "admin": false,
+      "middleware": [
+        "authRequired",
+        "purchaseVerifyRateLimit",
         "requireIntegrityHeader"
       ],
       "tables": [],
