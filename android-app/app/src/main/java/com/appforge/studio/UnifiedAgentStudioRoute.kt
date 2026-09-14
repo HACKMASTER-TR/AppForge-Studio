@@ -10,6 +10,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,12 +35,22 @@ import com.appforge.studio.ai.AppForgeAgentArtifactState
 import com.appforge.studio.ai.AppForgeAgentSourceExporter
 import com.appforge.studio.ai.AppForgeAgentReleaseReviewClient
 import com.appforge.studio.ai.AppForgeAgentReleaseReviewState
+import com.appforge.studio.ai.AppForgeAgentPersistentSession
+import com.appforge.studio.ai.AppForgeAgentSessionLoadResult
+import com.appforge.studio.ai.AppForgeAgentSessionRuntimePolicy
+import com.appforge.studio.ai.AppForgeAgentSessionStore
+import com.appforge.studio.ai.AppForgeAgentRemoteBuildResumer
+import com.appforge.studio.ai.AppForgeAgentRemoteBuildResumeOutcome
+import com.appforge.studio.ai.AppForgeAgentRecoveryPolicy
 import com.appforge.studio.ai.AppForgeUnifiedAgentStudioScreen
 import com.appforge.studio.ai.AppForgeLocalAssistant
 import com.appforge.studio.ai.LocalAiModelStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.UUID
 
 @Composable
 internal fun UnifiedAgentStudioRoute(
@@ -76,6 +87,48 @@ internal fun UnifiedAgentStudioRoute(
         mutableStateOf<String?>(null)
     }
 
+    var pendingSession by remember {
+        mutableStateOf<AppForgeAgentPersistentSession?>(null)
+    }
+
+    var recentSessions by remember {
+        mutableStateOf<List<AppForgeAgentPersistentSession>>(
+            emptyList()
+        )
+    }
+
+    var archivedSessions by remember {
+        mutableStateOf<List<AppForgeAgentPersistentSession>>(
+            emptyList()
+        )
+    }
+
+    var quarantinedSessionCount by remember {
+        mutableStateOf(
+            0
+        )
+    }
+
+    var currentSessionId by remember {
+        mutableStateOf(
+            UUID.randomUUID().toString()
+        )
+    }
+
+    var persistenceReady by remember {
+        mutableStateOf(false)
+    }
+
+    val sessionStore = remember {
+        AppForgeAgentSessionStore(
+            rootDir =
+                File(
+                    context.filesDir,
+                    "unified-agent-session"
+                )
+        )
+    }
+
     val artifactClient = remember(
         buildServiceUrl,
         buildApiKey
@@ -104,6 +157,128 @@ internal fun UnifiedAgentStudioRoute(
         }
     }
 
+    LaunchedEffect(Unit) {
+        val loaded =
+            withContext(
+                Dispatchers.IO
+            ) {
+                sessionStore.load()
+            }
+
+        val initialCollections =
+            withContext(
+                Dispatchers.IO
+            ) {
+                sessionStore.cleanupStorage(
+                    context.filesDir
+                )
+
+                Triple(
+                    sessionStore.listRecent(),
+                    sessionStore.listArchived(),
+                    sessionStore.quarantineCount()
+                )
+            }
+
+        recentSessions =
+            initialCollections.first
+
+        archivedSessions =
+            initialCollections.second
+
+        quarantinedSessionCount =
+            initialCollections.third
+
+        when (loaded) {
+            AppForgeAgentSessionLoadResult.Empty -> {
+                pendingSession =
+                    null
+            }
+
+            is AppForgeAgentSessionLoadResult.Loaded -> {
+                pendingSession =
+                    loaded.session
+            }
+
+            is AppForgeAgentSessionLoadResult.Quarantined -> {
+                state =
+                    state.copy(
+                        message =
+                            loaded.reason
+                    )
+            }
+        }
+
+        persistenceReady =
+            true
+    }
+
+    LaunchedEffect(
+        persistenceReady,
+        pendingSession,
+        currentSessionId,
+        state,
+        artifactState,
+        releaseReviewState,
+        lastWorkspacePath
+    ) {
+        if (
+            !persistenceReady ||
+            pendingSession != null
+        ) {
+            return@LaunchedEffect
+        }
+
+        if (
+            !AppForgeAgentSessionRuntimePolicy.shouldPersist(
+                state = state,
+                artifactState =
+                    artifactState,
+                releaseReviewState =
+                    releaseReviewState,
+                workspacePath =
+                    lastWorkspacePath
+            )
+        ) {
+            return@LaunchedEffect
+        }
+
+        delay(
+            450L
+        )
+
+        val snapshot =
+            AppForgeAgentPersistentSession(
+                sessionId =
+                    currentSessionId,
+                state = state,
+                artifactState =
+                    artifactState,
+                releaseReviewState =
+                    releaseReviewState,
+                workspacePath =
+                    lastWorkspacePath
+            )
+
+        val refreshedSessions =
+            withContext(
+                Dispatchers.IO
+            ) {
+                sessionStore.save(
+                    snapshot
+                )
+
+                sessionStore.listRecent() to
+                    sessionStore.listArchived()
+            }
+
+        recentSessions =
+            refreshedSessions.first
+
+        archivedSessions =
+            refreshedSessions.second
+    }
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -124,9 +299,482 @@ internal fun UnifiedAgentStudioRoute(
             state = state,
             artifactState = artifactState,
             releaseReviewState = releaseReviewState,
+            resumeInfo =
+                pendingSession?.let(
+                    AppForgeAgentSessionRuntimePolicy::resumeInfo
+                ),
+            recentSessions =
+                recentSessions
+                    .filter {
+                        it.sessionId !=
+                            pendingSession
+                                ?.sessionId
+                    }
+                    .map(
+                        AppForgeAgentSessionRuntimePolicy::resumeInfo
+                    ),
+            archivedSessions =
+                archivedSessions
+                    .map(
+                        AppForgeAgentSessionRuntimePolicy::resumeInfo
+                    ),
+            recoveryAssessment =
+                pendingSession?.let {
+                    AppForgeAgentRecoveryPolicy.assess(
+                        filesDir =
+                            context.filesDir,
+                        session =
+                            it,
+                        quarantinedSessionCount =
+                            quarantinedSessionCount
+                    )
+                },
             canExportSource =
                 lastWorkspacePath != null &&
                     state.step == AppForgeAgentStudioStep.RESULT,
+            onResumeSession = {
+                pendingSession?.let { session ->
+                    val resumeBuildId =
+                        session.resumableBuildId
+                    val resumeBuild =
+                        session.state.step ==
+                            AppForgeAgentStudioStep.BUILD &&
+                            !resumeBuildId.isNullOrBlank()
+
+                    currentSessionId =
+                        session.sessionId
+
+                    state =
+                        session.state.copy(
+                            busy = resumeBuild,
+                            message =
+                                if (resumeBuild) {
+                                    "Mevcut Cloud Build'e yeniden bağlanılıyor..."
+                                } else {
+                                    session.state.message
+                                }
+                        )
+
+                    artifactState =
+                        session.artifactState.copy(
+                            busy = false
+                        )
+
+                    releaseReviewState =
+                        session.releaseReviewState.copy(
+                            busy = false
+                        )
+
+                    lastWorkspacePath =
+                        AppForgeAgentSessionRuntimePolicy
+                            .restoreWorkspacePath(
+                                filesDir =
+                                    context.filesDir,
+                                savedPath =
+                                    session.workspacePath
+                            )
+
+                    pendingSession =
+                        null
+
+                    if (
+                        resumeBuild &&
+                        resumeBuildId != null
+                    ) {
+                        scope.launch {
+                            val resumer =
+                                AppForgeAgentRemoteBuildResumer(
+                                    context = context,
+                                    buildServiceUrl =
+                                        buildServiceUrl,
+                                    buildApiKey =
+                                        buildApiKey
+                                )
+
+                            val resumed =
+                                withContext(
+                                    Dispatchers.IO
+                                ) {
+                                    resumer.resume(
+                                        resumeBuildId
+                                    ) {
+                                        remote,
+                                        message ->
+                                            scope.launch {
+                                                state =
+                                                    state.copy(
+                                                        step =
+                                                            AppForgeAgentStudioStep.BUILD,
+                                                        busy =
+                                                            true,
+                                                        remoteBuild =
+                                                            remote,
+                                                        message =
+                                                            message
+                                                    )
+                                            }
+                                    }
+                                }
+
+                            state =
+                                when (
+                                    resumed.outcome
+                                ) {
+                                    AppForgeAgentRemoteBuildResumeOutcome.SUCCESS ->
+                                        state.copy(
+                                            step =
+                                                AppForgeAgentStudioStep.RESULT,
+                                            busy =
+                                                false,
+                                            remoteBuild =
+                                                resumed.remote,
+                                            message =
+                                                resumed.message
+                                        )
+
+                                    AppForgeAgentRemoteBuildResumeOutcome.FAILURE,
+                                    AppForgeAgentRemoteBuildResumeOutcome.TRACKING_TIMEOUT ->
+                                        state.copy(
+                                            step =
+                                                AppForgeAgentStudioStep.BLOCKED,
+                                            busy =
+                                                false,
+                                            remoteBuild =
+                                                resumed.remote
+                                                    ?: state.remoteBuild,
+                                            message =
+                                                resumed.message
+                                        )
+
+                                    AppForgeAgentRemoteBuildResumeOutcome.RUNNING ->
+                                        state
+                                }
+
+                            val finalRemote =
+                                state.remoteBuild
+
+                            if (
+                                finalRemote != null &&
+                                resumed.outcome !=
+                                    AppForgeAgentRemoteBuildResumeOutcome.RUNNING
+                            ) {
+                                val inspected =
+                                    runCatching {
+                                        withContext(
+                                            Dispatchers.IO
+                                        ) {
+                                            artifactClient.inspect(
+                                                finalRemote.buildId
+                                            )
+                                        }
+                                    }.getOrElse { error ->
+                                        AppForgeAgentArtifactState(
+                                            busy = false,
+                                            buildId =
+                                                finalRemote.buildId,
+                                            message =
+                                                studioSafeMessage(
+                                                    error
+                                                )
+                                        )
+                                    }
+
+                                artifactState =
+                                    inspected
+
+                                state.blueprint?.let {
+                                    blueprint ->
+                                        releaseReviewState =
+                                            runCatching {
+                                                withContext(
+                                                    Dispatchers.IO
+                                                ) {
+                                                    releaseReviewClient.load(
+                                                        remote =
+                                                            finalRemote,
+                                                        blueprint =
+                                                            blueprint,
+                                                        artifacts =
+                                                            inspected
+                                                    )
+                                                }
+                                            }.getOrElse {
+                                                error ->
+                                                    AppForgeAgentReleaseReviewState(
+                                                        busy =
+                                                            false,
+                                                        message =
+                                                            studioSafeMessage(
+                                                                error
+                                                            )
+                                                    )
+                                            }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            onDiscardSession = {
+                val discardedSessionId =
+                    pendingSession
+                        ?.sessionId
+
+                pendingSession =
+                    null
+
+                currentSessionId =
+                    UUID.randomUUID()
+                        .toString()
+
+                state =
+                    AppForgeAgentStudioState()
+
+                artifactState =
+                    AppForgeAgentArtifactState()
+
+                releaseReviewState =
+                    AppForgeAgentReleaseReviewState()
+
+                lastWorkspacePath =
+                    null
+
+                scope.launch {
+                    val refreshed =
+                        withContext(
+                            Dispatchers.IO
+                        ) {
+                            if (
+                                discardedSessionId != null
+                            ) {
+                                sessionStore.deleteSession(
+                                    discardedSessionId
+                                )
+                            } else {
+                                sessionStore.clear()
+                            }
+
+                            sessionStore.listRecent() to
+                                sessionStore.listArchived()
+                        }
+
+                    recentSessions =
+                        refreshed.first
+
+                    archivedSessions =
+                        refreshed.second
+                }
+            },
+            onSelectRecentSession = {
+                sessionId ->
+                    scope.launch {
+                        when (
+                            val loaded =
+                                withContext(
+                                    Dispatchers.IO
+                                ) {
+                                    sessionStore.loadById(
+                                        sessionId
+                                    )
+                                }
+                        ) {
+                            is AppForgeAgentSessionLoadResult.Loaded -> {
+                                pendingSession =
+                                    loaded.session
+
+                                state =
+                                    state.copy(
+                                        message =
+                                            "Kayıt seçildi. Devam etmek için yukarıdaki kartı aç."
+                                    )
+                            }
+
+                            is AppForgeAgentSessionLoadResult.Quarantined -> {
+                                state =
+                                    state.copy(
+                                        message =
+                                            loaded.reason
+                                    )
+
+                                val refreshed =
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        sessionStore.listRecent() to
+                                            sessionStore.quarantineCount()
+                                    }
+
+                                recentSessions =
+                                    refreshed.first
+
+                                quarantinedSessionCount =
+                                    refreshed.second
+                            }
+
+                            AppForgeAgentSessionLoadResult.Empty -> {
+                                state =
+                                    state.copy(
+                                        message =
+                                            "Seçilen kayıt artık bulunamıyor."
+                                    )
+                            }
+                        }
+                    }
+            },
+            onDeleteRecentSession = {
+                sessionId ->
+                    scope.launch {
+                        val refreshed =
+                            withContext(
+                                Dispatchers.IO
+                            ) {
+                                sessionStore.deleteSession(
+                                    sessionId
+                                )
+
+                                sessionStore.listRecent() to
+                                    sessionStore.listArchived()
+                            }
+
+                        if (
+                            pendingSession
+                                ?.sessionId ==
+                                sessionId
+                        ) {
+                            pendingSession =
+                                null
+                        }
+
+                        recentSessions =
+                            refreshed.first
+
+                        archivedSessions =
+                            refreshed.second
+                    }
+            },
+            onRenameSession = {
+                sessionId,
+                name ->
+                    scope.launch {
+                        val refreshed =
+                            withContext(
+                                Dispatchers.IO
+                            ) {
+                                sessionStore.renameSession(
+                                    sessionId,
+                                    name
+                                )
+
+                                sessionStore.listRecent() to
+                                    sessionStore.listArchived()
+                            }
+
+                        recentSessions =
+                            refreshed.first
+
+                        archivedSessions =
+                            refreshed.second
+
+                        if (
+                            pendingSession
+                                ?.sessionId ==
+                                sessionId
+                        ) {
+                            pendingSession =
+                                when (
+                                    val loaded =
+                                        withContext(
+                                            Dispatchers.IO
+                                        ) {
+                                            sessionStore.loadById(
+                                                sessionId
+                                            )
+                                        }
+                                ) {
+                                    is AppForgeAgentSessionLoadResult.Loaded ->
+                                        loaded.session
+
+                                    else ->
+                                        pendingSession
+                                }
+                        }
+                    }
+            },
+            onTogglePinned = {
+                sessionId,
+                pinned ->
+                    scope.launch {
+                        val refreshed =
+                            withContext(
+                                Dispatchers.IO
+                            ) {
+                                sessionStore.setPinned(
+                                    sessionId,
+                                    pinned
+                                )
+
+                                sessionStore.listRecent()
+                            }
+
+                        recentSessions =
+                            refreshed
+                    }
+            },
+            onArchiveSession = {
+                sessionId ->
+                    scope.launch {
+                        val refreshed =
+                            withContext(
+                                Dispatchers.IO
+                            ) {
+                                sessionStore.setArchived(
+                                    sessionId,
+                                    true
+                                )
+
+                                sessionStore.listRecent() to
+                                    sessionStore.listArchived()
+                            }
+
+                        if (
+                            pendingSession
+                                ?.sessionId ==
+                                sessionId
+                        ) {
+                            pendingSession =
+                                null
+                        }
+
+                        recentSessions =
+                            refreshed.first
+
+                        archivedSessions =
+                            refreshed.second
+                    }
+            },
+            onRestoreArchivedSession = {
+                sessionId ->
+                    scope.launch {
+                        val refreshed =
+                            withContext(
+                                Dispatchers.IO
+                            ) {
+                                sessionStore.setArchived(
+                                    sessionId,
+                                    false
+                                )
+
+                                sessionStore.listRecent() to
+                                    sessionStore.listArchived()
+                            }
+
+                        recentSessions =
+                            refreshed.first
+
+                        archivedSessions =
+                            refreshed.second
+                    }
+            },
             onRefreshArtifacts = {
                 val buildId =
                     state.remoteBuild
@@ -644,12 +1292,25 @@ internal fun UnifiedAgentStudioRoute(
                 releaseReviewState =
                     AppForgeAgentReleaseReviewState()
 
+                pendingSession =
+                    null
+
+                currentSessionId =
+                    UUID.randomUUID()
+                        .toString()
+
                 lastWorkspacePath =
                     null
 
                 state = AppForgeAgentStudioState(
                     platform = state.platform
                 )
+
+                scope.launch(
+                    Dispatchers.IO
+                ) {
+                    sessionStore.clear()
+                }
             },
             modifier =
                 Modifier

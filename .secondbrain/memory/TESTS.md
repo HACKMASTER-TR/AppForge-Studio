@@ -1,10 +1,12 @@
 # Test Map
 
-Generated: 2026-09-14T08:00:00+03:00
+Generated: 2026-09-14T09:30:15+03:00
 
 ## Recommended for current change
 
 - `cd build-service && npm test`
+- `Android CI / Gradle compile verification`
+- `Run authentication/credential regression tests`
 
 ## Discovered test files
 
@@ -21,8 +23,14 @@ Generated: 2026-09-14T08:00:00+03:00
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRecoveryPolicyTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentReleaseReadinessEvaluatorTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRemoteBuildResumePolicyTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRepairLoopTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionHistoryTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionManagementTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionRuntimePolicyTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionStoreTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStructuredPatchTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStudioOrchestratorTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStudioStateV11Test.kt`
@@ -169,6 +177,10 @@ Generated: 2026-09-14T08:00:00+03:00
 - `build-service/tests/appforge_terminal_verified_rootfs_contract.test.js`
 - `build-service/tests/appforge_terminal_viewport_stability_contract.test.js`
 - `build-service/tests/appforge_unified_agent_v11_e2e_contract.test.js`
+- `build-service/tests/appforge_unified_agent_v12_final_acceptance.test.js`
+- `build-service/tests/appforge_unified_agent_v12_recovery_center_contract.test.js`
+- `build-service/tests/appforge_unified_agent_v12_resume_contract.test.js`
+- `build-service/tests/appforge_unified_agent_v12_session_history_contract.test.js`
 - `build-service/tests/appforge_usage_guides_contract.test.js`
 - `build-service/tests/archive_limits.test.js`
 - `build-service/tests/artifact_manifest.test.js`
@@ -298,13 +310,3 @@ Generated: 2026-09-14T08:00:00+03:00
 - `build-service/tests/v2_9_test_lab_inspector.test.js`
 - `build-service/tests/v2_create_modes.test.js`
 - `build-service/tests/v3_0_local_ai.test.js`
-- `build-service/tests/v3_1_expansion_performance.test.js`
-- `build-service/tests/v5_studio.test.js`
-- `build-service/tests/validators.test.js`
-- `build-service/tests/webview_pro_settings.test.js`
-- `build-service/tests/windows_exe_regression.test.js`
-- `build-service/tests/windows_exe_source_guard.test.js`
-- `build-service/tests/windows_exe_studio.test.js`
-- `build-service/tests/worker_presence_cancel_regression.test.js`
-- `build-service/tests/workspace.test.js`
-- `docs/V2_9_TEST_LAB_INSPECTOR.md`

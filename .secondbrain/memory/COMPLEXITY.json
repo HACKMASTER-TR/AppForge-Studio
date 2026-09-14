@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T08:00:01+03:00",
+  "generated_at": "2026-09-14T09:30:17+03:00",
   "largest": [
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
@@ -117,6 +117,11 @@
       "symbols": 15
     },
     {
+      "file": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
+      "lines": 1340,
+      "symbols": 4
+    },
+    {
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
       "lines": 1330,
       "symbols": 12
@@ -157,6 +162,11 @@
       "symbols": 18
     },
     {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentSessionCodec.kt",
+      "lines": 1219,
+      "symbols": 21
+    },
+    {
       "file": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
       "lines": 1204,
       "symbols": 36
@@ -180,6 +190,11 @@
       "file": ".github/scripts/railway_production.py",
       "lines": 1163,
       "symbols": 17
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeUnifiedAgentStudioScreen.kt",
+      "lines": 1158,
+      "symbols": 8
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorPanel.kt",
@@ -220,6 +235,11 @@
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/SshWorkspacePanel.kt",
       "lines": 1042,
       "symbols": 3
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentSessionStore.kt",
+      "lines": 1038,
+      "symbols": 33
     },
     {
       "file": "build-service/src/unityLicensedBuild.js",
@@ -280,26 +300,6 @@
       "file": "build-service/src/buildCache.js",
       "lines": 853,
       "symbols": 21
-    },
-    {
-      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/VerifiedLinuxRootfsInstaller.kt",
-      "lines": 853,
-      "symbols": 17
-    },
-    {
-      "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
-      "lines": 840,
-      "symbols": 15
-    },
-    {
-      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimateFoundation.kt",
-      "lines": 832,
-      "symbols": 18
-    },
-    {
-      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorCore.kt",
-      "lines": 828,
-      "symbols": 34
     }
   ],
   "refactor_candidates": [

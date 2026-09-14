@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-09-14T08:00:00+03:00",
-  "node_count": 729,
-  "edge_count": 120,
+  "generated_at": "2026-09-14T09:30:15+03:00",
+  "node_count": 747,
+  "edge_count": 125,
   "edges": [
     {
       "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
@@ -265,7 +265,32 @@
     },
     {
       "from": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentPersistentSession.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentRecoveryPolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
       "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentReleaseReviewClient.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentRemoteBuildResumer.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentSessionRuntimePolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentSessionStore.kt",
       "kind": "import"
     },
     {
@@ -612,6 +637,12 @@
       "score": 37
     },
     {
+      "file": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
+      "fan_in": 0,
+      "fan_out": 15,
+      "score": 15
+    },
+    {
       "file": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
       "fan_in": 13,
       "fan_out": 0,
@@ -621,12 +652,6 @@
       "file": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
       "fan_in": 10,
       "fan_out": 0,
-      "score": 10
-    },
-    {
-      "file": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
-      "fan_in": 0,
-      "fan_out": 10,
       "score": 10
     },
     {
@@ -849,47 +874,47 @@
   "external_dependencies": [
     [
       "androidx",
-      1309
+      1314
     ],
     [
       "android",
-      450
+      451
     ],
     [
       "java",
-      398
+      415
     ],
     [
       "org",
-      238
+      264
     ],
     [
       "assert",
-      234
+      238
     ],
     [
       "node:assert",
-      234
+      238
     ],
     [
       "node:test",
-      230
+      234
     ],
     [
       "test",
-      230
+      234
     ],
     [
       "kotlinx",
-      186
+      187
     ],
     [
       "node:fs",
-      162
+      166
     ],
     [
       "com",
-      140
+      145
     ],
     [
       "path",
@@ -897,7 +922,7 @@
     ],
     [
       "fs",
-      58
+      62
     ],
     [
       "AdmZip",

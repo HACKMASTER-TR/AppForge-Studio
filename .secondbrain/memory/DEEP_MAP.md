@@ -1,6 +1,6 @@
 # AppForge Studio — Deep Project Map
 
-Generated: 2026-09-14T08:00:00+03:00
+Generated: 2026-09-14T09:30:15+03:00
 
 ## API Routes
 
@@ -194,7 +194,7 @@ Detected tables / schema objects: **34**
 
 ## Tests
 
-Detected test files: **298**
+Detected test files: **308**
 
 - `.appforge/state/latest.json`
 - `AppForgeStudio-latest.apk`
@@ -208,8 +208,14 @@ Detected test files: **298**
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRecoveryPolicyTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentReleaseReadinessEvaluatorTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRemoteBuildResumePolicyTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRepairLoopTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionHistoryTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionManagementTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionRuntimePolicyTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionStoreTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStructuredPatchTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStudioOrchestratorTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStudioStateV11Test.kt`
@@ -356,6 +362,10 @@ Detected test files: **298**
 - `build-service/tests/appforge_terminal_verified_rootfs_contract.test.js`
 - `build-service/tests/appforge_terminal_viewport_stability_contract.test.js`
 - `build-service/tests/appforge_unified_agent_v11_e2e_contract.test.js`
+- `build-service/tests/appforge_unified_agent_v12_final_acceptance.test.js`
+- `build-service/tests/appforge_unified_agent_v12_recovery_center_contract.test.js`
+- `build-service/tests/appforge_unified_agent_v12_resume_contract.test.js`
+- `build-service/tests/appforge_unified_agent_v12_session_history_contract.test.js`
 - `build-service/tests/appforge_usage_guides_contract.test.js`
 - `build-service/tests/archive_limits.test.js`
 - `build-service/tests/artifact_manifest.test.js`
@@ -386,16 +396,6 @@ Detected test files: **298**
 - `build-service/tests/fcm_warning_regression.test.js`
 - `build-service/tests/firebase_cloud_messaging.test.js`
 - `build-service/tests/five_build_test_accounts_contract.test.js`
-- `build-service/tests/flutter_build_engine.test.js`
-- `build-service/tests/flutter_gradle_mirror.test.js`
-- `build-service/tests/flutter_live_build_engine.test.js`
-- `build-service/tests/framework_static_build_engine.test.js`
-- `build-service/tests/framework_static_live_build_engine.test.js`
-- `build-service/tests/free_release_keystore_gate_contract.test.js`
-- `build-service/tests/git_workspace_missing_repo_contract.test.js`
-- `build-service/tests/gradle_client_memory_budget.test.js`
-- `build-service/tests/gradle_low_memory_no_daemon.test.js`
-- `build-service/tests/gradle_memory_profile.test.js`
 
 ## Product Surfaces
 

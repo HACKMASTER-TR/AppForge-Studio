@@ -1,16 +1,16 @@
 # Dependency Graph
 
-Generated: 2026-09-14T08:00:02+03:00
+Generated: 2026-09-14T09:30:19+03:00
 
-Nodes: **729**
-Edges: **120**
+Nodes: **747**
+Edges: **125**
 
 | File | Fan-in | Fan-out | Score |
 | --- | --- | --- | --- |
 | android-app/app/src/main/java/com/appforge/studio/MainActivity.kt | 2 | 35 | 37 |
+| android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt | 0 | 15 | 15 |
 | android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt | 13 | 0 | 13 |
 | android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt | 10 | 0 | 10 |
-| android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt | 0 | 10 | 10 |
 | android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java | 4 | 4 | 8 |
 | android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt | 7 | 0 | 7 |
 | android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt | 4 | 1 | 5 |

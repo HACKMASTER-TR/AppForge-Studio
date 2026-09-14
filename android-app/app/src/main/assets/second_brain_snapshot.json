@@ -1,9 +1,9 @@
 {
   "version": "3.0.0",
-  "head": "dbc8e28",
-  "branch": "fix/manual-merge-gate",
-  "risk": "ACCEPT",
-  "riskScore": 6,
+  "head": "e9fcda6",
+  "branch": "feat/unified-agent-v12-persistent-sessions",
+  "risk": "REJECT",
+  "riskScore": 72,
   "security": "GREEN",
   "apiRoutes": 83,
   "databaseTables": 34,
