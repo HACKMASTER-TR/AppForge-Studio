@@ -1,7 +1,7 @@
 {
   "version": "3.0.0",
-  "head": "65d8879",
-  "branch": "fix/v15-blueprint-control-characters",
+  "head": "eca4b3d",
+  "branch": "fix/v15-blueprint-platform-fallback",
   "risk": "ACCEPT",
   "riskScore": 11,
   "security": "GREEN",

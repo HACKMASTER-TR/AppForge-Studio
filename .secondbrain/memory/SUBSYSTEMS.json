@@ -342,6 +342,7 @@
     "build-service/tests/appforge_terminal_verified_rootfs_contract.test.js",
     "build-service/tests/appforge_terminal_viewport_stability_contract.test.js",
     "build-service/tests/appforge_unified_agent_blueprint_control_char_contract.test.js",
+    "build-service/tests/appforge_unified_agent_blueprint_platform_fallback_contract.test.js",
     "build-service/tests/appforge_unified_agent_blueprint_token_budget_contract.test.js",
     "build-service/tests/appforge_unified_agent_device_test_bugfix_contract.test.js",
     "build-service/tests/appforge_unified_agent_v11_e2e_contract.test.js",

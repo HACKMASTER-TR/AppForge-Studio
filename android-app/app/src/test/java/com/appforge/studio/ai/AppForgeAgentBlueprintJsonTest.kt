@@ -95,6 +95,57 @@ class AppForgeAgentBlueprintJsonTest {
     }
 
     @Test
+    fun fillsMissingPlatformFromSelectedFallback() {
+        val withoutPlatform =
+            validJson().replace(
+                "          \"platform\": \"ANDROID\",\n",
+                ""
+            )
+
+        val blueprint =
+            AppForgeAgentBlueprintJson.parse(
+                raw = withoutPlatform,
+                fallbackPlatform =
+                    AppForgeAgentPlatform.FLUTTER
+            )
+
+        assertEquals(
+            AppForgeAgentPlatform.FLUTTER,
+            blueprint.platform
+        )
+    }
+
+    @Test
+    fun stillRejectsMissingPlatformWithoutFallback() {
+        val withoutPlatform =
+            validJson().replace(
+                "          \"platform\": \"ANDROID\",\n",
+                ""
+            )
+
+        expectFailure {
+            AppForgeAgentBlueprintJson.parse(
+                withoutPlatform
+            )
+        }
+    }
+
+    @Test
+    fun fallbackDoesNotOverrideExplicitAiPlatform() {
+        val blueprint =
+            AppForgeAgentBlueprintJson.parse(
+                raw = validJson(),
+                fallbackPlatform =
+                    AppForgeAgentPlatform.WEB
+            )
+
+        assertEquals(
+            AppForgeAgentPlatform.ANDROID,
+            blueprint.platform
+        )
+    }
+
+    @Test
     fun normalizesRawControlCharactersInsideJsonStringsOnly() {
         val raw = validJson()
             .replace(

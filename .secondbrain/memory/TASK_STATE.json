@@ -1,8 +1,8 @@
 {
-  "label": "v15-blueprint-control-characters",
-  "started_at": "2026-09-14T12:18:07+03:00",
-  "start_checkpoint": ".secondbrain/checkpoints/20260914-121807-start-v15-blueprint-control-characters.json",
+  "label": "v15-blueprint-platform-fallback",
+  "started_at": "2026-09-14T13:05:06+03:00",
+  "start_checkpoint": ".secondbrain/checkpoints/20260914-130506-start-v15-blueprint-platform-fallback.json",
   "status": "DONE",
-  "finished_at": "2026-09-14T12:19:42+03:00",
-  "end_checkpoint": ".secondbrain/checkpoints/20260914-121942-finish-v15-blueprint-control-characters.json"
+  "finished_at": "2026-09-14T13:06:28+03:00",
+  "end_checkpoint": ".secondbrain/checkpoints/20260914-130628-finish-v15-blueprint-platform-fallback.json"
 }

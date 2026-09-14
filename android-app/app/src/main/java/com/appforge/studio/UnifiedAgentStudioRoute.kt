@@ -1031,7 +1031,11 @@ internal fun UnifiedAgentStudioRoute(
                             val raw = assistant.generateStructuredJson(
                                 promptContract
                             )
-                            val blueprint = AppForgeAgentBlueprintJson.parse(raw)
+                            val blueprint =
+                                AppForgeAgentBlueprintJson.parse(
+                                    raw = raw,
+                                    fallbackPlatform = state.platform
+                                )
 
                             require(blueprint.platform == state.platform) {
                                 "AI Blueprint platformu seçilen platform ile eşleşmiyor."

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T12:19:41+03:00",
+  "generated_at": "2026-09-14T13:06:27+03:00",
   "discovered": 300,
   "domains": [
     "android",
@@ -7,7 +7,7 @@
   ],
   "selected_tests": [
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt",
-    "build-service/tests/appforge_unified_agent_blueprint_control_char_contract.test.js",
+    "build-service/tests/appforge_unified_agent_blueprint_platform_fallback_contract.test.js",
     "build-service/tests/android_queue_ui_regression.test.js",
     "build-service/tests/unity_android_build_engine.test.js",
     "build-service/tests/quota_addons_android_ui_contract.test.js",
