@@ -1,6 +1,6 @@
 # AppForge Studio — Deep Project Map
 
-Generated: 2026-09-12T00:34:18+03:00
+Generated: 2026-09-14T03:45:36+03:00
 
 ## API Routes
 
@@ -79,6 +79,7 @@ Generated: 2026-09-12T00:34:18+03:00
 | GET | /api/security/config | build-service/server.js |
 | POST | /api/security/attest | build-service/server.js |
 | GET | /api/pro/status | build-service/server.js |
+| POST | /api/quota/addons/redeem | build-service/server.js |
 | POST | /api/pro/activate | build-service/server.js |
 | POST | /api/admin/pro/grant | build-service/server.js |
 | POST | /api/admin/pro/revoke | build-service/server.js |
@@ -92,7 +93,7 @@ Generated: 2026-09-12T00:34:18+03:00
 
 ## Database
 
-Detected tables / schema objects: **30**
+Detected tables / schema objects: **34**
 
 - `appforge_account_devices`
 - `appforge_api_tokens`
@@ -109,14 +110,18 @@ Detected tables / schema objects: **30**
 - `appforge_localizations`
 - `appforge_migration_markers`
 - `appforge_permission_audit`
+- `appforge_play_purchase_owners`
 - `appforge_play_purchases`
 - `appforge_pro_entitlements`
+- `appforge_pro_monthly_build_reservations`
+- `appforge_pro_monthly_build_usage`
 - `appforge_pro_monthly_project_slots`
 - `appforge_project_files`
 - `appforge_project_quota_reservations`
 - `appforge_project_revisions`
 - `appforge_projects`
 - `appforge_publish_jobs`
+- `appforge_quota_addon_redemptions`
 - `appforge_team_invites`
 - `appforge_team_members`
 - `appforge_teams`
@@ -151,13 +156,16 @@ Detected tables / schema objects: **30**
 | build-service/sql/019_user_free_project_limits.sql | appforge_user_project_limits | - |
 | build-service/sql/020_legacy_device_login_permission.sql | - | appforge_users |
 | build-service/sql/021_success_project_quotas.sql | appforge_migration_markers, appforge_pro_monthly_project_slots, appforge_project_quota_reservations | - |
+| build-service/sql/022_monthly_build_quota.sql | appforge_pro_monthly_build_reservations, appforge_pro_monthly_build_usage | appforge_projects |
+| build-service/sql/023_quota_addons.sql | appforge_quota_addon_redemptions | - |
+| build-service/sql/024_client_hardening.sql | appforge_play_purchase_owners | - |
 
 
 ## Worker Runtime
 
 | Script | Command |
 | --- | --- |
-| start | node --import ./instrument.mjs server.js |
+| start | node --import ./instrument.mjs bootstrap.js |
 | worker | node --import ./instrument.mjs worker.js |
 | worker:unity | node --import ./instrument.mjs unity-worker.js |
 | worker:source | node --import ./instrument.mjs source-worker.js |
@@ -175,6 +183,7 @@ Detected tables / schema objects: **30**
 
 - `.github/workflows/android-debug.yml`
 - `.github/workflows/android-play-release.yml`
+- `.github/workflows/appforge-stability-gate.yml`
 - `.github/workflows/cleanup-old-runs.yml`
 - `.github/workflows/conversion-smoke.yml`
 - `.github/workflows/production-automation.yml`
@@ -185,10 +194,21 @@ Detected tables / schema objects: **30**
 
 ## Tests
 
-Detected test files: **225**
+Detected test files: **289**
 
 - `AppForgeStudio-latest.apk`
 - `android-app/app/src/test/java/com/appforge/studio/BuildRuntimeStateTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipelineTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentCodegenTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRepairLoopTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStructuredPatchTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentVisualDesignerTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransactionTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/task/AppForgeTaskManagerTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt`
@@ -204,12 +224,32 @@ Detected test files: **225**
 - `android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPerformanceMetricsTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/terminal/TerminalWorkingDirectoryTrackerTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/terminal/UltimateAgentModeTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/terminal/UltimateCodeEditorCoreTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/terminal/UltimateLspProtocolTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectAutomationTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectPipelineTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ApcTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ByteQueueTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ControlSequenceIntroducerTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/CursorAndScreenTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/DecSetTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/DeviceControlStringTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/HistoryTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/KeyHandlerTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/OperatingSystemControlTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/RectangularAreasTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ResizeTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ScreenBufferTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ScrollRegionTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalRowTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalTestCase.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TextStyleTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/UnicodeInputTest.java`
+- `android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/WcWidthTest.java`
 - `build-service/tests/account_scoped_local_data_contract.test.js`
 - `build-service/tests/admin_account_management.test.js`
 - `build-service/tests/admin_granted_pro_status_contract.test.js`
@@ -224,9 +264,24 @@ Detected test files: **225**
 - `build-service/tests/android_queue_ui_regression.test.js`
 - `build-service/tests/android_safe_area.test.js`
 - `build-service/tests/android_sdk_selection.test.js`
+- `build-service/tests/appforge_admin_autopilot_controls_contract.test.js`
+- `build-service/tests/appforge_agent_scale_v10.test.js`
+- `build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js`
+- `build-service/tests/appforge_autopilot_cli_contract.test.js`
+- `build-service/tests/appforge_autopilot_policy_contract.test.js`
+- `build-service/tests/appforge_autopilot_resume_contract.test.js`
+- `build-service/tests/appforge_autopilot_timing_contract.test.js`
+- `build-service/tests/appforge_autopilot_workflow_resolution_contract.test.js`
+- `build-service/tests/appforge_ci_fast_lane_contract.test.js`
 - `build-service/tests/appforge_production_cancelled_image_contract.test.js`
+- `build-service/tests/appforge_production_health_resilience_contract.test.js`
+- `build-service/tests/appforge_quota_recovery_contract.test.js`
+- `build-service/tests/appforge_stability_gate_portable_tmp_contract.test.js`
 - `build-service/tests/appforge_terminal_advanced_git_contract.test.js`
+- `build-service/tests/appforge_terminal_apk_origin_fallback_contract.test.js`
+- `build-service/tests/appforge_terminal_download_bridge_contract.test.js`
 - `build-service/tests/appforge_terminal_ime_backspace_contract.test.js`
+- `build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js`
 - `build-service/tests/appforge_terminal_ime_stability_contract.test.js`
 - `build-service/tests/appforge_terminal_integration.test.js`
 - `build-service/tests/appforge_terminal_linux_multisession_contract.test.js`
@@ -234,14 +289,17 @@ Detected test files: **225**
 - `build-service/tests/appforge_terminal_linux_runtime_contract.test.js`
 - `build-service/tests/appforge_terminal_lsp_contract.test.js`
 - `build-service/tests/appforge_terminal_native_pty_cleanup_contract.test.js`
+- `build-service/tests/appforge_terminal_owner_apk_bridge_contract.test.js`
 - `build-service/tests/appforge_terminal_packaged_linux_engine_contract.test.js`
 - `build-service/tests/appforge_terminal_project_automation_contract.test.js`
 - `build-service/tests/appforge_terminal_project_pipeline_contract.test.js`
+- `build-service/tests/appforge_terminal_prompt_visibility_contract.test.js`
 - `build-service/tests/appforge_terminal_proroot_bind_contract.test.js`
 - `build-service/tests/appforge_terminal_proroot_workspace_contract.test.js`
 - `build-service/tests/appforge_terminal_pty_lifecycle_contract.test.js`
 - `build-service/tests/appforge_terminal_pty_reader_lifecycle_contract.test.js`
 - `build-service/tests/appforge_terminal_security_restore_contract.test.js`
+- `build-service/tests/appforge_terminal_shortcut_viewport_suppression_contract.test.js`
 - `build-service/tests/appforge_terminal_stage10c_local_terminal_input_contract.test.js`
 - `build-service/tests/appforge_terminal_stage10d_terminal_surface_input_contract.test.js`
 - `build-service/tests/appforge_terminal_stage10e_real_local_pty_contract.test.js`
@@ -288,6 +346,7 @@ Detected test files: **225**
 - `build-service/tests/appforge_terminal_ubuntu_rootfs_compat_contract.test.js`
 - `build-service/tests/appforge_terminal_ultimate_editor_contract.test.js`
 - `build-service/tests/appforge_terminal_verified_rootfs_contract.test.js`
+- `build-service/tests/appforge_terminal_viewport_stability_contract.test.js`
 - `build-service/tests/appforge_usage_guides_contract.test.js`
 - `build-service/tests/archive_limits.test.js`
 - `build-service/tests/artifact_manifest.test.js`
@@ -300,6 +359,7 @@ Detected test files: **225**
 - `build-service/tests/cache_artifact_aware.test.js`
 - `build-service/tests/cache_stable.test.js`
 - `build-service/tests/capabilities.test.js`
+- `build-service/tests/client-hardening-contract.test.js`
 - `build-service/tests/conversion_manifest.test.js`
 - `build-service/tests/conversion_roundtrip_smoke.test.js`
 - `build-service/tests/cpp_android_build_engine.test.js`
@@ -336,63 +396,12 @@ Detected test files: **225**
 - `build-service/tests/legacy_device_login_permission.test.js`
 - `build-service/tests/log_redaction.test.js`
 - `build-service/tests/media3_regression.test.js`
-- `build-service/tests/monetization_navigation_regression.test.js`
-- `build-service/tests/multi_device_account.test.js`
-- `build-service/tests/native_android_gradle_profile.test.js`
-- `build-service/tests/native_bridge_limits_v191.test.js`
-- `build-service/tests/native_bridge_v2.test.js`
-- `build-service/tests/native_file_chooser_media.test.js`
-- `build-service/tests/native_media_v3.test.js`
-- `build-service/tests/node_remote_backend_engine.test.js`
-- `build-service/tests/node_remote_backend_live_engine.test.js`
-- `build-service/tests/node_web_build_engine.test.js`
-- `build-service/tests/permissions.test.js`
-- `build-service/tests/php_remote_backend_engine.test.js`
-- `build-service/tests/php_remote_backend_live_engine.test.js`
-- `build-service/tests/play_verifier.test.js`
-- `build-service/tests/pro_feature_surface_gate_contract.test.js`
-- `build-service/tests/problem_explainer.test.js`
-- `build-service/tests/problem_explainer_integration.test.js`
-- `build-service/tests/production_infrastructure.test.js`
-- `build-service/tests/project_archive_cache_identity.test.js`
-- `build-service/tests/project_backup_import.test.js`
-- `build-service/tests/project_clone_menu.test.js`
-- `build-service/tests/project_technology_detector_regression.test.js`
-- `build-service/tests/public_build_number.test.js`
-- `build-service/tests/python_android_template.test.js`
-- `build-service/tests/python_source_build_engine.test.js`
-- `build-service/tests/python_web_android_smoke.js`
-- `build-service/tests/python_web_framework_engine.test.js`
-- `build-service/tests/python_web_framework_live_build_engine.test.js`
-- `build-service/tests/queue_eta_math.test.js`
-- `build-service/tests/react_native_build_engine.test.js`
-- `build-service/tests/react_native_live_build_engine.test.js`
-- `build-service/tests/repository_maintenance.test.js`
-- `build-service/tests/scopes.test.js`
-- `build-service/tests/single_device_account.test.js`
-- `build-service/tests/source_build_env.test.js`
-- `build-service/tests/source_build_env.test.js.cache-hardening-phase-b.bak`
-- `build-service/tests/source_build_isolation.test.js`
-- `build-service/tests/source_capability_analyzer.test.js`
-- `build-service/tests/source_worker_ci_contract.test.js`
-- `build-service/tests/source_worker_ci_contract.test.js.cache-hardening-phase-b.bak`
-- `build-service/tests/source_worker_ci_contract.test.js.toolchain-phase-a.bak`
-- `build-service/tests/source_worker_contract.test.js`
-- `build-service/tests/source_worker_queue_reservation.test.js`
-- `build-service/tests/source_worker_queue_routing.test.js`
-- `build-service/tests/storage_keys.test.js`
-- `build-service/tests/studio_project_lifecycle.test.js`
-- `build-service/tests/studio_project_persistence.test.js`
-- `build-service/tests/team_slug.test.js`
-- `build-service/tests/technology_support_matrix.test.js`
-- `build-service/tests/terminal_bracketed_paste_mode_contract.test.js`
-- `build-service/tests/toolchain.test.js`
 
 ## Product Surfaces
 
 - Android: `{'detected': True, 'paths': ['android-app']}`
 - Web: `{'detected': False, 'paths': []}`
-- Desktop: `{'detected': True, 'paths': ['desktop-app']}`
+- Desktop: `{'detected': False, 'paths': []}`
 
 ## Rules
 

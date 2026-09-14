@@ -1,19 +1,91 @@
 {
-  "generated_at": "2026-09-12T00:34:21+03:00",
+  "generated_at": "2026-09-14T03:45:40+03:00",
   "version": "3.0.0",
   "manifest": {
-    "files": 571,
+    "files": 706,
     "changed_since_cache": [
-      "android-app/app/src/main/assets/second_brain_snapshot.json"
+      "android-app/app/src/main/assets/second_brain_snapshot.json",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentAutonomousContracts.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipeline.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintJson.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintPrompt.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentCodegen.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentCodegenRenderers.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentFullStackCodegen.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentFullStackContract.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentIntelligence.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentIntelligentBlueprintProvider.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentProductionCoordinator.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentProductionScale.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentProductionTelemetry.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentRepairLoop.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentSecondBrain.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentStructuredPatch.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentVisualDesigner.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentVisualDesignerScreen.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransaction.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipelineTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentCodegenTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRepairLoopTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStructuredPatchTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentVisualDesignerTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransactionTest.kt",
+      "build-service/appforge-agent-scale-v10.js",
+      "build-service/tests/appforge_agent_scale_v10.test.js",
+      "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js"
     ],
     "removed_since_cache": [],
     "incremental": true
   },
   "dependency": {
-    "generated_at": "2026-09-12T00:34:19+03:00",
-    "node_count": 571,
-    "edge_count": 80,
+    "generated_at": "2026-09-14T03:45:36+03:00",
+    "node_count": 706,
+    "edge_count": 106,
     "edges": [
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AppForgeHelpCenterScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
+        "kind": "import"
+      },
       {
         "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
         "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
@@ -190,58 +262,38 @@
         "kind": "import"
       },
       {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
+        "kind": "import"
+      },
+      {
         "from": "android-app/app/src/main/java/com/appforge/studio/StudioHomeScreen.kt",
         "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
         "kind": "import"
       },
       {
-        "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
         "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
         "kind": "import"
       },
       {
-        "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiSnapshotV2.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
         "kind": "import"
       },
       {
-        "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/AppForgeHelpCenterScreen.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+        "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
         "kind": "import"
       },
       {
@@ -251,11 +303,6 @@
       },
       {
         "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
         "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
         "kind": "import"
       },
@@ -270,12 +317,7 @@
         "kind": "import"
       },
       {
-        "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiSnapshotV2.kt",
+        "from": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
         "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
         "kind": "import"
       },
@@ -285,8 +327,153 @@
         "kind": "import"
       },
       {
-        "from": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+        "from": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspacePanel.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxMultiSessionTerminalPanel.kt",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TextStyle.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
+        "to": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
+        "to": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TextStyle.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalTerminalPanel.kt",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TextStyle.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerFilesPanel.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerPrivateFileSync.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalStandaloneDeveloperBootstrap.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
         "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalSession.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalSessionClient.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt",
+        "to": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt",
+        "to": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalViewClient.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/tools/excel/ExcelToolsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
+        "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
+        "to": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
         "kind": "import"
       },
       {
@@ -305,113 +492,88 @@
         "kind": "import"
       },
       {
-        "from": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
-        "to": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/tools/excel/ExcelToolsScreen.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspacePanel.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
-        "to": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
-        "to": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalStandaloneDeveloperBootstrap.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerFilesPanel.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
-        "kind": "import"
-      },
-      {
-        "from": "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerPrivateFileSync.kt",
-        "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
-        "kind": "import"
-      },
-      {
         "from": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
         "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalRenderer.java",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalBuffer.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalRenderer.java",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalRenderer.java",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalRow.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalRenderer.java",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TextStyle.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalRenderer.java",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/WcWidth.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/KeyHandler.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalSession.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java",
+        "to": "android-app/termux-terminal-view/src/main/java/com/termux/view/textselection/TextSelectionCursorController.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalViewClient.java",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalSession.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/textselection/CursorController.java",
+        "to": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/textselection/TextSelectionCursorController.java",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalBuffer.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/textselection/TextSelectionCursorController.java",
+        "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/WcWidth.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/textselection/TextSelectionCursorController.java",
+        "to": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/textselection/TextSelectionHandleView.java",
+        "to": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java",
+        "kind": "import"
+      },
+      {
+        "from": "android-app/termux-terminal-view/src/main/java/com/termux/view/textselection/TextSelectionHandleView.java",
+        "to": "android-app/termux-terminal-view/src/main/java/com/termux/view/support/PopupWindowCompatGingerbread.java",
         "kind": "import"
       }
     ],
@@ -430,9 +592,15 @@
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-        "fan_in": 9,
+        "fan_in": 10,
         "fan_out": 0,
-        "score": 9
+        "score": 10
+      },
+      {
+        "file": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java",
+        "fan_in": 4,
+        "fan_out": 4,
+        "score": 8
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
@@ -447,9 +615,27 @@
         "score": 5
       },
       {
+        "file": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalRenderer.java",
+        "fan_in": 0,
+        "fan_out": 5,
+        "score": 5
+      },
+      {
         "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
         "fan_in": 4,
         "fan_out": 0,
+        "score": 4
+      },
+      {
+        "file": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TextStyle.java",
+        "fan_in": 4,
+        "fan_out": 0,
+        "score": 4
+      },
+      {
+        "file": "android-app/termux-terminal-view/src/main/java/com/termux/view/textselection/TextSelectionCursorController.java",
+        "fan_in": 1,
+        "fan_out": 3,
         "score": 4
       },
       {
@@ -460,6 +646,12 @@
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        "fan_in": 0,
+        "fan_out": 4,
+        "score": 4
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt",
         "fan_in": 0,
         "fan_out": 4,
         "score": 4
@@ -477,6 +669,12 @@
         "score": 3
       },
       {
+        "file": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalSession.java",
+        "fan_in": 3,
+        "fan_out": 0,
+        "score": 3
+      },
+      {
         "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
         "fan_in": 2,
         "fan_out": 1,
@@ -489,16 +687,16 @@
         "score": 3
       },
       {
-        "file": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+        "file": "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt",
         "fan_in": 0,
         "fan_out": 3,
         "score": 3
       },
       {
-        "file": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
-        "fan_in": 2,
-        "fan_out": 0,
-        "score": 2
+        "file": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+        "fan_in": 0,
+        "fan_out": 3,
+        "score": 3
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
@@ -507,13 +705,43 @@
         "score": 2
       },
       {
-        "file": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
-        "fan_in": 1,
-        "fan_out": 1,
+        "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt",
+        "fan_in": 2,
+        "fan_out": 0,
         "score": 2
       },
       {
-        "file": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
+        "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
+        "fan_in": 2,
+        "fan_out": 0,
+        "score": 2
+      },
+      {
+        "file": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalBuffer.java",
+        "fan_in": 2,
+        "fan_out": 0,
+        "score": 2
+      },
+      {
+        "file": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java",
+        "fan_in": 2,
+        "fan_out": 0,
+        "score": 2
+      },
+      {
+        "file": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/WcWidth.java",
+        "fan_in": 2,
+        "fan_out": 0,
+        "score": 2
+      },
+      {
+        "file": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+        "fan_in": 2,
+        "fan_out": 0,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
         "fan_in": 1,
         "fan_out": 1,
         "score": 2
@@ -531,13 +759,19 @@
         "score": 2
       },
       {
-        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
+        "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
         "fan_in": 1,
         "fan_out": 1,
         "score": 2
       },
       {
-        "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+        "file": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
+        "fan_in": 1,
+        "fan_out": 1,
+        "score": 2
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
         "fan_in": 1,
         "fan_out": 1,
         "score": 2
@@ -549,19 +783,13 @@
         "score": 2
       },
       {
+        "file": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalViewClient.java",
+        "fan_in": 1,
+        "fan_out": 1,
+        "score": 2
+      },
+      {
         "file": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
-        "fan_in": 0,
-        "fan_out": 2,
-        "score": 2
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
-        "fan_in": 0,
-        "fan_out": 2,
-        "score": 2
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
         "fan_in": 0,
         "fan_out": 2,
         "score": 2
@@ -585,130 +813,64 @@
         "score": 2
       },
       {
-        "file": "android-app/app/src/main/java/com/appforge/studio/AppForgeBuildNumbers.kt",
-        "fan_in": 1,
-        "fan_out": 0,
-        "score": 1
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt",
-        "fan_in": 1,
-        "fan_out": 0,
-        "score": 1
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
-        "fan_in": 1,
-        "fan_out": 0,
-        "score": 1
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/security/AppSignatureVerifier.kt",
-        "fan_in": 1,
-        "fan_out": 0,
-        "score": 1
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelStore.kt",
-        "fan_in": 1,
-        "fan_out": 0,
-        "score": 1
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelDownloader.kt",
-        "fan_in": 1,
-        "fan_out": 0,
-        "score": 1
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt",
-        "fan_in": 1,
-        "fan_out": 0,
-        "score": 1
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiChatStore.kt",
-        "fan_in": 1,
-        "fan_out": 0,
-        "score": 1
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAssistantIntegration.kt",
-        "fan_in": 1,
-        "fan_out": 0,
-        "score": 1
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/ai/BuildDiagnosisPolicy.kt",
-        "fan_in": 1,
-        "fan_out": 0,
-        "score": 1
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectImporter.kt",
-        "fan_in": 1,
-        "fan_out": 0,
-        "score": 1
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/io/PwaInspector.kt",
-        "fan_in": 1,
-        "fan_out": 0,
-        "score": 1
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
+        "fan_in": 0,
+        "fan_out": 2,
+        "score": 2
       }
     ],
     "external_dependencies": [
       [
         "androidx",
-        1096
+        1256
       ],
       [
         "android",
-        322
+        441
       ],
       [
         "java",
-        291
+        377
       ],
       [
         "assert",
-        199
+        232
       ],
       [
         "node:assert",
-        199
+        232
       ],
       [
         "node:test",
-        195
+        228
       ],
       [
         "test",
-        195
-      ],
-      [
-        "kotlinx",
-        172
+        228
       ],
       [
         "org",
-        162
+        215
+      ],
+      [
+        "kotlinx",
+        182
       ],
       [
         "node:fs",
-        134
+        160
       ],
       [
         "com",
-        107
+        123
       ],
       [
         "path",
-        65
+        71
       ],
       [
         "fs",
-        42
+        56
       ],
       [
         "AdmZip",
@@ -728,46 +890,42 @@
       ],
       [
         "crypto",
-        15
+        17
       ],
       [
         "child_process",
         10
       ],
       [
+        "url",
+        9
+      ],
+      [
+        "junit",
+        7
+      ],
+      [
         "javax",
         6
       ],
       [
+        "express",
+        6
+      ],
+      [
         "node:path",
-        5
+        6
       ],
       [
         "json",
         5
       ],
       [
-        "express",
-        4
-      ],
-      [
-        "url",
-        4
-      ],
-      [
         "googleapis",
-        3
+        4
       ],
       [
-        "node:os",
-        3
-      ],
-      [
-        "traceback",
-        3
-      ],
-      [
-        "net",
+        "subprocess",
         3
       ],
       [
@@ -775,11 +933,31 @@
         3
       ],
       [
-        "subprocess",
+        "traceback",
         3
       ],
       [
-        "uuid",
+        "jsonwebtoken",
+        3
+      ],
+      [
+        "jwt",
+        3
+      ],
+      [
+        "net",
+        3
+      ],
+      [
+        "node:os",
+        3
+      ],
+      [
+        "time",
+        2
+      ],
+      [
+        "pathlib",
         2
       ],
       [
@@ -791,19 +969,15 @@
         2
       ],
       [
+        "uuid",
+        2
+      ],
+      [
+        "node:crypto",
+        2
+      ],
+      [
         "django",
-        2
-      ],
-      [
-        "jsonwebtoken",
-        2
-      ],
-      [
-        "jwt",
-        2
-      ],
-      [
-        "pathlib",
         2
       ],
       [
@@ -811,11 +985,39 @@
         2
       ],
       [
-        "time",
-        2
+        "argparse",
+        1
+      ],
+      [
+        "math",
+        1
+      ],
+      [
+        "re",
+        1
+      ],
+      [
+        "React",
+        1
+      ],
+      [
+        "react",
+        1
+      ],
+      [
+        "react-native",
+        1
+      ],
+      [
+        "static",
+        1
       ],
       [
         "multer",
+        1
+      ],
+      [
+        "importlib",
         1
       ],
       [
@@ -835,6 +1037,14 @@
         1
       ],
       [
+        "threading",
+        1
+      ],
+      [
+        "wsgiref",
+        1
+      ],
+      [
         "QRCode",
         1
       ],
@@ -851,34 +1061,14 @@
         1
       ],
       [
-        "threading",
-        1
-      ],
-      [
-        "wsgiref",
-        1
-      ],
-      [
-        "importlib",
-        1
-      ],
-      [
-        "re",
-        1
-      ],
-      [
-        "argparse",
-        1
-      ],
-      [
-        "math",
+        "node:url",
         1
       ]
     ]
   },
   "api": {
-    "generated_at": "2026-09-12T00:34:19+03:00",
-    "count": 82,
+    "generated_at": "2026-09-14T03:45:36+03:00",
+    "count": 83,
     "routes": [
       {
         "method": "GET",
@@ -2220,6 +2410,24 @@
       },
       {
         "method": "POST",
+        "path": "/api/quota/addons/redeem",
+        "auth": true,
+        "admin": false,
+        "middleware": [
+          "authRequired",
+          "purchaseVerifyRateLimit",
+          "requireIntegrityHeader"
+        ],
+        "tables": [],
+        "request": {
+          "query": [],
+          "body": [],
+          "params": []
+        },
+        "source": "build-service/server.js"
+      },
+      {
+        "method": "POST",
         "path": "/api/pro/activate",
         "auth": true,
         "admin": false,
@@ -2832,9 +3040,9 @@
     ]
   },
   "database": {
-    "generated_at": "2026-09-12T00:34:19+03:00",
-    "migration_count": 22,
-    "table_count": 30,
+    "generated_at": "2026-09-14T03:45:36+03:00",
+    "migration_count": 25,
+    "table_count": 34,
     "tables": [
       "appforge_account_devices",
       "appforge_api_tokens",
@@ -2851,14 +3059,18 @@
       "appforge_localizations",
       "appforge_migration_markers",
       "appforge_permission_audit",
+      "appforge_play_purchase_owners",
       "appforge_play_purchases",
       "appforge_pro_entitlements",
+      "appforge_pro_monthly_build_reservations",
+      "appforge_pro_monthly_build_usage",
       "appforge_pro_monthly_project_slots",
       "appforge_project_files",
       "appforge_project_quota_reservations",
       "appforge_project_revisions",
       "appforge_projects",
       "appforge_publish_jobs",
+      "appforge_quota_addon_redemptions",
       "appforge_team_invites",
       "appforge_team_members",
       "appforge_teams",
@@ -3195,6 +3407,56 @@
         "destructive": [
           "DELETE FROM"
         ]
+      },
+      {
+        "file": "build-service/sql/022_monthly_build_quota.sql",
+        "creates": [
+          "appforge_pro_monthly_build_reservations",
+          "appforge_pro_monthly_build_usage"
+        ],
+        "alters": [
+          "appforge_projects"
+        ],
+        "indexes": [
+          "idx_appforge_monthly_build_res_user_cycle",
+          "idx_appforge_monthly_build_usage_user_cycle",
+          "idx_appforge_projects_package_locked"
+        ],
+        "references": [
+          "appforge_projects",
+          "appforge_users"
+        ],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/023_quota_addons.sql",
+        "creates": [
+          "appforge_quota_addon_redemptions"
+        ],
+        "alters": [],
+        "indexes": [
+          "idx_appforge_quota_addons_product",
+          "idx_appforge_quota_addons_user_cycle"
+        ],
+        "references": [
+          "appforge_users"
+        ],
+        "destructive": []
+      },
+      {
+        "file": "build-service/sql/024_client_hardening.sql",
+        "creates": [
+          "appforge_play_purchase_owners"
+        ],
+        "alters": [],
+        "indexes": [
+          "idx_appforge_play_purchase_owners_product",
+          "idx_appforge_play_purchase_owners_user"
+        ],
+        "references": [
+          "appforge_users"
+        ],
+        "destructive": []
       }
     ],
     "destructive_migrations": [
@@ -3225,7 +3487,8 @@
       ],
       "appforge_build_jobs": [
         "build-service/src/accountDeletion.js",
-        "build-service/src/jobQueue.js"
+        "build-service/src/jobQueue.js",
+        "build-service/tests/pro_monthly_build_quota_runtime.test.js"
       ],
       "appforge_build_log_lines": [
         "build-service/server.js",
@@ -3238,11 +3501,13 @@
         "build-service/src/buildEngine.js",
         "build-service/src/buildLogs.js",
         "build-service/src/jobQueue.js",
+        "build-service/src/monthlyBuildQuota.js",
         "build-service/src/projectQuotaV2.js",
         "build-service/src/publish.js",
         "build-service/src/unityLicensedBuild.js",
         "build-service/src/windowsBuild.js",
-        "build-service/src/workspaceBuild.js"
+        "build-service/src/workspaceBuild.js",
+        "build-service/tests/pro_monthly_build_quota_foundation.test.js"
       ],
       "appforge_download_tickets": [
         "build-service/src/downloadTickets.js"
@@ -3257,6 +3522,7 @@
         "build-service/src/idempotency.js"
       ],
       "appforge_integrity_audits": [
+        "build-service/src/clientHardening.js",
         "build-service/src/studioIntegrity.js"
       ],
       "appforge_localizations": [
@@ -3268,13 +3534,28 @@
       "appforge_permission_audit": [
         "build-service/src/permissions.js"
       ],
+      "appforge_play_purchase_owners": [
+        "build-service/src/clientHardening.js"
+      ],
       "appforge_play_purchases": [
         "build-service/server.js",
         "build-service/src/playVerifier.js"
       ],
       "appforge_pro_entitlements": [
         "build-service/server.js",
+        "build-service/src/clientHardening.js",
         "build-service/src/proEntitlements.js"
+      ],
+      "appforge_pro_monthly_build_reservations": [
+        "build-service/src/jobQueue.js",
+        "build-service/src/monthlyBuildQuota.js",
+        "build-service/tests/pro_monthly_build_quota_foundation.test.js",
+        "build-service/tests/pro_monthly_build_quota_runtime.test.js"
+      ],
+      "appforge_pro_monthly_build_usage": [
+        "build-service/src/monthlyBuildQuota.js",
+        "build-service/tests/pro_monthly_build_quota_foundation.test.js",
+        "build-service/tests/pro_monthly_build_quota_runtime.test.js"
       ],
       "appforge_pro_monthly_project_slots": [
         "build-service/src/projectQuotaV2.js",
@@ -3294,11 +3575,20 @@
         "build-service/src/workspace.js"
       ],
       "appforge_projects": [
+        "build-service/src/projectQuotaV2.js",
         "build-service/src/projects.js",
-        "build-service/src/workspace.js"
+        "build-service/src/workspace.js",
+        "build-service/src/workspaceBuild.js",
+        "build-service/tests/pro_monthly_build_quota_identity.test.js"
       ],
       "appforge_publish_jobs": [
         "build-service/src/publish.js"
+      ],
+      "appforge_quota_addon_redemptions": [
+        "build-service/src/monthlyBuildQuota.js",
+        "build-service/src/projectQuotaV2.js",
+        "build-service/src/quotaAddons.js",
+        "build-service/tests/quota_addons_redemption.test.js"
       ],
       "appforge_team_invites": [
         "build-service/src/teams.js"
@@ -3324,6 +3614,7 @@
         "build-service/src/accountDeletion.js",
         "build-service/src/auth.js",
         "build-service/src/jobQueue.js",
+        "build-service/src/monthlyBuildQuota.js",
         "build-service/src/permissions.js",
         "build-service/src/proEntitlements.js",
         "build-service/src/projectQuotaV2.js",
@@ -3338,11 +3629,11 @@
     }
   },
   "workers": {
-    "generated_at": "2026-09-12T00:34:19+03:00",
+    "generated_at": "2026-09-14T03:45:36+03:00",
     "runtime_scripts": [
       {
         "name": "start",
-        "command": "node --import ./instrument.mjs server.js"
+        "command": "node --import ./instrument.mjs bootstrap.js"
       },
       {
         "name": "worker",
@@ -3378,6 +3669,12 @@
         "android_related": true
       },
       {
+        "file": ".github/workflows/appforge-stability-gate.yml",
+        "worker_related": true,
+        "railway_related": false,
+        "android_related": true
+      },
+      {
         "file": ".github/workflows/cleanup-old-runs.yml",
         "worker_related": false,
         "railway_related": true,
@@ -3386,7 +3683,7 @@
       {
         "file": ".github/workflows/conversion-smoke.yml",
         "worker_related": false,
-        "railway_related": true,
+        "railway_related": false,
         "android_related": false
       },
       {
@@ -3398,7 +3695,7 @@
       {
         "file": ".github/workflows/source-worker-image.yml",
         "worker_related": true,
-        "railway_related": true,
+        "railway_related": false,
         "android_related": false
       },
       {
@@ -3416,24 +3713,55 @@
       {
         "file": ".github/workflows/worker-image.yml",
         "worker_related": true,
-        "railway_related": true,
+        "railway_related": false,
         "android_related": false
       }
     ]
   },
   "tests": {
-    "generated_at": "2026-09-12T00:34:19+03:00",
-    "discovered": 227,
+    "generated_at": "2026-09-14T03:45:38+03:00",
+    "discovered": 291,
     "domains": [
-      "android"
+      "android",
+      "build-service"
     ],
     "selected_tests": [
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransactionTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentVisualDesignerTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStructuredPatchTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRepairLoopTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentCodegenTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipelineTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/WcWidthTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/UnicodeInputTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TextStyleTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalTestCase.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalRowTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ScrollRegionTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ScreenBufferTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ResizeTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/RectangularAreasTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/OperatingSystemControlTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/KeyHandlerTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/HistoryTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/DeviceControlStringTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/DecSetTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/CursorAndScreenTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ControlSequenceIntroducerTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ByteQueueTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ApcTest.java",
       "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectPipelineTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectAutomationTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateLspProtocolTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateCodeEditorCoreTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateAgentModeTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalWorkingDirectoryTrackerTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPerformanceMetricsTest.kt",
@@ -3449,10 +3777,15 @@
       "android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/task/AppForgeTaskManagerTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/BuildRuntimeStateTest.kt",
       "android-app/app/src/main/assets/terminal/appforge-test",
+      "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
+      "build-service/tests/appforge_agent_scale_v10.test.js",
       "build-service/tests/android_queue_ui_regression.test.js",
       "build-service/tests/unity_android_build_engine.test.js",
+      "build-service/tests/quota_addons_android_ui_contract.test.js",
+      "build-service/tests/quota_addons_android_contract.test.js",
       "build-service/tests/python_web_android_smoke.js",
       "build-service/tests/python_android_template.test.js",
       "build-service/tests/native_android_gradle_profile.test.js",
@@ -3472,13 +3805,12 @@
       "build-service/tests/windows_exe_regression.test.js",
       "build-service/tests/project_technology_detector_regression.test.js",
       "build-service/tests/monetization_navigation_regression.test.js",
-      "build-service/tests/media3_regression.test.js",
-      "build-service/tests/fcm_warning_regression.test.js",
-      "build-service/tests/build_error_advisor_ui_regression.test.js"
+      "build-service/tests/media3_regression.test.js"
     ],
     "critical_regression_tests": [
       "android-app/app/src/main/assets/terminal/appforge-test",
       "android-app/app/src/test/java/com/appforge/studio/BuildRuntimeStateTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipelineTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/AnsiTerminalBufferTest.kt",
@@ -3493,12 +3825,32 @@
       "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPerformanceMetricsTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalWorkingDirectoryTrackerTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateAgentModeTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateCodeEditorCoreTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateLspProtocolTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectAutomationTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectPipelineTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ApcTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ByteQueueTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ControlSequenceIntroducerTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/CursorAndScreenTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/DecSetTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/DeviceControlStringTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/HistoryTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/KeyHandlerTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/OperatingSystemControlTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/RectangularAreasTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ResizeTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ScreenBufferTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ScrollRegionTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalRowTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalTestCase.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TextStyleTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/UnicodeInputTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/WcWidthTest.java",
       "build-service/tests/account_scoped_local_data_contract.test.js",
       "build-service/tests/admin_account_management.test.js",
       "build-service/tests/admin_granted_pro_status_contract.test.js",
@@ -3513,59 +3865,56 @@
       "build-service/tests/android_queue_ui_regression.test.js",
       "build-service/tests/android_safe_area.test.js",
       "build-service/tests/android_sdk_selection.test.js",
+      "build-service/tests/appforge_admin_autopilot_controls_contract.test.js",
+      "build-service/tests/appforge_agent_scale_v10.test.js",
+      "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
+      "build-service/tests/appforge_autopilot_cli_contract.test.js",
+      "build-service/tests/appforge_autopilot_policy_contract.test.js",
+      "build-service/tests/appforge_autopilot_resume_contract.test.js",
+      "build-service/tests/appforge_autopilot_timing_contract.test.js",
+      "build-service/tests/appforge_autopilot_workflow_resolution_contract.test.js",
+      "build-service/tests/appforge_ci_fast_lane_contract.test.js",
       "build-service/tests/appforge_production_cancelled_image_contract.test.js",
+      "build-service/tests/appforge_production_health_resilience_contract.test.js",
+      "build-service/tests/appforge_quota_recovery_contract.test.js",
+      "build-service/tests/appforge_stability_gate_portable_tmp_contract.test.js",
       "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
+      "build-service/tests/appforge_terminal_apk_origin_fallback_contract.test.js",
+      "build-service/tests/appforge_terminal_download_bridge_contract.test.js",
       "build-service/tests/appforge_terminal_ime_backspace_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js",
       "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
       "build-service/tests/appforge_terminal_integration.test.js",
       "build-service/tests/appforge_terminal_linux_multisession_contract.test.js",
       "build-service/tests/appforge_terminal_linux_pty_contract.test.js",
-      "build-service/tests/appforge_terminal_linux_runtime_contract.test.js",
-      "build-service/tests/appforge_terminal_lsp_contract.test.js",
-      "build-service/tests/appforge_terminal_native_pty_cleanup_contract.test.js",
-      "build-service/tests/appforge_terminal_packaged_linux_engine_contract.test.js",
-      "build-service/tests/appforge_terminal_project_automation_contract.test.js",
-      "build-service/tests/appforge_terminal_project_pipeline_contract.test.js",
-      "build-service/tests/appforge_terminal_proroot_bind_contract.test.js",
-      "build-service/tests/appforge_terminal_proroot_workspace_contract.test.js",
-      "build-service/tests/appforge_terminal_pty_lifecycle_contract.test.js",
-      "build-service/tests/appforge_terminal_pty_reader_lifecycle_contract.test.js",
-      "build-service/tests/appforge_terminal_security_restore_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10c_local_terminal_input_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10d_terminal_surface_input_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10e_real_local_pty_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10f_ime_accessory_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10g_batch_hardening_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10h_10i_final_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10j_termux_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10k_bootstrap_resilience_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10l_productivity_keys_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10m_standalone_workstation_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10n_termux_independence_hardening_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10o_zero_anr_startup_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10p_accessory_collision_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10q_cursor_autofollow_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10r_true_ime_occlusion_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10s_matte_shortcuts_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10t_fast_scrollback_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10u_virtualized_renderer_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10v_copy_mode_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10w_snapshot_restore_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10x_session_copy_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10y_native_repo_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10z_ci_toolchain_contract.test.js",
-      "build-service/tests/appforge_terminal_stage11a_interaction_performance_contract.test.js",
-      "build-service/tests/appforge_terminal_stage11b_apk_install_contract.test.js",
-      "build-service/tests/appforge_terminal_stage11c_extended_scrollback_contract.test.js"
+      "build-service/tests/appforge_terminal_linux_runtime_contract.test.js"
     ],
     "commands": [
+      "cd build-service && npm test",
       "Android CI / Gradle compile verification"
     ],
     "last_execution": {
       "status": "NOT_RUN"
     },
     "regression_rules": {
-      "version": 1,
+      "version": 2,
+      "policy": "HARD_STABILITY_GATE_V1",
+      "hard_gate": true,
+      "fail_on_regression": true,
+      "main_is_stable_only": true,
+      "require_diff_check": true,
+      "require_secondbrain_selftest": true,
+      "require_regression_validation": true,
+      "compile_success_is_not_runtime_proof": true,
+      "exact_sha_artifacts": true,
+      "forbidden_staged_patterns": [
+        "*.apk",
+        "*.aab",
+        "*.save",
+        "*.bak",
+        "dashboard.sh",
+        "dashboard.sh.bak"
+      ],
       "protected_features": [
         {
           "name": "Terminal",
@@ -3573,7 +3922,10 @@
             "terminal",
             "pty",
             "ime",
-            "paste"
+            "keyboard",
+            "paste",
+            "shortcut",
+            "scroll"
           ]
         },
         {
@@ -3581,7 +3933,8 @@
           "keywords": [
             "file",
             "workspace",
-            "storage"
+            "storage",
+            "download"
           ]
         },
         {
@@ -3595,6 +3948,7 @@
           "name": "Connections",
           "keywords": [
             "connection",
+            "oauth",
             "railway",
             "authorization"
           ]
@@ -3610,7 +3964,8 @@
           "name": "Tools",
           "keywords": [
             "toolchain",
-            "tools"
+            "tools",
+            "runtime"
           ]
         },
         {
@@ -3618,7 +3973,9 @@
           "keywords": [
             "builder",
             "build",
-            "gradle"
+            "gradle",
+            "apk",
+            "aab"
           ]
         },
         {
@@ -3626,14 +3983,216 @@
           "keywords": [
             "assistant",
             "ai",
-            "litert"
+            "litert",
+            "secondbrain"
+          ]
+        },
+        {
+          "name": "Auth",
+          "keywords": [
+            "auth",
+            "login",
+            "account",
+            "token"
+          ]
+        },
+        {
+          "name": "OwnerIsolation",
+          "keywords": [
+            "owner",
+            "isolation",
+            "account"
+          ]
+        },
+        {
+          "name": "FreePro",
+          "keywords": [
+            "free",
+            "pro",
+            "entitlement",
+            "subscription"
+          ]
+        },
+        {
+          "name": "BillingQuota",
+          "keywords": [
+            "billing",
+            "purchase",
+            "quota",
+            "play"
+          ]
+        },
+        {
+          "name": "BuildService",
+          "keywords": [
+            "build-service",
+            "api",
+            "server"
+          ]
+        },
+        {
+          "name": "Database",
+          "keywords": [
+            "sql",
+            "database",
+            "postgres",
+            "migration"
+          ]
+        },
+        {
+          "name": "Workers",
+          "keywords": [
+            "worker",
+            "queue",
+            "job"
+          ]
+        },
+        {
+          "name": "RailwayRender",
+          "keywords": [
+            "railway",
+            "render",
+            "deploy"
+          ]
+        },
+        {
+          "name": "Web",
+          "keywords": [
+            "web",
+            "pwa",
+            "browser"
+          ]
+        },
+        {
+          "name": "Desktop",
+          "keywords": [
+            "desktop",
+            "windows",
+            "electron",
+            "exe"
+          ]
+        },
+        {
+          "name": "ExcelTools",
+          "keywords": [
+            "excel",
+            "xlsx",
+            "spreadsheet"
+          ]
+        },
+        {
+          "name": "VideoForge",
+          "keywords": [
+            "videoforge",
+            "video",
+            "ffmpeg"
+          ]
+        },
+        {
+          "name": "Notifications",
+          "keywords": [
+            "notification",
+            "push",
+            "fcm"
+          ]
+        },
+        {
+          "name": "CIRelease",
+          "keywords": [
+            "workflow",
+            "ci",
+            "release",
+            "deploy"
+          ]
+        },
+        {
+          "name": "Security",
+          "keywords": [
+            "security",
+            "permission",
+            "credential",
+            "secret"
+          ]
+        },
+        {
+          "name": "Performance",
+          "keywords": [
+            "performance",
+            "latency",
+            "memory",
+            "jank"
           ]
         }
-      ]
+      ],
+      "gate_version": 2,
+      "require_pull_request_for_main": true,
+      "direct_main_push_forbidden": true,
+      "all_mandatory_gates_must_pass": true,
+      "mandatory_ci_gates": [
+        "Second Brain / Policy",
+        "Build Service Regression",
+        "Android Regression",
+        "Static Smoke",
+        "AppForge Stability Summary"
+      ],
+      "domain_gates": {
+        "android_terminal": {
+          "paths": [
+            "android-app/**"
+          ],
+          "tests": [
+            ":app:testDebugUnitTest"
+          ],
+          "runtime_validation_required": true,
+          "ci": "AppForge Android Debug"
+        },
+        "backend_api_auth_billing": {
+          "paths": [
+            "build-service/**"
+          ],
+          "tests": [
+            "npm test"
+          ]
+        },
+        "workers_conversion": {
+          "paths": [
+            "build-service/*worker*",
+            "build-service/scripts/*smoke*",
+            ".github/workflows/*worker*",
+            ".github/workflows/conversion-smoke.yml"
+          ],
+          "tests": [
+            "build-service regression",
+            "worker/smoke syntax"
+          ]
+        },
+        "secondbrain": {
+          "paths": [
+            ".secondbrain/**",
+            "SECOND_BRAIN.md",
+            "AGENTS.md",
+            "scripts/brain",
+            "scripts/appforge-stability-gate"
+          ],
+          "tests": [
+            "brain selftest",
+            "brain doctor"
+          ]
+        },
+        "ci_release": {
+          "paths": [
+            ".github/**"
+          ],
+          "tests": [
+            "workflow validation",
+            "stability summary"
+          ]
+        }
+      }
     }
   },
   "integrations": {
-    "generated_at": "2026-09-12T00:34:19+03:00",
+    "generated_at": "2026-09-14T03:45:38+03:00",
     "detected_services": [
       "AWS/S3",
       "Email",
@@ -3754,6 +4313,7 @@
     "sources": {
       "AWS/S3": [
         "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+        "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java",
         "build-service/docker-compose.yml",
         "build-service/package-lock.json",
         "build-service/package.json",
@@ -3784,6 +4344,7 @@
         "docs/TEAM_INVITE_EMAIL.md"
       ],
       "GitHub": [
+        ".appforge/policy.json",
         ".github/workflows/android-debug.yml",
         ".github/workflows/android-play-release.yml",
         ".github/workflows/cleanup-old-runs.yml",
@@ -3798,7 +4359,13 @@
         "SECOND_BRAIN.md",
         "android-app/app/build.gradle.kts",
         "android-app/app/src/main/assets/second_brain_snapshot.json",
+        "android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt",
         "android-app/app/src/main/java/com/appforge/studio/SecondBrainScreen.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipeline.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentIntelligence.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentProductionTelemetry.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentRepairLoop.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentSecondBrain.kt",
         "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
         "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
         "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
@@ -3818,11 +4385,22 @@
         "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimatePanel.kt",
         "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
         "android-app/app/src/main/java/com/hackmaster/videoforge/ModelManager.kt",
+        "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt",
         "android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt",
         "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest.kt",
+        "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/AndroidUtils.java",
+        "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java",
+        "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalRow.java",
+        "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/WcWidth.java",
+        "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ApcTest.java",
+        "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ScrollRegionTest.java",
+        "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalRowTest.java",
+        "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalTest.java",
+        "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java",
         "build-service/Dockerfile.source-worker",
         "build-service/Dockerfile.source-worker.cache-hardening-phase-b.bak",
         "build-service/Dockerfile.worker.before-lighten.bak",
+        "build-service/appforge-agent-scale-v10.js",
         "build-service/package-lock.json",
         "build-service/server.js",
         "build-service/sql/005_workspace_build_control.sql",
@@ -3830,8 +4408,14 @@
         "build-service/src/config.js",
         "build-service/src/jobQueue.js",
         "build-service/src/workspace.js",
+        "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
+        "build-service/tests/appforge_autopilot_cli_contract.test.js",
+        "build-service/tests/appforge_autopilot_timing_contract.test.js",
+        "build-service/tests/appforge_ci_fast_lane_contract.test.js",
         "build-service/tests/appforge_production_cancelled_image_contract.test.js",
+        "build-service/tests/appforge_production_health_resilience_contract.test.js",
         "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
+        "build-service/tests/appforge_terminal_apk_origin_fallback_contract.test.js",
         "build-service/tests/appforge_terminal_integration.test.js",
         "build-service/tests/appforge_terminal_packaged_linux_engine_contract.test.js",
         "build-service/tests/appforge_terminal_stage10m_standalone_workstation_contract.test.js",
@@ -3839,17 +4423,7 @@
         "build-service/tests/appforge_terminal_stage10z_ci_toolchain_contract.test.js",
         "build-service/tests/appforge_terminal_stage11j_account_scoped_vault_contract.test.js",
         "build-service/tests/appforge_terminal_stage9b_pre_ci_native_contract.test.js",
-        "build-service/tests/firebase_cloud_messaging.test.js",
-        "build-service/tests/repository_maintenance.test.js",
-        "build-service/tests/source_worker_ci_contract.test.js",
-        "build-service/tests/v5_studio.test.js",
-        "dashboard.sh",
-        "docs/CI_INTEGRATION.md",
-        "docs/FIREBASE_AUTOWIRING.md",
-        "docs/GITHUB_IMPORT.md",
-        "docs/V5_1_APPFORGE_TERMINAL.md",
-        "docs/privacy.html",
-        "examples/github-actions/appforge-build.yml"
+        "build-service/tests/firebase_cloud_messaging.test.js"
       ],
       "Google APIs": [
         ".github/workflows/android-debug.yml",
@@ -3861,6 +4435,10 @@
         "android-app/app/src/main/java/com/appforge/studio/AppForgeFirebaseMessagingService.kt",
         "android-app/app/src/main/java/com/appforge/studio/AppForgeGuideScreens.kt",
         "android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt",
+        "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentStructuredPatch.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransaction.kt",
         "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAssistantIntegration.kt",
         "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt",
         "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
@@ -3874,6 +4452,10 @@
         "android-app/app/src/main/java/com/hackmaster/videoforge/OfflineDubEngine.kt",
         "android-app/build.gradle.kts",
         "android-app/settings.gradle.kts",
+        "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ControlSequenceIntroducerTest.java",
+        "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/CursorAndScreenTest.java",
+        "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/UnicodeInputTest.java",
+        "android-app/termux-terminal-view/src/main/java/com/termux/view/support/PopupWindowCompatGingerbread.java",
         "build-service/Dockerfile.source-worker",
         "build-service/Dockerfile.source-worker.cache-hardening-phase-b.bak",
         "build-service/Dockerfile.worker",
@@ -3891,15 +4473,19 @@
         "build-service/scripts/build-fast-qr-pack.sh",
         "build-service/server.js",
         "build-service/sql/009_pro_integrity_security.sql",
+        "build-service/sql/023_quota_addons.sql",
         "build-service/src/buildEngine.js",
         "build-service/src/buildErrorClassifier.js",
+        "build-service/src/clientHardening.js",
         "build-service/src/config.js",
         "build-service/src/cppAndroidBuildEngine.js",
         "build-service/src/fastBuild.js",
+        "build-service/src/monthlyBuildQuota.js",
         "build-service/src/playVerifier.js",
         "build-service/src/proEntitlements.js",
         "build-service/src/problemExplainer.js",
         "build-service/src/projectQuotaV2.js",
+        "build-service/src/quotaAddons.js",
         "build-service/src/studioIntegrity.js",
         "build-service/src/validators.js",
         "build-service/tests/admin_account_management.test.js",
@@ -3909,6 +4495,8 @@
         "build-service/tests/firebase_cloud_messaging.test.js",
         "build-service/tests/monetization_navigation_regression.test.js",
         "build-service/tests/pro_feature_surface_gate_contract.test.js",
+        "build-service/tests/quota_addons_android_ui_contract.test.js",
+        "build-service/tests/quota_addons_redemption.test.js",
         "build-service/tests/repository_maintenance.test.js",
         "build-service/tests/v2_4_pro_plans.test.js",
         "build-service/tests/v3_0_local_ai.test.js",
@@ -3917,19 +4505,7 @@
         "docs/FIREBASE_AUTOWIRING.md",
         "docs/PLAY_PUBLISH_ASSISTANT.md",
         "docs/PLAY_STORE_PREFLIGHT.md",
-        "docs/PURCHASE_VERIFICATION.md",
-        "docs/QR_SCANNER.md",
-        "docs/SUBSCRIPTION_OFFERS.md",
-        "docs/UMP_AND_PRIVACY.md",
-        "docs/V1_5_UPLOAD_SECURITY.md",
-        "docs/V1_8_SECURE_PLAY_BILLING.md",
-        "docs/V1_ARCHITECTURE.md",
-        "docs/V2_3_ANTI_MOD_SECURITY.md",
-        "docs/V2_3_PRO_ENTITLEMENTS.md",
-        "docs/V2_4_PRO_PLANS.md",
-        "docs/V3_0_LOCAL_AI_ASSISTANT.md",
-        "docs/delete-account.html",
-        "docs/privacy.html"
+        "docs/PURCHASE_VERIFICATION.md"
       ],
       "JWT": [
         "build-service/docker-compose.yml",
@@ -3937,6 +4513,7 @@
         "build-service/package.json",
         "build-service/public/admin/index.html",
         "build-service/src/auth.js",
+        "build-service/src/clientHardening.js",
         "build-service/src/config.js",
         "build-service/src/security.js",
         "build-service/src/studioIntegrity.js",
@@ -3947,27 +4524,39 @@
       "PostgreSQL": [
         ".github/scripts/railway_production.py",
         ".github/workflows/production-automation.yml",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentFullStackCodegen.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentFullStackContract.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentIntelligence.kt",
         "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
         "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxMultiSessionTerminalPanel.kt",
         "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalRestorePointManager.kt",
         "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalSecurityCenterPanel.kt",
         "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorCore.kt",
+        "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt",
+        "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt",
+        "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/KeyHandler.java",
         "build-service/docker-compose.yml",
         "build-service/fast-runtime/FastActivity.java",
         "build-service/package-lock.json",
         "build-service/package.json",
+        "build-service/server.js",
         "build-service/sql/001_init.sql",
         "build-service/src/androidAppCategory.js",
         "build-service/src/artifactAnalysis.js",
         "build-service/src/auth.js",
         "build-service/src/buildEngine.js",
+        "build-service/src/clientHardening.js",
         "build-service/src/config.js",
         "build-service/src/db.js",
         "build-service/src/jobQueue.js",
+        "build-service/src/monthlyBuildQuota.js",
         "build-service/src/projectQuotaV2.js",
         "build-service/src/pythonWebFrameworkEngine.js",
+        "build-service/src/quotaAddons.js",
+        "build-service/tests/appforge_quota_recovery_contract.test.js",
         "build-service/tests/appforge_terminal_stage8a_terminal_ux_contract.test.js",
         "build-service/tests/build_queue_scale_protection.test.js",
+        "build-service/tests/quota_addons_android_ui_contract.test.js",
         "build-service/tests/source_build_env.test.js",
         "build-service/tests/v2_2_settings_languages.test.js",
         "build-service/tests/v2_4_pro_plans.test.js",
@@ -3987,24 +4576,24 @@
         "docs/WORKSPACE_BUILD.md"
       ],
       "Railway": [
+        ".appforge/policy.json",
         ".github/scripts/railway_production.py",
         ".github/scripts/worker_autoscale.py",
         ".github/workflows/android-debug.yml",
         ".github/workflows/android-play-release.yml",
         ".github/workflows/cleanup-old-runs.yml",
-        ".github/workflows/conversion-smoke.yml",
         ".github/workflows/production-automation.yml",
-        ".github/workflows/source-worker-image.yml",
         ".github/workflows/windows-worker-image.yml",
         ".github/workflows/worker-autoscale.yml",
-        ".github/workflows/worker-image.yml",
         "AGENTS.md",
         "README.md",
         "SECOND_BRAIN.md",
         "android-app/app/build.gradle.kts",
         "android-app/app/src/main/assets/second_brain_snapshot.json",
         "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+        "android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt",
         "android-app/app/src/main/java/com/appforge/studio/SecondBrainScreen.kt",
+        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentSecondBrain.kt",
         "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt",
         "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
         "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
@@ -4015,12 +4604,15 @@
         "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimatePanel.kt",
         "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
         "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateProjectAutomation.kt",
+        "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt",
         "build-service/instrument.mjs",
         "build-service/server.js",
         "build-service/src/config.js",
         "build-service/src/mail.js",
         "build-service/src/proEntitlements.js",
         "build-service/src/windowsBuild.js",
+        "build-service/tests/appforge_ci_fast_lane_contract.test.js",
+        "build-service/tests/appforge_production_health_resilience_contract.test.js",
         "build-service/tests/appforge_terminal_integration.test.js",
         "build-service/tests/appforge_terminal_project_automation_contract.test.js",
         "build-service/tests/appforge_terminal_stage11g_railway_read_contract.test.js",
@@ -4075,10 +4667,8 @@
       ]
     },
     "desktop": {
-      "detected": true,
-      "paths": [
-        "desktop-app"
-      ]
+      "detected": false,
+      "paths": []
     },
     "web": {
       "detected": false,
@@ -4086,12 +4676,12 @@
     }
   },
   "complexity": {
-    "generated_at": "2026-09-12T00:34:19+03:00",
+    "generated_at": "2026-09-14T03:45:38+03:00",
     "largest": [
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-        "lines": 24825,
-        "symbols": 122
+        "lines": 25415,
+        "symbols": 125
       },
       {
         "file": "build-service/src/buildEngine.js",
@@ -4100,13 +4690,18 @@
       },
       {
         "file": "build-service/server.js",
-        "lines": 6001,
+        "lines": 6139,
         "symbols": 9
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
-        "lines": 4691,
-        "symbols": 64
+        "lines": 5115,
+        "symbols": 65
+      },
+      {
+        "file": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java",
+        "lines": 3570,
+        "symbols": 17
       },
       {
         "file": "build-service/fast-runtime/FastActivity.java",
@@ -4120,7 +4715,7 @@
       },
       {
         "file": "build-service/src/sourceBuildEngines.js",
-        "lines": 2474,
+        "lines": 2476,
         "symbols": 34
       },
       {
@@ -4130,7 +4725,7 @@
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
-        "lines": 2103,
+        "lines": 2108,
         "symbols": 16
       },
       {
@@ -4144,13 +4739,18 @@
         "symbols": 10
       },
       {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+        "lines": 1746,
+        "symbols": 13
+      },
+      {
         "file": "android-app/app/src/main/java/com/appforge/studio/terminal/ExternalConnectionsClient.kt",
         "lines": 1644,
         "symbols": 43
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
-        "lines": 1628,
+        "lines": 1642,
         "symbols": 17
       },
       {
@@ -4160,7 +4760,7 @@
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
-        "lines": 1569,
+        "lines": 1586,
         "symbols": 15
       },
       {
@@ -4174,24 +4774,39 @@
         "symbols": 141
       },
       {
+        "file": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java",
+        "lines": 1521,
+        "symbols": 10
+      },
+      {
+        "file": "build-service/src/clientHardening.js",
+        "lines": 1465,
+        "symbols": 18
+      },
+      {
         "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
         "lines": 1461,
         "symbols": 33
       },
       {
-        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
-        "lines": 1437,
-        "symbols": 11
-      },
-      {
         "file": "build-service/src/jobQueue.js",
-        "lines": 1349,
+        "lines": 1448,
         "symbols": 15
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
         "lines": 1330,
         "symbols": 12
+      },
+      {
+        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalDownloadsPanel.kt",
+        "lines": 1307,
+        "symbols": 18
+      },
+      {
+        "file": "build-service/src/projectQuotaV2.js",
+        "lines": 1293,
+        "symbols": 18
       },
       {
         "file": "build-service/src/dotnetAndroidBuildEngine.js",
@@ -4210,7 +4825,7 @@
       },
       {
         "file": "build-service/src/workspace.js",
-        "lines": 1234,
+        "lines": 1235,
         "symbols": 20
       },
       {
@@ -4229,11 +4844,6 @@
         "symbols": 14
       },
       {
-        "file": "build-service/src/projectQuotaV2.js",
-        "lines": 1179,
-        "symbols": 17
-      },
-      {
         "file": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFilesPanel.kt",
         "lines": 1179,
         "symbols": 8
@@ -4242,6 +4852,11 @@
         "file": "build-service/src/fastBuild.js",
         "lines": 1170,
         "symbols": 7
+      },
+      {
+        "file": ".github/scripts/railway_production.py",
+        "lines": 1163,
+        "symbols": 17
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorPanel.kt",
@@ -4264,19 +4879,9 @@
         "symbols": 14
       },
       {
-        "file": ".github/scripts/railway_production.py",
-        "lines": 1091,
-        "symbols": 16
-      },
-      {
         "file": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
         "lines": 1072,
         "symbols": 10
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
-        "lines": 1051,
-        "symbols": 15
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimatePanel.kt",
@@ -4359,6 +4964,11 @@
         "symbols": 17
       },
       {
+        "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
+        "lines": 840,
+        "symbols": 15
+      },
+      {
         "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimateFoundation.kt",
         "lines": 832,
         "symbols": 18
@@ -4367,33 +4977,13 @@
         "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorCore.kt",
         "lines": 828,
         "symbols": 34
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/task/AppForgeTaskManager.kt",
-        "lines": 805,
-        "symbols": 21
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxPtySessionRegistry.kt",
-        "lines": 798,
-        "symbols": 23
-      },
-      {
-        "file": "build-service/tests/conversion_roundtrip_smoke.test.js",
-        "lines": 783,
-        "symbols": 5
-      },
-      {
-        "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateProjectPipeline.kt",
-        "lines": 778,
-        "symbols": 26
       }
     ],
     "refactor_candidates": [
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-        "lines": 24825,
-        "symbols": 122
+        "lines": 25415,
+        "symbols": 125
       },
       {
         "file": "build-service/src/buildEngine.js",
@@ -4402,13 +4992,18 @@
       },
       {
         "file": "build-service/server.js",
-        "lines": 6001,
+        "lines": 6139,
         "symbols": 9
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
-        "lines": 4691,
-        "symbols": 64
+        "lines": 5115,
+        "symbols": 65
+      },
+      {
+        "file": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java",
+        "lines": 3570,
+        "symbols": 17
       },
       {
         "file": "build-service/fast-runtime/FastActivity.java",
@@ -4422,7 +5017,7 @@
       },
       {
         "file": "build-service/src/sourceBuildEngines.js",
-        "lines": 2474,
+        "lines": 2476,
         "symbols": 34
       },
       {
@@ -4432,7 +5027,7 @@
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
-        "lines": 2103,
+        "lines": 2108,
         "symbols": 16
       },
       {
@@ -4444,6 +5039,26 @@
   },
   "subsystems": {
     "ai": [
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentAutonomousContracts.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipeline.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprint.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintJson.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintPrompt.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentCodegen.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentCodegenRenderers.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentFullStackCodegen.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentFullStackContract.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentIntelligence.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentIntelligentBlueprintProvider.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentProductionCoordinator.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentProductionScale.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentProductionTelemetry.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentRepairLoop.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentSecondBrain.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentStructuredPatch.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentVisualDesigner.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentVisualDesignerScreen.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransaction.kt",
       "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
       "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiSnapshotV2.kt",
       "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAssistantIntegration.kt",
@@ -4457,6 +5072,17 @@
       "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelDownloader.kt",
       "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelStore.kt",
       "android-app/app/src/main/java/com/appforge/studio/ai/SecondBrainBridge.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipelineTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentCodegenTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRepairLoopTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStructuredPatchTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentVisualDesignerTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransactionTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt",
       "build-service/tests/build_error_advisor_ui_regression.test.js",
       "docs/PLAY_PUBLISH_ASSISTANT.md",
@@ -4486,6 +5112,8 @@
       "android-app/build.gradle.kts",
       "android-app/gradle.properties",
       "android-app/settings.gradle.kts",
+      "android-app/termux-terminal-emulator/build.gradle.kts",
+      "android-app/termux-terminal-view/build.gradle.kts",
       "build-service/Dockerfile",
       "build-service/Dockerfile.api",
       "build-service/Dockerfile.source-worker",
@@ -4493,6 +5121,8 @@
       "build-service/Dockerfile.windows-worker",
       "build-service/Dockerfile.worker",
       "build-service/Dockerfile.worker.before-lighten.bak",
+      "build-service/appforge-agent-scale-v10.js",
+      "build-service/bootstrap.js",
       "build-service/docker-compose.yml",
       "build-service/fast-extended-template/app/build.gradle.kts",
       "build-service/fast-extended-template/app/src/main/AndroidManifest.xml",
@@ -4545,6 +5175,9 @@
       "build-service/sql/019_user_free_project_limits.sql",
       "build-service/sql/020_legacy_device_login_permission.sql",
       "build-service/sql/021_success_project_quotas.sql",
+      "build-service/sql/022_monthly_build_quota.sql",
+      "build-service/sql/023_quota_addons.sql",
+      "build-service/sql/024_client_hardening.sql",
       "build-service/src/accountDeletion.js",
       "build-service/src/analytics.js",
       "build-service/src/androidAppCategory.js",
@@ -4557,6 +5190,7 @@
       "build-service/src/buildEngine.js",
       "build-service/src/buildErrorClassifier.js",
       "build-service/src/buildLogs.js",
+      "build-service/src/clientHardening.js",
       "build-service/src/config.js",
       "build-service/src/cppAndroidBuildEngine.js",
       "build-service/src/db.js",
@@ -4572,6 +5206,7 @@
       "build-service/src/idempotency.js",
       "build-service/src/jobQueue.js",
       "build-service/src/mail.js",
+      "build-service/src/monthlyBuildQuota.js",
       "build-service/src/nodeRemoteBackendEngine.js",
       "build-service/src/observability.js",
       "build-service/src/permissions.js",
@@ -4585,6 +5220,8 @@
       "build-service/src/pythonWebFrameworkEngine.js",
       "build-service/src/queue.js",
       "build-service/src/queueEstimate.js",
+      "build-service/src/quotaAddonProducts.js",
+      "build-service/src/quotaAddons.js",
       "build-service/src/rateLimit.js",
       "build-service/src/reactNativeBuildEngine.js",
       "build-service/src/redis.js",
@@ -4619,9 +5256,24 @@
       "build-service/tests/android_queue_ui_regression.test.js",
       "build-service/tests/android_safe_area.test.js",
       "build-service/tests/android_sdk_selection.test.js",
+      "build-service/tests/appforge_admin_autopilot_controls_contract.test.js",
+      "build-service/tests/appforge_agent_scale_v10.test.js",
+      "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
+      "build-service/tests/appforge_autopilot_cli_contract.test.js",
+      "build-service/tests/appforge_autopilot_policy_contract.test.js",
+      "build-service/tests/appforge_autopilot_resume_contract.test.js",
+      "build-service/tests/appforge_autopilot_timing_contract.test.js",
+      "build-service/tests/appforge_autopilot_workflow_resolution_contract.test.js",
+      "build-service/tests/appforge_ci_fast_lane_contract.test.js",
       "build-service/tests/appforge_production_cancelled_image_contract.test.js",
+      "build-service/tests/appforge_production_health_resilience_contract.test.js",
+      "build-service/tests/appforge_quota_recovery_contract.test.js",
+      "build-service/tests/appforge_stability_gate_portable_tmp_contract.test.js",
       "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
+      "build-service/tests/appforge_terminal_apk_origin_fallback_contract.test.js",
+      "build-service/tests/appforge_terminal_download_bridge_contract.test.js",
       "build-service/tests/appforge_terminal_ime_backspace_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js",
       "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
       "build-service/tests/appforge_terminal_integration.test.js",
       "build-service/tests/appforge_terminal_linux_multisession_contract.test.js",
@@ -4629,14 +5281,17 @@
       "build-service/tests/appforge_terminal_linux_runtime_contract.test.js",
       "build-service/tests/appforge_terminal_lsp_contract.test.js",
       "build-service/tests/appforge_terminal_native_pty_cleanup_contract.test.js",
+      "build-service/tests/appforge_terminal_owner_apk_bridge_contract.test.js",
       "build-service/tests/appforge_terminal_packaged_linux_engine_contract.test.js",
       "build-service/tests/appforge_terminal_project_automation_contract.test.js",
       "build-service/tests/appforge_terminal_project_pipeline_contract.test.js",
+      "build-service/tests/appforge_terminal_prompt_visibility_contract.test.js",
       "build-service/tests/appforge_terminal_proroot_bind_contract.test.js",
       "build-service/tests/appforge_terminal_proroot_workspace_contract.test.js",
       "build-service/tests/appforge_terminal_pty_lifecycle_contract.test.js",
       "build-service/tests/appforge_terminal_pty_reader_lifecycle_contract.test.js",
       "build-service/tests/appforge_terminal_security_restore_contract.test.js",
+      "build-service/tests/appforge_terminal_shortcut_viewport_suppression_contract.test.js",
       "build-service/tests/appforge_terminal_stage10c_local_terminal_input_contract.test.js",
       "build-service/tests/appforge_terminal_stage10d_terminal_surface_input_contract.test.js",
       "build-service/tests/appforge_terminal_stage10e_real_local_pty_contract.test.js",
@@ -4683,6 +5338,7 @@
       "build-service/tests/appforge_terminal_ubuntu_rootfs_compat_contract.test.js",
       "build-service/tests/appforge_terminal_ultimate_editor_contract.test.js",
       "build-service/tests/appforge_terminal_verified_rootfs_contract.test.js",
+      "build-service/tests/appforge_terminal_viewport_stability_contract.test.js",
       "build-service/tests/appforge_usage_guides_contract.test.js",
       "build-service/tests/archive_limits.test.js",
       "build-service/tests/artifact_manifest.test.js",
@@ -4695,6 +5351,7 @@
       "build-service/tests/cache_artifact_aware.test.js",
       "build-service/tests/cache_stable.test.js",
       "build-service/tests/capabilities.test.js",
+      "build-service/tests/client-hardening-contract.test.js",
       "build-service/tests/conversion_manifest.test.js",
       "build-service/tests/conversion_roundtrip_smoke.test.js",
       "build-service/tests/cpp_android_build_engine.test.js",
@@ -4746,6 +5403,10 @@
       "build-service/tests/php_remote_backend_live_engine.test.js",
       "build-service/tests/play_verifier.test.js",
       "build-service/tests/pro_feature_surface_gate_contract.test.js",
+      "build-service/tests/pro_monthly_build_quota_foundation.test.js",
+      "build-service/tests/pro_monthly_build_quota_identity.test.js",
+      "build-service/tests/pro_monthly_build_quota_runtime.test.js",
+      "build-service/tests/pro_purchases_ui_contract.test.js",
       "build-service/tests/problem_explainer.test.js",
       "build-service/tests/problem_explainer_integration.test.js",
       "build-service/tests/production_infrastructure.test.js",
@@ -4760,6 +5421,10 @@
       "build-service/tests/python_web_framework_engine.test.js",
       "build-service/tests/python_web_framework_live_build_engine.test.js",
       "build-service/tests/queue_eta_math.test.js",
+      "build-service/tests/quota_addons_android_contract.test.js",
+      "build-service/tests/quota_addons_android_ui_contract.test.js",
+      "build-service/tests/quota_addons_foundation.test.js",
+      "build-service/tests/quota_addons_redemption.test.js",
       "build-service/tests/react_native_build_engine.test.js",
       "build-service/tests/react_native_live_build_engine.test.js",
       "build-service/tests/repository_maintenance.test.js",
@@ -4778,6 +5443,11 @@
       "build-service/tests/team_slug.test.js",
       "build-service/tests/technology_support_matrix.test.js",
       "build-service/tests/terminal_bracketed_paste_mode_contract.test.js",
+      "build-service/tests/terminal_downloads_integration.test.js",
+      "build-service/tests/termux_terminal_activation_v1_contract.test.js",
+      "build-service/tests/termux_terminal_adapter_contract.test.js",
+      "build-service/tests/termux_terminal_agp9_contract.test.js",
+      "build-service/tests/termux_terminal_vendor_contract.test.js",
       "build-service/tests/toolchain.test.js",
       "build-service/tests/unity_android_build_engine.test.js",
       "build-service/tests/unity_licensed_build_engine.test.js",
@@ -4853,6 +5523,9 @@
       "build-service/sql/019_user_free_project_limits.sql",
       "build-service/sql/020_legacy_device_login_permission.sql",
       "build-service/sql/021_success_project_quotas.sql",
+      "build-service/sql/022_monthly_build_quota.sql",
+      "build-service/sql/023_quota_addons.sql",
+      "build-service/sql/024_client_hardening.sql",
       "build-service/src/db.js"
     ],
     "desktop": [
@@ -4865,6 +5538,7 @@
       "build-service/windows-worker.js"
     ],
     "files": [
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransaction.kt",
       "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
       "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspacePanel.kt",
       "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspaceService.kt",
@@ -4878,6 +5552,7 @@
       "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspacePagination.kt",
       "android-app/app/src/main/java/com/hackmaster/videoforge/StorageGuard.kt",
       "android-app/app/src/main/res/xml/apk_file_paths.xml",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransactionTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt",
       "build-service/Dockerfile",
@@ -4910,6 +5585,7 @@
       ".github/scripts/worker_autoscale.py",
       ".github/workflows/android-debug.yml",
       ".github/workflows/android-play-release.yml",
+      ".github/workflows/appforge-stability-gate.yml",
       ".github/workflows/cleanup-old-runs.yml",
       ".github/workflows/conversion-smoke.yml",
       ".github/workflows/production-automation.yml",
@@ -4969,6 +5645,7 @@
       "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalBiometricGuard.kt",
       "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalCommandPolicy.kt",
       "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalDevelopmentEnvironment.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalDownloadsPanel.kt",
       "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalModels.kt",
       "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalNotificationPermission.kt",
       "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalOutputBackpressure.kt",
@@ -4985,6 +5662,8 @@
       "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUxPreferences.kt",
       "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkingDirectoryTracker.kt",
       "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt",
+      "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateAgentMode.kt",
       "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorCore.kt",
       "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorPanel.kt",
       "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateLspProtocol.kt",
@@ -5010,14 +5689,70 @@
       "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPerformanceMetricsTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalWorkingDirectoryTrackerTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateAgentModeTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateCodeEditorCoreTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateLspProtocolTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectAutomationTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectPipelineTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt",
+      "android-app/termux-terminal-emulator/build.gradle.kts",
+      "android-app/termux-terminal-emulator/src/main/AndroidManifest.xml",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/AndroidUtils.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/ByteQueue.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/ITermImage.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/JNI.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/KeyHandler.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/Logger.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalBitmap.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalBuffer.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalColorScheme.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalColors.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalOutput.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalRow.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalSession.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalSessionClient.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalSixel.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TextStyle.java",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/WcWidth.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ApcTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ByteQueueTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ControlSequenceIntroducerTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/CursorAndScreenTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/DecSetTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/DeviceControlStringTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/HistoryTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/KeyHandlerTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/OperatingSystemControlTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/RectangularAreasTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ResizeTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ScreenBufferTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ScrollRegionTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalRowTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalTestCase.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TextStyleTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/UnicodeInputTest.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/WcWidthTest.java",
+      "android-app/termux-terminal-view/build.gradle.kts",
+      "android-app/termux-terminal-view/src/main/AndroidManifest.xml",
+      "android-app/termux-terminal-view/src/main/java/com/termux/view/GestureAndScaleRecognizer.java",
+      "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalRenderer.java",
+      "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java",
+      "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalViewClient.java",
+      "android-app/termux-terminal-view/src/main/java/com/termux/view/support/PopupWindowCompatGingerbread.java",
+      "android-app/termux-terminal-view/src/main/java/com/termux/view/textselection/CursorController.java",
+      "android-app/termux-terminal-view/src/main/java/com/termux/view/textselection/TextSelectionCursorController.java",
+      "android-app/termux-terminal-view/src/main/java/com/termux/view/textselection/TextSelectionHandleView.java",
+      "android-app/termux-terminal-view/src/main/res/drawable/text_select_handle_left_material.xml",
+      "android-app/termux-terminal-view/src/main/res/drawable/text_select_handle_right_material.xml",
+      "android-app/termux-terminal-view/src/main/res/values/strings.xml",
       "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
+      "build-service/tests/appforge_terminal_apk_origin_fallback_contract.test.js",
+      "build-service/tests/appforge_terminal_download_bridge_contract.test.js",
       "build-service/tests/appforge_terminal_ime_backspace_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js",
       "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
       "build-service/tests/appforge_terminal_integration.test.js",
       "build-service/tests/appforge_terminal_linux_multisession_contract.test.js",
@@ -5025,14 +5760,17 @@
       "build-service/tests/appforge_terminal_linux_runtime_contract.test.js",
       "build-service/tests/appforge_terminal_lsp_contract.test.js",
       "build-service/tests/appforge_terminal_native_pty_cleanup_contract.test.js",
+      "build-service/tests/appforge_terminal_owner_apk_bridge_contract.test.js",
       "build-service/tests/appforge_terminal_packaged_linux_engine_contract.test.js",
       "build-service/tests/appforge_terminal_project_automation_contract.test.js",
       "build-service/tests/appforge_terminal_project_pipeline_contract.test.js",
+      "build-service/tests/appforge_terminal_prompt_visibility_contract.test.js",
       "build-service/tests/appforge_terminal_proroot_bind_contract.test.js",
       "build-service/tests/appforge_terminal_proroot_workspace_contract.test.js",
       "build-service/tests/appforge_terminal_pty_lifecycle_contract.test.js",
       "build-service/tests/appforge_terminal_pty_reader_lifecycle_contract.test.js",
       "build-service/tests/appforge_terminal_security_restore_contract.test.js",
+      "build-service/tests/appforge_terminal_shortcut_viewport_suppression_contract.test.js",
       "build-service/tests/appforge_terminal_stage10c_local_terminal_input_contract.test.js",
       "build-service/tests/appforge_terminal_stage10d_terminal_surface_input_contract.test.js",
       "build-service/tests/appforge_terminal_stage10e_real_local_pty_contract.test.js",
@@ -5079,8 +5817,16 @@
       "build-service/tests/appforge_terminal_ubuntu_rootfs_compat_contract.test.js",
       "build-service/tests/appforge_terminal_ultimate_editor_contract.test.js",
       "build-service/tests/appforge_terminal_verified_rootfs_contract.test.js",
+      "build-service/tests/appforge_terminal_viewport_stability_contract.test.js",
       "build-service/tests/terminal_bracketed_paste_mode_contract.test.js",
-      "docs/V5_1_APPFORGE_TERMINAL.md"
+      "build-service/tests/terminal_downloads_integration.test.js",
+      "build-service/tests/termux_terminal_activation_v1_contract.test.js",
+      "build-service/tests/termux_terminal_adapter_contract.test.js",
+      "build-service/tests/termux_terminal_agp9_contract.test.js",
+      "build-service/tests/termux_terminal_vendor_contract.test.js",
+      "docs/V5_1_APPFORGE_TERMINAL.md",
+      "third_party/termux-terminal/README.md",
+      "third_party/termux-terminal/TERMUX_LICENSE.md"
     ],
     "web": [
       "android-app/app/src/main/java/com/appforge/studio/io/PwaInspector.kt",
@@ -5098,6 +5844,8 @@
       ".github/workflows/windows-worker-image.yml",
       ".github/workflows/worker-autoscale.yml",
       ".github/workflows/worker-image.yml",
+      "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/ByteQueue.java",
+      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ByteQueueTest.java",
       "build-service/Dockerfile.source-worker",
       "build-service/Dockerfile.source-worker.cache-hardening-phase-b.bak",
       "build-service/Dockerfile.windows-worker",
@@ -5134,104 +5882,134 @@
     ]
   },
   "git": {
-    "generated_at": "2026-09-12T00:34:19+03:00",
-    "branch": "main",
-    "head": "9853706",
+    "generated_at": "2026-09-14T03:45:38+03:00",
+    "branch": "feat/unified-agent-v2-v10",
+    "head": "8e39457",
     "ahead": 0,
     "behind": 0,
     "staged": [
-      "secondbrain/.gitignore"
+      "secondbrain/memory/API_CONTRACTS.json"
     ],
     "unstaged": [
-      ".secondbrain/VERSION",
-      ".secondbrain/engine/brain.py",
+      ".secondbrain/memory/API_CONTRACTS.md",
       ".secondbrain/memory/ARCHITECTURE.md",
       ".secondbrain/memory/BACKEND_API.md",
+      ".secondbrain/memory/COMPLEXITY.json",
       ".secondbrain/memory/DATABASE.md",
+      ".secondbrain/memory/DATABASE_INTELLIGENCE.json",
+      ".secondbrain/memory/DATABASE_INTELLIGENCE.md",
       ".secondbrain/memory/DEEP_MAP.json",
       ".secondbrain/memory/DEEP_MAP.md",
+      ".secondbrain/memory/DEPENDENCY_GRAPH.json",
+      ".secondbrain/memory/DEPENDENCY_GRAPH.md",
       ".secondbrain/memory/HOT_CONTEXT.md",
       ".secondbrain/memory/INDEX.md",
       ".secondbrain/memory/INTEGRATIONS.md",
-      ".secondbrain/memory/PERFORMANCE.md",
-      ".secondbrain/memory/RELEASES.md",
-      ".secondbrain/memory/SECURITY.md",
-      ".secondbrain/memory/TESTS.md",
-      "AGENTS.md",
-      "SECOND_BRAIN.md",
-      "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAssistantIntegration.kt",
-      "scripts/brain"
-    ],
-    "untracked": [
-      ".secondbrain/REGRESSION_RULES.json",
-      ".secondbrain/checkpoints/20260912-003141-all-second-brain-v3-final.json",
-      ".secondbrain/config-v3.json",
-      ".secondbrain/engine/brain_v3.py",
-      ".secondbrain/memory/API_CONTRACTS.json",
-      ".secondbrain/memory/API_CONTRACTS.md",
-      ".secondbrain/memory/COMPLEXITY.json",
-      ".secondbrain/memory/DATABASE_INTELLIGENCE.json",
-      ".secondbrain/memory/DATABASE_INTELLIGENCE.md",
-      ".secondbrain/memory/DEPENDENCY_GRAPH.json",
-      ".secondbrain/memory/DEPENDENCY_GRAPH.md",
       ".secondbrain/memory/INTEGRATION_INTELLIGENCE.json",
       ".secondbrain/memory/LIVE_HEALTH.json",
       ".secondbrain/memory/LIVE_HEALTH.md",
       ".secondbrain/memory/MEMORY_META.json",
+      ".secondbrain/memory/PERFORMANCE.md",
       ".secondbrain/memory/PERFORMANCE_SAMPLES.json",
-      ".secondbrain/memory/RELEASE_READINESS.json",
+      ".secondbrain/memory/RELEASES.md",
       ".secondbrain/memory/RELEASE_READINESS.md",
+      ".secondbrain/memory/SECURITY.md",
       ".secondbrain/memory/STATE.json",
       ".secondbrain/memory/SUBSYSTEMS.json",
+      ".secondbrain/memory/TESTS.md",
       ".secondbrain/memory/TEST_INTELLIGENCE.json",
       ".secondbrain/memory/WORKER_TOPOLOGY.json",
-      "AppForgeStudio-5.0.13.apk",
-      "MISS.save",
       "android-app/app/src/main/assets/second_brain_snapshot.json",
-      "android-app/app/src/main/java/com/appforge/studio/SecondBrainScreen.kt",
-      "android-app/app/src/main/java/com/appforge/studio/ai/SecondBrainBridge.kt",
-      "dashboard.sh"
+      "scripts/appforge"
+    ],
+    "untracked": [
+      ".secondbrain/checkpoints/20260914-021639-start-unified-agent-v2-v10.json",
+      ".secondbrain/checkpoints/20260914-021713-all-unified-agent-v2-v10-blueprint-codegen-rollback-repair-fullstack-visual-autonomous-ai-scale.json",
+      ".secondbrain/memory/TASK_STATE.json",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentAutonomousContracts.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipeline.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintJson.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintPrompt.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentCodegen.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentCodegenRenderers.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentFullStackCodegen.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentFullStackContract.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentIntelligence.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentIntelligentBlueprintProvider.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentProductionCoordinator.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentProductionScale.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentProductionTelemetry.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentRepairLoop.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentSecondBrain.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentStructuredPatch.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentVisualDesigner.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentVisualDesignerScreen.kt",
+      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransaction.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipelineTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentCodegenTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRepairLoopTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStructuredPatchTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentVisualDesignerTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransactionTest.kt",
+      "appforge-agent-scale-v10.js.tmp",
+      "build-service/appforge-agent-scale-v10.js",
+      "build-service/tests/appforge_agent_scale_v10.test.js",
+      "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js"
     ],
     "forbidden_staged": [],
     "recent_commits": [
-      "9853706 Upgrade Second Brain to V2.1 deep project mapping",
-      "38a3f8c Replace project wiki with Second Brain V2",
-      "7af8d90 Replace legacy SecondBrain with project wiki memory",
-      "b1f59b9 Add SecondBrain architecture references and risk gate",
-      "37e5607 Route public AppForge API through failover domain",
-      "9d2e6ff Adopt success-only monthly project quotas",
-      "00b0b81 Isolate Linux runtime by account",
-      "b8c4fd2 Isolate terminal workspaces by account",
-      "22dcb8c Sync owner private AppForge files",
-      "2861fcb Expand owner private AppForge files"
+      "8e39457 Merge pull request #18 from HACKMASTER-TR/chore/agent-mode-v1-main-validation-20260914",
+      "5a6f2c2 Record Agent Mode V1 main validation",
+      "14c7e08 Merge pull request #17 from HACKMASTER-TR/feat/agent-mode-blueprint-v1",
+      "303bc34 Merge branch 'main' into feat/agent-mode-blueprint-v1",
+      "0f213e2 Record Agent Mode CI validation",
+      "7b73d43 Add Agent Mode and Design Blueprint V1",
+      "522efd2 Merge pull request #16 from HACKMASTER-TR/fix/node-web-compile-cache-race",
+      "3aa6965 Fix production audit regressions",
+      "4d6bb66 Merge pull request #15 from HACKMASTER-TR/fix/appforge-gh-actions-api",
+      "ff7223b Use GitHub API for workflow and release polling"
     ]
   },
   "security": {
-    "generated_at": "2026-09-12T00:34:20+03:00",
+    "generated_at": "2026-09-14T03:45:38+03:00",
     "scope": "changed",
-    "health": "GREEN",
-    "findings": []
+    "health": "YELLOW",
+    "findings": [
+      {
+        "severity": "MEDIUM",
+        "type": "possible_credential_logging",
+        "file": "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentCodegenTest.kt"
+      }
+    ]
   },
   "risk": {
-    "generated_at": "2026-09-12T00:34:20+03:00",
-    "score": 15,
-    "decision": "ACCEPT",
-    "changed_files": 4,
-    "added_lines": 42,
-    "deleted_lines": 3,
+    "generated_at": "2026-09-14T03:45:40+03:00",
+    "score": 56,
+    "decision": "REFACTOR_FIRST",
+    "changed_files": 32,
+    "added_lines": 0,
+    "deleted_lines": 0,
     "domains": [
-      "android"
+      "android",
+      "build-service"
     ],
     "reasons": [
       "android subsystem affected",
-      "high dependency fan-out"
+      "build-service subsystem affected",
+      "multiple source files changed",
+      "security review required",
+      "very wide change surface",
+      "wide change surface"
     ],
-    "dependency_edges_impacted": 37,
-    "security": "GREEN"
+    "dependency_edges_impacted": 0,
+    "security": "YELLOW"
   },
   "live": {
-    "generated_at": "2026-09-12T00:34:21+03:00",
+    "generated_at": "2026-09-14T03:45:40+03:00",
     "github": {
       "status": "NOT_CHECKED"
     },
@@ -5243,14 +6021,14 @@
     }
   },
   "performance": {
-    "generated_at": "2026-09-12T00:34:21+03:00",
+    "generated_at": "2026-09-14T03:45:40+03:00",
     "metrics": {
       "brain_all": {
-        "samples": 4,
-        "p50_ms": 8610.54,
-        "p95_ms": 14199.16,
-        "latest_ms": 4107.11,
-        "regression_vs_prior_p50_pct": "NOT_ENOUGH_DATA"
+        "samples": 8,
+        "p50_ms": 4826.83,
+        "p95_ms": 13943.83,
+        "latest_ms": 10645.03,
+        "regression_vs_prior_p50_pct": 159.19
       },
       "app_build": {
         "samples": 0,
@@ -5279,6 +6057,6 @@
       "Live health not checked"
     ]
   },
-  "architecture_drift": false,
-  "brain_all_ms": 4107.11
+  "architecture_drift": true,
+  "brain_all_ms": 10645.03
 }

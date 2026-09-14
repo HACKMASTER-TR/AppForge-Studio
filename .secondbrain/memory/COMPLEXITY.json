@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-09-12T00:34:19+03:00",
+  "generated_at": "2026-09-14T03:45:38+03:00",
   "largest": [
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-      "lines": 24825,
-      "symbols": 122
+      "lines": 25415,
+      "symbols": 125
     },
     {
       "file": "build-service/src/buildEngine.js",
@@ -13,13 +13,18 @@
     },
     {
       "file": "build-service/server.js",
-      "lines": 6001,
+      "lines": 6139,
       "symbols": 9
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
-      "lines": 4691,
-      "symbols": 64
+      "lines": 5115,
+      "symbols": 65
+    },
+    {
+      "file": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java",
+      "lines": 3570,
+      "symbols": 17
     },
     {
       "file": "build-service/fast-runtime/FastActivity.java",
@@ -33,7 +38,7 @@
     },
     {
       "file": "build-service/src/sourceBuildEngines.js",
-      "lines": 2474,
+      "lines": 2476,
       "symbols": 34
     },
     {
@@ -43,7 +48,7 @@
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
-      "lines": 2103,
+      "lines": 2108,
       "symbols": 16
     },
     {
@@ -57,13 +62,18 @@
       "symbols": 10
     },
     {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
+      "lines": 1746,
+      "symbols": 13
+    },
+    {
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/ExternalConnectionsClient.kt",
       "lines": 1644,
       "symbols": 43
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
-      "lines": 1628,
+      "lines": 1642,
       "symbols": 17
     },
     {
@@ -73,7 +83,7 @@
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
-      "lines": 1569,
+      "lines": 1586,
       "symbols": 15
     },
     {
@@ -87,24 +97,39 @@
       "symbols": 141
     },
     {
+      "file": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalView.java",
+      "lines": 1521,
+      "symbols": 10
+    },
+    {
+      "file": "build-service/src/clientHardening.js",
+      "lines": 1465,
+      "symbols": 18
+    },
+    {
       "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
       "lines": 1461,
       "symbols": 33
     },
     {
-      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
-      "lines": 1437,
-      "symbols": 11
-    },
-    {
       "file": "build-service/src/jobQueue.js",
-      "lines": 1349,
+      "lines": 1448,
       "symbols": 15
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
       "lines": 1330,
       "symbols": 12
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalDownloadsPanel.kt",
+      "lines": 1307,
+      "symbols": 18
+    },
+    {
+      "file": "build-service/src/projectQuotaV2.js",
+      "lines": 1293,
+      "symbols": 18
     },
     {
       "file": "build-service/src/dotnetAndroidBuildEngine.js",
@@ -123,7 +148,7 @@
     },
     {
       "file": "build-service/src/workspace.js",
-      "lines": 1234,
+      "lines": 1235,
       "symbols": 20
     },
     {
@@ -142,11 +167,6 @@
       "symbols": 14
     },
     {
-      "file": "build-service/src/projectQuotaV2.js",
-      "lines": 1179,
-      "symbols": 17
-    },
-    {
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFilesPanel.kt",
       "lines": 1179,
       "symbols": 8
@@ -155,6 +175,11 @@
       "file": "build-service/src/fastBuild.js",
       "lines": 1170,
       "symbols": 7
+    },
+    {
+      "file": ".github/scripts/railway_production.py",
+      "lines": 1163,
+      "symbols": 17
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorPanel.kt",
@@ -177,19 +202,9 @@
       "symbols": 14
     },
     {
-      "file": ".github/scripts/railway_production.py",
-      "lines": 1091,
-      "symbols": 16
-    },
-    {
       "file": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
       "lines": 1072,
       "symbols": 10
-    },
-    {
-      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
-      "lines": 1051,
-      "symbols": 15
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimatePanel.kt",
@@ -272,6 +287,11 @@
       "symbols": 17
     },
     {
+      "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
+      "lines": 840,
+      "symbols": 15
+    },
+    {
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalUltimateFoundation.kt",
       "lines": 832,
       "symbols": 18
@@ -280,33 +300,13 @@
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateCodeEditorCore.kt",
       "lines": 828,
       "symbols": 34
-    },
-    {
-      "file": "android-app/app/src/main/java/com/appforge/studio/task/AppForgeTaskManager.kt",
-      "lines": 805,
-      "symbols": 21
-    },
-    {
-      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxPtySessionRegistry.kt",
-      "lines": 798,
-      "symbols": 23
-    },
-    {
-      "file": "build-service/tests/conversion_roundtrip_smoke.test.js",
-      "lines": 783,
-      "symbols": 5
-    },
-    {
-      "file": "android-app/app/src/main/java/com/appforge/studio/terminal/UltimateProjectPipeline.kt",
-      "lines": 778,
-      "symbols": 26
     }
   ],
   "refactor_candidates": [
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-      "lines": 24825,
-      "symbols": 122
+      "lines": 25415,
+      "symbols": 125
     },
     {
       "file": "build-service/src/buildEngine.js",
@@ -315,13 +315,18 @@
     },
     {
       "file": "build-service/server.js",
-      "lines": 6001,
+      "lines": 6139,
       "symbols": 9
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
-      "lines": 4691,
-      "symbols": 64
+      "lines": 5115,
+      "symbols": 65
+    },
+    {
+      "file": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java",
+      "lines": 3570,
+      "symbols": 17
     },
     {
       "file": "build-service/fast-runtime/FastActivity.java",
@@ -335,7 +340,7 @@
     },
     {
       "file": "build-service/src/sourceBuildEngines.js",
-      "lines": 2474,
+      "lines": 2476,
       "symbols": 34
     },
     {
@@ -345,7 +350,7 @@
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
-      "lines": 2103,
+      "lines": 2108,
       "symbols": 16
     },
     {

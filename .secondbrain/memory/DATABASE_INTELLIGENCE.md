@@ -1,9 +1,9 @@
 # Database Intelligence
 
-Generated: 2026-09-12T00:34:21+03:00
+Generated: 2026-09-14T03:45:40+03:00
 
-Tables: **30**
-Migrations: **22**
+Tables: **34**
+Migrations: **25**
 
 | Migration | Creates | Alters | Destructive |
 | --- | --- | --- | --- |
@@ -29,3 +29,6 @@ Migrations: **22**
 | build-service/sql/019_user_free_project_limits.sql | appforge_user_project_limits | - | - |
 | build-service/sql/020_legacy_device_login_permission.sql | - | appforge_users | - |
 | build-service/sql/021_success_project_quotas.sql | appforge_migration_markers, appforge_pro_monthly_project_slots, appforge_project_quota_reservations | - | DELETE FROM |
+| build-service/sql/022_monthly_build_quota.sql | appforge_pro_monthly_build_reservations, appforge_pro_monthly_build_usage | appforge_projects | - |
+| build-service/sql/023_quota_addons.sql | appforge_quota_addon_redemptions | - | - |
+| build-service/sql/024_client_hardening.sql | appforge_play_purchase_owners | - | - |

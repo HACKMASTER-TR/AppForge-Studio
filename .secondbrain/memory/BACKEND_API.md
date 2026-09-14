@@ -1,6 +1,6 @@
 # Backend / API Map
 
-Generated: 2026-09-12T00:34:18+03:00
+Generated: 2026-09-14T03:45:36+03:00
 
 ## Detected endpoints
 
@@ -79,6 +79,7 @@ Generated: 2026-09-12T00:34:18+03:00
 | GET | /api/security/config | build-service/server.js |
 | POST | /api/security/attest | build-service/server.js |
 | GET | /api/pro/status | build-service/server.js |
+| POST | /api/quota/addons/redeem | build-service/server.js |
 | POST | /api/pro/activate | build-service/server.js |
 | POST | /api/admin/pro/grant | build-service/server.js |
 | POST | /api/admin/pro/revoke | build-service/server.js |

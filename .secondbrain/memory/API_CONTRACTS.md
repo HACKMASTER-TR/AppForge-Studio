@@ -1,8 +1,8 @@
 # API Contract Intelligence
 
-Generated: 2026-09-12T00:34:21+03:00
+Generated: 2026-09-14T03:45:40+03:00
 
-Routes: **82**
+Routes: **83**
 
 | Method | Path | Auth | Admin | Middleware |
 | --- | --- | --- | --- | --- |
@@ -79,6 +79,7 @@ Routes: **82**
 | GET | /api/security/config | yes | no | authRequired |
 | POST | /api/security/attest | yes | no | authRequired |
 | GET | /api/pro/status | yes | no | authRequired, requireIntegrityHeader |
+| POST | /api/quota/addons/redeem | yes | no | authRequired, purchaseVerifyRateLimit, requireIntegrityHeader |
 | POST | /api/pro/activate | yes | no | authRequired |
 | POST | /api/admin/pro/grant | yes | yes | authRequired, adminRequired |
 | POST | /api/admin/pro/revoke | yes | yes | authRequired, adminRequired |
