@@ -1,13 +1,13 @@
 # Hot Context
 
-Updated: 2026-09-14T11:12:58+03:00
+Updated: 2026-09-14T11:42:59+03:00
 
-- Branch: `fix/v15-device-test-bugs`
-- HEAD: `42aa8e9`
-- Current risk decision: **ACCEPT**
-- Risk score: **11/100**
-- Changed source files: **3**
-- Impacted domains: android, build-service
+- Branch: `fix/v15-blueprint-token-budget`
+- HEAD: `5e1a5b4`
+- Current risk decision: **REFACTOR_FIRST**
+- Risk score: **37/100**
+- Changed source files: **5**
+- Impacted domains: android, auth, build-service
 - Security health: **GREEN**
 - Live production health: **NOT_CHECKED**
 

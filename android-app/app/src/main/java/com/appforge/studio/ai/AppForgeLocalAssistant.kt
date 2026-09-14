@@ -422,7 +422,7 @@ class AppForgeLocalAssistant(
                 LocalAiBackend.CPU -> Backend.CPU()
                 LocalAiBackend.GPU -> Backend.GPU()
             },
-            maxNumTokens = 768,
+            maxNumTokens = 2_048,
             cacheDir = File(appContext.cacheDir, "litertlm")
                 .apply { mkdirs() }
                 .absolutePath

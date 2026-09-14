@@ -1,22 +1,22 @@
 # Architecture Map
 
-Generated from current repository source: 2026-09-14T11:12:58+03:00
+Generated from current repository source: 2026-09-14T11:42:59+03:00
 
 ## Repository baseline
 
-- Text/source files: 760
-- Estimated lines: 248367
+- Text/source files: 763
+- Estimated lines: 248601
 
 ## Languages
 
-- JavaScript: 316 files
+- JavaScript: 317 files
 - Kotlin: 247 files
-- Markdown: 66 files
+- Markdown: 67 files
 - Java: 49 files
 - SQL: 25 files
 - Other: 23 files
+- JSON: 12 files
 - YAML: 12 files
-- JSON: 11 files
 - Python: 4 files
 - HTML: 4 files
 - Shell: 3 files

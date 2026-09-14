@@ -1,9 +1,9 @@
 {
   "version": "3.0.0",
-  "head": "42aa8e9",
-  "branch": "fix/v15-device-test-bugs",
-  "risk": "ACCEPT",
-  "riskScore": 21,
+  "head": "5e1a5b4",
+  "branch": "fix/v15-blueprint-token-budget",
+  "risk": "REFACTOR_FIRST",
+  "riskScore": 47,
   "security": "GREEN",
   "apiRoutes": 83,
   "databaseTables": 34,
