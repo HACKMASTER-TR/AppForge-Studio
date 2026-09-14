@@ -1,13 +1,13 @@
 # Hot Context
 
-Updated: 2026-09-14T07:36:56+03:00
+Updated: 2026-09-14T08:00:00+03:00
 
-- Branch: `feat/unified-agent-v11-studio-integration`
-- HEAD: `f592a85`
+- Branch: `fix/manual-merge-gate`
+- HEAD: `dbc8e28`
 - Current risk decision: **ACCEPT**
-- Risk score: **31/100**
-- Changed source files: **23**
-- Impacted domains: android, build-service
+- Risk score: **6/100**
+- Changed source files: **1**
+- Impacted domains: build-service
 - Security health: **GREEN**
 - Live production health: **NOT_CHECKED**
 

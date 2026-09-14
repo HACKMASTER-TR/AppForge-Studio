@@ -1,9 +1,9 @@
 # Dependency Graph
 
-Generated: 2026-09-14T07:36:59+03:00
+Generated: 2026-09-14T08:00:02+03:00
 
-Nodes: **736**
-Edges: **119**
+Nodes: **729**
+Edges: **120**
 
 | File | Fan-in | Fan-out | Score |
 | --- | --- | --- | --- |
@@ -22,20 +22,20 @@ Edges: **119**
 | android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt | 0 | 4 | 4 |
 | android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt | 0 | 4 | 4 |
 | android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt | 0 | 4 | 4 |
+| android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt | 0 | 4 | 4 |
 | android-app/app/src/main/java/com/appforge/studio/io/AppSettingsStore.kt | 3 | 0 | 3 |
 | android-app/app/src/main/java/com/appforge/studio/io/SourceCapabilityAnalyzer.kt | 3 | 0 | 3 |
 | android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt | 3 | 0 | 3 |
 | android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalSession.java | 3 | 0 | 3 |
 | android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt | 2 | 1 | 3 |
 | android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt | 0 | 3 | 3 |
-| android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt | 0 | 3 | 3 |
-| build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt | 2 | 0 | 2 |
+| android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelStore.kt | 2 | 0 | 2 |
+| android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt | 2 | 0 | 2 |
 | android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt | 2 | 0 | 2 |
 | android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt | 2 | 0 | 2 |
-| android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt | 2 | 0 | 2 |
-| android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelStore.kt | 2 | 0 | 2 |
 | android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalBuffer.java | 2 | 0 | 2 |
 | android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java | 2 | 0 | 2 |
 | android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/WcWidth.java | 2 | 0 | 2 |
+| build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt | 2 | 0 | 2 |
 
 Confidence: `inferred` from source imports/references.
