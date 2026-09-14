@@ -1,14 +1,14 @@
 {
   "version": "3.0.0",
-  "head": "8e39457",
-  "branch": "feat/unified-agent-v2-v10",
+  "head": "f592a85",
+  "branch": "feat/unified-agent-v11-studio-integration",
   "risk": "REFACTOR_FIRST",
-  "riskScore": 56,
+  "riskScore": 51,
   "security": "YELLOW",
   "apiRoutes": 83,
   "databaseTables": 34,
   "migrations": 25,
-  "tests": 291,
+  "tests": 299,
   "release": "REVIEW_REQUIRED",
   "liveGithub": "NOT_CHECKED",
   "liveRailway": "NOT_CHECKED"

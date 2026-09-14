@@ -318,6 +318,72 @@ class AppForgeLocalAssistant(
         }
     }
 
+    suspend fun generateStructuredJson(
+        prompt: String
+    ): String = mutex.withLock {
+        val clean = prompt.trim()
+        require(clean.isNotBlank()) {
+            "Structured AI prompt boş olamaz."
+        }
+        require(clean.length <= 32 * 1024) {
+            "Structured AI prompt çok uzun."
+        }
+
+        val currentEngine = engine
+            ?: error("Yerel AI modeli başlatılmadı.")
+
+        val structuredConversation = currentEngine.createConversation(
+            ConversationConfig(
+                systemInstruction = Contents.of(
+                    """
+                    Sen AppForge Unified Agent için yapılandırılmış JSON üreten yerel modelsin.
+                    Kullanıcıya açıklama, markdown veya düşünme süreci gösterme.
+                    İstenen schema sözleşmesine tam uy.
+                    Yalnız tek bir JSON nesnesini <final_answer> ve </final_answer>
+                    etiketleri arasında döndür.
+                    API anahtarı, parola, token veya gerçek credential üretme.
+                    Bilinmeyen alan ekleme.
+                    """.trimIndent()
+                ),
+                samplerConfig = SamplerConfig(
+                    topK = 8,
+                    topP = 0.72,
+                    temperature = 0.05
+                )
+            )
+        )
+
+        try {
+            val raw = StringBuilder()
+            withTimeout(180_000L) {
+                structuredConversation
+                    .sendMessageAsync(clean)
+                    .collect { part ->
+                        raw.append(part.toString())
+                    }
+            }
+
+            val finalJson = extractFinalAssistantAnswer(
+                raw.toString(),
+                AppSettingsStore.load(appContext).languageCode
+            ).trim()
+
+            require(finalJson.isNotBlank()) {
+                "Yerel AI boş structured çıktı üretti."
+            }
+            require(finalJson.length <= 32 * 1024) {
+                "Yerel AI structured çıktı sınırını aştı."
+            }
+
+            finalJson
+        } finally {
+            runCatching {
+                structuredConversation.close()
+            }
+        }
+    }
+
+
     suspend fun resetConversation() = mutex.withLock {
         val current = engine ?: return@withLock
         conversation?.close()

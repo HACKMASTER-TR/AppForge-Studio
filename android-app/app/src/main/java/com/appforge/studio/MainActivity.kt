@@ -600,7 +600,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 private data class ParallelBuildTestItem(
     val slot: Int,
@@ -792,6 +792,8 @@ private fun AppForgeApp() {
                 AppScreen.PRODUCTION ||
             screen ==
                 AppScreen.AI_ASSISTANT ||
+            screen ==
+                AppScreen.UNIFIED_AGENT ||
             screen ==
                 AppScreen.TERMINAL ||
             screen ==
@@ -4185,6 +4187,12 @@ private fun AppForgeApp() {
                                 }
                         },
 
+                        onOpenUnifiedAgent = {
+                            openWorkspaceScreen(
+                                AppScreen.UNIFIED_AGENT
+                            )
+                        },
+
                         onOpenAi = {
                             openWorkspaceScreen(
                                 AppScreen.AI_ASSISTANT
@@ -5102,6 +5110,19 @@ private fun AppForgeApp() {
                 }
 
 
+
+
+                AppScreen.UNIFIED_AGENT ->
+                    UnifiedAgentStudioRoute(
+                        buildServiceUrl =
+                            serverUrl,
+                        buildApiKey =
+                            apiKey,
+                        onBack = {
+                            screen =
+                                AppScreen.HOME
+                        }
+                    )
 
 
                 AppScreen.AI_ASSISTANT ->

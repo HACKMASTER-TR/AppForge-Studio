@@ -1,21 +1,17 @@
 {
-  "generated_at": "2026-09-14T03:45:38+03:00",
-  "discovered": 291,
+  "generated_at": "2026-09-14T07:36:57+03:00",
+  "discovered": 299,
   "domains": [
     "android",
     "build-service"
   ],
   "selected_tests": [
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransactionTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentVisualDesignerTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStructuredPatchTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRepairLoopTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentCodegenTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipelineTest.kt",
-    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStudioOrchestratorTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBuildProjectPreparerTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentArtifactContractsTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeUnifiedAgentV11EndToEndTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStudioStateV11Test.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentReleaseReadinessEvaluatorTest.kt",
     "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/WcWidthTest.java",
     "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/UnicodeInputTest.java",
     "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TextStyleTest.java",
@@ -57,11 +53,20 @@
     "android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/task/AppForgeTaskManagerTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransactionTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentVisualDesignerTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStructuredPatchTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRepairLoopTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentCodegenTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipelineTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/BuildRuntimeStateTest.kt",
     "android-app/app/src/main/assets/terminal/appforge-test",
-    "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
-    "build-service/tests/appforge_agent_scale_v10.test.js",
+    "build-service/tests/appforge_unified_agent_v11_e2e_contract.test.js",
     "build-service/tests/android_queue_ui_regression.test.js",
     "build-service/tests/unity_android_build_engine.test.js",
     "build-service/tests/quota_addons_android_ui_contract.test.js",
@@ -76,21 +81,17 @@
     "build-service/tests/cpp_android_template_build_smoke.js",
     "build-service/tests/cpp_android_live_build_engine.test.js",
     "build-service/tests/cpp_android_build_engine.test.js",
+    "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
     "build-service/tests/android_sdk_selection.test.js",
     "build-service/tests/android_safe_area.test.js",
     "build-service/tests/android_local_problem_explainer.test.js",
-    "build-service/tests/android_gradle_source_engine.test.js",
-    "build-service/tests/android_app_category.test.js",
-    "build-service/tests/worker_presence_cancel_regression.test.js",
-    "build-service/tests/windows_exe_regression.test.js",
-    "build-service/tests/project_technology_detector_regression.test.js",
-    "build-service/tests/monetization_navigation_regression.test.js",
-    "build-service/tests/media3_regression.test.js"
+    "build-service/tests/android_gradle_source_engine.test.js"
   ],
   "critical_regression_tests": [
     "android-app/app/src/main/assets/terminal/appforge-test",
     "android-app/app/src/test/java/com/appforge/studio/BuildRuntimeStateTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipelineTest.kt",
+    "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBuildProjectPreparerTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt",
     "android-app/app/src/test/java/com/appforge/studio/terminal/AnsiTerminalBufferTest.kt",
@@ -166,15 +167,17 @@
     "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
     "build-service/tests/appforge_terminal_integration.test.js",
     "build-service/tests/appforge_terminal_linux_multisession_contract.test.js",
-    "build-service/tests/appforge_terminal_linux_pty_contract.test.js",
-    "build-service/tests/appforge_terminal_linux_runtime_contract.test.js"
+    "build-service/tests/appforge_terminal_linux_pty_contract.test.js"
   ],
   "commands": [
     "cd build-service && npm test",
     "Android CI / Gradle compile verification"
   ],
   "last_execution": {
-    "status": "NOT_RUN"
+    "status": "PASS",
+    "at": "2026-09-13T22:37:47+03:00",
+    "head": "7b73d43",
+    "note": "Agent Mode + Design Blueprint V1 Android CI PASS. Run 34778077043. :app:testDebugUnitTest + signingReport + assembleDebug + APK verification successful."
   },
   "regression_rules": {
     "version": 2,

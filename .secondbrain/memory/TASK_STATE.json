@@ -1,8 +1,8 @@
 {
-  "label": "unified-agent-v2-v10",
-  "started_at": "2026-09-14T02:16:39+03:00",
-  "start_checkpoint": ".secondbrain/checkpoints/20260914-021639-start-unified-agent-v2-v10.json",
+  "label": "unified-agent-v11-studio-integration",
+  "started_at": "2026-09-14T05:22:05+03:00",
+  "start_checkpoint": ".secondbrain/checkpoints/20260914-052205-start-unified-agent-v11-studio-integration.json",
   "status": "DONE",
-  "finished_at": "2026-09-14T03:45:40+03:00",
-  "end_checkpoint": ".secondbrain/checkpoints/20260914-034540-finish-unified-agent-v2-v10.json"
+  "finished_at": "2026-09-14T07:36:59+03:00",
+  "end_checkpoint": ".secondbrain/checkpoints/20260914-073659-finish-unified-agent-v11-studio-integration.json"
 }

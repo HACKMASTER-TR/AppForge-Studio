@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.appforge.studio.AppForgeBuildNumbers
+import com.appforge.studio.UnifiedAgentHomeEntryCard
 import com.appforge.studio.io.AppSettingsStore
 import com.appforge.studio.io.ProjectLibrary
 import com.appforge.studio.io.SavedProject
@@ -249,6 +250,7 @@ fun StudioHomeV2(
     onCreateConversion: () -> Unit,
     onOpenProject: (SavedProject) -> Unit,
     onOpenAi: () -> Unit,
+    onOpenUnifiedAgent: () -> Unit,
     onOpenTemplates: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenTasks: () -> Unit,
@@ -701,6 +703,16 @@ fun StudioHomeV2(
                         V2Warm
                     )
                 }
+            }
+
+            item {
+                UnifiedAgentHomeEntryCard(
+                    onClick = onOpenUnifiedAgent,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 980.dp)
+                )
             }
 
             item {
