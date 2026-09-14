@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T07:36:57+03:00",
+  "generated_at": "2026-09-14T08:00:01+03:00",
   "detected_services": [
     "AWS/S3",
     "Email",
@@ -152,16 +152,8 @@
     ],
     "GitHub": [
       ".appforge/policy.json",
-      ".appforge/reports/20260912-212832-pipeline.json",
-      ".appforge/reports/20260912-212832-pipeline.md",
-      ".appforge/reports/20260912-221522-pipeline.json",
-      ".appforge/reports/20260912-221522-pipeline.md",
-      ".appforge/reports/20260913-001725-pipeline.json",
-      ".appforge/reports/20260913-001725-pipeline.md",
-      ".appforge/reports/20260913-011821-pipeline.json",
-      ".appforge/reports/20260913-011821-pipeline.md",
-      ".appforge/reports/20260913-015607-pipeline.json",
-      ".appforge/reports/20260913-015607-pipeline.md",
+      ".appforge/reports/20260914-045111-pipeline.json",
+      ".appforge/reports/20260914-045111-pipeline.md",
       ".appforge/state/latest.json",
       ".github/workflows/android-debug.yml",
       ".github/workflows/android-play-release.yml",
@@ -230,7 +222,15 @@
       "build-service/src/config.js",
       "build-service/src/jobQueue.js",
       "build-service/src/workspace.js",
-      "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js"
+      "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
+      "build-service/tests/appforge_autopilot_cli_contract.test.js",
+      "build-service/tests/appforge_autopilot_timing_contract.test.js",
+      "build-service/tests/appforge_ci_fast_lane_contract.test.js",
+      "build-service/tests/appforge_production_cancelled_image_contract.test.js",
+      "build-service/tests/appforge_production_health_resilience_contract.test.js",
+      "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
+      "build-service/tests/appforge_terminal_apk_origin_fallback_contract.test.js",
+      "build-service/tests/appforge_terminal_integration.test.js"
     ],
     "Google APIs": [
       ".github/workflows/android-debug.yml",
@@ -384,8 +384,6 @@
     ],
     "Railway": [
       ".appforge/policy.json",
-      ".appforge/reports/20260912-212832-pipeline.json",
-      ".appforge/reports/20260912-212832-pipeline.md",
       ".github/scripts/railway_production.py",
       ".github/scripts/worker_autoscale.py",
       ".github/workflows/android-debug.yml",

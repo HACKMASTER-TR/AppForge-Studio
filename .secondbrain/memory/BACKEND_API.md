@@ -1,6 +1,6 @@
 # Backend / API Map
 
-Generated: 2026-09-14T07:36:56+03:00
+Generated: 2026-09-14T08:00:00+03:00
 
 ## Detected endpoints
 

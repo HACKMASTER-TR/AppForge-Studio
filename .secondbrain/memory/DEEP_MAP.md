@@ -1,6 +1,6 @@
 # AppForge Studio — Deep Project Map
 
-Generated: 2026-09-14T07:36:56+03:00
+Generated: 2026-09-14T08:00:00+03:00
 
 ## API Routes
 
@@ -194,7 +194,7 @@ Detected tables / schema objects: **34**
 
 ## Tests
 
-Detected test files: **297**
+Detected test files: **298**
 
 - `.appforge/state/latest.json`
 - `AppForgeStudio-latest.apk`
@@ -280,6 +280,7 @@ Detected test files: **297**
 - `build-service/tests/appforge_autopilot_timing_contract.test.js`
 - `build-service/tests/appforge_autopilot_workflow_resolution_contract.test.js`
 - `build-service/tests/appforge_ci_fast_lane_contract.test.js`
+- `build-service/tests/appforge_manual_merge_gate_contract.test.js`
 - `build-service/tests/appforge_production_cancelled_image_contract.test.js`
 - `build-service/tests/appforge_production_health_resilience_contract.test.js`
 - `build-service/tests/appforge_quota_recovery_contract.test.js`
@@ -395,13 +396,12 @@ Detected test files: **297**
 - `build-service/tests/gradle_client_memory_budget.test.js`
 - `build-service/tests/gradle_low_memory_no_daemon.test.js`
 - `build-service/tests/gradle_memory_profile.test.js`
-- `build-service/tests/gradle_performance.test.js`
 
 ## Product Surfaces
 
 - Android: `{'detected': True, 'paths': ['android-app']}`
 - Web: `{'detected': False, 'paths': []}`
-- Desktop: `{'detected': True, 'paths': ['desktop-app']}`
+- Desktop: `{'detected': False, 'paths': []}`
 
 ## Rules
 

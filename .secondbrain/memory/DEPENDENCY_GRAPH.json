@@ -1,8 +1,48 @@
 {
-  "generated_at": "2026-09-14T07:36:56+03:00",
-  "node_count": 736,
-  "edge_count": 119,
+  "generated_at": "2026-09-14T08:00:00+03:00",
+  "node_count": 729,
+  "edge_count": 120,
   "edges": [
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AppForgeHelpCenterScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
+      "kind": "import"
+    },
     {
       "from": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
       "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
@@ -179,51 +219,6 @@
       "kind": "import"
     },
     {
-      "from": "android-app/app/src/main/java/com/appforge/studio/StudioHomeScreen.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/AppForgeHelpCenterScreen.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
-      "kind": "import"
-    },
-    {
       "from": "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt",
       "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
       "kind": "import"
@@ -236,6 +231,11 @@
     {
       "from": "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt",
       "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/StudioHomeScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
       "kind": "import"
     },
     {
@@ -289,13 +289,18 @@
       "kind": "import"
     },
     {
-      "from": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+      "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
       "kind": "import"
     },
     {
-      "from": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
+      "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiSnapshotV2.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
       "kind": "import"
     },
     {
@@ -305,11 +310,6 @@
     },
     {
       "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
       "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
       "kind": "import"
     },
@@ -324,16 +324,6 @@
       "kind": "import"
     },
     {
-      "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiSnapshotV2.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
-      "kind": "import"
-    },
-    {
       "from": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBuildProjectPreparer.kt",
       "to": "android-app/app/src/main/java/com/appforge/studio/io/SourceCapabilityAnalyzer.kt",
       "kind": "import"
@@ -344,43 +334,33 @@
       "kind": "import"
     },
     {
-      "from": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
-      "kind": "import"
-    },
-    {
       "from": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
       "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
       "kind": "import"
     },
     {
-      "from": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/AppForgeBuildNumbers.kt",
+      "from": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
       "kind": "import"
     },
     {
-      "from": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/io/AppSettingsStore.kt",
+      "from": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
       "kind": "import"
     },
     {
-      "from": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
+      "from": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/StudioDeviceIdentity.kt",
       "kind": "import"
     },
     {
-      "from": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
       "kind": "import"
     },
     {
-      "from": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
-      "to": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/tools/excel/ExcelToolsScreen.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
       "kind": "import"
     },
     {
@@ -394,8 +374,58 @@
       "kind": "import"
     },
     {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxMultiSessionTerminalPanel.kt",
+      "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TextStyle.java",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
+      "to": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
+      "to": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
+      "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TextStyle.java",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
+      "kind": "import"
+    },
+    {
       "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalTerminalPanel.kt",
       "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TextStyle.java",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerFilesPanel.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerPrivateFileSync.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalStandaloneDeveloperBootstrap.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
       "kind": "import"
     },
     {
@@ -416,76 +446,6 @@
     {
       "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt",
       "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxMultiSessionTerminalPanel.kt",
-      "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TextStyle.java",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
-      "to": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxSessionNotifier.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
-      "to": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
-      "to": "android-app/termux-terminal-emulator/src/main/java/com/termux/terminal/TextStyle.java",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalStandaloneDeveloperBootstrap.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerFilesPanel.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
-      "kind": "import"
-    },
-    {
-      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerPrivateFileSync.kt",
-      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
       "kind": "import"
     },
     {
@@ -506,6 +466,51 @@
     {
       "from": "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt",
       "to": "android-app/termux-terminal-view/src/main/java/com/termux/view/TerminalViewClient.java",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/tools/excel/ExcelToolsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt",
+      "to": "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/AppForgeBuildNumbers.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentHomeEntryCard.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/AppSettingsStore.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt",
       "kind": "import"
     },
     {
@@ -691,6 +696,12 @@
       "score": 4
     },
     {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+      "fan_in": 0,
+      "fan_out": 4,
+      "score": 4
+    },
+    {
       "file": "android-app/app/src/main/java/com/appforge/studio/io/AppSettingsStore.kt",
       "fan_in": 3,
       "fan_out": 0,
@@ -727,13 +738,13 @@
       "score": 3
     },
     {
-      "file": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
-      "fan_in": 0,
-      "fan_out": 3,
-      "score": 3
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelStore.kt",
+      "fan_in": 2,
+      "fan_out": 0,
+      "score": 2
     },
     {
-      "file": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+      "file": "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
       "fan_in": 2,
       "fan_out": 0,
       "score": 2
@@ -746,18 +757,6 @@
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
-      "fan_in": 2,
-      "fan_out": 0,
-      "score": 2
-    },
-    {
-      "file": "android-app/app/src/main/java/com/appforge/studio/i18n/StudioI18n.kt",
-      "fan_in": 2,
-      "fan_out": 0,
-      "score": 2
-    },
-    {
-      "file": "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelStore.kt",
       "fan_in": 2,
       "fan_out": 0,
       "score": 2
@@ -781,13 +780,13 @@
       "score": 2
     },
     {
-      "file": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
-      "fan_in": 1,
-      "fan_out": 1,
+      "file": "build-service/python-android-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt",
+      "fan_in": 2,
+      "fan_out": 0,
       "score": 2
     },
     {
-      "file": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
+      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
       "fan_in": 1,
       "fan_out": 1,
       "score": 2
@@ -805,12 +804,6 @@
       "score": 2
     },
     {
-      "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAiCommandParser.kt",
-      "fan_in": 1,
-      "fan_out": 1,
-      "score": 2
-    },
-    {
       "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBuildServiceStageRunner.kt",
       "fan_in": 1,
       "fan_out": 1,
@@ -818,6 +811,18 @@
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/io/ProjectBackupManager.kt",
+      "fan_in": 1,
+      "fan_out": 1,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
+      "fan_in": 1,
+      "fan_out": 1,
+      "score": 2
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
       "fan_in": 1,
       "fan_out": 1,
       "score": 2
@@ -844,7 +849,7 @@
   "external_dependencies": [
     [
       "androidx",
-      1310
+      1309
     ],
     [
       "android",
@@ -860,19 +865,19 @@
     ],
     [
       "assert",
-      233
+      234
     ],
     [
       "node:assert",
-      233
+      234
     ],
     [
       "node:test",
-      229
+      230
     ],
     [
       "test",
-      229
+      230
     ],
     [
       "kotlinx",
@@ -880,7 +885,7 @@
     ],
     [
       "node:fs",
-      161
+      162
     ],
     [
       "com",
@@ -892,7 +897,7 @@
     ],
     [
       "fs",
-      57
+      58
     ],
     [
       "AdmZip",
@@ -927,15 +932,15 @@
       7
     ],
     [
+      "javax",
+      6
+    ],
+    [
       "express",
       6
     ],
     [
       "node:path",
-      6
-    ],
-    [
-      "javax",
       6
     ],
     [
@@ -947,7 +952,15 @@
       4
     ],
     [
-      "node:os",
+      "subprocess",
+      3
+    ],
+    [
+      "sys",
+      3
+    ],
+    [
+      "traceback",
       3
     ],
     [
@@ -959,23 +972,19 @@
       3
     ],
     [
-      "traceback",
-      3
-    ],
-    [
       "net",
       3
     ],
     [
-      "sys",
+      "node:os",
       3
     ],
     [
-      "subprocess",
-      3
+      "time",
+      2
     ],
     [
-      "uuid",
+      "pathlib",
       2
     ],
     [
@@ -987,6 +996,10 @@
       2
     ],
     [
+      "uuid",
+      2
+    ],
+    [
       "node:crypto",
       2
     ],
@@ -995,67 +1008,19 @@
       2
     ],
     [
-      "pathlib",
-      2
-    ],
-    [
       "dns",
       2
     ],
     [
-      "time",
-      2
-    ],
-    [
-      "multer",
+      "argparse",
       1
     ],
     [
-      "node:url",
+      "math",
       1
     ],
     [
-      "bcrypt",
-      1
-    ],
-    [
-      "bcryptjs",
-      1
-    ],
-    [
-      "pg",
-      1
-    ],
-    [
-      "nodemailer",
-      1
-    ],
-    [
-      "QRCode",
-      1
-    ],
-    [
-      "qrcode",
-      1
-    ],
-    [
-      "util",
-      1
-    ],
-    [
-      "electron",
-      1
-    ],
-    [
-      "threading",
-      1
-    ],
-    [
-      "wsgiref",
-      1
-    ],
-    [
-      "importlib",
+      "re",
       1
     ],
     [
@@ -1079,15 +1044,55 @@
       1
     ],
     [
-      "re",
+      "multer",
       1
     ],
     [
-      "argparse",
+      "importlib",
       1
     ],
     [
-      "math",
+      "bcrypt",
+      1
+    ],
+    [
+      "bcryptjs",
+      1
+    ],
+    [
+      "pg",
+      1
+    ],
+    [
+      "nodemailer",
+      1
+    ],
+    [
+      "threading",
+      1
+    ],
+    [
+      "wsgiref",
+      1
+    ],
+    [
+      "QRCode",
+      1
+    ],
+    [
+      "qrcode",
+      1
+    ],
+    [
+      "util",
+      1
+    ],
+    [
+      "electron",
+      1
+    ],
+    [
+      "node:url",
       1
     ]
   ]

@@ -245,6 +245,7 @@
     "build-service/tests/appforge_autopilot_timing_contract.test.js",
     "build-service/tests/appforge_autopilot_workflow_resolution_contract.test.js",
     "build-service/tests/appforge_ci_fast_lane_contract.test.js",
+    "build-service/tests/appforge_manual_merge_gate_contract.test.js",
     "build-service/tests/appforge_production_cancelled_image_contract.test.js",
     "build-service/tests/appforge_production_health_resilience_contract.test.js",
     "build-service/tests/appforge_quota_recovery_contract.test.js",

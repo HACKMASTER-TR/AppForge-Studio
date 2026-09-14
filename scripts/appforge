@@ -1852,85 +1852,174 @@ def continue_after_push(branch):
     )
 
     state_write(
-        "MERGING",
-        pr=num,
-    )
-
-    merge_pr(num)
-
-    print(
-        f"PR #{num}: MERGED"
-    )
-
-    run([
-        "git",
-        "switch",
-        "main",
-    ])
-
-    run([
-        "git",
-        "pull",
-        "--ff-only",
-        "origin",
-        "main",
-    ])
-
-    main_sha = git_out(
-        "rev-parse",
-        "HEAD",
-    )
-
-    required_workflows, ci_result = (
-        wait_required_main_ci(
-            main_sha,
-            source_files,
-        )
-    )
-
-    rel = release_info()
-
-    if (
-        "android-debug.yml"
-        in required_workflows
-        and rel.get("status") != "READY"
-    ):
-        raise SystemExit(
-            "Latest APK release henüz READY değil."
-        )
-
-    state_write(
-        "COMPLETE",
-        pr=num,
-        release=rel,
-        source_files=source_files,
-        source_groups=source_groups,
-        required_workflows=required_workflows,
-    )
-
-    jp, mp = generate_report(
-        "SUCCESS",
+        "READY_FOR_MERGE",
         pr=num,
         source_branch=branch,
         source_files=source_files,
         source_groups=source_groups,
-        required_workflows=required_workflows,
-        ci=ci_result,
-        release=rel,
     )
 
     print(
-        "\nAPPFORGE PIPELINE COMPLETE ✅"
+        f"PR #{num}: READY FOR MANUAL MERGE"
     )
     print(
-        "JSON:",
-        jp,
+        "AUTO MERGE: DISABLED"
     )
     print(
-        "REPORT:",
-        mp,
+        "Next: run 'APPFORGE_ADMIN_SESSION=1 "
+        "./scripts/appforge merge' only after explicit approval."
     )
 
+
+def merge():
+    branch = git_out(
+        "branch",
+        "--show-current",
+    )
+
+    if branch == "main":
+        raise SystemExit(
+            "main üzerinde merge yapılamaz. "
+            "PR branch'ine geç."
+        )
+
+    if changed_files():
+        raise SystemExit(
+            "BLOCKED: merge için worktree temiz olmalı."
+        )
+
+    with Lock():
+        gh_required()
+
+        require_remote_sync(
+            branch
+        )
+
+        print(
+            "=== APPFORGE MANUAL MERGE ==="
+        )
+
+        print(
+            "\n=== REVALIDATION ==="
+        )
+
+        local_gate()
+
+        source_files = branch_change_files()
+        source_groups = classify(
+            source_files
+        )
+
+        num = pr_number()
+
+        if not num:
+            raise SystemExit(
+                "Aktif branch için açık PR bulunamadı."
+            )
+
+        state_write(
+            "WAITING_CI",
+            pr=num,
+            manual_merge=True,
+        )
+
+        ci_watch()
+
+        print(
+            "\nPR REQUIRED CI: SUCCESS"
+        )
+
+        state_write(
+            "MERGING",
+            pr=num,
+            manual_merge=True,
+        )
+
+        merge_pr(num)
+
+        print(
+            f"PR #{num}: MERGED"
+        )
+
+        # Do not switch to main here. main may be checked out
+        # by a different worktree. Follow the remote main ref
+        # instead so manual merge works safely with worktrees.
+        run(
+            [
+                "git",
+                "fetch",
+                "origin",
+                "main",
+            ],
+            check=True,
+        )
+
+        main_sha = git_out(
+            "rev-parse",
+            "origin/main",
+        )
+
+        if not main_sha:
+            raise SystemExit(
+                "origin/main SHA çözülemedi."
+            )
+
+        required_workflows, ci_result = (
+            wait_required_main_ci(
+                main_sha,
+                source_files,
+            )
+        )
+
+        rel = release_info()
+
+        if (
+            "android-debug.yml"
+            in required_workflows
+            and rel.get("status") != "READY"
+        ):
+            raise SystemExit(
+                "Latest APK release henüz READY değil."
+            )
+
+        state_write(
+            "COMPLETE",
+            pr=num,
+            manual_merge=True,
+            main_sha=main_sha,
+            release=rel,
+            source_files=source_files,
+            source_groups=source_groups,
+            required_workflows=required_workflows,
+        )
+
+        jp, mp = generate_report(
+            "SUCCESS",
+            pr=num,
+            manual_merge=True,
+            main_sha=main_sha,
+            source_branch=branch,
+            source_files=source_files,
+            source_groups=source_groups,
+            required_workflows=required_workflows,
+            ci=ci_result,
+            release=rel,
+        )
+
+        print(
+            "\nAPPFORGE PIPELINE COMPLETE ✅"
+        )
+        print(
+            "MODE: MANUAL MERGE"
+        )
+        print(
+            "JSON:",
+            jp,
+        )
+        print(
+            "REPORT:",
+            mp,
+        )
 
 def recover():
     if git_out(
@@ -2328,7 +2417,7 @@ def main():
 
     for name in [
         "status", "doctor", "test", "security", "dashboard",
-        "ci", "report", "submit", "resume", "recover", "release", "deploy", "rollback"
+        "ci", "report", "submit", "resume", "merge", "recover", "release", "deploy", "rollback"
     ]:
         sub.add_parser(name)
 
@@ -2342,6 +2431,7 @@ def main():
         "report",
         "submit",
         "resume",
+        "merge",
         "recover",
         "release",
         "deploy",
@@ -2375,6 +2465,8 @@ def main():
         submit()
     elif args.cmd == "resume":
         resume()
+    elif args.cmd == "merge":
+        merge()
     elif args.cmd == "recover":
         recover()
     elif args.cmd == "release":

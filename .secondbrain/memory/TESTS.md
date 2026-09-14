@@ -1,11 +1,10 @@
 # Test Map
 
-Generated: 2026-09-14T07:36:56+03:00
+Generated: 2026-09-14T08:00:00+03:00
 
 ## Recommended for current change
 
 - `cd build-service && npm test`
-- `Android CI / Gradle compile verification`
 
 ## Discovered test files
 
@@ -94,6 +93,7 @@ Generated: 2026-09-14T07:36:56+03:00
 - `build-service/tests/appforge_autopilot_timing_contract.test.js`
 - `build-service/tests/appforge_autopilot_workflow_resolution_contract.test.js`
 - `build-service/tests/appforge_ci_fast_lane_contract.test.js`
+- `build-service/tests/appforge_manual_merge_gate_contract.test.js`
 - `build-service/tests/appforge_production_cancelled_image_contract.test.js`
 - `build-service/tests/appforge_production_health_resilience_contract.test.js`
 - `build-service/tests/appforge_quota_recovery_contract.test.js`
