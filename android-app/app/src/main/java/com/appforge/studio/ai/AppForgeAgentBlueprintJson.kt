@@ -13,10 +13,16 @@ internal object AppForgeAgentBlueprintJson {
     private const val MAX_OBJECT_FIELDS = 96
 
     fun parse(raw: String): AppForgeAgentBlueprint {
-        val json = extractStructuredPayload(raw)
+        val extracted = extractStructuredPayload(raw)
+
+        if (extracted.length > MAX_JSON_CHARS) {
+            fail("Blueprint JSON $MAX_JSON_CHARS karakteri aşamaz.")
+        }
+
+        val json = normalizeRawStringControlCharacters(extracted)
 
         if (json.length > MAX_JSON_CHARS) {
-            fail("Blueprint JSON $MAX_JSON_CHARS karakteri aşamaz.")
+            fail("Normalize edilmiş Blueprint JSON $MAX_JSON_CHARS karakteri aşamaz.")
         }
 
         val root = Parser(json).parseDocument().asObject("root")
@@ -283,6 +289,64 @@ internal object AppForgeAgentBlueprintJson {
             label = obj.requiredString("label", "$path.label"),
             targetRoute = obj.optionalString("targetRoute", "$path.targetRoute")
         )
+    }
+
+    internal fun normalizeRawStringControlCharacters(input: String): String {
+        var inString = false
+        var escaped = false
+        var changed = false
+        val output = StringBuilder(input.length)
+
+        input.forEach { char ->
+            if (!inString) {
+                output.append(char)
+                if (char == '"') {
+                    inString = true
+                }
+                return@forEach
+            }
+
+            if (escaped) {
+                output.append(char)
+                escaped = false
+                return@forEach
+            }
+
+            when {
+                char == '\\' -> {
+                    output.append(char)
+                    escaped = true
+                }
+
+                char == '"' -> {
+                    output.append(char)
+                    inString = false
+                }
+
+                char.code < 0x20 -> {
+                    changed = true
+                    when (char) {
+                        '\b' -> output.append("\\b")
+                        '\u000C' -> output.append("\\f")
+                        '\n' -> output.append("\\n")
+                        '\r' -> output.append("\\r")
+                        '\t' -> output.append("\\t")
+                        else -> {
+                            output.append("\\u")
+                            output.append(
+                                char.code
+                                    .toString(16)
+                                    .padStart(4, '0')
+                            )
+                        }
+                    }
+                }
+
+                else -> output.append(char)
+            }
+        }
+
+        return if (changed) output.toString() else input
     }
 
     private fun StringBuilder.appendJsonString(value: String) {

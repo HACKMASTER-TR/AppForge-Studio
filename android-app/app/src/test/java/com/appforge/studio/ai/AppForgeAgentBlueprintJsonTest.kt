@@ -95,6 +95,50 @@ class AppForgeAgentBlueprintJsonTest {
     }
 
     @Test
+    fun normalizesRawControlCharactersInsideJsonStringsOnly() {
+        val raw = validJson()
+            .replace(
+                "\"prompt\": \"Stok giriş çıkışlarını takip et\"",
+                "\"prompt\": \"Satır 1\nSatır 2\tSekmeli\""
+            )
+
+        val blueprint = AppForgeAgentBlueprintJson.parse(raw)
+
+        assertEquals(
+            "Satır 1\nSatır 2\tSekmeli",
+            blueprint.prompt
+        )
+    }
+
+    @Test
+    fun doesNotRepairStructuralControlCharactersOutsideStrings() {
+        val invalid =
+            validJson().replaceFirst(
+                "{",
+                "{\u0000"
+            )
+
+        expectFailure {
+            AppForgeAgentBlueprintJson.parse(invalid)
+        }
+    }
+
+    @Test
+    fun keepsAlreadyEscapedJsonStringsStable() {
+        val raw = validJson()
+            .replace(
+                "\"prompt\": \"Stok giriş çıkışlarını takip et\"",
+                "\"prompt\": \"Satır 1\\\\nSatır 2\\\\tSekmeli\""
+            )
+
+        val normalized =
+            AppForgeAgentBlueprintJson
+                .normalizeRawStringControlCharacters(raw)
+
+        assertEquals(raw, normalized)
+    }
+
+    @Test
     fun promptContractForcesStrictSchema() {
         val prompt = AppForgeAgentBlueprintPrompt.build(
             userPrompt = "Bana görev takip uygulaması yap",
@@ -104,6 +148,8 @@ class AppForgeAgentBlueprintJsonTest {
         assertTrue(prompt.contains("schemaVersion=1"))
         assertTrue(prompt.contains("platform=ANDROID"))
         assertTrue(prompt.contains("Bilinmeyen alan ekleme"))
+        assertTrue(prompt.contains("kontrol karakteri kullanma"))
+        assertTrue(prompt.contains("\\n, \\t, \\r"))
         assertTrue(prompt.contains("<user_request>"))
     }
 

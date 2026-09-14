@@ -1,9 +1,9 @@
 {
   "version": "3.0.0",
-  "head": "5e1a5b4",
-  "branch": "fix/v15-blueprint-token-budget",
-  "risk": "REFACTOR_FIRST",
-  "riskScore": 47,
+  "head": "65d8879",
+  "branch": "fix/v15-blueprint-control-characters",
+  "risk": "ACCEPT",
+  "riskScore": 11,
   "security": "GREEN",
   "apiRoutes": 83,
   "databaseTables": 34,
