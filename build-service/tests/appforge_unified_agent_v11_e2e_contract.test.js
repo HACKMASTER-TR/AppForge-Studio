@@ -13,7 +13,7 @@ const mainActivity = read(
   "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
 );
 const home = read(
-  "android-app/app/src/main/java/com/appforge/studio/StudioHomeScreen.kt"
+  "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
 );
 const route = read(
   "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt"
@@ -34,12 +34,17 @@ const androidWorkflow = read(
   ".github/workflows/android-debug.yml"
 );
 
-test("V11 home entry routes to the dedicated Unified Agent screen", () => {
+test("V11 active StudioHomeV2 routes to the dedicated Unified Agent screen", () => {
+  assert.match(home, /fun StudioHomeV2\(/);
+  assert.match(home, /onOpenUnifiedAgent: \(\) -> Unit/);
   assert.match(
     home,
     /UnifiedAgentHomeEntryCard\([\s\S]*onClick = onOpenUnifiedAgent/
   );
-  assert.match(mainActivity, /AppScreen\.UNIFIED_AGENT/);
+  assert.match(
+    mainActivity,
+    /StudioHomeV2\([\s\S]*onOpenUnifiedAgent = \{[\s\S]*AppScreen\.UNIFIED_AGENT/
+  );
   assert.match(mainActivity, /UnifiedAgentStudioRoute\(/);
 });
 
