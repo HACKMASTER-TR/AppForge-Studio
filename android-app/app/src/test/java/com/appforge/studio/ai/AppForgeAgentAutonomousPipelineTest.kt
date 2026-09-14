@@ -252,7 +252,7 @@ class AppForgeAgentAutonomousPipelineTest {
     }
 
     private fun tempWorkspace(): File =
-        createTempDir(prefix = "appforge-v8-").canonicalFile
+        kotlin.io.path.createTempDirectory("appforge-v8-").toFile().canonicalFile
 
     private fun sha256(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256")
