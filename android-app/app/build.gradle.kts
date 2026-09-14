@@ -377,6 +377,10 @@ dependencies {
     implementation("org.slf4j:slf4j-nop:2.0.17")
 
     testImplementation("junit:junit:4.13.2")
+    // Local JVM unit tests exercise the real org.json codec used by
+    // Unified Agent persistence. android.jar only provides throwing stubs
+    // for org.json during host-side unit tests, so use the real JVM library.
+    testImplementation("org.json:json:20250517")
 
     // VideoForge V4.1.2
     implementation("androidx.appcompat:appcompat:1.7.1")

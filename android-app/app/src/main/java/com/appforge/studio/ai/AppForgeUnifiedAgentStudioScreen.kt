@@ -16,6 +16,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -24,7 +28,19 @@ internal fun AppForgeUnifiedAgentStudioScreen(
     state: AppForgeAgentStudioState,
     artifactState: AppForgeAgentArtifactState,
     releaseReviewState: AppForgeAgentReleaseReviewState,
+    resumeInfo: AppForgeAgentSessionResumeInfo?,
+    recentSessions: List<AppForgeAgentSessionResumeInfo>,
+    archivedSessions: List<AppForgeAgentSessionResumeInfo>,
+    recoveryAssessment: AppForgeAgentRecoveryAssessment?,
     canExportSource: Boolean,
+    onResumeSession: () -> Unit,
+    onDiscardSession: () -> Unit,
+    onSelectRecentSession: (String) -> Unit,
+    onDeleteRecentSession: (String) -> Unit,
+    onRenameSession: (String, String) -> Unit,
+    onTogglePinned: (String, Boolean) -> Unit,
+    onArchiveSession: (String) -> Unit,
+    onRestoreArchivedSession: (String) -> Unit,
     onRefreshArtifacts: () -> Unit,
     onRefreshReleaseReview: () -> Unit,
     onDownloadArtifact: (String) -> Unit,
@@ -42,6 +58,18 @@ internal fun AppForgeUnifiedAgentStudioScreen(
     when (state.step) {
         AppForgeAgentStudioStep.PROMPT -> PromptStep(
             state = state,
+            resumeInfo = resumeInfo,
+            recentSessions = recentSessions,
+            archivedSessions = archivedSessions,
+            recoveryAssessment = recoveryAssessment,
+            onResumeSession = onResumeSession,
+            onDiscardSession = onDiscardSession,
+            onSelectRecentSession = onSelectRecentSession,
+            onDeleteRecentSession = onDeleteRecentSession,
+            onRenameSession = onRenameSession,
+            onTogglePinned = onTogglePinned,
+            onArchiveSession = onArchiveSession,
+            onRestoreArchivedSession = onRestoreArchivedSession,
             onPromptChange = onPromptChange,
             onPlatformChange = onPlatformChange,
             onGenerateBlueprint = onGenerateBlueprint,
@@ -143,6 +171,18 @@ internal fun AppForgeUnifiedAgentStudioScreen(
 @Composable
 private fun PromptStep(
     state: AppForgeAgentStudioState,
+    resumeInfo: AppForgeAgentSessionResumeInfo?,
+    recentSessions: List<AppForgeAgentSessionResumeInfo>,
+    archivedSessions: List<AppForgeAgentSessionResumeInfo>,
+    recoveryAssessment: AppForgeAgentRecoveryAssessment?,
+    onResumeSession: () -> Unit,
+    onDiscardSession: () -> Unit,
+    onSelectRecentSession: (String) -> Unit,
+    onDeleteRecentSession: (String) -> Unit,
+    onRenameSession: (String, String) -> Unit,
+    onTogglePinned: (String, Boolean) -> Unit,
+    onArchiveSession: (String) -> Unit,
+    onRestoreArchivedSession: (String) -> Unit,
     onPromptChange: (String) -> Unit,
     onPlatformChange: (AppForgeAgentPlatform) -> Unit,
     onGenerateBlueprint: () -> Unit,
@@ -163,6 +203,404 @@ private fun PromptStep(
             "İstediğin uygulamayı normal dille anlat. AppForge önce güvenli Blueprint oluşturur.",
             style = MaterialTheme.typography.bodyMedium
         )
+
+        recoveryAssessment?.let { recovery ->
+            Card(
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            14.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            6.dp
+                        )
+                ) {
+                    Text(
+                        "Kurtarma Merkezi",
+                        style =
+                            MaterialTheme
+                                .typography
+                                .titleMedium
+                    )
+
+                    Text(
+                        recovery.headline,
+                        style =
+                            MaterialTheme
+                                .typography
+                                .bodyLarge
+                    )
+
+                    recovery.issues
+                        .take(8)
+                        .forEach { issue ->
+                            Text(
+                                "${issue.severity}: ${issue.title}",
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .bodyMedium
+                            )
+
+                            Text(
+                                issue.detail,
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .bodySmall
+                            )
+                        }
+
+                    if (
+                        !recovery.safeToOpen
+                    ) {
+                        Text(
+                            "Bu kayıt otomatik olarak devam ettirilmez. Yeni build başlatılmaz.",
+                            style =
+                                MaterialTheme
+                                    .typography
+                                    .bodySmall
+                        )
+                    }
+                }
+            }
+        }
+
+        resumeInfo?.let { resume ->
+            Card(
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier =
+                        Modifier.padding(
+                            14.dp
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            8.dp
+                        )
+                ) {
+                    Text(
+                        "Kaldığın yerden devam et",
+                        style =
+                            MaterialTheme
+                                .typography
+                                .titleMedium
+                    )
+                    Text(
+                        resume.title,
+                        style =
+                            MaterialTheme
+                                .typography
+                                .bodyLarge
+                    )
+                    Text(
+                        "${resume.platform} • ${resume.step}",
+                        style =
+                            MaterialTheme
+                                .typography
+                                .bodySmall
+                    )
+
+                    resume.buildId?.let {
+                        Text(
+                            "Cloud Build: $it",
+                            style =
+                                MaterialTheme
+                                    .typography
+                                    .bodySmall
+                        )
+                    }
+
+                    Button(
+                        onClick =
+                            onResumeSession,
+                        enabled =
+                            recoveryAssessment
+                                ?.safeToOpen
+                                ?: true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Devam et"
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick =
+                            onDiscardSession,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Kaydı sil ve yeni başla"
+                        )
+                    }
+                }
+            }
+        }
+
+        if (recentSessions.isNotEmpty()) {
+            Text(
+                "Son çalışmalar",
+                style =
+                    MaterialTheme
+                        .typography
+                        .titleMedium
+            )
+
+            recentSessions
+                .take(8)
+                .forEach { recent ->
+                    var renameText by remember(
+                        recent.sessionId,
+                        recent.title
+                    ) {
+                        mutableStateOf(
+                            recent.title
+                        )
+                    }
+
+                    Card(
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier.padding(
+                                    14.dp
+                                ),
+                            verticalArrangement =
+                                Arrangement.spacedBy(
+                                    6.dp
+                                )
+                        ) {
+                            Text(
+                                if (recent.pinned) {
+                                    "📌 ${recent.title}"
+                                } else {
+                                    recent.title
+                                },
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .bodyLarge
+                            )
+                            Text(
+                                "${recent.platform} • ${recent.step}",
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .bodySmall
+                            )
+
+                            recent.buildId?.let {
+                                Text(
+                                    "Build: $it",
+                                    style =
+                                        MaterialTheme
+                                            .typography
+                                            .bodySmall
+                                )
+                            }
+
+                            OutlinedTextField(
+                                value =
+                                    renameText,
+                                onValueChange = {
+                                    renameText =
+                                        it.take(
+                                            80
+                                        )
+                                },
+                                modifier =
+                                    Modifier.fillMaxWidth(),
+                                singleLine =
+                                    true,
+                                label = {
+                                    Text(
+                                        "Yeniden adlandır"
+                                    )
+                                }
+                            )
+
+                            Row(
+                                modifier =
+                                    Modifier.fillMaxWidth(),
+                                horizontalArrangement =
+                                    Arrangement.spacedBy(
+                                        8.dp
+                                    )
+                            ) {
+                                Button(
+                                    onClick = {
+                                        onSelectRecentSession(
+                                            recent.sessionId
+                                        )
+                                    }
+                                ) {
+                                    Text(
+                                        "Aç"
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        onRenameSession(
+                                            recent.sessionId,
+                                            renameText
+                                        )
+                                    },
+                                    enabled =
+                                        renameText
+                                            .trim()
+                                            .isNotBlank()
+                                ) {
+                                    Text(
+                                        "Kaydet"
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        onTogglePinned(
+                                            recent.sessionId,
+                                            !recent.pinned
+                                        )
+                                    }
+                                ) {
+                                    Text(
+                                        if (
+                                            recent.pinned
+                                        ) {
+                                            "Sabiti kaldır"
+                                        } else {
+                                            "Sabitle"
+                                        }
+                                    )
+                                }
+                            }
+
+                            Row(
+                                modifier =
+                                    Modifier.fillMaxWidth(),
+                                horizontalArrangement =
+                                    Arrangement.spacedBy(
+                                        8.dp
+                                    )
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        onArchiveSession(
+                                            recent.sessionId
+                                        )
+                                    }
+                                ) {
+                                    Text(
+                                        "Arşivle"
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        onDeleteRecentSession(
+                                            recent.sessionId
+                                        )
+                                    }
+                                ) {
+                                    Text(
+                                        "Sil"
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+        }
+
+        if (archivedSessions.isNotEmpty()) {
+            Text(
+                "Arşiv",
+                style =
+                    MaterialTheme
+                        .typography
+                        .titleMedium
+            )
+
+            archivedSessions
+                .take(8)
+                .forEach { archived ->
+                    Card(
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier.padding(
+                                    14.dp
+                                ),
+                            verticalArrangement =
+                                Arrangement.spacedBy(
+                                    6.dp
+                                )
+                        ) {
+                            Text(
+                                archived.title,
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .bodyLarge
+                            )
+                            Text(
+                                "${archived.platform} • ${archived.step}",
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .bodySmall
+                            )
+
+                            Row(
+                                modifier =
+                                    Modifier.fillMaxWidth(),
+                                horizontalArrangement =
+                                    Arrangement.spacedBy(
+                                        8.dp
+                                    )
+                            ) {
+                                Button(
+                                    onClick = {
+                                        onRestoreArchivedSession(
+                                            archived.sessionId
+                                        )
+                                    }
+                                ) {
+                                    Text(
+                                        "Geri yükle"
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        onDeleteRecentSession(
+                                            archived.sessionId
+                                        )
+                                    }
+                                ) {
+                                    Text(
+                                        "Sil"
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+        }
 
         OutlinedTextField(
             value = state.prompt,

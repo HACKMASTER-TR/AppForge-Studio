@@ -1,13 +1,13 @@
 # Hot Context
 
-Updated: 2026-09-14T08:00:00+03:00
+Updated: 2026-09-14T09:30:15+03:00
 
-- Branch: `fix/manual-merge-gate`
-- HEAD: `dbc8e28`
-- Current risk decision: **ACCEPT**
-- Risk score: **6/100**
-- Changed source files: **1**
-- Impacted domains: build-service
+- Branch: `feat/unified-agent-v12-persistent-sessions`
+- HEAD: `e9fcda6`
+- Current risk decision: **REJECT**
+- Risk score: **72/100**
+- Changed source files: **18**
+- Impacted domains: android, auth, build-service
 - Security health: **GREEN**
 - Live production health: **NOT_CHECKED**
 

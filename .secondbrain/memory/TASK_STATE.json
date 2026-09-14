@@ -1,8 +1,8 @@
 {
-  "label": "manual-merge-gate",
-  "started_at": "2026-09-14T07:54:58+03:00",
-  "start_checkpoint": ".secondbrain/checkpoints/20260914-075458-start-manual-merge-gate.json",
+  "label": "unified-agent-v12-persistent-sessions",
+  "started_at": "2026-09-14T08:35:46+03:00",
+  "start_checkpoint": ".secondbrain/checkpoints/20260914-083546-start-unified-agent-v12-persistent-sessions.json",
   "status": "DONE",
-  "finished_at": "2026-09-14T08:00:02+03:00",
-  "end_checkpoint": ".secondbrain/checkpoints/20260914-080002-finish-manual-merge-gate.json"
+  "finished_at": "2026-09-14T09:30:19+03:00",
+  "end_checkpoint": ".secondbrain/checkpoints/20260914-093019-finish-unified-agent-v12-persistent-sessions.json"
 }

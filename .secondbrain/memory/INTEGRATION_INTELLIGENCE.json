@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T08:00:01+03:00",
+  "generated_at": "2026-09-14T09:30:16+03:00",
   "detected_services": [
     "AWS/S3",
     "Email",
@@ -154,6 +154,8 @@
       ".appforge/policy.json",
       ".appforge/reports/20260914-045111-pipeline.json",
       ".appforge/reports/20260914-045111-pipeline.md",
+      ".appforge/reports/20260914-082035-pipeline.json",
+      ".appforge/reports/20260914-082035-pipeline.md",
       ".appforge/state/latest.json",
       ".github/workflows/android-debug.yml",
       ".github/workflows/android-play-release.yml",
@@ -228,9 +230,7 @@
       "build-service/tests/appforge_ci_fast_lane_contract.test.js",
       "build-service/tests/appforge_production_cancelled_image_contract.test.js",
       "build-service/tests/appforge_production_health_resilience_contract.test.js",
-      "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
-      "build-service/tests/appforge_terminal_apk_origin_fallback_contract.test.js",
-      "build-service/tests/appforge_terminal_integration.test.js"
+      "build-service/tests/appforge_terminal_advanced_git_contract.test.js"
     ],
     "Google APIs": [
       ".github/workflows/android-debug.yml",
@@ -436,6 +436,7 @@
     ],
     "Redis": [
       "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionStoreTest.kt",
       "build-service/docker-compose.yml",
       "build-service/package-lock.json",
       "build-service/package.json",
