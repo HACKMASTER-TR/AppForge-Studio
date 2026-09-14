@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T09:30:17+03:00",
+  "generated_at": "2026-09-14T10:18:30+03:00",
   "largest": [
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
@@ -112,14 +112,14 @@
       "symbols": 33
     },
     {
+      "file": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
+      "lines": 1450,
+      "symbols": 4
+    },
+    {
       "file": "build-service/src/jobQueue.js",
       "lines": 1448,
       "symbols": 15
-    },
-    {
-      "file": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
-      "lines": 1340,
-      "symbols": 4
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/ConnectionsPanel.kt",
@@ -238,7 +238,7 @@
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentSessionStore.kt",
-      "lines": 1038,
+      "lines": 1035,
       "symbols": 33
     },
     {

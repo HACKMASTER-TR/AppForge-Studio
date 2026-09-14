@@ -42,6 +42,9 @@ import com.appforge.studio.ai.AppForgeAgentSessionStore
 import com.appforge.studio.ai.AppForgeAgentRemoteBuildResumer
 import com.appforge.studio.ai.AppForgeAgentRemoteBuildResumeOutcome
 import com.appforge.studio.ai.AppForgeAgentRecoveryPolicy
+import com.appforge.studio.ai.AppForgeAgentProjectMemoryStore
+import com.appforge.studio.ai.AppForgeAgentQualityGate
+import com.appforge.studio.ai.AppForgeAgentFinalAcceptance
 import com.appforge.studio.ai.AppForgeUnifiedAgentStudioScreen
 import com.appforge.studio.ai.AppForgeLocalAssistant
 import com.appforge.studio.ai.LocalAiModelStore
@@ -126,6 +129,12 @@ internal fun UnifiedAgentStudioRoute(
                     context.filesDir,
                     "unified-agent-session"
                 )
+        )
+    }
+
+    val projectMemoryStore = remember {
+        AppForgeAgentProjectMemoryStore(
+            filesDir = context.filesDir
         )
     }
 
@@ -1110,6 +1119,12 @@ internal fun UnifiedAgentStudioRoute(
                         remoteBuild = null
                     )
 
+                val buildSessionId =
+                    currentSessionId
+
+                val previousWorkspacePath =
+                    lastWorkspacePath
+
                 val buildAllowed =
                     state.canBuild ||
                         state.canRebuild
@@ -1162,6 +1177,47 @@ internal fun UnifiedAgentStudioRoute(
                                             "Build için Blueprint bulunamadı."
                                         )
 
+                                val quality =
+                                    AppForgeAgentQualityGate.assess(
+                                        blueprint
+                                    )
+
+                                require(
+                                    quality.pass
+                                ) {
+                                    quality.findings
+                                        .filter {
+                                            it.level ==
+                                                com.appforge.studio.ai.AppForgeAgentQualityLevel.ERROR
+                                        }
+                                        .joinToString(
+                                            prefix = "V14 Quality Gate BLOCKED: ",
+                                            separator = " | "
+                                        ) {
+                                            "${it.code}: ${it.message}"
+                                        }
+                                }
+
+                                previousWorkspacePath
+                                    ?.takeIf {
+                                        it.isNotBlank()
+                                    }
+                                    ?.let {
+                                        previousPath ->
+                                            runCatching {
+                                                projectMemoryStore.createCheckpoint(
+                                                    sessionId =
+                                                        buildSessionId,
+                                                    workspace =
+                                                        File(
+                                                            previousPath
+                                                        ),
+                                                    label =
+                                                        "before-rebuild"
+                                                )
+                                            }
+                                    }
+
                                 val workspace =
                                     AppForgeAgentWorkspaceStore.create(
                                         filesDir = context.filesDir,
@@ -1211,18 +1267,50 @@ internal fun UnifiedAgentStudioRoute(
                                         patchProvider = patchProvider
                                     )
 
-                                orchestrator.build(
-                                    state = buildInput,
-                                    request =
-                                        AppForgeAgentStudioBuildRequest(
-                                            workspace = workspace,
-                                            maxRepairAttempts =
-                                                blueprint.maxRepairAttempts,
-                                            rollbackOnFailure = true
+                                val built =
+                                    orchestrator.build(
+                                        state = buildInput,
+                                        request =
+                                            AppForgeAgentStudioBuildRequest(
+                                                workspace = workspace,
+                                                maxRepairAttempts =
+                                                    AppForgeAgentQualityGate
+                                                        .boundedRepairBudget(
+                                                            blueprint =
+                                                                blueprint,
+                                                            requestedAttempts =
+                                                                blueprint
+                                                                    .maxRepairAttempts
+                                                        ),
+                                                rollbackOnFailure = true
+                                            )
+                                    ).copy(
+                                        busy = false,
+                                        remoteBuild = runner.lastBuild
+                                    )
+
+                                if (
+                                    built.step ==
+                                        AppForgeAgentStudioStep.RESULT
+                                ) {
+                                    runCatching {
+                                        projectMemoryStore.createCheckpoint(
+                                            sessionId =
+                                                buildSessionId,
+                                            workspace =
+                                                workspace,
+                                            label =
+                                                "build-success"
                                         )
-                                ).copy(
-                                    busy = false,
-                                    remoteBuild = runner.lastBuild
+                                    }
+                                }
+
+                                built.copy(
+                                    message =
+                                        "${built.message} • ${quality.summary}"
+                                            .take(
+                                                2_000
+                                            )
                                 )
                             }
                         }.getOrElse { error ->
@@ -1270,7 +1358,7 @@ internal fun UnifiedAgentStudioRoute(
                                     blueprint != null &&
                                     remote != null
                                 ) {
-                                    releaseReviewState =
+                                    val loadedReleaseReview =
                                         withContext(
                                             Dispatchers.IO
                                         ) {
@@ -1280,6 +1368,28 @@ internal fun UnifiedAgentStudioRoute(
                                                 artifacts = inspected
                                             )
                                         }
+
+                                    releaseReviewState =
+                                        loadedReleaseReview
+
+                                    val finalAcceptance =
+                                        AppForgeAgentFinalAcceptance.evaluate(
+                                            state = finalState,
+                                            artifacts = inspected,
+                                            releaseReviewState =
+                                                loadedReleaseReview,
+                                            workspacePath =
+                                                lastWorkspacePath
+                                        )
+
+                                    state =
+                                        state.copy(
+                                            message =
+                                                "${state.message} • ${finalAcceptance.summary}"
+                                                    .take(
+                                                        2_000
+                                                    )
+                                        )
                                 }
                             }
                     }

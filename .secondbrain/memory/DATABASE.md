@@ -1,6 +1,6 @@
 # Database Map
 
-Generated: 2026-09-14T09:30:15+03:00
+Generated: 2026-09-14T10:18:29+03:00
 
 ## Detected table/query candidates
 

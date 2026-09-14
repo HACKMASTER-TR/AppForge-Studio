@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-09-14T09:30:15+03:00",
-  "node_count": 747,
-  "edge_count": 125,
+  "generated_at": "2026-09-14T10:18:29+03:00",
+  "node_count": 757,
+  "edge_count": 127,
   "edges": [
     {
       "from": "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt",
@@ -260,12 +260,22 @@
     },
     {
       "from": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentFinalAcceptance.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
       "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentLocalPatchProvider.kt",
       "kind": "import"
     },
     {
       "from": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
       "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentPersistentSession.kt",
+      "kind": "import"
+    },
+    {
+      "from": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
+      "to": "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentQualityGate.kt",
       "kind": "import"
     },
     {
@@ -639,8 +649,8 @@
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
       "fan_in": 0,
-      "fan_out": 15,
-      "score": 15
+      "fan_out": 17,
+      "score": 17
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt",
@@ -882,27 +892,27 @@
     ],
     [
       "java",
-      415
+      422
     ],
     [
       "org",
-      264
+      274
     ],
     [
       "assert",
-      238
+      239
     ],
     [
       "node:assert",
-      238
+      239
     ],
     [
       "node:test",
-      234
+      235
     ],
     [
       "test",
-      234
+      235
     ],
     [
       "kotlinx",
@@ -910,11 +920,11 @@
     ],
     [
       "node:fs",
-      166
+      167
     ],
     [
       "com",
-      145
+      146
     ],
     [
       "path",
@@ -922,7 +932,7 @@
     ],
     [
       "fs",
-      62
+      63
     ],
     [
       "AdmZip",

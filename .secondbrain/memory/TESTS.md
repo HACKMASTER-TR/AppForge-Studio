@@ -1,12 +1,11 @@
 # Test Map
 
-Generated: 2026-09-14T09:30:15+03:00
+Generated: 2026-09-14T10:18:29+03:00
 
 ## Recommended for current change
 
 - `cd build-service && npm test`
 - `Android CI / Gradle compile verification`
-- `Run authentication/credential regression tests`
 
 ## Discovered test files
 
@@ -20,9 +19,12 @@ Generated: 2026-09-14T09:30:15+03:00
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBuildProjectPreparerTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentCodegenTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFinalAcceptanceTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProjectMemoryTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentQualityGateTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRecoveryPolicyTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentReleaseReadinessEvaluatorTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRemoteBuildResumePolicyTest.kt`
@@ -181,6 +183,7 @@ Generated: 2026-09-14T09:30:15+03:00
 - `build-service/tests/appforge_unified_agent_v12_recovery_center_contract.test.js`
 - `build-service/tests/appforge_unified_agent_v12_resume_contract.test.js`
 - `build-service/tests/appforge_unified_agent_v12_session_history_contract.test.js`
+- `build-service/tests/appforge_unified_agent_v13_v15_final_contract.test.js`
 - `build-service/tests/appforge_usage_guides_contract.test.js`
 - `build-service/tests/archive_limits.test.js`
 - `build-service/tests/artifact_manifest.test.js`
@@ -306,7 +309,3 @@ Generated: 2026-09-14T09:30:15+03:00
 - `build-service/tests/v2_5_watermark.test.js`
 - `build-service/tests/v2_6_project_quota.test.js`
 - `build-service/tests/v2_7_lifetime_trial_slots.test.js`
-- `build-service/tests/v2_8_production_preview.test.js`
-- `build-service/tests/v2_9_test_lab_inspector.test.js`
-- `build-service/tests/v2_create_modes.test.js`
-- `build-service/tests/v3_0_local_ai.test.js`
