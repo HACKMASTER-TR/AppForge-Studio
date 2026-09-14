@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-09-14T03:45:38+03:00",
+  "generated_at": "2026-09-14T07:36:58+03:00",
   "largest": [
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-      "lines": 25415,
+      "lines": 25436,
       "symbols": 125
     },
     {
@@ -88,7 +88,7 @@
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/StudioHomeScreen.kt",
-      "lines": 1559,
+      "lines": 1573,
       "symbols": 13
     },
     {
@@ -305,7 +305,7 @@
   "refactor_candidates": [
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-      "lines": 25415,
+      "lines": 25436,
       "symbols": 125
     },
     {

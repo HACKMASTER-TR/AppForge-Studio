@@ -111,7 +111,7 @@ $routeCases
                     android:label="${xmlEscape(blueprint.appName)}"
                     android:theme="@style/Theme.Material3.DayNight.NoActionBar">
                     <activity
-                        android:name=".$packageName.MainActivity"
+                        android:name="$packageName.MainActivity"
                         android:exported="true">
                         <intent-filter>
                             <action android:name="android.intent.action.MAIN" />
@@ -405,7 +405,9 @@ $screensJson
 private fun safeIdentifier(raw: String): String {
     val cleaned = raw
         .trim()
-        .map { ch -> if (ch.isLetterOrDigit()) ch else '_' }
+        .map { ch ->
+            if (ch.code < 128 && ch.isLetterOrDigit()) ch else '_'
+        }
         .joinToString("")
         .trim('_')
         .ifBlank { "app" }

@@ -94,6 +94,7 @@ internal fun StudioHomeScreen(
     onCreateConversion: () -> Unit,
     onOpenProject: (SavedProject) -> Unit,
     onOpenAi: () -> Unit,
+    onOpenUnifiedAgent: () -> Unit,
     onOpenTemplates: () -> Unit,
     onOpenSettings: () -> Unit,
 
@@ -403,6 +404,19 @@ internal fun StudioHomeScreen(
                     )
                 }
             }
+
+            UnifiedAgentHomeEntryCard(
+                onClick = onOpenUnifiedAgent,
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .widthIn(max = contentMaxWidth)
+                        .padding(
+                            horizontal = contentHorizontalPadding,
+                            vertical = 4.dp
+                        )
+                        .fillMaxWidth()
+            )
 
             Box(
                 modifier =

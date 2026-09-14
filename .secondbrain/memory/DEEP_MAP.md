@@ -1,6 +1,6 @@
 # AppForge Studio — Deep Project Map
 
-Generated: 2026-09-14T03:45:36+03:00
+Generated: 2026-09-14T07:36:56+03:00
 
 ## API Routes
 
@@ -194,21 +194,28 @@ Detected tables / schema objects: **34**
 
 ## Tests
 
-Detected test files: **289**
+Detected test files: **297**
 
+- `.appforge/state/latest.json`
 - `AppForgeStudio-latest.apk`
 - `android-app/app/src/test/java/com/appforge/studio/BuildRuntimeStateTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentArtifactContractsTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipelineTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBuildProjectPreparerTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentCodegenTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentFullStackTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentIntelligenceTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentReleaseReadinessEvaluatorTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRepairLoopTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStructuredPatchTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStudioOrchestratorTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStudioStateV11Test.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentVisualDesignerTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransactionTest.kt`
+- `android-app/app/src/test/java/com/appforge/studio/ai/AppForgeUnifiedAgentV11EndToEndTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/task/AppForgeTaskManagerTest.kt`
 - `android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt`
@@ -347,6 +354,7 @@ Detected test files: **289**
 - `build-service/tests/appforge_terminal_ultimate_editor_contract.test.js`
 - `build-service/tests/appforge_terminal_verified_rootfs_contract.test.js`
 - `build-service/tests/appforge_terminal_viewport_stability_contract.test.js`
+- `build-service/tests/appforge_unified_agent_v11_e2e_contract.test.js`
 - `build-service/tests/appforge_usage_guides_contract.test.js`
 - `build-service/tests/archive_limits.test.js`
 - `build-service/tests/artifact_manifest.test.js`
@@ -388,20 +396,12 @@ Detected test files: **289**
 - `build-service/tests/gradle_low_memory_no_daemon.test.js`
 - `build-service/tests/gradle_memory_profile.test.js`
 - `build-service/tests/gradle_performance.test.js`
-- `build-service/tests/gradle_runtime_cache_home.test.js`
-- `build-service/tests/gradle_stall_watchdog.test.js`
-- `build-service/tests/guest_mode_contract.test.js`
-- `build-service/tests/home_project_transfer_menu.test.js`
-- `build-service/tests/idempotency.test.js`
-- `build-service/tests/legacy_device_login_permission.test.js`
-- `build-service/tests/log_redaction.test.js`
-- `build-service/tests/media3_regression.test.js`
 
 ## Product Surfaces
 
 - Android: `{'detected': True, 'paths': ['android-app']}`
 - Web: `{'detected': False, 'paths': []}`
-- Desktop: `{'detected': False, 'paths': []}`
+- Desktop: `{'detected': True, 'paths': ['desktop-app']}`
 
 ## Rules
 
