@@ -126,7 +126,14 @@ internal object AppForgeAgentIntelligenceEngine {
             }
 
             localAvailable && cloudAvailable && policy.allowCloudFallback &&
-                risk.level in setOf(AppForgeAgentRiskLevel.MEDIUM, AppForgeAgentRiskLevel.HIGH) -> {
+                (
+                    risk.level in setOf(
+                        AppForgeAgentRiskLevel.MEDIUM,
+                        AppForgeAgentRiskLevel.HIGH
+                    ) ||
+                        AppForgeAgentArchitectureArea.API in architecture ||
+                        AppForgeAgentArchitectureArea.DATABASE in architecture
+                ) -> {
                 reasons += "Local-first, doğrulama başarısızsa kontrollü cloud fallback."
                 AppForgeAgentAiRoute.HYBRID
             }
