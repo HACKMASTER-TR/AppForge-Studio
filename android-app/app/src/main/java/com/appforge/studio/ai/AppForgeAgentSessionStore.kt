@@ -89,8 +89,7 @@ internal class AppForgeAgentSessionStore(
             ) {
                 tempFile.delete()
 
-                return@synchronized
-                    AppForgeAgentSessionLoadResult.Empty
+                return@synchronized AppForgeAgentSessionLoadResult.Empty
             }
 
             loadFile(
@@ -115,8 +114,7 @@ internal class AppForgeAgentSessionStore(
             if (
                 !file.isFile
             ) {
-                return@synchronized
-                    AppForgeAgentSessionLoadResult.Empty
+                return@synchronized AppForgeAgentSessionLoadResult.Empty
             }
 
             loadFile(
@@ -276,8 +274,7 @@ internal class AppForgeAgentSessionStore(
             if (
                 !workspaceRoot.isDirectory
             ) {
-                return@synchronized
-                    AppForgeAgentSessionCleanupReport(
+                return@synchronized AppForgeAgentSessionCleanupReport(
                         deletedWorkspaceCount =
                             0,
                         deletedTempFileCount =
