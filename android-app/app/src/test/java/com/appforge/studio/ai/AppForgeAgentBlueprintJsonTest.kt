@@ -101,9 +101,9 @@ class AppForgeAgentBlueprintJsonTest {
             preferredPlatform = AppForgeAgentPlatform.ANDROID
         )
 
-        assertTrue(prompt.contains("schemaVersion kesinlikle 1"))
-        assertTrue(prompt.contains("platform alanını kesin olarak ANDROID"))
-        assertTrue(prompt.contains("Bilinmeyen JSON alanı ekleme"))
+        assertTrue(prompt.contains("schemaVersion=1"))
+        assertTrue(prompt.contains("platform=ANDROID"))
+        assertTrue(prompt.contains("Bilinmeyen alan ekleme"))
         assertTrue(prompt.contains("<user_request>"))
     }
 
