@@ -1,12 +1,12 @@
 # Hot Context
 
-Updated: 2026-09-14T10:18:29+03:00
+Updated: 2026-09-14T11:12:58+03:00
 
-- Branch: `feat/unified-agent-v13-v15-final`
-- HEAD: `e5028e3`
+- Branch: `fix/v15-device-test-bugs`
+- HEAD: `42aa8e9`
 - Current risk decision: **ACCEPT**
-- Risk score: **19/100**
-- Changed source files: **8**
+- Risk score: **11/100**
+- Changed source files: **3**
 - Impacted domains: android, build-service
 - Security health: **GREEN**
 - Live production health: **NOT_CHECKED**

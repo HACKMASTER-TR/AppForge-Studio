@@ -1,8 +1,8 @@
 {
-  "label": "unified-agent-v13-v15-final",
-  "started_at": "2026-09-14T10:07:36+03:00",
-  "start_checkpoint": ".secondbrain/checkpoints/20260914-100736-start-unified-agent-v13-v15-final.json",
+  "label": "v15-device-test-bugs",
+  "started_at": "2026-09-14T11:12:13+03:00",
+  "start_checkpoint": ".secondbrain/checkpoints/20260914-111213-start-v15-device-test-bugs.json",
   "status": "DONE",
-  "finished_at": "2026-09-14T10:18:31+03:00",
-  "end_checkpoint": ".secondbrain/checkpoints/20260914-101831-finish-unified-agent-v13-v15-final.json"
+  "finished_at": "2026-09-14T11:13:00+03:00",
+  "end_checkpoint": ".secondbrain/checkpoints/20260914-111300-finish-v15-device-test-bugs.json"
 }

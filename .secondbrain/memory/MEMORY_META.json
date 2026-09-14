@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T10:18:31+03:00",
+  "generated_at": "2026-09-14T11:13:00+03:00",
   "version": "3.0.0",
   "confidence": {
     "source_maps": "verified-from-source",
@@ -8,7 +8,7 @@
     "heuristic_dependency_graph": "inferred",
     "risk_decision": "advisory"
   },
-  "architecture_fingerprint": "38c490b126e6d25b9fe1c7886473a51c6c7bc6159bb2b49dd48cbd3a453f2fd1",
-  "previous_fingerprint": "2c2a0295eeea4bc5c3509d79211ca6a4778db215a302ad75f3963d4299d1c995",
+  "architecture_fingerprint": "6e9e49b47666ee89a3e39ad06255e93ed14d3fc2172280a035e5310b9f528e58",
+  "previous_fingerprint": "38c490b126e6d25b9fe1c7886473a51c6c7bc6159bb2b49dd48cbd3a453f2fd1",
   "architecture_drift_detected": true
 }

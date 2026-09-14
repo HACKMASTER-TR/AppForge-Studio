@@ -316,8 +316,10 @@ internal fun UnifiedAgentStudioRoute(
                 recentSessions
                     .filter {
                         it.sessionId !=
-                            pendingSession
-                                ?.sessionId
+                            currentSessionId &&
+                            it.sessionId !=
+                                pendingSession
+                                    ?.sessionId
                     }
                     .map(
                         AppForgeAgentSessionRuntimePolicy::resumeInfo
@@ -1432,8 +1434,26 @@ internal fun UnifiedAgentStudioRoute(
 
 private fun studioSafeMessage(
     error: Throwable
-): String =
-    (error.message ?: error::class.simpleName ?: "Unified Agent işlemi başarısız.")
+): String {
+    val raw =
+        error.message
+            ?: error::class.simpleName
+            ?: "Unified Agent işlemi başarısız."
+
+    val friendly =
+        if (
+            raw.contains("FAILED_PRECONDITION", ignoreCase = true) &&
+            (
+                raw.contains("session already exists", ignoreCase = true) ||
+                raw.contains("one session is supported", ignoreCase = true)
+            )
+        ) {
+            "Yerel AI oturumu çakıştı. Lütfen işlemi yeniden deneyin."
+        } else {
+            raw
+        }
+
+    return friendly
         .replace(
             Regex("ghp_[A-Za-z0-9]{20,}"),
             "[REDACTED]"
@@ -1447,3 +1467,4 @@ private fun studioSafeMessage(
             "[REDACTED]"
         )
         .take(2_000)
+}

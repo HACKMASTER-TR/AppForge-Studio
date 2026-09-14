@@ -1,6 +1,6 @@
 # Test Map
 
-Generated: 2026-09-14T10:18:29+03:00
+Generated: 2026-09-14T11:12:58+03:00
 
 ## Recommended for current change
 
@@ -178,6 +178,7 @@ Generated: 2026-09-14T10:18:29+03:00
 - `build-service/tests/appforge_terminal_ultimate_editor_contract.test.js`
 - `build-service/tests/appforge_terminal_verified_rootfs_contract.test.js`
 - `build-service/tests/appforge_terminal_viewport_stability_contract.test.js`
+- `build-service/tests/appforge_unified_agent_device_test_bugfix_contract.test.js`
 - `build-service/tests/appforge_unified_agent_v11_e2e_contract.test.js`
 - `build-service/tests/appforge_unified_agent_v12_final_acceptance.test.js`
 - `build-service/tests/appforge_unified_agent_v12_recovery_center_contract.test.js`
@@ -308,4 +309,3 @@ Generated: 2026-09-14T10:18:29+03:00
 - `build-service/tests/v2_4_pro_plans.test.js`
 - `build-service/tests/v2_5_watermark.test.js`
 - `build-service/tests/v2_6_project_quota.test.js`
-- `build-service/tests/v2_7_lifetime_trial_slots.test.js`

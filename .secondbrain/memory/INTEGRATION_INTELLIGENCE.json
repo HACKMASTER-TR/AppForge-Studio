@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T10:18:30+03:00",
+  "generated_at": "2026-09-14T11:12:59+03:00",
   "detected_services": [
     "AWS/S3",
     "Email",
@@ -158,6 +158,8 @@
       ".appforge/reports/20260914-082035-pipeline.md",
       ".appforge/reports/20260914-095709-pipeline.json",
       ".appforge/reports/20260914-095709-pipeline.md",
+      ".appforge/reports/20260914-103609-pipeline.json",
+      ".appforge/reports/20260914-103609-pipeline.md",
       ".appforge/state/latest.json",
       ".github/workflows/android-debug.yml",
       ".github/workflows/android-play-release.yml",
@@ -228,9 +230,7 @@
       "build-service/src/workspace.js",
       "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
       "build-service/tests/appforge_autopilot_cli_contract.test.js",
-      "build-service/tests/appforge_autopilot_timing_contract.test.js",
-      "build-service/tests/appforge_ci_fast_lane_contract.test.js",
-      "build-service/tests/appforge_production_cancelled_image_contract.test.js"
+      "build-service/tests/appforge_autopilot_timing_contract.test.js"
     ],
     "Google APIs": [
       ".github/workflows/android-debug.yml",
