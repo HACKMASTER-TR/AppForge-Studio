@@ -98,7 +98,9 @@ class AppForgeAgentBlueprintJsonTest {
     fun fillsMissingPlatformFromSelectedFallback() {
         val withoutPlatform =
             validJson().replace(
-                "          \"platform\": \"ANDROID\",\n",
+                Regex(
+                    """(?m)^\s*"platform":\s*"ANDROID",\s*\n"""
+                ),
                 ""
             )
 
@@ -119,7 +121,9 @@ class AppForgeAgentBlueprintJsonTest {
     fun stillRejectsMissingPlatformWithoutFallback() {
         val withoutPlatform =
             validJson().replace(
-                "          \"platform\": \"ANDROID\",\n",
+                Regex(
+                    """(?m)^\s*"platform":\s*"ANDROID",\s*\n"""
+                ),
                 ""
             )
 

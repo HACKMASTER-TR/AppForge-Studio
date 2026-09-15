@@ -18,6 +18,7 @@ STATE_DIR = ROOT / ".appforge" / "state"
 REPORT_DIR = ROOT / ".appforge" / "reports"
 LOCK_PATH = STATE_DIR / "autopilot.lock"
 LATEST_STATE = STATE_DIR / "latest.json"
+RUNTIME_BLOCKERS_PATH = ROOT / ".appforge" / "runtime-blockers.json"
 
 SECRET_PATTERNS = [
     re.compile(r"ghp_[A-Za-z0-9]{20,}"),
@@ -520,7 +521,10 @@ def android_unit_test_gate():
 
     if is_termux_environment():
         print(
-            "Local execution: DEFERRED (Termux)"
+            "ANDROID UNIT TESTS: DEFERRED / CI REQUIRED"
+        )
+        print(
+            "Reason: Termux local gate cannot execute the authoritative Android/JVM Gradle suite."
         )
         print(
             "Required CI: android-debug.yml -> "
@@ -942,6 +946,210 @@ def latest_check_runs(head_sha):
     )
 
 
+
+def classify_pipeline_failure(text, stage):
+    value = (text or "").lower()
+    if stage == "PUBLISH":
+        return "PUBLISH"
+    if stage == "DEPLOY":
+        return "DEPLOY"
+    if any(x in value for x in ["fatal exception", "androidruntime", "fatal signal", "sigsegv", "sigabrt"]):
+        return "RUNTIME"
+    if any(x in value for x in ["compilation error", "compiledebugkotlin failed", "compiledebugjavawithjavac failed", "could not compile", "unresolved reference", "e: file://"]):
+        return "COMPILE"
+    if any(x in value for x in ["assertionerror", "tests completed", "testdebugunittest failed", "expected:", "but was:", "assert."]):
+        return "TEST_CONTRACT"
+    if any(x in value for x in ["runner", "rate limit", "connection timed out", "network is unreachable", "temporary failure", "setup-java", "setup-gradle"]):
+        return "CI_ENVIRONMENT"
+    return "UNKNOWN"
+
+
+def failed_log_excerpt(run_id):
+    if not run_id:
+        return ""
+    p = run(["gh", "run", "view", str(run_id), "--log-failed"], check=False, capture=True)
+    text = ((p.stdout or "") + "\n" + (p.stderr or "")).strip()
+    if not text:
+        return ""
+    interesting = re.compile(r"(?i)(FAILED|FAILURE|error:|AssertionError|Exception|Caused by:|FATAL|SIGSEGV|SIGABRT|Process completed with exit code|tests completed|> Task .* FAILED)")
+    lines = text.splitlines()
+    focused = [line for line in lines if interesting.search(line)]
+    return "\n".join((focused if focused else lines)[-120:])
+
+
+def run_id_from_details_url(url):
+    m = re.search(r"/actions/runs/(\d+)", str(url or ""))
+    return int(m.group(1)) if m else None
+
+
+def block_pipeline(stage, classification, message, *, log_excerpt="", exit_code=6, **extra):
+    print("\n=== APPFORGE FAIL-STOP ===")
+    print("STAGE:", stage)
+    print("CLASS:", classification)
+    print("ERROR:", message)
+    if log_excerpt:
+        print("\n=== ROOT-CAUSE EXCERPT ===")
+        print(log_excerpt)
+    state_write("BLOCKED", stage=stage, classification=classification, message=message, log_excerpt=log_excerpt, **extra)
+    try:
+        jp, mp = generate_report("BLOCKED", stage=stage, classification=classification, message=message, log_excerpt=log_excerpt, **extra)
+        print("JSON:", jp)
+        print("REPORT:", mp)
+    except Exception as exc:
+        print("WARN: blocked report could not be generated:", exc)
+    raise SystemExit(exit_code)
+
+
+def diagnose_check_failure(item, stage="PR_CI"):
+    name = str(item.get("name") or "unknown-check")
+    conclusion = str(item.get("conclusion") or "failure")
+    run_id = run_id_from_details_url(item.get("details_url"))
+    excerpt = failed_log_excerpt(run_id)
+    classification = classify_pipeline_failure(f"{name}\n{excerpt}", stage)
+    block_pipeline(stage, classification, f"{name}: {conclusion}", log_excerpt=excerpt, check_name=name, workflow_run_id=run_id)
+
+
+def diagnose_workflow_failure(run_data, workflow_file, display_name):
+    run_id = run_data.get("databaseId")
+    excerpt = failed_log_excerpt(run_id)
+    if workflow_file == "android-play-release.yml":
+        stage = "PUBLISH"
+    elif workflow_file == "production-automation.yml":
+        stage = "DEPLOY"
+    else:
+        stage = "MAIN_CI"
+    classification = classify_pipeline_failure(f"{display_name}\n{excerpt}", stage)
+    block_pipeline(stage, classification, f"{display_name}: {run_data.get('conclusion') or 'failure'}", log_excerpt=excerpt, workflow=workflow_file, workflow_run_id=run_id)
+
+
+def active_runtime_blockers():
+    if not RUNTIME_BLOCKERS_PATH.exists():
+        return []
+    try:
+        data = json.loads(RUNTIME_BLOCKERS_PATH.read_text(encoding="utf-8"))
+    except Exception as exc:
+        block_pipeline("DEVICE_RUNTIME", "RUNTIME", f"runtime blocker registry unreadable: {exc}", exit_code=42)
+    active = data.get("active", [])
+    if not isinstance(active, list):
+        block_pipeline("DEVICE_RUNTIME", "RUNTIME", "runtime blocker registry active must be a list", exit_code=42)
+    return [item for item in active if isinstance(item, dict) and str(item.get("status") or "").upper() not in {"RESOLVED", "CLOSED", "FIXED"}]
+
+
+def require_no_runtime_blockers():
+    blockers = active_runtime_blockers()
+    if not blockers:
+        print("DEVICE RUNTIME BLOCKERS: 0 ✅")
+        return
+    print("\nDEVICE RUNTIME BLOCKERS:")
+    for item in blockers:
+        print(" -", item.get("id", "UNKNOWN"), item.get("status", "BLOCKED"), ":", item.get("summary", ""))
+    block_pipeline("DEVICE_RUNTIME", "RUNTIME", f"{len(blockers)} active runtime blocker(s); deploy/release/publish forbidden", exit_code=42, blockers=blockers)
+
+
+def app_version_from_text(text):
+    code = re.search(r"\bversionCode\s*=\s*(\d+)", text)
+    name = re.search(r'\bversionName\s*=\s*"([^"]+)"', text)
+    if not code or not name:
+        raise SystemExit("BLOCKED: Android versionCode/versionName not found.")
+    return int(code.group(1)), name.group(1)
+
+
+def android_release_files():
+    return sorted(set(branch_change_files()) | set(changed_files()))
+
+
+def prepare_release_version():
+    if active_runtime_blockers():
+        print("AUTO VERSION: SKIPPED (active runtime blocker)")
+        return
+    files = android_release_files()
+    if not any(item.startswith("android-app/") for item in files):
+        print("AUTO VERSION: NOT_APPLICABLE (no Android change)")
+        return
+    path = ROOT / "android-app" / "app" / "build.gradle.kts"
+    local_text = path.read_text(encoding="utf-8")
+    base = git("show", "origin/main:android-app/app/build.gradle.kts", check=False)
+    if base.returncode != 0:
+        raise SystemExit("BLOCKED: origin/main Android version could not be read.")
+    local_code, local_name = app_version_from_text(local_text)
+    base_code, base_name = app_version_from_text(base.stdout or "")
+    if local_code != base_code or local_name != base_name:
+        print("AUTO VERSION: existing branch version retained:", local_name, local_code)
+        return
+    m = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", local_name)
+    if not m:
+        raise SystemExit(f"BLOCKED: automatic patch version bump requires x.y.z, got {local_name}")
+    next_code = local_code + 1
+    next_name = f"{int(m.group(1))}.{int(m.group(2))}.{int(m.group(3)) + 1}"
+    updated = re.sub(r"(\bversionCode\s*=\s*)\d+", rf"\g<1>{next_code}", local_text, count=1)
+    updated = re.sub(r'(\bversionName\s*=\s*)"[^"]+"', rf'\g<1>"{next_name}"', updated, count=1)
+    path.write_text(updated, encoding="utf-8")
+    print("AUTO VERSION:", f"{local_name} ({local_code})", "->", f"{next_name} ({next_code})")
+
+
+def main_version():
+    text = git_out("show", "origin/main:android-app/app/build.gradle.kts")
+    code, name = app_version_from_text(text)
+    return {"code": code, "name": name, "tag": f"appforge-v{name}-{code}"}
+
+
+def ensure_versioned_release(main_sha):
+    gh_required()
+    info = main_version()
+    tag = info["tag"]
+    existing = run(["gh", "release", "view", tag, "--json", "tagName,url"], check=False, capture=True)
+    if existing.returncode == 0:
+        print("GITHUB RELEASE: existing release reused:", tag)
+        return info
+    state_write("RELEASING", main_sha=main_sha, release_tag=tag)
+    created = run(["gh", "release", "create", tag, "--target", main_sha, "--title", f"AppForge Studio {info['name']}", "--generate-notes"], check=False, capture=True)
+    if created.returncode != 0:
+        block_pipeline("RELEASE", "PUBLISH", f"GitHub Release create failed: {tag}", log_excerpt=((created.stdout or "") + "\n" + (created.stderr or "")).strip(), release_tag=tag)
+    print("GITHUB RELEASE: CREATED", tag)
+    return info
+
+
+def wait_main_validation_only(head_sha, source_files):
+    required = required_main_workflows(source_files)
+    mode = pipeline_mode(source_files)
+    print(f"\nPIPELINE MODE: {mode}")
+    print("\n=== MAIN REQUIRED CI ===")
+    results = {}
+    if not required:
+        print("FAST LANE: heavy runtime CI skipped.")
+        return required, results
+    for workflow_file in required:
+        state_write("MAIN_CI", workflow=workflow_file, main_sha=head_sha)
+        results[workflow_file] = wait_workflow(workflow_file, head_sha)
+    return required, results
+
+
+def wait_production_deploy(head_sha, required, results):
+    production_map = {
+        "worker-image.yml": "Production · Build AppForge Worker Image",
+        "source-worker-image.yml": "Production · Build AppForge Source Worker Image",
+    }
+    targets = [(wf, production_map[wf]) for wf in required if wf in production_map]
+    if not targets:
+        print("DEPLOY: NOT_APPLICABLE (no production runtime target)")
+        return results
+    print("\n=== PRODUCTION DEPLOY ===")
+    for upstream, title in targets:
+        key = "production:" + upstream
+        state_write("DEPLOYING", workflow=key, main_sha=head_sha)
+        results[key] = wait_workflow("production-automation.yml", head_sha, min_count=1, event_filter="workflow_run", display_title=title)
+    print("DEPLOY: SUCCESS")
+    return results
+
+
+def wait_play_publish(main_sha):
+    print("\n=== GOOGLE PLAY PUBLISH ===")
+    state_write("PUBLISHING", workflow="android-play-release.yml", main_sha=main_sha)
+    result = wait_workflow("android-play-release.yml", main_sha, min_count=1, event_filter="release")
+    print("GOOGLE PLAY PUBLISH: SUCCESS")
+    return result
+
+
 def ci_watch():
     gh_required()
 
@@ -1013,10 +1221,7 @@ def ci_watch():
                     item.get("name"),
                     item.get("conclusion"),
                 )
-
-            raise SystemExit(
-                "PR REQUIRED CI FAILED."
-            )
+            diagnose_check_failure(failed[0], stage="PR_CI")
 
         if not running:
             for item in sorted(
@@ -1306,10 +1511,8 @@ def wait_workflow(
                 )
                 for r in failed
             )
-
-            raise SystemExit(
-                f"{name}: {states}"
-            )
+            print(f"{name}: {states}")
+            diagnose_workflow_failure(failed[0], workflow_file, name)
 
         print(
             f"{name}: "
@@ -2021,6 +2224,81 @@ def merge():
             mp,
         )
 
+
+def autopilot():
+    branch = git_out("branch", "--show-current")
+    if branch == "main":
+        raise SystemExit("main üzerinde FULL AUTOPILOT başlatılamaz; feature/fix branch gerekli.")
+
+    with Lock():
+        print("=== APPFORGE FULL AUTOPILOT / FAIL-STOP ===")
+        state_write("TESTING", mode="FULL_AUTOPILOT")
+        prepare_release_version()
+        local_gate()
+
+        files = changed_files()
+        if files:
+            print("\n=== AUTO COMMIT / PUSH ===")
+            safe_stage()
+            run(["git", "diff", "--cached", "--check"])
+            run(["./scripts/appforge-stability-gate", "local"])
+            msg = os.environ.get("APPFORGE_COMMIT_MESSAGE") or default_commit_message()
+            state_write("COMMITTING", commit_message=msg, mode="FULL_AUTOPILOT")
+            run(["git", "commit", "-m", msg])
+            state_write("PUSHING", mode="FULL_AUTOPILOT")
+            run(["git", "push", "-u", "origin", branch])
+            print("COMMIT/PUSH: SUCCESS")
+        else:
+            print("\n=== AUTO RESUME ===")
+            require_remote_sync(branch)
+
+        source_files = branch_change_files()
+        source_groups = classify(source_files)
+        print("\n=== AUTO PR / CI ===")
+        state_write("OPENING_PR", mode="FULL_AUTOPILOT")
+        num = ensure_pr()
+        print(f"PR #{num}: READY")
+        state_write("WAITING_CI", pr=num, mode="FULL_AUTOPILOT")
+        ci_watch()
+        print("PR REQUIRED CI: SUCCESS")
+
+        state_write("MERGING", pr=num, mode="FULL_AUTOPILOT")
+        merge_pr(num)
+        print(f"PR #{num}: AUTO MERGED ✅")
+
+        run(["git", "fetch", "origin", "main"], check=True)
+        main_sha = git_out("rev-parse", "origin/main")
+        if not main_sha:
+            block_pipeline("MAIN_SYNC", "CI_ENVIRONMENT", "origin/main SHA could not be resolved")
+
+        required, ci_result = wait_main_validation_only(main_sha, source_files)
+        rel = release_info()
+        if "android-debug.yml" in required and rel.get("status") != "READY":
+            block_pipeline("MAIN_CI", "CI_ENVIRONMENT", "latest APK release is not READY", latest_release=rel)
+        print("POST-MERGE MAIN CI: SUCCESS")
+
+        # Hard shipping boundary. This is intentionally after merge/main CI so
+        # delivery infrastructure and fixes can land, but before deploy/release/publish.
+        require_no_runtime_blockers()
+
+        ci_result = wait_production_deploy(main_sha, required, ci_result)
+        versioned_release = {"status": "NOT_APPLICABLE"}
+        play_result = {"status": "NOT_APPLICABLE"}
+
+        if any(item.startswith("android-app/") for item in source_files):
+            versioned_release = ensure_versioned_release(main_sha)
+            play_result = wait_play_publish(main_sha)
+        else:
+            print("RELEASE/PUBLISH: NOT_APPLICABLE (no Android distribution change)")
+
+        state_write("COMPLETE", pr=num, mode="FULL_AUTOPILOT", main_sha=main_sha, source_files=source_files, source_groups=source_groups, required_workflows=required, release=rel, versioned_release=versioned_release, play=play_result)
+        jp, mp = generate_report("SUCCESS", pr=num, mode="FULL_AUTOPILOT", main_sha=main_sha, source_branch=branch, source_files=source_files, source_groups=source_groups, required_workflows=required, ci=ci_result, release=rel, versioned_release=versioned_release, play=play_result)
+        print("\nAPPFORGE FULL AUTOPILOT COMPLETE ✅")
+        print("MODE: FULL AUTOPILOT / FAIL-STOP")
+        print("JSON:", jp)
+        print("REPORT:", mp)
+
+
 def recover():
     if git_out(
         "branch",
@@ -2417,7 +2695,8 @@ def main():
 
     for name in [
         "status", "doctor", "test", "security", "dashboard",
-        "ci", "report", "submit", "resume", "merge", "recover", "release", "deploy", "rollback"
+        "ci", "report", "autopilot", "submit", "resume", "merge",
+        "recover", "release", "deploy", "rollback"
     ]:
         sub.add_parser(name)
 
@@ -2429,6 +2708,7 @@ def main():
         "dashboard",
         "ci",
         "report",
+        "autopilot",
         "submit",
         "resume",
         "merge",
@@ -2461,8 +2741,11 @@ def main():
         ci()
     elif args.cmd == "report":
         report()
+    elif args.cmd == "autopilot":
+        autopilot()
     elif args.cmd == "submit":
-        submit()
+        print("SUBMIT -> FULL AUTOPILOT / FAIL-STOP")
+        autopilot()
     elif args.cmd == "resume":
         resume()
     elif args.cmd == "merge":

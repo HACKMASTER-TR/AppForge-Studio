@@ -33,7 +33,7 @@ These are advisory engineering gates, not proof of correctness.
 - Never invent performance or live deployment health.
 - Use authenticated live systems to verify current GitHub/Railway/Sentry state.
 - Runtime reports are local and not durable project memory.
-- Do not commit, merge, push, deploy or publish unless explicitly requested.
+- `./scripts/appforge autopilot` is the explicit authorization for commit → push → PR → CI → merge → main CI → deploy → release → publish for that run; no repeated per-stage approval is required.
 
 
 ## Second Brain V3 Final
@@ -45,7 +45,7 @@ These are advisory engineering gates, not proof of correctness.
 - Live state must be verified; never infer GitHub/Railway health.
 - Never store secrets, tokens, passwords or credential values in memory.
 - `READY`, `REVIEW_REQUIRED`, `BLOCKED`, `ACCEPT`, `REFACTOR_FIRST`, and `REJECT` are advisory engineering decisions.
-- Do not commit, push, deploy or publish unless explicitly requested.
+- Full delivery actions are allowed only through the fail-stop `./scripts/appforge autopilot` command or a separately explicit manual request.
 
 
 ## HARD STABILITY GATE V1
@@ -63,10 +63,25 @@ This rule is mandatory for every meaningful AppForge change.
 - Generated binaries/backups must not be staged.
 - Artifacts must be traceable to an exact commit SHA.
 - Source/config/tests/CI/runtime remain authoritative.
-- Commit/push/merge/deploy/publish require explicit user request.
+- Invoking `./scripts/appforge autopilot` counts as the explicit request for the complete delivery chain; any mandatory FAIL or runtime blocker stops the chain immediately.
 
 Canonical policy:
 `.secondbrain/STABILITY_POLICY.md`
 
 Machine-readable rules:
 `.secondbrain/REGRESSION_RULES.json`
+
+## FULL AUTOPILOT / FAIL-STOP
+
+- Canonical delivery command: `APPFORGE_ADMIN_SESSION=1 ./scripts/appforge autopilot`.
+- `submit` is an alias of FULL AUTOPILOT.
+- One invocation authorizes commit, push, PR creation/update, required PR CI, merge, post-merge main CI, applicable production deployment, GitHub Release, and Google Play publishing.
+- Never ask for a second approval between those stages.
+- Any failed mandatory gate stops immediately; later stages must not run.
+- A PR CI failure forbids merge.
+- A main CI failure forbids deploy/release/publish.
+- An active `.appforge/runtime-blockers.json` entry forbids deploy/release/publish after main validation.
+- Failure output must identify stage, classification, failed check/workflow, and a focused failing-log excerpt when available.
+- Termux Android/JVM unit execution is `DEFERRED / CI REQUIRED`; it must never be reported as a local Android unit-test PASS.
+- External platform review/wait states are `EXTERNAL_PENDING`, not fabricated success.
+- Existing HARD STABILITY GATE, fail-0, secret scanning, forbidden-file rules, and no-test-weakening rules remain mandatory.

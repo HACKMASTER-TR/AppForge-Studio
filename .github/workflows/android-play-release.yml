@@ -41,6 +41,7 @@ jobs:
           APPFORGE_RELEASE_KEY_PASSWORD: ${{ secrets.APPFORGE_RELEASE_KEY_PASSWORD }}
           APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
           APPFORGE_RAILWAY_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_RAILWAY_OAUTH_CLIENT_ID }}
+          APPFORGE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.APPFORGE_PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
           set -euo pipefail
 
@@ -51,6 +52,7 @@ jobs:
             APPFORGE_RELEASE_KEY_PASSWORD
             APPFORGE_GITHUB_OAUTH_CLIENT_ID
             APPFORGE_RAILWAY_OAUTH_CLIENT_ID
+            APPFORGE_PLAY_SERVICE_ACCOUNT_JSON
           )
 
           missing=0
@@ -363,3 +365,12 @@ jobs:
             AppForgeStudio-Play-*.aab.sha256
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload signed AAB to Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.APPFORGE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.appforge.studio
+          releaseFiles: ${{ env.APPFORGE_PLAY_AAB_NAME }}
+          track: ${{ vars.APPFORGE_PLAY_TRACK || 'internal' }}
+          status: completed

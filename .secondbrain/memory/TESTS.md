@@ -1,11 +1,12 @@
 # Test Map
 
-Generated: 2026-09-14T13:06:26+03:00
+Generated: 2026-09-15T18:27:58+03:00
 
 ## Recommended for current change
 
 - `cd build-service && npm test`
 - `Android CI / Gradle compile verification`
+- `Validate affected GitHub Actions workflow`
 
 ## Discovered test files
 
@@ -98,6 +99,7 @@ Generated: 2026-09-14T13:06:26+03:00
 - `build-service/tests/appforge_agent_scale_v10.test.js`
 - `build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js`
 - `build-service/tests/appforge_autopilot_cli_contract.test.js`
+- `build-service/tests/appforge_autopilot_full_fail_stop_contract.test.js`
 - `build-service/tests/appforge_autopilot_policy_contract.test.js`
 - `build-service/tests/appforge_autopilot_resume_contract.test.js`
 - `build-service/tests/appforge_autopilot_timing_contract.test.js`
@@ -308,4 +310,3 @@ Generated: 2026-09-14T13:06:26+03:00
 - `build-service/tests/user_project_limit_contract.test.js`
 - `build-service/tests/v2_1_template_browser.test.js`
 - `build-service/tests/v2_2_settings_languages.test.js`
-- `build-service/tests/v2_3_anti_mod.test.js`

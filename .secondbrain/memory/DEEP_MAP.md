@@ -1,6 +1,6 @@
 # AppForge Studio — Deep Project Map
 
-Generated: 2026-09-14T13:06:26+03:00
+Generated: 2026-09-15T18:27:58+03:00
 
 ## API Routes
 
@@ -194,7 +194,7 @@ Detected tables / schema objects: **34**
 
 ## Tests
 
-Detected test files: **316**
+Detected test files: **317**
 
 - `.appforge/state/latest.json`
 - `AppForgeStudio-latest.apk`
@@ -284,6 +284,7 @@ Detected test files: **316**
 - `build-service/tests/appforge_agent_scale_v10.test.js`
 - `build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js`
 - `build-service/tests/appforge_autopilot_cli_contract.test.js`
+- `build-service/tests/appforge_autopilot_full_fail_stop_contract.test.js`
 - `build-service/tests/appforge_autopilot_policy_contract.test.js`
 - `build-service/tests/appforge_autopilot_resume_contract.test.js`
 - `build-service/tests/appforge_autopilot_timing_contract.test.js`
@@ -395,7 +396,6 @@ Detected test files: **316**
 - `build-service/tests/deterministic_project_zip.test.js`
 - `build-service/tests/direct_s3_cache_identity.test.js`
 - `build-service/tests/dotnet_android_build_engine.test.js`
-- `build-service/tests/dotnet_android_live_build_engine.test.js`
 
 ## Product Surfaces
 

@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "active": [
+    {
+      "id": "BUG-7",
+      "stage": "DEVICE_RUNTIME",
+      "classification": "RUNTIME",
+      "summary": "AppForge Terminal exits when opened on the real Android device",
+      "status": "DEVICE_LOG_PENDING",
+      "evidence_required": "ADB crash stack trace after reproducing Terminal entry crash",
+      "shipping_blocker": true
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "name": "AppForge Autopilot",
   "admin_email_sha256": "1249d3064d7f482d584f75caf93ea01649f13e4a26d183c4729d2fae5d205589",
   "dashboard_refresh_seconds": 30,
@@ -47,7 +47,7 @@
     "railway": "conditional",
     "render": "conditional",
     "vercel": "conditional",
-    "play_console": "conditional"
+    "play_console": "full_autopilot"
   },
   "fast_lane": {
     "enabled": true,
@@ -72,5 +72,14 @@
       "retry_timeout_seconds": 180,
       "latest_matching_run_wins": true
     }
-  }
+  },
+  "delivery_mode": "FULL_AUTOPILOT_FAIL_STOP",
+  "auto_commit": true,
+  "auto_push": true,
+  "auto_pr": true,
+  "auto_deploy": true,
+  "auto_release": true,
+  "auto_publish": true,
+  "stop_on_first_failure": true,
+  "runtime_blocker_file": ".appforge/runtime-blockers.json"
 }

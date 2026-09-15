@@ -1,9 +1,9 @@
 {
   "version": "3.0.0",
-  "head": "eca4b3d",
+  "head": "1b695ae",
   "branch": "fix/v15-blueprint-platform-fallback",
   "risk": "ACCEPT",
-  "riskScore": 11,
+  "riskScore": 29,
   "security": "GREEN",
   "apiRoutes": 83,
   "databaseTables": 34,

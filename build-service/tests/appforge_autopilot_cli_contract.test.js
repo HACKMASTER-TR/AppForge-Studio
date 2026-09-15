@@ -52,12 +52,12 @@ test("AppForge Autopilot exposes the admin control-plane commands", async () => 
 
   assert.doesNotMatch(
     source,
-    /\["gh",\s*"run"/
+    /\["gh",\s*"run",\s*"(?!view")/
   );
 
   assert.doesNotMatch(
     source,
-    /\["gh",\s*"release"/
+    /\["gh",\s*"release",\s*"(?!view"|create")/
   );
 
   assert.match(
