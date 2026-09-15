@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-15T20:18:44+03:00",
+  "generated_at": "2026-09-15T20:40:18+03:00",
   "version": "3.0.0",
   "manifest": {
-    "files": 780,
+    "files": 783,
     "changed_since_cache": [
       "android-app/app/src/main/assets/second_brain_snapshot.json"
     ],
@@ -10,8 +10,8 @@
     "incremental": true
   },
   "dependency": {
-    "generated_at": "2026-09-15T20:18:41+03:00",
-    "node_count": 780,
+    "generated_at": "2026-09-15T20:40:16+03:00",
+    "node_count": 783,
     "edge_count": 127,
     "edges": [
       {
@@ -895,7 +895,7 @@
     "external_dependencies": [
       [
         "androidx",
-        1314
+        1317
       ],
       [
         "android",
@@ -911,19 +911,19 @@
       ],
       [
         "assert",
-        247
+        248
       ],
       [
         "node:assert",
-        247
+        248
       ],
       [
         "node:test",
-        243
+        244
       ],
       [
         "test",
-        243
+        244
       ],
       [
         "kotlinx",
@@ -931,7 +931,7 @@
       ],
       [
         "node:fs",
-        175
+        176
       ],
       [
         "com",
@@ -1144,7 +1144,7 @@
     ]
   },
   "api": {
-    "generated_at": "2026-09-15T20:18:41+03:00",
+    "generated_at": "2026-09-15T20:40:16+03:00",
     "count": 83,
     "routes": [
       {
@@ -3117,7 +3117,7 @@
     ]
   },
   "database": {
-    "generated_at": "2026-09-15T20:18:41+03:00",
+    "generated_at": "2026-09-15T20:40:16+03:00",
     "migration_count": 25,
     "table_count": 34,
     "tables": [
@@ -3706,7 +3706,7 @@
     }
   },
   "workers": {
-    "generated_at": "2026-09-15T20:18:41+03:00",
+    "generated_at": "2026-09-15T20:40:16+03:00",
     "runtime_scripts": [
       {
         "name": "start",
@@ -3796,7 +3796,7 @@
     ]
   },
   "tests": {
-    "generated_at": "2026-09-15T20:18:42+03:00",
+    "generated_at": "2026-09-15T20:40:17+03:00",
     "discovered": 300,
     "domains": [
       "android",
@@ -3804,15 +3804,7 @@
       "terminal"
     ],
     "selected_tests": [
-      "build-service/tests/appforge_terminal_stage10r_true_ime_occlusion_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10q_cursor_autofollow_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10p_accessory_collision_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10m_standalone_workstation_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10l_productivity_keys_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10h_10i_final_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10f_ime_accessory_contract.test.js",
-      "build-service/tests/appforge_terminal_input_ime_contract.test.js",
-      "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_bottom_inset_contract.test.js",
       "build-service/tests/appforge_terminal_viewport_stability_contract.test.js",
       "build-service/tests/appforge_terminal_verified_rootfs_contract.test.js",
       "build-service/tests/appforge_terminal_ultimate_editor_contract.test.js",
@@ -3845,11 +3837,18 @@
       "build-service/tests/appforge_terminal_stage10u_virtualized_renderer_contract.test.js",
       "build-service/tests/appforge_terminal_stage10t_fast_scrollback_contract.test.js",
       "build-service/tests/appforge_terminal_stage10s_matte_shortcuts_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10r_true_ime_occlusion_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10q_cursor_autofollow_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10p_accessory_collision_contract.test.js",
       "build-service/tests/appforge_terminal_stage10o_zero_anr_startup_contract.test.js",
       "build-service/tests/appforge_terminal_stage10n_termux_independence_hardening_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10m_standalone_workstation_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10l_productivity_keys_contract.test.js",
       "build-service/tests/appforge_terminal_stage10k_bootstrap_resilience_contract.test.js",
       "build-service/tests/appforge_terminal_stage10j_termux_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10h_10i_final_contract.test.js",
       "build-service/tests/appforge_terminal_stage10g_batch_hardening_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10f_ime_accessory_contract.test.js",
       "build-service/tests/appforge_terminal_stage10e_real_local_pty_contract.test.js",
       "build-service/tests/appforge_terminal_stage10d_terminal_surface_input_contract.test.js",
       "build-service/tests/appforge_terminal_stage10c_local_terminal_input_contract.test.js",
@@ -3872,18 +3871,19 @@
       "build-service/tests/appforge_terminal_linux_pty_contract.test.js",
       "build-service/tests/appforge_terminal_linux_multisession_contract.test.js",
       "build-service/tests/appforge_terminal_integration.test.js",
+      "build-service/tests/appforge_terminal_input_ime_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
       "build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js",
       "build-service/tests/appforge_terminal_ime_backspace_contract.test.js",
       "build-service/tests/appforge_terminal_download_bridge_contract.test.js",
       "build-service/tests/appforge_terminal_apk_origin_fallback_contract.test.js",
       "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
       "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
-      "build-service/tests/android_queue_ui_regression.test.js",
-      "build-service/tests/unity_android_build_engine.test.js",
-      "build-service/tests/termux_terminal_vendor_contract.test.js",
-      "build-service/tests/termux_terminal_agp9_contract.test.js",
-      "build-service/tests/termux_terminal_adapter_contract.test.js",
-      "build-service/tests/termux_terminal_activation_v1_contract.test.js"
+      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectPipelineTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectAutomationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateLspProtocolTest.kt"
     ],
     "critical_regression_tests": [
       "android-app/app/src/main/assets/terminal/appforge-test",
@@ -3964,8 +3964,8 @@
       "build-service/tests/appforge_terminal_apk_origin_fallback_contract.test.js",
       "build-service/tests/appforge_terminal_download_bridge_contract.test.js",
       "build-service/tests/appforge_terminal_ime_backspace_contract.test.js",
-      "build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js",
-      "build-service/tests/appforge_terminal_ime_stability_contract.test.js"
+      "build-service/tests/appforge_terminal_ime_bottom_inset_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js"
     ],
     "commands": [
       "cd build-service && npm test",
@@ -4270,7 +4270,7 @@
     }
   },
   "integrations": {
-    "generated_at": "2026-09-15T20:18:42+03:00",
+    "generated_at": "2026-09-15T20:40:17+03:00",
     "detected_services": [
       "AWS/S3",
       "Email",
@@ -4755,7 +4755,7 @@
     }
   },
   "complexity": {
-    "generated_at": "2026-09-15T20:18:43+03:00",
+    "generated_at": "2026-09-15T20:40:17+03:00",
     "largest": [
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
@@ -4774,7 +4774,7 @@
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
-        "lines": 5110,
+        "lines": 5118,
         "symbols": 65
       },
       {
@@ -5076,7 +5076,7 @@
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
-        "lines": 5110,
+        "lines": 5118,
         "symbols": 65
       },
       {
@@ -5394,6 +5394,7 @@
       "build-service/tests/appforge_terminal_apk_origin_fallback_contract.test.js",
       "build-service/tests/appforge_terminal_download_bridge_contract.test.js",
       "build-service/tests/appforge_terminal_ime_backspace_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_bottom_inset_contract.test.js",
       "build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js",
       "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
       "build-service/tests/appforge_terminal_input_ime_contract.test.js",
@@ -5886,6 +5887,7 @@
       "build-service/tests/appforge_terminal_apk_origin_fallback_contract.test.js",
       "build-service/tests/appforge_terminal_download_bridge_contract.test.js",
       "build-service/tests/appforge_terminal_ime_backspace_contract.test.js",
+      "build-service/tests/appforge_terminal_ime_bottom_inset_contract.test.js",
       "build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js",
       "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
       "build-service/tests/appforge_terminal_input_ime_contract.test.js",
@@ -6019,9 +6021,9 @@
     ]
   },
   "git": {
-    "generated_at": "2026-09-15T20:18:43+03:00",
-    "branch": "fix/bug7c-terminal-input-ime",
-    "head": "c4d3b1c",
+    "generated_at": "2026-09-15T20:40:17+03:00",
+    "branch": "fix/bug7d-terminal-ime-bottom-inset",
+    "head": "a180e40",
     "ahead": 0,
     "behind": 0,
     "staged": [
@@ -6059,24 +6061,18 @@
       ".secondbrain/memory/TEST_INTELLIGENCE.json",
       ".secondbrain/memory/WORKER_TOPOLOGY.json",
       "android-app/app/src/main/assets/second_brain_snapshot.json",
-      "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
-      "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10f_ime_accessory_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10h_10i_final_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10l_productivity_keys_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10m_standalone_workstation_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10p_accessory_collision_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10q_cursor_autofollow_contract.test.js",
-      "build-service/tests/appforge_terminal_stage10r_true_ime_occlusion_contract.test.js"
+      "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
     ],
     "untracked": [
-      ".secondbrain/checkpoints/20260915-194552-start-bug7c-input-ime.json",
-      ".secondbrain/checkpoints/20260915-194600-all-BUG7C-input-ime.json",
-      ".secondbrain/checkpoints/20260915-201837-all-full-analysis.json",
-      "build-service/tests/appforge_terminal_input_ime_contract.test.js"
+      ".secondbrain/checkpoints/20260915-203504-start-bug7d-ime-bottom.json",
+      ".secondbrain/checkpoints/20260915-203512-all-BUG7D-ime-bottom-inset.json",
+      ".secondbrain/checkpoints/20260915-204014-all-full-analysis.json",
+      "build-service/tests/appforge_terminal_ime_bottom_inset_contract.test.js"
     ],
     "forbidden_staged": [],
     "recent_commits": [
+      "a180e40 Merge pull request #30 from HACKMASTER-TR/fix/bug7c-terminal-input-ime",
+      "bc5708d Fix BUG-7C terminal input and IME viewport",
       "c4d3b1c Merge pull request #29 from HACKMASTER-TR/fix/bug7-terminal-mirror-argv0",
       "ecc50d1 Fix BUG-7 terminal mirror argv0",
       "adbde9e Merge pull request #28 from HACKMASTER-TR/fix/bug7-terminal-renderer-init",
@@ -6084,24 +6080,22 @@
       "56342de Merge pull request #27 from HACKMASTER-TR/fix/v15-blueprint-platform-fallback",
       "7ee1993 Add full autopilot fail-stop delivery",
       "1b695ae Fix Unified Agent blueprint platform fallback",
-      "eca4b3d Merge pull request #26 from HACKMASTER-TR/fix/v15-blueprint-control-characters",
-      "35740f5 Fix blueprint escape prompt contract",
-      "03fc35b Fix Unified Agent blueprint control characters"
+      "eca4b3d Merge pull request #26 from HACKMASTER-TR/fix/v15-blueprint-control-characters"
     ]
   },
   "security": {
-    "generated_at": "2026-09-15T20:18:43+03:00",
+    "generated_at": "2026-09-15T20:40:17+03:00",
     "scope": "changed",
     "health": "GREEN",
     "findings": []
   },
   "risk": {
-    "generated_at": "2026-09-15T20:18:44+03:00",
-    "score": 31,
+    "generated_at": "2026-09-15T20:40:18+03:00",
+    "score": 23,
     "decision": "ACCEPT",
-    "changed_files": 11,
-    "added_lines": 57,
-    "deleted_lines": 62,
+    "changed_files": 3,
+    "added_lines": 12,
+    "deleted_lines": 4,
     "domains": [
       "android",
       "build-service",
@@ -6110,14 +6104,13 @@
     "reasons": [
       "android subsystem affected",
       "build-service subsystem affected",
-      "multiple source files changed",
       "terminal subsystem affected"
     ],
     "dependency_edges_impacted": 2,
     "security": "GREEN"
   },
   "live": {
-    "generated_at": "2026-09-15T20:18:44+03:00",
+    "generated_at": "2026-09-15T20:40:18+03:00",
     "github": {
       "status": "NOT_CHECKED"
     },
@@ -6129,14 +6122,14 @@
     }
   },
   "performance": {
-    "generated_at": "2026-09-15T20:18:44+03:00",
+    "generated_at": "2026-09-15T20:40:18+03:00",
     "metrics": {
       "brain_all": {
-        "samples": 70,
-        "p50_ms": 3895.0,
-        "p95_ms": 13816.16,
-        "latest_ms": 6687.02,
-        "regression_vs_prior_p50_pct": 73.9
+        "samples": 76,
+        "p50_ms": 3832.8,
+        "p95_ms": 13433.15,
+        "latest_ms": 3674.09,
+        "regression_vs_prior_p50_pct": -4.45
       },
       "app_build": {
         "samples": 0,
@@ -6166,5 +6159,5 @@
     ]
   },
   "architecture_drift": false,
-  "brain_all_ms": 6687.02
+  "brain_all_ms": 3674.09
 }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,8 +23,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -2177,10 +2180,10 @@ internal fun LocalPtyTerminalPanel(
         }
 
     /*
-     * The Activity/Compose host already resizes the usable content when the
-     * keyboard opens on the real device. Do not apply the IME height again
-     * as a terminal translation/reserve: doing so double-shifts the viewport
-     * and can push the accessory/input row outside the visible screen.
+     * Keep PTY scroll padding independent from the keyboard. The outer terminal
+     * column consumes only the bottom IME inset instead. This supports devices
+     * where the keyboard overlays the app while avoiding the old manual
+     * full-IME translation of the accessory row.
      */
     val accessoryReservePx =
         0
@@ -2189,6 +2192,11 @@ internal fun LocalPtyTerminalPanel(
         modifier =
             Modifier
                 .fillMaxSize()
+                .windowInsetsPadding(
+                    WindowInsets.ime.only(
+                        WindowInsetsSides.Bottom
+                    )
+                )
                 .padding(10.dp),
         verticalArrangement =
             Arrangement.spacedBy(8.dp)
