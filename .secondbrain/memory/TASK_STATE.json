@@ -1,8 +1,8 @@
 {
-  "label": "bug7e-build-apk-home",
-  "started_at": "2026-09-15T21:27:53+03:00",
-  "start_checkpoint": ".secondbrain/checkpoints/20260915-212753-start-bug7e-build-apk-home.json",
+  "label": "bug7e-android-scope-fix",
+  "started_at": "2026-09-15T21:52:38+03:00",
+  "start_checkpoint": ".secondbrain/checkpoints/20260915-215238-start-bug7e-android-scope-fix.json",
   "status": "DONE",
-  "finished_at": "2026-09-15T21:43:38+03:00",
-  "end_checkpoint": ".secondbrain/checkpoints/20260915-214337-finish-bug7e-build-apk-home.json"
+  "finished_at": "2026-09-15T21:53:46+03:00",
+  "end_checkpoint": ".secondbrain/checkpoints/20260915-215346-finish-bug7e-android-scope-fix.json"
 }

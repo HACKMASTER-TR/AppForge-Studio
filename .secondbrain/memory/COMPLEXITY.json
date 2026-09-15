@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-09-15T21:43:36+03:00",
+  "generated_at": "2026-09-15T21:53:45+03:00",
   "largest": [
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-      "lines": 25438,
+      "lines": 25451,
       "symbols": 125
     },
     {
@@ -305,7 +305,7 @@
   "refactor_candidates": [
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-      "lines": 25438,
+      "lines": 25451,
       "symbols": 125
     },
     {

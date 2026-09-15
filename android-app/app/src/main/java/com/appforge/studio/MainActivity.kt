@@ -5935,7 +5935,20 @@ private fun AppForgeApp() {
                             }
                         }
 
-                        if (!(step == 10 && buildSucceeded)) {
+                        val builderBuildOutputReady =
+                            !apkUrl
+                                .isNullOrBlank() ||
+                            !aabUrl
+                                .isNullOrBlank() ||
+                            !exeUrl
+                                .isNullOrBlank()
+
+                        if (
+                            !(
+                                step == 10 &&
+                                builderBuildOutputReady
+                            )
+                        ) {
                             Button(
                                                         enabled =
                                                             !(

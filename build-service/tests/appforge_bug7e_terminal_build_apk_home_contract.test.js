@@ -40,11 +40,16 @@ test("successful build hides stale compile CTA while result UI remains", async (
   const label = source.indexOf('"UYGULAMAYI DERLE"');
   assert.ok(label >= 0, "compile CTA label missing");
 
+  assert.match(
+    source,
+    /val builderBuildOutputReady\s*=\s*[\s\S]{0,260}!apkUrl[\s\S]{0,100}\.isNullOrBlank\(\)[\s\S]{0,180}!aabUrl[\s\S]{0,100}\.isNullOrBlank\(\)[\s\S]{0,180}!exeUrl[\s\S]{0,100}\.isNullOrBlank\(\)/
+  );
+
   const guard = source.lastIndexOf(
-    "if (!(step == 10 && buildSucceeded)) {",
+    "builderBuildOutputReady",
     label
   );
-  assert.ok(guard >= 0, "successful-build CTA guard missing");
+  assert.ok(guard >= 0, "successful-build output-ready guard missing");
 
   assert.match(source, /"✅ Derleme tamamlandı"/);
   assert.match(source, /"APK'YI TEKRAR İNDİR"/);
