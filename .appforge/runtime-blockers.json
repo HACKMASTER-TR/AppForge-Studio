@@ -7,9 +7,9 @@
       "classification": "RUNTIME",
       "summary": "AppForge Terminal exits when opened on the real Android device",
       "status": "DEVICE_RETEST_REQUIRED",
-      "evidence_required": "Install the fresh post-merge APK, open AppForge Terminal on the real Android device, confirm it remains open and usable, then verify logcat has no TerminalView mRenderer FATAL EXCEPTION.",
+      "evidence_required": "Install the fresh post-merge APK; open AppForge Terminal; verify the relay does not show process code 127; run pwd and echo APPFORGE_OK in the real terminal; confirm no new FATAL EXCEPTION.",
       "shipping_blocker": true,
-      "root_cause": "Termux TerminalView mRenderer was null when Compose AndroidView layout called onSizeChanged()->updateSize()."
+      "root_cause": "Terminal renderer crash was fixed. The follow-up code-127 failure came from Termux JNI calling execvp(cmd, argv) with '-c' incorrectly placed in argv[0]; the mirror relay now supplies /system/bin/sh as argv[0] before -c."
     }
   ]
 }

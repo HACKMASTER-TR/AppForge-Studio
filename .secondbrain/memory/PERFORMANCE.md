@@ -1,11 +1,11 @@
 # Performance Baseline
 
-Generated: 2026-09-15T19:00:08+03:00
+Generated: 2026-09-15T19:19:38+03:00
 
-- Source files: 774
-- Estimated lines: 249502
-- Second Brain scan: 121.19 ms
-- Git status: 22.87 ms
+- Source files: 777
+- Estimated lines: 249618
+- Second Brain scan: 97.13 ms
+- Git status: 23.57 ms
 - App build P50/P95: NOT_MEASURED
 - Worker job P50/P95: NOT_MEASURED
 - Terminal latency: NOT_MEASURED
