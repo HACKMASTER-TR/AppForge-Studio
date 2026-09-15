@@ -3327,7 +3327,7 @@ private fun AppForgeApp() {
             testDraft ->
 
             if (
-                !isFiveParallelBuildTester
+                !isAdminOpsAccount
             ) {
                 status =
                     "Bu test hesabın için yetkili değil."
@@ -5666,7 +5666,7 @@ private fun AppForgeApp() {
                     ) {
                         if (
                             step == 10 &&
-                            isFiveParallelBuildTester
+                            isAdminOpsAccount
                         ) {
                             Card(
                                 modifier =
@@ -5717,7 +5717,7 @@ private fun AppForgeApp() {
                                     )
 
                                     Text(
-                                        "Yetkili 5'li Build Test hesabı",
+                                        "Yalnız yönetici • 5'li Build Test",
                                         color =
                                             TextSecondary,
                                         fontSize =
@@ -5935,55 +5935,70 @@ private fun AppForgeApp() {
                             }
                         }
 
-                        Button(
-                            enabled =
-                                !(
-                                    step == 10 &&
-                                    (
-                                        buildBusy ||
-                                        fiveParallelBuildRunning
-                                    )
-                                ),
-                            onClick = {
-                                if (step < 10) {
-                                    step++
-                                } else {
-                                    startBuildWithDraft(
-                                        draft
-                                    )
-                                }
-                            },
-                            modifier =
-                                Modifier
-                                    .weight(1f)
-                                    .height(
-                                        if (builderCompact) {
-                                            48.dp
-                                        } else {
-                                            52.dp
-                                        }
-                                    )
-                        ) {
-                            Text(
-                                when {
-                                    step < 10 ->
-                                        "Devam"
+                        val builderBuildOutputReady =
+                            !apkUrl
+                                .isNullOrBlank() ||
+                            !aabUrl
+                                .isNullOrBlank() ||
+                            !exeUrl
+                                .isNullOrBlank()
 
-                                    buildBusy ->
-                                        if (builderCompact) {
-                                            "DERLENİYOR"
-                                        } else {
-                                            "DERLEME DEVAM EDİYOR"
-                                        }
-
-                                    else ->
-                                        if (builderCompact) {
-                                            "DERLE"
-                                        } else {
-                                            "UYGULAMAYI DERLE"
-                                        }
-                                }
+                        if (
+                            !(
+                                step == 10 &&
+                                builderBuildOutputReady
                             )
+                        ) {
+                            Button(
+                                                        enabled =
+                                                            !(
+                                                                step == 10 &&
+                                                                (
+                                                                    buildBusy ||
+                                                                    fiveParallelBuildRunning
+                                                                )
+                                                            ),
+                                                        onClick = {
+                                                            if (step < 10) {
+                                                                step++
+                                                            } else {
+                                                                startBuildWithDraft(
+                                                                    draft
+                                                                )
+                                                            }
+                                                        },
+                                                        modifier =
+                                                            Modifier
+                                                                .weight(1f)
+                                                                .height(
+                                                                    if (builderCompact) {
+                                                                        48.dp
+                                                                    } else {
+                                                                        52.dp
+                                                                    }
+                                                                )
+                                                    ) {
+                                                        Text(
+                                                            when {
+                                                                step < 10 ->
+                                                                    "Devam"
+
+                                                                buildBusy ->
+                                                                    if (builderCompact) {
+                                                                        "DERLENİYOR"
+                                                                    } else {
+                                                                        "DERLEME DEVAM EDİYOR"
+                                                                    }
+
+                                                                else ->
+                                                                    if (builderCompact) {
+                                                                        "DERLE"
+                                                                    } else {
+                                                                        "UYGULAMAYI DERLE"
+                                                                    }
+                                                            }
+                                                        )
+                                                    }
                         }
                     }
                     }

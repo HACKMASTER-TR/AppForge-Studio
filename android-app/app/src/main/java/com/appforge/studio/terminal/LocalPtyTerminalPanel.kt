@@ -103,6 +103,9 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
+private const val TERMINAL_IME_GEOMETRY_SETTLE_MS =
+    160L
+
 private const val OWNER_ACCOUNT_EMAIL_SHA256 =
     "1249d3064d7f482d584f75caf93ea01649f13e4a26d183c4729d2fae5d205589"
 
@@ -2860,6 +2863,17 @@ private fun LocalPtySurface(
     val tapInteraction = remember(state.id) { MutableInteractionSource() }
 
     /*
+     * IME open/close emits many AndroidView geometry callbacks on some
+     * devices. Resizing the real PTY on every animation frame also persists
+     * and republishes terminal state. Debounce that expensive path while the
+     * visible Termux viewport remains responsive.
+     */
+    var pendingGeometryResize by
+        remember(state.id) {
+            mutableStateOf<Job?>(null)
+        }
+
+    /*
      * Activation V1:
      * Termux TerminalView owns normal-mode viewport/scrollback.
      * The previous Compose renderer remains below as a fallback path.
@@ -3908,13 +3922,26 @@ private fun LocalPtySurface(
                     rows,
                     columns,
                 ->
-                scope.launch {
-                    LocalPtySessionRegistry
-                        .resize(
-                            state.id,
-                            rows,
-                            columns,
-                        )
+                if (
+                    rows != state.rows ||
+                    columns != state.columns
+                ) {
+                    pendingGeometryResize
+                        ?.cancel()
+
+                    pendingGeometryResize =
+                        scope.launch {
+                            delay(
+                                TERMINAL_IME_GEOMETRY_SETTLE_MS
+                            )
+
+                            LocalPtySessionRegistry
+                                .resize(
+                                    state.id,
+                                    rows,
+                                    columns,
+                                )
+                        }
                 }
             },
             modifier =

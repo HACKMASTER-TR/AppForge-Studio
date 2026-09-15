@@ -301,17 +301,15 @@ test("Termux V1.3 geometry follows the real TerminalView", async () => {
   );
 
   /*
-   * IME may translate the viewport but must not change its measured size.
+   * IME placement invariants are intentionally asserted against
+   * v13DirectHostBlock above instead of a character-distance regex.
+   *
+   * This keeps the contract stable when harmless callback/debounce code is
+   * inserted before the modifier chain, while still requiring:
+   * - fixed bottom = 12.dp viewport padding,
+   * - -bottomContentPaddingPx placement offset,
+   * - no bottom = bottomContentPadding measurement coupling.
    */
-  assert.match(
-    panel,
-    /TermuxTerminalMirrorHost[\s\S]{0,1400}?bottom\s*=\s*12\.dp[\s\S]{0,900}?\.offset\s*\{[\s\S]{0,400}?-bottomContentPaddingPx/,
-  );
-
-  assert.doesNotMatch(
-    panel,
-    /TermuxTerminalMirrorHost[\s\S]{0,1400}?bottom\s*=\s*bottomContentPadding/,
-  );
 
   /*
    * TerminalView's real emulator rows/columns are reported upstream.

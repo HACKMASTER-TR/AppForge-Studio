@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-15T20:40:16+03:00",
-  "node_count": 783,
+  "generated_at": "2026-09-15T21:53:44+03:00",
+  "node_count": 788,
   "edge_count": 127,
   "edges": [
     {
@@ -884,7 +884,7 @@
   "external_dependencies": [
     [
       "androidx",
-      1317
+      1318
     ],
     [
       "android",
@@ -900,19 +900,19 @@
     ],
     [
       "assert",
-      248
+      249
     ],
     [
       "node:assert",
-      248
+      249
     ],
     [
       "node:test",
-      244
+      245
     ],
     [
       "test",
-      244
+      245
     ],
     [
       "kotlinx",
@@ -920,7 +920,7 @@
     ],
     [
       "node:fs",
-      176
+      177
     ],
     [
       "com",
