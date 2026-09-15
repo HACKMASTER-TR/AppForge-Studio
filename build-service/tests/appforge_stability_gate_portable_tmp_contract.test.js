@@ -39,7 +39,17 @@ test(
 
     assert.match(
       source,
-      /BRAIN_LOG=/
+      /WIKI_AUDIT_LOG=/
+    );
+
+    assert.match(
+      source,
+      /WIKI_SECRET_LOG=/
+    );
+
+    assert.match(
+      source,
+      /WIKI_PRUNE_LOG=/
     );
 
     assert.match(
