@@ -1,21 +1,17 @@
 {
-  "generated_at": "2026-09-14T12:19:42+03:00",
+  "generated_at": "2026-09-15T18:28:00+03:00",
   "version": "3.0.0",
   "manifest": {
-    "files": 766,
+    "files": 771,
     "changed_since_cache": [
-      "android-app/app/src/main/assets/second_brain_snapshot.json",
-      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintJson.kt",
-      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintPrompt.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt",
-      "build-service/tests/appforge_unified_agent_blueprint_control_char_contract.test.js"
+      "android-app/app/src/main/assets/second_brain_snapshot.json"
     ],
     "removed_since_cache": [],
     "incremental": true
   },
   "dependency": {
-    "generated_at": "2026-09-14T12:19:41+03:00",
-    "node_count": 766,
+    "generated_at": "2026-09-15T18:27:58+03:00",
+    "node_count": 771,
     "edge_count": 127,
     "edges": [
       {
@@ -915,19 +911,19 @@
       ],
       [
         "assert",
-        242
+        244
       ],
       [
         "node:assert",
-        242
+        244
       ],
       [
         "node:test",
-        238
+        240
       ],
       [
         "test",
-        238
+        240
       ],
       [
         "kotlinx",
@@ -935,7 +931,7 @@
       ],
       [
         "node:fs",
-        170
+        172
       ],
       [
         "com",
@@ -947,7 +943,7 @@
       ],
       [
         "fs",
-        66
+        68
       ],
       [
         "AdmZip",
@@ -1148,7 +1144,7 @@
     ]
   },
   "api": {
-    "generated_at": "2026-09-14T12:19:41+03:00",
+    "generated_at": "2026-09-15T18:27:58+03:00",
     "count": 83,
     "routes": [
       {
@@ -3121,7 +3117,7 @@
     ]
   },
   "database": {
-    "generated_at": "2026-09-14T12:19:41+03:00",
+    "generated_at": "2026-09-15T18:27:58+03:00",
     "migration_count": 25,
     "table_count": 34,
     "tables": [
@@ -3710,7 +3706,7 @@
     }
   },
   "workers": {
-    "generated_at": "2026-09-14T12:19:41+03:00",
+    "generated_at": "2026-09-15T18:27:58+03:00",
     "runtime_scripts": [
       {
         "name": "start",
@@ -3800,17 +3796,32 @@
     ]
   },
   "tests": {
-    "generated_at": "2026-09-14T12:19:41+03:00",
+    "generated_at": "2026-09-15T18:27:59+03:00",
     "discovered": 300,
     "domains": [
       "android",
-      "build-service"
+      "build-service",
+      "ci"
     ],
     "selected_tests": [
+      "build-service/tests/appforge_autopilot_policy_contract.test.js",
+      "build-service/tests/appforge_autopilot_full_fail_stop_contract.test.js",
+      "build-service/tests/appforge_autopilot_cli_contract.test.js",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalCommandPolicyTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionRuntimePolicyTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRemoteBuildResumePolicyTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRecoveryPolicyTest.kt",
       "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt",
-      "build-service/tests/appforge_unified_agent_blueprint_control_char_contract.test.js",
+      "build-service/tests/appforge_terminal_stage9b_pre_ci_native_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10z_ci_toolchain_contract.test.js",
+      "build-service/tests/appforge_ci_fast_lane_contract.test.js",
+      "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
       "build-service/tests/android_queue_ui_regression.test.js",
       "build-service/tests/unity_android_build_engine.test.js",
+      "build-service/tests/source_worker_ci_contract.test.js.toolchain-phase-a.bak",
+      "build-service/tests/source_worker_ci_contract.test.js.cache-hardening-phase-b.bak",
+      "build-service/tests/source_worker_ci_contract.test.js",
       "build-service/tests/quota_addons_android_ui_contract.test.js",
       "build-service/tests/quota_addons_android_contract.test.js",
       "build-service/tests/python_web_android_smoke.js",
@@ -3823,70 +3834,56 @@
       "build-service/tests/cpp_android_template_build_smoke.js",
       "build-service/tests/cpp_android_live_build_engine.test.js",
       "build-service/tests/cpp_android_build_engine.test.js",
-      "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
       "build-service/tests/android_sdk_selection.test.js",
       "build-service/tests/android_safe_area.test.js",
       "build-service/tests/android_local_problem_explainer.test.js",
       "build-service/tests/android_gradle_source_engine.test.js",
       "build-service/tests/android_app_category.test.js",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/WcWidthTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/UnicodeInputTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TextStyleTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalTestCase.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/TerminalRowTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ScrollRegionTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ScreenBufferTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ResizeTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/RectangularAreasTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/OperatingSystemControlTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/KeyHandlerTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/HistoryTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/DeviceControlStringTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/DecSetTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/CursorAndScreenTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ControlSequenceIntroducerTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ByteQueueTest.java",
-      "android-app/termux-terminal-emulator/src/test/java/com/termux/terminal/ApcTest.java",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectPipelineTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectAutomationTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateLspProtocolTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateCodeEditorCoreTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateAgentModeTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalWorkingDirectoryTrackerTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalUltimateFoundationTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalPerformanceMetricsTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalOutputBackpressureTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/TerminalCommandPolicyTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/ProrootRuntimeContractTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/LocalPtyInteractiveInputTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/LinuxTarGzExtractorTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/LinuxRuntimeFoundationTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/GitWorkingTreeStatusCacheTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/AppForgeGitInternalExcludesTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/AnsiTerminalBufferTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/terminal/AdvancedGitServiceTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/task/AppForgeTaskManagerTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/BuildDiagnosisPolicyTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeUnifiedAgentV11EndToEndTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentWorkspaceTransactionTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentVisualDesignerTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStudioStateV11Test.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStudioOrchestratorTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentStructuredPatchTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionStoreTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionRuntimePolicyTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionManagementTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentSessionHistoryTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRepairLoopTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRemoteBuildResumePolicyTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentReleaseReadinessEvaluatorTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentRecoveryPolicyTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentQualityGateTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProjectMemoryTest.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentProductionScaleTest.kt"
+      "build-service/tests/appforge_usage_guides_contract.test.js",
+      "build-service/tests/appforge_unified_agent_v13_v15_final_contract.test.js",
+      "build-service/tests/appforge_unified_agent_v12_session_history_contract.test.js",
+      "build-service/tests/appforge_unified_agent_v12_resume_contract.test.js",
+      "build-service/tests/appforge_unified_agent_v12_recovery_center_contract.test.js",
+      "build-service/tests/appforge_unified_agent_v12_final_acceptance.test.js",
+      "build-service/tests/appforge_unified_agent_v11_e2e_contract.test.js",
+      "build-service/tests/appforge_unified_agent_device_test_bugfix_contract.test.js",
+      "build-service/tests/appforge_unified_agent_blueprint_token_budget_contract.test.js",
+      "build-service/tests/appforge_unified_agent_blueprint_platform_fallback_contract.test.js",
+      "build-service/tests/appforge_unified_agent_blueprint_control_char_contract.test.js",
+      "build-service/tests/appforge_terminal_viewport_stability_contract.test.js",
+      "build-service/tests/appforge_terminal_verified_rootfs_contract.test.js",
+      "build-service/tests/appforge_terminal_ultimate_editor_contract.test.js",
+      "build-service/tests/appforge_terminal_ubuntu_rootfs_compat_contract.test.js",
+      "build-service/tests/appforge_terminal_stage9a_build_readiness_contract.test.js",
+      "build-service/tests/appforge_terminal_stage8b_session_productivity_contract.test.js",
+      "build-service/tests/appforge_terminal_stage8a_terminal_ux_contract.test.js",
+      "build-service/tests/appforge_terminal_stage7b_background_lock_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11o_bracketed_paste_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11n_safe_single_line_paste_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11m_railway_query_fix_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11l_railway_workspace_discovery_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11k_account_scoped_sessions_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11j_account_scoped_vault_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11i_account_switch_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11h_owner_quick_actions_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11g_railway_read_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11f_paged_copy_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11e_lightweight_copy_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11d_safe_copy_mode_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11c_extended_scrollback_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11b_apk_install_contract.test.js",
+      "build-service/tests/appforge_terminal_stage11a_interaction_performance_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10y_native_repo_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10x_session_copy_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10w_snapshot_restore_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10v_copy_mode_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10u_virtualized_renderer_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10t_fast_scrollback_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10s_matte_shortcuts_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10r_true_ime_occlusion_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10q_cursor_autofollow_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10p_accessory_collision_contract.test.js",
+      "build-service/tests/appforge_terminal_stage10o_zero_anr_startup_contract.test.js"
     ],
     "critical_regression_tests": [
       "android-app/app/src/main/assets/terminal/appforge-test",
@@ -3952,6 +3949,7 @@
       "build-service/tests/appforge_agent_scale_v10.test.js",
       "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
       "build-service/tests/appforge_autopilot_cli_contract.test.js",
+      "build-service/tests/appforge_autopilot_full_fail_stop_contract.test.js",
       "build-service/tests/appforge_autopilot_policy_contract.test.js",
       "build-service/tests/appforge_autopilot_resume_contract.test.js",
       "build-service/tests/appforge_autopilot_timing_contract.test.js",
@@ -3967,12 +3965,12 @@
       "build-service/tests/appforge_terminal_download_bridge_contract.test.js",
       "build-service/tests/appforge_terminal_ime_backspace_contract.test.js",
       "build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js",
-      "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
-      "build-service/tests/appforge_terminal_integration.test.js"
+      "build-service/tests/appforge_terminal_ime_stability_contract.test.js"
     ],
     "commands": [
       "cd build-service && npm test",
-      "Android CI / Gradle compile verification"
+      "Android CI / Gradle compile verification",
+      "Validate affected GitHub Actions workflow"
     ],
     "last_execution": {
       "status": "NOT_RUN"
@@ -4273,7 +4271,7 @@
     }
   },
   "integrations": {
-    "generated_at": "2026-09-14T12:19:41+03:00",
+    "generated_at": "2026-09-15T18:27:59+03:00",
     "detected_services": [
       "AWS/S3",
       "Email",
@@ -4438,7 +4436,8 @@
         ".appforge/reports/20260914-112416-pipeline.md",
         ".appforge/reports/20260914-120029-pipeline.json",
         ".appforge/reports/20260914-120029-pipeline.md",
-        ".appforge/state/latest.json",
+        ".appforge/reports/20260914-124442-pipeline.json",
+        ".appforge/reports/20260914-124442-pipeline.md",
         ".github/workflows/android-debug.yml",
         ".github/workflows/android-play-release.yml",
         ".github/workflows/cleanup-old-runs.yml",
@@ -4503,12 +4502,12 @@
         "build-service/server.js",
         "build-service/sql/005_workspace_build_control.sql",
         "build-service/src/autoscaleDispatch.js",
-        "build-service/src/config.js",
-        "build-service/src/jobQueue.js"
+        "build-service/src/config.js"
       ],
       "Google APIs": [
         ".github/workflows/android-debug.yml",
         ".github/workflows/android-play-release.yml",
+        "AGENTS.md",
         "README.md",
         "android-app/app/build.gradle.kts",
         "android-app/app/src/main/AndroidManifest.xml",
@@ -4575,6 +4574,7 @@
         "build-service/tests/admin_granted_pro_status_contract.test.js",
         "build-service/tests/android_gradle_source_engine.test.js",
         "build-service/tests/android_local_problem_explainer.test.js",
+        "build-service/tests/appforge_autopilot_full_fail_stop_contract.test.js",
         "build-service/tests/firebase_cloud_messaging.test.js",
         "build-service/tests/monetization_navigation_regression.test.js",
         "build-service/tests/pro_feature_surface_gate_contract.test.js",
@@ -4584,9 +4584,7 @@
         "build-service/tests/v2_4_pro_plans.test.js",
         "build-service/tests/v3_0_local_ai.test.js",
         "build-service/tests/validators.test.js",
-        "docs/COMMERCE_BRIDGE.md",
-        "docs/FIREBASE_AUTOWIRING.md",
-        "docs/PLAY_PUBLISH_ASSISTANT.md"
+        "docs/COMMERCE_BRIDGE.md"
       ],
       "JWT": [
         "build-service/docker-compose.yml",
@@ -4758,7 +4756,7 @@
     }
   },
   "complexity": {
-    "generated_at": "2026-09-14T12:19:41+03:00",
+    "generated_at": "2026-09-15T18:27:59+03:00",
     "largest": [
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
@@ -4862,7 +4860,7 @@
       },
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
-        "lines": 1488,
+        "lines": 1492,
         "symbols": 4
       },
       {
@@ -5382,6 +5380,7 @@
       "build-service/tests/appforge_agent_scale_v10.test.js",
       "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
       "build-service/tests/appforge_autopilot_cli_contract.test.js",
+      "build-service/tests/appforge_autopilot_full_fail_stop_contract.test.js",
       "build-service/tests/appforge_autopilot_policy_contract.test.js",
       "build-service/tests/appforge_autopilot_resume_contract.test.js",
       "build-service/tests/appforge_autopilot_timing_contract.test.js",
@@ -5463,6 +5462,7 @@
       "build-service/tests/appforge_terminal_verified_rootfs_contract.test.js",
       "build-service/tests/appforge_terminal_viewport_stability_contract.test.js",
       "build-service/tests/appforge_unified_agent_blueprint_control_char_contract.test.js",
+      "build-service/tests/appforge_unified_agent_blueprint_platform_fallback_contract.test.js",
       "build-service/tests/appforge_unified_agent_blueprint_token_budget_contract.test.js",
       "build-service/tests/appforge_unified_agent_device_test_bugfix_contract.test.js",
       "build-service/tests/appforge_unified_agent_v11_e2e_contract.test.js",
@@ -6014,15 +6014,17 @@
     ]
   },
   "git": {
-    "generated_at": "2026-09-14T12:19:41+03:00",
-    "branch": "fix/v15-blueprint-control-characters",
-    "head": "65d8879",
+    "generated_at": "2026-09-15T18:27:59+03:00",
+    "branch": "fix/v15-blueprint-platform-fallback",
+    "head": "1b695ae",
     "ahead": 0,
     "behind": 0,
     "staged": [
-      "secondbrain/memory/API_CONTRACTS.json"
+      "appforge/policy.json"
     ],
     "unstaged": [
+      ".github/workflows/android-play-release.yml",
+      ".secondbrain/memory/API_CONTRACTS.json",
       ".secondbrain/memory/API_CONTRACTS.md",
       ".secondbrain/memory/ARCHITECTURE.md",
       ".secondbrain/memory/BACKEND_API.md",
@@ -6047,60 +6049,67 @@
       ".secondbrain/memory/RELEASE_READINESS.md",
       ".secondbrain/memory/SECURITY.md",
       ".secondbrain/memory/STATE.json",
+      ".secondbrain/memory/SUBSYSTEMS.json",
       ".secondbrain/memory/TASK_STATE.json",
       ".secondbrain/memory/TESTS.md",
       ".secondbrain/memory/TEST_INTELLIGENCE.json",
       ".secondbrain/memory/WORKER_TOPOLOGY.json",
+      "AGENTS.md",
       "android-app/app/src/main/assets/second_brain_snapshot.json",
-      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintJson.kt",
-      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintPrompt.kt",
-      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt"
+      "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintJsonTest.kt",
+      "build-service/tests/appforge_autopilot_cli_contract.test.js",
+      "scripts/appforge"
     ],
     "untracked": [
-      ".secondbrain/checkpoints/20260914-121807-start-v15-blueprint-control-characters.json",
-      ".secondbrain/checkpoints/20260914-121818-all-Unified-Agent-Blueprint-raw-JSON-string-control-characters-safe-escaping-strict-parser-device-test.json",
-      "build-service/tests/appforge_unified_agent_blueprint_control_char_contract.test.js"
+      ".appforge/runtime-blockers.json",
+      ".secondbrain/checkpoints/20260914-203824-start-full-autopilot-fail-stop.json",
+      ".secondbrain/checkpoints/20260914-203833-all-BUG6-fixture-fix-full-autopilot-fail-stop-CI-diagnosis-runtime-blocker-real-Play-publishing.json",
+      ".secondbrain/checkpoints/20260915-182756-all-full-analysis.json",
+      "build-service/tests/appforge_autopilot_full_fail_stop_contract.test.js"
     ],
     "forbidden_staged": [],
     "recent_commits": [
+      "1b695ae Fix Unified Agent blueprint platform fallback",
+      "eca4b3d Merge pull request #26 from HACKMASTER-TR/fix/v15-blueprint-control-characters",
+      "35740f5 Fix blueprint escape prompt contract",
+      "03fc35b Fix Unified Agent blueprint control characters",
       "65d8879 Merge pull request #25 from HACKMASTER-TR/fix/v15-blueprint-token-budget",
       "71dc5ca Update blueprint compact prompt contracts",
       "d46ec55 Fix Unified Agent blueprint token budget",
       "5e1a5b4 Merge pull request #24 from HACKMASTER-TR/fix/v15-device-test-bugs",
       "6927fe6 Fix V15 real device test issues",
-      "42aa8e9 Merge pull request #23 from HACKMASTER-TR/feat/unified-agent-v13-v15-final",
-      "09d3782 Complete Unified Agent V13-V15 final",
-      "e5028e3 Merge pull request #22 from HACKMASTER-TR/feat/unified-agent-v12-persistent-sessions",
-      "d2b81bb Fix V12 JVM JSON test runtime",
-      "d2e57bc Fix V12 Android regression"
+      "42aa8e9 Merge pull request #23 from HACKMASTER-TR/feat/unified-agent-v13-v15-final"
     ]
   },
   "security": {
-    "generated_at": "2026-09-14T12:19:41+03:00",
+    "generated_at": "2026-09-15T18:27:59+03:00",
     "scope": "changed",
     "health": "GREEN",
     "findings": []
   },
   "risk": {
-    "generated_at": "2026-09-14T12:19:42+03:00",
-    "score": 11,
+    "generated_at": "2026-09-15T18:27:59+03:00",
+    "score": 29,
     "decision": "ACCEPT",
-    "changed_files": 4,
-    "added_lines": 113,
-    "deleted_lines": 2,
+    "changed_files": 5,
+    "added_lines": 19,
+    "deleted_lines": 4,
     "domains": [
       "android",
-      "build-service"
+      "build-service",
+      "ci"
     ],
     "reasons": [
       "android subsystem affected",
-      "build-service subsystem affected"
+      "build-service subsystem affected",
+      "ci subsystem affected",
+      "multiple source files changed"
     ],
-    "dependency_edges_impacted": 2,
+    "dependency_edges_impacted": 0,
     "security": "GREEN"
   },
   "live": {
-    "generated_at": "2026-09-14T12:19:42+03:00",
+    "generated_at": "2026-09-15T18:28:00+03:00",
     "github": {
       "status": "NOT_CHECKED"
     },
@@ -6112,14 +6121,14 @@
     }
   },
   "performance": {
-    "generated_at": "2026-09-14T12:19:42+03:00",
+    "generated_at": "2026-09-15T18:28:00+03:00",
     "metrics": {
       "brain_all": {
-        "samples": 40,
-        "p50_ms": 3805.38,
-        "p95_ms": 14547.38,
-        "latest_ms": 2748.5,
-        "regression_vs_prior_p50_pct": -28.52
+        "samples": 50,
+        "p50_ms": 3829.14,
+        "p95_ms": 13816.16,
+        "latest_ms": 3250.32,
+        "regression_vs_prior_p50_pct": -15.48
       },
       "app_build": {
         "samples": 0,
@@ -6148,6 +6157,6 @@
       "Live health not checked"
     ]
   },
-  "architecture_drift": true,
-  "brain_all_ms": 2748.5
+  "architecture_drift": false,
+  "brain_all_ms": 3250.32
 }

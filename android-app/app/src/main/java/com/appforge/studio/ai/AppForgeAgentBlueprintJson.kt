@@ -12,7 +12,10 @@ internal object AppForgeAgentBlueprintJson {
     private const val MAX_ARRAY_ITEMS = 256
     private const val MAX_OBJECT_FIELDS = 96
 
-    fun parse(raw: String): AppForgeAgentBlueprint {
+    fun parse(
+        raw: String,
+        fallbackPlatform: AppForgeAgentPlatform? = null
+    ): AppForgeAgentBlueprint {
         val extracted = extractStructuredPayload(raw)
 
         if (extracted.length > MAX_JSON_CHARS) {
@@ -45,9 +48,14 @@ internal object AppForgeAgentBlueprintJson {
             fail("Desteklenmeyen blueprint schemaVersion: $schemaVersion.")
         }
 
-        val platform = parsePlatform(
-            root.requiredString("platform", "root.platform")
-        )
+        val platform =
+            root.optionalString(
+                "platform",
+                "root.platform"
+            )
+                ?.let(::parsePlatform)
+                ?: fallbackPlatform
+                ?: fail("root.platform zorunlu.")
 
         val tokens = root.optionalObject("tokens", "root.tokens")
             ?.let(::parseTokens)

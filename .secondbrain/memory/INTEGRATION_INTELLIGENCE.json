@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T12:19:41+03:00",
+  "generated_at": "2026-09-15T18:27:59+03:00",
   "detected_services": [
     "AWS/S3",
     "Email",
@@ -164,7 +164,8 @@
       ".appforge/reports/20260914-112416-pipeline.md",
       ".appforge/reports/20260914-120029-pipeline.json",
       ".appforge/reports/20260914-120029-pipeline.md",
-      ".appforge/state/latest.json",
+      ".appforge/reports/20260914-124442-pipeline.json",
+      ".appforge/reports/20260914-124442-pipeline.md",
       ".github/workflows/android-debug.yml",
       ".github/workflows/android-play-release.yml",
       ".github/workflows/cleanup-old-runs.yml",
@@ -229,12 +230,12 @@
       "build-service/server.js",
       "build-service/sql/005_workspace_build_control.sql",
       "build-service/src/autoscaleDispatch.js",
-      "build-service/src/config.js",
-      "build-service/src/jobQueue.js"
+      "build-service/src/config.js"
     ],
     "Google APIs": [
       ".github/workflows/android-debug.yml",
       ".github/workflows/android-play-release.yml",
+      "AGENTS.md",
       "README.md",
       "android-app/app/build.gradle.kts",
       "android-app/app/src/main/AndroidManifest.xml",
@@ -301,6 +302,7 @@
       "build-service/tests/admin_granted_pro_status_contract.test.js",
       "build-service/tests/android_gradle_source_engine.test.js",
       "build-service/tests/android_local_problem_explainer.test.js",
+      "build-service/tests/appforge_autopilot_full_fail_stop_contract.test.js",
       "build-service/tests/firebase_cloud_messaging.test.js",
       "build-service/tests/monetization_navigation_regression.test.js",
       "build-service/tests/pro_feature_surface_gate_contract.test.js",
@@ -310,9 +312,7 @@
       "build-service/tests/v2_4_pro_plans.test.js",
       "build-service/tests/v3_0_local_ai.test.js",
       "build-service/tests/validators.test.js",
-      "docs/COMMERCE_BRIDGE.md",
-      "docs/FIREBASE_AUTOWIRING.md",
-      "docs/PLAY_PUBLISH_ASSISTANT.md"
+      "docs/COMMERCE_BRIDGE.md"
     ],
     "JWT": [
       "build-service/docker-compose.yml",

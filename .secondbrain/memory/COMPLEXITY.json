@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T12:19:41+03:00",
+  "generated_at": "2026-09-15T18:27:59+03:00",
   "largest": [
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
@@ -103,7 +103,7 @@
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt",
-      "lines": 1488,
+      "lines": 1492,
       "symbols": 4
     },
     {

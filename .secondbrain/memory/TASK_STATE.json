@@ -1,8 +1,8 @@
 {
-  "label": "v15-blueprint-control-characters",
-  "started_at": "2026-09-14T12:18:07+03:00",
-  "start_checkpoint": ".secondbrain/checkpoints/20260914-121807-start-v15-blueprint-control-characters.json",
+  "label": "full-autopilot-fail-stop",
+  "started_at": "2026-09-14T20:38:24+03:00",
+  "start_checkpoint": ".secondbrain/checkpoints/20260914-203824-start-full-autopilot-fail-stop.json",
   "status": "DONE",
-  "finished_at": "2026-09-14T12:19:42+03:00",
-  "end_checkpoint": ".secondbrain/checkpoints/20260914-121942-finish-v15-blueprint-control-characters.json"
+  "finished_at": "2026-09-15T18:28:00+03:00",
+  "end_checkpoint": ".secondbrain/checkpoints/20260915-182800-finish-full-autopilot-fail-stop.json"
 }
