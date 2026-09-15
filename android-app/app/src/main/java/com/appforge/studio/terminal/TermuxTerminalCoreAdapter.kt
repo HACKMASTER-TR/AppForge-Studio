@@ -27,6 +27,7 @@ private const val DEFAULT_TERMUX_TERMINAL_TEXT_SIZE_SP = 14f
 internal data class TermuxTerminalLaunchSpec(
     val executable: String,
     val workingDirectory: String,
+    // Full execvp argv. Element 0 is argv[0], not the first shell option.
     val arguments: List<String>,
     val environment: List<String>,
     val transcriptRows: Int = 5_000,
@@ -575,6 +576,7 @@ internal fun TermuxTerminalMirrorHost(
                     "/",
                 arguments =
                     listOf(
+                        "/system/bin/sh",
                         "-c",
                         "stty raw -echo 2>/dev/null; exec /system/bin/cat",
                     ),

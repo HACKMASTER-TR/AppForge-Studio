@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-15T19:00:10+03:00",
+  "generated_at": "2026-09-15T19:19:40+03:00",
   "version": "3.0.0",
   "manifest": {
-    "files": 774,
+    "files": 777,
     "changed_since_cache": [
       "android-app/app/src/main/assets/second_brain_snapshot.json"
     ],
@@ -10,8 +10,8 @@
     "incremental": true
   },
   "dependency": {
-    "generated_at": "2026-09-15T19:00:08+03:00",
-    "node_count": 774,
+    "generated_at": "2026-09-15T19:19:38+03:00",
+    "node_count": 777,
     "edge_count": 127,
     "edges": [
       {
@@ -911,19 +911,19 @@
       ],
       [
         "assert",
-        245
+        246
       ],
       [
         "node:assert",
-        245
+        246
       ],
       [
         "node:test",
-        241
+        242
       ],
       [
         "test",
-        241
+        242
       ],
       [
         "kotlinx",
@@ -931,7 +931,7 @@
       ],
       [
         "node:fs",
-        173
+        174
       ],
       [
         "com",
@@ -1144,7 +1144,7 @@
     ]
   },
   "api": {
-    "generated_at": "2026-09-15T19:00:08+03:00",
+    "generated_at": "2026-09-15T19:19:38+03:00",
     "count": 83,
     "routes": [
       {
@@ -3117,7 +3117,7 @@
     ]
   },
   "database": {
-    "generated_at": "2026-09-15T19:00:08+03:00",
+    "generated_at": "2026-09-15T19:19:38+03:00",
     "migration_count": 25,
     "table_count": 34,
     "tables": [
@@ -3706,7 +3706,7 @@
     }
   },
   "workers": {
-    "generated_at": "2026-09-15T19:00:08+03:00",
+    "generated_at": "2026-09-15T19:19:38+03:00",
     "runtime_scripts": [
       {
         "name": "start",
@@ -3796,7 +3796,7 @@
     ]
   },
   "tests": {
-    "generated_at": "2026-09-15T19:00:09+03:00",
+    "generated_at": "2026-09-15T19:19:39+03:00",
     "discovered": 300,
     "domains": [
       "android",
@@ -3804,8 +3804,7 @@
       "terminal"
     ],
     "selected_tests": [
-      "build-service/tests/appforge_terminal_renderer_init_contract.test.js",
-      "build-service/tests/appforge_autopilot_full_fail_stop_contract.test.js",
+      "build-service/tests/appforge_terminal_mirror_argv0_contract.test.js",
       "build-service/tests/appforge_terminal_viewport_stability_contract.test.js",
       "build-service/tests/appforge_terminal_verified_rootfs_contract.test.js",
       "build-service/tests/appforge_terminal_ultimate_editor_contract.test.js",
@@ -3855,6 +3854,7 @@
       "build-service/tests/appforge_terminal_stage10c_local_terminal_input_contract.test.js",
       "build-service/tests/appforge_terminal_shortcut_viewport_suppression_contract.test.js",
       "build-service/tests/appforge_terminal_security_restore_contract.test.js",
+      "build-service/tests/appforge_terminal_renderer_init_contract.test.js",
       "build-service/tests/appforge_terminal_pty_reader_lifecycle_contract.test.js",
       "build-service/tests/appforge_terminal_pty_lifecycle_contract.test.js",
       "build-service/tests/appforge_terminal_proroot_workspace_contract.test.js",
@@ -3877,13 +3877,13 @@
       "build-service/tests/appforge_terminal_apk_origin_fallback_contract.test.js",
       "build-service/tests/appforge_terminal_advanced_git_contract.test.js",
       "build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js",
-      "build-service/tests/android_queue_ui_regression.test.js",
-      "build-service/tests/unity_android_build_engine.test.js",
-      "build-service/tests/termux_terminal_vendor_contract.test.js",
-      "build-service/tests/termux_terminal_agp9_contract.test.js",
-      "build-service/tests/termux_terminal_adapter_contract.test.js",
-      "build-service/tests/termux_terminal_activation_v1_contract.test.js",
-      "build-service/tests/terminal_downloads_integration.test.js"
+      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspacePaginationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/WorkspaceDirectoryIndexCacheTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectPipelineTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateProjectAutomationTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateLspProtocolTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateCodeEditorCoreTest.kt",
+      "android-app/app/src/test/java/com/appforge/studio/terminal/UltimateAgentModeTest.kt"
     ],
     "critical_regression_tests": [
       "android-app/app/src/main/assets/terminal/appforge-test",
@@ -4270,7 +4270,7 @@
     }
   },
   "integrations": {
-    "generated_at": "2026-09-15T19:00:09+03:00",
+    "generated_at": "2026-09-15T19:19:39+03:00",
     "detected_services": [
       "AWS/S3",
       "Email",
@@ -4755,7 +4755,7 @@
     }
   },
   "complexity": {
-    "generated_at": "2026-09-15T19:00:09+03:00",
+    "generated_at": "2026-09-15T19:19:39+03:00",
     "largest": [
       {
         "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
@@ -5401,6 +5401,7 @@
       "build-service/tests/appforge_terminal_linux_pty_contract.test.js",
       "build-service/tests/appforge_terminal_linux_runtime_contract.test.js",
       "build-service/tests/appforge_terminal_lsp_contract.test.js",
+      "build-service/tests/appforge_terminal_mirror_argv0_contract.test.js",
       "build-service/tests/appforge_terminal_native_pty_cleanup_contract.test.js",
       "build-service/tests/appforge_terminal_owner_apk_bridge_contract.test.js",
       "build-service/tests/appforge_terminal_packaged_linux_engine_contract.test.js",
@@ -5891,6 +5892,7 @@
       "build-service/tests/appforge_terminal_linux_pty_contract.test.js",
       "build-service/tests/appforge_terminal_linux_runtime_contract.test.js",
       "build-service/tests/appforge_terminal_lsp_contract.test.js",
+      "build-service/tests/appforge_terminal_mirror_argv0_contract.test.js",
       "build-service/tests/appforge_terminal_native_pty_cleanup_contract.test.js",
       "build-service/tests/appforge_terminal_owner_apk_bridge_contract.test.js",
       "build-service/tests/appforge_terminal_packaged_linux_engine_contract.test.js",
@@ -6015,9 +6017,9 @@
     ]
   },
   "git": {
-    "generated_at": "2026-09-15T19:00:09+03:00",
-    "branch": "fix/bug7-terminal-renderer-init",
-    "head": "56342de",
+    "generated_at": "2026-09-15T19:19:39+03:00",
+    "branch": "fix/bug7-terminal-mirror-argv0",
+    "head": "adbde9e",
     "ahead": 0,
     "behind": 0,
     "staged": [
@@ -6055,17 +6057,18 @@
       ".secondbrain/memory/TEST_INTELLIGENCE.json",
       ".secondbrain/memory/WORKER_TOPOLOGY.json",
       "android-app/app/src/main/assets/second_brain_snapshot.json",
-      "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt",
-      "build-service/tests/appforge_autopilot_full_fail_stop_contract.test.js"
+      "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt"
     ],
     "untracked": [
-      ".secondbrain/checkpoints/20260915-185104-start-bug7-terminal-renderer-init.json",
-      ".secondbrain/checkpoints/20260915-185541-all-BUG7-renderer-init.json",
-      ".secondbrain/checkpoints/20260915-190006-all-full-analysis.json",
-      "build-service/tests/appforge_terminal_renderer_init_contract.test.js"
+      ".secondbrain/checkpoints/20260915-191822-start-bug7-mirror-argv0.json",
+      ".secondbrain/checkpoints/20260915-191829-all-BUG7-mirror-argv0.json",
+      ".secondbrain/checkpoints/20260915-191936-all-full-analysis.json",
+      "build-service/tests/appforge_terminal_mirror_argv0_contract.test.js"
     ],
     "forbidden_staged": [],
     "recent_commits": [
+      "adbde9e Merge pull request #28 from HACKMASTER-TR/fix/bug7-terminal-renderer-init",
+      "3a0b300 Fix BUG-7 Termux renderer initialization",
       "56342de Merge pull request #27 from HACKMASTER-TR/fix/v15-blueprint-platform-fallback",
       "7ee1993 Add full autopilot fail-stop delivery",
       "1b695ae Fix Unified Agent blueprint platform fallback",
@@ -6073,24 +6076,22 @@
       "35740f5 Fix blueprint escape prompt contract",
       "03fc35b Fix Unified Agent blueprint control characters",
       "65d8879 Merge pull request #25 from HACKMASTER-TR/fix/v15-blueprint-token-budget",
-      "71dc5ca Update blueprint compact prompt contracts",
-      "d46ec55 Fix Unified Agent blueprint token budget",
-      "5e1a5b4 Merge pull request #24 from HACKMASTER-TR/fix/v15-device-test-bugs"
+      "71dc5ca Update blueprint compact prompt contracts"
     ]
   },
   "security": {
-    "generated_at": "2026-09-15T19:00:09+03:00",
+    "generated_at": "2026-09-15T19:19:39+03:00",
     "scope": "changed",
     "health": "GREEN",
     "findings": []
   },
   "risk": {
-    "generated_at": "2026-09-15T19:00:10+03:00",
+    "generated_at": "2026-09-15T19:19:40+03:00",
     "score": 23,
     "decision": "ACCEPT",
-    "changed_files": 4,
-    "added_lines": 19,
-    "deleted_lines": 1,
+    "changed_files": 3,
+    "added_lines": 2,
+    "deleted_lines": 0,
     "domains": [
       "android",
       "build-service",
@@ -6105,7 +6106,7 @@
     "security": "GREEN"
   },
   "live": {
-    "generated_at": "2026-09-15T19:00:10+03:00",
+    "generated_at": "2026-09-15T19:19:40+03:00",
     "github": {
       "status": "NOT_CHECKED"
     },
@@ -6117,14 +6118,14 @@
     }
   },
   "performance": {
-    "generated_at": "2026-09-15T19:00:10+03:00",
+    "generated_at": "2026-09-15T19:19:40+03:00",
     "metrics": {
       "brain_all": {
-        "samples": 58,
-        "p50_ms": 3895.0,
-        "p95_ms": 13305.48,
-        "latest_ms": 4527.79,
-        "regression_vs_prior_p50_pct": 17.75
+        "samples": 64,
+        "p50_ms": 3829.14,
+        "p95_ms": 12878.48,
+        "latest_ms": 3456.73,
+        "regression_vs_prior_p50_pct": -10.11
       },
       "app_build": {
         "samples": 0,
@@ -6154,5 +6155,5 @@
     ]
   },
   "architecture_drift": false,
-  "brain_all_ms": 4527.79
+  "brain_all_ms": 3456.73
 }

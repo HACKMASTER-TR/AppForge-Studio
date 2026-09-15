@@ -1,6 +1,6 @@
 # Test Map
 
-Generated: 2026-09-15T19:00:08+03:00
+Generated: 2026-09-15T19:19:38+03:00
 
 ## Recommended for current change
 
@@ -120,6 +120,7 @@ Generated: 2026-09-15T19:00:08+03:00
 - `build-service/tests/appforge_terminal_linux_pty_contract.test.js`
 - `build-service/tests/appforge_terminal_linux_runtime_contract.test.js`
 - `build-service/tests/appforge_terminal_lsp_contract.test.js`
+- `build-service/tests/appforge_terminal_mirror_argv0_contract.test.js`
 - `build-service/tests/appforge_terminal_native_pty_cleanup_contract.test.js`
 - `build-service/tests/appforge_terminal_owner_apk_bridge_contract.test.js`
 - `build-service/tests/appforge_terminal_packaged_linux_engine_contract.test.js`
@@ -308,4 +309,3 @@ Generated: 2026-09-15T19:00:08+03:00
 - `build-service/tests/unity_worker_contract.test.js`
 - `build-service/tests/unknown_web_fallback.test.js`
 - `build-service/tests/user_project_limit_contract.test.js`
-- `build-service/tests/v2_1_template_browser.test.js`

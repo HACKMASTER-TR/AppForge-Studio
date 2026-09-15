@@ -1,7 +1,7 @@
 {
   "version": "3.0.0",
-  "head": "56342de",
-  "branch": "fix/bug7-terminal-renderer-init",
+  "head": "adbde9e",
+  "branch": "fix/bug7-terminal-mirror-argv0",
   "risk": "ACCEPT",
   "riskScore": 23,
   "security": "GREEN",
