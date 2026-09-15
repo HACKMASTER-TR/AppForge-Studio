@@ -392,7 +392,15 @@ def classify(files):
             groups.add("conversion")
         if f.startswith("android-app/app/src/main/java/com/appforge/studio/terminal/"):
             groups.add("terminal")
-        if f.startswith(".secondbrain/") or f.startswith("SECOND_BRAIN"):
+        if (
+            f == "AGENTS.md"
+            or f.startswith("docs/wiki/")
+            or f in {
+                "scripts/wiki-audit.mjs",
+                "scripts/wiki-secret-scan.py",
+                "scripts/wiki-prune-report.py",
+            }
+        ):
             groups.add("secondbrain")
     return sorted(groups)
 
@@ -617,14 +625,10 @@ def local_gate():
 
     android_unit_test_gate()
 
-    print("\n=== SECOND BRAIN SELFTEST ===")
-    run(["./scripts/brain", "selftest"])
-
-    print("\n=== SECOND BRAIN DOCTOR ===")
-    doctor = run(["./scripts/brain", "doctor"], capture=True)
-    sys.stdout.write(doctor.stdout or "")
-    if '"status": "PASS"' not in (doctor.stdout or ""):
-        raise SystemExit(11)
+    print("\n=== SECOND BRAIN WIKI AUDIT ===")
+    run(["node", "scripts/wiki-audit.mjs"])
+    run(["python", "scripts/wiki-secret-scan.py"])
+    run(["python", "scripts/wiki-prune-report.py"])
 
     print("\n=== HARD STABILITY GATE ===")
     run(["./scripts/appforge-stability-gate", "local"])
@@ -1753,8 +1757,16 @@ def is_fast_lane_file(path):
         return True
 
     if path.startswith(
-        ".secondbrain/"
+        "docs/wiki/"
     ):
+        return True
+
+    if path in {
+        "AGENTS.md",
+        "scripts/wiki-audit.mjs",
+        "scripts/wiki-secret-scan.py",
+        "scripts/wiki-prune-report.py",
+    }:
         return True
 
     if path.startswith(

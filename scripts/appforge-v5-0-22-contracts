@@ -23,7 +23,9 @@ try:
     backend = text("build-service/src/clientHardening.js")
     bootstrap = text("build-service/bootstrap.js")
     pkg = json.loads(text("build-service/package.json"))
-    policy = json.loads(text(".secondbrain/APP_UPDATE_PLAY_SECURITY_POLICY.json"))
+    wiki_index = text("docs/wiki/Index.md")
+    wiki_hot_context = text("docs/wiki/Hot_Context.md")
+    agent_rules = text("AGENTS.md")
 except Exception as exc:
     print(f"FAIL  contract inputs: {exc}")
     sys.exit(1)
@@ -51,7 +53,7 @@ check("Integrity real version check", 'versionCode' in backend and 'version_too_
 check("Play token account ownership", 'appforge_play_purchase_owners' in backend and 'PLAY_PURCHASE_OWNER_MISMATCH' in backend)
 check("RTDN endpoint", '/api/play/rtdn' in backend and 'subscriptionNotification' in backend)
 check("Server starts through hardening bootstrap", pkg.get('scripts',{}).get('start') == 'node --import ./instrument.mjs bootstrap.js' and 'server.js' in bootstrap)
-check("SecondBrain permanent policy", policy.get('policy') == 'APPFORGE_5_0_22_UPDATE_PLAY_SECURITY' and policy.get('principles',{}).get('admin_is_not_pro') is True)
+check("Second Brain wiki entrypoints", 'Project Wiki Index' in wiki_index and 'Hot Context' in wiki_hot_context and '/docs/wiki' in agent_rules)
 
 failed = [c for c in checks if not c[1]]
 for name, ok, detail in checks:

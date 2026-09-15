@@ -17,10 +17,12 @@ if ! mkdir -p "$APPFORGE_TMPDIR"; then
 fi
 
 DIFF_LOG="$APPFORGE_TMPDIR/diff-check-$$.log"
-BRAIN_LOG="$APPFORGE_TMPDIR/brain-selftest-$$.log"
+WIKI_AUDIT_LOG="$APPFORGE_TMPDIR/wiki-audit-$$.log"
+WIKI_SECRET_LOG="$APPFORGE_TMPDIR/wiki-secret-$$.log"
+WIKI_PRUNE_LOG="$APPFORGE_TMPDIR/wiki-prune-$$.log"
 
 cleanup_tmp() {
-    rm -f "$DIFF_LOG" "$BRAIN_LOG"
+    rm -f "$DIFF_LOG" "$WIKI_AUDIT_LOG" "$WIKI_SECRET_LOG" "$WIKI_PRUNE_LOG"
 }
 
 trap cleanup_tmp EXIT HUP INT TERM
@@ -46,28 +48,34 @@ echo "Branch: $BRANCH"
 echo "HEAD:   $HEAD"
 echo
 
-if [ -f .secondbrain/STABILITY_POLICY.md ]; then
-    pass "Stability policy exists"
+if [ -f AGENTS.md ] && [ -f docs/wiki/Index.md ] && [ -f docs/wiki/Hot_Context.md ]; then
+    pass "Second Brain wiki core exists"
 else
-    fail "Stability policy missing"
+    fail "Second Brain wiki core missing"
 fi
 
-if python3 - <<'PY'
-import json
-from pathlib import Path
-
-p = Path(".secondbrain/REGRESSION_RULES.json")
-d = json.loads(p.read_text(encoding="utf-8"))
-
-assert d.get("version", 0) >= 2
-assert d.get("hard_gate") is True
-assert d.get("fail_on_regression") is True
-assert len(d.get("protected_features", [])) >= 20
-PY
+if node scripts/wiki-audit.mjs >"$WIKI_AUDIT_LOG" 2>&1
 then
-    pass "Regression rules V2 valid"
+    pass "Second Brain wiki audit"
 else
-    fail "Regression rules invalid"
+    cat "$WIKI_AUDIT_LOG"
+    fail "Second Brain wiki audit"
+fi
+
+if python3 scripts/wiki-secret-scan.py >"$WIKI_SECRET_LOG" 2>&1
+then
+    pass "Second Brain wiki secret scan"
+else
+    cat "$WIKI_SECRET_LOG"
+    fail "Second Brain wiki secret scan"
+fi
+
+if python3 scripts/wiki-prune-report.py >"$WIKI_PRUNE_LOG" 2>&1
+then
+    pass "Second Brain wiki prune report"
+else
+    cat "$WIKI_PRUNE_LOG"
+    fail "Second Brain wiki prune report"
 fi
 
 if git diff --check >"$DIFF_LOG" 2>&1; then
@@ -98,30 +106,18 @@ else
     pass "Branch policy"
 fi
 
-if python3 -m py_compile \
-    .secondbrain/engine/brain.py \
-    .secondbrain/engine/brain_v3.py \
-    .secondbrain/engine/deep_map.py
+if node --check scripts/wiki-audit.mjs
 then
-    pass "Second Brain Python syntax"
+    pass "Second Brain wiki audit syntax"
 else
-    fail "Second Brain Python syntax"
+    fail "Second Brain wiki audit syntax"
 fi
 
-if ./scripts/brain selftest >"$BRAIN_LOG" 2>&1; then
-    pass "Second Brain selftest"
+if python3 -m py_compile scripts/wiki-secret-scan.py scripts/wiki-prune-report.py
+then
+    pass "Second Brain wiki Python syntax"
 else
-    cat "$BRAIN_LOG"
-    fail "Second Brain selftest"
-fi
-
-DOCTOR="$(./scripts/brain doctor 2>&1 || true)"
-
-if printf '%s\n' "$DOCTOR" | grep -q '"status": "PASS"'; then
-    pass "Second Brain doctor"
-else
-    printf '%s\n' "$DOCTOR"
-    fail "Second Brain doctor"
+    fail "Second Brain wiki Python syntax"
 fi
 
 echo

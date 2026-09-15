@@ -21,6 +21,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -28,7 +33,6 @@ jobs:
 
       - name: Make scripts executable
         run: |
-          chmod +x scripts/brain
           chmod +x scripts/appforge-stability-gate
           chmod +x .githooks/pre-push
 
