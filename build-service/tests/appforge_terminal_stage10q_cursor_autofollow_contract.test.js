@@ -64,7 +64,7 @@ test("Stage 10Q keeps IME reserve inside lazy-list content padding", async () =>
   );
 });
 
-test("Stage 10Q preserves stable IME accessory architecture", async () => {
+test("Stage 10Q preserves stable keyboard accessory behavior without double IME offset", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -81,7 +81,7 @@ test("Stage 10Q preserves stable IME accessory architecture", async () => {
     /imeBottomPx/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     source,
     /\.offset\s*\{\s*IntOffset\([\s\S]*?y\s*=\s*-imeInsets\.getBottom\(this\)/
   );

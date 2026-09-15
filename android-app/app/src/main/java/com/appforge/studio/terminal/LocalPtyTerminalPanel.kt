@@ -462,15 +462,21 @@ internal object LocalPtySessionRegistry {
                 rows = record.rows,
                 columns = record.columns,
                 onOutput = { chunk ->
+                    val safeChunk =
+                        TerminalSecretMasker.redact(
+                            chunk
+                        )
+
+                    var shouldMirrorOutput =
+                        false
+
                     synchronized(lock) {
                         val current =
                             records[id]
                                 ?: return@synchronized
 
                         current.buffer.feed(
-                            TerminalSecretMasker.redact(
-                                chunk
-                            )
+                            safeChunk
                         )
                         current.outputRevision += 1L
 
@@ -511,6 +517,19 @@ internal object LocalPtySessionRegistry {
                         scheduleOutputPublishLocked(
                             id
                         )
+
+                        shouldMirrorOutput =
+                            true
+                    }
+
+                    if (shouldMirrorOutput) {
+                        TermuxTerminalMirrorRegistry
+                            .publish(
+                                sessionId =
+                                    id,
+                                text =
+                                    safeChunk
+                            )
                     }
                 },
                 onExit = { exitCode ->
@@ -2158,36 +2177,13 @@ internal fun LocalPtyTerminalPanel(
         }
 
     /*
-     * Keep the terminal viewport measured independently from the IME.
-     * Only the extra-key accessory bar follows the keyboard.
+     * The Activity/Compose host already resizes the usable content when the
+     * keyboard opens on the real device. Do not apply the IME height again
+     * as a terminal translation/reserve: doing so double-shifts the viewport
+     * and can push the accessory/input row outside the visible screen.
      */
-    val imeInsets =
-        WindowInsets.ime
-
-    val accessoryDensity =
-        LocalDensity.current
-
-    /*
-     * The terminal viewport deliberately stays full-size while Android's
-     * keyboard overlays its lower portion. The shortcut row is translated
-     * upward by this exact IME distance, so the scroll content must reserve
-     * the same occluded distance.
-     *
-     * This does NOT participate in PTY viewport measurement/resizing.
-     */
-    val imeOcclusionPx =
-        imeInsets.getBottom(
-            accessoryDensity
-        )
-
     val accessoryReservePx =
-        if (
-            active?.running == true
-        ) {
-            imeOcclusionPx
-        } else {
-            0
-        }
+        0
 
     Column(
         modifier =
@@ -2427,12 +2423,11 @@ internal fun LocalPtyTerminalPanel(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .offset {
-                                IntOffset(
-                                    x = 0,
-                                    y = -imeInsets.getBottom(this)
-                                )
-                            }
+                            /*
+                             * Do not translate by WindowInsets.ime here.
+                             * The resized parent already owns keyboard-safe
+                             * positioning on the real device.
+                             */
                             .horizontalScroll(
                                 rememberScrollState()
                             ),

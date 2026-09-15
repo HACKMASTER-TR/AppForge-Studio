@@ -1,9 +1,9 @@
 {
   "version": "3.0.0",
-  "head": "adbde9e",
-  "branch": "fix/bug7-terminal-mirror-argv0",
+  "head": "c4d3b1c",
+  "branch": "fix/bug7c-terminal-input-ime",
   "risk": "ACCEPT",
-  "riskScore": 23,
+  "riskScore": 31,
   "security": "GREEN",
   "apiRoutes": 83,
   "databaseTables": 34,

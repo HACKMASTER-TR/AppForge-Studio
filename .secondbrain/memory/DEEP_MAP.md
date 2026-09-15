@@ -1,6 +1,6 @@
 # AppForge Studio — Deep Project Map
 
-Generated: 2026-09-15T19:19:38+03:00
+Generated: 2026-09-15T20:18:41+03:00
 
 ## API Routes
 
@@ -194,7 +194,7 @@ Detected tables / schema objects: **34**
 
 ## Tests
 
-Detected test files: **319**
+Detected test files: **320**
 
 - `.appforge/state/latest.json`
 - `AppForgeStudio-latest.apk`
@@ -301,6 +301,7 @@ Detected test files: **319**
 - `build-service/tests/appforge_terminal_ime_backspace_contract.test.js`
 - `build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js`
 - `build-service/tests/appforge_terminal_ime_stability_contract.test.js`
+- `build-service/tests/appforge_terminal_input_ime_contract.test.js`
 - `build-service/tests/appforge_terminal_integration.test.js`
 - `build-service/tests/appforge_terminal_linux_multisession_contract.test.js`
 - `build-service/tests/appforge_terminal_linux_pty_contract.test.js`
@@ -395,7 +396,6 @@ Detected test files: **319**
 - `build-service/tests/cpp_android_build_engine.test.js`
 - `build-service/tests/cpp_android_live_build_engine.test.js`
 - `build-service/tests/cpp_android_template_build_smoke.js`
-- `build-service/tests/deterministic_project_zip.test.js`
 
 ## Product Surfaces
 

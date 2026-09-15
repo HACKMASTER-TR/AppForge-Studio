@@ -42,7 +42,7 @@ test("Stage 10L exposes shell productivity keys on the main real PTY", async () 
   );
 });
 
-test("Stage 10L keeps the verified IME accessory architecture intact", async () => {
+test("Stage 10L keeps the verified keyboard accessory architecture without double IME translation", async () => {
   const source = await readFile(sourceUrl, "utf8");
 
   assert.doesNotMatch(
@@ -50,12 +50,12 @@ test("Stage 10L keeps the verified IME accessory architecture intact", async () 
     /\.imePadding\(\)/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     source,
     /val imeInsets\s*=\s*WindowInsets\.ime/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     source,
     /\.offset\s*\{\s*IntOffset\([\s\S]*?y\s*=\s*-imeInsets\.getBottom\(this\)/
   );

@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 const read = (path) =>
   readFile(new URL(`../../${path}`, import.meta.url), "utf8");
 
-test("Stage 10F keeps terminal extra keys above IME and hides text selection handles", async () => {
+test("Stage 10F keeps terminal extra keys keyboard-safe without a second IME offset and hides text selection handles", async () => {
   const source = await read(
     "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
   );
@@ -16,12 +16,12 @@ test("Stage 10F keeps terminal extra keys above IME and hides text selection han
   );
   assert.doesNotMatch(source, /\.imePadding\(\)/);
 
-  assert.match(
+  assert.doesNotMatch(
     source,
     /val imeInsets\s*=\s*WindowInsets\.ime/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     source,
     /\.offset\s*\{\s*IntOffset\(\s*x\s*=\s*0,\s*y\s*=\s*-imeInsets\.getBottom\(this\)\s*\)\s*\}/
   );
