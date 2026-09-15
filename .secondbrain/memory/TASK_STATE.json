@@ -1,8 +1,0 @@
-{
-  "label": "apk-folder-nav-cleanup",
-  "started_at": "2026-09-15T23:59:52+03:00",
-  "start_checkpoint": ".secondbrain/checkpoints/20260915-235952-start-apk-folder-nav-cleanup.json",
-  "status": "DONE",
-  "finished_at": "2026-09-16T00:08:52+03:00",
-  "end_checkpoint": ".secondbrain/checkpoints/20260916-000852-finish-apk-folder-nav-cleanup.json"
-}
