@@ -14,6 +14,9 @@ import com.termux.view.TerminalViewClient
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.roundToInt
+
+private const val DEFAULT_TERMUX_TERMINAL_TEXT_SIZE_SP = 14f
 
 /**
  * Launch description for the vendored Termux terminal core.
@@ -167,6 +170,21 @@ internal class TermuxTerminalCoreController(
             context,
             null,
         ).also { view ->
+            /*
+             * Termux TerminalView starts with mRenderer == null.
+             * Compose AndroidView can lay the view out immediately, which calls
+             * onSizeChanged() -> updateSize(). Initialize the renderer before
+             * attachSession/layout so updateSize() can safely read font metrics.
+             */
+            view.setTextSize(
+                (
+                    DEFAULT_TERMUX_TERMINAL_TEXT_SIZE_SP *
+                        context.resources.displayMetrics.scaledDensity
+                )
+                    .roundToInt()
+                    .coerceAtLeast(1),
+            )
+
             terminalView.set(view)
 
             view.setTerminalViewClient(

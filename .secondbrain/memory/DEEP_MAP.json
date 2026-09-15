@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-15T18:27:58+03:00",
+  "generated_at": "2026-09-15T19:00:08+03:00",
   "api": [
     {
       "method": "GET",
@@ -818,6 +818,7 @@
     "build-service/tests/appforge_terminal_proroot_workspace_contract.test.js",
     "build-service/tests/appforge_terminal_pty_lifecycle_contract.test.js",
     "build-service/tests/appforge_terminal_pty_reader_lifecycle_contract.test.js",
+    "build-service/tests/appforge_terminal_renderer_init_contract.test.js",
     "build-service/tests/appforge_terminal_security_restore_contract.test.js",
     "build-service/tests/appforge_terminal_shortcut_viewport_suppression_contract.test.js",
     "build-service/tests/appforge_terminal_stage10c_local_terminal_input_contract.test.js",

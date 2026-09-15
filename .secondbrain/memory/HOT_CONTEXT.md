@@ -1,13 +1,13 @@
 # Hot Context
 
-Updated: 2026-09-15T18:27:58+03:00
+Updated: 2026-09-15T19:00:08+03:00
 
-- Branch: `fix/v15-blueprint-platform-fallback`
-- HEAD: `1b695ae`
+- Branch: `fix/bug7-terminal-renderer-init`
+- HEAD: `56342de`
 - Current risk decision: **ACCEPT**
-- Risk score: **29/100**
-- Changed source files: **5**
-- Impacted domains: android, build-service, ci
+- Risk score: **23/100**
+- Changed source files: **4**
+- Impacted domains: android, build-service, terminal
 - Security health: **GREEN**
 - Live production health: **NOT_CHECKED**
 
