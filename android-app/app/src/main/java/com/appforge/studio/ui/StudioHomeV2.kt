@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -290,6 +291,7 @@ fun StudioHomeV2(
     onExportAllAndroidProjects: () -> Unit,
     onOpenAccount: () -> Unit,
     onOpenHistory: () -> Unit,
+    onInstallDownloadedApk: (android.net.Uri, String) -> Unit,
     onOpenTrash: () -> Unit,
     onOpenAdmin: () -> Unit,
     onOpenPro: () -> Unit
@@ -371,98 +373,16 @@ fun StudioHomeV2(
             }
         }
 
-    val successfulApkSearch =
-        remember(
-            accountEmail
-        ) {
-            mutableStateOf("")
-        }
+    val successfulApkFolderOpen = rememberSaveable(accountEmail) { mutableStateOf(false) }
 
-    val successfulApkNewestFirst =
-        remember(
-            accountEmail
-        ) {
-            mutableStateOf(
-                true
-            )
-        }
+    if (successfulApkFolderOpen.value) {
+        DownloadedApkFolderScreen(
+            onBack = { successfulApkFolderOpen.value = false },
+            onInstall = { uri, name -> onInstallDownloadedApk(uri, name) }
+        )
+        return
+    }
 
-    val successfulApkBuilds =
-        remember(
-            builds,
-            successfulApkSearch.value,
-            successfulApkNewestFirst.value
-        ) {
-            val query =
-                successfulApkSearch
-                    .value
-                    .trim()
-                    .lowercase(
-                        Locale.ROOT
-                    )
-
-            val filtered =
-                builds
-                    .asSequence()
-                    .filter {
-                        it.status.equals(
-                            "success",
-                            ignoreCase = true
-                        ) &&
-                            !it.apkUrl
-                                .isNullOrBlank()
-                    }
-                    .filter {
-                        build ->
-                        if (
-                            query.isBlank()
-                        ) {
-                            true
-                        } else {
-                            val buildLabel =
-                                AppForgeBuildNumbers
-                                    .label(
-                                        build.buildNo
-                                    )
-                                    .lowercase(
-                                        Locale.ROOT
-                                    )
-
-                            build.projectName
-                                .lowercase(
-                                    Locale.ROOT
-                                )
-                                .contains(
-                                    query
-                                ) ||
-                                build.packageName
-                                    .lowercase(
-                                        Locale.ROOT
-                                    )
-                                    .contains(
-                                        query
-                                    ) ||
-                                buildLabel
-                                    .contains(
-                                        query
-                                    )
-                        }
-                    }
-                    .toList()
-
-            if (
-                successfulApkNewestFirst
-                    .value
-            ) {
-                filtered.sortedByDescending {
-                    it.createdAt
-                }
-            } else {
-                filtered.sortedBy {
-                    it.createdAt
-                }
-            }
-        }
 
     deleteCandidate.value
         ?.let {
@@ -842,417 +762,30 @@ fun StudioHomeV2(
             }
 
             item {
-                V2Section(
-                    t(
-                        "successful_apks"
-                    ),
-                    Modifier.widthIn(
-                        max = 980.dp
-                    )
-                )
+                V2Section(t("successful_apks"), Modifier.widthIn(max = 980.dp))
             }
 
             item {
                 Card(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .widthIn(
-                                max = 980.dp
-                            ),
-                    shape =
-                        RoundedCornerShape(
-                            22.dp
-                        ),
-                    colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                V2Surface
-                        )
+                    onClick = { successfulApkFolderOpen.value = true },
+                    modifier = Modifier.fillMaxWidth().widthIn(max = 980.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = V2Surface)
                 ) {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(
-                                    14.dp
-                                ),
-                        verticalArrangement =
-                            Arrangement.spacedBy(
-                                10.dp
-                            )
+                    Row(
+                        Modifier.fillMaxWidth().padding(if (compact) 14.dp else 18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        OutlinedTextField(
-                            value =
-                                successfulApkSearch
-                                    .value,
-                            onValueChange = {
-                                successfulApkSearch
-                                    .value =
-                                    it
-                            },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth(),
-                            singleLine =
-                                true,
-                            label = {
-                                Text(
-                                    t(
-                                        "apk_search"
-                                    )
-                                )
-                            }
-                        )
-
-                        Row(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth(),
-                            horizontalArrangement =
-                                Arrangement.spacedBy(
-                                    8.dp
-                                )
-                        ) {
-                            if (
-                                successfulApkNewestFirst
-                                    .value
-                            ) {
-                                Button(
-                                    onClick = {
-                                        successfulApkNewestFirst
-                                            .value =
-                                            true
-                                    },
-                                    modifier =
-                                        Modifier
-                                            .weight(
-                                                1f
-                                            )
-                                ) {
-                                    Text(
-                                        t(
-                                            "newest_first"
-                                        ),
-                                        maxLines =
-                                            1,
-                                        overflow =
-                                            TextOverflow.Ellipsis
-                                    )
-                                }
-                            } else {
-                                OutlinedButton(
-                                    onClick = {
-                                        successfulApkNewestFirst
-                                            .value =
-                                            true
-                                    },
-                                    modifier =
-                                        Modifier
-                                            .weight(
-                                                1f
-                                            )
-                                ) {
-                                    Text(
-                                        t(
-                                            "newest_first"
-                                        ),
-                                        maxLines =
-                                            1,
-                                        overflow =
-                                            TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-
-                            if (
-                                !successfulApkNewestFirst
-                                    .value
-                            ) {
-                                Button(
-                                    onClick = {
-                                        successfulApkNewestFirst
-                                            .value =
-                                            false
-                                    },
-                                    modifier =
-                                        Modifier
-                                            .weight(
-                                                1f
-                                            )
-                                ) {
-                                    Text(
-                                        t(
-                                            "oldest_first"
-                                        ),
-                                        maxLines =
-                                            1,
-                                        overflow =
-                                            TextOverflow.Ellipsis
-                                    )
-                                }
-                            } else {
-                                OutlinedButton(
-                                    onClick = {
-                                        successfulApkNewestFirst
-                                            .value =
-                                            false
-                                    },
-                                    modifier =
-                                        Modifier
-                                            .weight(
-                                                1f
-                                            )
-                                ) {
-                                    Text(
-                                        t(
-                                            "oldest_first"
-                                        ),
-                                        maxLines =
-                                            1,
-                                        overflow =
-                                            TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (
-                successfulApkBuilds
-                    .isEmpty()
-            ) {
-                item {
-                    Card(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .widthIn(
-                                    max = 980.dp
-                                ),
-                        shape =
-                            RoundedCornerShape(
-                                20.dp
-                            ),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    V2Surface
-                            )
-                    ) {
-                        Text(
-                            t(
-                                "no_successful_apks"
-                            ),
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        16.dp
-                                    ),
-                            color =
-                                V2Muted,
-                            fontSize =
-                                13.sp
-                        )
-                    }
-                }
-            } else {
-                items(
-                    items =
-                        successfulApkBuilds
-                            .take(
-                                8
-                            ),
-                    key = {
-                        "apk-${it.id}"
-                    }
-                ) {
-                    build ->
-
-                    val buildDate =
-                        remember(
-                            build.id,
-                            build.createdAt
-                        ) {
-                            DateFormat
-                                .getDateTimeInstance(
-                                    DateFormat.SHORT,
-                                    DateFormat.SHORT
-                                )
-                                .format(
-                                    Date(
-                                        build.createdAt
-                                    )
-                                )
-                        }
-
-                    val buildLabel =
-                        AppForgeBuildNumbers
-                            .label(
-                                build.buildNo
-                            )
-                            .takeIf {
-                                it != "AF------"
-                            }
-                            ?: "—"
-
-                    Card(
-                        onClick =
-                            onOpenHistory,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .widthIn(
-                                    max = 980.dp
-                                ),
-                        shape =
-                            RoundedCornerShape(
-                                20.dp
-                            ),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    Color(
-                                        0xFF10251F
-                                    )
-                            )
-                    ) {
-                        Row(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        14.dp
-                                    ),
-                            verticalAlignment =
-                                Alignment.CenterVertically,
-                            horizontalArrangement =
-                                Arrangement.spacedBy(
-                                    12.dp
-                                )
-                        ) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(
-                                            48.dp
-                                        )
-                                        .background(
-                                            Brush.linearGradient(
-                                                listOf(
-                                                    V2Success,
-                                                    V2Primary
-                                                )
-                                            ),
-                                            RoundedCornerShape(
-                                                15.dp
-                                            )
-                                        ),
-                                contentAlignment =
-                                    Alignment.Center
-                            ) {
-                                Text(
-                                    "APK",
-                                    color =
-                                        Color(
-                                            0xFF04120D
-                                        ),
-                                    fontWeight =
-                                        FontWeight.Black,
-                                    fontSize =
-                                        11.sp
-                                )
-                            }
-
-                            Column(
-                                modifier =
-                                    Modifier.weight(
-                                        1f
-                                    ),
-                                verticalArrangement =
-                                    Arrangement.spacedBy(
-                                        3.dp
-                                    )
-                            ) {
-                                Text(
-                                    build.projectName
-                                        .ifBlank {
-                                            build.packageName
-                                                .ifBlank {
-                                                    "APK"
-                                                }
-                                        },
-                                    color =
-                                        V2Text,
-                                    fontWeight =
-                                        FontWeight.Bold,
-                                    maxLines =
-                                        1,
-                                    overflow =
-                                        TextOverflow.Ellipsis
-                                )
-
-                                Text(
-                                    build.packageName,
-                                    color =
-                                        V2Muted,
-                                    fontSize =
-                                        11.sp,
-                                    maxLines =
-                                        1,
-                                    overflow =
-                                        TextOverflow.Ellipsis
-                                )
-
-                                Text(
-                                    "$buildLabel • $buildDate • ${t("apk_ready")}",
-                                    color =
-                                        V2Success,
-                                    fontSize =
-                                        10.sp,
-                                    maxLines =
-                                        1,
-                                    overflow =
-                                        TextOverflow.Ellipsis
-                                )
-                            }
-
+                        Text("📁", fontSize = if (compact) 28.sp else 32.sp)
+                        Column(Modifier.weight(1f)) {
+                            Text(t("successful_apks"), color=V2Text, fontWeight=FontWeight.Black, fontSize=18.sp)
                             Text(
-                                "›",
-                                color =
-                                    V2Success,
-                                fontSize =
-                                    26.sp
+                                "Yalnız Downloads/AppForge Studio klasörüne gerçekten indirilen .apk dosyaları",
+                                color=V2Muted, fontSize=12.sp, lineHeight=17.sp
                             )
                         }
-                    }
-                }
-
-                if (
-                    successfulApkBuilds
-                        .size >
-                    8
-                ) {
-                    item {
-                        OutlinedButton(
-                            onClick =
-                                onOpenHistory,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .widthIn(
-                                        max = 980.dp
-                                    )
-                        ) {
-                            Text(
-                                t(
-                                    "view_all_builds"
-                                )
-                            )
-                        }
+                        Text("›", color=V2Success, fontSize=28.sp)
                     }
                 }
             }

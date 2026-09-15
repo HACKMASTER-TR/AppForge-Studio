@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "name": "AppForge Full Autopilot GitHub Cleanup",
+  "stage": "after_merge_and_main_ci_before_distribution",
+  "fail_stop": true,
+  "rules": [
+    "Never delete open PR branches or PR records",
+    "Never rewrite/force/reset main",
+    "Prune stale origin refs",
+    "Preserve latest 5 runs per workflow",
+    "Preserve latest successful main and latest failure",
+    "Preserve current main SHA evidence",
+    "Preserve AppForgeStudio-latest.apk",
+    "Delete only verified temporary assets from draft releases",
+    "Cleanup failure stops distribution but does not rollback merged code"
+  ]
+}

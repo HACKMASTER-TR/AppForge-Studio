@@ -384,6 +384,40 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
+private fun installDownloadedApkUri(
+    context: Context,
+    apkUri: Uri,
+    displayName: String
+): String {
+    if (!displayName.endsWith(".apk", ignoreCase = true)) {
+        return "Yalnız APK dosyaları kurulabilir."
+    }
+    return runCatching {
+        val dir = File(context.cacheDir, "apk-installer").apply { mkdirs() }
+        val raw = File(displayName).name
+        val cleaned = raw.replace(Regex("[^A-Za-z0-9._-]"), "_").take(120)
+            .ifBlank { "AppForge-downloaded.apk" }
+        val safe = if (cleaned.endsWith(".apk", true)) cleaned else "$cleaned.apk"
+        val target = File(dir, safe)
+        val temp = File(dir, ".$safe.copy")
+        temp.delete()
+        val input = if (apkUri.scheme.equals("file", true)) {
+            File(apkUri.path ?: error("APK yolu okunamadı.")).inputStream()
+        } else {
+            context.contentResolver.openInputStream(apkUri)
+                ?: error("APK dosyası açılamadı.")
+        }
+        input.use { i -> temp.outputStream().buffered().use { o -> i.copyTo(o, 1024*1024) } }
+        require(temp.isFile && temp.length() > 0L) { "APK kopyalanamadı." }
+        val zipOk = temp.inputStream().use { it.read()==0x50 && it.read()==0x4B }
+        require(zipOk) { "Seçilen dosya geçerli bir APK değil." }
+        target.delete()
+        if (!temp.renameTo(target)) { temp.copyTo(target, true); temp.delete() }
+        installCachedApk(context, target)
+    }.getOrElse { "APK yükleyici açılamadı: ${it.message}" }
+}
+
 private const val APPFORGE_DOWNLOAD_FOLDER =
     "AppForge Studio"
 
@@ -4292,6 +4326,10 @@ private fun AppForgeApp() {
                             )
                         },
 
+                        onInstallDownloadedApk = { uri, name ->
+                            status = installDownloadedApkUri(context, uri, name)
+                        },
+
                         onOpenTrash = {
                             openWorkspaceScreen(
                                 AppScreen.TRASH
@@ -5360,14 +5398,13 @@ private fun AppForgeApp() {
                             }
                         },
                         navigationIcon = {
-                            LabeledActionButton(
-                                icon = "⌂",
-                                label = "Ana Sayfa",
-                                onClick = {
-                                    screen =
-                                        AppScreen.HOME
-                                }
-                            )
+                            if (step != 10) {
+                                LabeledActionButton(
+                                    icon = "⌂",
+                                    label = "Ana Sayfa",
+                                    onClick = { screen = AppScreen.HOME }
+                                )
+                            }
                         },
                         actions = {},
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
@@ -5932,6 +5969,22 @@ private fun AppForgeApp() {
                                         )
                             ) {
                                 Text("Geri")
+                            }
+                        }
+
+                        if (step == 10) {
+                            OutlinedButton(
+                                onClick = { screen = AppScreen.HOME },
+                                modifier = Modifier.weight(1f).height(
+                                    if (builderCompact) 48.dp else 52.dp
+                                )
+                            ) {
+                                Text(
+                                    if (builderCompact) "Ana Sayfa" else "⌂ Ana Sayfa",
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontSize = if (builderCompact) 11.sp else 13.sp
+                                )
                             }
                         }
 
