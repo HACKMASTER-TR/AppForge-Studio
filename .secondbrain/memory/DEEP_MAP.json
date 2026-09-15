@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-15T19:19:38+03:00",
+  "generated_at": "2026-09-15T20:18:41+03:00",
   "api": [
     {
       "method": "GET",
@@ -803,6 +803,7 @@
     "build-service/tests/appforge_terminal_ime_backspace_contract.test.js",
     "build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js",
     "build-service/tests/appforge_terminal_ime_stability_contract.test.js",
+    "build-service/tests/appforge_terminal_input_ime_contract.test.js",
     "build-service/tests/appforge_terminal_integration.test.js",
     "build-service/tests/appforge_terminal_linux_multisession_contract.test.js",
     "build-service/tests/appforge_terminal_linux_pty_contract.test.js",

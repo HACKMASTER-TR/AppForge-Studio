@@ -1,6 +1,6 @@
 # Test Map
 
-Generated: 2026-09-15T19:19:38+03:00
+Generated: 2026-09-15T20:18:41+03:00
 
 ## Recommended for current change
 
@@ -115,6 +115,7 @@ Generated: 2026-09-15T19:19:38+03:00
 - `build-service/tests/appforge_terminal_ime_backspace_contract.test.js`
 - `build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js`
 - `build-service/tests/appforge_terminal_ime_stability_contract.test.js`
+- `build-service/tests/appforge_terminal_input_ime_contract.test.js`
 - `build-service/tests/appforge_terminal_integration.test.js`
 - `build-service/tests/appforge_terminal_linux_multisession_contract.test.js`
 - `build-service/tests/appforge_terminal_linux_pty_contract.test.js`
@@ -308,4 +309,3 @@ Generated: 2026-09-15T19:19:38+03:00
 - `build-service/tests/unity_licensed_build_engine.test.js`
 - `build-service/tests/unity_worker_contract.test.js`
 - `build-service/tests/unknown_web_fallback.test.js`
-- `build-service/tests/user_project_limit_contract.test.js`

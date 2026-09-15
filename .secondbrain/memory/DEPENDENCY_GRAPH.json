@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-15T19:19:38+03:00",
-  "node_count": 777,
+  "generated_at": "2026-09-15T20:18:41+03:00",
+  "node_count": 780,
   "edge_count": 127,
   "edges": [
     {
@@ -900,19 +900,19 @@
     ],
     [
       "assert",
-      246
+      247
     ],
     [
       "node:assert",
-      246
+      247
     ],
     [
       "node:test",
-      242
+      243
     ],
     [
       "test",
-      242
+      243
     ],
     [
       "kotlinx",
@@ -920,7 +920,7 @@
     ],
     [
       "node:fs",
-      174
+      175
     ],
     [
       "com",

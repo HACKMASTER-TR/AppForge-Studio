@@ -11,12 +11,12 @@ test("PTY terminal does not re-layout the whole panel from IME padding", async (
   const source = await readFile(sourceUrl, "utf8");
 
   assert.doesNotMatch(source, /\.imePadding\(\)/);
-  assert.match(
+  assert.doesNotMatch(
     source,
     /val imeInsets\s*=\s*WindowInsets\.ime/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     source,
     /\.offset\s*\{\s*IntOffset\(\s*x\s*=\s*0,\s*y\s*=\s*-imeInsets\.getBottom\(this\)\s*\)\s*\}/
   );

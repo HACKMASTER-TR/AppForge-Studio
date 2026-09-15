@@ -312,7 +312,7 @@ test("Stage 10M keeps the Linux environment persistent and adds a shell editor",
   );
 });
 
-test("Stage 10M does not regress the device-verified IME architecture", async () => {
+test("Stage 10M preserves keyboard input without the removed double-IME architecture", async () => {
   const pty =
     await terminalSource(
       "LocalPtyTerminalPanel.kt"
@@ -323,12 +323,12 @@ test("Stage 10M does not regress the device-verified IME architecture", async ()
     /\.imePadding\(\)/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     pty,
-    /WindowInsets\.ime/
+    /val imeInsets\s*=\s*WindowInsets\.ime/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     pty,
     /\.offset\s*\{\s*IntOffset\([\s\S]*?y\s*=\s*-imeInsets\.getBottom\(this\)/
   );

@@ -8,7 +8,7 @@ const sourceUrl =
     import.meta.url
   );
 
-test("Stage 10P reserves the IME-occluded terminal area inside scroll content", async () => {
+test("Stage 10P keeps terminal scroll padding independent from IME double-offsets", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -17,12 +17,12 @@ test("Stage 10P reserves the IME-occluded terminal area inside scroll content", 
 
   assert.match(
     source,
-    /val imeOcclusionPx\s*=\s*imeInsets\.getBottom\(\s*accessoryDensity\s*\)/
+    /val accessoryReservePx\s*=\s*0/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     source,
-    /val accessoryReservePx[\s\S]*?active\?\.running == true[\s\S]*?imeOcclusionPx/
+    /val imeOcclusionPx\s*=\s*imeInsets\.getBottom/
   );
 
   assert.doesNotMatch(
@@ -68,7 +68,7 @@ test("Stage 10P keeps terminal viewport independent from IME measurement", async
     /\.imePadding\(\)/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     source,
     /\.offset\s*\{\s*IntOffset\([\s\S]*?y\s*=\s*-imeInsets\.getBottom\(this\)/
   );

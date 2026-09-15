@@ -8,7 +8,7 @@ const sourceUrl =
     import.meta.url
   );
 
-test("Stage 10R reserves the same IME distance used by the floating shortcut row", async () => {
+test("Stage 10R avoids applying the IME height a second time", async () => {
   const source =
     await readFile(
       sourceUrl,
@@ -17,15 +17,15 @@ test("Stage 10R reserves the same IME distance used by the floating shortcut row
 
   assert.match(
     source,
-    /val imeOcclusionPx\s*=\s*imeInsets\.getBottom\(\s*accessoryDensity\s*\)/
+    /val accessoryReservePx\s*=\s*0/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     source,
-    /val accessoryReservePx[\s\S]*?imeOcclusionPx/
+    /val imeOcclusionPx\s*=\s*imeInsets\.getBottom/
   );
 
-  assert.match(
+  assert.doesNotMatch(
     source,
     /\.offset\s*\{\s*IntOffset\([\s\S]*?y\s*=\s*-imeInsets\.getBottom\(this\)/
   );
