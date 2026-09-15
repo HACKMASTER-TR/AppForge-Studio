@@ -4,7 +4,7 @@ V5 adds a working Quick/Advanced application scaffold flow to the shared Studio:
 
 ## AppForge Terminal (V5.1)
 
-AppForge Studio now includes a project-aware terminal workspace with multi-session shell access, a safe file editor, embedded Git, SSH with host-key verification, runtime inspection and direct Builder/AI navigation. GitHub and Railway accounts can be authorized from the Connections tab; credentials are validated and encrypted with Android Keystore. See [the V5.1 terminal guide](docs/V5_1_APPFORGE_TERMINAL.md).
+AppForge Studio now includes a project-aware terminal workspace with multi-session shell access, a safe file editor, embedded Git, SSH with host-key verification, runtime inspection and direct Builder/AI navigation. GitHub and Railway accounts can be authorized from the Connections tab; credentials are validated and encrypted with Android Keystore. See [the terminal and developer tools wiki](docs/wiki/02_Codebase_Map/Terminal_And_Developer_Tools.md).
 
 Android Gradle builds use the V5 throughput profile by default: the Gradle daemon stays warm, configuration/build caches are reused, APK+AAB tasks share one invocation and one focused build receives the worker's CPU/RAM. This is faster for the build the user is waiting for than running two memory-heavy Gradle JVMs at once. If the worker reaches its memory limit, the same build automatically falls back to isolated low-memory tasks without discarding completed outputs. Set `GRADLE_PERFORMANCE_PROFILE=balanced` for medium workers or `low-memory` only for constrained workers.
 

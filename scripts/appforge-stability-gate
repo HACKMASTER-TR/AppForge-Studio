@@ -86,7 +86,8 @@ else
 fi
 
 FORBIDDEN="$(
-    git diff --cached --name-only |
+    git diff --cached --name-status |
+    awk 'BEGIN { FS = "\t" } $1 !~ /^D/ { print $NF }' |
     grep -E '(^|/)(dashboard\.sh|dashboard\.sh\.bak)$|\.apk$|\.aab$|\.save$|\.bak$' ||
     true
 )"

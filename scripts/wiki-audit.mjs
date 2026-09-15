@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 
 const root = process.cwd();
 const wiki = path.join(root, "docs", "wiki");
+const docs = path.join(root, "docs");
 const json = process.argv.includes("--json");
 const changed = process.argv.includes("--changed-source-check");
 const errors = [];
@@ -45,6 +46,13 @@ const parse = text => {
 const asList = value => Array.isArray(value) ? value : !value || value === "[]" ? [] : [value];
 
 if (!fs.existsSync(wiki)) add("error", "docs/wiki", "directory is missing");
+if (fs.existsSync(docs)) {
+  for (const entry of fs.readdirSync(docs, { withFileTypes: true })) {
+    if (entry.isFile() && /\.(?:md|bak)$/i.test(entry.name)) {
+      add("error", `docs/${entry.name}`, "legacy docs-root wiki file is not allowed; keep durable memory under docs/wiki");
+    }
+  }
+}
 for (const name of required) if (!fs.existsSync(path.join(wiki, name))) add("error", `docs/wiki/${name}`, "required file is missing");
 const files = walk(wiki);
 const names = new Set(files.map(file => path.basename(file, ".md")));
