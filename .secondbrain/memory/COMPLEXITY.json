@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-15T20:18:43+03:00",
+  "generated_at": "2026-09-15T20:40:17+03:00",
   "largest": [
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
@@ -18,7 +18,7 @@
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
-      "lines": 5110,
+      "lines": 5118,
       "symbols": 65
     },
     {
@@ -320,7 +320,7 @@
     },
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",
-      "lines": 5110,
+      "lines": 5118,
       "symbols": 65
     },
     {

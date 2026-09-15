@@ -5,11 +5,11 @@
       "id": "BUG-7",
       "stage": "DEVICE_RUNTIME",
       "classification": "RUNTIME",
-      "summary": "AppForge Terminal real-device input/output bridge and keyboard viewport still require validation",
+      "summary": "AppForge Terminal command I/O works on-device; keyboard accessory row still needs bottom-IME inset validation",
       "status": "DEVICE_RETEST_REQUIRED",
-      "evidence_required": "Install the fresh post-merge APK. Open AppForge Terminal, tap the viewport and type normally. Verify typed characters/prompt/output are visible, the keyboard does not push the accessory/input row off-screen, pwd and echo APPFORGE_OK work, there is no process code 127, and logcat has no new FATAL EXCEPTION.",
+      "evidence_required": "Install the fresh post-merge APK. Open AppForge Terminal and the keyboard. Verify KOPYA/APK/DASH/SUBMIT/etc. remain visible above the keyboard, pwd and echo APPFORGE_OK still work, terminal output remains visible, and logcat has no new FATAL EXCEPTION.",
       "shipping_blocker": true,
-      "root_cause": "Renderer crash and mirror argv0 were fixed. The active Termux mirror had no producer from the real AppForge PTY, so typed shell echo/output stayed in the legacy ANSI buffer and the visible Termux viewport remained blank. The terminal UI also applied the full IME inset a second time, pushing the accessory/input row outside the visible screen."
+      "root_cause": "Renderer crash, mirror argv0, and PTY input/output are fixed. On the real device the software keyboard overlays the terminal workspace, so the accessory row can sit behind the keyboard. The terminal workspace now consumes only the bottom IME inset via windowInsetsPadding, without restoring the old manual full-IME row translation."
     }
   ]
 }

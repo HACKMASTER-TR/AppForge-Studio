@@ -1,9 +1,9 @@
 {
   "version": "3.0.0",
-  "head": "c4d3b1c",
-  "branch": "fix/bug7c-terminal-input-ime",
+  "head": "a180e40",
+  "branch": "fix/bug7d-terminal-ime-bottom-inset",
   "risk": "ACCEPT",
-  "riskScore": 31,
+  "riskScore": 23,
   "security": "GREEN",
   "apiRoutes": 83,
   "databaseTables": 34,

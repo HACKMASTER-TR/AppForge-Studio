@@ -1,6 +1,6 @@
 # Test Map
 
-Generated: 2026-09-15T20:18:41+03:00
+Generated: 2026-09-15T20:40:16+03:00
 
 ## Recommended for current change
 
@@ -113,6 +113,7 @@ Generated: 2026-09-15T20:18:41+03:00
 - `build-service/tests/appforge_terminal_apk_origin_fallback_contract.test.js`
 - `build-service/tests/appforge_terminal_download_bridge_contract.test.js`
 - `build-service/tests/appforge_terminal_ime_backspace_contract.test.js`
+- `build-service/tests/appforge_terminal_ime_bottom_inset_contract.test.js`
 - `build-service/tests/appforge_terminal_ime_open_visibility_contract.test.js`
 - `build-service/tests/appforge_terminal_ime_stability_contract.test.js`
 - `build-service/tests/appforge_terminal_input_ime_contract.test.js`
@@ -308,4 +309,3 @@ Generated: 2026-09-15T20:18:41+03:00
 - `build-service/tests/unity_android_build_engine.test.js`
 - `build-service/tests/unity_licensed_build_engine.test.js`
 - `build-service/tests/unity_worker_contract.test.js`
-- `build-service/tests/unknown_web_fallback.test.js`
