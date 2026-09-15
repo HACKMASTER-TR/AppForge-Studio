@@ -5,11 +5,11 @@
       "id": "BUG-7",
       "stage": "DEVICE_RUNTIME",
       "classification": "RUNTIME",
-      "summary": "AppForge Terminal command I/O works on-device; keyboard accessory row still needs bottom-IME inset validation",
+      "summary": "Terminal command I/O and shortcut placement pass on-device; keyboard open/close smoothness still requires device validation",
       "status": "DEVICE_RETEST_REQUIRED",
-      "evidence_required": "Install the fresh post-merge APK. Open AppForge Terminal and the keyboard. Verify KOPYA/APK/DASH/SUBMIT/etc. remain visible above the keyboard, pwd and echo APPFORGE_OK still work, terminal output remains visible, and logcat has no new FATAL EXCEPTION.",
+      "evidence_required": "Install the fresh post-merge APK. Open/close the AppForge Terminal keyboard repeatedly, verify animation is smooth, shortcut keys stay above the keyboard, pwd and echo APPFORGE_OK still work, and logcat has no new FATAL EXCEPTION.",
       "shipping_blocker": true,
-      "root_cause": "Renderer crash, mirror argv0, and PTY input/output are fixed. On the real device the software keyboard overlays the terminal workspace, so the accessory row can sit behind the keyboard. The terminal workspace now consumes only the bottom IME inset via windowInsetsPadding, without restoring the old manual full-IME row translation."
+      "root_cause": "Keyboard animation emits repeated Termux geometry callbacks. Real PTY resize/persist/publish is now debounced until layout settles; BUG7D bottom-IME shortcut placement remains enabled."
     }
   ]
 }

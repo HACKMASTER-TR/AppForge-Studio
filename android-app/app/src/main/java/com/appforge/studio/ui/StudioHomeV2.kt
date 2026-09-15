@@ -27,6 +27,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -103,7 +104,14 @@ private object CopyV2 {
         "pro" to "PRO",
         "free" to "FREE",
         "login" to "GİRİŞ YAP",
-        "updated" to "Güncellendi"
+        "updated" to "Güncellendi",
+        "successful_apks" to "Başarılı APK'lar",
+        "apk_search" to "APK ara",
+        "newest_first" to "Yeni → Eski",
+        "oldest_first" to "Eski → Yeni",
+        "no_successful_apks" to "Henüz başarılı APK yok",
+        "apk_ready" to "APK hazır",
+        "view_all_builds" to "Tüm derlemeleri gör"
     )
 
     private val en = mapOf(
@@ -143,7 +151,14 @@ private object CopyV2 {
         "pro" to "PRO",
         "free" to "FREE",
         "login" to "SIGN IN",
-        "updated" to "Updated"
+        "updated" to "Updated",
+        "successful_apks" to "Successful APKs",
+        "apk_search" to "Search APKs",
+        "newest_first" to "Newest → Oldest",
+        "oldest_first" to "Oldest → Newest",
+        "no_successful_apks" to "No successful APKs yet",
+        "apk_ready" to "APK ready",
+        "view_all_builds" to "View all builds"
     )
 
     private val de = mapOf(
@@ -183,7 +198,14 @@ private object CopyV2 {
         "pro" to "PRO",
         "free" to "FREE",
         "login" to "ANMELDEN",
-        "updated" to "Aktualisiert"
+        "updated" to "Aktualisiert",
+        "successful_apks" to "Erfolgreiche APKs",
+        "apk_search" to "APKs suchen",
+        "newest_first" to "Neu → Alt",
+        "oldest_first" to "Alt → Neu",
+        "no_successful_apks" to "Noch keine erfolgreichen APKs",
+        "apk_ready" to "APK bereit",
+        "view_all_builds" to "Alle Builds anzeigen"
     )
 
     private val ar = mapOf(
@@ -223,7 +245,14 @@ private object CopyV2 {
         "pro" to "PRO",
         "free" to "FREE",
         "login" to "تسجيل الدخول",
-        "updated" to "تم التحديث"
+        "updated" to "تم التحديث",
+        "successful_apks" to "ملفات APK الناجحة",
+        "apk_search" to "بحث في APK",
+        "newest_first" to "الأحدث ← الأقدم",
+        "oldest_first" to "الأقدم ← الأحدث",
+        "no_successful_apks" to "لا توجد ملفات APK ناجحة بعد",
+        "apk_ready" to "APK جاهز",
+        "view_all_builds" to "عرض كل عمليات البناء"
     )
 
     fun resolve(configured: String): String {
@@ -325,8 +354,115 @@ fun StudioHomeV2(
                 context
             )
         }
-    val successfulBuilds = remember(builds) { builds.count { it.status == "success" } }
-    val latestBuild = remember(builds) { builds.maxByOrNull { it.createdAt } }
+    val successfulBuilds =
+        remember(builds) {
+            builds.count {
+                it.status.equals(
+                    "success",
+                    ignoreCase = true
+                )
+            }
+        }
+
+    val latestBuild =
+        remember(builds) {
+            builds.maxByOrNull {
+                it.createdAt
+            }
+        }
+
+    val successfulApkSearch =
+        remember(
+            accountEmail
+        ) {
+            mutableStateOf("")
+        }
+
+    val successfulApkNewestFirst =
+        remember(
+            accountEmail
+        ) {
+            mutableStateOf(
+                true
+            )
+        }
+
+    val successfulApkBuilds =
+        remember(
+            builds,
+            successfulApkSearch.value,
+            successfulApkNewestFirst.value
+        ) {
+            val query =
+                successfulApkSearch
+                    .value
+                    .trim()
+                    .lowercase(
+                        Locale.ROOT
+                    )
+
+            val filtered =
+                builds
+                    .asSequence()
+                    .filter {
+                        it.status.equals(
+                            "success",
+                            ignoreCase = true
+                        ) &&
+                            !it.apkUrl
+                                .isNullOrBlank()
+                    }
+                    .filter {
+                        build ->
+                        if (
+                            query.isBlank()
+                        ) {
+                            true
+                        } else {
+                            val buildLabel =
+                                AppForgeBuildNumbers
+                                    .label(
+                                        build.buildNo
+                                    )
+                                    .lowercase(
+                                        Locale.ROOT
+                                    )
+
+                            build.projectName
+                                .lowercase(
+                                    Locale.ROOT
+                                )
+                                .contains(
+                                    query
+                                ) ||
+                                build.packageName
+                                    .lowercase(
+                                        Locale.ROOT
+                                    )
+                                    .contains(
+                                        query
+                                    ) ||
+                                buildLabel
+                                    .contains(
+                                        query
+                                    )
+                        }
+                    }
+                    .toList()
+
+            if (
+                successfulApkNewestFirst
+                    .value
+            ) {
+                filtered.sortedByDescending {
+                    it.createdAt
+                }
+            } else {
+                filtered.sortedBy {
+                    it.createdAt
+                }
+            }
+        }
 
     deleteCandidate.value
         ?.let {
@@ -702,6 +838,422 @@ fun StudioHomeV2(
                         t("latest_build"),
                         V2Warm
                     )
+                }
+            }
+
+            item {
+                V2Section(
+                    t(
+                        "successful_apks"
+                    ),
+                    Modifier.widthIn(
+                        max = 980.dp
+                    )
+                )
+            }
+
+            item {
+                Card(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .widthIn(
+                                max = 980.dp
+                            ),
+                    shape =
+                        RoundedCornerShape(
+                            22.dp
+                        ),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                V2Surface
+                        )
+                ) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    14.dp
+                                ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                10.dp
+                            )
+                    ) {
+                        OutlinedTextField(
+                            value =
+                                successfulApkSearch
+                                    .value,
+                            onValueChange = {
+                                successfulApkSearch
+                                    .value =
+                                    it
+                            },
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth(),
+                            singleLine =
+                                true,
+                            label = {
+                                Text(
+                                    t(
+                                        "apk_search"
+                                    )
+                                )
+                            }
+                        )
+
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth(),
+                            horizontalArrangement =
+                                Arrangement.spacedBy(
+                                    8.dp
+                                )
+                        ) {
+                            if (
+                                successfulApkNewestFirst
+                                    .value
+                            ) {
+                                Button(
+                                    onClick = {
+                                        successfulApkNewestFirst
+                                            .value =
+                                            true
+                                    },
+                                    modifier =
+                                        Modifier
+                                            .weight(
+                                                1f
+                                            )
+                                ) {
+                                    Text(
+                                        t(
+                                            "newest_first"
+                                        ),
+                                        maxLines =
+                                            1,
+                                        overflow =
+                                            TextOverflow.Ellipsis
+                                    )
+                                }
+                            } else {
+                                OutlinedButton(
+                                    onClick = {
+                                        successfulApkNewestFirst
+                                            .value =
+                                            true
+                                    },
+                                    modifier =
+                                        Modifier
+                                            .weight(
+                                                1f
+                                            )
+                                ) {
+                                    Text(
+                                        t(
+                                            "newest_first"
+                                        ),
+                                        maxLines =
+                                            1,
+                                        overflow =
+                                            TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            if (
+                                !successfulApkNewestFirst
+                                    .value
+                            ) {
+                                Button(
+                                    onClick = {
+                                        successfulApkNewestFirst
+                                            .value =
+                                            false
+                                    },
+                                    modifier =
+                                        Modifier
+                                            .weight(
+                                                1f
+                                            )
+                                ) {
+                                    Text(
+                                        t(
+                                            "oldest_first"
+                                        ),
+                                        maxLines =
+                                            1,
+                                        overflow =
+                                            TextOverflow.Ellipsis
+                                    )
+                                }
+                            } else {
+                                OutlinedButton(
+                                    onClick = {
+                                        successfulApkNewestFirst
+                                            .value =
+                                            false
+                                    },
+                                    modifier =
+                                        Modifier
+                                            .weight(
+                                                1f
+                                            )
+                                ) {
+                                    Text(
+                                        t(
+                                            "oldest_first"
+                                        ),
+                                        maxLines =
+                                            1,
+                                        overflow =
+                                            TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (
+                successfulApkBuilds
+                    .isEmpty()
+            ) {
+                item {
+                    Card(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .widthIn(
+                                    max = 980.dp
+                                ),
+                        shape =
+                            RoundedCornerShape(
+                                20.dp
+                            ),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor =
+                                    V2Surface
+                            )
+                    ) {
+                        Text(
+                            t(
+                                "no_successful_apks"
+                            ),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        16.dp
+                                    ),
+                            color =
+                                V2Muted,
+                            fontSize =
+                                13.sp
+                        )
+                    }
+                }
+            } else {
+                items(
+                    items =
+                        successfulApkBuilds
+                            .take(
+                                8
+                            ),
+                    key = {
+                        "apk-${it.id}"
+                    }
+                ) {
+                    build ->
+
+                    val buildDate =
+                        remember(
+                            build.id,
+                            build.createdAt
+                        ) {
+                            DateFormat
+                                .getDateTimeInstance(
+                                    DateFormat.SHORT,
+                                    DateFormat.SHORT
+                                )
+                                .format(
+                                    Date(
+                                        build.createdAt
+                                    )
+                                )
+                        }
+
+                    val buildLabel =
+                        AppForgeBuildNumbers
+                            .label(
+                                build.buildNo
+                            )
+                            .takeIf {
+                                it != "AF------"
+                            }
+                            ?: "—"
+
+                    Card(
+                        onClick =
+                            onOpenHistory,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .widthIn(
+                                    max = 980.dp
+                                ),
+                        shape =
+                            RoundedCornerShape(
+                                20.dp
+                            ),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor =
+                                    Color(
+                                        0xFF10251F
+                                    )
+                            )
+                    ) {
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        14.dp
+                                    ),
+                            verticalAlignment =
+                                Alignment.CenterVertically,
+                            horizontalArrangement =
+                                Arrangement.spacedBy(
+                                    12.dp
+                                )
+                        ) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .size(
+                                            48.dp
+                                        )
+                                        .background(
+                                            Brush.linearGradient(
+                                                listOf(
+                                                    V2Success,
+                                                    V2Primary
+                                                )
+                                            ),
+                                            RoundedCornerShape(
+                                                15.dp
+                                            )
+                                        ),
+                                contentAlignment =
+                                    Alignment.Center
+                            ) {
+                                Text(
+                                    "APK",
+                                    color =
+                                        Color(
+                                            0xFF04120D
+                                        ),
+                                    fontWeight =
+                                        FontWeight.Black,
+                                    fontSize =
+                                        11.sp
+                                )
+                            }
+
+                            Column(
+                                modifier =
+                                    Modifier.weight(
+                                        1f
+                                    ),
+                                verticalArrangement =
+                                    Arrangement.spacedBy(
+                                        3.dp
+                                    )
+                            ) {
+                                Text(
+                                    build.projectName
+                                        .ifBlank {
+                                            build.packageName
+                                                .ifBlank {
+                                                    "APK"
+                                                }
+                                        },
+                                    color =
+                                        V2Text,
+                                    fontWeight =
+                                        FontWeight.Bold,
+                                    maxLines =
+                                        1,
+                                    overflow =
+                                        TextOverflow.Ellipsis
+                                )
+
+                                Text(
+                                    build.packageName,
+                                    color =
+                                        V2Muted,
+                                    fontSize =
+                                        11.sp,
+                                    maxLines =
+                                        1,
+                                    overflow =
+                                        TextOverflow.Ellipsis
+                                )
+
+                                Text(
+                                    "$buildLabel • $buildDate • ${t("apk_ready")}",
+                                    color =
+                                        V2Success,
+                                    fontSize =
+                                        10.sp,
+                                    maxLines =
+                                        1,
+                                    overflow =
+                                        TextOverflow.Ellipsis
+                                )
+                            }
+
+                            Text(
+                                "›",
+                                color =
+                                    V2Success,
+                                fontSize =
+                                    26.sp
+                            )
+                        }
+                    }
+                }
+
+                if (
+                    successfulApkBuilds
+                        .size >
+                    8
+                ) {
+                    item {
+                        OutlinedButton(
+                            onClick =
+                                onOpenHistory,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .widthIn(
+                                        max = 980.dp
+                                    )
+                        ) {
+                            Text(
+                                t(
+                                    "view_all_builds"
+                                )
+                            )
+                        }
+                    }
                 }
             }
 

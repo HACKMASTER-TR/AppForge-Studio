@@ -1,9 +1,9 @@
 {
   "version": "3.0.0",
-  "head": "a180e40",
-  "branch": "fix/bug7d-terminal-ime-bottom-inset",
-  "risk": "ACCEPT",
-  "riskScore": 23,
+  "head": "902df28",
+  "branch": "fix/bug7e-terminal-build-apk-home",
+  "risk": "REFACTOR_FIRST",
+  "riskScore": 49,
   "security": "GREEN",
   "apiRoutes": 83,
   "databaseTables": 34,
