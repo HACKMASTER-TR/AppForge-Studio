@@ -85,3 +85,11 @@ Machine-readable rules:
 - Termux Android/JVM unit execution is `DEFERRED / CI REQUIRED`; it must never be reported as a local Android unit-test PASS.
 - External platform review/wait states are `EXTERNAL_PENDING`, not fabricated success.
 - Existing HARD STABILITY GATE, fail-0, secret scanning, forbidden-file rules, and no-test-weakening rules remain mandatory.
+
+
+## GITHUB CLEANUP / POST-MERGE
+
+- Full Autopilot runs conservative GitHub cleanup after merge + required main CI and before deploy/release/publish.
+- Never delete an open PR branch or PR record; never rewrite/force/reset `main`.
+- Preserve recent successful main evidence, latest failure, current validated main SHA, rollback assets and `AppForgeStudio-latest.apk`.
+- Cleanup failure is fail-stop for later distribution and never rolls back already merged code.

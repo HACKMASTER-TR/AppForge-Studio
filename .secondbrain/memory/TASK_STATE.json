@@ -1,8 +1,8 @@
 {
-  "label": "bug7e-android-scope-fix",
-  "started_at": "2026-09-15T21:52:38+03:00",
-  "start_checkpoint": ".secondbrain/checkpoints/20260915-215238-start-bug7e-android-scope-fix.json",
+  "label": "apk-folder-nav-cleanup",
+  "started_at": "2026-09-15T23:59:52+03:00",
+  "start_checkpoint": ".secondbrain/checkpoints/20260915-235952-start-apk-folder-nav-cleanup.json",
   "status": "DONE",
-  "finished_at": "2026-09-15T21:53:46+03:00",
-  "end_checkpoint": ".secondbrain/checkpoints/20260915-215346-finish-bug7e-android-scope-fix.json"
+  "finished_at": "2026-09-16T00:08:52+03:00",
+  "end_checkpoint": ".secondbrain/checkpoints/20260916-000852-finish-apk-folder-nav-cleanup.json"
 }

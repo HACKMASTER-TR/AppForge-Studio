@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-09-15T21:53:45+03:00",
+  "generated_at": "2026-09-16T00:08:51+03:00",
   "largest": [
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-      "lines": 25451,
-      "symbols": 125
+      "lines": 25504,
+      "symbols": 126
     },
     {
       "file": "build-service/src/buildEngine.js",
@@ -75,11 +75,6 @@
       "file": "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt",
       "lines": 1642,
       "symbols": 17
-    },
-    {
-      "file": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
-      "lines": 1636,
-      "symbols": 10
     },
     {
       "file": "build-service/src/reactNativeBuildEngine.js",
@@ -190,6 +185,11 @@
       "file": "build-service/src/fastBuild.js",
       "lines": 1170,
       "symbols": 7
+    },
+    {
+      "file": "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",
+      "lines": 1169,
+      "symbols": 10
     },
     {
       "file": ".github/scripts/railway_production.py",
@@ -305,8 +305,8 @@
   "refactor_candidates": [
     {
       "file": "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-      "lines": 25451,
-      "symbols": 125
+      "lines": 25504,
+      "symbols": 126
     },
     {
       "file": "build-service/src/buildEngine.js",

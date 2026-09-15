@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+import json,subprocess,sys
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[1]
+def run(a): return subprocess.run(a,cwd=ROOT,text=True,capture_output=True)
+def j(p,d):
+    if p.returncode: return d
+    try:return json.loads(p.stdout or '')
+    except:return d
+def git(*a):return run(['git',*a])
+def gh(*a):return run(['gh',*a])
+def repo():
+    u=git('remote','get-url','origin').stdout.strip()
+    if u.startswith('git@github.com:'):u=u.split(':',1)[1]
+    else:u=u.split('github.com/',1)[1]
+    return u.removesuffix('.git').strip('/')
+def main():
+    if len(sys.argv)!=4:return 2
+    br,pr,sha=sys.argv[1:]; r=repo(); owner=r.split('/',1)[0]
+    x={'deleted_merged_branches':0,'pruned_remote_refs':0,'removed_obsolete_files':0,'removed_stale_artifacts':0,'removed_obsolete_release_assets':0,'protected_items':0,'errors':[]}
+    meta=j(gh('api',f'repos/{r}/pulls/{pr}'),{})
+    if br in {'','main','master'}:x['errors'].append('protected source branch')
+    elif not meta.get('merged_at'):x['errors'].append('PR is not merged')
+    elif (meta.get('head') or {}).get('ref')!=br:x['errors'].append('PR head mismatch')
+    else:
+        op=j(gh('api','-X','GET',f'repos/{r}/pulls','-f','state=open','-f',f'head={owner}:{br}','-f','per_page=100'),None)
+        if op is None:x['errors'].append('open PR dependency check failed')
+        elif op:x['protected_items']+=1
+        else:
+            remote=git('ls-remote','--heads','origin',f'refs/heads/{br}')
+            if remote.returncode:x['errors'].append('remote branch lookup failed')
+            elif remote.stdout.strip():
+                d=git('push','origin','--delete',br)
+                if d.returncode:x['errors'].append('remote branch deletion failed')
+                else:x['deleted_merged_branches']+=1
+    before=set(git('for-each-ref','--format=%(refname:short)','refs/remotes/origin').stdout.split())
+    if git('fetch','--prune','origin').returncode:x['errors'].append('origin prune failed')
+    after=set(git('for-each-ref','--format=%(refname:short)','refs/remotes/origin').stdout.split());x['pruned_remote_refs']=len(before-after)
+    if git('branch','--show-current').stdout.strip()==br:x['protected_items']+=1
+    workflows=j(gh('api',f'repos/{r}/actions/workflows?per_page=100'),{}).get('workflows',[])
+    for wf in workflows:
+        runs=j(gh('api',f"repos/{r}/actions/workflows/{wf.get('id')}/runs?status=completed&per_page=100"),{}).get('workflow_runs',[])
+        keep={int(i['id']) for i in runs[:5] if i.get('id')}
+        a=next((i for i in runs if i.get('head_branch')=='main' and i.get('conclusion')=='success'),None)
+        b=next((i for i in runs if i.get('conclusion') not in {'success','neutral','skipped'}),None)
+        for z in (a,b):
+            if z and z.get('id'):keep.add(int(z['id']))
+        for i in runs:
+            if i.get('head_sha')==sha and i.get('id'):keep.add(int(i['id']))
+        x['protected_items']+=len(keep)
+        for i in runs:
+            rid=i.get('id')
+            if not rid or int(rid) in keep:continue
+            ac=len(j(gh('api',f'repos/{r}/actions/runs/{rid}/artifacts?per_page=100'),{}).get('artifacts',[]))
+            d=gh('api','-X','DELETE',f'repos/{r}/actions/runs/{rid}')
+            if d.returncode==0:x['removed_stale_artifacts']+=ac
+            elif '404' not in ((d.stdout or '')+(d.stderr or '')):x['errors'].append(f'run delete failed:{rid}')
+    for rel in j(gh('api',f'repos/{r}/releases?per_page=100'),[]):
+        for a in rel.get('assets') or []:
+            n=str(a.get('name') or ''); aid=a.get('id'); low=n.lower()
+            protected=rel.get('tag_name')=='appforge-studio-latest' or n=='AppForgeStudio-latest.apk' or not rel.get('draft')
+            if protected:x['protected_items']+=1;continue
+            if not aid or not any(k in low for k in ('debug','temp','temporary','.tmp','test-artifact')):x['protected_items']+=1;continue
+            d=gh('api','-X','DELETE',f'repos/{r}/releases/assets/{aid}')
+            if d.returncode==0:x['removed_obsolete_release_assets']+=1
+            elif '404' not in ((d.stdout or '')+(d.stderr or '')):x['errors'].append(f'asset delete failed:{n}')
+    if (ROOT/'AppForgeStudio-latest.apk').exists():x['protected_items']+=1
+    print('\nGITHUB CLEANUP:')
+    print('- Deleted merged branches:',x['deleted_merged_branches']);print('- Pruned remote refs:',x['pruned_remote_refs']);print('- Removed obsolete files:',x['removed_obsolete_files']);print('- Removed stale artifacts:',x['removed_stale_artifacts']);print('- Removed obsolete release assets:',x['removed_obsolete_release_assets']);print('- Protected items:',x['protected_items']);print('- Errors:',len(x['errors']))
+    for e in x['errors']:print(' ERROR:',e,file=sys.stderr)
+    return 6 if x['errors'] else 0
+if __name__=='__main__':raise SystemExit(main())

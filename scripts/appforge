@@ -2225,6 +2225,16 @@ def merge():
         )
 
 
+
+def run_github_cleanup(source_branch, pr_number_value, main_sha):
+    script = ROOT / "scripts" / "github-cleanup"
+    if not script.is_file():
+        block_pipeline("GITHUB_CLEANUP", "CI_ENVIRONMENT", "scripts/github-cleanup is missing")
+    result = run([sys.executable, str(script), source_branch, str(pr_number_value), main_sha], check=False)
+    if result.returncode != 0:
+        block_pipeline("GITHUB_CLEANUP", "CI_ENVIRONMENT", f"GitHub cleanup failed with exit code {result.returncode}")
+    return {"status": "SUCCESS"}
+
 def autopilot():
     branch = git_out("branch", "--show-current")
     if branch == "main":
@@ -2276,6 +2286,8 @@ def autopilot():
         if "android-debug.yml" in required and rel.get("status") != "READY":
             block_pipeline("MAIN_CI", "CI_ENVIRONMENT", "latest APK release is not READY", latest_release=rel)
         print("POST-MERGE MAIN CI: SUCCESS")
+
+        cleanup_result = run_github_cleanup(branch, num, main_sha)
 
         # Hard shipping boundary. This is intentionally after merge/main CI so
         # delivery infrastructure and fixes can land, but before deploy/release/publish.

@@ -1,6 +1,6 @@
 # Test Map
 
-Generated: 2026-09-15T21:53:44+03:00
+Generated: 2026-09-16T00:08:50+03:00
 
 ## Recommended for current change
 
@@ -99,6 +99,7 @@ Generated: 2026-09-15T21:53:44+03:00
 - `build-service/tests/appforge_autopilot_android_unit_gate_contract.test.js`
 - `build-service/tests/appforge_autopilot_cli_contract.test.js`
 - `build-service/tests/appforge_autopilot_full_fail_stop_contract.test.js`
+- `build-service/tests/appforge_autopilot_github_cleanup_contract.test.js`
 - `build-service/tests/appforge_autopilot_policy_contract.test.js`
 - `build-service/tests/appforge_autopilot_resume_contract.test.js`
 - `build-service/tests/appforge_autopilot_timing_contract.test.js`
@@ -308,4 +309,3 @@ Generated: 2026-09-15T21:53:44+03:00
 - `build-service/tests/termux_terminal_vendor_contract.test.js`
 - `build-service/tests/toolchain.test.js`
 - `build-service/tests/unity_android_build_engine.test.js`
-- `build-service/tests/unity_licensed_build_engine.test.js`
