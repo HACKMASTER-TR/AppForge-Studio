@@ -1,12 +1,11 @@
 # Test Map
 
-Generated: 2026-09-15T18:27:58+03:00
+Generated: 2026-09-15T19:00:08+03:00
 
 ## Recommended for current change
 
 - `cd build-service && npm test`
 - `Android CI / Gradle compile verification`
-- `Validate affected GitHub Actions workflow`
 
 ## Discovered test files
 
@@ -131,6 +130,7 @@ Generated: 2026-09-15T18:27:58+03:00
 - `build-service/tests/appforge_terminal_proroot_workspace_contract.test.js`
 - `build-service/tests/appforge_terminal_pty_lifecycle_contract.test.js`
 - `build-service/tests/appforge_terminal_pty_reader_lifecycle_contract.test.js`
+- `build-service/tests/appforge_terminal_renderer_init_contract.test.js`
 - `build-service/tests/appforge_terminal_security_restore_contract.test.js`
 - `build-service/tests/appforge_terminal_shortcut_viewport_suppression_contract.test.js`
 - `build-service/tests/appforge_terminal_stage10c_local_terminal_input_contract.test.js`
@@ -309,4 +309,3 @@ Generated: 2026-09-15T18:27:58+03:00
 - `build-service/tests/unknown_web_fallback.test.js`
 - `build-service/tests/user_project_limit_contract.test.js`
 - `build-service/tests/v2_1_template_browser.test.js`
-- `build-service/tests/v2_2_settings_languages.test.js`

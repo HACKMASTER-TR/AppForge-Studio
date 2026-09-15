@@ -33,7 +33,7 @@ test("Termux reports Android unit execution as deferred", () => {
 test("BUG7 runtime blocker is a hard shipping boundary", () => {
   assert.match(appforge, /require_no_runtime_blockers\(\)/);
   assert.equal(blockers.active[0].id, "BUG-7");
-  assert.equal(blockers.active[0].status, "DEVICE_LOG_PENDING");
+  assert.equal(blockers.active[0].status, "DEVICE_RETEST_REQUIRED");
   assert.equal(blockers.active[0].shipping_blocker, true);
 });
 

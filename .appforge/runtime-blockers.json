@@ -6,9 +6,10 @@
       "stage": "DEVICE_RUNTIME",
       "classification": "RUNTIME",
       "summary": "AppForge Terminal exits when opened on the real Android device",
-      "status": "DEVICE_LOG_PENDING",
-      "evidence_required": "ADB crash stack trace after reproducing Terminal entry crash",
-      "shipping_blocker": true
+      "status": "DEVICE_RETEST_REQUIRED",
+      "evidence_required": "Install the fresh post-merge APK, open AppForge Terminal on the real Android device, confirm it remains open and usable, then verify logcat has no TerminalView mRenderer FATAL EXCEPTION.",
+      "shipping_blocker": true,
+      "root_cause": "Termux TerminalView mRenderer was null when Compose AndroidView layout called onSizeChanged()->updateSize()."
     }
   ]
 }
