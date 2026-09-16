@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json,subprocess,sys
+from urllib.parse import quote
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 def run(a): return subprocess.run(a,cwd=ROOT,text=True,capture_output=True)
@@ -23,8 +24,18 @@ def main():
     elif not meta.get('merged_at'):x['errors'].append('PR is not merged')
     elif (meta.get('head') or {}).get('ref')!=br:x['errors'].append('PR head mismatch')
     else:
-        op=j(gh('api','-X','GET',f'repos/{r}/pulls','-f','state=open','-f',f'head={owner}:{br}','-f','per_page=100'),None)
-        if op is None:x['errors'].append('open PR dependency check failed')
+        head=quote(f'{owner}:{br}',safe='')
+        op_result=gh(
+            'api',
+            f'repos/{r}/pulls?state=open&head={head}&per_page=100'
+        )
+        op=j(op_result,None)
+        if op is None:
+            detail=(op_result.stderr or op_result.stdout or '').strip()
+            x['errors'].append(
+                'open PR dependency check failed'
+                + (f': {detail}' if detail else '')
+            )
         elif op:x['protected_items']+=1
         else:
             remote=git('ls-remote','--heads','origin',f'refs/heads/{br}')

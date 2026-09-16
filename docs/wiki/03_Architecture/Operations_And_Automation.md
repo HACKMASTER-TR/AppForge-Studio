@@ -37,3 +37,13 @@ Local Autopilot Android/JVM execution must not treat any host `gradle` binary as
 Android/proot staging also uses the verified `git add --all` path after forbidden-file validation. The ordinary host path retains explicit changed-file pathspec staging. This avoids a proot-specific staging crash without weakening the forbidden file guard.
 
 Read workflow triggers, environment requirements, and the called script before changing delivery behavior. Do not infer remote deployment success, secret availability, or production state from names in configuration.
+
+## GitHub cleanup open-PR dependency check
+
+The post-merge GitHub cleanup uses an explicitly URL-encoded REST query
+for source-branch open-PR discovery. A GitHub CLI transport/query failure
+must remain fail-stop and expose its stderr instead of being reported only
+as a generic dependency-check failure.
+
+Source verification:
+- `scripts/github-cleanup`
