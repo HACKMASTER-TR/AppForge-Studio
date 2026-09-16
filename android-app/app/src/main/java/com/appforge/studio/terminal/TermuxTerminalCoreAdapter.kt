@@ -349,8 +349,7 @@ internal object TermuxTerminalMirrorControllerRegistry {
                         callbacks
                     )
 
-                return@synchronized
-                    current.controller
+                return@synchronized current.controller
             }
 
             current
