@@ -403,6 +403,31 @@ internal object TermuxTerminalMirrorRegistry {
             }
         }
     }
+
+    fun reset(
+        sessionId: String,
+    ) {
+        val listener =
+            synchronized(lock) {
+                val channel =
+                    channels[sessionId]
+                        ?: return@synchronized null
+
+                channel.backlog.setLength(0)
+
+                channel.listener
+            }
+
+        /*
+         * CSI 3 J clears terminal scrollback.
+         * CSI 2 J + H clears and homes the visible screen.
+         */
+        listener
+            ?.consumer
+            ?.invoke(
+                "\u001b[3J\u001b[2J\u001b[H",
+            )
+    }
 }
 
 
@@ -470,6 +495,16 @@ internal fun TermuxTerminalCoreHost(
         }
     }
 
+    val mirrorRegistration =
+        remember(
+            controller,
+            mirrorSessionId,
+        ) {
+            AtomicReference<AutoCloseable?>(
+                null
+            )
+        }
+
     DisposableEffect(
         controller,
         mirrorSessionId,
@@ -478,18 +513,9 @@ internal fun TermuxTerminalCoreHost(
             controller,
         )
 
-        val mirrorRegistration =
-            mirrorSessionId
-                ?.let { sessionId ->
-                    TermuxTerminalMirrorRegistry
-                        .register(
-                            sessionId,
-                            controller::write,
-                        )
-                }
-
         onDispose {
             mirrorRegistration
+                .getAndSet(null)
                 ?.close()
 
             controller.close()
@@ -504,6 +530,24 @@ internal fun TermuxTerminalCoreHost(
                     context,
                 )
                 .also { view ->
+                    /*
+                     * Replay only after TerminalView is attached to its
+                     * TerminalSession. This makes copy-mode exit and screen
+                     * navigation reconstruction deterministic.
+                     */
+                    mirrorSessionId
+                        ?.let { sessionId ->
+                            mirrorRegistration
+                                .getAndSet(
+                                    TermuxTerminalMirrorRegistry
+                                        .register(
+                                            sessionId,
+                                            controller::write,
+                                        )
+                                )
+                                ?.close()
+                        }
+
                     view.addOnLayoutChangeListener {
                             changedView,
                             _,

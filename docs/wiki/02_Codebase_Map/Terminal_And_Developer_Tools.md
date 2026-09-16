@@ -16,6 +16,7 @@ related:
 source_files:
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LocalTerminalEngine.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt"
@@ -35,5 +36,7 @@ The Android `terminal/` package owns terminal UI, local and Linux runtime adapte
 GitHub and Railway connection flows use provider HTTPS endpoints in `ExternalConnectionsClient`. Connection and pending-authorization persistence are handled by `SecureAccountStore`; see [[Account_And_Security_Map]] for the storage boundary. The wiki makes no claim about live provider authorization, user data, or legal disclosures.
 
 In normal terminal mode, the vendored Termux `TerminalView` owns touch drag, scrollback, and fling behavior. Compose transform gestures must not consume one-finger pan input while that native viewport is active. The Compose pinch path remains available only for the fallback renderer.
+
+The native Termux mirror lifecycle is session-aware. When a TerminalView is recreated after copy mode or screen navigation, backlog replay occurs only after the native view has attached to its TerminalSession. A terminal restart clears both the AppForge ANSI buffer and the Termux mirror backlog/scrollback so stale output cannot survive a restart.
 
 Command restrictions belong to `TerminalCommandPolicy`. Device keyboard and terminal rendering acceptance remains subject to the active runtime blocker in [[Legacy_Brain_Removal_And_Validation_State]].
