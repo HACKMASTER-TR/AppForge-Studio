@@ -78,6 +78,12 @@ else
     fail "Second Brain wiki prune report"
 fi
 
+if python3 scripts/secret-hygiene-guard.py; then
+    pass "Secret hygiene guard"
+else
+    fail "Secret hygiene guard"
+fi
+
 is_android_proot() {
     if [ -x /system/bin/app_process ] || [ -x /system/bin/getprop ]; then
         return 0
