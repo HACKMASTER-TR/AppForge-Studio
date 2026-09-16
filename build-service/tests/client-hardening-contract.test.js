@@ -23,9 +23,28 @@ function request(headers = {}) {
 }
 
 test("Android update policy distinguishes normal optional and forced", () => {
-  assert.equal(policyForVersion(522).state, "NORMAL");
-  assert.equal(policyForVersion(521).state, "OPTIONAL");
-  assert.equal(policyForVersion(520).state, "FORCED");
+  const release = {
+    latestVersionCode: 525,
+    minSupportedVersionCode: 521
+  };
+
+  assert.equal(policyForVersion(525, release).state, "NORMAL");
+  assert.equal(policyForVersion(524, release).state, "OPTIONAL");
+  assert.equal(policyForVersion(520, release).state, "FORCED");
+});
+
+test("invalid or absent rollout boundaries cannot create a forced lockout", () => {
+  const policy = policyForVersion(
+    1,
+    {
+      latestVersionCode: 0,
+      minSupportedVersionCode: 0
+    }
+  );
+
+  assert.equal(policy.state, "NORMAL");
+  assert.equal(policy.latestVersionCode, 1);
+  assert.equal(policy.minSupportedVersionCode, 1);
 });
 
 test("native client version prefers explicit version header", () => {

@@ -15,21 +15,33 @@ import {
   grantPro
 } from "./proEntitlements.js";
 
-const LATEST_VERSION_CODE =
-  Math.max(
-    1,
-    Number(
-      process.env.STUDIO_LATEST_VERSION_CODE ||
-      522
-    )
-  );
+function positiveVersionCode(
+  value,
+  fallback
+) {
+  const parsed =
+    Number(value);
+
+  return (
+    Number.isSafeInteger(parsed) &&
+    parsed > 0
+  )
+    ? parsed
+    : fallback;
+}
 
 const MIN_SUPPORTED_VERSION_CODE =
+  positiveVersionCode(
+    process.env.STUDIO_MIN_SUPPORTED_VERSION_CODE,
+    1
+  );
+
+const LATEST_VERSION_CODE =
   Math.max(
-    1,
-    Number(
-      process.env.STUDIO_MIN_SUPPORTED_VERSION_CODE ||
-      521
+    MIN_SUPPORTED_VERSION_CODE,
+    positiveVersionCode(
+      process.env.STUDIO_LATEST_VERSION_CODE,
+      MIN_SUPPORTED_VERSION_CODE
     )
   );
 
@@ -143,7 +155,15 @@ function nativeClientVersion(req) {
   };
 }
 
-function policyForVersion(currentVersionCode) {
+function policyForVersion(
+  currentVersionCode,
+  {
+    latestVersionCode =
+      LATEST_VERSION_CODE,
+    minSupportedVersionCode =
+      MIN_SUPPORTED_VERSION_CODE
+  } = {}
+) {
   const current =
     Number.isFinite(
       Number(currentVersionCode)
@@ -151,18 +171,33 @@ function policyForVersion(currentVersionCode) {
       ? Number(currentVersionCode)
       : 0;
 
+  const safeMinimum =
+    positiveVersionCode(
+      minSupportedVersionCode,
+      1
+    );
+
+  const safeLatest =
+    Math.max(
+      safeMinimum,
+      positiveVersionCode(
+        latestVersionCode,
+        safeMinimum
+      )
+    );
+
   let state = "NORMAL";
 
   if (MAINTENANCE_MODE) {
     state = "MAINTENANCE";
   } else if (
     current <
-    MIN_SUPPORTED_VERSION_CODE
+    safeMinimum
   ) {
     state = "FORCED";
   } else if (
     current <
-    LATEST_VERSION_CODE
+    safeLatest
   ) {
     state = "OPTIONAL";
   }
@@ -172,9 +207,9 @@ function policyForVersion(currentVersionCode) {
     currentVersionCode:
       current || null,
     latestVersionCode:
-      LATEST_VERSION_CODE,
+      safeLatest,
     minSupportedVersionCode:
-      MIN_SUPPORTED_VERSION_CODE,
+      safeMinimum,
     updatePriority:
       state === "FORCED"
         ? 5

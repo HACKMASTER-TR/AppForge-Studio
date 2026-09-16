@@ -20,6 +20,10 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt"
   - "build-service/tests/appforge_terminal_mirror_lifecycle_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentArtifactClient.kt"
+  - "build-service/src/clientHardening.js"
+  - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
+  - ".github/workflows/android-play-release.yml"
+  - "scripts/appforge"
 ---
 
 # Bug Index
@@ -31,5 +35,7 @@ source_files:
 - Terminal mirror lifecycle regression — copy-mode exit or leaving/re-entering the Terminal screen could recreate the native Termux viewport without restoring visible history, while restart could leave stale mirror scrollback. Source now replays after TerminalView attachment and resets AppForge/native buffers together. On-device verification passed on 2026-09-16.
 
 - Unified Agent artifact MediaStore API guard — `MediaStore.Downloads.EXTERNAL_CONTENT_URI` is API 29+ while AppForge keeps minSdk 26. The Q+ exporter is explicitly API-gated; API 26–28 continue through the existing legacy export path. Release lint must remain green without raising minSdk or baselining this error.
+
+- Android Play rollout/version-policy mismatch — backend update floors must not assume that a build visible to one Play track/account is globally available. Unconfigured version policy now fails open, stale cached FORCED state cannot hard-lock offline startup, and a forced client update is relaxed when Play cannot actually deliver the required minimum to that account. Official versioned GitHub releases publish to the production track; manual Play workflow runs retain the configurable test/internal path.
 
 Document only significant, reusable debugging knowledge. Do not add one-off visual or formatting defects.
