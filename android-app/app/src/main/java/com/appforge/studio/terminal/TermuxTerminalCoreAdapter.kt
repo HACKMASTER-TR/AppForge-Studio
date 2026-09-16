@@ -6,6 +6,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.termux.terminal.TerminalSession
@@ -716,66 +717,78 @@ internal fun TermuxTerminalCoreHost(
         }
     }
 
-    AndroidView(
-        modifier = modifier,
-        factory = { context ->
-            controller
-                .createView(
-                    context,
-                )
-                .also { view ->
-                    /*
-                     * Replay only after TerminalView is attached to its
-                     * TerminalSession. This makes copy-mode exit and screen
-                     * navigation reconstruction deterministic.
-                     */
-                    mirrorSessionId
-                        ?.let { sessionId ->
-                            TermuxTerminalMirrorControllerRegistry
-                                .ensureRegistered(
-                                    sessionId =
-                                        sessionId,
-                                    controller =
-                                        controller,
-                                )
+    /*
+     * A PTY session switch changes the persistent mirror controller.
+     * AndroidView itself must be recreated for that controller so
+     * createView() attaches the TerminalSession and ensureRegistered()
+     * binds the new mirror channel. Reusing the previous Android View
+     * leaves the new terminal black even though its PTY is running.
+     */
+    key(
+        controller,
+        mirrorSessionId,
+    ) {
+        AndroidView(
+            modifier = modifier,
+            factory = { context ->
+                controller
+                    .createView(
+                        context,
+                    )
+                    .also { view ->
+                        /*
+                         * Replay only after TerminalView is attached to its
+                         * TerminalSession. This makes copy-mode exit and screen
+                         * navigation reconstruction deterministic.
+                         */
+                        mirrorSessionId
+                            ?.let { sessionId ->
+                                TermuxTerminalMirrorControllerRegistry
+                                    .ensureRegistered(
+                                        sessionId =
+                                            sessionId,
+                                        controller =
+                                            controller,
+                                    )
+                            }
+
+                        view.addOnLayoutChangeListener {
+                                changedView,
+                                _,
+                                _,
+                                _,
+                                _,
+                                _,
+                                _,
+                                _,
+                                _,
+                            ->
+                            reportGeometry(
+                                changedView as TerminalView,
+                            )
                         }
 
-                    view.addOnLayoutChangeListener {
-                            changedView,
-                            _,
-                            _,
-                            _,
-                            _,
-                            _,
-                            _,
-                            _,
-                            _,
-                        ->
                         reportGeometry(
-                            changedView as TerminalView,
+                            view,
                         )
                     }
-
-                    reportGeometry(
-                        view,
+            },
+            update = { view ->
+                if (
+                    view.getCurrentSession() !==
+                    controller.session
+                ) {
+                    view.attachSession(
+                        controller.session,
                     )
                 }
-        },
-        update = { view ->
-            if (
-                view.getCurrentSession() !==
-                controller.session
-            ) {
-                view.attachSession(
-                    controller.session,
-                )
-            }
 
-            reportGeometry(
-                view,
-            )
-        },
-    )
+                reportGeometry(
+                    view,
+                )
+            },
+        )
+    }
 }
 
 

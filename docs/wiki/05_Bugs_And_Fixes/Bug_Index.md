@@ -25,6 +25,7 @@ source_files:
   - ".github/workflows/android-play-release.yml"
   - "scripts/appforge"
   - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
+  - "build-service/tests/appforge_terminal_persistent_viewport_workspace_contract.test.js"
 ---
 
 # Bug Index
@@ -50,3 +51,9 @@ Document only significant, reusable debugging knowledge. Do not add one-off visu
 - Successful APK trash action gap — downloaded AppForge APK cards now keep
   Install/Share and add Android 11+ MediaStore trash semantics without
   silently converting the action into permanent deletion on older Android.
+
+- Terminal multi-session native viewport rebinding regression — creating a
+  second PTY could select the new AppForge session while Compose reused the
+  old AndroidView. The new Termux mirror controller therefore never received
+  `createView()` / `ensureRegistered()`, producing a black terminal viewport.
+  The native AndroidView is now keyed by controller/session identity.
