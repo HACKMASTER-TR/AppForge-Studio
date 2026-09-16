@@ -3,8 +3,8 @@ type: codebase
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-09-16
+last_verified: 2026-09-16
 confidence: high
 tags:
   - terminal
@@ -25,6 +25,9 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/terminal/ExternalConnectionsClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalCommandPolicy.kt"
   - "build-service/tests/appforge_terminal_integration.test.js"
+  - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt"
 ---
 
 # Terminal and Developer Tools
@@ -39,4 +42,9 @@ In normal terminal mode, the vendored Termux `TerminalView` owns touch drag, scr
 
 The native Termux mirror lifecycle is session-aware. When a TerminalView is recreated after copy mode or screen navigation, backlog replay occurs only after the native view has attached to its TerminalSession. A terminal restart clears both the AppForge ANSI buffer and the Termux mirror backlog/scrollback so stale output cannot survive a restart.
 
-Command restrictions belong to `TerminalCommandPolicy`. Device keyboard and terminal rendering acceptance remains subject to the active runtime blocker in [[Legacy_Brain_Removal_And_Validation_State]].
+Command restrictions belong to `TerminalCommandPolicy`. Device keyboard and terminal rendering acceptance passed on 2026-09-16.
+
+
+## Owner-only access
+
+AppForge Terminal is an owner-only Android surface. `OwnerAccessPolicy` is the authoritative account check. `StudioHomeV2` does not render the Terminal card for non-owner Free or Pro accounts, and `MainActivity` rejects Terminal navigation, restored Terminal state, and external-authorization routing for non-owner accounts. Terminal source remains packaged in the common APK, but it is not exposed or routable to those accounts.

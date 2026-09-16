@@ -3,8 +3,8 @@ type: status
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-09-16
+last_verified: 2026-09-16
 confidence: high
 tags:
   - status
@@ -36,7 +36,7 @@ source_files:
 - `fast_signing_key.test.js` had an independent byte-length assertion failure (expected 384, actual 438) in the pre-refocus run.
 - Android Gradle tests were not run: no wrapper or local Android toolchain configuration was present.
 
-- The terminal native-viewport touch-scroll regression now has a source fix and a targeted contract test. The targeted test passes 2/2 and `git diff --check` is clean on the current work branch. On-device scroll/fling acceptance is still pending.
+- The terminal native-viewport touch-scroll regression now has a source fix and a targeted contract test. The targeted test passes 2/2 and `git diff --check` is clean on the current work branch. On-device scroll/fling acceptance passed on 2026-09-16.
 
 - AppForge Terminal's Ubuntu/proot runtime exposed host Java/Gradle tools that can crash natively with exit 139. Autopilot now detects the Android-hosted/proot environment before starting Java or Gradle and defers the authoritative Android JVM suite to `android-debug.yml`. Ordinary Linux hosts retain the Gradle-version compatibility guard.
 
@@ -44,4 +44,4 @@ source_files:
 
 ## Shipping state
 
-`BUG-7` is an active `DEVICE_RETEST_REQUIRED` runtime blocker. It requires an on-device terminal keyboard regression check before shipping. This is recorded in [[Legacy_Brain_Removal_And_Validation_State]].
+`BUG-7` device acceptance passed on 2026-09-16. Scroll/fling, Copy -> Write persistence, leaving and returning to Terminal, workspace-selection persistence, keyboard open/close smoothness, shortcut placement, restart, `pwd`, and `echo APPFORGE_OK` were confirmed on-device. There is no active BUG-7 runtime blocker.

@@ -421,6 +421,35 @@ private fun installDownloadedApkUri(
 private const val APPFORGE_DOWNLOAD_FOLDER =
     "AppForge Studio"
 
+private fun formatDownloadedArtifactSize(
+    bytes: Long
+): String {
+    if (bytes <= 0L) {
+        return "—"
+    }
+
+    if (bytes < 1024L * 1024L) {
+        val kb =
+            (
+                bytes +
+                    1023L
+            ) /
+                1024L
+
+        return "${kb.coerceAtLeast(1L)} KB"
+    }
+
+    return String.format(
+        java.util.Locale.ROOT,
+        "%.1f MB",
+        bytes.toDouble() /
+            (
+                1024.0 *
+                    1024.0
+            )
+    )
+}
+
 /*
  * Build elapsed time is display-only.
  *
@@ -649,6 +678,20 @@ private fun AppForgeApp() {
     val hostActivity = context as? MainActivity
     val scope = rememberCoroutineScope()
 
+    var session by remember {
+        mutableStateOf<Session?>(
+            SecureAccountStore
+                .loadSession(context)
+        )
+    }
+
+    val terminalOwner =
+        OwnerAccessPolicy
+            .isActiveOwner(
+                context,
+                session?.email
+            )
+
     val appConfiguration =
         LocalConfiguration.current
 
@@ -740,14 +783,42 @@ private fun AppForgeApp() {
     }
 
     LaunchedEffect(
-        hostActivity?.externalAuthorizationSequence
+        hostActivity?.externalAuthorizationSequence,
+        terminalOwner
     ) {
         if (
             hostActivity?.externalAuthorizationUri !=
                 null
         ) {
+            if (terminalOwner) {
+                screen =
+                    AppScreen.TERMINAL
+            } else {
+                hostActivity
+                    .consumeExternalAuthorization()
+            }
+        }
+    }
+
+    /*
+     * Defense in depth:
+     * restored navigation state or an internal caller must never
+     * expose Terminal to a non-owner account.
+     */
+    LaunchedEffect(
+        screen,
+        terminalOwner
+    ) {
+        if (
+            screen ==
+                AppScreen.TERMINAL &&
+            !terminalOwner
+        ) {
             screen =
-                AppScreen.TERMINAL
+                AppScreen.HOME
+
+            hostActivity
+                ?.consumeExternalAuthorization()
         }
     }
 
@@ -786,6 +857,15 @@ private fun AppForgeApp() {
     fun openWorkspaceScreen(
         target: AppScreen
     ) {
+        if (
+            target == AppScreen.TERMINAL &&
+            !terminalOwner
+        ) {
+            screen =
+                AppScreen.HOME
+            return
+        }
+
         workspaceReturnScreen =
             screen
 
@@ -889,12 +969,6 @@ private fun AppForgeApp() {
                 .ifBlank {
                     draft.buildApiKey
                 }
-        )
-    }
-    var session by remember {
-        mutableStateOf<Session?>(
-            SecureAccountStore
-                .loadSession(context)
         )
     }
 
@@ -4100,7 +4174,18 @@ private fun AppForgeApp() {
         }
 
         Surface(Modifier.fillMaxSize(), color = Bg) {
-            when (screen) {
+            val visibleScreen =
+                if (
+                    screen ==
+                        AppScreen.TERMINAL &&
+                    !terminalOwner
+                ) {
+                    AppScreen.HOME
+                } else {
+                    screen
+                }
+
+            when (visibleScreen) {
 
                 AppScreen.ONBOARDING ->
                     AppForgeOnboardingScreen(
@@ -4240,15 +4325,20 @@ private fun AppForgeApp() {
                         },
 
                         onOpenTerminal = {
-                            terminalReturnScreen =
-                                screen
+                            if (terminalOwner) {
+                                terminalReturnScreen =
+                                    screen
 
-                            terminalReturnStep =
-                                step
+                                terminalReturnStep =
+                                    step
 
-                            openWorkspaceScreen(
-                                AppScreen.TERMINAL
-                            )
+                                openWorkspaceScreen(
+                                    AppScreen.TERMINAL
+                                )
+                            } else {
+                                screen =
+                                    AppScreen.HOME
+                            }
                         },
 
                         onOpenTemplates = {
@@ -19731,44 +19821,74 @@ private fun BuildStep(
                                                     fileName
                                             )
 
-                                        val destination =
-                                            if (
-                                                OwnerAccessPolicy
-                                                    .isActiveOwner(
-                                                        context
-                                                    )
-                                            ) {
-                                                copyArtifactToOwnerVault(
-                                                    context =
-                                                        context,
-                                                    sourceFile =
-                                                        apkFile,
-                                                    fileName =
-                                                        fileName
+                                        /*
+                                         * Public APK publication is the
+                                         * canonical user-visible download.
+                                         *
+                                         * Successful APKs reads the exact
+                                         * Downloads/AppForge Studio folder,
+                                         * so owner access must never bypass
+                                         * this publication step.
+                                         */
+                                        val publishedToDownloads =
+                                            publishApkToDownloads(
+                                                context =
+                                                    context,
+                                                sourceFile =
+                                                    apkFile,
+                                                fileName =
+                                                    fileName
+                                            )
+
+                                        if (
+                                            Build.VERSION.SDK_INT >=
+                                                Build.VERSION_CODES.Q &&
+                                            !publishedToDownloads
+                                        ) {
+                                            error(
+                                                "APK Downloads/AppForge Studio klasörüne kaydedilemedi."
+                                            )
+                                        }
+
+                                        val isOwner =
+                                            OwnerAccessPolicy
+                                                .isActiveOwner(
+                                                    context
                                                 )
 
-                                                "OWNER"
-                                            } else {
-                                                val published =
-                                                    runCatching {
-                                                        publishApkToDownloads(
-                                                            context =
-                                                                context,
-                                                            sourceFile =
-                                                                apkFile,
-                                                            fileName =
-                                                                fileName
-                                                        )
-                                                    }
-                                                        .getOrDefault(
-                                                            false
-                                                        )
+                                        if (
+                                            isOwner
+                                        ) {
+                                            /*
+                                             * Owner keeps the additional
+                                             * private AppForge artifact copy.
+                                             * This is not a replacement for
+                                             * the public Downloads copy.
+                                             */
+                                            copyArtifactToOwnerVault(
+                                                context =
+                                                    context,
+                                                sourceFile =
+                                                    apkFile,
+                                                fileName =
+                                                    fileName
+                                            )
+                                        }
 
-                                                if (published) {
+                                        val destination =
+                                            when {
+                                                isOwner &&
+                                                    publishedToDownloads ->
+                                                    "OWNER_AND_DOWNLOADS"
+
+                                                isOwner ->
+                                                    "OWNER"
+
+                                                publishedToDownloads ->
                                                     "DOWNLOADS"
-                                                } else {
+
+                                                else ->
                                                     "CACHE"
-                                                }
                                             }
 
                                         Pair(
@@ -19783,40 +19903,34 @@ private fun BuildStep(
                                 apkCachedPath =
                                     apkFile.absolutePath
 
-                                val sizeMb =
-                                    apkFile.length()
-                                        .toDouble() /
-                                    (
-                                        1024.0 *
-                                        1024.0
+                                val sizeText =
+                                    formatDownloadedArtifactSize(
+                                        apkFile.length()
                                     )
 
                                 downloadMessage =
                                     when (
                                         result.second
                                     ) {
+                                        "OWNER_AND_DOWNLOADS" ->
+                                            "✅ APK indirildi • " +
+                                                sizeText +
+                                                " • Downloads/AppForge Studio ve " +
+                                                "AppForge Dosyaları/APK bölümüne kaydedildi."
+
                                         "OWNER" ->
                                             "✅ APK indirildi • " +
-                                                String.format(
-                                                    "%.1f MB",
-                                                    sizeMb
-                                                ) +
+                                                sizeText +
                                                 " • AppForge Dosyaları/APK bölümüne kaydedildi."
 
                                         "DOWNLOADS" ->
                                             "✅ APK indirildi • " +
-                                                String.format(
-                                                    "%.1f MB",
-                                                    sizeMb
-                                                ) +
-                                                " • Downloads klasörüne kaydedildi."
+                                                sizeText +
+                                                " • Downloads/AppForge Studio klasörüne kaydedildi."
 
                                         else ->
                                             "✅ APK indirildi • " +
-                                                String.format(
-                                                    "%.1f MB",
-                                                    sizeMb
-                                                ) +
+                                                sizeText +
                                                 " • Kuruluma hazır."
                                     }
 
@@ -20924,6 +21038,40 @@ private fun publishApkToDownloads(
             null,
             null
         )
+
+        val publishedSize =
+            resolver.query(
+                uri,
+                arrayOf(
+                    android.provider.MediaStore
+                        .MediaColumns
+                        .SIZE
+                ),
+                null,
+                null,
+                null
+            )
+                ?.use { cursor ->
+                    if (
+                        cursor.moveToFirst()
+                    ) {
+                        cursor.getLong(
+                            0
+                        )
+                    } else {
+                        0L
+                    }
+                }
+                ?: 0L
+
+        require(
+            publishedSize ==
+                sourceFile.length() &&
+                publishedSize > 0L
+        ) {
+            "Downloads APK kopyası eksik: " +
+                "$publishedSize / ${sourceFile.length()} bayt"
+        }
 
         return true
 

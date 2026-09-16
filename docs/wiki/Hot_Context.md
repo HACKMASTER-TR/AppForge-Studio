@@ -3,8 +3,8 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-09-16
+last_verified: 2026-09-16
 confidence: high
 tags:
   - hot-context
@@ -28,13 +28,15 @@ source_files: []
 
 ## Recent Important Changes
 
+- BUG-7 device acceptance passed on 2026-09-16; the active runtime blocker was cleared after the required Terminal regression checks passed.
+- AppForge Terminal is owner-only at the Android UI and route boundary. Free and Pro non-owner accounts do not receive a Terminal entry or Terminal navigation.
+
 - Legacy `.secondbrain` files and its command, snapshot, UI, sync, and hard-gate links were removed on 2026-09-15.
 - The old `docs` tree remains deleted; no legacy documentation is a source for this wiki.
 
 ## Current Risks / Open Questions
 
 - The local backend suite is not green: dependency provisioning and one keystore assertion need separate resolution.
-- `.appforge/runtime-blockers.json` records a shipping-blocking device retest for terminal keyboard behavior.
 - Existing tracked APK and backup files remain technical-debt candidates; do not remove them without approval.
 
 ## Read Next

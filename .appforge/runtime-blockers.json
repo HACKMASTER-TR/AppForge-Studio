@@ -1,15 +1,4 @@
 {
   "schema": 1,
-  "active": [
-    {
-      "id": "BUG-7",
-      "stage": "DEVICE_RUNTIME",
-      "classification": "RUNTIME",
-      "summary": "Terminal command I/O and shortcut placement pass on-device; keyboard open/close smoothness still requires device validation",
-      "status": "DEVICE_RETEST_REQUIRED",
-      "evidence_required": "Install the fresh post-merge APK. Open/close the AppForge Terminal keyboard repeatedly, verify animation is smooth, shortcut keys stay above the keyboard, pwd and echo APPFORGE_OK still work, and logcat has no new FATAL EXCEPTION.",
-      "shipping_blocker": true,
-      "root_cause": "Keyboard animation emits repeated Termux geometry callbacks. Real PTY resize/persist/publish is now debounced until layout settles; BUG7D bottom-IME shortcut placement remains enabled."
-    }
-  ]
+  "active": []
 }

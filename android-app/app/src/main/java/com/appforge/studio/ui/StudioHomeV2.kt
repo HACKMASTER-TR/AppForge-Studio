@@ -53,6 +53,7 @@ import com.appforge.studio.UnifiedAgentHomeEntryCard
 import com.appforge.studio.io.AppSettingsStore
 import com.appforge.studio.io.ProjectLibrary
 import com.appforge.studio.io.SavedProject
+import com.appforge.studio.security.OwnerAccessPolicy
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -308,12 +309,11 @@ fun StudioHomeV2(
             .isNullOrBlank()
 
     val fullAdmin =
-        accountEmail
-            ?.trim()
-            ?.equals(
-                "28550040284a@gmail.com",
-                ignoreCase = true
-            ) == true
+        OwnerAccessPolicy
+            .isActiveOwner(
+                context,
+                accountEmail
+            )
 
     /*
      * The home list normally changes when the active account changes.
@@ -832,34 +832,36 @@ fun StudioHomeV2(
                 }
             }
 
-            item {
-                Card(
-                    onClick = onOpenTerminal,
-                    modifier = Modifier.fillMaxWidth().widthIn(max = 980.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0D2430))
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(if (compact) 15.dp else 20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+            if (fullAdmin) {
+                item {
+                    Card(
+                        onClick = onOpenTerminal,
+                        modifier = Modifier.fillMaxWidth().widthIn(max = 980.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0D2430))
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(if (compact) 52.dp else 62.dp)
-                                .background(
-                                    Brush.linearGradient(listOf(Color(0xFF62F5B0), V2Primary)),
-                                    RoundedCornerShape(18.dp)
-                                ),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(if (compact) 15.dp else 20.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            Text(">_", color = Color(0xFF041018), fontWeight = FontWeight.Black)
+                            Box(
+                                modifier = Modifier
+                                    .size(if (compact) 52.dp else 62.dp)
+                                    .background(
+                                        Brush.linearGradient(listOf(Color(0xFF62F5B0), V2Primary)),
+                                        RoundedCornerShape(18.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(">_", color = Color(0xFF041018), fontWeight = FontWeight.Black)
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text(t("terminal"), color = V2Text, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                                Text(t("terminal_body"), color = V2Muted, fontSize = 12.sp, lineHeight = 17.sp)
+                            }
+                            Text("›", color = Color(0xFF62F5B0), fontSize = 28.sp)
                         }
-                        Column(Modifier.weight(1f)) {
-                            Text(t("terminal"), color = V2Text, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                            Text(t("terminal_body"), color = V2Muted, fontSize = 12.sp, lineHeight = 17.sp)
-                        }
-                        Text("›", color = Color(0xFF62F5B0), fontSize = 28.sp)
                     }
                 }
             }

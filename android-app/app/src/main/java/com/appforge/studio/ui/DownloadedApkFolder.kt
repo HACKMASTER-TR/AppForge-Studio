@@ -54,7 +54,34 @@ internal fun loadDownloadedAppForgeApks(context:Context):List<DownloadedApkEntry
     return out
 }
 
-private fun sizeText(v:Long)=if(v<=0)"—" else String.format(Locale.ROOT,"%.1f MB",v/1048576.0)
+private fun sizeText(
+    value: Long
+): String =
+    when {
+        value <= 0L ->
+            "—"
+
+        value < 1024L * 1024L ->
+            "${
+                (
+                    (
+                        value +
+                            1023L
+                    ) /
+                        1024L
+                ).coerceAtLeast(
+                    1L
+                )
+            } KB"
+
+        else ->
+            String.format(
+                Locale.ROOT,
+                "%.1f MB",
+                value /
+                    1048576.0
+            )
+    }
 
 @Composable internal fun DownloadedApkFolderScreen(onBack:()->Unit,onInstall:(Uri,String)->Unit){
     val ctx=LocalContext.current; val cfg=LocalConfiguration.current; val compact=cfg.screenWidthDp<390
