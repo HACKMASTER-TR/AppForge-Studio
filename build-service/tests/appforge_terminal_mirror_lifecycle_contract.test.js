@@ -13,38 +13,94 @@ const panelUrl = new URL(
 );
 
 test(
-  "Termux mirror replays only after TerminalView creation",
+  "Termux mirror registers only after TerminalView creation",
   async () => {
-    const source = await readFile(adapterUrl, "utf8");
+    const source =
+      await readFile(
+        adapterUrl,
+        "utf8"
+      );
 
-    const host = source.indexOf(
-      "internal fun TermuxTerminalCoreHost("
-    );
+    const host =
+      source.indexOf(
+        "internal fun TermuxTerminalCoreHost("
+      );
 
-    const mirrorHost = source.indexOf(
-      "internal fun TermuxTerminalMirrorHost("
-    );
+    const mirrorHost =
+      source.indexOf(
+        "internal fun TermuxTerminalMirrorHost("
+      );
 
     assert.ok(host >= 0);
     assert.ok(mirrorHost > host);
 
-    const block = source.slice(host, mirrorHost);
+    const hostBlock =
+      source.slice(
+        host,
+        mirrorHost
+      );
 
-    const createView = block.indexOf(
-      ".createView("
-    );
+    const createView =
+      hostBlock.indexOf(
+        ".createView("
+      );
 
-    const register = block.indexOf(
-      "TermuxTerminalMirrorRegistry\n"
-      + "                                        .register("
-    );
+    const ensureRegistered =
+      hostBlock.indexOf(
+        ".ensureRegistered("
+      );
 
     assert.ok(createView >= 0);
-    assert.ok(register > createView);
+
+    /*
+     * Native TerminalView must be attached first.
+     * Only then may backlog replay/register occur.
+     */
+    assert.ok(
+      ensureRegistered > createView
+    );
+
+    const registry =
+      source.indexOf(
+        "object TermuxTerminalMirrorControllerRegistry"
+      );
+
+    const registryEnd =
+      source.indexOf(
+        "object TermuxTerminalMirrorRegistry",
+        registry
+      );
+
+    assert.ok(registry >= 0);
+    assert.ok(registryEnd > registry);
+
+    const registryBlock =
+      source.slice(
+        registry,
+        registryEnd
+      );
 
     assert.ok(
-      block.includes(
-        "Replay only after TerminalView is attached"
+      registryBlock.includes(
+        "fun ensureRegistered("
+      )
+    );
+
+    assert.ok(
+      registryBlock.includes(
+        "TermuxTerminalMirrorRegistry"
+      )
+    );
+
+    assert.ok(
+      registryBlock.includes(
+        ".register("
+      )
+    );
+
+    assert.ok(
+      registryBlock.includes(
+        "Called only after TerminalView has attached"
       )
     );
   }
