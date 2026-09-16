@@ -34,3 +34,33 @@ test(
     );
   }
 );
+
+test(
+  "release falls back from gh release to gh api",
+  () => {
+    assert.match(
+      appforge,
+      /CREATED VIA API FALLBACK/
+    );
+
+    assert.match(
+      appforge,
+      /"api",[\s\S]{0,120}?"POST"/
+    );
+
+    assert.match(
+      appforge,
+      /repos\/\{repo\}\/releases/
+    );
+
+    assert.match(
+      appforge,
+      /generate_release_notes=true/
+    );
+
+    assert.match(
+      appforge,
+      /target_commitish=\{main_sha\}/
+    );
+  }
+);

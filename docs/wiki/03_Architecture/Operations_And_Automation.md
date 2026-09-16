@@ -55,3 +55,12 @@ prepend their executable directories to the release subprocess `PATH`,
 and pass the repository explicitly with `--repo`. CI failure-log
 collection first uses `--log-failed` and falls back to `--log` for older
 GitHub CLI builds that do not support the narrower flag.
+
+## Release REST fallback
+
+GitHub Release publishing normally uses the `gh release` command. Some
+Android/proot environments can successfully use `gh api` while the higher
+level `gh release` transport fails to connect. Autopilot therefore falls
+back to the authenticated `gh api` Releases endpoint before classifying a
+release as failed. The fallback preserves fail-stop behavior: delivery
+still stops if both transports fail.
