@@ -18,6 +18,7 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeUnifiedAgentStudioScreen.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentStudioOrchestrator.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipeline.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentArtifactClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentSessionStore.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelStore.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelDownloader.kt"

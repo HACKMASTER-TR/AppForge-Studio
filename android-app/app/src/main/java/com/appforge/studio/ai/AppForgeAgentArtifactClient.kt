@@ -290,6 +290,7 @@ internal object AppForgeAgentSourceExporter {
         }
     }
 
+    @android.annotation.TargetApi(Build.VERSION_CODES.Q)
     private fun exportMediaStore(
         context: Context,
         sourceRoot: File,
