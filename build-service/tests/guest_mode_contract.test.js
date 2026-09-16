@@ -47,7 +47,16 @@ test(
       /"login"\s+to\s+"GİRİŞ YAP"/
     );
 
+    /*
+     * Full-admin identity is centralized in OwnerAccessPolicy.
+     * StudioHomeV2 must not duplicate the owner's plaintext email.
+     */
     assert.match(
+      home,
+      /OwnerAccessPolicy\s*\./
+    );
+
+    assert.doesNotMatch(
       home,
       /28550040284a@gmail\.com/
     );

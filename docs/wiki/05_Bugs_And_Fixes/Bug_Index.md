@@ -3,8 +3,8 @@ type: bug
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-09-16
+last_verified: 2026-09-16
 confidence: high
 tags:
   - bugs
@@ -23,10 +23,10 @@ source_files:
 
 # Bug Index
 
-- [[Legacy_Brain_Removal_And_Validation_State]] — active device-runtime blocker, current local test failures, and cleanup-related validation state.
+- [[Legacy_Brain_Removal_And_Validation_State]] — device-runtime validation history and cleanup-related validation state.
 
-- Terminal native viewport gesture regression — the native Termux `TerminalView` must receive normal one-finger drag/fling input; the Compose transform detector is fallback-only. A source contract test protects this ownership. Device verification remains required.
+- Terminal native viewport gesture regression — the native Termux `TerminalView` must receive normal one-finger drag/fling input; the Compose transform detector is fallback-only. A source contract test protects this ownership. On-device verification passed on 2026-09-16.
 
-- Terminal mirror lifecycle regression — copy-mode exit or leaving/re-entering the Terminal screen could recreate the native Termux viewport without restoring visible history, while restart could leave stale mirror scrollback. Source now replays after TerminalView attachment and resets AppForge/native buffers together. Device verification remains required.
+- Terminal mirror lifecycle regression — copy-mode exit or leaving/re-entering the Terminal screen could recreate the native Termux viewport without restoring visible history, while restart could leave stale mirror scrollback. Source now replays after TerminalView attachment and resets AppForge/native buffers together. On-device verification passed on 2026-09-16.
 
 Document only significant, reusable debugging knowledge. Do not add one-off visual or formatting defects.

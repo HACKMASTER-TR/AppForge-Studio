@@ -740,14 +740,42 @@ private fun AppForgeApp() {
     }
 
     LaunchedEffect(
-        hostActivity?.externalAuthorizationSequence
+        hostActivity?.externalAuthorizationSequence,
+        terminalOwner
     ) {
         if (
             hostActivity?.externalAuthorizationUri !=
                 null
         ) {
+            if (terminalOwner) {
+                screen =
+                    AppScreen.TERMINAL
+            } else {
+                hostActivity
+                    .consumeExternalAuthorization()
+            }
+        }
+    }
+
+    /*
+     * Defense in depth:
+     * restored navigation state or an internal caller must never
+     * expose Terminal to a non-owner account.
+     */
+    LaunchedEffect(
+        screen,
+        terminalOwner
+    ) {
+        if (
+            screen ==
+                AppScreen.TERMINAL &&
+            !terminalOwner
+        ) {
             screen =
-                AppScreen.TERMINAL
+                AppScreen.HOME
+
+            hostActivity
+                ?.consumeExternalAuthorization()
         }
     }
 
@@ -786,6 +814,15 @@ private fun AppForgeApp() {
     fun openWorkspaceScreen(
         target: AppScreen
     ) {
+        if (
+            target == AppScreen.TERMINAL &&
+            !terminalOwner
+        ) {
+            screen =
+                AppScreen.HOME
+            return
+        }
+
         workspaceReturnScreen =
             screen
 
@@ -897,6 +934,13 @@ private fun AppForgeApp() {
                 .loadSession(context)
         )
     }
+
+    val terminalOwner =
+        OwnerAccessPolicy
+            .isActiveOwner(
+                context,
+                session?.email
+            )
 
     ProjectLibrary.setAccountScope(
         context,
@@ -4100,7 +4144,18 @@ private fun AppForgeApp() {
         }
 
         Surface(Modifier.fillMaxSize(), color = Bg) {
-            when (screen) {
+            val visibleScreen =
+                if (
+                    screen ==
+                        AppScreen.TERMINAL &&
+                    !terminalOwner
+                ) {
+                    AppScreen.HOME
+                } else {
+                    screen
+                }
+
+            when (visibleScreen) {
 
                 AppScreen.ONBOARDING ->
                     AppForgeOnboardingScreen(
@@ -4240,15 +4295,20 @@ private fun AppForgeApp() {
                         },
 
                         onOpenTerminal = {
-                            terminalReturnScreen =
-                                screen
+                            if (terminalOwner) {
+                                terminalReturnScreen =
+                                    screen
 
-                            terminalReturnStep =
-                                step
+                                terminalReturnStep =
+                                    step
 
-                            openWorkspaceScreen(
-                                AppScreen.TERMINAL
-                            )
+                                openWorkspaceScreen(
+                                    AppScreen.TERMINAL
+                                )
+                            } else {
+                                screen =
+                                    AppScreen.HOME
+                            }
                         },
 
                         onOpenTemplates = {

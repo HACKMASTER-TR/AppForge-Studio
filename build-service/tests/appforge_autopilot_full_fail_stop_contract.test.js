@@ -30,11 +30,38 @@ test("Termux reports Android unit execution as deferred", () => {
   assert.match(appforge, /:app:testDebugUnitTest/);
 });
 
-test("BUG7 runtime blocker is a hard shipping boundary", () => {
-  assert.match(appforge, /require_no_runtime_blockers\(\)/);
-  assert.equal(blockers.active[0].id, "BUG-7");
-  assert.equal(blockers.active[0].status, "DEVICE_RETEST_REQUIRED");
-  assert.equal(blockers.active[0].shipping_blocker, true);
+test("runtime blockers remain a hard shipping boundary after BUG7 device acceptance", () => {
+  assert.match(
+    appforge,
+    /def require_no_runtime_blockers\(\):/
+  );
+
+  assert.match(
+    appforge,
+    /DEVICE RUNTIME BLOCKERS: 0/
+  );
+
+  assert.match(
+    appforge,
+    /block_pipeline\(\s*"DEVICE_RUNTIME",\s*"RUNTIME"/
+  );
+
+  assert.ok(
+    Array.isArray(blockers.active),
+    "runtime blocker registry active must remain an array"
+  );
+
+  assert.equal(
+    blockers.active.some(
+      (item) =>
+        item?.id === "BUG-7" &&
+        !["RESOLVED", "CLOSED", "FIXED"].includes(
+          String(item?.status || "").toUpperCase()
+        )
+    ),
+    false,
+    "BUG-7 must not remain an active blocker after device PASS"
+  );
 });
 
 test("policy and AGENTS define one-shot delivery", () => {
