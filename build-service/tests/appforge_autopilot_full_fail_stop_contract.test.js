@@ -72,8 +72,17 @@ test("policy and AGENTS define one-shot delivery", () => {
   assert.match(agents, /FULL AUTOPILOT \/ FAIL-STOP/);
 });
 
-test("Play workflow performs a real Play Console upload", () => {
-  assert.match(play, /APPFORGE_PLAY_SERVICE_ACCOUNT_JSON/);
+test("Play workflow performs a real keyless Play Console upload", () => {
+  assert.match(play, /id-token:\s*write/);
+  assert.match(play, /google-github-actions\/auth@v3/);
+  assert.match(
+    play,
+    /serviceAccountJson:\s*\$\{\{\s*steps\.google-auth\.outputs\.credentials_file_path\s*\}\}/
+  );
+  assert.doesNotMatch(
+    play,
+    /APPFORGE_PLAY_SERVICE_ACCOUNT_JSON/
+  );
   assert.match(play, /r0adkll\/upload-google-play@v1/);
   assert.match(play, /packageName:\s*com\.appforge\.studio/);
   assert.match(play, /APPFORGE_PLAY_TRACK/);

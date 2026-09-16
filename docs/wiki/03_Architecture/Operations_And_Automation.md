@@ -64,3 +64,13 @@ level `gh release` transport fails to connect. Autopilot therefore falls
 back to the authenticated `gh api` Releases endpoint before classifying a
 release as failed. The fallback preserves fail-stop behavior: delivery
 still stops if both transports fail.
+
+
+## Keyless Google Play publishing
+
+Google Play publishing uses GitHub Actions OIDC through Google Workload
+Identity Federation. `android-play-release.yml` receives `id-token: write`,
+authenticates with `google-github-actions/auth@v3`, impersonates the
+`appforge-play-publisher` service account, and passes the action-generated
+temporary credentials file to the Play uploader. No long-lived Google
+service-account private key or JSON credential is required.

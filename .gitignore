@@ -46,3 +46,4 @@ build-service/cache/
 __pycache__/
 *.pyc
 *.pyo
+gha-creds-*.json
