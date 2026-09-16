@@ -66,3 +66,25 @@ test(
     );
   }
 );
+
+test(
+  "native Termux viewport owns normal touch scrolling",
+  async () => {
+    const source = await readFile(sourceUrl, "utf8");
+
+    assert.match(
+      source,
+      /\.pointerInput\(\s*state\.id,\s*copyMode,\s*useTermuxViewport\s*\)/
+    );
+
+    assert.match(
+      source,
+      /if\s*\(\s*!copyMode\s*&&\s*!useTermuxViewport\s*\)\s*\{\s*detectTransformGestures/
+    );
+
+    assert.doesNotMatch(
+      source,
+      /if\s*\(\s*!copyMode\s*\)\s*\{\s*detectTransformGestures/
+    );
+  }
+);

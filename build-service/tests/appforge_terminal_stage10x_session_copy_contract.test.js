@@ -91,12 +91,12 @@ test("Stage 10X gives SelectionContainer touch ownership in copy mode", async ()
 
   assert.match(
     source,
-    /\.pointerInput\(\s*state\.id,\s*copyMode\s*\)/
+    /\.pointerInput\(\s*state\.id,\s*copyMode,\s*useTermuxViewport\s*\)/
   );
 
   assert.match(
     source,
-    /if\s*\(\s*!copyMode\s*\)\s*\{\s*detectTransformGestures/
+    /if\s*\(\s*!copyMode\s*&&\s*!useTermuxViewport\s*\)\s*\{\s*detectTransformGestures/
   );
 
   assert.match(

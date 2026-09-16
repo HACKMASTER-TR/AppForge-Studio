@@ -32,4 +32,8 @@ The local Compose definition names PostgreSQL, Redis, MinIO, Mailpit, API, worke
 
 The workflow directory contains Android debug and Play release, stability gate, conversion smoke, production automation, cleanup, autoscaling, and worker-image workflows. Shell scripts provide project automation and stability behavior. Wiki health scripts remain advisory and are not installed as a Git hook or required workflow gate.
 
+Local Autopilot Android/JVM execution must not treat any host `gradle` binary as authoritative. On Android-hosted or proot sessions, detected from Android system markers and the kernel release, Autopilot defers Android JVM execution to `android-debug.yml` before starting Java or Gradle. On ordinary Linux hosts, the local Gradle version is compared with the CI baseline and older or unknown versions are also deferred to CI.
+
+Android/proot staging also uses the verified `git add --all` path after forbidden-file validation. The ordinary host path retains explicit changed-file pathspec staging. This avoids a proot-specific staging crash without weakening the forbidden file guard.
+
 Read workflow triggers, environment requirements, and the called script before changing delivery behavior. Do not infer remote deployment success, secret availability, or production state from names in configuration.

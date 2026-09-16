@@ -500,6 +500,91 @@ def is_termux_environment():
     )
 
 
+
+def parse_gradle_version(text):
+    match = re.search(
+        r"(?m)^Gradle\s+(\d+)\.(\d+)(?:\.(\d+))?",
+        text or "",
+    )
+
+    if not match:
+        return None
+
+    return (
+        int(match.group(1)),
+        int(match.group(2)),
+        int(match.group(3) or 0),
+    )
+
+
+def android_ci_gradle_version():
+    workflow = (
+        ROOT / ".github" / "workflows" /
+        "android-debug.yml"
+    )
+
+    if not workflow.exists():
+        return None
+
+    text = workflow.read_text(
+        encoding="utf-8",
+        errors="ignore",
+    )
+
+    match = re.search(
+        r'gradle-version:\s*["\']?'
+        r'(\d+)\.(\d+)\.(\d+)',
+        text,
+    )
+
+    if not match:
+        return None
+
+    return tuple(
+        int(value)
+        for value in match.groups()
+    )
+
+
+def local_gradle_version(executable):
+    probe = run(
+        [executable, "--version"],
+        check=False,
+        capture=True,
+    )
+
+    output = (
+        (probe.stdout or "")
+        + "\n"
+        + (probe.stderr or "")
+    )
+
+    return parse_gradle_version(output)
+
+
+def gradle_version_label(version):
+    if version is None:
+        return "unknown"
+
+    return ".".join(
+        str(value)
+        for value in version
+    )
+
+
+def is_android_host_environment():
+    try:
+        release = os.uname().release.lower()
+    except (AttributeError, OSError):
+        release = ""
+
+    return (
+        Path("/system/bin/app_process").exists()
+        and Path("/system/bin/getprop").exists()
+        and "android" in release
+    )
+
+
 def android_unit_test_gate():
     inventory = android_unit_test_inventory()
 
@@ -525,8 +610,6 @@ def android_unit_test_gate():
         )
         raise SystemExit(12)
 
-    gradle = shutil.which("gradle")
-
     if is_termux_environment():
         print(
             "ANDROID UNIT TESTS: DEFERRED / CI REQUIRED"
@@ -540,7 +623,60 @@ def android_unit_test_gate():
         )
         return inventory
 
+    if is_android_host_environment():
+        print(
+            "ANDROID UNIT TESTS: DEFERRED / CI REQUIRED"
+        )
+        print(
+            "Reason: Android/proot host must not start the local Gradle/JVM suite."
+        )
+        print(
+            "Required CI: android-debug.yml -> "
+            ":app:testDebugUnitTest"
+        )
+        return inventory
+
+    gradle = shutil.which("gradle")
+
     if gradle:
+        required_gradle = (
+            android_ci_gradle_version()
+        )
+        detected_gradle = (
+            local_gradle_version(gradle)
+        )
+
+        if (
+            required_gradle is None
+            or detected_gradle is None
+            or detected_gradle < required_gradle
+        ):
+            print(
+                "ANDROID UNIT TESTS: "
+                "DEFERRED / CI REQUIRED"
+            )
+            print(
+                "Reason: local Gradle does not "
+                "satisfy the Android CI baseline."
+            )
+            print(
+                "Detected Gradle:",
+                gradle_version_label(
+                    detected_gradle
+                ),
+            )
+            print(
+                "Required Gradle:",
+                gradle_version_label(
+                    required_gradle
+                ),
+            )
+            print(
+                "Required CI: android-debug.yml -> "
+                ":app:testDebugUnitTest"
+            )
+            return inventory
+
         run([
             gradle,
             "-p",
@@ -636,6 +772,108 @@ def local_gate():
     print("\nLOCAL_GATES: PASS")
     print("fail 0")
 
+
+def safe_cached_diff_check():
+    """
+    Android/proot has a reproducible native crash in:
+        git diff --cached --check
+
+    The normal Git check remains authoritative everywhere else.
+
+    On Android/proot the pre-stage stability gate has already run
+    git diff --check. After staging, verify that no unstaged content
+    remains and directly inspect staged working-tree text files for
+    common whitespace errors without invoking the crashing Git path.
+    """
+    if not is_android_host_environment():
+        safe_cached_diff_check()
+        return
+
+    unstaged = git_out(
+        "diff",
+        "--name-only",
+        "-z",
+    )
+
+    if unstaged:
+        print(
+            "STAGED WHITESPACE CHECK: BLOCKED"
+        )
+        print(
+            "Reason: unstaged changes remain "
+            "after safe_stage()."
+        )
+        raise SystemExit(13)
+
+    staged_raw = git_out(
+        "diff",
+        "--cached",
+        "--name-only",
+        "-z",
+    )
+
+    staged = [
+        item
+        for item in staged_raw.split("\0")
+        if item
+    ]
+
+    errors = []
+
+    for relative in staged:
+        path = ROOT / relative
+
+        # Deleted paths have no working-tree content.
+        if not path.exists() or not path.is_file():
+            continue
+
+        data = path.read_bytes()
+
+        # Binary files are outside the text-whitespace check.
+        if b"\0" in data:
+            continue
+
+        for line_number, line in enumerate(
+            data.splitlines(),
+            start=1,
+        ):
+            if line.endswith((b" ", b"\t")):
+                errors.append(
+                    f"{relative}:{line_number}: "
+                    "trailing whitespace"
+                )
+
+            indent_length = (
+                len(line)
+                - len(
+                    line.lstrip(b" \t")
+                )
+            )
+
+            indent = line[:indent_length]
+
+            if b" \t" in indent:
+                errors.append(
+                    f"{relative}:{line_number}: "
+                    "space before tab in indentation"
+                )
+
+    if errors:
+        print(
+            "STAGED WHITESPACE CHECK: BLOCKED"
+        )
+
+        for error in errors:
+            print(" -", error)
+
+        raise SystemExit(13)
+
+    print(
+        "STAGED WHITESPACE CHECK: PASS "
+        "(Android/proot safe path)"
+    )
+
+
 def safe_stage():
     files = changed_files()
     bad = forbidden_files(files)
@@ -643,7 +881,37 @@ def safe_stage():
         raise SystemExit("Forbidden file present; refusing to stage.")
     if not files:
         raise SystemExit("No changes to stage.")
-    run(["git", "add", "--", *files])
+    unstaged = git_out(
+        "diff",
+        "--name-only",
+    )
+
+    untracked = git_out(
+        "ls-files",
+        "--others",
+        "--exclude-standard",
+    )
+
+    if not unstaged and not untracked:
+        print(
+            "SAFE_STAGE: all changes already staged; "
+            "skipping redundant git add."
+        )
+        return
+
+    if is_android_host_environment():
+        run([
+            "git",
+            "add",
+            "--all",
+        ])
+    else:
+        run([
+            "git",
+            "add",
+            "--",
+            *files,
+        ])
 
 def default_commit_message():
     branch = git_out("branch", "--show-current")
@@ -2262,7 +2530,7 @@ def autopilot():
         if files:
             print("\n=== AUTO COMMIT / PUSH ===")
             safe_stage()
-            run(["git", "diff", "--cached", "--check"])
+            safe_cached_diff_check()
             run(["./scripts/appforge-stability-gate", "local"])
             msg = os.environ.get("APPFORGE_COMMIT_MESSAGE") or default_commit_message()
             state_write("COMMITTING", commit_message=msg, mode="FULL_AUTOPILOT")
@@ -2463,12 +2731,7 @@ def submit():
 
             safe_stage()
 
-            run([
-                "git",
-                "diff",
-                "--cached",
-                "--check",
-            ])
+            safe_cached_diff_check()
 
             run([
                 "./scripts/appforge-stability-gate",
