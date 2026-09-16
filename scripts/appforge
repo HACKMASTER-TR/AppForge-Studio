@@ -735,6 +735,110 @@ def security_gate(files):
     print("SECURITY / STALE CONTRACT SCAN: PASS")
     return True
 
+
+def safe_worktree_diff_check():
+    """
+    Android/proot can SIGSEGV inside `git diff --check`.
+
+    Keep the native Git check authoritative on ordinary hosts.
+    On Android/proot inspect changed text files directly instead.
+    """
+    if not is_android_host_environment():
+        run([
+            "git",
+            "diff",
+            "--check",
+        ])
+        return
+
+    raw = git_out(
+        "status",
+        "--porcelain",
+        "-z",
+    )
+
+    entries = [
+        item
+        for item in raw.split("\0")
+        if item
+    ]
+
+    paths = []
+
+    for entry in entries:
+        if len(entry) < 4:
+            continue
+
+        relative = entry[3:]
+
+        if " -> " in relative:
+            relative = relative.split(
+                " -> ",
+                1,
+            )[1]
+
+        if relative:
+            paths.append(relative)
+
+    errors = []
+
+    for relative in sorted(set(paths)):
+        path = ROOT / relative
+
+        if (
+            not path.exists()
+            or not path.is_file()
+        ):
+            continue
+
+        data = path.read_bytes()
+
+        # Binary files are outside text whitespace validation.
+        if b"\0" in data:
+            continue
+
+        for line_number, line in enumerate(
+            data.splitlines(),
+            start=1,
+        ):
+            if line.endswith(
+                (b" ", b"\t")
+            ):
+                errors.append(
+                    f"{relative}:{line_number}: "
+                    "trailing whitespace"
+                )
+
+            indent_length = (
+                len(line)
+                - len(
+                    line.lstrip(b" \t")
+                )
+            )
+
+            indent = line[:indent_length]
+
+            if b" \t" in indent:
+                errors.append(
+                    f"{relative}:{line_number}: "
+                    "space before tab in indentation"
+                )
+
+    if errors:
+        print(
+            "WORKTREE WHITESPACE CHECK: BLOCKED"
+        )
+
+        for error in errors:
+            print(" -", error)
+
+        raise SystemExit(13)
+
+    print(
+        "WORKTREE WHITESPACE CHECK: PASS "
+        "(Android/proot safe path)"
+    )
+
 def local_gate():
     repair_known_stale_contracts()
 
@@ -747,7 +851,7 @@ def local_gate():
         raise SystemExit(10)
 
     print("\n=== DIFF CHECK ===")
-    run(["git", "diff", "--check"])
+    safe_worktree_diff_check()
 
     selected = targeted_tests(files)
     print("\n=== TARGETED REGRESSION ===")
@@ -786,7 +890,12 @@ def safe_cached_diff_check():
     common whitespace errors without invoking the crashing Git path.
     """
     if not is_android_host_environment():
-        safe_cached_diff_check()
+        run([
+            "git",
+            "diff",
+            "--cached",
+            "--check",
+        ])
         return
 
     unstaged = git_out(

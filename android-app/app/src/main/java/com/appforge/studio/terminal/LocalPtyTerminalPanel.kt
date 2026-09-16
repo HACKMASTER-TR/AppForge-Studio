@@ -774,6 +774,9 @@ internal object LocalPtySessionRegistry {
             }
 
         removed?.session?.close()
+
+        TermuxTerminalMirrorControllerRegistry
+            .release(id)
     }
 
     fun closeAllForAccountSwitch() {
@@ -836,6 +839,11 @@ internal object LocalPtySessionRegistry {
          */
         removed.forEach {
             it.session.close()
+
+            TermuxTerminalMirrorControllerRegistry
+                .release(
+                    it.id
+                )
         }
 
         TerminalGitCredentialBridge
@@ -895,6 +903,11 @@ internal object LocalPtySessionRegistry {
          */
         removed.forEach {
             it.session.close()
+
+            TermuxTerminalMirrorControllerRegistry
+                .release(
+                    it.id
+                )
         }
 
         TerminalGitCredentialBridge
@@ -3715,6 +3728,90 @@ private fun LocalPtySurface(
                     }
                 }
     ) {
+        /*
+         * Persistent native viewport: copy mode is an overlay.
+         * Never remove the Termux TerminalSession from composition just
+         * because text selection is active.
+         */
+        if (useTermuxViewport) {
+            /*
+             * Termux owns the active viewport directly.
+             *
+             * Do not wrap TerminalView in LazyColumn. LazyColumn can
+             * re-anchor its single child after Android lifecycle/layout
+             * changes, which moves the visible terminal rows on resume
+             * and can leave the live prompt below the viewport.
+             *
+             * Padding is applied to the AndroidView's measured area so
+             * Termux itself receives the final usable terminal size.
+             */
+            TermuxTerminalMirrorHost(
+            sessionId =
+                state.id,
+            onSingleTap = {
+                inputFocusRequester
+                    .requestFocus()
+
+                keyboardController
+                    ?.show()
+            },
+            onGeometryChanged = {
+                    rows,
+                    columns,
+                ->
+                if (
+                    rows != state.rows ||
+                    columns != state.columns
+                ) {
+                    pendingGeometryResize
+                        ?.cancel()
+
+                    pendingGeometryResize =
+                        scope.launch {
+                            delay(
+                                TERMINAL_IME_GEOMETRY_SETTLE_MS
+                            )
+
+                            LocalPtySessionRegistry
+                                .resize(
+                                    state.id,
+                                    rows,
+                                    columns,
+                                )
+                        }
+                }
+            },
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .alpha(
+                        if (copyMode) 0f else 1f
+                    )
+                    /*
+                     * Keep TerminalView measurement independent from IME.
+                     * Keyboard occlusion must never resize/reflow the PTY.
+                     */
+                    .padding(
+                        start = 16.dp,
+                        top = 12.dp,
+                        end = 12.dp,
+                        bottom = 12.dp,
+                    )
+                    /*
+                     * IME overlays the terminal. Move the already-measured
+                     * viewport instead of changing rows/columns.
+                     */
+                    .offset {
+                        IntOffset(
+                            x = 0,
+                            y =
+                                -bottomContentPaddingPx
+                                    .coerceAtLeast(0),
+                        )
+                    },
+        )
+        }
+
         if (copyMode) {
             /*
              * Selection is intentionally isolated from the normal terminal.
@@ -3916,81 +4013,7 @@ private fun LocalPtySurface(
                     }
                 }
             }
-        } else if (useTermuxViewport) {
-            /*
-             * Termux owns the active viewport directly.
-             *
-             * Do not wrap TerminalView in LazyColumn. LazyColumn can
-             * re-anchor its single child after Android lifecycle/layout
-             * changes, which moves the visible terminal rows on resume
-             * and can leave the live prompt below the viewport.
-             *
-             * Padding is applied to the AndroidView's measured area so
-             * Termux itself receives the final usable terminal size.
-             */
-            TermuxTerminalMirrorHost(
-            sessionId =
-                state.id,
-            onSingleTap = {
-                inputFocusRequester
-                    .requestFocus()
-
-                keyboardController
-                    ?.show()
-            },
-            onGeometryChanged = {
-                    rows,
-                    columns,
-                ->
-                if (
-                    rows != state.rows ||
-                    columns != state.columns
-                ) {
-                    pendingGeometryResize
-                        ?.cancel()
-
-                    pendingGeometryResize =
-                        scope.launch {
-                            delay(
-                                TERMINAL_IME_GEOMETRY_SETTLE_MS
-                            )
-
-                            LocalPtySessionRegistry
-                                .resize(
-                                    state.id,
-                                    rows,
-                                    columns,
-                                )
-                        }
-                }
-            },
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    /*
-                     * Keep TerminalView measurement independent from IME.
-                     * Keyboard occlusion must never resize/reflow the PTY.
-                     */
-                    .padding(
-                        start = 16.dp,
-                        top = 12.dp,
-                        end = 12.dp,
-                        bottom = 12.dp,
-                    )
-                    /*
-                     * IME overlays the terminal. Move the already-measured
-                     * viewport instead of changing rows/columns.
-                     */
-                    .offset {
-                        IntOffset(
-                            x = 0,
-                            y =
-                                -bottomContentPaddingPx
-                                    .coerceAtLeast(0),
-                        )
-                    },
-        )
-        } else {
+        } else if (!useTermuxViewport) {
             /*
              * Legacy Compose terminal renderer.
              *

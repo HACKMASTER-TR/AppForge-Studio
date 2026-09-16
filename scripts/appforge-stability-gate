@@ -78,7 +78,185 @@ else
     fail "Second Brain wiki prune report"
 fi
 
-if git diff --check >"$DIFF_LOG" 2>&1; then
+is_android_proot() {
+    if [ -x /system/bin/app_process ] || [ -x /system/bin/getprop ]; then
+        return 0
+    fi
+
+    case "$(uname -r 2>/dev/null || true)" in
+        *android*)
+            return 0
+            ;;
+    esac
+
+    return 1
+}
+
+safe_worktree_diff_check() {
+    if ! is_android_proot; then
+        git diff --check
+        return
+    fi
+
+    python3 - "$ROOT" <<'PYSAFE'
+from pathlib import Path
+from difflib import SequenceMatcher
+import subprocess
+import sys
+
+root = Path(sys.argv[1])
+
+changed_raw = subprocess.check_output(
+    [
+        "git",
+        "diff",
+        "--name-only",
+        "-z",
+    ],
+    cwd=root,
+)
+
+paths = [
+    item.decode(
+        "utf-8",
+        errors="surrogateescape",
+    )
+    for item in changed_raw.split(b"\0")
+    if item
+]
+
+errors = []
+
+for relative in paths:
+    path = root / relative
+
+    if not path.exists() or not path.is_file():
+        continue
+
+    current = path.read_bytes()
+
+    if b"\0" in current:
+        continue
+
+    staged = subprocess.run(
+        [
+            "git",
+            "ls-files",
+            "--stage",
+            "--",
+            relative,
+        ],
+        cwd=root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+
+    if staged.returncode != 0:
+        continue
+
+    staged_line = (
+        staged.stdout
+        .decode(
+            "utf-8",
+            errors="replace",
+        )
+        .strip()
+    )
+
+    if not staged_line:
+        continue
+
+    try:
+        object_id = (
+            staged_line
+            .split(None, 3)[1]
+        )
+    except (IndexError, ValueError):
+        continue
+
+    baseline = subprocess.run(
+        [
+            "git",
+            "cat-file",
+            "blob",
+            object_id,
+        ],
+        cwd=root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+
+    if baseline.returncode != 0:
+        continue
+
+    previous = baseline.stdout
+
+    if b"\0" in previous:
+        continue
+
+    old_lines = previous.splitlines()
+    new_lines = current.splitlines()
+
+    matcher = SequenceMatcher(
+        None,
+        old_lines,
+        new_lines,
+        autojunk=False,
+    )
+
+    for tag, _, _, new_start, new_end in matcher.get_opcodes():
+        if tag not in ("insert", "replace"):
+            continue
+
+        for offset, line in enumerate(
+            new_lines[new_start:new_end],
+            start=new_start + 1,
+        ):
+            if line.endswith((b" ", b"\t")):
+                errors.append(
+                    f"{relative}:{offset}: trailing whitespace"
+                )
+
+            leading_length = (
+                len(line)
+                - len(
+                    line.lstrip(b" \t")
+                )
+            )
+
+            leading = line[:leading_length]
+
+            if b" \t" in leading:
+                errors.append(
+                    f"{relative}:{offset}: "
+                    "space before tab in indentation"
+                )
+
+            if (
+                line.startswith(b"<<<<<<<")
+                or line.startswith(b"=======")
+                or line.startswith(b">>>>>>>")
+            ):
+                errors.append(
+                    f"{relative}:{offset}: "
+                    "conflict marker"
+                )
+
+if errors:
+    for error in errors:
+        print(error)
+
+    raise SystemExit(1)
+
+print(
+    "Android/proot safe diff check: PASS"
+)
+PYSAFE
+}
+
+if safe_worktree_diff_check >"$DIFF_LOG" 2>&1; then
     pass "git diff --check"
 else
     cat "$DIFF_LOG"
@@ -132,4 +310,4 @@ fi
 
 echo "APPFORGE STABILITY GATE: BLOCKED"
 echo "fail $FAIL"
-exit 1
+exit 1\n

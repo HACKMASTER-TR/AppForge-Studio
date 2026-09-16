@@ -67,13 +67,25 @@ test("normal terminal viewport uses Termux while Compose renderer remains fallba
   assert.match(panel, /val useTermuxViewport\s*=\s*true/);
 
   /*
-   * Termux must own the viewport directly.
-   * Nesting TerminalView inside LazyColumn caused foreground/resume
-   * repositioning and could leave the prompt below the visible area.
+   * Termux must own a persistent viewport directly.
+   *
+   * Copy mode is now an overlay. It must not remove the native
+   * TerminalView/TerminalSession from composition because doing so
+   * destroys the visible scrollback on Copy -> Write and screen return.
    */
   assert.match(
     panel,
-    /}\s*else if\s*\(useTermuxViewport\)\s*\{[\s\S]{0,1600}?TermuxTerminalMirrorHost/,
+    /if\s*\(useTermuxViewport\)\s*\{[\s\S]{0,2600}?TermuxTerminalMirrorHost/,
+  );
+
+  assert.doesNotMatch(
+    panel,
+    /}\s*else if\s*\(useTermuxViewport\)/,
+  );
+
+  assert.match(
+    panel,
+    /Persistent native viewport:\s*copy mode is an overlay/,
   );
 
   /*

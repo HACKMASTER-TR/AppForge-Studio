@@ -3,6 +3,7 @@ package com.appforge.studio.terminal
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
@@ -56,12 +57,17 @@ internal data class TermuxTerminalCallbacks(
  */
 internal class TermuxTerminalCoreController(
     private val spec: TermuxTerminalLaunchSpec,
-    private val callbacks: TermuxTerminalCallbacks =
+    callbacks: TermuxTerminalCallbacks =
         TermuxTerminalCallbacks(),
 ) : AutoCloseable {
 
     private val terminalView =
         AtomicReference<TerminalView?>(null)
+
+    private val callbacksRef =
+        AtomicReference(
+            callbacks
+        )
 
     private val sessionClient: TerminalSessionClient =
         proxy(
@@ -77,17 +83,17 @@ internal class TermuxTerminalCoreController(
                 }
 
                 "onTitleChanged" -> {
-                    callbacks.onTitleChanged()
+                    callbacksRef.get().onTitleChanged()
                     null
                 }
 
                 "onSessionFinished" -> {
-                    callbacks.onSessionFinished()
+                    callbacksRef.get().onSessionFinished()
                     null
                 }
 
                 "onBell" -> {
-                    callbacks.onBell()
+                    callbacksRef.get().onBell()
                     null
                 }
 
@@ -98,7 +104,7 @@ internal class TermuxTerminalCoreController(
                             ?.firstOrNull()
                             .orEmpty()
 
-                    callbacks.onCopyText(text)
+                    callbacksRef.get().onCopyText(text)
                     null
                 }
 
@@ -129,7 +135,7 @@ internal class TermuxTerminalCoreController(
         ) { method, _ ->
             when (method.name) {
                 "onSingleTapUp" -> {
-                    callbacks.onSingleTap()
+                    callbacksRef.get().onSingleTap()
                     null
                 }
 
@@ -163,6 +169,14 @@ internal class TermuxTerminalCoreController(
                     )
             }
         }
+
+    fun updateCallbacks(
+        callbacks: TermuxTerminalCallbacks,
+    ) {
+        callbacksRef.set(
+            callbacks
+        )
+    }
 
     fun createView(
         context: Context,
@@ -217,11 +231,14 @@ internal class TermuxTerminalCoreController(
         )
     }
 
-    override fun close() {
+    fun detachView() {
         terminalView
             .getAndSet(null)
             ?.attachSession(null)
+    }
 
+    override fun close() {
+        detachView()
         session.finishIfRunning()
     }
 
@@ -289,6 +306,154 @@ internal class TermuxTerminalCoreController(
                 null
         }
 }
+
+
+
+/**
+ * Keeps the native Termux emulator alive for the lifetime of the
+ * AppForge PTY session, not for the lifetime of a Compose screen.
+ *
+ * This preserves viewport + scrollback across:
+ * - copy mode overlays,
+ * - Terminal tab/screen navigation,
+ * - normal Compose disposal/recreation.
+ */
+internal object TermuxTerminalMirrorControllerRegistry {
+
+    private data class Entry(
+        val spec: TermuxTerminalLaunchSpec,
+        val controller: TermuxTerminalCoreController,
+        var registration: AutoCloseable? = null,
+    )
+
+    private val lock = Any()
+
+    private val entries =
+        mutableMapOf<String, Entry>()
+
+    fun acquire(
+        sessionId: String,
+        spec: TermuxTerminalLaunchSpec,
+        callbacks: TermuxTerminalCallbacks,
+    ): TermuxTerminalCoreController =
+        synchronized(lock) {
+            val current =
+                entries[sessionId]
+
+            if (
+                current != null &&
+                current.spec == spec
+            ) {
+                current.controller
+                    .updateCallbacks(
+                        callbacks
+                    )
+
+                return@synchronized current.controller
+            }
+
+            current
+                ?.registration
+                ?.close()
+
+            current
+                ?.controller
+                ?.close()
+
+            val controller =
+                TermuxTerminalCoreController(
+                    spec = spec,
+                    callbacks = callbacks,
+                )
+
+            entries[sessionId] =
+                Entry(
+                    spec = spec,
+                    controller = controller,
+                )
+
+            controller
+        }
+
+    fun ensureRegistered(
+        sessionId: String,
+        controller: TermuxTerminalCoreController,
+    ) {
+        synchronized(lock) {
+            val entry =
+                entries[sessionId]
+                    ?: return
+
+            if (
+                entry.controller !==
+                controller
+            ) {
+                return
+            }
+
+            if (
+                entry.registration !=
+                null
+            ) {
+                return
+            }
+
+            /*
+             * Called only after TerminalView has attached to the
+             * TerminalSession. Existing mirror backlog is replayed here.
+             */
+            entry.registration =
+                TermuxTerminalMirrorRegistry
+                    .register(
+                        sessionId,
+                        controller::write,
+                    )
+        }
+    }
+
+    fun detachView(
+        sessionId: String,
+        controller: TermuxTerminalCoreController,
+    ) {
+        synchronized(lock) {
+            val entry =
+                entries[sessionId]
+                    ?: return
+
+            if (
+                entry.controller ===
+                controller
+            ) {
+                controller.detachView()
+            }
+        }
+    }
+
+    fun release(
+        sessionId: String,
+    ) {
+        val removed =
+            synchronized(lock) {
+                entries.remove(
+                    sessionId
+                )
+            }
+
+        removed
+            ?.registration
+            ?.close()
+
+        removed
+            ?.controller
+            ?.close()
+
+        TermuxTerminalMirrorRegistry
+            .drop(
+                sessionId
+            )
+    }
+}
+
 
 
 /**
@@ -404,6 +569,16 @@ internal object TermuxTerminalMirrorRegistry {
         }
     }
 
+    fun drop(
+        sessionId: String,
+    ) {
+        synchronized(lock) {
+            channels.remove(
+                sessionId
+            )
+        }
+    }
+
     fun reset(
         sessionId: String,
     ) {
@@ -454,12 +629,33 @@ internal fun TermuxTerminalCoreHost(
     val controller =
         remember(
             spec,
+            mirrorSessionId,
         ) {
-            TermuxTerminalCoreController(
-                spec = spec,
-                callbacks = callbacks,
-            )
+            if (
+                mirrorSessionId == null
+            ) {
+                TermuxTerminalCoreController(
+                    spec = spec,
+                    callbacks = callbacks,
+                )
+            } else {
+                TermuxTerminalMirrorControllerRegistry
+                    .acquire(
+                        sessionId =
+                            mirrorSessionId,
+                        spec =
+                            spec,
+                        callbacks =
+                            callbacks,
+                    )
+            }
         }
+
+    SideEffect {
+        controller.updateCallbacks(
+            callbacks
+        )
+    }
 
     val currentOnGeometryChanged =
         rememberUpdatedState(
@@ -495,16 +691,6 @@ internal fun TermuxTerminalCoreHost(
         }
     }
 
-    val mirrorRegistration =
-        remember(
-            controller,
-            mirrorSessionId,
-        ) {
-            AtomicReference<AutoCloseable?>(
-                null
-            )
-        }
-
     DisposableEffect(
         controller,
         mirrorSessionId,
@@ -514,11 +700,19 @@ internal fun TermuxTerminalCoreHost(
         )
 
         onDispose {
-            mirrorRegistration
-                .getAndSet(null)
-                ?.close()
-
-            controller.close()
+            if (
+                mirrorSessionId == null
+            ) {
+                controller.close()
+            } else {
+                TermuxTerminalMirrorControllerRegistry
+                    .detachView(
+                        sessionId =
+                            mirrorSessionId,
+                        controller =
+                            controller,
+                    )
+            }
         }
     }
 
@@ -537,15 +731,13 @@ internal fun TermuxTerminalCoreHost(
                      */
                     mirrorSessionId
                         ?.let { sessionId ->
-                            mirrorRegistration
-                                .getAndSet(
-                                    TermuxTerminalMirrorRegistry
-                                        .register(
-                                            sessionId,
-                                            controller::write,
-                                        )
+                            TermuxTerminalMirrorControllerRegistry
+                                .ensureRegistered(
+                                    sessionId =
+                                        sessionId,
+                                    controller =
+                                        controller,
                                 )
-                                ?.close()
                         }
 
                     view.addOnLayoutChangeListener {

@@ -253,6 +253,87 @@ internal fun prepareTerminalDownloadCommand(
 }
 
 
+
+private object TerminalWorkspaceSelectionPreferences {
+
+    private const val PREFS_NAME =
+        "terminal_workspace_selection"
+
+    private const val GENERAL =
+        "__general__"
+
+    private fun accountKey(
+        accountEmail: String
+    ): String =
+        MessageDigest
+            .getInstance("SHA-256")
+            .digest(
+                accountEmail
+                    .trim()
+                    .lowercase()
+                    .toByteArray(
+                        Charsets.UTF_8
+                    )
+            )
+            .joinToString("") {
+                "%02x".format(
+                    it.toInt() and 0xff
+                )
+            }
+            .take(24)
+
+    fun load(
+        context: Context,
+        accountEmail: String,
+        validProjectIds: Set<String>,
+    ): String? {
+        val prefs =
+            context.getSharedPreferences(
+                PREFS_NAME,
+                Context.MODE_PRIVATE,
+            )
+
+        val saved =
+            prefs.getString(
+                accountKey(
+                    accountEmail
+                ),
+                GENERAL,
+            )
+                ?: GENERAL
+
+        if (saved == GENERAL) {
+            return null
+        }
+
+        return saved.takeIf {
+            it in validProjectIds
+        }
+    }
+
+    fun save(
+        context: Context,
+        accountEmail: String,
+        projectId: String?,
+    ) {
+        context.getSharedPreferences(
+            PREFS_NAME,
+            Context.MODE_PRIVATE,
+        )
+            .edit()
+            .putString(
+                accountKey(
+                    accountEmail
+                ),
+                projectId
+                    ?: GENERAL,
+            )
+            .apply()
+    }
+}
+
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TerminalWorkspaceScreen(
@@ -304,20 +385,30 @@ fun TerminalWorkspaceScreen(
             ProjectLibrary.load(context)
         }
 
+    /*
+     * Workspace selection is user-owned state.
+     *
+     * Active Builder projects, PTY cwd changes and screen recreation must
+     * never silently change the selector at the top of Terminal.
+     */
     var selectedProjectId by
-        rememberSaveable {
+        rememberSaveable(
+            accountEmail
+        ) {
             mutableStateOf(
-                activeProjectId
-                    ?: if (
-                        activeDraft.appName.isNotBlank() ||
-                        !activeDraft.importedFolder.isNullOrBlank()
-                    ) {
-                        null
-                    } else {
-                        projects
-                            .firstOrNull()
-                            ?.id
-                    }
+                TerminalWorkspaceSelectionPreferences
+                    .load(
+                        context =
+                            context,
+                        accountEmail =
+                            accountEmail,
+                        validProjectIds =
+                            projects
+                                .map {
+                                    it.id
+                                }
+                                .toSet(),
+                    )
             )
         }
 
@@ -328,30 +419,15 @@ fun TerminalWorkspaceScreen(
 
     val selectedDraft =
         remember(
-            selectedProjectId,
-            activeProjectId,
-            activeDraft.importedFolder,
-            activeDraft.packageName
+            selectedProjectId
         ) {
-            when {
-                selectedProjectId != null ->
+            selectedProjectId
+                ?.let { projectId ->
                     ProjectLibrary.restore(
                         context,
-                        requireNotNull(
-                            selectedProjectId
-                        )
+                        projectId
                     )
-
-                activeProjectId == null &&
-                    (
-                        activeDraft.importedFolder != null ||
-                            activeDraft.appName.isNotBlank()
-                    ) ->
-                    activeDraft
-
-                else ->
-                    null
-            }
+                }
         }
 
     val workspace =
@@ -1153,6 +1229,16 @@ fun TerminalWorkspaceScreen(
                 onSelect = {
                     selectedProjectId =
                         it
+
+                    TerminalWorkspaceSelectionPreferences
+                        .save(
+                            context =
+                                context,
+                            accountEmail =
+                                accountEmail,
+                            projectId =
+                                it,
+                        )
                 }
             )
 
