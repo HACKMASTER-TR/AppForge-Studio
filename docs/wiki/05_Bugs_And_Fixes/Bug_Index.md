@@ -57,3 +57,12 @@ Document only significant, reusable debugging knowledge. Do not add one-off visu
   old AndroidView. The new Termux mirror controller therefore never received
   `createView()` / `ensureRegistered()`, producing a black terminal viewport.
   The native AndroidView is now keyed by controller/session identity.
+
+- Legacy Android unknown-version update lockout — Android builds predating
+  the explicit `X-AppForge-Version-Code` contract arrive as `legacy_android`
+  without a trustworthy version code. They must not be interpreted as
+  version zero. The backend compares the configured public-Play legacy grace
+  version against the minimum supported version. Once the real production
+  minimum advances beyond that grace version, legacy clients are forced to
+  update normally.
+

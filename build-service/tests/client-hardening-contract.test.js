@@ -7,7 +7,8 @@ import {
 
 const {
   nativeClientVersion,
-  policyForVersion
+  policyForVersion,
+  shouldForceNativeUpdate
 } = __clientHardeningTest;
 
 function request(headers = {}) {
@@ -75,5 +76,80 @@ test("legacy Dalvik client is recognized without trusting a version", () => {
       versionCode: null,
       source: "legacy_android"
     }
+  );
+});
+
+
+test("legacy Dalvik grace prevents false forced update until the Play floor advances", () => {
+  const legacy =
+    nativeClientVersion(
+      request({
+        "User-Agent":
+          "Dalvik/2.1.0 (Linux; Android 16)"
+      })
+    );
+
+  assert.equal(
+    shouldForceNativeUpdate(
+      legacy,
+      {
+        minSupportedVersionCode: 517,
+        legacyGraceVersionCode: 517
+      }
+    ),
+    false
+  );
+
+  assert.equal(
+    shouldForceNativeUpdate(
+      legacy,
+      {
+        minSupportedVersionCode: 518,
+        legacyGraceVersionCode: 517
+      }
+    ),
+    true
+  );
+});
+
+test("explicit Android version continues to obey the minimum version floor", () => {
+  const oldClient =
+    nativeClientVersion(
+      request({
+        "X-AppForge-Version-Code": "516",
+        "User-Agent":
+          "Dalvik/2.1.0"
+      })
+    );
+
+  assert.equal(
+    shouldForceNativeUpdate(
+      oldClient,
+      {
+        minSupportedVersionCode: 517,
+        legacyGraceVersionCode: 517
+      }
+    ),
+    true
+  );
+
+  const currentClient =
+    nativeClientVersion(
+      request({
+        "X-AppForge-Version-Code": "517",
+        "User-Agent":
+          "Dalvik/2.1.0"
+      })
+    );
+
+  assert.equal(
+    shouldForceNativeUpdate(
+      currentClient,
+      {
+        minSupportedVersionCode: 517,
+        legacyGraceVersionCode: 517
+      }
+    ),
+    false
   );
 });

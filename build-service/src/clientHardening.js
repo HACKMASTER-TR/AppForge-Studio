@@ -45,6 +45,12 @@ const LATEST_VERSION_CODE =
     )
   );
 
+const LEGACY_ANDROID_GRACE_VERSION_CODE =
+  positiveVersionCode(
+    process.env.STUDIO_LEGACY_ANDROID_GRACE_VERSION_CODE,
+    0
+  );
+
 const MAINTENANCE_MODE =
   String(
     process.env.STUDIO_MAINTENANCE_MODE ||
@@ -153,6 +159,66 @@ function nativeClientVersion(req) {
     versionCode: null,
     source: null
   };
+}
+
+function shouldForceNativeUpdate(
+  client,
+  {
+    minSupportedVersionCode =
+      MIN_SUPPORTED_VERSION_CODE,
+    legacyGraceVersionCode =
+      LEGACY_ANDROID_GRACE_VERSION_CODE
+  } = {}
+) {
+  if (!client?.native) {
+    return false;
+  }
+
+  const minimum =
+    positiveVersionCode(
+      minSupportedVersionCode,
+      1
+    );
+
+  /*
+   * Older AppForge Android builds predate the explicit
+   * X-AppForge-Version-Code contract.
+   *
+   * They can still be identified as native Dalvik clients,
+   * but the backend cannot know their exact version.
+   *
+   * Do not interpret an unknown legacy version as version 0.
+   * Use the configured public Play grace version instead.
+   */
+  if (client.versionCode == null) {
+    if (
+      client.source !==
+        "legacy_android"
+    ) {
+      return true;
+    }
+
+    const grace =
+      positiveVersionCode(
+        legacyGraceVersionCode,
+        0
+      );
+
+    return grace < minimum;
+  }
+
+  const versionCode =
+    Number(
+      client.versionCode
+    );
+
+  return (
+    !Number.isSafeInteger(
+      versionCode
+    ) ||
+    versionCode <= 0 ||
+    versionCode < minimum
+  );
 }
 
 function policyForVersion(
@@ -1404,9 +1470,9 @@ export function createClientHardeningRouter() {
       }
 
       if (
-        !client.versionCode ||
-        client.versionCode <
-          MIN_SUPPORTED_VERSION_CODE
+        shouldForceNativeUpdate(
+          client
+        )
       ) {
         return updateRequiredResponse(
           res,
@@ -1495,5 +1561,6 @@ export function createClientHardeningRouter() {
 
 export const __clientHardeningTest = {
   nativeClientVersion,
-  policyForVersion
+  policyForVersion,
+  shouldForceNativeUpdate
 };
