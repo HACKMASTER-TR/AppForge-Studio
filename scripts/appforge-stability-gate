@@ -138,11 +138,49 @@ for relative in paths:
     if b"\0" in current:
         continue
 
+    staged = subprocess.run(
+        [
+            "git",
+            "ls-files",
+            "--stage",
+            "--",
+            relative,
+        ],
+        cwd=root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+
+    if staged.returncode != 0:
+        continue
+
+    staged_line = (
+        staged.stdout
+        .decode(
+            "utf-8",
+            errors="replace",
+        )
+        .strip()
+    )
+
+    if not staged_line:
+        continue
+
+    try:
+        object_id = (
+            staged_line
+            .split(None, 3)[1]
+        )
+    except (IndexError, ValueError):
+        continue
+
     baseline = subprocess.run(
         [
             "git",
-            "show",
-            f":{relative}",
+            "cat-file",
+            "blob",
+            object_id,
         ],
         cwd=root,
         stdout=subprocess.PIPE,
@@ -272,4 +310,4 @@ fi
 
 echo "APPFORGE STABILITY GATE: BLOCKED"
 echo "fail $FAIL"
-exit 1
+exit 1\n
