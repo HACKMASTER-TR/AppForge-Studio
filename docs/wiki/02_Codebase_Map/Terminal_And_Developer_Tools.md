@@ -3,8 +3,8 @@ type: codebase
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-16
-last_verified: 2026-09-16
+updated: 2026-09-17
+last_verified: 2026-09-17
 confidence: high
 tags:
   - terminal
@@ -48,3 +48,11 @@ Command restrictions belong to `TerminalCommandPolicy`. Device keyboard and term
 ## Owner-only access
 
 AppForge Terminal is an owner-only Android surface. `OwnerAccessPolicy` is the authoritative account check. `StudioHomeV2` does not render the Terminal card for non-owner Free or Pro accounts, and `MainActivity` rejects Terminal navigation, restored Terminal state, and external-authorization routing for non-owner accounts. Terminal source remains packaged in the common APK, but it is not exposed or routable to those accounts.
+
+## New PTY session creation
+
+`+ Oturum` creates its persisted PTY record on `Dispatchers.IO`, selects
+the new tab before potentially slow PTY startup, and prevents environment
+re-initialization from stealing the active user-selected session. A failed
+new-session start cleans up the incomplete registry entry. Device acceptance
+is still required for the interactive multi-session behavior.

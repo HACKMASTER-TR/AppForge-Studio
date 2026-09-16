@@ -3,8 +3,8 @@ type: bug
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-16
-last_verified: 2026-09-16
+updated: 2026-09-17
+last_verified: 2026-09-17
 confidence: high
 tags:
   - bugs
@@ -24,6 +24,7 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
   - ".github/workflows/android-play-release.yml"
   - "scripts/appforge"
+  - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
 ---
 
 # Bug Index
@@ -39,3 +40,13 @@ source_files:
 - Android Play rollout/version-policy mismatch — backend update floors must not assume that a build visible to one Play track/account is globally available. Unconfigured version policy now fails open, stale cached FORCED state cannot hard-lock offline startup, and a forced client update is relaxed when Play cannot actually deliver the required minimum to that account. Official versioned GitHub releases publish to the production track; manual Play workflow runs retain the configurable test/internal path.
 
 Document only significant, reusable debugging knowledge. Do not add one-off visual or formatting defects.
+
+- Terminal new-session responsiveness regression — `+ Oturum` previously
+  performed persisted session creation from the UI coroutine and did not
+  select the new tab until PTY startup returned. New-session persistence now
+  runs on IO, the tab becomes active before startup, and failed starts clean
+  up their incomplete session.
+
+- Successful APK trash action gap — downloaded AppForge APK cards now keep
+  Install/Share and add Android 11+ MediaStore trash semantics without
+  silently converting the action into permanent deletion on older Android.

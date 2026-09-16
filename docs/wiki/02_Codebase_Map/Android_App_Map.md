@@ -3,8 +3,8 @@ type: codebase
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-09-17
+last_verified: 2026-09-17
 confidence: high
 tags:
   - android
@@ -16,6 +16,9 @@ source_files:
   - "android-app/app/src/main/AndroidManifest.xml"
   - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
   - "android-app/app/build.gradle.kts"
+  - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
+  - "android-app/app/src/test/java/com/appforge/studio/UpdateGatePlayVisibilityTest.kt"
 ---
 
 # Android App Map
@@ -40,3 +43,17 @@ installer-cache APK through the existing `FileProvider`; the Successful
 APKs screen shares the MediaStore `content://` URI directly. Both flows
 use `ACTION_SEND`, the Android APK MIME type, and temporary read grants.
 No additional broad storage permission is required.
+
+## Play-visible update policy
+
+Normal-user update visibility is reconciled with Google Play Core. Backend
+version values may express maintenance/minimum policy, but CI, GitHub APK,
+or unreleased version numbers do not become user-visible updates unless
+Google Play actually offers a newer version to that account/device.
+
+## Successful APK trash
+
+The Successful APKs surface keeps Install and Share and also exposes
+`Çöpe taşı`. On Android 11+ AppForge marks its MediaStore APK as trashed
+instead of performing an irreversible delete. Trashed MediaStore entries
+are excluded from the Successful APK query.

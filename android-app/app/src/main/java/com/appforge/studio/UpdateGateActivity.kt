@@ -77,6 +77,45 @@ private fun effectiveStudioUpdateState(
     }
 }
 
+internal fun playVisibleStudioUpdateState(
+    currentVersionCode: Int,
+    minSupportedVersionCode: Int,
+    updateAvailable: Boolean,
+    updateInProgress: Boolean,
+    offeredVersionCode: Int
+): StudioUpdateState {
+    val current =
+        currentVersionCode.coerceAtLeast(1)
+
+    val minimum =
+        minSupportedVersionCode.coerceAtLeast(1)
+
+    val offered =
+        offeredVersionCode.coerceAtLeast(0)
+
+    val playOffersNewer =
+        updateInProgress ||
+            (
+                updateAvailable &&
+                    offered > current
+                )
+
+    return when {
+        !playOffersNewer ->
+            StudioUpdateState.NORMAL
+
+        updateInProgress ->
+            StudioUpdateState.FORCED
+
+        current < minimum &&
+            offered >= minimum ->
+            StudioUpdateState.FORCED
+
+        else ->
+            StudioUpdateState.OPTIONAL
+    }
+}
+
 private sealed interface GateUiState {
     data object Loading : GateUiState
     data class Ready(val policy: StudioUpdatePolicy) : GateUiState
@@ -176,14 +215,9 @@ class UpdateGateActivity : ComponentActivity() {
             }
 
             result.onSuccess { policy ->
-                savePolicy(policy)
-                uiState = GateUiState.Ready(policy)
-
-                if (policy.state == StudioUpdateState.NORMAL) {
-                    openStudio()
-                } else if (policy.state == StudioUpdateState.FORCED) {
-                    beginUpdate()
-                }
+                applyPlayVisiblePolicy(
+                    policy
+                )
             }.onFailure {
                 val cached = loadCachedPolicy()
 
@@ -199,6 +233,144 @@ class UpdateGateActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /*
+     * Normal-user update visibility is owned by Google Play.
+     *
+     * Backend latest/minimum values are policy hints, but a CI build,
+     * GitHub APK or unreleased version must never appear to a normal
+     * user as an available update until Play actually offers a newer
+     * version to that account/device.
+     */
+    private fun applyPlayVisiblePolicy(
+        policy: StudioUpdatePolicy
+    ) {
+        if (
+            policy.state ==
+                StudioUpdateState.MAINTENANCE
+        ) {
+            savePolicy(policy)
+            uiState =
+                GateUiState.Ready(
+                    policy
+                )
+            return
+        }
+
+        appUpdateManager.appUpdateInfo
+            .addOnSuccessListener { info ->
+                val availability =
+                    info.updateAvailability()
+
+                val updateInProgress =
+                    availability ==
+                        UpdateAvailability
+                            .DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS
+
+                val updateAvailable =
+                    availability ==
+                        UpdateAvailability
+                            .UPDATE_AVAILABLE
+
+                val offeredVersionCode =
+                    runCatching {
+                        info.availableVersionCode()
+                    }
+                        .getOrDefault(0)
+                        .coerceAtLeast(0)
+
+                val visibleState =
+                    playVisibleStudioUpdateState(
+                        currentVersionCode =
+                            BuildConfig.VERSION_CODE,
+                        minSupportedVersionCode =
+                            policy.minSupportedVersionCode,
+                        updateAvailable =
+                            updateAvailable,
+                        updateInProgress =
+                            updateInProgress,
+                        offeredVersionCode =
+                            offeredVersionCode
+                    )
+
+                val publicLatest =
+                    if (
+                        offeredVersionCode >
+                            BuildConfig.VERSION_CODE
+                    ) {
+                        offeredVersionCode
+                    } else {
+                        BuildConfig.VERSION_CODE
+                    }
+
+                val visiblePolicy =
+                    policy.copy(
+                        state =
+                            visibleState,
+                        latestVersionCode =
+                            publicLatest,
+                        message =
+                            if (
+                                visibleState ==
+                                    StudioUpdateState.NORMAL
+                            ) {
+                                ""
+                            } else {
+                                policy.message
+                            }
+                    )
+
+                savePolicy(
+                    visiblePolicy
+                )
+
+                uiState =
+                    GateUiState.Ready(
+                        visiblePolicy
+                    )
+
+                when (
+                    visiblePolicy.state
+                ) {
+                    StudioUpdateState.NORMAL ->
+                        openStudio()
+
+                    StudioUpdateState.FORCED ->
+                        beginUpdate()
+
+                    StudioUpdateState.OPTIONAL,
+                    StudioUpdateState.MAINTENANCE ->
+                        Unit
+                }
+            }
+            .addOnFailureListener {
+                /*
+                 * Play visibility cannot be verified:
+                 * fail open for version prompts.
+                 * Maintenance remains handled above.
+                 */
+                val safePolicy =
+                    policy.copy(
+                        state =
+                            StudioUpdateState.NORMAL,
+                        latestVersionCode =
+                            BuildConfig.VERSION_CODE,
+                        message =
+                            ""
+                    )
+
+                savePolicy(
+                    safePolicy
+                )
+
+                uiState =
+                    GateUiState.Ready(
+                        safePolicy
+                    )
+
+                openStudio()
+            }
     }
 
     private fun fetchPolicy(): StudioUpdatePolicy {
