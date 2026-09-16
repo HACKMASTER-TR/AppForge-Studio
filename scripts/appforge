@@ -1600,14 +1600,99 @@ def ensure_versioned_release(main_sha):
     )
 
     if created.returncode != 0:
+        # gh release can fail independently even when
+        # `gh api` works correctly. Use the lower-level REST
+        # transport as the supported fallback.
+        api_existing = run(
+            [
+                gh_exec,
+                "api",
+                "--method",
+                "GET",
+                (
+                    f"repos/{repo}/releases/"
+                    f"tags/{tag}"
+                ),
+            ],
+            check=False,
+            capture=True,
+            env=release_env,
+        )
+
+        if api_existing.returncode == 0:
+            print(
+                "GITHUB RELEASE: existing release reused "
+                "via API fallback:",
+                tag,
+            )
+            return info
+
+        api_created = run(
+            [
+                gh_exec,
+                "api",
+                "--method",
+                "POST",
+                f"repos/{repo}/releases",
+                "-f",
+                f"tag_name={tag}",
+                "-f",
+                f"target_commitish={main_sha}",
+                "-f",
+                f"name=AppForge Studio {info['name']}",
+                "-F",
+                "generate_release_notes=true",
+            ],
+            check=False,
+            capture=True,
+            env=release_env,
+        )
+
+        if api_created.returncode == 0:
+            print(
+                "GITHUB RELEASE: CREATED VIA API FALLBACK",
+                tag,
+            )
+            return info
+
+        # A concurrent/retried request may have created the
+        # release even if POST returned a non-zero result.
+        api_verify = run(
+            [
+                gh_exec,
+                "api",
+                "--method",
+                "GET",
+                (
+                    f"repos/{repo}/releases/"
+                    f"tags/{tag}"
+                ),
+            ],
+            check=False,
+            capture=True,
+            env=release_env,
+        )
+
+        if api_verify.returncode == 0:
+            print(
+                "GITHUB RELEASE: verified after API fallback:",
+                tag,
+            )
+            return info
+
         block_pipeline(
             "RELEASE",
             "PUBLISH",
             f"GitHub Release create failed: {tag}",
             log_excerpt=(
-                (created.stdout or "")
+                "gh release:\n"
+                + (created.stdout or "")
                 + "\n"
                 + (created.stderr or "")
+                + "\n\ngh api fallback:\n"
+                + (api_created.stdout or "")
+                + "\n"
+                + (api_created.stderr or "")
             ).strip(),
             release_tag=tag,
         )
