@@ -3661,13 +3661,26 @@ private fun LocalPtySurface(
                 }
                 .pointerInput(
                     state.id,
-                    copyMode
+                    copyMode,
+                    useTermuxViewport
                 ) {
                     /*
                      * SelectionContainer owns all gestures in copy mode.
                      * Do not let pinch/tap handling steal long-press selection.
                      */
-                    if (!copyMode) {
+                    /*
+                     * Native Termux TerminalView owns one-finger drag/fling
+                     * while the Termux viewport is active.
+                     *
+                     * detectTransformGestures also consumes pan gestures even
+                     * when this callback only uses zoom. Keeping it active
+                     * above TerminalView makes normal scrollback feel like
+                     * slow row-by-row movement.
+                     *
+                     * Preserve Compose pinch zoom only for the fallback
+                     * renderer.
+                     */
+                    if (!copyMode && !useTermuxViewport) {
                         detectTransformGestures { _, _, zoom, _ ->
                             if (zoom != 1f) {
                                 val next =
