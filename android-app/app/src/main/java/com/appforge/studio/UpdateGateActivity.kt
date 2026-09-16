@@ -57,6 +57,26 @@ data class StudioUpdatePolicy(
     val playStoreUrl: String
 )
 
+private fun effectiveStudioUpdateState(
+    reportedState: StudioUpdateState,
+    currentVersionCode: Int,
+    latestVersionCode: Int,
+    minSupportedVersionCode: Int
+): StudioUpdateState {
+    if (reportedState == StudioUpdateState.MAINTENANCE) {
+        return StudioUpdateState.MAINTENANCE
+    }
+
+    val minimum = minSupportedVersionCode.coerceAtLeast(1)
+    val latest = latestVersionCode.coerceAtLeast(minimum)
+
+    return when {
+        currentVersionCode < minimum -> StudioUpdateState.FORCED
+        currentVersionCode < latest -> StudioUpdateState.OPTIONAL
+        else -> StudioUpdateState.NORMAL
+    }
+}
+
 private sealed interface GateUiState {
     data object Loading : GateUiState
     data class Ready(val policy: StudioUpdatePolicy) : GateUiState
@@ -168,7 +188,6 @@ class UpdateGateActivity : ComponentActivity() {
                 val cached = loadCachedPolicy()
 
                 if (
-                    cached?.state == StudioUpdateState.FORCED ||
                     cached?.state == StudioUpdateState.MAINTENANCE
                 ) {
                     uiState = GateUiState.Ready(cached)
@@ -220,22 +239,33 @@ class UpdateGateActivity : ComponentActivity() {
     }
 
     private fun parsePolicy(json: JSONObject): StudioUpdatePolicy {
-        val state = runCatching {
+        val reportedState = runCatching {
             StudioUpdateState.valueOf(
                 json.optString("state", "NORMAL").uppercase()
             )
         }.getOrDefault(StudioUpdateState.NORMAL)
 
+        val minimum = json.optInt(
+            "minSupportedVersionCode",
+            1
+        ).coerceAtLeast(1)
+
+        val latest = json.optInt(
+            "latestVersionCode",
+            BuildConfig.VERSION_CODE
+        ).coerceAtLeast(minimum)
+
+        val state = effectiveStudioUpdateState(
+            reportedState = reportedState,
+            currentVersionCode = BuildConfig.VERSION_CODE,
+            latestVersionCode = latest,
+            minSupportedVersionCode = minimum
+        )
+
         return StudioUpdatePolicy(
             state = state,
-            latestVersionCode = json.optInt(
-                "latestVersionCode",
-                BuildConfig.VERSION_CODE
-            ),
-            minSupportedVersionCode = json.optInt(
-                "minSupportedVersionCode",
-                BuildConfig.VERSION_CODE
-            ),
+            latestVersionCode = latest,
+            minSupportedVersionCode = minimum,
             message = json.optString(
                 "message",
                 "AppForge Studio'nun yeni sürümü hazır."
@@ -261,13 +291,39 @@ class UpdateGateActivity : ComponentActivity() {
 
         appUpdateManager.appUpdateInfo
             .addOnSuccessListener { info ->
-                val available =
-                    info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE ||
-                        info.updateAvailability() ==
+                val availability = info.updateAvailability()
+                val updateInProgress =
+                    availability ==
                         UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS
+                val updateAvailable =
+                    availability == UpdateAvailability.UPDATE_AVAILABLE
+                val offeredVersionCode = runCatching {
+                    info.availableVersionCode()
+                }.getOrDefault(0)
+
+                val playCanSatisfyMinimum =
+                    updateInProgress ||
+                        (
+                            updateAvailable &&
+                                offeredVersionCode >=
+                                policy.minSupportedVersionCode
+                            )
+
+                if (!playCanSatisfyMinimum) {
+                    val rolloutPolicy = policy.copy(
+                        state = StudioUpdateState.OPTIONAL,
+                        message =
+                            "Yeni sürüm bu Google Play hesabına henüz ulaşmadı. " +
+                                "Uygulamayı kullanmaya devam edebilirsin."
+                    )
+
+                    savePolicy(rolloutPolicy)
+                    uiState = GateUiState.Ready(rolloutPolicy)
+                    openStudio()
+                    return@addOnSuccessListener
+                }
 
                 if (
-                    available &&
                     info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)
                 ) {
                     forcedUpdateLaunching = true

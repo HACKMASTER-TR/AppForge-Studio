@@ -1531,8 +1531,16 @@ def ensure_versioned_release(main_sha):
     release_env = os.environ.copy()
 
     tool_dirs = [
-        str(Path(git_exec).resolve().parent),
-        str(Path(gh_exec).resolve().parent),
+        str(
+            Path(
+                git_exec
+            ).resolve().parent
+        ),
+        str(
+            Path(
+                gh_exec
+            ).resolve().parent
+        ),
     ]
 
     current_path = [
@@ -1540,16 +1548,37 @@ def ensure_versioned_release(main_sha):
         for item in release_env.get(
             "PATH",
             "",
-        ).split(os.pathsep)
+        ).split(
+            os.pathsep
+        )
         if item
     ]
 
-    release_env["PATH"] = os.pathsep.join(
-        dict.fromkeys(
-            tool_dirs +
-            current_path
+    release_env["PATH"] = (
+        os.pathsep.join(
+            dict.fromkeys(
+                tool_dirs +
+                current_path
+            )
         )
     )
+
+    def api_release_view():
+        return run(
+            [
+                gh_exec,
+                "api",
+                "--method",
+                "GET",
+                (
+                    f"repos/{repo}/"
+                    f"releases/tags/{tag}"
+                ),
+            ],
+            check=False,
+            capture=True,
+            env=release_env,
+        )
 
     existing = run(
         [
@@ -1569,7 +1598,24 @@ def ensure_versioned_release(main_sha):
 
     if existing.returncode == 0:
         print(
-            "GITHUB RELEASE: existing release reused:",
+            "GITHUB RELEASE: "
+            "existing release reused:",
+            tag,
+        )
+        return info
+
+    api_existing = (
+        api_release_view()
+    )
+
+    if (
+        api_existing.returncode
+        == 0
+    ):
+        print(
+            "GITHUB RELEASE: "
+            "existing release reused "
+            "via API:",
             tag,
         )
         return info
@@ -1591,7 +1637,10 @@ def ensure_versioned_release(main_sha):
             "--target",
             main_sha,
             "--title",
-            f"AppForge Studio {info['name']}",
+            (
+                "AppForge Studio "
+                f"{info['name']}"
+            ),
             "--generate-notes",
         ],
         check=False,
@@ -1599,111 +1648,205 @@ def ensure_versioned_release(main_sha):
         env=release_env,
     )
 
-    if created.returncode != 0:
-        # gh release can fail independently even when
-        # `gh api` works correctly. Use the lower-level REST
-        # transport as the supported fallback.
-        api_existing = run(
-            [
-                gh_exec,
-                "api",
-                "--method",
-                "GET",
-                (
-                    f"repos/{repo}/releases/"
-                    f"tags/{tag}"
-                ),
-            ],
-            check=False,
-            capture=True,
-            env=release_env,
+    if created.returncode == 0:
+        print(
+            "GITHUB RELEASE: "
+            "CREATED",
+            tag,
         )
+        return info
 
-        if api_existing.returncode == 0:
-            print(
-                "GITHUB RELEASE: existing release reused "
-                "via API fallback:",
-                tag,
-            )
-            return info
+    # The high-level gh command can fail
+    # after GitHub has already accepted
+    # the release. Verify before retrying.
+    api_after_cli = (
+        api_release_view()
+    )
 
-        api_created = run(
-            [
-                gh_exec,
-                "api",
-                "--method",
-                "POST",
-                f"repos/{repo}/releases",
-                "-f",
-                f"tag_name={tag}",
-                "-f",
-                f"target_commitish={main_sha}",
-                "-f",
-                f"name=AppForge Studio {info['name']}",
-                "-F",
-                "generate_release_notes=true",
-            ],
-            check=False,
-            capture=True,
-            env=release_env,
+    if (
+        api_after_cli.returncode
+        == 0
+    ):
+        print(
+            "GITHUB RELEASE: "
+            "verified after gh release:",
+            tag,
         )
+        return info
 
-        if api_created.returncode == 0:
-            print(
-                "GITHUB RELEASE: CREATED VIA API FALLBACK",
-                tag,
+    # Create the exact version tag first.
+    # This keeps the REST release payload
+    # small and avoids the previous 422
+    # target_commitish/generate-notes path.
+    tag_push = run(
+        [
+            git_exec,
+            "push",
+            "origin",
+            (
+                f"{main_sha}:"
+                f"refs/tags/{tag}"
+            ),
+        ],
+        check=False,
+        capture=True,
+        env=release_env,
+    )
+
+    remote_tag = run(
+        [
+            git_exec,
+            "ls-remote",
+            "--exit-code",
+            "--tags",
+            "origin",
+            f"refs/tags/{tag}",
+        ],
+        check=False,
+        capture=True,
+        env=release_env,
+    )
+
+    remote_tag_sha = ""
+
+    if (
+        remote_tag.returncode
+        == 0
+    ):
+        remote_line = (
+            remote_tag.stdout
+            or ""
+        ).strip()
+
+        if remote_line:
+            remote_tag_sha = (
+                remote_line
+                .split()[0]
             )
-            return info
 
-        # A concurrent/retried request may have created the
-        # release even if POST returned a non-zero result.
-        api_verify = run(
-            [
-                gh_exec,
-                "api",
-                "--method",
-                "GET",
-                (
-                    f"repos/{repo}/releases/"
-                    f"tags/{tag}"
-                ),
-            ],
-            check=False,
-            capture=True,
-            env=release_env,
-        )
-
-        if api_verify.returncode == 0:
-            print(
-                "GITHUB RELEASE: verified after API fallback:",
-                tag,
-            )
-            return info
-
+    if (
+        remote_tag_sha
+        and remote_tag_sha
+        != main_sha
+    ):
         block_pipeline(
             "RELEASE",
             "PUBLISH",
-            f"GitHub Release create failed: {tag}",
+            (
+                "Version tag exists at "
+                "a different commit: "
+                f"{tag}"
+            ),
             log_excerpt=(
-                "gh release:\n"
-                + (created.stdout or "")
-                + "\n"
-                + (created.stderr or "")
-                + "\n\ngh api fallback:\n"
-                + (api_created.stdout or "")
-                + "\n"
-                + (api_created.stderr or "")
-            ).strip(),
+                "expected="
+                + main_sha
+                + "\nactual="
+                + remote_tag_sha
+            ),
             release_tag=tag,
         )
 
-    print(
-        "GITHUB RELEASE: CREATED",
-        tag,
+    tag_ready = (
+        tag_push.returncode
+        == 0
+        or remote_tag_sha
+        == main_sha
     )
 
-    return info
+    api_args = [
+        gh_exec,
+        "api",
+        "--method",
+        "POST",
+        f"repos/{repo}/releases",
+        "-f",
+        f"tag_name={tag}",
+        "-f",
+        (
+            "name=AppForge Studio "
+            f"{info['name']}"
+        ),
+    ]
 
+    # Normally the tag now exists.
+    # Keep an exact SHA fallback only
+    # when Git transport could not
+    # prepare/verify the tag.
+    if not tag_ready:
+        api_args.extend(
+            [
+                "-f",
+                (
+                    "target_commitish="
+                    f"{main_sha}"
+                ),
+            ]
+        )
+
+    api_created = run(
+        api_args,
+        check=False,
+        capture=True,
+        env=release_env,
+    )
+
+    if (
+        api_created.returncode
+        == 0
+    ):
+        print(
+            "GITHUB RELEASE: "
+            "CREATED VIA API FALLBACK",
+            tag,
+        )
+        return info
+
+    # Idempotent race/retry verification.
+    api_verify = (
+        api_release_view()
+    )
+
+    if (
+        api_verify.returncode
+        == 0
+    ):
+        print(
+            "GITHUB RELEASE: "
+            "verified after API fallback:",
+            tag,
+        )
+        return info
+
+    block_pipeline(
+        "RELEASE",
+        "PUBLISH",
+        (
+            "GitHub Release create "
+            f"failed: {tag}"
+        ),
+        log_excerpt=(
+            "gh release:\n"
+            + (created.stdout or "")
+            + "\n"
+            + (created.stderr or "")
+            + "\n\n"
+            + "git tag push:\n"
+            + (tag_push.stdout or "")
+            + "\n"
+            + (tag_push.stderr or "")
+            + "\n\n"
+            + "remote tag verify:\n"
+            + (remote_tag.stdout or "")
+            + "\n"
+            + (remote_tag.stderr or "")
+            + "\n\n"
+            + "gh api fallback:\n"
+            + (api_created.stdout or "")
+            + "\n"
+            + (api_created.stderr or "")
+        ).strip(),
+        release_tag=tag,
+    )
 
 def wait_main_validation_only(head_sha, source_files):
     required = required_main_workflows(source_files)

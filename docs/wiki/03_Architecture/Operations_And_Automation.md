@@ -3,8 +3,8 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-09-16
+last_verified: 2026-09-16
 confidence: high
 tags:
   - operations
@@ -24,7 +24,10 @@ source_files:
   - ".github/workflows/windows-worker-image.yml"
   - "scripts/appforge"
   - "scripts/appforge-stability-gate"
+  - "build-service/src/clientHardening.js"
+  - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
 ---
+
 
 # Operations and Automation
 
@@ -59,11 +62,13 @@ GitHub CLI builds that do not support the narrower flag.
 ## Release REST fallback
 
 GitHub Release publishing normally uses the `gh release` command. Some
-Android/proot environments can successfully use `gh api` while the higher
-level `gh release` transport fails to connect. Autopilot therefore falls
-back to the authenticated `gh api` Releases endpoint before classifying a
-release as failed. The fallback preserves fail-stop behavior: delivery
-still stops if both transports fail.
+Android/proot environments can fail in the higher-level release transport
+even though Git and the REST transport remain usable. The fallback first
+creates/verifies the exact main SHA as the remote version tag, then sends a
+minimal authenticated Releases API payload. Generated notes are not part
+of the fallback payload. A retry verifies the release by tag before
+classifying the stage as failed, preserving idempotence and fail-stop
+behavior.
 
 
 ## Keyless Google Play publishing
@@ -74,3 +79,21 @@ authenticates with `google-github-actions/auth@v3`, impersonates the
 `appforge-play-publisher` service account, and passes the action-generated
 temporary credentials file to the Play uploader. No long-lived Google
 service-account private key or JSON credential is required.
+
+## Android Play rollout and update policy
+
+Backend Android update policy is opt-in: missing or invalid Studio version
+environment values resolve to a non-forcing floor instead of a historical
+hard-coded release. `STUDIO_MIN_SUPPORTED_VERSION_CODE` must only be
+raised after the required build is available to the intended Play
+production population.
+
+The Android gate derives FORCED state from the numeric minimum and checks
+Play Core before launching an immediate update. If that Google Play
+account cannot receive a build satisfying the minimum, the gate relaxes
+to OPTIONAL instead of trapping the user between AppForge and a Store page
+with no available update.
+
+For distribution, a published versioned GitHub Release targets the Play
+production track. Manual workflow dispatch retains
+`APPFORGE_PLAY_TRACK`, with `internal` as its test fallback.

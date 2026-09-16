@@ -36,31 +36,14 @@ test(
 );
 
 test(
-  "release falls back from gh release to gh api",
+  "release fallback pre-creates the tag and uses a minimal REST payload",
   () => {
-    assert.match(
-      appforge,
-      /CREATED VIA API FALLBACK/
-    );
-
-    assert.match(
-      appforge,
-      /"api",[\s\S]{0,120}?"POST"/
-    );
-
-    assert.match(
-      appforge,
-      /repos\/\{repo\}\/releases/
-    );
-
-    assert.match(
-      appforge,
-      /generate_release_notes=true/
-    );
-
-    assert.match(
-      appforge,
-      /target_commitish=\{main_sha\}/
-    );
+    assert.match(appforge, /CREATED VIA API FALLBACK/);
+    assert.match(appforge, /refs\/tags\/\{tag\}/);
+    assert.match(appforge, /"ls-remote"/);
+    assert.match(appforge, /"api",[\s\S]{0,120}?"POST"/);
+    assert.match(appforge, /repos\/\{repo\}\/releases/);
+    assert.match(appforge, /"--generate-notes"/);
+    assert.doesNotMatch(appforge, /generate_release_notes=true/);
   }
 );
