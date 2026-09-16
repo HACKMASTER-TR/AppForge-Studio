@@ -2,11 +2,14 @@
 package com.appforge.studio.ui
 
 import android.content.ContentUris
+import android.content.ClipData
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -83,6 +86,73 @@ private fun sizeText(
             )
     }
 
+
+private fun shareDownloadedApk(
+    context: Context,
+    entry: DownloadedApkEntry
+) {
+    runCatching {
+
+        val sendIntent =
+            Intent(
+                Intent.ACTION_SEND
+            ).apply {
+
+                type =
+                    "application/vnd.android.package-archive"
+
+                putExtra(
+                    Intent.EXTRA_STREAM,
+                    entry.uri
+                )
+
+                clipData =
+                    ClipData.newRawUri(
+                        entry.name,
+                        entry.uri
+                    )
+
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+
+        val chooser =
+            Intent.createChooser(
+                sendIntent,
+                "APK'yı paylaş"
+            ).apply {
+
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+
+                if (
+                    context !is android.app.Activity
+                ) {
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK
+                    )
+                }
+            }
+
+        context.startActivity(
+            chooser
+        )
+
+    }.onFailure {
+
+        Toast.makeText(
+            context,
+            "APK paylaşılamadı: ${
+                it.message
+                    ?: it.javaClass.simpleName
+            }",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+}
+
 @Composable internal fun DownloadedApkFolderScreen(onBack:()->Unit,onInstall:(Uri,String)->Unit){
     val ctx=LocalContext.current; val cfg=LocalConfiguration.current; val compact=cfg.screenWidthDp<390
     var data by remember{mutableStateOf<List<DownloadedApkEntry>>(emptyList())}; var loading by remember{mutableStateOf(true)}
@@ -101,7 +171,14 @@ private fun sizeText(
             when{ loading->item{Text("APK klasörü okunuyor...")} ; err.isNotBlank()->item{Text("APK klasörü okunamadı: $err",color=MaterialTheme.colorScheme.error)} ; shown.isEmpty()->item{Text("Henüz indirilen APK yok")} ; else->items(shown,key={it.uri.toString()}){e->
                 val dt=if(e.modifiedAtMillis>0) DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(Date(e.modifiedAtMillis)) else "—"
                 Card(onClick={onInstall(e.uri,e.name)},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp)){
-                    Row(Modifier.fillMaxWidth().padding(14.dp),verticalAlignment=Alignment.CenterVertically){Text("APK",fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(e.name,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis);Text("$dt • ${sizeText(e.sizeBytes)}",fontSize=11.sp)};Text("Kur ›",color=MaterialTheme.colorScheme.primary,fontWeight=FontWeight.Bold)}
+                    Row(Modifier.fillMaxWidth().padding(14.dp),verticalAlignment=Alignment.CenterVertically){Text("APK",fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(e.name,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis);Text("$dt • ${sizeText(e.sizeBytes)}",fontSize=11.sp)};Row(horizontalArrangement=Arrangement.spacedBy(2.dp)){
+                        TextButton(
+                            onClick={onInstall(e.uri,e.name)}
+                        ){Text("Kur")}
+                        TextButton(
+                            onClick={shareDownloadedApk(ctx,e)}
+                        ){Text("Paylaş")}
+                    }}
                 }
             }}
         }

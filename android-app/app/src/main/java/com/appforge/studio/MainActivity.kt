@@ -20000,6 +20000,39 @@ private fun BuildStep(
         }
 
         if (
+            apkCachedPath != null
+        ) {
+            item {
+                OutlinedButton(
+                    onClick = {
+                        val path =
+                            apkCachedPath
+
+                        if (
+                            path != null
+                        ) {
+                            downloadMessage =
+                                shareCachedApk(
+                                    context =
+                                        context,
+                                    apkFile =
+                                        File(
+                                            path
+                                        )
+                                )
+                        }
+                    },
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "APK'YI PAYLAŞ"
+                    )
+                }
+            }
+        }
+
+        if (
             aabUrl != null
         ) {
             item {
@@ -21187,6 +21220,95 @@ private fun installCachedApk(
 
     }.getOrElse {
         "APK yükleyici açılamadı: ${it.message}"
+    }
+}
+
+
+
+private fun shareCachedApk(
+    context: Context,
+    apkFile: File
+): String {
+
+    if (
+        !apkFile.isFile ||
+        apkFile.length() <= 0L
+    ) {
+        return "APK bulunamadı. Önce APK'YI İNDİR'e bas."
+    }
+
+    if (
+        !apkFile.name.endsWith(
+            ".apk",
+            ignoreCase = true
+        )
+    ) {
+        return "Yalnız APK dosyaları paylaşılabilir."
+    }
+
+    return runCatching {
+
+        val shareUri =
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                apkFile
+            )
+
+        val sendIntent =
+            Intent(
+                Intent.ACTION_SEND
+            ).apply {
+
+                type =
+                    "application/vnd.android.package-archive"
+
+                putExtra(
+                    Intent.EXTRA_STREAM,
+                    shareUri
+                )
+
+                clipData =
+                    ClipData.newRawUri(
+                        apkFile.name,
+                        shareUri
+                    )
+
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+
+        val chooser =
+            Intent.createChooser(
+                sendIntent,
+                "APK'yı paylaş"
+            ).apply {
+
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+
+                if (
+                    context !is android.app.Activity
+                ) {
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK
+                    )
+                }
+            }
+
+        context.startActivity(
+            chooser
+        )
+
+        "✅ APK paylaşım menüsü açıldı."
+
+    }.getOrElse {
+        "APK paylaşılamadı: ${
+            it.message
+                ?: it.javaClass.simpleName
+        }"
     }
 }
 

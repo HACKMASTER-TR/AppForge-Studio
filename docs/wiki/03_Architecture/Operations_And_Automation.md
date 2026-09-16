@@ -47,3 +47,11 @@ as a generic dependency-check failure.
 
 Source verification:
 - `scripts/github-cleanup`
+
+## GitHub CLI release compatibility
+
+Autopilot release commands resolve both `gh` and `git` before publishing,
+prepend their executable directories to the release subprocess `PATH`,
+and pass the repository explicitly with `--repo`. CI failure-log
+collection first uses `--log-failed` and falls back to `--log` for older
+GitHub CLI builds that do not support the narrower flag.
