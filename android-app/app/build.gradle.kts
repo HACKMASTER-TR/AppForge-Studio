@@ -207,8 +207,8 @@ android {
         applicationId = "com.appforge.studio"
         minSdk = 26
         targetSdk = 37
-        versionCode = 526
-        versionName = "5.0.26"
+        versionCode = 527
+        versionName = "5.0.27"
     }
 
     fun oauthClientId(name: String): String {

@@ -2,6 +2,7 @@
 package com.appforge.studio.ui
 
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import java.io.File
 import java.text.DateFormat
 import java.util.Date
@@ -40,7 +42,12 @@ internal fun loadDownloadedAppForgeApks(context:Context):List<DownloadedApkEntry
         val c=MediaStore.Downloads.EXTERNAL_CONTENT_URI
         val p=arrayOf(MediaStore.MediaColumns._ID,MediaStore.MediaColumns.DISPLAY_NAME,MediaStore.MediaColumns.DATE_MODIFIED,MediaStore.MediaColumns.SIZE,MediaStore.MediaColumns.RELATIVE_PATH)
         val prefix="${Environment.DIRECTORY_DOWNLOADS}/AppForge Studio/"
-        context.contentResolver.query(c,p,"${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?",arrayOf("$prefix%"),"${MediaStore.MediaColumns.DATE_MODIFIED} DESC")?.use{q->
+        val selection=
+            if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.R)
+                "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ? AND ${MediaStore.MediaColumns.IS_TRASHED}=0"
+            else
+                "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
+        context.contentResolver.query(c,p,selection,arrayOf("$prefix%"),"${MediaStore.MediaColumns.DATE_MODIFIED} DESC")?.use{q->
             val ii=q.getColumnIndexOrThrow(MediaStore.MediaColumns._ID); val ni=q.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
             val di=q.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED); val si=q.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
             val pi=q.getColumnIndexOrThrow(MediaStore.MediaColumns.RELATIVE_PATH)
@@ -56,6 +63,41 @@ internal fun loadDownloadedAppForgeApks(context:Context):List<DownloadedApkEntry
     d.listFiles().orEmpty().filter{it.isFile&&it.name.endsWith(".apk",true)}.forEach{out+=DownloadedApkEntry(it.name,Uri.fromFile(it),it.lastModified(),it.length())}
     return out
 }
+
+private fun moveDownloadedApkToTrash(
+    context: Context,
+    entry: DownloadedApkEntry
+): Boolean =
+    runCatching {
+        /*
+         * Android 11+ exposes the MediaStore trash contract.
+         * Do not turn "Çöpe taşı" into an irreversible delete on
+         * older Android releases.
+         */
+        if (
+            Build.VERSION.SDK_INT <
+                Build.VERSION_CODES.R ||
+            entry.uri.scheme != "content"
+        ) {
+            return@runCatching false
+        }
+
+        val values =
+            ContentValues().apply {
+                put(
+                    MediaStore.MediaColumns.IS_TRASHED,
+                    1
+                )
+            }
+
+        context.contentResolver
+            .update(
+                entry.uri,
+                values,
+                null,
+                null
+            ) > 0
+    }.getOrDefault(false)
 
 private fun sizeText(
     value: Long
@@ -154,7 +196,7 @@ private fun shareDownloadedApk(
 }
 
 @Composable internal fun DownloadedApkFolderScreen(onBack:()->Unit,onInstall:(Uri,String)->Unit){
-    val ctx=LocalContext.current; val cfg=LocalConfiguration.current; val compact=cfg.screenWidthDp<390
+    val ctx=LocalContext.current; val scope=rememberCoroutineScope(); val cfg=LocalConfiguration.current; val compact=cfg.screenWidthDp<390
     var data by remember{mutableStateOf<List<DownloadedApkEntry>>(emptyList())}; var loading by remember{mutableStateOf(true)}
     var err by remember{mutableStateOf("")}; var token by remember{mutableIntStateOf(0)}
     var search by rememberSaveable{mutableStateOf("")}; var newest by rememberSaveable{mutableStateOf(true)}
@@ -178,6 +220,34 @@ private fun shareDownloadedApk(
                         TextButton(
                             onClick={shareDownloadedApk(ctx,e)}
                         ){Text("Paylaş")}
+                        TextButton(
+                            onClick={
+                                scope.launch {
+                                    val moved=
+                                        withContext(Dispatchers.IO){
+                                            moveDownloadedApkToTrash(
+                                                ctx,
+                                                e
+                                            )
+                                        }
+
+                                    if(moved){
+                                        Toast.makeText(
+                                            ctx,
+                                            "APK çöpe taşındı.",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        token++
+                                    }else{
+                                        Toast.makeText(
+                                            ctx,
+                                            "APK sistem çöp kutusuna taşınamadı.",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                            }
+                        ){Text("Çöpe taşı")}
                     }}
                 }
             }}

@@ -3,8 +3,8 @@ type: status
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-16
-last_verified: 2026-09-16
+updated: 2026-09-17
+last_verified: 2026-09-17
 confidence: high
 tags:
   - status
@@ -19,6 +19,9 @@ source_files:
   - "build-service/package.json"
   - "build-service/tests/appforge_terminal_integration.test.js"
   - "build-service/src/fastSigningKey.js"
+  - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
+  - "android-app/app/src/test/java/com/appforge/studio/UpdateGatePlayVisibilityTest.kt"
 ---
 
 # Current Status
@@ -45,3 +48,13 @@ source_files:
 ## Shipping state
 
 `BUG-7` device acceptance passed on 2026-09-16. Scroll/fling, Copy -> Write persistence, leaving and returning to Terminal, workspace-selection persistence, keyboard open/close smoothness, shortcut placement, restart, `pwd`, and `echo APPFORGE_OK` were confirmed on-device. There is no active BUG-7 runtime blocker.
+
+## 2026-09-17 Android correction package
+
+- Normal-user update prompts now require a newer version to be visible from
+  Google Play Core for the current account/device; CI/GitHub-only versions
+  are not sufficient.
+- Successful APK cards include Android 11+ MediaStore `Çöpe taşı`.
+- Terminal `+ Oturum` moves persisted creation off the UI dispatcher and
+  selects the new session before PTY startup. Device acceptance remains
+  pending for this new multi-session correction.

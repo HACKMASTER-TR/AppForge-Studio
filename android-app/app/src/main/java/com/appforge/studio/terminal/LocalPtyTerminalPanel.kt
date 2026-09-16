@@ -2061,6 +2061,13 @@ internal fun LocalPtyTerminalPanel(
             mutableStateOf<String?>(null)
         }
 
+    var creatingPtySession by
+        remember(
+            workspaceRoot.absolutePath
+        ) {
+            mutableStateOf(false)
+        }
+
     val initialUxPreferences =
         remember(context.applicationContext) {
             TerminalUxPreferences.load(
@@ -2107,7 +2114,11 @@ internal fun LocalPtyTerminalPanel(
                         workspaceRoot
                     )
             }.onSuccess {
-                activePtyId = it
+                if (
+                    activePtyId == null
+                ) {
+                    activePtyId = it
+                }
                 message = null
             }.onFailure {
                 message =
@@ -2343,37 +2354,101 @@ internal fun LocalPtyTerminalPanel(
             }
 
             OutlinedButton(
+                enabled =
+                    !creatingPtySession,
                 onClick = {
                     scope.launch {
-                        runCatching {
+                        creatingPtySession =
+                            true
+
+                        var createdId:
+                            String? = null
+
+                        try {
+                            /*
+                             * Session persistence and filesystem work
+                             * must not block the Compose/UI dispatcher.
+                             */
                             val id =
+                                withContext(
+                                    Dispatchers.IO
+                                ) {
+                                    LocalPtySessionRegistry
+                                        .createSession(
+                                            context =
+                                                context.applicationContext,
+                                            workspace =
+                                                workspaceRoot
+                                        )
+                                }
+
+                            createdId = id
+
+                            /*
+                             * Select the tab immediately. PTY startup can
+                             * continue after the new session is visible.
+                             */
+                            activePtyId = id
+                            message = null
+
+                            withContext(
+                                Dispatchers.IO
+                            ) {
                                 LocalPtySessionRegistry
-                                    .createSession(
-                                        context =
-                                            context.applicationContext,
-                                        workspace =
-                                            workspaceRoot
-                                    )
+                                    .markActivated(id)
+                            }
 
                             LocalPtySessionRegistry
                                 .start(id)
+                        } catch (
+                            error: Throwable
+                        ) {
+                            val failedId =
+                                createdId
 
-                            id
-                        }.onSuccess {
-                            activePtyId = it
-                            LocalPtySessionRegistry
-                                .markActivated(it)
-                            message = null
-                        }.onFailure {
+                            if (
+                                failedId != null
+                            ) {
+                                withContext(
+                                    Dispatchers.IO
+                                ) {
+                                    runCatching {
+                                        LocalPtySessionRegistry
+                                            .closeSession(
+                                                failedId
+                                            )
+                                    }
+                                }
+
+                                if (
+                                    activePtyId ==
+                                        failedId
+                                ) {
+                                    activePtyId =
+                                        ptySessions
+                                            .firstOrNull()
+                                            ?.id
+                                }
+                            }
+
                             message =
-                                it.message
+                                error.message
                                     ?: "Yeni PTY oturumu açılamadı."
+                        } finally {
+                            creatingPtySession =
+                                false
                         }
                     }
                 }
             ) {
                 Text(
-                    "+ Oturum",
+                    if (
+                        creatingPtySession
+                    ) {
+                        "Açılıyor…"
+                    } else {
+                        "+ Oturum"
+                    },
                     fontSize = 11.sp
                 )
             }
