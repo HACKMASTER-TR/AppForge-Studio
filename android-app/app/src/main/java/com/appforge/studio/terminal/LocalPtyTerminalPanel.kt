@@ -445,6 +445,13 @@ internal object LocalPtySessionRegistry {
                 current.starting = true
                 current.exitCode = null
                 if (!current.restored) {
+                    /*
+                     * Restart is one logical reset. Keep the AppForge ANSI
+                     * buffer and native Termux mirror in sync.
+                     */
+                    TermuxTerminalMirrorRegistry
+                        .reset(id)
+
                     current.buffer.reset()
                 } else {
                     current.buffer.feed(
