@@ -31,3 +31,12 @@ Major packages:
 - `net/` and `build/`: Build Service clients.
 
 The manifest declares networking, notifications, biometric, foreground-service, wake-lock, and package-install permissions. Verify every permission-dependent feature against the manifest and the related Kotlin implementation.
+
+## APK sharing
+
+Downloaded APK artifacts can be shared from both the build result screen
+and the Successful APKs screen. The build screen shares its verified
+installer-cache APK through the existing `FileProvider`; the Successful
+APKs screen shares the MediaStore `content://` URI directly. Both flows
+use `ACTION_SEND`, the Android APK MIME type, and temporary read grants.
+No additional broad storage permission is required.

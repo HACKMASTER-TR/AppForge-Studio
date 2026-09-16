@@ -1348,7 +1348,39 @@ def classify_pipeline_failure(text, stage):
 def failed_log_excerpt(run_id):
     if not run_id:
         return ""
-    p = run(["gh", "run", "view", str(run_id), "--log-failed"], check=False, capture=True)
+    repo = github_repo()
+
+    p = run(
+        [
+            "gh",
+            "run",
+            "view",
+            str(run_id),
+            "--repo",
+            repo,
+            "--log-failed",
+        ],
+        check=False,
+        capture=True,
+    )
+
+    if p.returncode != 0:
+        fallback = run(
+            [
+                "gh",
+                "run",
+                "view",
+                str(run_id),
+                "--repo",
+                repo,
+                "--log",
+            ],
+            check=False,
+            capture=True,
+        )
+
+        if fallback.returncode == 0:
+            p = fallback
     text = ((p.stdout or "") + "\n" + (p.stderr or "")).strip()
     if not text:
         return ""
@@ -1476,17 +1508,115 @@ def main_version():
 
 def ensure_versioned_release(main_sha):
     gh_required()
+
     info = main_version()
     tag = info["tag"]
-    existing = run(["gh", "release", "view", tag, "--json", "tagName,url"], check=False, capture=True)
+    repo = github_repo()
+
+    gh_exec = shutil.which("gh")
+    git_exec = shutil.which("git")
+
+    if not gh_exec or not git_exec:
+        block_pipeline(
+            "RELEASE",
+            "PUBLISH",
+            "Required GitHub release CLI dependency unavailable.",
+            log_excerpt=(
+                f"gh={gh_exec or 'missing'} "
+                f"git={git_exec or 'missing'}"
+            ),
+            release_tag=tag,
+        )
+
+    release_env = os.environ.copy()
+
+    tool_dirs = [
+        str(Path(git_exec).resolve().parent),
+        str(Path(gh_exec).resolve().parent),
+    ]
+
+    current_path = [
+        item
+        for item in release_env.get(
+            "PATH",
+            "",
+        ).split(os.pathsep)
+        if item
+    ]
+
+    release_env["PATH"] = os.pathsep.join(
+        dict.fromkeys(
+            tool_dirs +
+            current_path
+        )
+    )
+
+    existing = run(
+        [
+            gh_exec,
+            "release",
+            "view",
+            tag,
+            "--repo",
+            repo,
+            "--json",
+            "tagName,url",
+        ],
+        check=False,
+        capture=True,
+        env=release_env,
+    )
+
     if existing.returncode == 0:
-        print("GITHUB RELEASE: existing release reused:", tag)
+        print(
+            "GITHUB RELEASE: existing release reused:",
+            tag,
+        )
         return info
-    state_write("RELEASING", main_sha=main_sha, release_tag=tag)
-    created = run(["gh", "release", "create", tag, "--target", main_sha, "--title", f"AppForge Studio {info['name']}", "--generate-notes"], check=False, capture=True)
+
+    state_write(
+        "RELEASING",
+        main_sha=main_sha,
+        release_tag=tag,
+    )
+
+    created = run(
+        [
+            gh_exec,
+            "release",
+            "create",
+            tag,
+            "--repo",
+            repo,
+            "--target",
+            main_sha,
+            "--title",
+            f"AppForge Studio {info['name']}",
+            "--generate-notes",
+        ],
+        check=False,
+        capture=True,
+        env=release_env,
+    )
+
     if created.returncode != 0:
-        block_pipeline("RELEASE", "PUBLISH", f"GitHub Release create failed: {tag}", log_excerpt=((created.stdout or "") + "\n" + (created.stderr or "")).strip(), release_tag=tag)
-    print("GITHUB RELEASE: CREATED", tag)
+        block_pipeline(
+            "RELEASE",
+            "PUBLISH",
+            f"GitHub Release create failed: {tag}",
+            log_excerpt=(
+                (created.stdout or "")
+                + "\n"
+                + (created.stderr or "")
+            ).strip(),
+            release_tag=tag,
+        )
+
+    print(
+        "GITHUB RELEASE: CREATED",
+        tag,
+    )
+
     return info
 
 
