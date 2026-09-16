@@ -28,6 +28,7 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
   - "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt"
+  - "build-service/tests/appforge_terminal_persistent_viewport_workspace_contract.test.js"
 ---
 
 # Terminal and Developer Tools
@@ -56,3 +57,13 @@ the new tab before potentially slow PTY startup, and prevents environment
 re-initialization from stealing the active user-selected session. A failed
 new-session start cleans up the incomplete registry entry. Device acceptance
 is still required for the interactive multi-session behavior.
+
+## PTY native viewport rebinding
+
+Each AppForge PTY owns a persistent Termux mirror controller. When the active
+PTY session changes, Compose must key the native `AndroidView` by the current
+controller/session identity. This forces `TerminalView` creation and mirror
+registration for the newly selected PTY while preserving each session's
+persistent TerminalSession and scrollback when it is not visible.
+
+Device acceptance remains required for multi-session switching.

@@ -144,3 +144,61 @@ test(
     );
   }
 );
+
+
+test(
+  "PTY session switch recreates the native TerminalView for the new mirror controller",
+  async () => {
+    const source =
+      await readFile(
+        adapterUrl,
+        "utf8"
+      );
+
+    const hostStart =
+      source.indexOf(
+        "@Composable\ninternal fun TermuxTerminalCoreHost("
+      );
+
+    const hostEnd =
+      source.indexOf(
+        "Termux-backed viewport for an AppForge-owned PTY session",
+        hostStart
+      );
+
+    assert.ok(hostStart >= 0);
+    assert.ok(hostEnd > hostStart);
+
+    const host =
+      source.slice(
+        hostStart,
+        hostEnd
+      );
+
+    assert.match(
+      host,
+      /key\(\s*controller,\s*mirrorSessionId,\s*\)\s*\{[\s\S]{0,600}?AndroidView\(/
+    );
+
+    const factory =
+      host.indexOf(
+        "factory = { context ->"
+      );
+
+    const createView =
+      host.indexOf(
+        ".createView(",
+        factory
+      );
+
+    const register =
+      host.indexOf(
+        ".ensureRegistered(",
+        createView
+      );
+
+    assert.ok(factory >= 0);
+    assert.ok(createView > factory);
+    assert.ok(register > createView);
+  }
+);
