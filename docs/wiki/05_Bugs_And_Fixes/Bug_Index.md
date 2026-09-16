@@ -19,6 +19,7 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt"
   - "build-service/tests/appforge_terminal_mirror_lifecycle_contract.test.js"
+  - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentArtifactClient.kt"
 ---
 
 # Bug Index
@@ -28,5 +29,7 @@ source_files:
 - Terminal native viewport gesture regression — the native Termux `TerminalView` must receive normal one-finger drag/fling input; the Compose transform detector is fallback-only. A source contract test protects this ownership. On-device verification passed on 2026-09-16.
 
 - Terminal mirror lifecycle regression — copy-mode exit or leaving/re-entering the Terminal screen could recreate the native Termux viewport without restoring visible history, while restart could leave stale mirror scrollback. Source now replays after TerminalView attachment and resets AppForge/native buffers together. On-device verification passed on 2026-09-16.
+
+- Unified Agent artifact MediaStore API guard — `MediaStore.Downloads.EXTERNAL_CONTENT_URI` is API 29+ while AppForge keeps minSdk 26. The Q+ exporter is explicitly API-gated; API 26–28 continue through the existing legacy export path. Release lint must remain green without raising minSdk or baselining this error.
 
 Document only significant, reusable debugging knowledge. Do not add one-off visual or formatting defects.
