@@ -53,6 +53,30 @@ test(
 );
 
 test(
+  "terminal owner state is declared before route effects use it",
+  async () => {
+    const main = await read(
+      "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+    );
+
+    const declaration =
+      main.indexOf("val terminalOwner =");
+
+    const externalEffect =
+      main.indexOf(
+        "hostActivity?.externalAuthorizationSequence"
+      );
+
+    assert.ok(declaration >= 0);
+    assert.ok(externalEffect >= 0);
+    assert.ok(
+      declaration < externalEffect,
+      "terminalOwner must be declared before route/effect use"
+    );
+  }
+);
+
+test(
   "Terminal route rejects non-owner accounts",
   async () => {
     const main = await read(

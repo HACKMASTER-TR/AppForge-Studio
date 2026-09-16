@@ -678,6 +678,20 @@ private fun AppForgeApp() {
     val hostActivity = context as? MainActivity
     val scope = rememberCoroutineScope()
 
+    var session by remember {
+        mutableStateOf<Session?>(
+            SecureAccountStore
+                .loadSession(context)
+        )
+    }
+
+    val terminalOwner =
+        OwnerAccessPolicy
+            .isActiveOwner(
+                context,
+                session?.email
+            )
+
     val appConfiguration =
         LocalConfiguration.current
 
@@ -957,19 +971,6 @@ private fun AppForgeApp() {
                 }
         )
     }
-    var session by remember {
-        mutableStateOf<Session?>(
-            SecureAccountStore
-                .loadSession(context)
-        )
-    }
-
-    val terminalOwner =
-        OwnerAccessPolicy
-            .isActiveOwner(
-                context,
-                session?.email
-            )
 
     ProjectLibrary.setAccountScope(
         context,
