@@ -232,6 +232,7 @@ run_tool flutter flutter --no-version-check --version
 run_tool dart dart --version
 run_tool cmake cmake --version
 run_tool ninja ninja --version
+run_tool source-worker-toolchain node /app/scripts/source-worker-toolchain-doctor.js --strict --runtime
 
 flutter_tool_package_config="/opt/flutter/packages/flutter_tools/.dart_tool/package_config.json"
 flutter_tool_pub_cache="/opt/appforge-flutter-tool-pub-cache"

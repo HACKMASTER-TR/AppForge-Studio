@@ -25,6 +25,32 @@ const containsAny = (text, values) =>
       )
   );
 
+function requestedAndroidToolchainComponent(
+  text
+) {
+  const match =
+    String(
+      text ||
+      ""
+    ).match(
+      /(ndk;[0-9.]+|build-tools;[0-9.]+|platforms;android-[0-9.]+|cmake;[0-9.]+)/i
+    );
+
+  return match
+    ? match[1]
+    : null;
+}
+
+function resolveRuleValue(
+  value,
+  context
+) {
+  return typeof value ===
+    "function"
+      ? value(context)
+      : value;
+}
+
 const RULES = [
   {
     code: "DEVICE_ADD_REQUIRED",
@@ -140,6 +166,33 @@ const RULES = [
       "AppForge yüklenen projenin hangi build motoruyla derleneceğini güvenli biçimde belirleyemedi.",
     solution:
       "ZIP içinde kullandığın teknolojiye ait ana proje dosyalarının bulunduğunu kontrol et."
+  },
+
+  {
+    code: "SOURCE_TOOLCHAIN_COMPONENT_MISSING",
+    title: "AppForge Worker toolchain bileşeni eksik",
+    category: "Worker toolchain",
+    confidence: 100,
+    test: ({ text }) =>
+      containsAny(text, [
+        "installfailedexception",
+        "failed to install the following sdk components",
+        "sdk directory is not writable",
+        "failed to find target with hash string",
+        "ndk (side by side)"
+      ]),
+    reason: ({ text }) => {
+      const component =
+        requestedAndroidToolchainComponent(
+          text
+        );
+
+      return component
+        ? `Proje ${component} bileşenini istiyor ancak bu bileşen Source Worker image içinde hazır değil. Android SDK runtime sırasında salt okunur olduğu için Gradle eksik bileşeni kuramıyor.`
+        : "Proje Source Worker image içinde hazır olmayan bir Android SDK/NDK/CMake bileşeni istiyor. Android SDK runtime sırasında salt okunur olduğu için Gradle eksik bileşeni kuramıyor.";
+    },
+    solution:
+      "Bu kullanıcı proje ayarı hatası değildir. Eksik sürüm Source Worker compatibility matrix'e eklenip Worker image yeniden yayınlanmalıdır."
   },
 
   {
@@ -396,9 +449,15 @@ export function explainAppForgeProblem({
       title:
         rule.title,
       reason:
-        rule.reason,
+        resolveRuleValue(
+          rule.reason,
+          context
+        ),
       solution:
-        rule.solution,
+        resolveRuleValue(
+          rule.solution,
+          context
+        ),
       confidence:
         rule.confidence,
       evidence:

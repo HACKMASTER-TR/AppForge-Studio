@@ -87,6 +87,22 @@ export function classifyBuildError(error) {
 
   if (
     has(
+      "installfailedexception",
+      "failed to install the following sdk components",
+      "sdk directory is not writable",
+      "failed to find target with hash string",
+      "ndk (side by side)"
+    )
+  ) {
+    return {
+      category: "toolchain",
+      code: "SOURCE_TOOLCHAIN_MISSING",
+      retryable: false
+    };
+  }
+
+  if (
+    has(
       "debug.keystore",
       "keystore",
       "apksigner",

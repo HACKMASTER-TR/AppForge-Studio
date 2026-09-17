@@ -10,6 +10,8 @@ ARG REACT_NATIVE_GRADLE_VERSION=8.14.3
 ARG FLUTTER_VERSION=3.44.9
 ARG FLUTTER_SHA256=a9120fa4a01048bdef438ddc3a2d4b7389662ea98a95db86eeaf10382bc4efcb
 
+COPY source-worker-toolchain.json /tmp/source-worker-toolchain.json
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DOTNET_ROOT=/usr/share/dotnet
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
@@ -64,13 +66,9 @@ RUN if [ "${ANDROID_SDK_LICENSE_ACCEPTED}" != "true" ]; then \
       exit 42; \
     fi \
     && yes | sdkmanager --licenses >/dev/null \
-    && sdkmanager --channel=3 \
-       "platform-tools" \
-       "platforms;android-36" \
-       "platforms;android-37.0" \
-       "build-tools;36.0.0" \
-       "ndk;28.2.13676358" \
-       "cmake;3.22.1"
+    && node -e 'const fs=require("fs");const m=JSON.parse(fs.readFileSync("/tmp/source-worker-toolchain.json","utf8"));const p=["platform-tools",...m.androidPlatforms.map(v=>`platforms;android-${v}`),...m.buildTools.map(v=>`build-tools;${v}`),...m.ndk.map(v=>`ndk;${v}`),...m.cmake.map(v=>`cmake;${v}`)];process.stdout.write(p.join("\\n")+"\\n");' > /tmp/appforge-source-sdk-packages.txt \
+    && xargs -r sdkmanager --channel=3 < /tmp/appforge-source-sdk-packages.txt \
+    && rm -f /tmp/appforge-source-sdk-packages.txt
 
 # AGP 9.1 requires Gradle 9.3.1 minimum. Verify Gradle's published checksum.
 RUN curl -fL --retry 4 \
@@ -177,6 +175,9 @@ COPY package*.json ./
 RUN npm install --omit=dev
 
 COPY . .
+
+# Immutable Source Worker compatibility matrix must be complete before runtime.
+RUN node scripts/source-worker-toolchain-doctor.js --strict
 
 # Flutter stable rewrites engine metadata even when unchanged.
 # Patch that write to be idempotent so the pinned SDK stays immutable

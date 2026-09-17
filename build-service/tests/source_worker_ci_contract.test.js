@@ -212,36 +212,55 @@ test(
 test(
   "worker images keep Android API 36 for .NET Android and API 37 for AppForge builds",
   async () => {
-    for (
-      const dockerName of [
-        "Dockerfile.worker",
-        "Dockerfile.source-worker"
-      ]
-    ) {
-      const docker =
+    const workerDocker =
+      await fs.readFile(
+        path.join(
+          repoRoot,
+          "build-service",
+          "Dockerfile.worker"
+        ),
+        "utf8"
+      );
+
+    assert.ok(
+      workerDocker.includes(
+        '"platforms;android-36"'
+      ),
+      "Dockerfile.worker: Android API 36 eksik"
+    );
+
+    assert.ok(
+      workerDocker.includes(
+        '"platforms;android-37.0"'
+      ),
+      "Dockerfile.worker: Android API 37.0 eksik"
+    );
+
+    const matrix =
+      JSON.parse(
         await fs.readFile(
           path.join(
             repoRoot,
             "build-service",
-            dockerName
+            "source-worker-toolchain.json"
           ),
           "utf8"
-        );
-
-      assert.ok(
-        docker.includes(
-          '"platforms;android-36"'
-        ),
-        `${dockerName}: Android API 36 eksik`
+        )
       );
 
-      assert.ok(
-        docker.includes(
-          '"platforms;android-37.0"'
-        ),
-        `${dockerName}: Android API 37.0 eksik`
-      );
-    }
+    assert.ok(
+      matrix.androidPlatforms.includes(
+        "36"
+      ),
+      "Source Worker matrix: Android API 36 eksik"
+    );
+
+    assert.ok(
+      matrix.androidPlatforms.includes(
+        "37.0"
+      ),
+      "Source Worker matrix: Android API 37.0 eksik"
+    );
   }
 );
 
