@@ -2601,7 +2601,7 @@ internal fun LocalPtyTerminalPanel(
                         }
 
                         PtyKey(
-                            "PIPELINE",
+                            "STATUS",
                             true
                         ) {
                             scope.launch {
@@ -2611,6 +2611,21 @@ internal fun LocalPtyTerminalPanel(
                                         "cd /root/AppForge-Studio && " +
                                             "APPFORGE_ADMIN_SESSION=1 " +
                                             "./scripts/appforge status\r"
+                                    )
+                            }
+                        }
+
+                        PtyKey(
+                            "PREFLIGHT",
+                            true
+                        ) {
+                            scope.launch {
+                                LocalPtySessionRegistry
+                                    .write(
+                                        state.id,
+                                        "cd /root/AppForge-Studio && " +
+                                            "APPFORGE_ADMIN_SESSION=1 " +
+                                            "./scripts/appforge preflight\\r"
                                     )
                             }
                         }
