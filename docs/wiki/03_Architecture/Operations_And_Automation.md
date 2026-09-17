@@ -3,8 +3,8 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-16
-last_verified: 2026-09-16
+updated: 2026-09-17
+last_verified: 2026-09-17
 confidence: high
 tags:
   - operations
@@ -26,6 +26,10 @@ source_files:
   - "scripts/appforge-stability-gate"
   - "build-service/src/clientHardening.js"
   - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
+  - "scripts/appforge-delivery-preflight"
+  - "build-service/tests/appforge_autopilot_delivery_preflight_stage1_contract.test.js"
+  - "build-service/tests/appforge_autopilot_delivery_preflight_stage2_contract.test.js"
+  - "build-service/tests/appforge_autopilot_delivery_preflight_stage3_contract.test.js"
 ---
 
 
@@ -97,3 +101,37 @@ with no available update.
 For distribution, a published versioned GitHub Release targets the Play
 production track. Manual workflow dispatch retains
 `APPFORGE_PLAY_TRACK`, with `internal` as its test fallback.
+
+## Delivery Preflight
+
+`scripts/appforge-delivery-preflight` is a read-only capability probe available
+through `APPFORGE_ADMIN_SESSION=1 ./scripts/appforge preflight`.
+
+It resolves live GitHub API reachability, GitHub CLI transport health,
+repository auto-merge capability, delivery scope, Railway impact, Play workflow
+readiness, Android release eligibility, and device-acceptance requirements
+before a delivery pipeline is started.
+
+The preflight does not commit, push, create or merge pull requests, deploy,
+create GitHub Releases, or publish to Google Play. It reports capability only.
+Remote capability overrides assumptions from local policy; for example, when
+repository auto-merge is unavailable the report selects `MERGE AFTER CI` as the
+safe delivery fallback.
+
+### Autopilot preflight integration
+
+Full Autopilot consumes the isolated Delivery Preflight result before
+writing pipeline state, preparing an Android release version, or running
+the local gate. Mandatory preflight failures therefore stop the delivery
+chain before those mutations begin.
+
+For Android distribution, a versioned GitHub Release and Google Play
+publish run only when both preflight capabilities are `ELIGIBLE`.
+`BLOCKED` or `UNVERIFIED` Play readiness is recorded as
+`SKIPPED_BY_PREFLIGHT` instead of converting otherwise successful
+main-CI/deployment work into a publish failure.
+
+Repository auto-merge availability is advisory for this flow. Autopilot
+already waits for required PR CI and then uses its merge-after-CI path.
+Active device/runtime blockers remain a separate hard shipping boundary
+and are not bypassed by the Play skip.
