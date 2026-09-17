@@ -68,3 +68,30 @@ test(
     );
   }
 );
+
+test(
+  "read-only Android SDK missing component is a Worker toolchain error",
+  () => {
+    const result =
+      classifyBuildError(
+        new Error(
+          "InstallFailedException: Failed to install the following SDK components: ndk;27.1.12297006. The SDK directory is not writable (/opt/android-sdk)"
+        )
+      );
+
+    assert.equal(
+      result.category,
+      "toolchain"
+    );
+
+    assert.equal(
+      result.code,
+      "SOURCE_TOOLCHAIN_MISSING"
+    );
+
+    assert.equal(
+      result.retryable,
+      false
+    );
+  }
+);

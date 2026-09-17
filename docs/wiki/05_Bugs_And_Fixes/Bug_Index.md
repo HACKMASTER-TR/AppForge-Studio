@@ -3,8 +3,8 @@ type: bug
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-17
-last_verified: 2026-09-17
+updated: 2026-09-18
+last_verified: 2026-09-18
 confidence: high
 tags:
   - bugs
@@ -28,6 +28,9 @@ source_files:
   - "build-service/tests/appforge_terminal_persistent_viewport_workspace_contract.test.js"
   - "build-service/src/reactNativeBuildEngine.js"
   - "build-service/tests/react_native_build_error_excerpt.test.js"
+  - "build-service/tests/source_worker_toolchain_matrix_contract.test.js"
+  - "build-service/scripts/source-worker-toolchain-doctor.js"
+  - "build-service/source-worker-toolchain.json"
 ---
 
 # Bug Index
@@ -77,3 +80,11 @@ Document only significant, reusable debugging knowledge. Do not add one-off visu
   sample. The focused contract protects short-output behavior, legacy
   tail-only fallback when no marker exists, root-cause preservation, and
   Gradle FAILURE-block priority.
+
+- Immutable Source Worker Android toolchain gap — an Expo/React Native build
+  requested NDK 27.1.12297006 while the image only contained NDK
+  28.2.13676358. Gradle attempted runtime SDK installation, but the hardened
+  `/opt/android-sdk` is intentionally read-only. Source Worker now uses a
+  declared compatibility matrix verified during image build and read-only
+  runtime smoke. Missing SDK components are reported as Worker toolchain
+  failures instead of generic Gradle/user validation errors.

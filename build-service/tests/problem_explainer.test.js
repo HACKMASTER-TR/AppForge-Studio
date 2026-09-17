@@ -164,3 +164,36 @@ test(
     );
   }
 );
+
+test(
+  "missing immutable Source Worker NDK gets exact infrastructure diagnosis",
+  () => {
+    const problem =
+      explainAppForgeProblem({
+        message:
+          "Caused by: com.android.builder.sdk.InstallFailedException: Failed to install the following SDK components: ndk;27.1.12297006 NDK (Side by side) 27.1.12297006. The SDK directory is not writable (/opt/android-sdk)",
+        status:
+          400
+      });
+
+    assert.equal(
+      problem.code,
+      "SOURCE_TOOLCHAIN_COMPONENT_MISSING"
+    );
+
+    assert.equal(
+      problem.confidence,
+      100
+    );
+
+    assert.match(
+      problem.reason,
+      /ndk;27\.1\.12297006/i
+    );
+
+    assert.match(
+      problem.solution,
+      /Worker compatibility matrix/i
+    );
+  }
+);
