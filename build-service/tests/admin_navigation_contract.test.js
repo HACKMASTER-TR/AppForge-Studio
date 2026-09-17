@@ -51,26 +51,14 @@ test(
       /AppScreen\.BUILDER/
     );
 
-    const backStart =
-      main.indexOf("BackHandler(");
-
-    const backEnd =
-      main.indexOf(
-        "var serverUrl",
-        backStart
-      );
-
-    const back =
-      main.slice(backStart, backEnd);
-
     assert.match(
-      back,
-      /AppScreen\.ADMIN_OPS/
+      main,
+      /LATE_APP_ROUTE_BACK_HANDLER_V1/
     );
 
     assert.match(
-      back,
-      /AppScreen\.ADMIN_OPS\s*->[\s\S]*?AppScreen\.HOME/
+      main,
+      /BackHandler \{[\s\S]*navigateAppSystemBack\(\)/
     );
 
     assert.match(

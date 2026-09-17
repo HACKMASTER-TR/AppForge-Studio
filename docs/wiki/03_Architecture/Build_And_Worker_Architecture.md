@@ -3,8 +3,8 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-09-17
+last_verified: 2026-09-17
 confidence: high
 tags:
   - builds
@@ -14,6 +14,8 @@ related:
   - "[[Deployment_And_CI]]"
 source_files:
   - "build-service/src/buildEngine.js"
+  - "build-service/src/reactNativeBuildEngine.js"
+  - "build-service/tests/react_native_build_error_excerpt.test.js"
   - "build-service/src/jobQueue.js"
   - "build-service/src/sourceBuildIsolation.js"
   - "build-service/worker.js"
@@ -29,3 +31,16 @@ source_files:
 `jobQueue.js` records queue state, worker heartbeats, capability claims, cancellation, retry/requeue behavior, and queue metrics. Source builds have explicit isolation capability checks. Do not broaden worker capabilities or relax isolation based only on a local successful build.
 
 Toolchain, Gradle profile, cache, and artifact handling are separate concerns. Changes spanning engines, queueing, or artifacts normally require targeted contracts plus the broader backend suite.
+
+## React Native / Expo failure evidence
+
+React Native and Expo source-build command failures are summarized by
+`reactNativeBuildEngine.js`. Gradle failures must preserve the meaningful
+root-cause block (`FAILURE: Build failed with an exception.`,
+`* What went wrong:`, `Execution failed for task`, or `Caused by:`) rather
+than exposing only the end of a long `--stacktrace` log.
+
+The excerpt remains bounded and may include a tail sample for surrounding
+context. If no recognized root marker exists, the legacy bounded tail
+fallback remains valid. This behavior is protected by
+`react_native_build_error_excerpt.test.js`.

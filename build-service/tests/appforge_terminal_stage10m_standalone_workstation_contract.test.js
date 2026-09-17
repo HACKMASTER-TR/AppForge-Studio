@@ -256,7 +256,12 @@ test("Stage 10M installs standalone workstation helpers", async () => {
 
   assert.match(
     apk,
-    /appforge-studio-latest/
+    /AppForgeStudio-latest\.apk/
+  );
+
+  assert.match(
+    apk,
+    /actions\/workflows\/android-debug\.yml\/runs/
   );
 
   assert.match(
