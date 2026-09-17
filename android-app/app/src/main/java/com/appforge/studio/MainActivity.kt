@@ -892,52 +892,39 @@ private fun AppForgeApp() {
         }
     }
 
+    /*
+     * Android system back policy:
+     * - child screens never fall through to Activity exit
+     * - direct creation screens return Home
+     * - workspace screens preserve their recorded return destination
+     * - Home requires explicit exit confirmation
+     */
+    var showExitConfirmation by
+        rememberSaveable {
+            mutableStateOf(false)
+        }
+
     BackHandler(
         enabled =
-            screen ==
-                AppScreen.OTHER_APPS ||
-            screen ==
-                AppScreen.EXCEL_TOOLS ||
-            screen ==
-                AppScreen.CONVERSION ||
-            screen ==
-                AppScreen.PREVIEW ||
-            screen ==
-                AppScreen.PRODUCTION ||
-            screen ==
-                AppScreen.AI_ASSISTANT ||
-            screen ==
-                AppScreen.UNIFIED_AGENT ||
-            screen ==
-                AppScreen.TERMINAL ||
-            screen ==
-                AppScreen.TASKS ||
-            screen ==
-                AppScreen.HISTORY ||
-            screen ==
-                AppScreen.TRASH ||
-            screen ==
-                AppScreen.TEMPLATES ||
-            screen ==
-                AppScreen.SETTINGS ||
-            screen ==
-                AppScreen.ADMIN_OPS ||
-            screen ==
-                AppScreen.ACCOUNT
+            screen !=
+                AppScreen.ONBOARDING &&
+            !showExitConfirmation
     ) {
         when (screen) {
+            AppScreen.HOME ->
+                showExitConfirmation =
+                    true
+
             AppScreen.EXCEL_TOOLS ->
                 screen =
                     AppScreen.OTHER_APPS
 
-            AppScreen.OTHER_APPS ->
-                screen =
-                    AppScreen.HOME
-
-            AppScreen.ADMIN_OPS ->
-                screen =
-                    AppScreen.HOME
-
+            AppScreen.OTHER_APPS,
+            AppScreen.MODE_SELECT,
+            AppScreen.QUICK,
+            AppScreen.BUILDER,
+            AppScreen.LIBRARY,
+            AppScreen.ADMIN_OPS,
             AppScreen.TASKS ->
                 screen =
                     AppScreen.HOME
@@ -948,12 +935,15 @@ private fun AppForgeApp() {
 
                 if (
                     terminalReturnScreen ==
-                    AppScreen.BUILDER
+                        AppScreen.BUILDER
                 ) {
                     step =
                         terminalReturnStep
                 }
             }
+
+            AppScreen.ONBOARDING ->
+                Unit
 
             else ->
                 returnFromWorkspace()
@@ -4095,6 +4085,56 @@ private fun AppForgeApp() {
             outline = Color(0xFF3B4652)
         )
     ) {
+
+        /*
+         * HOME_EXIT_CONFIRMATION_V1
+         * Never close AppForge directly from Home with Android back.
+         */
+        if (showExitConfirmation) {
+            AlertDialog(
+                onDismissRequest = {
+                    showExitConfirmation =
+                        false
+                },
+                title = {
+                    Text(
+                        "Uygulamadan çıkılsın mı?"
+                    )
+                },
+                text = {
+                    Text(
+                        "Uygulamadan çıkmak istediğinize emin misiniz?"
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showExitConfirmation =
+                                false
+
+                            hostActivity
+                                ?.finish()
+                        }
+                    ) {
+                        Text(
+                            "Evet"
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showExitConfirmation =
+                                false
+                        }
+                    ) {
+                        Text(
+                            "Hayır"
+                        )
+                    }
+                }
+            )
+        }
 
         // MOBILE_AI_DOWNLOAD_DIALOG_V1
         if (

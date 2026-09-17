@@ -15,10 +15,12 @@ related:
 source_files:
   - "android-app/app/src/main/AndroidManifest.xml"
   - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
   - "android-app/app/build.gradle.kts"
   - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
   - "android-app/app/src/test/java/com/appforge/studio/UpdateGatePlayVisibilityTest.kt"
+  - "build-service/tests/android_system_back_navigation_contract.test.js"
 ---
 
 # Android App Map
@@ -57,3 +59,12 @@ The Successful APKs surface keeps Install and Share and also exposes
 `Çöpe taşı`. On Android 11+ AppForge marks its MediaStore APK as trashed
 instead of performing an irreversible delete. Trashed MediaStore entries
 are excluded from the Successful APK query.
+
+## Android system back navigation
+
+`MainActivity` owns the application-level Android system-back policy.
+Child AppForge screens must consume system back and route to their
+AppForge parent/return destination instead of falling through to Activity
+exit. Home requires an explicit Yes/No exit confirmation. Nested
+Successful Builds navigation in `StudioHomeV2` consumes system back before
+the Home exit handler.

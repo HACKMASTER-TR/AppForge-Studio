@@ -18,6 +18,9 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LocalTerminalEngine.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalStandaloneDeveloperBootstrap.kt"
+  - "android-app/app/src/main/assets/terminal/appforge-apk"
+  - "build-service/tests/appforge_apk_current_head_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspaceService.kt"
@@ -67,3 +70,13 @@ registration for the newly selected PTY while preserving each session's
 persistent TerminalSession and scrollback when it is not visible.
 
 Device acceptance remains required for multi-session switching.
+
+## AppForge APK shortcut provenance
+
+The packaged `appforge-apk` terminal command treats AppForge Studio
+specially: it resolves the current local branch and exact HEAD, finds a
+successful `android-debug.yml` run for that same HEAD, and downloads that
+run's non-expired `AppForgeStudio-debug-*` artifact. If no successful
+artifact exists for the exact HEAD, the command stops instead of silently
+installing an older AppForge Studio Release APK. Other GitHub projects keep
+the generic latest-Release behavior.

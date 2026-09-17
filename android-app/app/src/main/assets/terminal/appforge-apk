@@ -2,6 +2,7 @@
 set -eu
 
 native_repo="/root/AppForge-Studio"
+download_dir="/workspace/AppForgeDownloads"
 
 is_github_origin() {
     case "${1:-}" in
@@ -14,7 +15,12 @@ is_github_origin() {
     esac
 }
 
-repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+repo_root="$(
+    git rev-parse \
+        --show-toplevel \
+        2>/dev/null ||
+        true
+)"
 
 if [ -z "$repo_root" ] &&
    [ -d "$native_repo/.git" ]; then
@@ -22,15 +28,22 @@ if [ -z "$repo_root" ] &&
 fi
 
 if [ -z "$repo_root" ]; then
-    printf '%s\n' "Git deposu bulunamadı. appforge-project çalıştır." >&2
+    printf '%s\n' \
+        "Git deposu bulunamadı. appforge-project çalıştır." \
+        >&2
     exit 2
 fi
 
-origin="$(git -C "$repo_root" remote get-url origin 2>/dev/null || true)"
+origin="$(
+    git -C "$repo_root" \
+        remote get-url origin \
+        2>/dev/null ||
+        true
+)"
 
-# Scratch/project çalışma alanı bir Git deposu olabilir fakat GitHub
-# origin'i olmayabilir. APK hızlı eylemi bu durumda AppForge Studio'nun
-# yerel/native deposuna güvenli biçimde geri düşmelidir.
+# A scratch/project workspace may be a Git repository that does not
+# belong to GitHub. In that case AppForge Studio safely falls back to
+# its trusted native repository.
 if ! is_github_origin "$origin" &&
    [ "$repo_root" != "$native_repo" ] &&
    [ -d "$native_repo/.git" ]; then
@@ -49,7 +62,9 @@ if ! is_github_origin "$origin" &&
 fi
 
 if ! is_github_origin "$origin"; then
-    printf '%s\n' "GitHub origin bulunamadı: $origin" >&2
+    printf '%s\n' \
+        "GitHub origin bulunamadı: $origin" \
+        >&2
     exit 2
 fi
 
@@ -68,23 +83,282 @@ esac
 repo="${repo%.git}"
 repo="${repo%/}"
 
-if [ "$repo" = "HACKMASTER-TR/AppForge-Studio" ]; then
-    api="https://api.github.com/repos/$repo/releases/tags/appforge-studio-latest"
-else
-    api="https://api.github.com/repos/$repo/releases/latest"
+mkdir -p "$download_dir"
+
+# Keep terminal-owned download output out of the workspace Git status.
+if [ "$repo_root" = "/workspace" ]; then
+    git_dir="$(
+        git -C "$repo_root" \
+            rev-parse \
+            --absolute-git-dir \
+            2>/dev/null ||
+            true
+    )"
+
+    if [ -n "$git_dir" ]; then
+        mkdir -p "$git_dir/info"
+
+        exclude="$git_dir/info/exclude"
+        touch "$exclude"
+
+        if ! grep -qxF \
+            '/AppForgeDownloads/' \
+            "$exclude"; then
+
+            printf '%s\n' \
+                '/AppForgeDownloads/' \
+                >> "$exclude"
+        fi
+    fi
 fi
 
-metadata="$(mktemp)"
+gh_api_to_file() {
+    endpoint="$1"
+    output="$2"
 
-cleanup() {
+    attempt=1
+
+    while :; do
+        if gh api \
+            "$endpoint" \
+            > "$output"; then
+
+            return 0
+        fi
+
+        if [ "$attempt" -ge 5 ]; then
+            return 1
+        fi
+
+        delay=$((attempt * 3))
+
+        printf \
+            'GitHub bağlantısı geçici başarısız. %ss sonra tekrar deneniyor...\n' \
+            "$delay" \
+            >&2
+
+        sleep "$delay"
+        attempt=$((attempt + 1))
+    done
+}
+
+if [ "$repo" = "HACKMASTER-TR/AppForge-Studio" ]; then
+    for required in gh jq curl unzip find sha256sum; do
+        if ! command -v "$required" >/dev/null 2>&1; then
+            printf \
+                'Gerekli araç bulunamadı: %s\n' \
+                "$required" \
+                >&2
+            exit 3
+        fi
+    done
+
+    branch="$(
+        git -C "$repo_root" \
+            branch --show-current
+    )"
+
+    head_sha="$(
+        git -C "$repo_root" \
+            rev-parse HEAD
+    )"
+
+    if [ -z "$branch" ] ||
+       [ -z "$head_sha" ]; then
+
+        printf '%s\n' \
+            "Branch veya HEAD çözülemedi." \
+            >&2
+        exit 3
+    fi
+
+    temp_dir="$(
+        mktemp -d
+    )"
+
+    cleanup_appforge() {
+        rm -rf "$temp_dir"
+    }
+
+    trap cleanup_appforge EXIT INT TERM
+
+    runs="$temp_dir/runs.json"
+    artifacts="$temp_dir/artifacts.json"
+    archive="$temp_dir/artifact.zip"
+    unpacked="$temp_dir/unpacked"
+
+    printf '%s\n' \
+        "=== APPFORGE APK / CURRENT HEAD ==="
+    printf 'Branch : %s\n' "$branch"
+    printf 'HEAD   : %s\n\n' "$head_sha"
+
+    gh_api_to_file \
+        "repos/$repo/actions/workflows/android-debug.yml/runs?branch=$branch&status=success&per_page=30" \
+        "$runs" ||
+        {
+            printf '%s\n' \
+                "Android Debug run bilgisi alınamadı." \
+                >&2
+            exit 4
+        }
+
+    run_id="$(
+        jq -r \
+            --arg head "$head_sha" \
+            '[
+                .workflow_runs[]
+                | select(.head_sha == $head)
+            ][0].id // empty' \
+            "$runs"
+    )"
+
+    if [ -z "$run_id" ]; then
+        printf \
+            'STOP: Bu HEAD için başarılı Android Debug build bulunamadı.\nHEAD=%s\n' \
+            "$head_sha" \
+            >&2
+
+        printf '%s\n' \
+            "Eski Release APK'sı indirilmeyecek." \
+            >&2
+
+        exit 4
+    fi
+
+    gh_api_to_file \
+        "repos/$repo/actions/runs/$run_id/artifacts" \
+        "$artifacts" ||
+        {
+            printf '%s\n' \
+                "Artifact bilgisi alınamadı." \
+                >&2
+            exit 5
+        }
+
+    artifact_id="$(
+        jq -r \
+            '[
+                .artifacts[]
+                | select(
+                    .expired == false
+                    and
+                    (.name | startswith("AppForgeStudio-debug-"))
+                )
+            ][0].id // empty' \
+            "$artifacts"
+    )"
+
+    artifact_name="$(
+        jq -r \
+            '[
+                .artifacts[]
+                | select(
+                    .expired == false
+                    and
+                    (.name | startswith("AppForgeStudio-debug-"))
+                )
+            ][0].name // empty' \
+            "$artifacts"
+    )"
+
+    if [ -z "$artifact_id" ]; then
+        printf \
+            'STOP: Run başarılı fakat APK artifact bulunamadı.\nRUN_ID=%s\n' \
+            "$run_id" \
+            >&2
+        exit 5
+    fi
+
+    token="$(
+        gh auth token
+    )"
+
+    mkdir -p "$unpacked"
+
+    printf 'Run      : %s\n' "$run_id"
+    printf 'Artifact : %s\n\n' "$artifact_name"
+    printf '%s\n' \
+        "Doğru HEAD APK artifact'ı indiriliyor..."
+
+    curl \
+        -fL \
+        --retry 5 \
+        --retry-delay 3 \
+        -H "Authorization: Bearer $token" \
+        -H 'Accept: application/vnd.github+json' \
+        -H 'X-GitHub-Api-Version: 2022-11-28' \
+        -H 'User-Agent: AppForge-Terminal' \
+        "https://api.github.com/repos/$repo/actions/artifacts/$artifact_id/zip" \
+        -o "$archive"
+
+    unzip \
+        -q \
+        "$archive" \
+        -d "$unpacked"
+
+    apk="$(
+        find "$unpacked" \
+            -type f \
+            -name '*.apk' \
+            | head -n 1
+    )"
+
+    if [ -z "$apk" ]; then
+        printf '%s\n' \
+            "STOP: Artifact içinde APK bulunamadı." \
+            >&2
+        exit 6
+    fi
+
+    destination="$download_dir/AppForgeStudio-latest.apk"
+    partial="$destination.part"
+
+    rm -f "$partial"
+
+    cp \
+        "$apk" \
+        "$partial"
+
+    mv \
+        "$partial" \
+        "$destination"
+
+    printf '\n=== APK ===\n'
+    ls -lh "$destination"
+
+    printf '\n=== SOURCE ===\n'
+    printf 'Branch   : %s\n' "$branch"
+    printf 'HEAD     : %s\n' "$head_sha"
+    printf 'Run      : %s\n' "$run_id"
+    printf 'Artifact : %s\n' "$artifact_name"
+
+    printf '\n=== SHA256 ===\n'
+    sha256sum "$destination"
+
+    printf \
+        '\nDosyalar sekmesinden aç:\n%s\n' \
+        "$destination"
+
+    exit 0
+fi
+
+# Other GitHub projects preserve the pre-existing generic Release behavior.
+api="https://api.github.com/repos/$repo/releases/latest"
+
+metadata="$(
+    mktemp
+)"
+
+cleanup_release() {
     rm -f "$metadata"
 }
 
-trap cleanup EXIT INT TERM
+trap cleanup_release EXIT INT TERM
 
 curl \
     -fsSL \
-    --retry 2 \
+    --retry 3 \
+    --retry-delay 2 \
     -H 'Accept: application/vnd.github+json' \
     -H 'X-GitHub-Api-Version: 2022-11-28' \
     -H 'User-Agent: AppForge-Terminal' \
@@ -103,46 +377,21 @@ url="$(
 )"
 
 if [ -z "$url" ]; then
-    printf '%s\n' "Release içinde APK bulunamadı." >&2
-    exit 3
+    printf '%s\n' \
+        "Release içinde APK bulunamadı." \
+        >&2
+    exit 7
 fi
 
 name="${url##*/}"
-
-download_dir="/workspace/AppForgeDownloads"
-
-mkdir -p "$download_dir"
-
-if [ "$repo_root" = "/workspace" ]; then
-    git_dir="$(
-        git -C "$repo_root" \
-            rev-parse \
-            --absolute-git-dir \
-            2>/dev/null ||
-            true
-    )"
-
-    if [ -n "$git_dir" ]; then
-        mkdir -p "$git_dir/info"
-
-        exclude="$git_dir/info/exclude"
-
-        touch "$exclude"
-
-        if ! grep -qxF '/AppForgeDownloads/' "$exclude"; then
-            printf '%s\n' \
-                '/AppForgeDownloads/' \
-                >> "$exclude"
-        fi
-    fi
-fi
-
 destination="$download_dir/$name"
 partial="$destination.part"
 
 rm -f "$partial"
 
-printf 'APK indiriliyor: %s\n' "$name"
+printf \
+    'APK indiriliyor: %s\n' \
+    "$name"
 
 curl \
     -fL \
@@ -151,7 +400,9 @@ curl \
     "$url" \
     -o "$partial"
 
-mv "$partial" "$destination"
+mv \
+    "$partial" \
+    "$destination"
 
 printf '\n=== APK ===\n'
 ls -lh "$destination"
@@ -159,4 +410,6 @@ ls -lh "$destination"
 printf '\n=== SHA256 ===\n'
 sha256sum "$destination"
 
-printf '\nDosyalar sekmesinden aç:\n%s\n' "$destination"
+printf \
+    '\nDosyalar sekmesinden aç:\n%s\n' \
+    "$destination"

@@ -2,6 +2,7 @@
 
 package com.appforge.studio.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -376,6 +377,19 @@ fun StudioHomeV2(
         }
 
     val successfulApkFolderOpen = rememberSaveable(accountEmail) { mutableStateOf(false) }
+
+    /*
+     * The Successful Builds surface is nested inside HOME rather than
+     * represented by AppScreen. Consume Android back here before the root
+     * Home handler can open the application-exit confirmation.
+     */
+    BackHandler(
+        enabled =
+            successfulApkFolderOpen.value
+    ) {
+        successfulApkFolderOpen.value =
+            false
+    }
 
     if (successfulApkFolderOpen.value) {
         DownloadedApkFolderScreen(
