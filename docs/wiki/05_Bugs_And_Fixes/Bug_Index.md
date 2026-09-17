@@ -88,3 +88,11 @@ Document only significant, reusable debugging knowledge. Do not add one-off visu
   declared compatibility matrix verified during image build and read-only
   runtime smoke. Missing SDK components are reported as Worker toolchain
   failures instead of generic Gradle/user validation errors.
+
+
+- Source Worker SDK package-list newline escaping — the compatibility-matrix
+  Docker layer accidentally emitted literal `\\n` delimiters. `xargs` therefore
+  passed the whole Android SDK package list to `sdkmanager` as one invalid
+  package name such as `platform-toolsnplatforms;android-34...`. The generator
+  now emits real newline separators and a regression contract protects this
+  Docker build boundary.

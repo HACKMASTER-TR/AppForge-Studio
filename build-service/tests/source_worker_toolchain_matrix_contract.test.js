@@ -156,3 +156,32 @@ test(
     );
   }
 );
+
+
+test(
+  "Source Worker SDK package list uses real newline delimiters",
+  async () => {
+    const docker =
+      await fs.readFile(
+        path.join(
+          serviceRoot,
+          "Dockerfile.source-worker"
+        ),
+        "utf8"
+      );
+
+    assert.ok(
+      docker.includes(
+        'process.stdout.write(p.join("\\n")+"\\n");'
+      ),
+      "SDK package generator must emit actual newline delimiters."
+    );
+
+    assert.ok(
+      !docker.includes(
+        'process.stdout.write(p.join("\\\\n")+"\\\\n");'
+      ),
+      "Escaped literal \\\\n would concatenate every SDK package into one invalid package name."
+    );
+  }
+);

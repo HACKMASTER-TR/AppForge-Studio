@@ -66,7 +66,7 @@ RUN if [ "${ANDROID_SDK_LICENSE_ACCEPTED}" != "true" ]; then \
       exit 42; \
     fi \
     && yes | sdkmanager --licenses >/dev/null \
-    && node -e 'const fs=require("fs");const m=JSON.parse(fs.readFileSync("/tmp/source-worker-toolchain.json","utf8"));const p=["platform-tools",...m.androidPlatforms.map(v=>`platforms;android-${v}`),...m.buildTools.map(v=>`build-tools;${v}`),...m.ndk.map(v=>`ndk;${v}`),...m.cmake.map(v=>`cmake;${v}`)];process.stdout.write(p.join("\\n")+"\\n");' > /tmp/appforge-source-sdk-packages.txt \
+    && node -e 'const fs=require("fs");const m=JSON.parse(fs.readFileSync("/tmp/source-worker-toolchain.json","utf8"));const p=["platform-tools",...m.androidPlatforms.map(v=>`platforms;android-${v}`),...m.buildTools.map(v=>`build-tools;${v}`),...m.ndk.map(v=>`ndk;${v}`),...m.cmake.map(v=>`cmake;${v}`)];process.stdout.write(p.join("\n")+"\n");' > /tmp/appforge-source-sdk-packages.txt \
     && xargs -r sdkmanager --channel=3 < /tmp/appforge-source-sdk-packages.txt \
     && rm -f /tmp/appforge-source-sdk-packages.txt
 
