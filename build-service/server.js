@@ -81,7 +81,8 @@ import {
 import {
   reserveProjectQuota,
   recordSuccessfulBuild,
-  releaseProjectQuotaReservation
+  releaseProjectQuotaReservation,
+  consumeOtherAppProjectQuota
 } from "./src/projectQuotaV2.js";
 
 import {
@@ -2846,6 +2847,51 @@ app.get(
               error.message ||
               error
             )
+        });
+    }
+  }
+);
+
+
+app.post(
+  "/api/projects/quota/other-app-use",
+  authRequired,
+  async (req, res) => {
+    try {
+      const quota =
+        await consumeOtherAppProjectQuota(
+          req.user.id,
+          req.body?.tool,
+          req.body?.usageId,
+          req.body?.amount
+        );
+
+      res.json({
+        ok: true,
+        quota
+      });
+    } catch (error) {
+      res
+        .status(
+          Number(
+            error?.statusCode ||
+            500
+          )
+        )
+        .json({
+          error:
+            String(
+              error?.code ||
+              "OTHER_APP_QUOTA_ERROR"
+            ),
+          detail:
+            String(
+              error?.message ||
+              error
+            ),
+          quota:
+            error?.quota ||
+            null
         });
     }
   }

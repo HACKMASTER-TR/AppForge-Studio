@@ -1119,6 +1119,272 @@ export async function recordSuccessfulProject(
 }
 
 
+/*
+ * Excel Tools / VideoForge PRO usage.
+ *
+ * Monthly PRO shares the same authoritative project quota.
+ * Every requested unit claims one project slot.
+ *
+ * usageId makes retries idempotent.
+ */
+export async function consumeOtherAppProjectQuota(
+  userId,
+  rawTool,
+  rawUsageId,
+  rawAmount = 1
+) {
+  const tool =
+    String(
+      rawTool ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    ![
+      "excel_tools",
+      "video_forge"
+    ].includes(
+      tool
+    )
+  ) {
+    const error =
+      new Error(
+        "Geçersiz AppForge araç kotası."
+      );
+
+    error.statusCode =
+      400;
+
+    error.code =
+      "OTHER_APP_TOOL_INVALID";
+
+    throw error;
+  }
+
+  const usageId =
+    String(
+      rawUsageId ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    !/^[a-z0-9-]{8,80}$/.test(
+      usageId
+    )
+  ) {
+    const error =
+      new Error(
+        "Geçersiz kullanım kimliği."
+      );
+
+    error.statusCode =
+      400;
+
+    error.code =
+      "OTHER_APP_USAGE_ID_INVALID";
+
+    throw error;
+  }
+
+  const amount =
+    Number(
+      rawAmount ??
+      1
+    );
+
+  if (
+    !Number.isInteger(amount) ||
+    amount < 1 ||
+    amount > 50
+  ) {
+    const error =
+      new Error(
+        "Kullanım miktarı 1-50 arasında olmalı."
+      );
+
+    error.statusCode =
+      400;
+
+    error.code =
+      "OTHER_APP_USAGE_AMOUNT_INVALID";
+
+    throw error;
+  }
+
+  const entitlement =
+    await getProEntitlement(
+      userId
+    );
+
+  return tx(
+    async client => {
+
+      await client.query(
+        `SELECT pg_advisory_xact_lock(
+           hashtext($1)
+         )`,
+        [
+          `appforge-success-quota:${userId}`
+        ]
+      );
+
+      const context =
+        await quotaContextFromClient(
+          client,
+          userId,
+          entitlement
+        );
+
+      /*
+       * Admin and grandfathered legacy plans retain
+       * their existing unlimited project policy.
+       */
+      if (
+        context.unlimited
+      ) {
+        return snapshotFromClient(
+          client,
+          userId,
+          context
+        );
+      }
+
+      if (
+        context.planKind !==
+        "monthly"
+      ) {
+        const error =
+          new Error(
+            "Bu işlem aktif PRO Aylık proje kotası gerektirir."
+          );
+
+        error.statusCode =
+          403;
+
+        error.code =
+          "PRO_REQUIRED_FOR_OTHER_APP";
+
+        throw error;
+      }
+
+      const packageNames =
+        Array.from(
+          {
+            length:
+              amount
+          },
+          (
+            _,
+            index
+          ) =>
+            `appforge-tool-${tool}-${usageId}-${index + 1}`
+        );
+
+      const existing =
+        await client.query(
+          `SELECT package_name
+           FROM appforge_pro_monthly_project_slots
+           WHERE user_id = $1
+             AND cycle_end = $2
+             AND package_name =
+               ANY($3::text[])`,
+          [
+            userId,
+            context.cycleEnd,
+            packageNames
+          ]
+        );
+
+      const existingNames =
+        new Set(
+          existing.rows.map(
+            row =>
+              String(
+                row.package_name
+              )
+          )
+        );
+
+      const missing =
+        packageNames.filter(
+          packageName =>
+            !existingNames.has(
+              packageName
+            )
+        );
+
+      if (
+        missing.length ===
+        0
+      ) {
+        return snapshotFromClient(
+          client,
+          userId,
+          context
+        );
+      }
+
+      const quota =
+        await snapshotFromClient(
+          client,
+          userId,
+          context
+        );
+
+      if (
+        quota.used +
+          missing.length >
+        context.limit
+      ) {
+        throw quotaLimitError(
+          context,
+          quota
+        );
+      }
+
+      for (
+        const packageName
+        of missing
+      ) {
+        await client.query(
+          `INSERT INTO appforge_pro_monthly_project_slots(
+             user_id,
+             cycle_end,
+             package_name,
+             first_success_at,
+             last_seen_at
+           )
+           VALUES(
+             $1,$2,$3,NOW(),NOW()
+           )
+           ON CONFLICT(
+             user_id,
+             cycle_end,
+             package_name
+           )
+           DO NOTHING`,
+          [
+            userId,
+            context.cycleEnd,
+            packageName
+          ]
+        );
+      }
+
+      return snapshotFromClient(
+        client,
+        userId,
+        context
+      );
+    }
+  );
+}
+
+
 export async function releaseProjectQuotaReservation(
   userId,
   rawPackageName,

@@ -15,10 +15,12 @@ related:
 source_files:
   - "android-app/app/src/main/AndroidManifest.xml"
   - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
   - "android-app/app/build.gradle.kts"
   - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
   - "android-app/app/src/test/java/com/appforge/studio/UpdateGatePlayVisibilityTest.kt"
+  - "build-service/tests/android_system_back_navigation_contract.test.js"
 ---
 
 # Android App Map
@@ -57,3 +59,36 @@ The Successful APKs surface keeps Install and Share and also exposes
 `Çöpe taşı`. On Android 11+ AppForge marks its MediaStore APK as trashed
 instead of performing an irreversible delete. Trashed MediaStore entries
 are excluded from the Successful APK query.
+
+## Android system back navigation
+
+`MainActivity` owns the application-level Android system-back policy.
+Child AppForge screens must consume system back and route to their
+AppForge parent/return destination instead of falling through to Activity
+exit. Home requires an explicit Yes/No exit confirmation. Nested
+Successful Builds navigation in `StudioHomeV2` consumes system back before
+the Home exit handler.
+
+## Global Android back-stack policy
+
+`MainActivity` maintains a bounded real `AppScreen` history for Android
+system-back navigation. This history observes all actual screen transitions,
+including routes that historically assigned `screen = AppScreen.X` directly,
+so system back does not depend only on workspace-return metadata.
+
+Home owns the explicit Yes/No application-exit confirmation. Terminal keeps
+its separately verified local tab-back behavior. Normal AppForge routes use
+a late route-level BackHandler so system back returns to the immediately
+previous AppForge screen. Returning to Builder also restores the captured
+Builder step. Reaching Home clears stale navigation history.
+
+## Builder Android system-back behavior
+
+Builder steps 1 through 10 live inside the same `AppScreen.BUILDER` route,
+so route history alone cannot represent wizard-step navigation.
+
+Android system back therefore consumes Builder steps first:
+`step > 1` moves to `step - 1`. Only Builder step 1 may leave the Builder
+through the normal AppScreen back history. This matches the Builder's
+visible Geri button behavior and prevents system back from jumping directly
+from step 2+ to Home.

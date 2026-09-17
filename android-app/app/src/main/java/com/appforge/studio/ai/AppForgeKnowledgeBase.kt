@@ -1217,7 +1217,7 @@ object AppForgeKnowledgeBase {
                             "4. Formüller ve biçimlendirme korunur; XLSM dosyalarında makrolar korunur. CSV için de ayrı bir kopya oluşturulur.\n" +
                             "5. İşlem tamamlandığında DOSYAYI AÇ ile sonucu açabilirsin.\n" +
                             "6. Önceki işlemler İşlem geçmişi bölümünde görüntülenebilir.\n\n" +
-                            "Excel Tools ve VideoForge ücretsiz planda ortak 5 kullanım hakkını paylaşır; PRO erişiminde kullanım sınırsızdır.",
+                            "Excel Tools ve VideoForge Free planda ayrı ayrı 1 kullanım hakkına sahiptir; PRO Aylık kullanımında her işlem mevcut proje kotasından 1 hak tüketir.",
                     keywords =
                         setOf(
                             "excel",

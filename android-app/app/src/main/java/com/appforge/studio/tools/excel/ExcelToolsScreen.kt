@@ -3,6 +3,8 @@
 package com.appforge.studio.tools.excel
 
 import com.appforge.studio.tools.OtherAppsUsageGate
+import com.appforge.studio.security.SecureAccountStore
+import com.appforge.studio.security.StudioSecurityClient
 
 import android.content.ContentValues
 import android.content.Context
@@ -54,6 +56,7 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 private val ExcelBg = Color(0xFF060711)
 private val ExcelCard = Color(0xFF101426)
@@ -65,6 +68,7 @@ private val ExcelAccent = Color(0xFF63D9FF)
 fun ExcelToolsScreen(
     onBack: () -> Unit,
     proUnlocked: Boolean,
+    serverUrl: String,
     onOpenPro: () -> Unit
 ) {
     val context = LocalContext.current
@@ -109,18 +113,30 @@ fun ExcelToolsScreen(
             if (uri == null) return@rememberLauncherForActivityResult
 
             if (
+                !proUnlocked &&
                 !OtherAppsUsageGate.consume(
                     context,
-                    proUnlocked
+                    false,
+                    OtherAppsUsageGate.Tool.EXCEL_TOOLS
                 )
             ) {
                 statusTitle =
-                    "PRO gerekli"
+                    if (proUnlocked) {
+                        "Kullanım hakkı doldu"
+                    } else {
+                        "PRO gerekli"
+                    }
 
                 statusText =
-                    "Excel Tools ve VideoForge için toplam 5 ücretsiz kullanım hakkın bitti."
+                    if (proUnlocked) {
+                        "PRO proje kotası doldu."
+                    } else {
+                        "Excel Tools için 1 ücretsiz kullanım hakkını kullandın."
+                    }
 
-                onOpenPro()
+                if (!proUnlocked) {
+                    onOpenPro()
+                }
 
                 return@rememberLauncherForActivityResult
             }
@@ -131,6 +147,55 @@ fun ExcelToolsScreen(
                 statusText = "Dosya kontrol ediliyor ve düzenlenebilir kopya hazırlanıyor…"
 
                 try {
+                    if (proUnlocked) {
+                        val session =
+                            SecureAccountStore
+                                .loadSession(
+                                    context
+                                )
+                                ?: error(
+                                    "PRO proje kotası için yeniden giriş yap."
+                                )
+
+                        val quota =
+                            withContext(
+                                Dispatchers.IO
+                            ) {
+                                StudioSecurityClient(
+                                    context =
+                                        context,
+                                    baseUrl =
+                                        serverUrl,
+                                    accessToken =
+                                        session.token
+                                )
+                                    .consumeOtherAppProjectQuota(
+                                        tool =
+                                            "excel_tools",
+                                        usageId =
+                                            UUID
+                                                .randomUUID()
+                                                .toString()
+                                    )
+                            }
+
+                        quota.projectLimit
+                            ?.let {
+                                limit ->
+
+                                val remaining =
+                                    (
+                                        limit -
+                                            quota.projectUsed
+                                    ).coerceAtLeast(
+                                        0
+                                    )
+
+                                statusText =
+                                    "PRO proje kotası: $remaining hak kaldı."
+                            }
+                    }
+
                     val output =
                         withContext(
                             Dispatchers.IO
@@ -256,9 +321,9 @@ fun ExcelToolsScreen(
                                 "✓ XLSX, XLSM ve CSV desteği\n" +
                                 "✓ Maksimum dosya boyutu: 80 MB\n" +
                                 if (proUnlocked) {
-                                    "✓ PRO: Sınırsız kullanım"
+                                    "✓ PRO: Her işlem proje kotasından 1 hak düşürür"
                                 } else {
-                                    "✓ Ücretsiz ortak hak: ${OtherAppsUsageGate.remaining(context)}/5"
+                                    "✓ FREE kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.EXCEL_TOOLS, false)}/1"
                                 },
                             color = ExcelText,
                             fontSize = 13.sp,
@@ -268,10 +333,10 @@ fun ExcelToolsScreen(
                         Button(
                             onClick = {
                                 if (
-                                    proUnlocked ||
                                     OtherAppsUsageGate.canUse(
                                         context,
-                                        false
+                                        proUnlocked,
+                                        OtherAppsUsageGate.Tool.EXCEL_TOOLS
                                     )
                                 ) {
                                     picker.launch(
@@ -279,12 +344,22 @@ fun ExcelToolsScreen(
                                     )
                                 } else {
                                     statusTitle =
-                                        "PRO gerekli"
+                                        if (proUnlocked) {
+                                            "Kullanım hakkı doldu"
+                                        } else {
+                                            "PRO gerekli"
+                                        }
 
                                     statusText =
-                                        "5 ücretsiz ortak kullanım hakkın bitti. Devam etmek için PRO gerekli."
+                                        if (proUnlocked) {
+                                            "PRO proje kotası doldu."
+                                        } else {
+                                            "Excel Tools için 1 ücretsiz kullanım hakkını kullandın."
+                                        }
 
-                                    onOpenPro()
+                                    if (!proUnlocked) {
+                                        onOpenPro()
+                                    }
                                 }
                             },
                             enabled = !busy,

@@ -271,7 +271,7 @@ test(
 
 
 test(
-  "Studio stores build artifacts in AppForge Studio Downloads folder",
+  "Studio stores build artifacts in AppForgeStudio Downloads folder",
   async () => {
     const text =
       await readFile(
@@ -282,12 +282,12 @@ test(
     for (
       const marker of [
         'APPFORGE_DOWNLOAD_FOLDER',
-        '"AppForge Studio"',
+        '"AppForgeStudio"',
         'downloadArtifactToDownloads(',
         'MediaStore.Downloads.EXTERNAL_CONTENT_URI',
         'MediaStore.MediaColumns.RELATIVE_PATH',
         'Environment.DIRECTORY_DOWNLOADS',
-        '"✅ Windows EXE Downloads/AppForge Studio klasörüne kaydedildi."'
+        '"✅ Windows EXE Downloads/AppForgeStudio klasörüne kaydedildi."'
       ]
     ) {
       assert.equal(

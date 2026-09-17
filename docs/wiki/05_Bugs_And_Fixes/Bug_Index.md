@@ -26,6 +26,8 @@ source_files:
   - "scripts/appforge"
   - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
   - "build-service/tests/appforge_terminal_persistent_viewport_workspace_contract.test.js"
+  - "build-service/src/reactNativeBuildEngine.js"
+  - "build-service/tests/react_native_build_error_excerpt.test.js"
 ---
 
 # Bug Index
@@ -66,3 +68,12 @@ Document only significant, reusable debugging knowledge. Do not add one-off visu
   minimum advances beyond that grace version, legacy clients are forced to
   update normally.
 
+- React Native/Expo Gradle root-cause truncation — source-build command
+  failures previously exposed only the final 16,000 characters of Gradle
+  output. With `--stacktrace`, this could discard the real `FAILURE`,
+  `* What went wrong:`, `Execution failed for task`, or `Caused by:` block
+  and leave only Gradle internal stack frames for classification. Failure
+  excerpts now preserve the root-cause block while retaining a bounded tail
+  sample. The focused contract protects short-output behavior, legacy
+  tail-only fallback when no marker exists, root-cause preservation, and
+  Gradle FAILURE-block priority.

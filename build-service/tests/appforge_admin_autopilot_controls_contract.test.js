@@ -69,7 +69,8 @@ test(
       "APK",
       "DASH",
       "SUBMIT",
-      "PIPELINE",
+      "STATUS",
+      "PREFLIGHT",
       "CI",
       "REPORT",
       "PERF"

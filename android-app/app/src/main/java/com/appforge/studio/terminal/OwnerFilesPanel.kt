@@ -189,6 +189,13 @@ private fun migrateLegacyOwnerFiles(
         downloads
             .listFiles()
             .orEmpty()
+            .filterNot { source ->
+                source.name.startsWith(".") ||
+                    source.name.endsWith(
+                        ".part",
+                        ignoreCase = true
+                    )
+            }
             .forEach { source ->
                 moveLegacyItem(
                     source,
@@ -196,14 +203,10 @@ private fun migrateLegacyOwnerFiles(
                 )
             }
 
-        if (
-            downloads
-                .listFiles()
-                .orEmpty()
-                .isEmpty()
-        ) {
-            downloads.delete()
-        }
+        /*
+         * AppForgeDownloads is a permanent bridge between the Linux
+         * terminal and the Android owner APK vault. Never delete it.
+         */
     }
 
     /*
@@ -261,7 +264,96 @@ private fun moveLegacyItem(
     }
 
     /*
-     * Aynı isim varsa mevcut dosyanın üzerine yazma.
+     * AppForge's own self-update APK is a singleton latest artifact.
+     *
+     * Copy the incoming file to a staging name first. Only after the
+     * complete file has been verified do we replace the previous latest
+     * copy and remove legacy _2/_3 duplicates.
+     *
+     * Project APK/EXE artifacts retain the collision-safe behavior below.
+     */
+    val isAppForgeLatestApk =
+        !source.isDirectory &&
+            safeName.equals(
+                "AppForgeStudio-latest.apk",
+                ignoreCase = true
+            )
+
+    if (
+        isAppForgeLatestApk
+    ) {
+        val staged =
+            File(
+                root,
+                ".AppForgeStudio-latest.apk.new"
+            ).canonicalFile
+
+        if (
+            staged.parentFile != root
+        ) {
+            return
+        }
+
+        if (
+            staged.exists()
+        ) {
+            staged.delete()
+        }
+
+        source.copyTo(
+            staged,
+            overwrite = true
+        )
+
+        if (
+            !staged.isFile ||
+            staged.length() != source.length()
+        ) {
+            staged.delete()
+            return
+        }
+
+        root
+            .listFiles()
+            .orEmpty()
+            .filter { existing ->
+                existing.isFile &&
+                    Regex(
+                        """(?i)^AppForgeStudio-(?:latest|[0-9a-f]{7,40})(?:_\d+)?\.apk$"""
+                    ).matches(
+                        existing.name
+                    )
+            }
+            .forEach { existing ->
+                existing.delete()
+            }
+
+        if (
+            !staged.renameTo(
+                target
+            )
+        ) {
+            staged.copyTo(
+                target,
+                overwrite = true
+            )
+
+            staged.delete()
+        }
+
+        if (
+            target.isFile &&
+            target.length() ==
+                source.length()
+        ) {
+            source.delete()
+        }
+
+        return
+    }
+
+    /*
+     * Other artifacts keep collision protection.
      */
     if (
         target.exists()

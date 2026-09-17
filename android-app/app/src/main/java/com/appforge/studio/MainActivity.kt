@@ -419,7 +419,7 @@ private fun installDownloadedApkUri(
 }
 
 private const val APPFORGE_DOWNLOAD_FOLDER =
-    "AppForge Studio"
+    "AppForgeStudio"
 
 private fun formatDownloadedArtifactSize(
     bytes: Long
@@ -763,6 +763,95 @@ private fun AppForgeApp() {
 
     var step by rememberSaveable { mutableIntStateOf(1) }
 
+    /*
+     * APP_SCREEN_HISTORY_V1
+     *
+     * AppForge has several navigation entry points. Some routes use
+     * openWorkspaceScreen(), while others historically assign `screen`
+     * directly. Track every real screen transition here so Android system
+     * back can always return to the immediately previous AppForge screen
+     * without requiring every caller to use one navigation helper.
+     *
+     * HOME is the navigation root, so reaching HOME clears stale history.
+     */
+    var appScreenBackStack by
+        remember {
+            mutableStateOf<
+                List<Pair<AppScreen, Int>>
+            >(
+                emptyList()
+            )
+        }
+
+    var lastObservedAppScreen by
+        remember {
+            mutableStateOf(
+                screen
+            )
+        }
+
+    var lastObservedBuilderStep by
+        remember {
+            mutableIntStateOf(
+                step
+            )
+        }
+
+    LaunchedEffect(
+        screen,
+        step
+    ) {
+        if (
+            screen !=
+                lastObservedAppScreen
+        ) {
+            val returningToTop =
+                appScreenBackStack
+                    .lastOrNull()
+                    ?.first ==
+                    screen
+
+            appScreenBackStack =
+                when {
+                    screen ==
+                        AppScreen.HOME ->
+                        emptyList()
+
+                    returningToTop ->
+                        appScreenBackStack
+                            .dropLast(1)
+
+                    lastObservedAppScreen ==
+                        AppScreen.ONBOARDING ->
+                        appScreenBackStack
+
+                    else ->
+                        (
+                            appScreenBackStack +
+                                (
+                                    lastObservedAppScreen to
+                                        lastObservedBuilderStep
+                                )
+                        ).takeLast(
+                            32
+                        )
+                }
+
+            lastObservedAppScreen =
+                screen
+
+            lastObservedBuilderStep =
+                step
+        } else {
+            /*
+             * Preserve the latest Builder step while remaining on the same
+             * screen so returning from Preview/Production/etc. restores it.
+             */
+            lastObservedBuilderStep =
+                step
+        }
+    }
+
     LaunchedEffect(hostActivity?.buildNotificationSequence) {
         if (hostActivity?.consumeBuildNotificationNavigation() == true) {
             screen = AppScreen.BUILDER
@@ -892,72 +981,98 @@ private fun AppForgeApp() {
         }
     }
 
+    /*
+     * Android system back policy:
+     *
+     * HOME: explicit Yes/No exit confirmation.
+     * TERMINAL: TerminalWorkspaceScreen owns its already device-verified
+     * local tab back behavior.
+     * All other AppScreens: late route-level handler below pops the real
+     * AppScreen history.
+     */
+    var showExitConfirmation by
+        rememberSaveable {
+            mutableStateOf(false)
+        }
+
+    fun navigateAppSystemBack() {
+        /*
+         * BUILDER_STEP_SYSTEM_BACK_V1
+         *
+         * Builder steps 1..10 live inside the same AppScreen.BUILDER.
+         * Therefore AppScreen history cannot represent step transitions.
+         *
+         * Android system back must first move one Builder step backward.
+         * Only step 1 is allowed to leave Builder through AppScreen history.
+         */
+        if (
+            screen ==
+                AppScreen.BUILDER &&
+            step >
+                1
+        ) {
+            step -=
+                1
+
+            return
+        }
+
+        if (
+            screen ==
+                AppScreen.HOME
+        ) {
+            showExitConfirmation =
+                true
+
+            return
+        }
+
+        if (
+            screen ==
+                AppScreen.ONBOARDING
+        ) {
+            return
+        }
+
+        val previous =
+            appScreenBackStack
+                .lastOrNull()
+
+        if (
+            previous ==
+                null
+        ) {
+            screen =
+                AppScreen.HOME
+
+            return
+        }
+
+        if (
+            previous.first ==
+                AppScreen.BUILDER
+        ) {
+            step =
+                previous.second
+        }
+
+        /*
+         * Do not manually pop here.
+         * APP_SCREEN_HISTORY_V1 recognizes that the destination equals the
+         * current stack top and removes it exactly once after navigation.
+         */
+        screen =
+            previous.first
+    }
+
     BackHandler(
         enabled =
             screen ==
-                AppScreen.OTHER_APPS ||
-            screen ==
-                AppScreen.EXCEL_TOOLS ||
-            screen ==
-                AppScreen.CONVERSION ||
-            screen ==
-                AppScreen.PREVIEW ||
-            screen ==
-                AppScreen.PRODUCTION ||
-            screen ==
-                AppScreen.AI_ASSISTANT ||
-            screen ==
-                AppScreen.UNIFIED_AGENT ||
-            screen ==
-                AppScreen.TERMINAL ||
-            screen ==
-                AppScreen.TASKS ||
-            screen ==
-                AppScreen.HISTORY ||
-            screen ==
-                AppScreen.TRASH ||
-            screen ==
-                AppScreen.TEMPLATES ||
-            screen ==
-                AppScreen.SETTINGS ||
-            screen ==
-                AppScreen.ADMIN_OPS ||
-            screen ==
-                AppScreen.ACCOUNT
+                AppScreen.HOME &&
+            !showExitConfirmation
     ) {
-        when (screen) {
-            AppScreen.EXCEL_TOOLS ->
-                screen =
-                    AppScreen.OTHER_APPS
-
-            AppScreen.OTHER_APPS ->
-                screen =
-                    AppScreen.HOME
-
-            AppScreen.ADMIN_OPS ->
-                screen =
-                    AppScreen.HOME
-
-            AppScreen.TASKS ->
-                screen =
-                    AppScreen.HOME
-
-            AppScreen.TERMINAL -> {
-                screen =
-                    terminalReturnScreen
-
-                if (
-                    terminalReturnScreen ==
-                    AppScreen.BUILDER
-                ) {
-                    step =
-                        terminalReturnStep
-                }
-            }
-
-            else ->
-                returnFromWorkspace()
-        }
+        showExitConfirmation =
+            true
     }
 
     var serverUrl by remember { mutableStateOf(draft.buildServiceUrl) }
@@ -4096,6 +4211,56 @@ private fun AppForgeApp() {
         )
     ) {
 
+        /*
+         * HOME_EXIT_CONFIRMATION_V1
+         * Never close AppForge directly from Home with Android back.
+         */
+        if (showExitConfirmation) {
+            AlertDialog(
+                onDismissRequest = {
+                    showExitConfirmation =
+                        false
+                },
+                title = {
+                    Text(
+                        "Uygulamadan çıkılsın mı?"
+                    )
+                },
+                text = {
+                    Text(
+                        "Uygulamadan çıkmak istediğinize emin misiniz?"
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showExitConfirmation =
+                                false
+
+                            hostActivity
+                                ?.finish()
+                        }
+                    ) {
+                        Text(
+                            "Evet"
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showExitConfirmation =
+                                false
+                        }
+                    ) {
+                        Text(
+                            "Hayır"
+                        )
+                    }
+                }
+            )
+        }
+
         // MOBILE_AI_DOWNLOAD_DIALOG_V1
         if (
             showMobileAiDownloadDialog &&
@@ -4216,6 +4381,12 @@ private fun AppForgeApp() {
                         accountEmail =
                             session
                                 ?.email,
+
+                        buildServiceUrl =
+                            serverUrl,
+
+                        buildApiKey =
+                            apiKey,
 
                         onCreateQuick = {
                             val fresh =
@@ -4450,7 +4621,9 @@ private fun AppForgeApp() {
                         },
                         proUnlocked =
                             proStatus?.active == true,
-                        onOpenPro = {
+                                                serverUrl =
+                            serverUrl,
+onOpenPro = {
                             screen =
                                 AppScreen.PRO
                         }
@@ -4464,7 +4637,9 @@ private fun AppForgeApp() {
                         },
                         proUnlocked =
                             proStatus?.active == true,
-                        onOpenPro = {
+                                                serverUrl =
+                            serverUrl,
+onOpenPro = {
                             screen =
                                 AppScreen.PRO
                         }
@@ -6148,6 +6323,30 @@ private fun AppForgeApp() {
                 }
                     }
             }
+
+            /*
+             * LATE_APP_ROUTE_BACK_HANDLER_V1
+             *
+             * Compose dispatches to the last composed enabled BackHandler.
+             * Register this after the active route so every normal
+             * AppForge page obeys the central screen history.
+             *
+             * HOME and TERMINAL deliberately keep their specialized
+             * handlers.
+             */
+            if (
+                visibleScreen !=
+                    AppScreen.HOME &&
+                visibleScreen !=
+                    AppScreen.TERMINAL &&
+                visibleScreen !=
+                    AppScreen.ONBOARDING
+            ) {
+                BackHandler {
+                    navigateAppSystemBack()
+                }
+            }
+
         }
     }
 }
@@ -19826,7 +20025,7 @@ private fun BuildStep(
                                          * canonical user-visible download.
                                          *
                                          * Successful APKs reads the exact
-                                         * Downloads/AppForge Studio folder,
+                                         * Downloads/AppForgeStudio folder,
                                          * so owner access must never bypass
                                          * this publication step.
                                          */
@@ -19846,7 +20045,7 @@ private fun BuildStep(
                                             !publishedToDownloads
                                         ) {
                                             error(
-                                                "APK Downloads/AppForge Studio klasörüne kaydedilemedi."
+                                                "APK Downloads/AppForgeStudio klasörüne kaydedilemedi."
                                             )
                                         }
 
@@ -19915,7 +20114,7 @@ private fun BuildStep(
                                         "OWNER_AND_DOWNLOADS" ->
                                             "✅ APK indirildi • " +
                                                 sizeText +
-                                                " • Downloads/AppForge Studio ve " +
+                                                " • Downloads/AppForgeStudio ve " +
                                                 "AppForge Dosyaları/APK bölümüne kaydedildi."
 
                                         "OWNER" ->
@@ -19926,7 +20125,7 @@ private fun BuildStep(
                                         "DOWNLOADS" ->
                                             "✅ APK indirildi • " +
                                                 sizeText +
-                                                " • Downloads/AppForge Studio klasörüne kaydedildi."
+                                                " • Downloads/AppForgeStudio klasörüne kaydedildi."
 
                                         else ->
                                             "✅ APK indirildi • " +
@@ -20135,7 +20334,7 @@ private fun BuildStep(
                                 )
 
                                 downloadMessage =
-                                    "AAB indiriliyor • Downloads/AppForge Studio klasörüne kaydedilecek."
+                                    "AAB indiriliyor • Downloads/AppForgeStudio klasörüne kaydedilecek."
                             } catch (
                                 t: Throwable
                             ) {
@@ -20255,7 +20454,7 @@ private fun BuildStep(
                                     }
 
                                     downloadMessage =
-                                        "✅ Windows EXE Downloads/AppForge Studio klasörüne kaydedildi."
+                                        "✅ Windows EXE Downloads/AppForgeStudio klasörüne kaydedildi."
 
                                 } catch (
                                     t: Throwable

@@ -42,6 +42,7 @@ fun OtherAppsScreen(
     onBack: () -> Unit,
     onOpenExcelTools: () -> Unit,
     proUnlocked: Boolean,
+    serverUrl: String,
     onOpenPro: () -> Unit
 ) {
     val context = LocalContext.current
@@ -98,17 +99,18 @@ fun OtherAppsScreen(
                         "XLSX, XLSM ve CSV dosyaları için cihaz üzerinde çalışan Excel araçları.",
                     status =
                         if (proUnlocked) {
-                            "PRO • Sınırsız kullanım"
+                            "PRO • Her işlem proje kotasından 1 hak düşürür"
                         } else {
-                            "Ücretsiz ortak hak: ${OtherAppsUsageGate.remaining(context)}/5"
+                            "FREE • Kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.EXCEL_TOOLS, false)}/1"
                         },
                     onClick = {
                         if (
-                            proUnlocked ||
                             OtherAppsUsageGate.canUse(
                                 context,
-                                false
-                            )
+                                proUnlocked,
+                                OtherAppsUsageGate.Tool.EXCEL_TOOLS
+                            ) ||
+                            proUnlocked
                         ) {
                             onOpenExcelTools()
                         } else {
@@ -133,20 +135,21 @@ fun OtherAppsScreen(
                                 "64-bit ARM cihaz gerekli"
 
                             proUnlocked ->
-                                "PRO • Sınırsız kullanım • V4.1.2"
+                                "PRO • Her işlem proje kotasından 1 hak düşürür • V4.1.2"
 
                             else ->
-                                "Ücretsiz ortak hak: ${OtherAppsUsageGate.remaining(context)}/5 • V4.1.2"
+                                "FREE • Kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.VIDEO_FORGE, false)}/1 • V4.1.2"
                         },
                     onClick =
                         if (videoForgeSupported) {
                             {
                                 if (
-                                    proUnlocked ||
                                     OtherAppsUsageGate.canUse(
                                         context,
-                                        false
-                                    )
+                                        proUnlocked,
+                                        OtherAppsUsageGate.Tool.VIDEO_FORGE
+                                    ) ||
+                                    proUnlocked
                                 ) {
                                     context.startActivity(
                                         Intent(
@@ -155,6 +158,9 @@ fun OtherAppsScreen(
                                         ).putExtra(
                                             VideoForgeActivity.EXTRA_PRO_UNLOCKED,
                                             proUnlocked
+                                        ).putExtra(
+                                            VideoForgeActivity.EXTRA_SERVER_URL,
+                                            serverUrl
                                         )
                                     )
                                 } else {

@@ -649,6 +649,111 @@ const RN_BUILD_TIMEOUT_MS =
 const RN_LOG_LIMIT =
   300_000;
 
+export function commandFailureExcerpt(
+  raw,
+  maxChars = 16_000
+) {
+  const text =
+    String(
+      raw ??
+      ""
+    );
+
+  if (
+    text.length <=
+      maxChars
+  ) {
+    return text;
+  }
+
+  const markers =
+    [
+      "FAILURE: Build failed with an exception.",
+      "* What went wrong:",
+      "Execution failed for task",
+      "Caused by:"
+    ];
+
+  let rootIndex =
+    -1;
+
+  for (
+    const marker of
+    markers
+  ) {
+    const index =
+      text.indexOf(
+        marker
+      );
+
+    if (
+      index >=
+        0
+    ) {
+      rootIndex =
+        index;
+      break;
+    }
+  }
+
+  if (
+    rootIndex <
+      0
+  ) {
+    return text.slice(
+      -maxChars
+    );
+  }
+
+  const separator =
+    "\n\n... [AppForge hata günlüğü kısaltıldı] ...\n\n";
+
+  const tailBudget =
+    Math.min(
+      4_000,
+      Math.floor(
+        maxChars /
+          3
+      )
+    );
+
+  const rootBudget =
+    maxChars -
+    tailBudget -
+    separator.length;
+
+  const root =
+    text.slice(
+      rootIndex,
+      rootIndex +
+        rootBudget
+    );
+
+  const tailStart =
+    text.length -
+    tailBudget;
+
+  if (
+    rootIndex +
+      rootBudget >=
+    tailStart
+  ) {
+    return text.slice(
+      rootIndex,
+      rootIndex +
+        maxChars
+    );
+  }
+
+  return (
+    root +
+    separator +
+    text.slice(
+      -tailBudget
+    )
+  );
+}
+
 function npmInvocation(
   args
 ) {
@@ -922,8 +1027,8 @@ async function runSourceCommand({
             reject(
               new Error(
                 `${command} ${args.join(" ")} başarısız (exit=${code}).\n` +
-                output.slice(
-                  -16_000
+                commandFailureExcerpt(
+                  output
                 )
               )
             );

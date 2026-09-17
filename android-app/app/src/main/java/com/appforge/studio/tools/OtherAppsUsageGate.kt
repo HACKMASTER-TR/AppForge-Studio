@@ -3,28 +3,46 @@ package com.appforge.studio.tools
 import android.content.Context
 
 /**
- * Excel Tools + VideoForge için ortak ücretsiz kullanım sayacı.
+ * Other Apps usage policy.
  *
- * Free:
- *   Toplam 5 işlem.
+ * FREE:
+ *   Excel Tools = 1 local use
+ *   VideoForge = 1 local use
  *
- * PRO:
- *   Sınırsız kullanım.
+ * PRO Monthly:
+ *   Local counter is bypassed.
+ *   Every use is charged authoritatively to the server-side
+ *   AppForge project quota.
  *
- * Sayaç cihazdaki uygulama verisinde saklanır.
+ * The server, not this class, is authoritative for PRO quota.
  */
 object OtherAppsUsageGate {
 
-    const val FREE_LIMIT = 5
+    enum class Tool(
+        val storageKey: String
+    ) {
+        EXCEL_TOOLS(
+            "excel_tools"
+        ),
+        VIDEO_FORGE(
+            "video_forge"
+        )
+    }
+
+    const val FREE_LIMIT =
+        1
 
     private const val PREFS_NAME =
         "appforge_other_apps_usage"
 
-    private const val KEY_USED =
-        "shared_used"
+    private fun key(
+        tool: Tool
+    ): String =
+        "free_used_v3_${tool.storageKey}"
 
     fun used(
-        context: Context
+        context: Context,
+        tool: Tool
     ): Int =
         context
             .getSharedPreferences(
@@ -32,7 +50,7 @@ object OtherAppsUsageGate {
                 Context.MODE_PRIVATE
             )
             .getInt(
-                KEY_USED,
+                key(tool),
                 0
             )
             .coerceIn(
@@ -41,16 +59,41 @@ object OtherAppsUsageGate {
             )
 
     fun remaining(
-        context: Context
+        context: Context,
+        tool: Tool
     ): Int =
         (
             FREE_LIMIT -
-                used(context)
-        ).coerceAtLeast(0)
+                used(
+                    context,
+                    tool
+                )
+        ).coerceAtLeast(
+            0
+        )
+
+    /*
+     * Compatibility overload for existing callers.
+     * PRO does not use this number as its authority.
+     */
+    fun remaining(
+        context: Context,
+        tool: Tool,
+        proUnlocked: Boolean
+    ): Int =
+        if (proUnlocked) {
+            FREE_LIMIT
+        } else {
+            remaining(
+                context,
+                tool
+            )
+        }
 
     fun canUse(
         context: Context,
         proUnlocked: Boolean,
+        tool: Tool,
         amount: Int = 1
     ): Boolean {
 
@@ -58,26 +101,35 @@ object OtherAppsUsageGate {
             return true
         }
 
-        val required =
-            amount.coerceAtLeast(1)
-
-        return remaining(context) >=
-            required
+        return remaining(
+            context,
+            tool
+        ) >=
+            amount.coerceAtLeast(
+                1
+            )
     }
 
     @Synchronized
     fun consume(
         context: Context,
         proUnlocked: Boolean,
+        tool: Tool,
         amount: Int = 1
     ): Boolean {
 
+        /*
+         * PRO consumption MUST be completed by the server
+         * project-quota endpoint.
+         */
         if (proUnlocked) {
             return true
         }
 
         val required =
-            amount.coerceAtLeast(1)
+            amount.coerceAtLeast(
+                1
+            )
 
         val prefs =
             context.getSharedPreferences(
@@ -85,16 +137,24 @@ object OtherAppsUsageGate {
                 Context.MODE_PRIVATE
             )
 
+        val usageKey =
+            key(
+                tool
+            )
+
         val current =
             prefs
                 .getInt(
-                    KEY_USED,
+                    usageKey,
                     0
                 )
-                .coerceAtLeast(0)
+                .coerceAtLeast(
+                    0
+                )
 
         if (
-            current + required >
+            current +
+                required >
             FREE_LIMIT
         ) {
             return false
@@ -103,8 +163,9 @@ object OtherAppsUsageGate {
         return prefs
             .edit()
             .putInt(
-                KEY_USED,
-                current + required
+                usageKey,
+                current +
+                    required
             )
             .commit()
     }
