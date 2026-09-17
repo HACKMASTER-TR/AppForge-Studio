@@ -32,20 +32,33 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import com.appforge.studio.tools.OtherAppsUsageGate
+import com.appforge.studio.security.SecureAccountStore
+import com.appforge.studio.security.StudioSecurityClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 class VideoForgeActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_PRO_UNLOCKED =
             "appforge_pro_unlocked"
+
+        const val EXTRA_SERVER_URL =
+            "appforge_server_url"
     }
 
     private var proUnlocked =
         false
+
+    private var serverUrl =
+        ""
 
     private var selectedVideo: Uri? = null
     private val selectedQueue = mutableListOf<Uri>()
@@ -141,6 +154,13 @@ class VideoForgeActivity : AppCompatActivity() {
                 EXTRA_PRO_UNLOCKED,
                 false
             )
+
+        serverUrl =
+            intent.getStringExtra(
+                EXTRA_SERVER_URL
+            )
+                .orEmpty()
+                .trim()
 
         window.statusBarColor = Color.rgb(7, 17, 31)
         window.navigationBarColor = Color.rgb(7, 17, 31)
@@ -323,7 +343,7 @@ class VideoForgeActivity : AppCompatActivity() {
         body.addView(
             text(
                 if (proUnlocked) {
-                    "PRO • Kalan hak: ${OtherAppsUsageGate.remaining(this, OtherAppsUsageGate.Tool.VIDEO_FORGE, true)}/5"
+                    "PRO • Her işlem proje kotasından 1 hak düşürür"
                 } else {
                     "FREE • Kalan hak: ${OtherAppsUsageGate.remaining(this, OtherAppsUsageGate.Tool.VIDEO_FORGE, false)}/1"
                 },
@@ -646,9 +666,11 @@ class VideoForgeActivity : AppCompatActivity() {
                         ?.trim()
                         .orEmpty()
 
-                downloadVideoOnly(
-                    url
-                )
+                claimUsage {
+                    downloadVideoOnly(
+                        url
+                    )
+                }
             },
             LinearLayout.LayoutParams(
                 -1,
@@ -1317,41 +1339,40 @@ class VideoForgeActivity : AppCompatActivity() {
     }
 
     private fun claimUsage(
-        amount: Int = 1
-    ): Boolean {
-
-        if (
-            OtherAppsUsageGate.consume(
-                this,
-                proUnlocked,
-                OtherAppsUsageGate.Tool.VIDEO_FORGE,
-                amount
+        amount: Int = 1,
+        onGranted: () -> Unit
+    ) {
+        val required =
+            amount.coerceAtLeast(
+                1
             )
-        ) {
-            return true
-        }
 
-        val message =
-            if (proUnlocked) {
-                "VideoForge için 5 PRO kullanım hakkını kullandın."
-            } else {
-                "VideoForge için 1 ücretsiz kullanım hakkını kullandın. PRO planda 5 kullanım hakkı vardır."
+        if (!proUnlocked) {
+
+            if (
+                OtherAppsUsageGate.consume(
+                    this,
+                    false,
+                    OtherAppsUsageGate.Tool.VIDEO_FORGE,
+                    required
+                )
+            ) {
+                onGranted()
+                return
             }
 
-        status(
-            message
-        )
+            val message =
+                "VideoForge için 1 ücretsiz kullanım hakkını kullandın."
 
-        val dialog =
+            status(
+                message
+            )
+
             AlertDialog.Builder(
                 this
             )
                 .setTitle(
-                    if (proUnlocked) {
-                        "Kullanım hakkı doldu"
-                    } else {
-                        "PRO gerekli"
-                    }
+                    "PRO gerekli"
                 )
                 .setMessage(
                     message
@@ -1360,18 +1381,109 @@ class VideoForgeActivity : AppCompatActivity() {
                     "Kapat",
                     null
                 )
+                .setPositiveButton(
+                    "PRO'YA GEÇ"
+                ) { _, _ ->
+                    finish()
+                }
+                .show()
 
-        if (!proUnlocked) {
-            dialog.setPositiveButton(
-                "PRO'YA GEÇ"
-            ) { _, _ ->
-                finish()
-            }
+            return
         }
 
-        dialog.show()
+        val session =
+            SecureAccountStore
+                .loadSession(
+                    this
+                )
 
-        return false
+        if (
+            session == null ||
+            serverUrl.isBlank()
+        ) {
+            status(
+                "PRO proje kotası doğrulanamadı. Yeniden giriş yap."
+            )
+            return
+        }
+
+        status(
+            "PRO proje kotası kontrol ediliyor…"
+        )
+
+        lifecycleScope.launch {
+
+            try {
+                val quota =
+                    withContext(
+                        Dispatchers.IO
+                    ) {
+                        StudioSecurityClient(
+                            context =
+                                this@VideoForgeActivity,
+                            baseUrl =
+                                serverUrl,
+                            accessToken =
+                                session.token
+                        )
+                            .consumeOtherAppProjectQuota(
+                                tool =
+                                    "video_forge",
+                                usageId =
+                                    UUID
+                                        .randomUUID()
+                                        .toString(),
+                                amount =
+                                    required
+                            )
+                    }
+
+                quota.projectLimit
+                    ?.let {
+                        limit ->
+
+                        val remaining =
+                            (
+                                limit -
+                                    quota.projectUsed
+                            ).coerceAtLeast(
+                                0
+                            )
+
+                        status(
+                            "PRO proje kotası: $remaining hak kaldı."
+                        )
+                    }
+
+                onGranted()
+
+            } catch (
+                t: Throwable
+            ) {
+                val message =
+                    t.message
+                        ?: "PRO proje kotası kontrol edilemedi."
+
+                status(
+                    message
+                )
+
+                AlertDialog.Builder(
+                    this@VideoForgeActivity
+                )
+                    .setTitle(
+                        "Proje kotası"
+                    )
+                    .setMessage(
+                        message
+                    )
+                    .setPositiveButton(
+                        "Tamam",
+                        null
+                    )
+                    .show()
+            }
+        }
     }
 
     private fun currentOptions(preview: Boolean = false): StudioOptions {
@@ -1429,17 +1541,15 @@ class VideoForgeActivity : AppCompatActivity() {
             return
         }
 
-        if (!claimUsage()) {
-            return
+        claimUsage {
+            val options = currentOptions(preview)
+            val i = baseServiceIntent(DubForegroundService.MODE_DUB, options).apply {
+                putExtra(DubForegroundService.EXTRA_VIDEO_URI, uri.toString())
+                putExtra(DubForegroundService.EXTRA_SOURCE_LABEL, displayName(uri))
+            }
+            startService(i)
+            setWorking(true)
         }
-
-        val options = currentOptions(preview)
-        val i = baseServiceIntent(DubForegroundService.MODE_DUB, options).apply {
-            putExtra(DubForegroundService.EXTRA_VIDEO_URI, uri.toString())
-            putExtra(DubForegroundService.EXTRA_SOURCE_LABEL, displayName(uri))
-        }
-        startService(i)
-        setWorking(true)
     }
 
     private fun startQueue() {
@@ -1453,33 +1563,27 @@ class VideoForgeActivity : AppCompatActivity() {
             return
         }
 
-        if (
-            !claimUsage(
-                selectedQueue.size
-            )
+        claimUsage(
+            selectedQueue.size
         ) {
-            return
+            val i = baseServiceIntent(DubForegroundService.MODE_QUEUE, currentOptions(false)).apply {
+                putStringArrayListExtra(DubForegroundService.EXTRA_VIDEO_URIS, ArrayList(selectedQueue.map { it.toString() }))
+            }
+            startService(i)
+            setWorking(true)
         }
-
-        val i = baseServiceIntent(DubForegroundService.MODE_QUEUE, currentOptions(false)).apply {
-            putStringArrayListExtra(DubForegroundService.EXTRA_VIDEO_URIS, ArrayList(selectedQueue.map { it.toString() }))
-        }
-        startService(i)
-        setWorking(true)
     }
 
     private fun startUrl(url: String, preview: Boolean) {
 
-        if (!claimUsage()) {
-            return
+        claimUsage {
+            val i = baseServiceIntent(DubForegroundService.MODE_URL_DUB, currentOptions(preview)).apply {
+                putExtra(DubForegroundService.EXTRA_VIDEO_URL, url)
+                putExtra(DubForegroundService.EXTRA_SOURCE_LABEL, "URL videosu")
+            }
+            startService(i)
+            setWorking(true)
         }
-
-        val i = baseServiceIntent(DubForegroundService.MODE_URL_DUB, currentOptions(preview)).apply {
-            putExtra(DubForegroundService.EXTRA_VIDEO_URL, url)
-            putExtra(DubForegroundService.EXTRA_SOURCE_LABEL, "URL videosu")
-        }
-        startService(i)
-        setWorking(true)
     }
 
     private fun downloadVideoOnly(
@@ -1537,10 +1641,6 @@ class VideoForgeActivity : AppCompatActivity() {
             status(
                 "Yerel cihaz bağlantıları desteklenmiyor."
             )
-            return
-        }
-
-        if (!claimUsage()) {
             return
         }
 

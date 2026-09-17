@@ -42,6 +42,7 @@ fun OtherAppsScreen(
     onBack: () -> Unit,
     onOpenExcelTools: () -> Unit,
     proUnlocked: Boolean,
+    serverUrl: String,
     onOpenPro: () -> Unit
 ) {
     val context = LocalContext.current
@@ -98,7 +99,7 @@ fun OtherAppsScreen(
                         "XLSX, XLSM ve CSV dosyaları için cihaz üzerinde çalışan Excel araçları.",
                     status =
                         if (proUnlocked) {
-                            "PRO • Kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.EXCEL_TOOLS, true)}/5"
+                            "PRO • Her işlem proje kotasından 1 hak düşürür"
                         } else {
                             "FREE • Kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.EXCEL_TOOLS, false)}/1"
                         },
@@ -134,7 +135,7 @@ fun OtherAppsScreen(
                                 "64-bit ARM cihaz gerekli"
 
                             proUnlocked ->
-                                "PRO • Kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.VIDEO_FORGE, true)}/5 • V4.1.2"
+                                "PRO • Her işlem proje kotasından 1 hak düşürür • V4.1.2"
 
                             else ->
                                 "FREE • Kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.VIDEO_FORGE, false)}/1 • V4.1.2"
@@ -157,6 +158,9 @@ fun OtherAppsScreen(
                                         ).putExtra(
                                             VideoForgeActivity.EXTRA_PRO_UNLOCKED,
                                             proUnlocked
+                                        ).putExtra(
+                                            VideoForgeActivity.EXTRA_SERVER_URL,
+                                            serverUrl
                                         )
                                     )
                                 } else {

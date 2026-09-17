@@ -4456,7 +4456,9 @@ private fun AppForgeApp() {
                         },
                         proUnlocked =
                             proStatus?.active == true,
-                        onOpenPro = {
+                                                serverUrl =
+                            serverUrl,
+onOpenPro = {
                             screen =
                                 AppScreen.PRO
                         }
@@ -4470,7 +4472,9 @@ private fun AppForgeApp() {
                         },
                         proUnlocked =
                             proStatus?.active == true,
-                        onOpenPro = {
+                                                serverUrl =
+                            serverUrl,
+onOpenPro = {
                             screen =
                                 AppScreen.PRO
                         }

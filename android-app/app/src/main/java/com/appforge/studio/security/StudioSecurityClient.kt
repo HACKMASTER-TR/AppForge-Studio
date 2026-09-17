@@ -431,6 +431,135 @@ class StudioSecurityClient(
     }
 
 
+    suspend fun consumeOtherAppProjectQuota(
+        tool: String,
+        usageId: String,
+        amount: Int = 1
+    ): QuotaStatus {
+
+        require(
+            tool in
+                setOf(
+                    "excel_tools",
+                    "video_forge"
+                )
+        ) {
+            "Geçersiz AppForge aracı."
+        }
+
+        require(
+            usageId.isNotBlank()
+        ) {
+            "Kullanım kimliği gerekli."
+        }
+
+        val json =
+            request(
+                path =
+                    "/api/projects/quota/other-app-use",
+                method =
+                    "POST",
+                body =
+                    JSONObject()
+                        .put(
+                            "tool",
+                            tool
+                        )
+                        .put(
+                            "usageId",
+                            usageId
+                        )
+                        .put(
+                            "amount",
+                            amount.coerceAtLeast(
+                                1
+                            )
+                        ),
+                integritySession =
+                    null
+            )
+
+        val quota =
+            json.optJSONObject(
+                "quota"
+            )
+                ?: error(
+                    "Proje kotası yanıtı geçersiz."
+                )
+
+        val buildQuota =
+            quota.optJSONObject(
+                "buildQuota"
+            )
+
+        fun nullableInt(
+            source: JSONObject?,
+            key: String
+        ): Int? {
+
+            if (
+                source == null ||
+                !source.has(key) ||
+                source.isNull(key)
+            ) {
+                return null
+            }
+
+            return source.optInt(
+                key
+            )
+        }
+
+        return QuotaStatus(
+            projectUsed =
+                quota.optInt(
+                    "used",
+                    0
+                ),
+
+            projectLimit =
+                nullableInt(
+                    quota,
+                    "limit"
+                ),
+
+            projectAddonBonus =
+                quota.optInt(
+                    "addonProjectBonus",
+                    0
+                ),
+
+            buildUsed =
+                nullableInt(
+                    buildQuota,
+                    "used"
+                ),
+
+            buildLimit =
+                nullableInt(
+                    buildQuota,
+                    "limit"
+                ),
+
+            buildAddonBonus =
+                buildQuota
+                    ?.optInt(
+                        "addonBuildBonus",
+                        0
+                    )
+                    ?: 0,
+
+            periodEndsAt =
+                quota.optString(
+                    "periodEndsAt"
+                ).takeIf {
+                    it.isNotBlank() &&
+                    it != "null"
+                }
+        )
+    }
+
+
     suspend fun redeemQuotaAddon(
         userId: String,
         productId: String,

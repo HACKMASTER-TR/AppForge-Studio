@@ -13,7 +13,7 @@ const workflow = await readFile(
 test("Android Debug publishes a downloadable test APK artifact", () => {
   assert.match(
     workflow,
-    /actions\/upload-artifact@v4/
+    /actions\/upload-artifact@v5/
   );
 
   assert.match(

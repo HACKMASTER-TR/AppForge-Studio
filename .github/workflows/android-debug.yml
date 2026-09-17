@@ -190,7 +190,7 @@ jobs:
           echo "APK metadata + signature verified."
 
       - name: Upload debug APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: AppForgeStudio-debug-${{ github.sha }}
           path: AppForgeStudio-latest.apk

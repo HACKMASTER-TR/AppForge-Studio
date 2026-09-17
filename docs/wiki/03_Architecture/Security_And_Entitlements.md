@@ -14,6 +14,9 @@ related:
   - "[[Database_Map]]"
   - "[[Integration_Index]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt"
+  - "build-service/server.js"
+  - "build-service/src/projectQuotaV2.js"
   - "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/tools/excel/ExcelToolsScreen.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt"
@@ -44,10 +47,12 @@ Google authentication action are short-lived and cleaned up by the action.
 
 ## Other Apps usage limits
 
-Excel Tools and VideoForge use separate device-local counters after the
-server-derived PRO entitlement has been resolved. Free receives one use per
-tool and PRO receives five uses per tool. The tools no longer share a common
-counter and PRO access no longer bypasses usage accounting as unlimited.
+Excel Tools and VideoForge each have one device-local use on Free.
 
-These counters preserve the existing local persistence model and do not replace
-server-authoritative subscription entitlement.
+PRO Monthly does not use a separate local tool counter. Each Excel Tools or
+VideoForge usage consumes the existing server-authoritative project quota.
+The default PRO Monthly project limit is 50 per subscription cycle, and any
+configured project-quota add-on continues to extend that same quota.
+
+A client-generated usage id makes server retries idempotent. Admin and
+grandfathered legacy unlimited project policies retain their existing behavior.

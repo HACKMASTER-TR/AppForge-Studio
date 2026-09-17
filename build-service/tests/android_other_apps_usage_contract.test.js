@@ -2,52 +2,54 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
-const root =
-  "../../android-app/app/src/main/java";
+const read = async path =>
+  readFile(
+    new URL(
+      `../../${path}`,
+      import.meta.url
+    ),
+    "utf8"
+  );
 
-const gate = await readFile(
-  new URL(
-    `${root}/com/appforge/studio/tools/OtherAppsUsageGate.kt`,
-    import.meta.url
-  ),
-  "utf8"
+const gate = await read(
+  "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt"
 );
 
-const otherApps = await readFile(
-  new URL(
-    `${root}/com/appforge/studio/ui/OtherAppsScreen.kt`,
-    import.meta.url
-  ),
-  "utf8"
+const otherApps = await read(
+  "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt"
 );
 
-const excel = await readFile(
-  new URL(
-    `${root}/com/appforge/studio/tools/excel/ExcelToolsScreen.kt`,
-    import.meta.url
-  ),
-  "utf8"
+const excel = await read(
+  "android-app/app/src/main/java/com/appforge/studio/tools/excel/ExcelToolsScreen.kt"
 );
 
-const video = await readFile(
-  new URL(
-    `${root}/com/hackmaster/videoforge/VideoForgeActivity.kt`,
-    import.meta.url
-  ),
-  "utf8"
+const video = await read(
+  "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt"
 );
+
+const client = await read(
+  "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt"
+);
+
+const quota = await read(
+  "build-service/src/projectQuotaV2.js"
+);
+
+const server = await read(
+  "build-service/server.js"
+);
+
+const config = await read(
+  "build-service/src/config.js"
+);
+
 
 test(
-  "Free gets one use and PRO gets five uses per tool",
+  "Free keeps one independent use per tool",
   () => {
     assert.match(
       gate,
       /FREE_LIMIT\s*=\s*\n?\s*1/
-    );
-
-    assert.match(
-      gate,
-      /PRO_LIMIT\s*=\s*\n?\s*5/
     );
 
     assert.match(
@@ -60,40 +62,84 @@ test(
       /VIDEO_FORGE/
     );
 
-    assert.match(
+    assert.doesNotMatch(
       gate,
-      /tool\.storageKey/
+      /PRO_LIMIT/
     );
   }
 );
 
+
 test(
-  "Excel and VideoForge use independent counters",
+  "PRO Monthly project quota defaults to 50",
+  () => {
+    assert.match(
+      config,
+      /PRO_MONTHLY_PROJECT_LIMIT[\s\S]{0,120}50/
+    );
+  }
+);
+
+
+test(
+  "PRO other-app usage is server authoritative",
+  () => {
+    assert.match(
+      quota,
+      /consumeOtherAppProjectQuota/
+    );
+
+    assert.match(
+      quota,
+      /appforge_pro_monthly_project_slots/
+    );
+
+    assert.match(
+      quota,
+      /usageId/
+    );
+
+    assert.match(
+      server,
+      /\/api\/projects\/quota\/other-app-use/
+    );
+
+    assert.match(
+      client,
+      /consumeOtherAppProjectQuota/
+    );
+  }
+);
+
+
+test(
+  "Excel and VideoForge charge project quota when PRO",
   () => {
     assert.match(
       excel,
-      /Tool\.EXCEL_TOOLS/
+      /consumeOtherAppProjectQuota/
+    );
+
+    assert.match(
+      excel,
+      /excel_tools/
     );
 
     assert.match(
       video,
-      /Tool\.VIDEO_FORGE/
+      /consumeOtherAppProjectQuota/
     );
 
     assert.match(
-      otherApps,
-      /Tool\.EXCEL_TOOLS/
-    );
-
-    assert.match(
-      otherApps,
-      /Tool\.VIDEO_FORGE/
+      video,
+      /video_forge/
     );
   }
 );
 
+
 test(
-  "PRO is no longer unlimited",
+  "PRO five-use copy is removed",
   () => {
     for (
       const source of [
@@ -105,26 +151,39 @@ test(
     ) {
       assert.doesNotMatch(
         source,
-        /Sınırsız kullanım/
+        /PRO kalan hak/
+      );
+
+      assert.doesNotMatch(
+        source,
+        /5 PRO kullanım/
+      );
+
+      assert.doesNotMatch(
+        source,
+        /PRO • Sınırsız kullanım/
       );
     }
   }
 );
 
+
 test(
-  "old shared five-use copy is removed",
+  "VideoForge receives server URL without exporting activity",
   () => {
-    for (
-      const source of [
-        otherApps,
-        excel,
-        video,
-      ]
-    ) {
-      assert.doesNotMatch(
-        source,
-        /ortak 5|5 ücretsiz ortak|toplam 5 ücretsiz/i
-      );
-    }
+    assert.match(
+      otherApps,
+      /EXTRA_SERVER_URL/
+    );
+
+    assert.match(
+      video,
+      /SecureAccountStore/
+    );
+
+    assert.match(
+      video,
+      /EXTRA_SERVER_URL/
+    );
   }
 );
