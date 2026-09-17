@@ -68,3 +68,16 @@ AppForge parent/return destination instead of falling through to Activity
 exit. Home requires an explicit Yes/No exit confirmation. Nested
 Successful Builds navigation in `StudioHomeV2` consumes system back before
 the Home exit handler.
+
+## Global Android back-stack policy
+
+`MainActivity` maintains a bounded real `AppScreen` history for Android
+system-back navigation. This history observes all actual screen transitions,
+including routes that historically assigned `screen = AppScreen.X` directly,
+so system back does not depend only on workspace-return metadata.
+
+Home owns the explicit Yes/No application-exit confirmation. Terminal keeps
+its separately verified local tab-back behavior. Normal AppForge routes use
+a late route-level BackHandler so system back returns to the immediately
+previous AppForge screen. Returning to Builder also restores the captured
+Builder step. Reaching Home clears stale navigation history.

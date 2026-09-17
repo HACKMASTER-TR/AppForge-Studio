@@ -18,32 +18,37 @@ const home = await readFile(
   "utf8"
 );
 
-test("Android system back is owned by AppForge navigation", () => {
+test("AppForge records real screen history for system back", () => {
   assert.match(
     mainActivity,
-    /screen !=[\s\S]*AppScreen\.ONBOARDING[\s\S]*!showExitConfirmation/
+    /APP_SCREEN_HISTORY_V1/
   );
 
   assert.match(
     mainActivity,
-    /AppScreen\.EXCEL_TOOLS ->[\s\S]*AppScreen\.OTHER_APPS/
+    /appScreenBackStack/
   );
 
   assert.match(
     mainActivity,
-    /AppScreen\.OTHER_APPS,[\s\S]*AppScreen\.MODE_SELECT,[\s\S]*AppScreen\.QUICK,[\s\S]*AppScreen\.BUILDER,[\s\S]*AppScreen\.LIBRARY,[\s\S]*AppScreen\.HOME/
+    /lastObservedAppScreen/
   );
 
   assert.match(
     mainActivity,
-    /AppScreen\.TERMINAL ->[\s\S]*terminalReturnScreen/
+    /screen ==[\s\S]*AppScreen\.HOME[\s\S]*emptyList\(\)/
+  );
+
+  assert.match(
+    mainActivity,
+    /returningToTop[\s\S]*dropLast\(1\)/
   );
 });
 
-test("Home back requires an explicit exit confirmation", () => {
+test("Home system back only opens explicit exit confirmation", () => {
   assert.match(
     mainActivity,
-    /AppScreen\.HOME ->[\s\S]*showExitConfirmation =[\s\S]*true/
+    /screen ==[\s\S]*AppScreen\.HOME[\s\S]*!showExitConfirmation/
   );
 
   assert.match(
@@ -55,21 +60,35 @@ test("Home back requires an explicit exit confirmation", () => {
     mainActivity,
     /hostActivity[\s\S]*\?\.finish\(\)/
   );
+});
 
+test("normal AppForge routes use the late central back handler", () => {
   assert.match(
     mainActivity,
-    /Text\([\s\S]*"Evet"[\s\S]*\)/
+    /LATE_APP_ROUTE_BACK_HANDLER_V1/
   );
 
   assert.match(
     mainActivity,
-    /Text\([\s\S]*"Hayır"[\s\S]*\)/
+    /visibleScreen !=[\s\S]*AppScreen\.HOME[\s\S]*visibleScreen !=[\s\S]*AppScreen\.TERMINAL/
+  );
+
+  assert.match(
+    mainActivity,
+    /BackHandler \{[\s\S]*navigateAppSystemBack\(\)/
   );
 });
 
-test("Successful Builds consumes system back before Home exit", () => {
+test("Builder step is restored when back returns to Builder", () => {
+  assert.match(
+    mainActivity,
+    /previous\.first ==[\s\S]*AppScreen\.BUILDER[\s\S]*step =[\s\S]*previous\.second/
+  );
+});
+
+test("Successful Builds keeps its nested Home back behavior", () => {
   assert.match(
     home,
-    /BackHandler\([\s\S]*enabled =[\s\S]*successfulApkFolderOpen\.value[\s\S]*successfulApkFolderOpen\.value =[\s\S]*false/
+    /BackHandler\([\s\S]*successfulApkFolderOpen\.value[\s\S]*successfulApkFolderOpen\.value =[\s\S]*false/
   );
 });

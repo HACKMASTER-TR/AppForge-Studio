@@ -763,6 +763,95 @@ private fun AppForgeApp() {
 
     var step by rememberSaveable { mutableIntStateOf(1) }
 
+    /*
+     * APP_SCREEN_HISTORY_V1
+     *
+     * AppForge has several navigation entry points. Some routes use
+     * openWorkspaceScreen(), while others historically assign `screen`
+     * directly. Track every real screen transition here so Android system
+     * back can always return to the immediately previous AppForge screen
+     * without requiring every caller to use one navigation helper.
+     *
+     * HOME is the navigation root, so reaching HOME clears stale history.
+     */
+    var appScreenBackStack by
+        remember {
+            mutableStateOf<
+                List<Pair<AppScreen, Int>>
+            >(
+                emptyList()
+            )
+        }
+
+    var lastObservedAppScreen by
+        remember {
+            mutableStateOf(
+                screen
+            )
+        }
+
+    var lastObservedBuilderStep by
+        remember {
+            mutableIntStateOf(
+                step
+            )
+        }
+
+    LaunchedEffect(
+        screen,
+        step
+    ) {
+        if (
+            screen !=
+                lastObservedAppScreen
+        ) {
+            val returningToTop =
+                appScreenBackStack
+                    .lastOrNull()
+                    ?.first ==
+                    screen
+
+            appScreenBackStack =
+                when {
+                    screen ==
+                        AppScreen.HOME ->
+                        emptyList()
+
+                    returningToTop ->
+                        appScreenBackStack
+                            .dropLast(1)
+
+                    lastObservedAppScreen ==
+                        AppScreen.ONBOARDING ->
+                        appScreenBackStack
+
+                    else ->
+                        (
+                            appScreenBackStack +
+                                (
+                                    lastObservedAppScreen to
+                                        lastObservedBuilderStep
+                                )
+                        ).takeLast(
+                            32
+                        )
+                }
+
+            lastObservedAppScreen =
+                screen
+
+            lastObservedBuilderStep =
+                step
+        } else {
+            /*
+             * Preserve the latest Builder step while remaining on the same
+             * screen so returning from Preview/Production/etc. restores it.
+             */
+            lastObservedBuilderStep =
+                step
+        }
+    }
+
     LaunchedEffect(hostActivity?.buildNotificationSequence) {
         if (hostActivity?.consumeBuildNotificationNavigation() == true) {
             screen = AppScreen.BUILDER
@@ -894,60 +983,75 @@ private fun AppForgeApp() {
 
     /*
      * Android system back policy:
-     * - child screens never fall through to Activity exit
-     * - direct creation screens return Home
-     * - workspace screens preserve their recorded return destination
-     * - Home requires explicit exit confirmation
+     *
+     * HOME: explicit Yes/No exit confirmation.
+     * TERMINAL: TerminalWorkspaceScreen owns its already device-verified
+     * local tab back behavior.
+     * All other AppScreens: late route-level handler below pops the real
+     * AppScreen history.
      */
     var showExitConfirmation by
         rememberSaveable {
             mutableStateOf(false)
         }
 
+    fun navigateAppSystemBack() {
+        if (
+            screen ==
+                AppScreen.HOME
+        ) {
+            showExitConfirmation =
+                true
+
+            return
+        }
+
+        if (
+            screen ==
+                AppScreen.ONBOARDING
+        ) {
+            return
+        }
+
+        val previous =
+            appScreenBackStack
+                .lastOrNull()
+
+        if (
+            previous ==
+                null
+        ) {
+            screen =
+                AppScreen.HOME
+
+            return
+        }
+
+        if (
+            previous.first ==
+                AppScreen.BUILDER
+        ) {
+            step =
+                previous.second
+        }
+
+        /*
+         * Do not manually pop here.
+         * APP_SCREEN_HISTORY_V1 recognizes that the destination equals the
+         * current stack top and removes it exactly once after navigation.
+         */
+        screen =
+            previous.first
+    }
+
     BackHandler(
         enabled =
-            screen !=
-                AppScreen.ONBOARDING &&
+            screen ==
+                AppScreen.HOME &&
             !showExitConfirmation
     ) {
-        when (screen) {
-            AppScreen.HOME ->
-                showExitConfirmation =
-                    true
-
-            AppScreen.EXCEL_TOOLS ->
-                screen =
-                    AppScreen.OTHER_APPS
-
-            AppScreen.OTHER_APPS,
-            AppScreen.MODE_SELECT,
-            AppScreen.QUICK,
-            AppScreen.BUILDER,
-            AppScreen.LIBRARY,
-            AppScreen.ADMIN_OPS,
-            AppScreen.TASKS ->
-                screen =
-                    AppScreen.HOME
-
-            AppScreen.TERMINAL -> {
-                screen =
-                    terminalReturnScreen
-
-                if (
-                    terminalReturnScreen ==
-                        AppScreen.BUILDER
-                ) {
-                    step =
-                        terminalReturnStep
-                }
-            }
-
-            AppScreen.ONBOARDING ->
-                Unit
-
-            else ->
-                returnFromWorkspace()
-        }
+        showExitConfirmation =
+            true
     }
 
     var serverUrl by remember { mutableStateOf(draft.buildServiceUrl) }
@@ -6198,6 +6302,30 @@ onOpenPro = {
                 }
                     }
             }
+
+            /*
+             * LATE_APP_ROUTE_BACK_HANDLER_V1
+             *
+             * Compose dispatches to the last composed enabled BackHandler.
+             * Register this after the active route so every normal
+             * AppForge page obeys the central screen history.
+             *
+             * HOME and TERMINAL deliberately keep their specialized
+             * handlers.
+             */
+            if (
+                visibleScreen !=
+                    AppScreen.HOME &&
+                visibleScreen !=
+                    AppScreen.TERMINAL &&
+                visibleScreen !=
+                    AppScreen.ONBOARDING
+            ) {
+                BackHandler {
+                    navigateAppSystemBack()
+                }
+            }
+
         }
     }
 }
