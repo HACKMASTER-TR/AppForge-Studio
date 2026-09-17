@@ -1,0 +1,650 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def command(
+    args: list[str],
+    *,
+    check: bool = False,
+    timeout: int = 20,
+) -> subprocess.CompletedProcess[str]:
+    try:
+        result = subprocess.run(
+            args,
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(
+            args,
+            124,
+            "",
+            "timeout",
+        )
+
+    if check and result.returncode != 0:
+        sys.stdout.write(result.stdout or "")
+        sys.stderr.write(result.stderr or "")
+        raise SystemExit(result.returncode)
+
+    return result
+
+
+def git_out(*args: str) -> str:
+    result = command(
+        ["git", *args],
+        check=True,
+    )
+
+    return (result.stdout or "").strip()
+
+
+def github_repo() -> str:
+    remote = git_out(
+        "remote",
+        "get-url",
+        "origin",
+    )
+
+    if remote.startswith("git@github.com:"):
+        slug = remote.split(":", 1)[1]
+
+    elif "github.com/" in remote:
+        slug = remote.split(
+            "github.com/",
+            1,
+        )[1]
+
+    else:
+        raise SystemExit(
+            "BLOCKED: origin GitHub repository değil."
+        )
+
+    slug = (
+        slug
+        .removesuffix(".git")
+        .strip("/")
+    )
+
+    if slug.count("/") != 1:
+        raise SystemExit(
+            "BLOCKED: repository slug çözülemedi."
+        )
+
+    return slug
+
+
+def github_token() -> str:
+    for name in (
+        "GH_TOKEN",
+        "GITHUB_TOKEN",
+    ):
+        value = str(
+            os.environ.get(name)
+            or ""
+        ).strip()
+
+        if value:
+            return value
+
+    result = command(
+        [
+            "gh",
+            "auth",
+            "token",
+        ],
+        timeout=15,
+    )
+
+    if result.returncode != 0:
+        return ""
+
+    return (
+        result.stdout
+        or ""
+    ).strip()
+
+
+def github_get(
+    path: str,
+    token: str,
+) -> dict:
+    url = (
+        "https://api.github.com/"
+        + path.lstrip("/")
+    )
+
+    request = urllib.request.Request(
+        url,
+        method="GET",
+        headers={
+            "Authorization":
+                f"Bearer {token}",
+            "Accept":
+                "application/vnd.github+json",
+            "X-GitHub-Api-Version":
+                "2022-11-28",
+            "User-Agent":
+                "AppForge-Delivery-Preflight",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(
+            request,
+            timeout=20,
+        ) as response:
+            raw = response.read().decode(
+                "utf-8",
+                errors="replace",
+            )
+
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(
+            "GitHub REST HTTP "
+            f"{exc.code}"
+        ) from exc
+
+    except urllib.error.URLError as exc:
+        raise RuntimeError(
+            "GitHub REST network error: "
+            f"{exc.reason}"
+        ) from exc
+
+    data = json.loads(raw)
+
+    if not isinstance(data, dict):
+        raise RuntimeError(
+            "GitHub REST response is not an object"
+        )
+
+    return data
+
+
+def changed_files() -> list[str]:
+    names: set[str] = set()
+
+    commands = [
+        (
+            "diff",
+            "--name-only",
+            "origin/main...HEAD",
+        ),
+        (
+            "diff",
+            "--name-only",
+        ),
+        (
+            "diff",
+            "--cached",
+            "--name-only",
+        ),
+        (
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+        ),
+    ]
+
+    for args in commands:
+        result = command(
+            ["git", *args],
+        )
+
+        if result.returncode != 0:
+            continue
+
+        for raw in (
+            result.stdout
+            or ""
+        ).splitlines():
+            value = raw.strip()
+
+            if value:
+                names.add(value)
+
+    return sorted(names)
+
+
+def is_android_host() -> bool:
+    try:
+        release = (
+            os.uname()
+            .release
+            .lower()
+        )
+    except Exception:
+        release = ""
+
+    return (
+        Path(
+            "/system/bin/app_process"
+        ).exists()
+        or "android" in release
+        or bool(
+            os.environ.get(
+                "TERMUX_VERSION"
+            )
+        )
+    )
+
+
+def scope_for(
+    files: list[str],
+) -> dict:
+    android = any(
+        path.startswith(
+            "android-app/"
+        )
+        for path in files
+    )
+
+    backend = any(
+        path.startswith(
+            "build-service/"
+        )
+        and not path.startswith(
+            "build-service/tests/"
+        )
+        for path in files
+    )
+
+    control_only = bool(files) and all(
+        (
+            path.startswith(
+                "build-service/tests/"
+            )
+            or path.startswith(
+                "scripts/"
+            )
+            or path.startswith(
+                "docs/"
+            )
+            or path.startswith(
+                ".appforge/"
+            )
+            or path.startswith(
+                ".github/"
+            )
+            or path.endswith(".md")
+        )
+        for path in files
+    )
+
+    return {
+        "android": android,
+        "backend": backend,
+        "control_only": control_only,
+    }
+
+
+def play_state(
+    repo: str,
+    token: str,
+) -> dict:
+    try:
+        payload = github_get(
+            (
+                f"repos/{repo}/"
+                "actions/workflows/"
+                "android-play-release.yml/"
+                "runs?per_page=1"
+            ),
+            token,
+        )
+    except Exception as exc:
+        return {
+            "state": "UNVERIFIED",
+            "reason": str(exc),
+        }
+
+    runs = payload.get(
+        "workflow_runs",
+        [],
+    )
+
+    if not runs:
+        return {
+            "state": "UNVERIFIED",
+            "reason":
+                "no Play workflow run found",
+        }
+
+    run = runs[0]
+
+    status = str(
+        run.get("status")
+        or "unknown"
+    )
+
+    conclusion = str(
+        run.get("conclusion")
+        or "-"
+    )
+
+    if (
+        status == "completed"
+        and conclusion == "success"
+    ):
+        return {
+            "state": "READY",
+            "reason":
+                "latest Play workflow SUCCESS",
+        }
+
+    return {
+        "state": "BLOCKED",
+        "reason":
+            (
+                "latest Play workflow "
+                f"{status}/{conclusion}"
+            ),
+    }
+
+
+def preflight() -> dict:
+    repo = github_repo()
+    token = github_token()
+
+    if not token:
+        raise SystemExit(
+            "BLOCKED: GitHub auth token alınamadı."
+        )
+
+    try:
+        metadata = github_get(
+            f"repos/{repo}",
+            token,
+        )
+    except Exception as exc:
+        raise SystemExit(
+            "BLOCKED: direct GitHub REST: "
+            f"{exc}"
+        )
+
+    gh_probe = command(
+        [
+            "gh",
+            "api",
+            f"repos/{repo}",
+        ],
+        timeout=15,
+    )
+
+    gh_transport = (
+        "PASS"
+        if gh_probe.returncode == 0
+        else "DEGRADED"
+    )
+
+    permissions = (
+        metadata.get("permissions")
+        or {}
+    )
+
+    push_permission = (
+        permissions.get("push")
+    )
+
+    allow_auto_merge = bool(
+        metadata.get(
+            "allow_auto_merge",
+            False,
+        )
+    )
+
+    files = changed_files()
+    scope = scope_for(files)
+    play = play_state(
+        repo,
+        token,
+    )
+
+    if scope["android"]:
+        device_test = "REQUIRED"
+    else:
+        device_test = "NOT_REQUIRED"
+
+    if scope["backend"]:
+        railway = (
+            "POST_MERGE_VALIDATION_REQUIRED"
+        )
+    else:
+        railway = "NOT_REQUIRED"
+
+    if scope["android"]:
+        if play["state"] == "READY":
+            versioned_release = "ELIGIBLE"
+            play_publish = "ELIGIBLE"
+        else:
+            versioned_release = "SKIP"
+            play_publish = "SKIP"
+    else:
+        versioned_release = "NOT_APPLICABLE"
+        play_publish = "NOT_APPLICABLE"
+
+    if scope["control_only"]:
+        pipeline_mode = "FAST"
+    elif files:
+        pipeline_mode = "FULL"
+    else:
+        pipeline_mode = "NO_CHANGES"
+
+    result = {
+        "repository": repo,
+        "branch":
+            git_out(
+                "branch",
+                "--show-current",
+            ),
+        "github_rest": "PASS",
+        "github_gh_transport":
+            gh_transport,
+        "pr_write":
+            (
+                "PASS"
+                if push_permission is True
+                else "UNKNOWN"
+            ),
+        "auto_merge":
+            (
+                "AVAILABLE"
+                if allow_auto_merge
+                else "UNAVAILABLE"
+            ),
+        "auto_merge_fallback":
+            (
+                None
+                if allow_auto_merge
+                else "MERGE_AFTER_CI"
+            ),
+        "pipeline_mode":
+            pipeline_mode,
+        "railway":
+            railway,
+        "play_state":
+            play["state"],
+        "play_reason":
+            play["reason"],
+        "versioned_release":
+            versioned_release,
+        "play_publish":
+            play_publish,
+        "android_device_test":
+            device_test,
+        "android_host":
+            is_android_host(),
+        "changed_files":
+            files,
+    }
+
+    return result
+
+
+def print_report(
+    result: dict,
+) -> None:
+    print(
+        "=== APPFORGE DELIVERY PREFLIGHT ==="
+    )
+
+    print(
+        "Repository ................ "
+        + result["repository"]
+    )
+
+    print(
+        "Branch .................... "
+        + result["branch"]
+    )
+
+    print(
+        "GitHub REST ............... "
+        + result["github_rest"]
+    )
+
+    transport = result[
+        "github_gh_transport"
+    ]
+
+    if transport == "PASS":
+        transport_text = "PASS"
+    else:
+        transport_text = (
+            "DEGRADED -> "
+            "DIRECT REST AVAILABLE"
+        )
+
+    print(
+        "GitHub gh transport ....... "
+        + transport_text
+    )
+
+    print(
+        "PR write .................. "
+        + result["pr_write"]
+    )
+
+    if result["auto_merge"] == "AVAILABLE":
+        auto_merge_text = "AVAILABLE"
+    else:
+        auto_merge_text = (
+            "UNAVAILABLE -> "
+            "FALLBACK: MERGE AFTER CI"
+        )
+
+    print(
+        "Auto-merge ................ "
+        + auto_merge_text
+    )
+
+    print(
+        "Pipeline mode ............. "
+        + result["pipeline_mode"]
+    )
+
+    print(
+        "Railway ................... "
+        + result["railway"]
+    )
+
+    print(
+        "Play production ........... "
+        + result["play_state"]
+        + " ("
+        + result["play_reason"]
+        + ")"
+    )
+
+    print(
+        "GitHub versioned release .. "
+        + result["versioned_release"]
+    )
+
+    print(
+        "Play publish .............. "
+        + result["play_publish"]
+    )
+
+    print(
+        "Android device test ....... "
+        + result["android_device_test"]
+    )
+
+    print(
+        "Android/proot host ........ "
+        + (
+            "YES"
+            if result["android_host"]
+            else "NO"
+        )
+    )
+
+    print()
+    print("PIPELINE PLAN")
+
+    print(
+        "preflight -> test -> security -> "
+        "SecondBrain -> PR -> CI"
+    )
+
+    if result["auto_merge"] == "AVAILABLE":
+        print("merge: AUTO CAPABLE")
+    else:
+        print(
+            "merge: FALLBACK AFTER CI"
+        )
+
+    if (
+        result["play_publish"]
+        == "SKIP"
+    ):
+        print(
+            "release/play: SKIPPED "
+            "BEFORE DELIVERY"
+        )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="appforge-delivery-preflight"
+    )
+
+    parser.add_argument(
+        "--json",
+        action="store_true",
+    )
+
+    args = parser.parse_args()
+
+    result = preflight()
+
+    if args.json:
+        print(
+            json.dumps(
+                result,
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+    else:
+        print_report(result)
+
+
+if __name__ == "__main__":
+    main()

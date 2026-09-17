@@ -2989,6 +2989,11 @@ def autopilot():
 
     with Lock():
         print("=== APPFORGE FULL AUTOPILOT / FAIL-STOP ===")
+
+        # Delivery capability must be known before Autopilot mutates
+        # release/repository state.
+        preflight = delivery_preflight_result()
+
         state_write("TESTING", mode="FULL_AUTOPILOT")
         prepare_release_version()
         local_gate()
@@ -3045,8 +3050,63 @@ def autopilot():
         play_result = {"status": "NOT_APPLICABLE"}
 
         if any(item.startswith("android-app/") for item in source_files):
-            versioned_release = ensure_versioned_release(main_sha)
-            play_result = wait_play_publish(main_sha)
+            release_capability = preflight.get(
+                "versioned_release"
+            )
+            play_capability = preflight.get(
+                "play_publish"
+            )
+
+            if (
+                release_capability == "ELIGIBLE"
+                and play_capability == "ELIGIBLE"
+            ):
+                versioned_release = ensure_versioned_release(
+                    main_sha
+                )
+                play_result = wait_play_publish(
+                    main_sha
+                )
+            else:
+                play_state = str(
+                    preflight.get(
+                        "play_state"
+                    )
+                    or "UNVERIFIED"
+                )
+
+                play_reason = str(
+                    preflight.get(
+                        "play_reason"
+                    )
+                    or "delivery preflight did not authorize Android distribution"
+                )
+
+                versioned_release = {
+                    "status": "SKIPPED_BY_PREFLIGHT",
+                    "capability": release_capability,
+                    "play_state": play_state,
+                    "reason": play_reason,
+                }
+
+                play_result = {
+                    "status": "SKIPPED_BY_PREFLIGHT",
+                    "capability": play_capability,
+                    "play_state": play_state,
+                    "reason": play_reason,
+                }
+
+                print(
+                    "GITHUB VERSIONED RELEASE: "
+                    "SKIPPED_BY_PREFLIGHT "
+                    f"({play_state}: {play_reason})"
+                )
+
+                print(
+                    "GOOGLE PLAY PUBLISH: "
+                    "SKIPPED_BY_PREFLIGHT "
+                    f"({play_state}: {play_reason})"
+                )
         else:
             print("RELEASE/PUBLISH: NOT_APPLICABLE (no Android distribution change)")
 
@@ -3407,6 +3467,122 @@ def report():
         return
     print(reports[-1].read_text(encoding="utf-8"))
 
+
+def delivery_preflight_result():
+    """
+    Execute the isolated Delivery Preflight implementation in-process
+    without invoking its CLI main() entry point.
+
+    The probe is read-only and must run before Autopilot mutates
+    repository/release state.
+    """
+    import runpy
+
+    script = (
+        ROOT
+        / "scripts"
+        / "appforge-delivery-preflight"
+    )
+
+    if not script.is_file():
+        raise SystemExit(
+            "BLOCKED: delivery preflight script missing."
+        )
+
+    try:
+        namespace = runpy.run_path(
+            str(script),
+            run_name="appforge_delivery_preflight",
+        )
+    except SystemExit:
+        raise
+    except Exception as exc:
+        raise SystemExit(
+            "BLOCKED: delivery preflight loader failed: "
+            f"{exc}"
+        ) from exc
+
+    probe = namespace.get(
+        "preflight"
+    )
+
+    reporter = namespace.get(
+        "print_report"
+    )
+
+    if not callable(probe):
+        raise SystemExit(
+            "BLOCKED: delivery preflight implementation "
+            "does not expose preflight()."
+        )
+
+    result = probe()
+
+    if not isinstance(result, dict):
+        raise SystemExit(
+            "BLOCKED: delivery preflight returned "
+            "an invalid result."
+        )
+
+    required_keys = {
+        "github_rest",
+        "github_gh_transport",
+        "pr_write",
+        "auto_merge",
+        "pipeline_mode",
+        "railway",
+        "play_state",
+        "versioned_release",
+        "play_publish",
+        "android_device_test",
+    }
+
+    missing = sorted(
+        required_keys
+        - set(result)
+    )
+
+    if missing:
+        raise SystemExit(
+            "BLOCKED: delivery preflight result missing: "
+            + ", ".join(missing)
+        )
+
+    if callable(reporter):
+        reporter(result)
+
+    return result
+
+def delivery_preflight():
+    script = (
+        ROOT
+        / "scripts"
+        / "appforge-delivery-preflight"
+    )
+
+    if not script.is_file():
+        raise SystemExit(
+            "BLOCKED: delivery preflight script missing."
+        )
+
+    print(
+        "=== APPFORGE DELIVERY PREFLIGHT ==="
+    )
+
+    result = run(
+        [
+            sys.executable,
+            str(script),
+        ],
+        check=False,
+    )
+
+    if result.returncode != 0:
+        raise SystemExit(
+            result.returncode
+        )
+
+
 def status():
     latest = {}
     if LATEST_STATE.exists():
@@ -3449,7 +3625,7 @@ def main():
 
     for name in [
         "status", "doctor", "test", "security", "dashboard",
-        "ci", "report", "autopilot", "submit", "resume", "merge",
+        "ci", "report", "preflight", "autopilot", "submit", "resume", "merge",
         "recover", "release", "deploy", "rollback"
     ]:
         sub.add_parser(name)
@@ -3462,6 +3638,7 @@ def main():
         "dashboard",
         "ci",
         "report",
+        "preflight",
         "autopilot",
         "submit",
         "resume",
@@ -3495,6 +3672,8 @@ def main():
         ci()
     elif args.cmd == "report":
         report()
+    elif args.cmd == "preflight":
+        delivery_preflight()
     elif args.cmd == "autopilot":
         autopilot()
     elif args.cmd == "submit":
