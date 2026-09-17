@@ -189,6 +189,14 @@ jobs:
 
           echo "APK metadata + signature verified."
 
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppForgeStudio-debug-${{ github.sha }}
+          path: AppForgeStudio-latest.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Publish latest APK release
         if: github.ref == 'refs/heads/main'
         shell: bash
