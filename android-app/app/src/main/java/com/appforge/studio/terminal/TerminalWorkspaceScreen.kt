@@ -1094,7 +1094,28 @@ fun TerminalWorkspaceScreen(
         }
     }
 
-    BackHandler(onBack = onBack)
+    /*
+     * Android back follows the Terminal's local navigation first.
+     *
+     * Any secondary Terminal tab returns to the Terminal tab.
+     * A second back from the Terminal tab returns to the parent
+     * AppForge screen.
+     */
+    BackHandler {
+        when {
+            pendingDangerousCommand != null ->
+                pendingDangerousCommand =
+                    null
+
+            selectedTab !=
+                TerminalWorkspaceTab.TERMINAL ->
+                selectedTab =
+                    TerminalWorkspaceTab.TERMINAL
+
+            else ->
+                onBack()
+        }
+    }
 
     pendingDangerousCommand
         ?.let { pending ->

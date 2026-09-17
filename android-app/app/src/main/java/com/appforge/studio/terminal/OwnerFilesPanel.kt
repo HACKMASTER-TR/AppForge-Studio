@@ -189,6 +189,13 @@ private fun migrateLegacyOwnerFiles(
         downloads
             .listFiles()
             .orEmpty()
+            .filterNot { source ->
+                source.name.startsWith(".") ||
+                    source.name.endsWith(
+                        ".part",
+                        ignoreCase = true
+                    )
+            }
             .forEach { source ->
                 moveLegacyItem(
                     source,
@@ -196,14 +203,10 @@ private fun migrateLegacyOwnerFiles(
                 )
             }
 
-        if (
-            downloads
-                .listFiles()
-                .orEmpty()
-                .isEmpty()
-        ) {
-            downloads.delete()
-        }
+        /*
+         * AppForgeDownloads is a permanent bridge between the Linux
+         * terminal and the Android owner APK vault. Never delete it.
+         */
     }
 
     /*
@@ -316,7 +319,7 @@ private fun moveLegacyItem(
             .filter { existing ->
                 existing.isFile &&
                     Regex(
-                        """(?i)^AppForgeStudio-latest(?:_\d+)?\.apk$"""
+                        """(?i)^AppForgeStudio-(?:latest|[0-9a-f]{7,40})(?:_\d+)?\.apk$"""
                     ).matches(
                         existing.name
                     )

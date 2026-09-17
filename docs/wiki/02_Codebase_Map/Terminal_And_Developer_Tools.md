@@ -15,6 +15,9 @@ related:
   - "[[Bug_Index]]"
 source_files:
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerFilesPanel.kt"
+  - "build-service/tests/appforge_terminal_back_navigation_contract.test.js"
+  - "build-service/tests/appforge_latest_apk_replace_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LocalTerminalEngine.kt"
@@ -80,3 +83,19 @@ run's non-expired `AppForgeStudio-debug-*` artifact. If no successful
 artifact exists for the exact HEAD, the command stops instead of silently
 installing an older AppForge Studio Release APK. Other GitHub projects keep
 the generic latest-Release behavior.
+
+## Terminal system back and APK bridge stability
+
+Android system back is consumed locally inside Terminal before leaving the
+Terminal route. When a secondary Terminal tab is active, one system-back
+action returns to the Terminal tab; only system back from the Terminal tab
+returns to the parent AppForge screen. Dangerous-command confirmation is
+dismissed before navigation.
+
+`/workspace/AppForgeDownloads` is a permanent Linux-to-Android owner APK
+bridge. Owner-file synchronization must not delete the bridge or import
+hidden/`.part` publication files. `appforge-apk` recreates the bridge before
+atomic publication and exposes only the completed
+`AppForgeStudio-latest.apk`. The owner APK vault treats AppForge latest and
+commit-named AppForge update APKs as one self-update family so stale update
+copies are removed without touching project APK/EXE artifacts.

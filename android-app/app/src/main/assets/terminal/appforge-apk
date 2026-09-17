@@ -311,7 +311,11 @@ if [ "$repo" = "HACKMASTER-TR/AppForge-Studio" ]; then
     fi
 
     destination="$download_dir/AppForgeStudio-latest.apk"
-    partial="$destination.part"
+    partial="$download_dir/.AppForgeStudio-latest.apk.part"
+
+    # AppForge Dosyaları senkronu aynı anda açık olsa bile
+    # köprü klasörü publication öncesi mutlaka mevcut olsun.
+    mkdir -p "$download_dir"
 
     rm -f "$partial"
 
@@ -319,7 +323,7 @@ if [ "$repo" = "HACKMASTER-TR/AppForge-Studio" ]; then
         "$apk" \
         "$partial"
 
-    mv \
+    mv -f \
         "$partial" \
         "$destination"
 
