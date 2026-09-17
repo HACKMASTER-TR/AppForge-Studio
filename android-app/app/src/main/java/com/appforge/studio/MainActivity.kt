@@ -996,6 +996,27 @@ private fun AppForgeApp() {
         }
 
     fun navigateAppSystemBack() {
+        /*
+         * BUILDER_STEP_SYSTEM_BACK_V1
+         *
+         * Builder steps 1..10 live inside the same AppScreen.BUILDER.
+         * Therefore AppScreen history cannot represent step transitions.
+         *
+         * Android system back must first move one Builder step backward.
+         * Only step 1 is allowed to leave Builder through AppScreen history.
+         */
+        if (
+            screen ==
+                AppScreen.BUILDER &&
+            step >
+                1
+        ) {
+            step -=
+                1
+
+            return
+        }
+
         if (
             screen ==
                 AppScreen.HOME

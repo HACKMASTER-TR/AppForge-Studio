@@ -92,3 +92,15 @@ test("Successful Builds keeps its nested Home back behavior", () => {
     /BackHandler\([\s\S]*successfulApkFolderOpen\.value[\s\S]*successfulApkFolderOpen\.value =[\s\S]*false/
   );
 });
+
+test("Builder system back moves through wizard steps before leaving Builder", () => {
+  assert.match(
+    mainActivity,
+    /BUILDER_STEP_SYSTEM_BACK_V1/
+  );
+
+  assert.match(
+    mainActivity,
+    /screen ==[\s\S]*AppScreen\.BUILDER[\s\S]*step >[\s\S]*1[\s\S]*step -=[\s\S]*1[\s\S]*return/
+  );
+});

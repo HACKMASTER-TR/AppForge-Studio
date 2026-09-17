@@ -81,3 +81,14 @@ its separately verified local tab-back behavior. Normal AppForge routes use
 a late route-level BackHandler so system back returns to the immediately
 previous AppForge screen. Returning to Builder also restores the captured
 Builder step. Reaching Home clears stale navigation history.
+
+## Builder Android system-back behavior
+
+Builder steps 1 through 10 live inside the same `AppScreen.BUILDER` route,
+so route history alone cannot represent wizard-step navigation.
+
+Android system back therefore consumes Builder steps first:
+`step > 1` moves to `step - 1`. Only Builder step 1 may leave the Builder
+through the normal AppScreen back history. This matches the Builder's
+visible Geri button behavior and prevents system back from jumping directly
+from step 2+ to Home.
