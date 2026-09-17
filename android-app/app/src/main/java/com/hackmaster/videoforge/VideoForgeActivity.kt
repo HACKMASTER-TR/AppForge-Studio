@@ -323,9 +323,9 @@ class VideoForgeActivity : AppCompatActivity() {
         body.addView(
             text(
                 if (proUnlocked) {
-                    "PRO • Sınırsız kullanım"
+                    "PRO • Kalan hak: ${OtherAppsUsageGate.remaining(this, OtherAppsUsageGate.Tool.VIDEO_FORGE, true)}/5"
                 } else {
-                    "Ücretsiz ortak hak: ${OtherAppsUsageGate.remaining(this)}/5"
+                    "FREE • Kalan hak: ${OtherAppsUsageGate.remaining(this, OtherAppsUsageGate.Tool.VIDEO_FORGE, false)}/1"
                 },
                 12f,
                 accent,
@@ -1324,33 +1324,52 @@ class VideoForgeActivity : AppCompatActivity() {
             OtherAppsUsageGate.consume(
                 this,
                 proUnlocked,
+                OtherAppsUsageGate.Tool.VIDEO_FORGE,
                 amount
             )
         ) {
             return true
         }
 
+        val message =
+            if (proUnlocked) {
+                "VideoForge için 5 PRO kullanım hakkını kullandın."
+            } else {
+                "VideoForge için 1 ücretsiz kullanım hakkını kullandın. PRO planda 5 kullanım hakkı vardır."
+            }
+
         status(
-            "5 ücretsiz ortak kullanım hakkın bitti. Devam etmek için PRO gerekli."
+            message
         )
 
-        AlertDialog.Builder(this)
-            .setTitle(
-                "PRO gerekli"
+        val dialog =
+            AlertDialog.Builder(
+                this
             )
-            .setMessage(
-                "Excel Tools ve VideoForge için toplam 5 ücretsiz kullanım hakkını kullandın. PRO ile sınırsız devam edebilirsin."
-            )
-            .setNegativeButton(
-                "Kapat",
-                null
-            )
-            .setPositiveButton(
+                .setTitle(
+                    if (proUnlocked) {
+                        "Kullanım hakkı doldu"
+                    } else {
+                        "PRO gerekli"
+                    }
+                )
+                .setMessage(
+                    message
+                )
+                .setNegativeButton(
+                    "Kapat",
+                    null
+                )
+
+        if (!proUnlocked) {
+            dialog.setPositiveButton(
                 "PRO'YA GEÇ"
             ) { _, _ ->
                 finish()
             }
-            .show()
+        }
+
+        dialog.show()
 
         return false
     }

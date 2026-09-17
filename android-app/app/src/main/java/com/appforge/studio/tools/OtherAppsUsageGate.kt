@@ -3,81 +3,142 @@ package com.appforge.studio.tools
 import android.content.Context
 
 /**
- * Excel Tools + VideoForge için ortak ücretsiz kullanım sayacı.
+ * Excel Tools ve VideoForge için cihaz-yerel kullanım sayacı.
  *
- * Free:
- *   Toplam 5 işlem.
+ * Sayaçlar araç bazında ayrıdır.
+ *
+ * FREE:
+ *   Excel Tools = 1 kullanım
+ *   VideoForge = 1 kullanım
  *
  * PRO:
- *   Sınırsız kullanım.
+ *   Excel Tools = 5 kullanım
+ *   VideoForge = 5 kullanım
  *
- * Sayaç cihazdaki uygulama verisinde saklanır.
+ * PRO entitlement bu sınıfın otoritesi değildir.
+ * proUnlocked, doğrulanmış dış entitlement durumundan gelir.
+ *
+ * Mevcut sayaç davranışı gibi kullanım bilgisi uygulama verisinde
+ * kalıcı tutulur; uygulama yeniden açıldığında sıfırlanmaz.
  */
 object OtherAppsUsageGate {
 
-    const val FREE_LIMIT = 5
+    enum class Tool(
+        val storageKey: String
+    ) {
+        EXCEL_TOOLS(
+            "excel_tools"
+        ),
+        VIDEO_FORGE(
+            "video_forge"
+        )
+    }
+
+    const val FREE_LIMIT =
+        1
+
+    const val PRO_LIMIT =
+        5
 
     private const val PREFS_NAME =
         "appforge_other_apps_usage"
 
-    private const val KEY_USED =
-        "shared_used"
+    private fun limit(
+        proUnlocked: Boolean
+    ): Int =
+        if (proUnlocked) {
+            PRO_LIMIT
+        } else {
+            FREE_LIMIT
+        }
+
+    private fun key(
+        tool: Tool,
+        proUnlocked: Boolean
+    ): String =
+        "used_v2_${tool.storageKey}_${if (proUnlocked) "pro" else "free"}"
 
     fun used(
-        context: Context
-    ): Int =
-        context
+        context: Context,
+        tool: Tool,
+        proUnlocked: Boolean
+    ): Int {
+        val max =
+            limit(
+                proUnlocked
+            )
+
+        return context
             .getSharedPreferences(
                 PREFS_NAME,
                 Context.MODE_PRIVATE
             )
             .getInt(
-                KEY_USED,
+                key(
+                    tool,
+                    proUnlocked
+                ),
                 0
             )
             .coerceIn(
                 0,
-                FREE_LIMIT
+                max
             )
+    }
 
     fun remaining(
-        context: Context
+        context: Context,
+        tool: Tool,
+        proUnlocked: Boolean
     ): Int =
         (
-            FREE_LIMIT -
-                used(context)
-        ).coerceAtLeast(0)
+            limit(
+                proUnlocked
+            ) -
+                used(
+                    context,
+                    tool,
+                    proUnlocked
+                )
+        ).coerceAtLeast(
+            0
+        )
 
     fun canUse(
         context: Context,
         proUnlocked: Boolean,
+        tool: Tool,
         amount: Int = 1
     ): Boolean {
-
-        if (proUnlocked) {
-            return true
-        }
-
         val required =
-            amount.coerceAtLeast(1)
+            amount.coerceAtLeast(
+                1
+            )
 
-        return remaining(context) >=
-            required
+        return remaining(
+            context,
+            tool,
+            proUnlocked
+        ) >= required
     }
 
     @Synchronized
     fun consume(
         context: Context,
         proUnlocked: Boolean,
+        tool: Tool,
         amount: Int = 1
     ): Boolean {
 
-        if (proUnlocked) {
-            return true
-        }
-
         val required =
-            amount.coerceAtLeast(1)
+            amount.coerceAtLeast(
+                1
+            )
+
+        val max =
+            limit(
+                proUnlocked
+            )
 
         val prefs =
             context.getSharedPreferences(
@@ -85,17 +146,26 @@ object OtherAppsUsageGate {
                 Context.MODE_PRIVATE
             )
 
+        val usageKey =
+            key(
+                tool,
+                proUnlocked
+            )
+
         val current =
             prefs
                 .getInt(
-                    KEY_USED,
+                    usageKey,
                     0
                 )
-                .coerceAtLeast(0)
+                .coerceAtLeast(
+                    0
+                )
 
         if (
-            current + required >
-            FREE_LIMIT
+            current +
+                required >
+            max
         ) {
             return false
         }
@@ -103,8 +173,9 @@ object OtherAppsUsageGate {
         return prefs
             .edit()
             .putInt(
-                KEY_USED,
-                current + required
+                usageKey,
+                current +
+                    required
             )
             .commit()
     }

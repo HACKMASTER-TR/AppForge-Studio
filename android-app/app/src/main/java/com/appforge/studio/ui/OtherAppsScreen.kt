@@ -98,17 +98,18 @@ fun OtherAppsScreen(
                         "XLSX, XLSM ve CSV dosyaları için cihaz üzerinde çalışan Excel araçları.",
                     status =
                         if (proUnlocked) {
-                            "PRO • Sınırsız kullanım"
+                            "PRO • Kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.EXCEL_TOOLS, true)}/5"
                         } else {
-                            "Ücretsiz ortak hak: ${OtherAppsUsageGate.remaining(context)}/5"
+                            "FREE • Kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.EXCEL_TOOLS, false)}/1"
                         },
                     onClick = {
                         if (
-                            proUnlocked ||
                             OtherAppsUsageGate.canUse(
                                 context,
-                                false
-                            )
+                                proUnlocked,
+                                OtherAppsUsageGate.Tool.EXCEL_TOOLS
+                            ) ||
+                            proUnlocked
                         ) {
                             onOpenExcelTools()
                         } else {
@@ -133,20 +134,21 @@ fun OtherAppsScreen(
                                 "64-bit ARM cihaz gerekli"
 
                             proUnlocked ->
-                                "PRO • Sınırsız kullanım • V4.1.2"
+                                "PRO • Kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.VIDEO_FORGE, true)}/5 • V4.1.2"
 
                             else ->
-                                "Ücretsiz ortak hak: ${OtherAppsUsageGate.remaining(context)}/5 • V4.1.2"
+                                "FREE • Kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.VIDEO_FORGE, false)}/1 • V4.1.2"
                         },
                     onClick =
                         if (videoForgeSupported) {
                             {
                                 if (
-                                    proUnlocked ||
                                     OtherAppsUsageGate.canUse(
                                         context,
-                                        false
-                                    )
+                                        proUnlocked,
+                                        OtherAppsUsageGate.Tool.VIDEO_FORGE
+                                    ) ||
+                                    proUnlocked
                                 ) {
                                     context.startActivity(
                                         Intent(

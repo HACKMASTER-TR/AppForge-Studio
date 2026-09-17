@@ -111,16 +111,27 @@ fun ExcelToolsScreen(
             if (
                 !OtherAppsUsageGate.consume(
                     context,
-                    proUnlocked
+                    proUnlocked,
+                    OtherAppsUsageGate.Tool.EXCEL_TOOLS
                 )
             ) {
                 statusTitle =
-                    "PRO gerekli"
+                    if (proUnlocked) {
+                        "Kullanım hakkı doldu"
+                    } else {
+                        "PRO gerekli"
+                    }
 
                 statusText =
-                    "Excel Tools ve VideoForge için toplam 5 ücretsiz kullanım hakkın bitti."
+                    if (proUnlocked) {
+                        "Excel Tools için 5 PRO kullanım hakkını kullandın."
+                    } else {
+                        "Excel Tools için 1 ücretsiz kullanım hakkını kullandın. PRO planda 5 kullanım hakkı vardır."
+                    }
 
-                onOpenPro()
+                if (!proUnlocked) {
+                    onOpenPro()
+                }
 
                 return@rememberLauncherForActivityResult
             }
@@ -256,9 +267,9 @@ fun ExcelToolsScreen(
                                 "✓ XLSX, XLSM ve CSV desteği\n" +
                                 "✓ Maksimum dosya boyutu: 80 MB\n" +
                                 if (proUnlocked) {
-                                    "✓ PRO: Sınırsız kullanım"
+                                    "✓ PRO kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.EXCEL_TOOLS, true)}/5"
                                 } else {
-                                    "✓ Ücretsiz ortak hak: ${OtherAppsUsageGate.remaining(context)}/5"
+                                    "✓ FREE kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.EXCEL_TOOLS, false)}/1"
                                 },
                             color = ExcelText,
                             fontSize = 13.sp,
@@ -268,10 +279,10 @@ fun ExcelToolsScreen(
                         Button(
                             onClick = {
                                 if (
-                                    proUnlocked ||
                                     OtherAppsUsageGate.canUse(
                                         context,
-                                        false
+                                        proUnlocked,
+                                        OtherAppsUsageGate.Tool.EXCEL_TOOLS
                                     )
                                 ) {
                                     picker.launch(
@@ -279,12 +290,22 @@ fun ExcelToolsScreen(
                                     )
                                 } else {
                                     statusTitle =
-                                        "PRO gerekli"
+                                        if (proUnlocked) {
+                                            "Kullanım hakkı doldu"
+                                        } else {
+                                            "PRO gerekli"
+                                        }
 
                                     statusText =
-                                        "5 ücretsiz ortak kullanım hakkın bitti. Devam etmek için PRO gerekli."
+                                        if (proUnlocked) {
+                                            "Excel Tools için 5 PRO kullanım hakkını kullandın."
+                                        } else {
+                                            "Excel Tools için 1 ücretsiz kullanım hakkını kullandın. PRO planda 5 kullanım hakkı vardır."
+                                        }
 
-                                    onOpenPro()
+                                    if (!proUnlocked) {
+                                        onOpenPro()
+                                    }
                                 }
                             },
                             enabled = !busy,

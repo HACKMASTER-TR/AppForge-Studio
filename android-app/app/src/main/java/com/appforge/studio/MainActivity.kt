@@ -419,7 +419,7 @@ private fun installDownloadedApkUri(
 }
 
 private const val APPFORGE_DOWNLOAD_FOLDER =
-    "AppForge Studio"
+    "AppForgeStudio"
 
 private fun formatDownloadedArtifactSize(
     bytes: Long
@@ -4216,6 +4216,12 @@ private fun AppForgeApp() {
                         accountEmail =
                             session
                                 ?.email,
+
+                        buildServiceUrl =
+                            serverUrl,
+
+                        buildApiKey =
+                            apiKey,
 
                         onCreateQuick = {
                             val fresh =
@@ -19826,7 +19832,7 @@ private fun BuildStep(
                                          * canonical user-visible download.
                                          *
                                          * Successful APKs reads the exact
-                                         * Downloads/AppForge Studio folder,
+                                         * Downloads/AppForgeStudio folder,
                                          * so owner access must never bypass
                                          * this publication step.
                                          */
@@ -19846,7 +19852,7 @@ private fun BuildStep(
                                             !publishedToDownloads
                                         ) {
                                             error(
-                                                "APK Downloads/AppForge Studio klasörüne kaydedilemedi."
+                                                "APK Downloads/AppForgeStudio klasörüne kaydedilemedi."
                                             )
                                         }
 
@@ -19915,7 +19921,7 @@ private fun BuildStep(
                                         "OWNER_AND_DOWNLOADS" ->
                                             "✅ APK indirildi • " +
                                                 sizeText +
-                                                " • Downloads/AppForge Studio ve " +
+                                                " • Downloads/AppForgeStudio ve " +
                                                 "AppForge Dosyaları/APK bölümüne kaydedildi."
 
                                         "OWNER" ->
@@ -19926,7 +19932,7 @@ private fun BuildStep(
                                         "DOWNLOADS" ->
                                             "✅ APK indirildi • " +
                                                 sizeText +
-                                                " • Downloads/AppForge Studio klasörüne kaydedildi."
+                                                " • Downloads/AppForgeStudio klasörüne kaydedildi."
 
                                         else ->
                                             "✅ APK indirildi • " +
@@ -20135,7 +20141,7 @@ private fun BuildStep(
                                 )
 
                                 downloadMessage =
-                                    "AAB indiriliyor • Downloads/AppForge Studio klasörüne kaydedilecek."
+                                    "AAB indiriliyor • Downloads/AppForgeStudio klasörüne kaydedilecek."
                             } catch (
                                 t: Throwable
                             ) {
@@ -20255,7 +20261,7 @@ private fun BuildStep(
                                     }
 
                                     downloadMessage =
-                                        "✅ Windows EXE Downloads/AppForge Studio klasörüne kaydedildi."
+                                        "✅ Windows EXE Downloads/AppForgeStudio klasörüne kaydedildi."
 
                                 } catch (
                                     t: Throwable

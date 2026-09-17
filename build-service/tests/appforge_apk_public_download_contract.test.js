@@ -65,7 +65,7 @@ test(
 );
 
 test(
-  "Successful APKs reads the same public Downloads folder",
+  "Successful Builds reads AppForgeStudio with legacy compatibility",
   async () => {
     const folder = await read(
       "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
@@ -83,10 +83,20 @@ test(
 
     assert.match(
       folder,
-      /AppForge Studio/
+      /PUBLIC_FOLDER\s*=\s*\n?\s*"AppForgeStudio"/
     );
 
-    assert.ok(folder.includes('endsWith(".apk",true)'));
+    assert.match(
+      folder,
+      /LEGACY_PUBLIC_FOLDER\s*=\s*\n?\s*"AppForge Studio"/
+    );
 
+    assert.match(folder, /ANDROID_APK/);
+    assert.match(folder, /ANDROID_AAB/);
+    assert.match(folder, /WINDOWS_PORTABLE_EXE/);
+    assert.doesNotMatch(
+      folder,
+      /endsWith\("\.apk",true\)/
+    );
   }
 );

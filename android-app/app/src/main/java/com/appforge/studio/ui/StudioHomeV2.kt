@@ -107,12 +107,12 @@ private object CopyV2 {
         "free" to "FREE",
         "login" to "GİRİŞ YAP",
         "updated" to "Güncellendi",
-        "successful_apks" to "Başarılı APK'lar",
-        "apk_search" to "APK ara",
+        "successful_apks" to "Başarılı Derlemeler",
+        "apk_search" to "Derleme ara",
         "newest_first" to "Yeni → Eski",
         "oldest_first" to "Eski → Yeni",
-        "no_successful_apks" to "Henüz başarılı APK yok",
-        "apk_ready" to "APK hazır",
+        "no_successful_apks" to "Henüz başarılı derleme yok",
+        "apk_ready" to "Derleme hazır",
         "view_all_builds" to "Tüm derlemeleri gör"
     )
 
@@ -154,12 +154,12 @@ private object CopyV2 {
         "free" to "FREE",
         "login" to "SIGN IN",
         "updated" to "Updated",
-        "successful_apks" to "Successful APKs",
-        "apk_search" to "Search APKs",
+        "successful_apks" to "Successful Builds",
+        "apk_search" to "Search builds",
         "newest_first" to "Newest → Oldest",
         "oldest_first" to "Oldest → Newest",
-        "no_successful_apks" to "No successful APKs yet",
-        "apk_ready" to "APK ready",
+        "no_successful_apks" to "No successful builds yet",
+        "apk_ready" to "Build ready",
         "view_all_builds" to "View all builds"
     )
 
@@ -276,6 +276,8 @@ private object CopyV2 {
 fun StudioHomeV2(
     proUnlocked: Boolean,
     accountEmail: String?,
+    buildServiceUrl: String,
+    buildApiKey: String,
     onCreateQuick: () -> Unit,
     onCreateAdvanced: () -> Unit,
     onCreateConversion: () -> Unit,
@@ -377,8 +379,21 @@ fun StudioHomeV2(
 
     if (successfulApkFolderOpen.value) {
         DownloadedApkFolderScreen(
-            onBack = { successfulApkFolderOpen.value = false },
-            onInstall = { uri, name -> onInstallDownloadedApk(uri, name) }
+            onBack = {
+                successfulApkFolderOpen.value = false
+            },
+            onInstall = {
+                uri,
+                name ->
+                onInstallDownloadedApk(
+                    uri,
+                    name
+                )
+            },
+            buildServiceUrl =
+                buildServiceUrl,
+            buildApiKey =
+                buildApiKey
         )
         return
     }
@@ -781,7 +796,7 @@ fun StudioHomeV2(
                         Column(Modifier.weight(1f)) {
                             Text(t("successful_apks"), color=V2Text, fontWeight=FontWeight.Black, fontSize=18.sp)
                             Text(
-                                "Yalnız Downloads/AppForge Studio klasörüne gerçekten indirilen .apk dosyaları",
+                                "Başarılı APK, AAB ve Windows Portable EXE çıktıları • AppForgeStudio klasörüne kaydet, paylaş veya çöpe taşı",
                                 color=V2Muted, fontSize=12.sp, lineHeight=17.sp
                             )
                         }
