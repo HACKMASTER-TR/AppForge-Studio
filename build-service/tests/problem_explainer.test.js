@@ -197,3 +197,37 @@ test(
     );
   }
 );
+
+test(
+  "unsupported toolchain is explained as Worker registry responsibility",
+  () => {
+    const problem =
+      explainAppForgeProblem({
+        code:
+          "SOURCE_TOOLCHAIN_UNSUPPORTED",
+        message:
+          "SOURCE_TOOLCHAIN_UNSUPPORTED: Proje NDK 29.0 istiyor ancak production Source Worker registry bu sürümü desteklemiyor.",
+        status: 422
+      });
+
+    assert.equal(
+      problem.code,
+      "SOURCE_TOOLCHAIN_UNSUPPORTED"
+    );
+
+    assert.equal(
+      problem.category,
+      "Worker toolchain"
+    );
+
+    assert.match(
+      problem.reason,
+      /NDK 29\.0/
+    );
+
+    assert.match(
+      problem.solution,
+      /kullanıcı kodu hatası değildir/i
+    );
+  }
+);

@@ -58,6 +58,11 @@ internal class BuildRuntimeState {
             emptyList()
         )
 
+    val buildProjectKey =
+        mutableStateOf<String?>(
+            null
+        )
+
     val buildId =
         mutableStateOf<String?>(
             null

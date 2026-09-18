@@ -275,6 +275,18 @@ object AppForgeBuildErrorAdvisor {
                 confidence = 99
             ),
             Rule(
+                category = "Worker toolchain",
+                title = "Source Worker toolchain desteklenmiyor",
+                needles = listOf(
+                    "source_toolchain_unsupported",
+                    "production source worker registry",
+                    "toolchain preflight"
+                ),
+                reason = "Projenin istediği Android/Gradle/NDK/CMake/JDK sürüm kombinasyonu production Source Worker registry tarafından karşılanmıyor.",
+                solution = "Bu kullanıcı kodu hatası değildir. Eksik sürümü Source Worker registry/image içine ekle veya registry tarafından desteklenen proje toolchain sürümünü kullan.",
+                confidence = 100
+            ),
+            Rule(
                 category = "SDK",
                 title = "Android SDK / Build Tools eksik",
                 needles = listOf(

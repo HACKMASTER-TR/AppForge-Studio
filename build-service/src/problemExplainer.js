@@ -168,6 +168,41 @@ const RULES = [
       "ZIP içinde kullandığın teknolojiye ait ana proje dosyalarının bulunduğunu kontrol et."
   },
 
+
+  {
+    code: "SOURCE_TOOLCHAIN_UNSUPPORTED",
+    title: "Source Worker toolchain sürümü desteklenmiyor",
+    category: "Worker toolchain",
+    confidence: 100,
+    test: ({ code, text }) =>
+      code ===
+        "SOURCE_TOOLCHAIN_UNSUPPORTED" ||
+      containsAny(text, [
+        "source_toolchain_unsupported",
+        "production source worker registry"
+      ]),
+    reason: ({ evidence, text }) => {
+      const source =
+        clean(
+          evidence ||
+          text
+        );
+
+      return source
+        .toLowerCase()
+        .includes(
+          "production source worker registry"
+        )
+          ? source.replace(
+              /^source_toolchain_unsupported:\s*/i,
+              ""
+            )
+          : "Projenin istediği Android/Gradle toolchain kombinasyonu production Source Worker registry tarafından doğrulanmış değil.";
+    },
+    solution:
+      "Bu kullanıcı kodu hatası değildir. Eksik veya uyumsuz sürüm Source Worker registry/image kapsamına eklenip image yeniden yayınlanmalıdır; desteklenen mevcut kombinasyonlar Gradle başlamadan route edilir."
+  },
+
   {
     code: "SOURCE_TOOLCHAIN_COMPONENT_MISSING",
     title: "AppForge Worker toolchain bileşeni eksik",
@@ -429,6 +464,7 @@ export function explainAppForgeProblem({
       Number(status) || 0,
     path:
       clean(path),
+    evidence,
     text:
       evidence.toLowerCase()
   };

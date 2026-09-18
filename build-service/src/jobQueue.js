@@ -441,7 +441,9 @@ export async function enqueueJob({
             queuePriority,
           activeLimit,
           queuedBefore:
-            queued
+            queued,
+          requiredCapabilities:
+            effectiveRequiredCapabilities
         };
       }
     );

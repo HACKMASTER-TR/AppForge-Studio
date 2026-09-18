@@ -95,3 +95,34 @@ test(
     );
   }
 );
+
+test(
+  "unsupported source toolchain is a non-retryable Worker toolchain error",
+  () => {
+    const error =
+      new Error(
+        "SOURCE_TOOLCHAIN_UNSUPPORTED: Proje NDK 29.x istiyor ancak production Source Worker registry bu sürümü desteklemiyor."
+      );
+
+    error.code =
+      "SOURCE_TOOLCHAIN_UNSUPPORTED";
+
+    const result =
+      classifyBuildError(error);
+
+    assert.equal(
+      result.category,
+      "toolchain"
+    );
+
+    assert.equal(
+      result.code,
+      "SOURCE_TOOLCHAIN_UNSUPPORTED"
+    );
+
+    assert.equal(
+      result.retryable,
+      false
+    );
+  }
+);

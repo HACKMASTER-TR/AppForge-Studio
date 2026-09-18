@@ -23,6 +23,13 @@ source_files:
   - "build-service/Dockerfile.source-worker"
   - "build-service/scripts/source-worker-toolchain-doctor.js"
   - "build-service/source-worker-toolchain.json"
+  - "build-service/src/sourceToolchainRegistry.js"
+  - "build-service/src/projectToolchainInspector.js"
+  - "build-service/tests/source_toolchain_router.test.js"
+  - "build-service/tests/universal_toolchain_ui_contract.test.js"
+  - "android-app/app/src/main/java/com/appforge/studio/BuildRuntimeState.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt"
   - "build-service/src/jobQueue.js"
   - "build-service/src/sourceBuildIsolation.js"
   - "build-service/worker.js"
@@ -66,3 +73,43 @@ into `/opt/android-sdk`.
 
 Missing immutable SDK components are classified as Worker toolchain failures,
 not user-code or generic Gradle failures.
+
+## Universal Toolchain Router v1
+
+Source-code Android builds no longer rely on one hard-coded Source Worker
+capability set. `projectToolchainInspector.js` reads bounded metadata directly
+from the uploaded ZIP and detects Android/Gradle/Expo/React Native toolchain
+requirements without executing project code. `sourceToolchainRegistry.js`
+compares that inspection with the immutable Source Worker registry before the
+job enters the queue.
+
+V1 fully routes `android-gradle`, `react-native-android`, and `expo-android`.
+Other source engines retain their previous behavior. Explicit unsupported
+Android API, Build Tools, NDK, CMake, Gradle/JDK, or AGP combinations fail with
+`SOURCE_TOOLCHAIN_UNSUPPORTED` before Gradle starts. Missing optional metadata
+uses the engine's existing safe default instead of blocking older projects.
+
+The preflight stores the selected toolchain and generated capability set in the
+build config. `requiredSourceWorkerCapabilities()` merges these versioned
+capabilities with `source-isolation-dedicated`; PostgreSQL still enforces
+`required_capabilities <@ worker.capabilities`, so no parallel queue path was
+introduced.
+
+Dedicated Source Worker startup validates every registry entry against the
+actual immutable image, then advertises the verified capabilities. Docker only
+statically declares `source-isolation-dedicated`; Android/Gradle version
+capabilities are no longer manually duplicated in `WORKER_CAPABILITIES`.
+Runtime remains non-root with a read-only Android SDK and dedicated isolation.
+
+### Production UI evidence
+
+The Builder's final step separates Universal Toolchain Preflight evidence from
+ordinary project checks. Routed source builds show the inspected/selected
+framework, Android SDK, Build Tools, NDK, CMake, Gradle, AGP, JDK, and queue
+capability set. The old generated-app Compile/Target SDK rows are removed for
+routed source builds so they cannot contradict the uploaded project's actual
+toolchain.
+
+Build runtime state is bound to the project key that started the build. A
+failed build from a previously selected project therefore cannot leak its R8
+or other Error Assistant card into a newly selected project.

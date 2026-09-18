@@ -1265,6 +1265,9 @@ private fun AppForgeApp() {
     var preflight by
         buildRuntime.preflight
 
+    var buildProjectKey by
+        buildRuntime.buildProjectKey
+
     var buildId by
         buildRuntime.buildId
 
@@ -3113,6 +3116,10 @@ private fun AppForgeApp() {
             progress = 2
             logs = emptyList()
             preflight = emptyList()
+            buildProjectKey =
+                "${effectiveBuildDraft.packageName}|" +
+                    "${effectiveBuildDraft.importedFolder.orEmpty()}|" +
+                    effectiveBuildDraft.sourceUri.orEmpty()
             buildId = null
             buildNo = null
             apkUrl = null
@@ -6408,6 +6415,9 @@ private fun BuildRuntimeStep(
     val preflight by
         runtime.preflight
 
+    val buildProjectKey by
+        runtime.buildProjectKey
+
     val buildId by
         runtime.buildId
 
@@ -6457,6 +6467,8 @@ private fun BuildRuntimeStep(
             logs,
         preflight =
             preflight,
+        buildProjectKey =
+            buildProjectKey,
         buildId =
             buildId,
         buildNo =
@@ -18753,6 +18765,7 @@ private fun BuildStep(
     buildTimerRunning: Boolean,
     logs: List<String>,
     preflight: List<String>,
+    buildProjectKey: String?,
     buildId: String?,
     buildNo: Long?,
     appName: String,
@@ -19139,18 +19152,39 @@ private fun BuildStep(
                 "Bekleniyor"
         }
 
+    val currentProjectKey =
+        remember(
+            draft.packageName,
+            draft.importedFolder,
+            draft.sourceUri
+        ) {
+            "${draft.packageName}|" +
+                "${draft.importedFolder.orEmpty()}|" +
+                draft.sourceUri.orEmpty()
+        }
+
+    val buildMatchesCurrentProject =
+        buildProjectKey == null ||
+            buildProjectKey ==
+                currentProjectKey
+
     val buildSucceeded =
         buildId != null &&
+        buildMatchesCurrentProject &&
         normalizedStatus ==
             "success"
 
     val buildFailed =
-        normalizedStatus ==
-            "failed" ||
-        normalizedStatus
-            .startsWith(
-                "hata:"
-            )
+        buildId != null &&
+        buildMatchesCurrentProject &&
+        (
+            normalizedStatus ==
+                "failed" ||
+            normalizedStatus
+                .startsWith(
+                    "hata:"
+                )
+        )
 
     val availableOutputs =
         listOf(
@@ -19167,6 +19201,7 @@ private fun BuildStep(
 
     val buildActive =
         buildId != null &&
+        buildMatchesCurrentProject &&
         normalizedStatus !=
             "success" &&
         normalizedStatus !=
@@ -19181,12 +19216,52 @@ private fun BuildStep(
 
     val userPreflight =
         remember(
-            preflight
+            preflight,
+            buildMatchesCurrentProject
         ) {
-            AppForgeUiSanitizer
-                .preflight(
-                    preflight
-                )
+            if (
+                buildMatchesCurrentProject
+            ) {
+                AppForgeUiSanitizer
+                    .preflight(
+                        preflight
+                    )
+            } else {
+                emptyList()
+            }
+        }
+
+    val toolchainPreflight =
+        remember(
+            userPreflight
+        ) {
+            userPreflight
+                .filter {
+                    line ->
+
+                    line.contains(
+                        "Toolchain Preflight",
+                        ignoreCase = true
+                    ) ||
+                        line.startsWith(
+                            "🧭"
+                        ) ||
+                        line.contains(
+                            "Worker capability seti",
+                            ignoreCase = true
+                        )
+                }
+        }
+
+    val generalPreflight =
+        remember(
+            userPreflight,
+            toolchainPreflight
+        ) {
+            userPreflight
+                .filterNot {
+                    it in toolchainPreflight
+                }
         }
 
 
@@ -19671,7 +19746,64 @@ private fun BuildStep(
         }
 
         if (
-            userPreflight.isNotEmpty()
+            toolchainPreflight.isNotEmpty()
+        ) {
+            item {
+                Text(
+                    "Universal Toolchain Preflight",
+                    fontWeight =
+                        FontWeight.Bold,
+                    fontSize =
+                        14.sp
+                )
+            }
+
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(if (formCompact) 12.dp else 16.dp),
+                        verticalArrangement =
+                            Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
+                    ) {
+                        Text(
+                            "✅ Uygun Source Worker toolchain planı",
+                            color =
+                                Accent,
+                            fontWeight =
+                                FontWeight.SemiBold,
+                            fontSize =
+                                12.sp
+                        )
+
+                        toolchainPreflight
+                            .forEach {
+                                check ->
+                                Text(
+                                    check,
+                                    fontSize =
+                                        12.sp
+                                )
+                            }
+                    }
+                }
+            }
+        }
+
+        if (
+            generalPreflight.isNotEmpty()
         ) {
             item {
                 Text(
@@ -19704,14 +19836,14 @@ private fun BuildStep(
                             Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
                     ) {
                         Text(
-                            "${userPreflight.size} kontrol tamamlandı",
+                            "${generalPreflight.size} kontrol tamamlandı",
                             color =
                                 TextSecondary,
                             fontSize =
                                 12.sp
                         )
 
-                        userPreflight.forEach {
+                        generalPreflight.forEach {
                             check ->
                             Text(
                                 check,

@@ -211,3 +211,50 @@ test(
     );
   }
 );
+
+test(
+  "Universal Toolchain Router capabilities are merged with source isolation",
+  () => {
+    const capabilities =
+      requiredSourceWorkerCapabilities({
+        payload: {
+          config: {
+            sourceMode: "LOCAL",
+            sourceBuildEngine:
+              "expo-android",
+            sourceToolchain: {
+              capabilities: [
+                "source-family-expo-android",
+                "android-api-36",
+                "build-tools-36.0.0",
+                "ndk-27.1.12297006",
+                "gradle-8.14.3",
+                "java-17",
+                "java-17"
+              ]
+            }
+          }
+        },
+        requiredCapabilities: [
+          "gradle"
+        ],
+        requireIsolation: true,
+        isolationCapability:
+          "source-isolation-dedicated"
+      });
+
+    assert.deepEqual(
+      capabilities,
+      [
+        "gradle",
+        "source-family-expo-android",
+        "android-api-36",
+        "build-tools-36.0.0",
+        "ndk-27.1.12297006",
+        "gradle-8.14.3",
+        "java-17",
+        "source-isolation-dedicated"
+      ]
+    );
+  }
+);

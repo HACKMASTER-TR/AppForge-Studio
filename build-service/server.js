@@ -50,6 +50,14 @@ import {
 } from "./src/toolchain.js";
 import { preflight } from "./src/buildEngine.js";
 import {
+  inspectProjectToolchainZip
+} from "./src/projectToolchainInspector.js";
+import {
+  loadSourceToolchainRegistry,
+  preflightSourceToolchain,
+  assertSourceToolchainSupported
+} from "./src/sourceToolchainRegistry.js";
+import {
   preflightWindows
 } from "./src/windowsBuild.js";
 import { verifyPlayPurchase } from "./src/playVerifier.js";
@@ -364,6 +372,104 @@ async function directProjectContentIdentity(
       tempFile,
       { force: true }
     ).catch(() => {});
+  }
+}
+
+
+
+async function inspectBuildSourceToolchain({
+  incomingProject,
+  directProjectRef,
+  sourceEngine
+}) {
+  const engine =
+    String(
+      sourceEngine ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  const registry =
+    await loadSourceToolchainRegistry();
+
+  if (
+    !registry.frameworkFamilies
+      ?.[engine]
+  ) {
+    return null;
+  }
+
+  let projectZip =
+    incomingProject ||
+    null;
+
+  let tempFile =
+    null;
+
+  if (
+    !projectZip &&
+    directProjectRef
+  ) {
+    const tempDir =
+      path.join(
+        config.workRoot,
+        "_toolchain-preflight"
+      );
+
+    await fs.mkdir(
+      tempDir,
+      { recursive: true }
+    );
+
+    tempFile =
+      path.join(
+        tempDir,
+        `${uuidv4()}.zip`
+      );
+
+    await materializeInput(
+      directProjectRef,
+      tempFile
+    );
+
+    projectZip =
+      tempFile;
+  }
+
+  if (!projectZip) {
+    return null;
+  }
+
+  try {
+    const inspection =
+      await inspectProjectToolchainZip(
+        projectZip,
+        { engine }
+      );
+
+    const result =
+      preflightSourceToolchain({
+        inspection,
+        engine,
+        registry
+      });
+
+    assertSourceToolchainSupported(
+      result
+    );
+
+    return {
+      ...result,
+      inspection
+    };
+  } finally {
+    if (tempFile) {
+      await fs.rm(
+        tempFile,
+        { force: true }
+      ).catch(() => {});
+    }
   }
 }
 
@@ -4009,6 +4115,131 @@ app.post(
               preflightFiles
             );
 
+      const sourceToolchain =
+        c.buildOutput !== "exe" &&
+        String(
+          c.sourceMode ||
+          "LOCAL"
+        )
+          .trim()
+          .toUpperCase() ===
+          "LOCAL"
+          ? await inspectBuildSourceToolchain({
+              incomingProject,
+              directProjectRef,
+              sourceEngine:
+                c.sourceBuildEngine
+            })
+          : null;
+
+      if (
+        sourceToolchain?.applies
+      ) {
+        const inspection =
+          sourceToolchain.inspection ||
+          {};
+
+        const selected =
+          sourceToolchain.selected ||
+          {};
+
+        c.sourceToolchain = {
+          engine:
+            sourceToolchain.engine,
+          registrySchemaVersion:
+            sourceToolchain
+              .registrySchemaVersion,
+          inspection,
+          selected,
+          capabilities:
+            sourceToolchain.capabilities
+        };
+
+        for (
+          let index =
+            report.length - 1;
+          index >= 0;
+          index -= 1
+        ) {
+          if (
+            /^(?:✅\s*)?(?:Min SDK|Target SDK|Compile SDK)\b/i.test(
+              String(
+                report[index] ||
+                ""
+              )
+            )
+          ) {
+            report.splice(
+              index,
+              1
+            );
+          }
+        }
+
+        const toolchainValue =
+          (selectedValue, detectedValue) =>
+            selectedValue ||
+            detectedValue ||
+            "belirtilmedi";
+
+        const toolchainOrigin =
+          detectedValue =>
+            detectedValue
+              ? "Algılandı"
+              : "Registry/engine varsayılanı";
+
+        report.push(
+          `✅ Toolchain Preflight PASS • ${sourceToolchain.engine}`
+        );
+
+        report.push(
+          `🧭 Framework: ${sourceToolchain.engine}` +
+          ` • Expo ${inspection.expoVersion || "-"}` +
+          ` • React Native ${inspection.reactNativeVersion || "-"}` +
+          ` • Native Android ${inspection.nativeAndroidProject ? "evet" : "hayır"}`
+        );
+
+        report.push(
+          `🧭 Compile SDK: ${toolchainValue(selected.compileSdk, inspection.compileSdk)} • ${toolchainOrigin(inspection.compileSdk)}`
+        );
+
+        report.push(
+          `🧭 Target SDK: ${toolchainValue(selected.targetSdk, inspection.targetSdk)} • ${toolchainOrigin(inspection.targetSdk)}`
+        );
+
+        report.push(
+          `🧭 Min SDK: ${inspection.minSdk || "belirtilmedi"} • ${toolchainOrigin(inspection.minSdk)}`
+        );
+
+        report.push(
+          `🧭 Build Tools: ${toolchainValue(selected.buildToolsVersion, inspection.buildToolsVersion)} • ${toolchainOrigin(inspection.buildToolsVersion)}`
+        );
+
+        report.push(
+          `🧭 NDK: ${toolchainValue(selected.ndkVersion, inspection.ndkVersion)} • ${toolchainOrigin(inspection.ndkVersion)}`
+        );
+
+        report.push(
+          `🧭 CMake: ${toolchainValue(selected.cmakeVersion, inspection.cmakeVersion)} • ${toolchainOrigin(inspection.cmakeVersion)}`
+        );
+
+        report.push(
+          `🧭 Gradle: ${selected.gradle || "belirtilmedi"} • requested ${inspection.gradleWrapperVersion || "yok"}`
+        );
+
+        report.push(
+          `🧭 AGP: ${inspection.androidGradlePluginVersion || "belirtilmedi"}`
+        );
+
+        report.push(
+          `🧭 JDK: ${selected.jdk || inspection.jdkMajor || "belirtilmedi"} • ${toolchainOrigin(inspection.jdkMajor)}`
+        );
+
+        report.push(
+          `🧭 Worker capability seti: ${sourceToolchain.capabilities.join(", ")}`
+        );
+      }
+
       mark("07 preflight-done");
 
       const cacheKey =
@@ -4348,15 +4579,23 @@ app.post(
               c.workerRequirements
             )
             ? c.workerRequirements
-            : [
-                "android-api-37",
-                "java-17",
-                "gradle"
-              ];
+            : Array.isArray(
+                c.sourceToolchain
+                  ?.capabilities
+              ) &&
+              c.sourceToolchain
+                .capabilities.length
+              ? []
+              : [
+                  "android-api-37",
+                  "java-17",
+                  "gradle"
+                ];
 
       mark("13 enqueue-start");
 
-      await enqueueJob({
+      const queueAdmission =
+        await enqueueJob({
         buildId,
         userId:
           req.user.id,
@@ -4401,7 +4640,10 @@ app.post(
             ),
           status: "queued",
           cacheHit: false,
-          requiredCapabilities,
+          requiredCapabilities:
+            queueAdmission
+              ?.requiredCapabilities ||
+            requiredCapabilities,
           queue:
             finalQueueStats
         });

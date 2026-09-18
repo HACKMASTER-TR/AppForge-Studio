@@ -193,28 +193,39 @@ export function requiredSourceWorkerCapabilities({
       engine
     );
 
+  const toolchainCapabilities =
+    sourceMode === "LOCAL" &&
+    Array.isArray(
+      config?.sourceToolchain
+        ?.capabilities
+    )
+      ? config.sourceToolchain
+          .capabilities
+      : [];
+
   return [
     ...new Set([
-      ...base
-        .map(
-          value =>
-            String(
-              value ||
-              ""
-            )
-              .trim()
-        )
-        .filter(
-          Boolean
-        ),
-      ...(
+      ...base,
+      ...toolchainCapabilities
+    ]
+      .map(
+        value =>
+          String(
+            value ||
+            ""
+          )
+            .trim()
+      )
+      .filter(
+        Boolean
+      )
+      .concat(
         needsIsolation &&
         capability
           ? [
               capability
             ]
           : []
-      )
-    ])
+      ))
   ];
 }

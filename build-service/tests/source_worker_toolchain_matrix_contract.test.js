@@ -37,7 +37,30 @@ test(
 
     assert.equal(
       matrix.schemaVersion,
-      1
+      2
+    );
+
+    assert.deepEqual(
+      matrix.jdk,
+      ["17"]
+    );
+
+    for (const engine of [
+      "android-gradle",
+      "react-native-android",
+      "expo-android"
+    ]) {
+      assert.ok(
+        matrix.frameworkFamilies[engine],
+        engine
+      );
+    }
+
+    assert.equal(
+      matrix.agpCompatibility[
+        "9.1"
+      ].minGradle,
+      "9.3.1"
     );
 
     for (
@@ -182,6 +205,54 @@ test(
         'process.stdout.write(p.join("\\\\n")+"\\\\n");'
       ),
       "Escaped literal \\\\n would concatenate every SDK package into one invalid package name."
+    );
+  }
+);
+
+test(
+  "Source Worker capabilities are registry-derived and isolation remains explicit",
+  async () => {
+    const [worker, docker] =
+      await Promise.all([
+        fs.readFile(
+          path.join(
+            serviceRoot,
+            "worker.js"
+          ),
+          "utf8"
+        ),
+        fs.readFile(
+          path.join(
+            serviceRoot,
+            "Dockerfile.source-worker"
+          ),
+          "utf8"
+        )
+      ]);
+
+    assert.ok(
+      worker.includes(
+        "inspectInstalledSourceWorkerToolchain"
+      )
+    );
+
+    assert.ok(
+      worker.includes(
+        "sourceToolchainRegistry"
+      )
+    );
+
+    assert.ok(
+      docker.includes(
+        "ENV WORKER_CAPABILITIES=source-isolation-dedicated"
+      )
+    );
+
+    assert.equal(
+      docker.includes(
+        "ENV WORKER_CAPABILITIES=android-api-37,"
+      ),
+      false
     );
   }
 );

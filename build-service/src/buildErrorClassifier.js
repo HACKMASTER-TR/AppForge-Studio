@@ -30,6 +30,21 @@ export function classifyBuildError(error) {
   }
 
   if (
+    error?.code ===
+      "SOURCE_TOOLCHAIN_UNSUPPORTED" ||
+    has(
+      "source_toolchain_unsupported"
+    )
+  ) {
+    return {
+      category: "toolchain",
+      code:
+        "SOURCE_TOOLCHAIN_UNSUPPORTED",
+      retryable: false
+    };
+  }
+
+  if (
     has(
       "econnreset",
       "etimedout",

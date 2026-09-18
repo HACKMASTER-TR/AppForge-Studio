@@ -18,6 +18,10 @@ import {
 import {
   materializeFastDebugKeystore
 } from "./src/fastSigningKey.js";
+import {
+  loadSourceToolchainRegistry,
+  inspectInstalledSourceWorkerToolchain
+} from "./src/sourceToolchainRegistry.js";
 
 assertCriticalConfig();
 
@@ -52,8 +56,72 @@ await fs.mkdir(
 
 await migrate();
 
-const diagnostics =
+const baseDiagnostics =
   await runToolchainDoctor();
+
+const dedicatedSourceWorker =
+  config.sourceBuildRequireIsolation ===
+    true &&
+  config.sourceBuildIsolationMode !==
+    "shared" &&
+  config.workerCapabilities.includes(
+    config.sourceBuildIsolationCapability
+  );
+
+let sourceToolchainRegistry =
+  null;
+
+if (dedicatedSourceWorker) {
+  const registry =
+    await loadSourceToolchainRegistry();
+
+  sourceToolchainRegistry =
+    await inspectInstalledSourceWorkerToolchain({
+      registry,
+      runtime: true
+    });
+}
+
+const diagnostics = {
+  ...baseDiagnostics,
+  ok:
+    baseDiagnostics.ok &&
+    (
+      sourceToolchainRegistry
+        ?.ok ??
+      true
+    ),
+  errors: [
+    ...(baseDiagnostics.errors || []),
+    ...(
+      sourceToolchainRegistry
+        ?.errors ||
+      []
+    )
+  ],
+  sourceToolchainRegistry:
+    sourceToolchainRegistry
+      ? {
+          ok:
+            sourceToolchainRegistry.ok,
+          registrySchemaVersion:
+            sourceToolchainRegistry
+              .registrySchemaVersion,
+          sdkWritable:
+            sourceToolchainRegistry
+              .sdkWritable,
+          javaMajor:
+            sourceToolchainRegistry
+              .javaMajor,
+          capabilities:
+            sourceToolchainRegistry
+              .capabilities,
+          errors:
+            sourceToolchainRegistry
+              .errors
+        }
+      : null
+};
 
 console.log(
   JSON.stringify(
@@ -64,6 +132,9 @@ console.log(
         diagnostics.ok,
       detected:
         diagnostics.detected,
+      sourceToolchainRegistry:
+        diagnostics
+          .sourceToolchainRegistry,
       errors:
         diagnostics.errors
     },
@@ -80,7 +151,12 @@ const effectiveCapabilities =
   [
     ...new Set([
       ...config.workerCapabilities,
-      ...diagnostics.capabilities
+      ...baseDiagnostics.capabilities,
+      ...(
+        sourceToolchainRegistry
+          ?.capabilities ||
+        []
+      )
     ])
   ];
 
