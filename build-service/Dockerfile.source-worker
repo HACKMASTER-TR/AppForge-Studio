@@ -220,6 +220,7 @@ RUN node --test tests/node_remote_backend_engine.test.js
 RUN node --test tests/node_remote_backend_live_engine.test.js
 # Cross-repo technology matrix runs in GitHub Actions before Docker build.
 RUN node --test tests/source_build_isolation.test.js
+RUN node --test tests/source_toolchain_router.test.js
 RUN node --test tests/source_worker_contract.test.js
 
 # =========================================================
@@ -384,9 +385,10 @@ ENV SOURCE_BUILD_ISOLATION_MODE=dedicated
 ENV SOURCE_BUILD_REQUIRE_ISOLATION=true
 ENV SOURCE_BUILD_ISOLATION_CAPABILITY=source-isolation-dedicated
 
-# Keep the default toolchain capabilities and explicitly attest that
-# this deployment is intended to be the isolated source-build worker.
-ENV WORKER_CAPABILITIES=android-api-37,build-tools-36.0.0,java-17,gradle,source-isolation-dedicated
+# Isolation remains explicit. Versioned toolchain capabilities are
+# derived at startup from the verified immutable registry/installed files.
+ENV SOURCE_GRADLE_ROOT=/opt/gradle
+ENV WORKER_CAPABILITIES=source-isolation-dedicated
 
 USER 10001:10001
 

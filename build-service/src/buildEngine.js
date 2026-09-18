@@ -66,6 +66,9 @@ import {
   sourceBuildPreflightCapabilities
 } from "./sourceBuildIsolation.js";
 import {
+  sourceGradleBinary
+} from "./sourceToolchainRegistry.js";
+import {
   androidAppCategoryAttribute
 } from "./androidAppCategory.js";
 import {
@@ -2548,6 +2551,32 @@ export async function executeBuild(job) {
             : config.gradleCacheRoot
       };
 
+      const routedGradleBin =
+        source.engine ===
+          "android-gradle" &&
+        c.sourceToolchain
+          ?.selected
+          ?.gradle
+          ? sourceGradleBinary(
+              c.sourceToolchain
+                .selected.gradle,
+              config.gradleBin
+            )
+          : config.gradleBin;
+
+      if (
+        source.engine ===
+          "android-gradle" &&
+        c.sourceToolchain
+          ?.selected
+          ?.gradle
+      ) {
+        await appendLog(
+          buildId,
+          `🧭 Toolchain Router • Gradle ${c.sourceToolchain.selected.gradle} • ${routedGradleBin}`
+        );
+      }
+
       /*
        * APK + AAB aynı Gradle invocation içinde
        * çalıştırıldığında düşük bellekli Worker'da
@@ -2608,7 +2637,8 @@ export async function executeBuild(job) {
                 android,
                 taskList,
                 gradleEnv,
-                profile
+                profile,
+                routedGradleBin
               );
 
               await appendLog(
@@ -8459,7 +8489,8 @@ async function runGradle(
   env,
   profile = gradlePerformanceProfile(
     config.gradlePerformanceProfile
-  )
+  ),
+  gradleBin = config.gradleBin
 ) {
   return new Promise(
     (resolve, reject) => {
@@ -8487,7 +8518,7 @@ async function runGradle(
 
       const child =
         spawn(
-          config.gradleBin,
+          gradleBin,
           gradleArguments(
             tasks,
             profile
