@@ -1,7 +1,7 @@
 import AdmZip from "adm-zip";
 import { promises as fs, existsSync } from "fs";
 import path from "path";
-import { spawn } from "child_process";
+import { runSupervisedProcess } from "./processSupervisor.js";
 import { fileURLToPath } from "url";
 import { createSourceBuildEnv } from "./sourceBuildEnv.js";
 import {
@@ -521,151 +521,94 @@ async function runCommand({
     await cancelled();
   }
 
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
-      const child =
-        spawn(
-          command,
-          args,
-          {
-            cwd,
-            env,
-            shell:
-              false,
-            stdio: [
-              "ignore",
-              "pipe",
-              "pipe"
-            ]
-          }
-        );
+  let collected =
+    "";
 
-      let collected =
-        "";
-
-      let timer =
-        setTimeout(
-          () => {
-            child.kill(
-              "SIGKILL"
-            );
-          },
-          timeoutMs
-        );
-
-      function consume(
-        chunk
-      ) {
-        const text =
-          String(
-            chunk
-          );
-
-        if (
-          collected.length <
-            MAX_LOG_CHARS
-        ) {
-          collected +=
-            text.slice(
-              0,
-              MAX_LOG_CHARS -
-                collected.length
-            );
-        }
-
-        if (
+  const result =
+    await runSupervisedProcess({
+      command,
+      args,
+      cwd,
+      env,
+      hardTimeoutMs:
+        timeoutMs,
+      cancelled,
+      onEvent:
+        message =>
           onLog
-        ) {
-          const lines =
-            text
-              .split(
-                /\r?\n/
-              )
-              .map(
-                line =>
-                  line.trim()
-              )
-              .filter(
-                Boolean
-              )
-              .slice(
-                0,
-                12
-              );
-
-          for (
-            const line of
-            lines
-          ) {
-            Promise.resolve(
-              onLog(
-                line.slice(
-                  0,
-                  700
-                )
-              )
-            )
-              .catch(
-                () => {}
-              );
-          }
-        }
-      }
-
-      child.stdout.on(
-        "data",
-        consume
-      );
-
-      child.stderr.on(
-        "data",
-        consume
-      );
-
-      child.on(
-        "error",
-        error => {
-          clearTimeout(
-            timer
-          );
-          reject(
-            error
-          );
-        }
-      );
-
-      child.on(
-        "close",
-        code => {
-          clearTimeout(
-            timer
-          );
-          timer =
-            null;
+            ? onLog(message)
+            : null,
+      onChunk:
+        chunk => {
+          const text =
+            String(
+              chunk
+            );
 
           if (
-            code ===
-              0
+            collected.length <
+              MAX_LOG_CHARS
           ) {
-            resolve(
-              collected
-            );
-          } else {
-            reject(
-              new Error(
-                `${command} ${args.join(" ")} başarısız (exit=${code}).\n` +
-                collected.slice(
-                  -12_000
+            collected +=
+              text.slice(
+                0,
+                MAX_LOG_CHARS -
+                  collected.length
+              );
+          }
+
+          if (
+            onLog
+          ) {
+            const lines =
+              text
+                .split(
+                  /\r?\n/
+                )
+                .map(
+                  line =>
+                    line.trim()
+                )
+                .filter(
+                  Boolean
+                )
+                .slice(
+                  0,
+                  12
+                );
+
+            for (
+              const line of
+              lines
+            ) {
+              Promise.resolve(
+                onLog(
+                  line.slice(
+                    0,
+                    700
+                  )
                 )
               )
-            );
+                .catch(
+                  () => {}
+                );
+            }
           }
         }
-      );
-    }
+    });
+
+  if (
+    result.code ===
+      0
+  ) {
+    return collected;
+  }
+
+  throw new Error(
+    `${command} ${args.join(" ")} başarısız (exit=${result.code}).\n` +
+    collected.slice(
+      -12_000
+    )
   );
 }
 

@@ -7,9 +7,18 @@ on:
   workflow_dispatch:
     inputs:
       min_replicas:
-        description: "Manual test minimum replica count"
+        description: "Manual minimum replica count"
         required: false
         default: "3"
+      worker_kind:
+        description: "Worker pool"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - android
+          - source
 
 permissions:
   contents: read
@@ -20,25 +29,24 @@ concurrency:
 
 env:
   STUDIO_URL: https://appforge-studio-production.up.railway.app
-  RAILWAY_SERVICE: AppForge-Worker
-
-  # Production tabanı:
-  # 3 replica x yaklaşık 2 slot = 6 Android build slotu
-  AUTOSCALE_MIN_REPLICAS: ${{ github.event_name == 'workflow_dispatch' && inputs.min_replicas || '3' }}
-
-  # Railway toplam replica üst sınırı.
-  # 50 replica x yaklaşık 2 slot = 100 build slotu.
-  AUTOSCALE_MAX_REPLICAS: "50"
 
 jobs:
-  autoscale:
+  autoscale-android:
     name: Scale Android Workers
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      inputs.worker_kind == 'all' ||
+      inputs.worker_kind == 'android'
     runs-on: ubuntu-latest
     timeout-minutes: 4
 
     env:
       RAILWAY_PROJECT_TOKEN: ${{ secrets.RAILWAY_PROJECT_TOKEN }}
       RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+      RAILWAY_SERVICE: AppForge-Worker
+      WORKER_KIND: android
+      AUTOSCALE_MIN_REPLICAS: ${{ github.event_name == 'workflow_dispatch' && inputs.worker_kind == 'android' && inputs.min_replicas || '3' }}
+      AUTOSCALE_MAX_REPLICAS: "50"
 
     steps:
       - name: Checkout
@@ -55,14 +63,51 @@ jobs:
           python3 -m py_compile \
             .github/scripts/worker_autoscale.py
 
-      - name: Production worker autoscale
+      - name: Production Android worker autoscale
         run: |
           set -euo pipefail
-
           python3 \
             .github/scripts/worker_autoscale.py
 
-      - name: Show production capacity
+  autoscale-source:
+    name: Scale Source Workers
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      inputs.worker_kind == 'all' ||
+      inputs.worker_kind == 'source'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+
+    env:
+      RAILWAY_PROJECT_TOKEN: ${{ secrets.RAILWAY_PROJECT_TOKEN }}
+      RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+      RAILWAY_SERVICE: AppForge-Source-Worker
+      WORKER_KIND: source
+      AUTOSCALE_MIN_REPLICAS: "1"
+      AUTOSCALE_MAX_REPLICAS: "10"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Validate autoscaler
+        run: |
+          set -euo pipefail
+          python3 -m py_compile \
+            .github/scripts/worker_autoscale.py
+
+      - name: Production Source worker autoscale
+        run: |
+          set -euo pipefail
+          python3 \
+            .github/scripts/worker_autoscale.py
+
+      - name: Show Source Worker capacity
         if: always()
         run: |
           set -euo pipefail
@@ -86,16 +131,17 @@ jobs:
           workers=[
               x for x in q.get("workers",[])
               if x.get("toolchain_ok")
-              and "android-api-37" in x.get("capabilities",[])
               and "source-isolation-dedicated"
-                  not in x.get("capabilities",[])
+                  in x.get("capabilities",[])
           ]
 
-          print("Queued:",q.get("queued",0))
-          print("Running:",q.get("running",0))
-          print("Android workers:",len(workers))
+          pool=q.get("pools",{}).get("source",{})
+
+          print("Source queued:",pool.get("queued",0))
+          print("Source running:",pool.get("running",0))
+          print("Source workers:",len(workers))
           print(
-              "Android slots:",
+              "Source slots:",
               sum(int(x.get("slots",0)) for x in workers)
           )
           '

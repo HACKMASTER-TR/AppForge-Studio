@@ -22,6 +22,9 @@ import { executeUnityBuild } from "./unityLicensedBuild.js";
 import {
   classifyBuildError
 } from "./buildErrorClassifier.js";
+import {
+  memoryPressureSnapshot
+} from "./processSupervisor.js";
 
 let stopping = false;
 
@@ -227,6 +230,28 @@ async function workerLoop(workerSlotId, capabilities) {
     let job = null;
 
     try {
+      const memory =
+        memoryPressureSnapshot();
+
+      if (
+        memory &&
+        memory.percent >=
+          config.workerMemoryHighWatermarkPct
+      ) {
+        console.warn(
+          `[WORKER MEMORY HIGH] ${workerSlotId} %${memory.percent.toFixed(1)}; yeni job claim edilmiyor.`
+        );
+
+        await sleep(
+          Math.max(
+            config.workerResourcePollMs,
+            config.workerPollMs
+          )
+        );
+
+        continue;
+      }
+
       job = await claimNextJob(
         workerSlotId,
         capabilities

@@ -1,7 +1,7 @@
 import AdmZip from "adm-zip";
 import { promises as fs } from "fs";
 import path from "path";
-import { spawn } from "child_process";
+import { runSupervisedProcess } from "./processSupervisor.js";
 import { existsSync } from "fs";
 import { createSourceBuildEnv } from "./sourceBuildEnv.js";
 
@@ -414,32 +414,24 @@ async function runFrameworkCommand({
     await cancelled();
   }
 
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
-      const child =
-        spawn(
-          command,
-          args,
-          {
-            cwd,
-            env,
-            shell:
-              false,
-            stdio: [
-              "ignore",
-              "pipe",
-              "pipe"
-            ]
-          }
-        );
+  let collected =
+    "";
 
-      let collected =
-        "";
-
-      const consume =
+  const result =
+    await runSupervisedProcess({
+      command,
+      args,
+      cwd,
+      env,
+      hardTimeoutMs:
+        timeoutMs,
+      cancelled,
+      onEvent:
+        message =>
+          onLog
+            ? onLog(message)
+            : null,
+      onChunk:
         chunk => {
           const value =
             String(
@@ -492,67 +484,21 @@ async function runFrameworkCommand({
                 );
             }
           }
-        };
-
-      child.stdout.on(
-        "data",
-        consume
-      );
-
-      child.stderr.on(
-        "data",
-        consume
-      );
-
-      const timer =
-        setTimeout(
-          () => {
-            child.kill(
-              "SIGKILL"
-            );
-          },
-          timeoutMs
-        );
-
-      child.once(
-        "error",
-        error => {
-          clearTimeout(
-            timer
-          );
-          reject(
-            error
-          );
         }
-      );
+    });
 
-      child.once(
-        "close",
-        code => {
-          clearTimeout(
-            timer
-          );
+  if (
+    result.code ===
+      0
+  ) {
+    return collected;
+  }
 
-          if (
-            code ===
-              0
-          ) {
-            resolve(
-              collected
-            );
-          } else {
-            reject(
-              new Error(
-                `${command} ${args.join(" ")} başarısız (exit=${code}).\n` +
-                collected.slice(
-                  -14_000
-                )
-              )
-            );
-          }
-        }
-      );
-    }
+  throw new Error(
+    `${command} ${args.join(" ")} başarısız (exit=${result.code}).\n` +
+    collected.slice(
+      -14_000
+    )
   );
 }
 

@@ -204,6 +204,28 @@ const RULES = [
   },
 
   {
+    code: "WORKER_AUTO_RECOVERY",
+    title: "AppForge Worker otomatik kurtarma devrede",
+    category: "Worker altyapısı",
+    confidence: 100,
+    test: ({ code, text }) =>
+      [
+        "WORKER_STALL_TIMEOUT",
+        "WORKER_MEMORY_PRESSURE"
+      ].includes(code) ||
+      containsAny(text, [
+        "workerstalltimeout",
+        "gradlestalltimeout",
+        "workermemorypressure",
+        "worker memory pressure"
+      ]),
+    reason:
+      "Build Worker üzerinde ilerleme üretmeyi bıraktı veya Worker bellek sınırına yaklaştı. Bu kullanıcı proje kodu hatası olarak sınıflandırılmaz.",
+    solution:
+      "AppForge build'i otomatik olarak yeniden kuyruğa alır ve uygun sağlıklı Worker'da tekrar dener. Otomatik denemeler de tükenirse kısa süre sonra yeniden build başlat."
+  },
+
+  {
     code: "SOURCE_TOOLCHAIN_COMPONENT_MISSING",
     title: "AppForge Worker toolchain bileşeni eksik",
     category: "Worker toolchain",

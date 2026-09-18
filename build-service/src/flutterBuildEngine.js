@@ -4,7 +4,8 @@ import {
   promises as fs
 } from "fs";
 import path from "path";
-import { spawn } from "child_process";
+import { config } from "./config.js";
+import { runSupervisedProcess } from "./processSupervisor.js";
 import { createSourceBuildEnv } from "./sourceBuildEnv.js";
 import { prepareWritableFlutterGradlePlugin } from "./flutterGradleMirror.js";
 
@@ -635,33 +636,31 @@ async function runFlutterCommand({
     ...args
   ];
 
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
-      const child =
-        spawn(
-          "flutter",
-          flutterArgs,
-          {
-            cwd:
-              projectRoot,
-            env,
-            shell:
-              false,
-            stdio: [
-              "ignore",
-              "pipe",
-              "pipe"
-            ]
-          }
-        );
+  let output =
+    "";
 
-      let output =
-        "";
-
-      const consume =
+  const result =
+    await runSupervisedProcess({
+      command:
+        "flutter",
+      args:
+        flutterArgs,
+      cwd:
+        projectRoot,
+      env,
+      hardTimeoutMs:
+        timeoutMs,
+      stallTimeoutMs:
+        verbose
+          ? config.gradleStallTimeoutMs
+          : config.sourceCommandStallTimeoutMs,
+      cancelled,
+      onEvent:
+        message =>
+          onLog
+            ? onLog(message)
+            : null,
+      onChunk:
         chunk => {
           const text =
             String(
@@ -725,98 +724,55 @@ async function runFlutterCommand({
                 );
             }
           }
-        };
-
-      child.stdout.on(
-        "data",
-        consume
-      );
-
-      child.stderr.on(
-        "data",
-        consume
-      );
-
-      const timer =
-        setTimeout(
-          () => {
-            child.kill(
-              "SIGKILL"
-            );
-          },
-          timeoutMs
-        );
-
-      child.on(
-        "error",
-        error => {
-          clearTimeout(
-            timer
-          );
-          reject(
-            error
-          );
         }
-      );
+    });
 
-      child.on(
-        "close",
-        async code => {
-          clearTimeout(
-            timer
-          );
+  if (
+    result.code ===
+      0
+  ) {
+    return output;
+  }
 
-          if (
-            code ===
-              0
-          ) {
-            resolve(
-              output
-            );
-          } else {
-            const diagnostics =
-              extractFlutterFailureDiagnostics(
-                output
-              );
+  const diagnostics =
+    extractFlutterFailureDiagnostics(
+      output
+    );
 
-            if (
-              onLog &&
-              diagnostics.length
-            ) {
-              await Promise.resolve(
-                onLog(
-                  "🔎 Flutter/Gradle hata ayrıntıları:"
-                )
-              ).catch(
-                () => {}
-              );
+  if (
+    onLog &&
+    diagnostics.length
+  ) {
+    await Promise.resolve(
+      onLog(
+        "🔎 Flutter/Gradle hata ayrıntıları:"
+      )
+    ).catch(
+      () => {}
+    );
 
-              for (
-                const line of
-                diagnostics
-              ) {
-                await Promise.resolve(
-                  onLog(
-                    `🔎 ${line.slice(0, 800)}`
-                  )
-                ).catch(
-                  () => {}
-                );
-              }
-            }
-
-            reject(
-              new Error(
-                `flutter ${flutterArgs.join(" ")} başarısız (exit=${code}).\n` +
-                output.slice(
-                  -40_000
-                )
-              )
-            );
-          }
-        }
+    for (
+      const line of
+      diagnostics
+    ) {
+      await Promise.resolve(
+        onLog(
+          line.slice(
+            0,
+            1000
+          )
+        )
+      ).catch(
+        () => {}
       );
     }
+  }
+
+  throw new Error(
+    `flutter ${flutterArgs.join(" ")} başarısız (exit=${result.code}).\n` +
+    output.slice(
+      -16_000
+    )
   );
 }
 

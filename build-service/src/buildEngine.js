@@ -1,7 +1,10 @@
 import AdmZip from "adm-zip";
 import { promises as fs } from "fs";
 import path from "path";
-import { spawn } from "child_process";
+import {
+  spawnProcessGroup,
+  terminateProcessTree
+} from "./processSupervisor.js";
 import { query } from "./db.js";
 import { config } from "./config.js";
 import {
@@ -8517,7 +8520,7 @@ async function runGradle(
       };
 
       const child =
-        spawn(
+        spawnProcessGroup(
           gradleBin,
           gradleArguments(
             tasks,
@@ -8548,51 +8551,13 @@ async function runGradle(
         );
 
       const terminate =
-        () => {
-          if (
-            !child ||
-            child.killed
-          ) {
-            return;
-          }
-
-          if (
-            process.platform ===
-            "win32"
-          ) {
-            spawn(
-              "taskkill",
-              [
-                "/PID",
-                String(child.pid),
-                "/T",
-                "/F"
-              ],
-              {
-                windowsHide: true
-              }
-            );
-          } else {
-            try {
-              child.kill("SIGTERM");
-            } catch {}
-
-            setTimeout(
-              () => {
-                if (
-                  !child.killed
-                ) {
-                  try {
-                    child.kill(
-                      "SIGKILL"
-                    );
-                  } catch {}
-                }
-              },
-              4000
-            ).unref();
-          }
-        };
+        () =>
+          terminateProcessTree(
+            child,
+            {
+              graceMs: 4000
+            }
+          );
 
       const poll =
         setInterval(

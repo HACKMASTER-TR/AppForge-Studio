@@ -4,9 +4,7 @@ import {
   promises as fs
 } from "fs";
 import path from "path";
-import {
-  spawn
-} from "child_process";
+import { runSupervisedProcess } from "./processSupervisor.js";
 import {
   createSourceBuildEnv
 } from "./sourceBuildEnv.js";
@@ -712,33 +710,26 @@ async function runDotnetAndroid({
     await cancelled();
   }
 
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
-      const child =
-        spawn(
-          "dotnet",
-          args,
-          {
-            cwd:
-              prepared.projectRoot,
-            env,
-            shell:
-              false,
-            stdio: [
-              "ignore",
-              "pipe",
-              "pipe"
-            ]
-          }
-        );
+  let output =
+    "";
 
-      let output =
-        "";
-
-      const consume =
+  const result =
+    await runSupervisedProcess({
+      command:
+        "dotnet",
+      args,
+      cwd:
+        prepared.projectRoot,
+      env,
+      hardTimeoutMs:
+        DOTNET_ANDROID_TIMEOUT_MS,
+      cancelled,
+      onEvent:
+        message =>
+          onLog
+            ? onLog(message)
+            : null,
+      onChunk:
         chunk => {
           const value =
             String(
@@ -791,68 +782,21 @@ async function runDotnetAndroid({
                 );
             }
           }
-        };
-
-      child.stdout.on(
-        "data",
-        consume
-      );
-
-      child.stderr.on(
-        "data",
-        consume
-      );
-
-      const timer =
-        setTimeout(
-          () => {
-            child.kill(
-              "SIGKILL"
-            );
-          },
-          DOTNET_ANDROID_TIMEOUT_MS
-        );
-
-      child.once(
-        "error",
-        error => {
-          clearTimeout(
-            timer
-          );
-
-          reject(
-            error
-          );
         }
-      );
+    });
 
-      child.once(
-        "close",
-        code => {
-          clearTimeout(
-            timer
-          );
+  if (
+    result.code ===
+      0
+  ) {
+    return output;
+  }
 
-          if (
-            code ===
-              0
-          ) {
-            resolve(
-              output
-            );
-          } else {
-            reject(
-              new Error(
-                `dotnet ${args.join(" ")} başarısız (exit=${code}).\n` +
-                output.slice(
-                  -16_000
-                )
-              )
-            );
-          }
-        }
-      );
-    }
+  throw new Error(
+    `dotnet ${args.join(" ")} başarısız (exit=${result.code}).\n` +
+    output.slice(
+      -16_000
+    )
   );
 }
 
