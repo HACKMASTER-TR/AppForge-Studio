@@ -45,6 +45,27 @@ export function classifyBuildError(error) {
   }
 
   if (
+    error?.code ===
+      "WORKER_STALL_TIMEOUT" ||
+    error?.code ===
+      "WORKER_MEMORY_PRESSURE" ||
+    has(
+      "workerstalltimeout",
+      "gradlestalltimeout",
+      "workermemorypressure",
+      "worker memory pressure"
+    )
+  ) {
+    return {
+      category: "worker",
+      code:
+        error?.code ||
+        "TRANSIENT_WORKER",
+      retryable: true
+    };
+  }
+
+  if (
     has(
       "econnreset",
       "etimedout",

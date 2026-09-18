@@ -72,3 +72,44 @@ unknown versions fail closed before Gradle.
 NDK/API/Build Tools/CMake, incompatible Gradle/JDK/AGP, missing metadata, and
 legacy-engine pass-through. Source Worker matrix/runtime contracts verify
 registry installation and automatic capability registration.
+
+## 2026-09-18 — Source Worker Reliability v1.1
+
+### Context
+
+A production Expo/React Native build reached the Source Worker cgroup memory
+limit and stopped producing CMake/Ninja output while the Node Worker heartbeat
+continued. The next compatible build remained queued because production had
+one Source Worker replica. Existing autoscaling intentionally excluded
+`source-isolation-dedicated`, and React Native/Expo child processes had only a
+long total timeout that killed the direct launcher instead of the full process
+tree.
+
+### Decision
+
+Treat build progress, Worker presence, and Worker capacity as separate health
+signals. Supervise long-running source subprocesses as process groups, recover
+silent or memory-critical process trees with the existing bounded retry path,
+and stop claiming new work above the cgroup memory high-water mark. Scale the
+dedicated Source Worker as its own capability-isolated Railway pool and
+dispatch that autoscaler immediately when source work queues. When compatible
+capacity is being recovered, report an explicit recovery state instead of a
+historical queue ETA.
+
+### Consequences
+
+A single stuck source build no longer has to monopolize the only compatible
+slot until a 20-minute hard timeout. Recovery remains bounded by
+`maxJobAttempts`; genuine user-code failures are still non-retryable. Source
+autoscaling does not weaken isolation or allow Source Workers to claim normal
+Android jobs. The runtime needs finite cgroup memory limits for the memory
+guard; when they are unavailable, progress/timeout supervision still applies.
+
+### Evidence
+
+Production Source Worker metrics on 2026-09-18 reached approximately 8/8 GiB
+with CPU near idle while CMake/Ninja output stopped. Repository evidence showed
+Source Workers excluded from the existing autoscaler, Worker heartbeat
+independent of process progress, direct-child `SIGKILL` in multiple source
+engines, and a React Native/Expo 20-minute hard timeout without a stall
+watchdog.

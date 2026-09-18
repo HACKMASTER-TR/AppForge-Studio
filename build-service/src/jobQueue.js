@@ -12,6 +12,9 @@ import {
   recordSuccessfulBuild,
   releaseBuildQuotaReservation
 } from "./projectQuotaV2.js";
+import {
+  appendBuildLog
+} from "./buildLogs.js";
 
 import {
   reserveMonthlyBuildQuotaInTransaction
@@ -486,13 +489,26 @@ export async function enqueueJob({
       0
     ) + 1;
 
+  const sourceQueueJob =
+    effectiveRequiredCapabilities
+      .includes(
+        config.sourceBuildIsolationCapability
+      );
+
   if (
+    sourceQueueJob ||
     queuedAfter >=
-    config.autoscaleDispatchQueueThreshold
+      config.autoscaleDispatchQueueThreshold
   ) {
     void triggerWorkerAutoscale({
       reason:
-        `queue_burst_${queuedAfter}`
+        sourceQueueJob
+          ? `source_queue_${queuedAfter}`
+          : `queue_burst_${queuedAfter}`,
+      workerKind:
+        sourceQueueJob
+          ? "source"
+          : "android"
     }).catch(error => {
       console.warn(
         "AUTOSCALE_DISPATCH ERROR:",
@@ -612,6 +628,61 @@ export async function buildQueuePosition(
       ]
     );
 
+  const runningSilenceResult =
+    await query(
+      `SELECT
+         COALESCE(
+           MAX(
+             EXTRACT(
+               EPOCH FROM (
+                 NOW() -
+                 COALESCE(
+                   ll.created_at,
+                   r.locked_at,
+                   r.updated_at
+                 )
+               )
+             )
+           ),
+           0
+         )::int AS max_silent_seconds
+       FROM appforge_build_jobs r
+       JOIN appforge_workers rw
+         ON rw.worker_id = r.worker_id
+       JOIN appforge_builds rb
+         ON rb.id = r.build_id
+       LEFT JOIN appforge_build_log_lines ll
+         ON ll.id = rb.last_log_id
+       WHERE r.status = 'running'
+         AND rw.last_seen_at >
+           NOW() -
+           ($1 || ' milliseconds')::interval
+         AND rw.toolchain_ok = TRUE
+         AND $2::jsonb <@
+             rw.capabilities
+         AND (
+           NOT (
+             rw.capabilities ?
+             $3::text
+           )
+           OR (
+             $2::jsonb ?
+             $3::text
+           )
+         )`,
+      [
+        String(
+          config.workerStaleAfterMs *
+          2
+        ),
+        JSON.stringify(
+          target.required_capabilities ||
+          []
+        ),
+        config.sourceBuildIsolationCapability
+      ]
+    );
+
   const compatibleWorkerSlots =
     Number(
       workerStatsResult.rows[0]
@@ -639,6 +710,32 @@ export async function buildQueuePosition(
       compatibleWorkerSlots -
       busyWorkerSlots
     );
+
+  const maxSilentSeconds =
+    Number(
+      runningSilenceResult.rows[0]
+        ?.max_silent_seconds ||
+      0
+    );
+
+  const recoveringCapacity =
+    target.status ===
+      "queued" &&
+    compatibleWorkerSlots >
+      0 &&
+    availableWorkerSlots ===
+      0 &&
+    maxSilentSeconds >=
+      Math.max(
+        30,
+        Math.floor(
+          (
+            config.gradleStallTimeoutMs /
+            1000
+          ) *
+          0.75
+        )
+      );
 
   const durationResult =
     await query(
@@ -836,13 +933,15 @@ export async function buildQueuePosition(
       : 0;
 
   const estimatedWaitSeconds =
-    estimateQueueWaitSeconds({
-      ahead,
-      compatibleWorkerSlots,
-      runningCompatibleJobs,
-      averageBuildSeconds,
-      availableInSeconds
-    });
+    recoveringCapacity
+      ? null
+      : estimateQueueWaitSeconds({
+          ahead,
+          compatibleWorkerSlots,
+          runningCompatibleJobs,
+          averageBuildSeconds,
+          availableInSeconds
+        });
 
   return {
     status:
@@ -858,6 +957,8 @@ export async function buildQueuePosition(
     availableWorkerSlots,
     averageBuildSeconds,
     availableInSeconds,
+    maxSilentSeconds,
+    recoveringCapacity,
     estimatedWaitSeconds,
 
     /*
@@ -866,9 +967,13 @@ export async function buildQueuePosition(
      * bu değer tahmindir.
      */
     estimate:
-      estimatedWaitSeconds == null
-        ? "unavailable"
-        : "approximate"
+      recoveringCapacity
+        ? "recovering_capacity"
+        : (
+            estimatedWaitSeconds == null
+              ? "unavailable"
+              : "approximate"
+          )
   };
 }
 
@@ -1100,7 +1205,48 @@ export async function failOrRequeueJob(job, error) {
       }
     );
 
+    await query(
+      `UPDATE appforge_builds
+       SET
+         status = 'queued',
+         worker_id = NULL,
+         error = NULL
+       WHERE id = $1`,
+      [
+        job.build_id
+      ]
+    );
+
+    await appendBuildLog(
+      job.build_id,
+      "♻️ Worker kaynaklı geçici sorun algılandı; build otomatik olarak sağlıklı Worker için yeniden sıraya alındı."
+    ).catch(
+      () => {}
+    );
+
     await signalBuildQueue();
+
+    const sourceRecovery =
+      Array.isArray(
+        job.required_capabilities
+      ) &&
+      job.required_capabilities
+        .includes(
+          config.sourceBuildIsolationCapability
+        );
+
+    if (
+      sourceRecovery
+    ) {
+      void triggerWorkerAutoscale({
+        reason:
+          "source_worker_recovery",
+        workerKind:
+          "source"
+      }).catch(
+        () => {}
+      );
+    }
   } else {
     await query(
       `UPDATE appforge_build_jobs
@@ -1393,8 +1539,31 @@ export async function queueStats() {
          COUNT(*) FILTER (WHERE status = 'queued')::int AS queued,
          COUNT(*) FILTER (WHERE status = 'running')::int AS running,
          COUNT(*) FILTER (WHERE status = 'failed')::int AS failed,
-         COUNT(*) FILTER (WHERE status = 'success')::int AS success
-       FROM appforge_build_jobs`
+         COUNT(*) FILTER (WHERE status = 'success')::int AS success,
+         COUNT(*) FILTER (
+           WHERE status = 'queued'
+             AND required_capabilities ? $1::text
+         )::int AS source_queued,
+         COUNT(*) FILTER (
+           WHERE status = 'running'
+             AND required_capabilities ? $1::text
+         )::int AS source_running,
+         COUNT(*) FILTER (
+           WHERE status = 'queued'
+             AND NOT (
+               required_capabilities ? $1::text
+             )
+         )::int AS android_queued,
+         COUNT(*) FILTER (
+           WHERE status = 'running'
+             AND NOT (
+               required_capabilities ? $1::text
+             )
+         )::int AS android_running
+       FROM appforge_build_jobs`,
+      [
+        config.sourceBuildIsolationCapability
+      ]
     ),
     query(
       `SELECT
@@ -1414,8 +1583,38 @@ export async function queueStats() {
     )
   ]);
 
+  const row =
+    jobs.rows[0] ||
+    {};
+
   return {
-    ...jobs.rows[0],
+    ...row,
+    pools: {
+      android: {
+        queued:
+          Number(
+            row.android_queued ||
+            0
+          ),
+        running:
+          Number(
+            row.android_running ||
+            0
+          )
+      },
+      source: {
+        queued:
+          Number(
+            row.source_queued ||
+            0
+          ),
+        running:
+          Number(
+            row.source_running ||
+            0
+          )
+      }
+    },
     configuredConcurrency: config.buildConcurrency,
     maxQueueSize: config.maxQueueSize,
     workers: workers.rows

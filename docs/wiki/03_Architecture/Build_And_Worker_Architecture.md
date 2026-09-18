@@ -113,3 +113,39 @@ toolchain.
 Build runtime state is bound to the project key that started the build. A
 failed build from a previously selected project therefore cannot leak its R8
 or other Error Assistant card into a newly selected project.
+
+## Source Worker Reliability v1.1
+
+Production evidence on 2026-09-18 showed a dedicated Source Worker reaching its
+8 GiB cgroup limit while a NexBrain Expo/React Native build stopped producing
+new CMake/Ninja output. The Worker presence heartbeat remained healthy, so the
+job was not considered stale; the only compatible Source Worker slot stayed
+occupied and the next build remained queued. The queue ETA continued to show a
+normal historical estimate even though capacity was stalled.
+
+Reliability v1.1 separates Worker presence from build-process progress. Long
+running source commands are launched in their own process group and supervised
+for output progress, cancellation, total timeout, and cgroup memory pressure.
+Recovery terminates the entire process tree, including Gradle/CMake/Ninja
+descendants, instead of killing only the direct launcher process. Stall and
+memory-pressure failures are classified as transient Worker infrastructure
+failures and may use the existing bounded job retry path.
+
+The dedicated Source Worker is now a first-class autoscale pool. Queue
+admission immediately dispatches Source autoscaling for jobs requiring
+`source-isolation-dedicated`; the scheduled autoscaler independently scales
+`AppForge-Source-Worker` from a one-replica floor according to source queued
+plus running work. Normal Android and Source Worker capacities remain
+isolated.
+
+Workers at the configured cgroup high-water mark stop claiming new jobs until
+memory pressure falls. At the critical threshold, a sustained pressure window
+terminates the active supervised process tree so the bounded retry can recover
+without leaving orphan Gradle/CMake/Ninja processes.
+
+Queue status exposes separate Android/source pool counts and detects when all
+compatible slots are occupied by a build that has stopped producing logs near
+the watchdog threshold. In that state the API returns
+`estimate=recovering_capacity` instead of a misleading minute estimate, and the
+Android UI tells the user that AppForge is automatically recovering Worker
+capacity.

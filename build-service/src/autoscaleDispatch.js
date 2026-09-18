@@ -28,10 +28,10 @@ function repositoryParts() {
   };
 }
 
-async function reserveDispatchSlot() {
+async function reserveDispatchSlot(workerKind) {
   const distributed =
     await acquireLease(
-      "autoscale-dispatch",
+      `autoscale-dispatch:${workerKind}`,
       config.autoscaleDispatchRepository,
       config.autoscaleDispatchCooldownSeconds
     );
@@ -67,8 +67,13 @@ async function reserveDispatchSlot() {
 }
 
 export async function triggerWorkerAutoscale({
-  reason = "queue_activity"
+  reason = "queue_activity",
+  workerKind = "android"
 } = {}) {
+  const normalizedWorkerKind =
+    workerKind === "source"
+      ? "source"
+      : "android";
   if (
     !config.autoscaleDispatchEnabled
   ) {
@@ -106,7 +111,9 @@ export async function triggerWorkerAutoscale({
   }
 
   const reserved =
-    await reserveDispatchSlot();
+    await reserveDispatchSlot(
+      normalizedWorkerKind
+    );
 
   if (!reserved) {
     return {
@@ -158,7 +165,12 @@ export async function triggerWorkerAutoscale({
             ref:
               config.autoscaleDispatchRef,
             inputs: {
-              min_replicas: "3"
+              min_replicas:
+                normalizedWorkerKind === "source"
+                  ? "1"
+                  : "3",
+              worker_kind:
+                normalizedWorkerKind
             }
           }),
           signal:

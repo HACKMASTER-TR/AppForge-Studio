@@ -16,6 +16,23 @@ SERVICE_NAME = os.environ.get(
     "AppForge-Worker"
 )
 
+WORKER_KIND = (
+    os.environ.get(
+        "WORKER_KIND",
+        "android"
+    )
+    .strip()
+    .lower()
+)
+
+if WORKER_KIND not in {
+    "android",
+    "source"
+}:
+    raise RuntimeError(
+        "WORKER_KIND android veya source olmalı."
+    )
+
 MIN_REPLICAS = max(
     1,
     int(os.environ.get("AUTOSCALE_MIN_REPLICAS", "3"))
@@ -317,10 +334,28 @@ def worker_snapshot(health):
         if not worker.get("toolchain_ok"):
             continue
 
-        if "android-api-37" not in caps:
+        is_source = (
+            "source-isolation-dedicated"
+            in caps
+        )
+
+        if (
+            WORKER_KIND == "source"
+            and not is_source
+        ):
             continue
 
-        if "source-isolation-dedicated" in caps:
+        if (
+            WORKER_KIND == "android"
+            and is_source
+        ):
+            continue
+
+        if (
+            WORKER_KIND == "android"
+            and "android-api-37"
+            not in caps
+        ):
             continue
 
         worker_id = str(
@@ -348,8 +383,15 @@ def worker_snapshot(health):
         )
 
     live_replicas = len(groups)
+
     live_slots = sum(
         groups.values()
+    )
+
+    default_slots = (
+        1
+        if WORKER_KIND == "source"
+        else 2
     )
 
     slots_per_replica = (
@@ -361,15 +403,46 @@ def worker_snapshot(health):
             )
         )
         if live_replicas
-        else 2
+        else default_slots
+    )
+
+    pool = (
+        queue
+        .get("pools", {})
+        .get(
+            WORKER_KIND,
+            {}
+        )
+    )
+
+    queued = int(
+        pool.get("queued")
+        if pool.get("queued") is not None
+        else (
+            queue.get("queued")
+            if WORKER_KIND == "android"
+            else 0
+        )
+        or 0
+    )
+
+    running = int(
+        pool.get("running")
+        if pool.get("running") is not None
+        else (
+            queue.get("running")
+            if WORKER_KIND == "android"
+            else 0
+        )
+        or 0
     )
 
     return {
         "queued":
-            int(queue.get("queued") or 0),
+            queued,
 
         "running":
-            int(queue.get("running") or 0),
+            running,
 
         "liveReplicas":
             live_replicas,
@@ -545,6 +618,18 @@ def main():
         )
     )
 
+    if (
+        queued > 0
+        and snapshot["liveSlots"] == 0
+    ):
+        desired = min(
+            MAX_REPLICAS,
+            max(
+                desired,
+                configured + 1
+            )
+        )
+
     action = "hold"
 
     if desired > configured:
@@ -564,6 +649,8 @@ def main():
     print(
         json.dumps(
             {
+                "workerKind":
+                    WORKER_KIND,
                 "queued": queued,
                 "running": running,
                 "liveReplicas":

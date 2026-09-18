@@ -4,7 +4,8 @@ import {
   promises as fs
 } from "fs";
 import path from "path";
-import { spawn } from "child_process";
+import { config } from "./config.js";
+import { runSupervisedProcess } from "./processSupervisor.js";
 import { existsSync } from "fs";
 import { createSourceBuildEnv } from "./sourceBuildEnv.js";
 
@@ -871,6 +872,8 @@ async function runSourceCommand({
   args,
   env,
   timeoutMs,
+  stallTimeoutMs =
+    config.sourceCommandStallTimeoutMs,
   onLog = null,
   cancelled = null
 }) {
@@ -894,32 +897,25 @@ async function runSourceCommand({
     await cancelled();
   }
 
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
-      const child =
-        spawn(
-          command,
-          args,
-          {
-            cwd,
-            env,
-            shell:
-              false,
-            stdio: [
-              "ignore",
-              "pipe",
-              "pipe"
-            ]
-          }
-        );
+  let output =
+    "";
 
-      let output =
-        "";
-
-      const consume =
+  const result =
+    await runSupervisedProcess({
+      command,
+      args,
+      cwd,
+      env,
+      hardTimeoutMs:
+        timeoutMs,
+      stallTimeoutMs,
+      cancelled,
+      onEvent:
+        message =>
+          onLog
+            ? onLog(message)
+            : null,
+      onChunk:
         chunk => {
           const text =
             String(
@@ -975,67 +971,21 @@ async function runSourceCommand({
                 );
             }
           }
-        };
-
-      child.stdout.on(
-        "data",
-        consume
-      );
-
-      child.stderr.on(
-        "data",
-        consume
-      );
-
-      const timer =
-        setTimeout(
-          () => {
-            child.kill(
-              "SIGKILL"
-            );
-          },
-          timeoutMs
-        );
-
-      child.on(
-        "error",
-        error => {
-          clearTimeout(
-            timer
-          );
-          reject(
-            error
-          );
         }
-      );
+    });
 
-      child.on(
-        "close",
-        code => {
-          clearTimeout(
-            timer
-          );
+  if (
+    result.code ===
+      0
+  ) {
+    return output;
+  }
 
-          if (
-            code ===
-              0
-          ) {
-            resolve(
-              output
-            );
-          } else {
-            reject(
-              new Error(
-                `${command} ${args.join(" ")} başarısız (exit=${code}).\n` +
-                commandFailureExcerpt(
-                  output
-                )
-              )
-            );
-          }
-        }
-      );
-    }
+  throw new Error(
+    `${command} ${args.join(" ")} başarısız (exit=${result.code}).\n` +
+    commandFailureExcerpt(
+      output
+    )
   );
 }
 
@@ -1681,6 +1631,8 @@ export async function buildReactNativeArtifacts({
         env,
         timeoutMs:
           RN_BUILD_TIMEOUT_MS,
+        stallTimeoutMs:
+          config.gradleStallTimeoutMs,
         onLog,
         cancelled
       }

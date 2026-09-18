@@ -19639,13 +19639,17 @@ private fun BuildStep(
 
                         Text(
                             text =
-                                if (
+                                when {
+                                    queueEstimate ==
+                                        "recovering_capacity" ->
+                                        "♻ Worker kapasitesi otomatik kurtarılıyor"
+
                                     queueWorkerSlots >
-                                    0
-                                ) {
-                                    "⚙ $queueWorkerSlots uygun build slotu aktif"
-                                } else {
-                                    "⚙ Uygun worker bekleniyor"
+                                        0 ->
+                                        "⚙ $queueWorkerSlots uygun build slotu aktif"
+
+                                    else ->
+                                        "⚙ Uygun worker bekleniyor"
                                 },
                             color =
                                 TextSecondary,
@@ -19667,6 +19671,19 @@ private fun BuildStep(
                             }
 
                         if (
+                            queueEstimate ==
+                                "recovering_capacity"
+                        ) {
+                            Text(
+                                "AppForge takılan Worker'ı otomatik kurtarıyor ve kapasiteyi yeniden açıyor. Ek işlem yapman gerekmiyor.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    10.sp,
+                                lineHeight =
+                                    14.sp
+                            )
+                        } else if (
                             queueEstimate ==
                                 "approximate"
                         ) {

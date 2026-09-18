@@ -133,6 +133,58 @@ export const config = {
     )
   ),
 
+  /*
+   * Source Worker reliability.
+   *
+   * Long-running child processes are supervised by output progress,
+   * cgroup memory pressure and process-tree termination.
+   */
+  sourceCommandStallTimeoutMs: Math.max(
+    60_000,
+    Number(
+      process.env.SOURCE_COMMAND_STALL_TIMEOUT_MS ||
+      240_000
+    )
+  ),
+
+  workerMemoryHighWatermarkPct: Math.max(
+    50,
+    Math.min(
+      99,
+      Number(
+        process.env.WORKER_MEMORY_HIGH_WATERMARK_PCT ||
+        90
+      )
+    )
+  ),
+
+  workerMemoryCriticalPct: Math.max(
+    60,
+    Math.min(
+      100,
+      Number(
+        process.env.WORKER_MEMORY_CRITICAL_PCT ||
+        96
+      )
+    )
+  ),
+
+  workerMemoryPressureGraceMs: Math.max(
+    5_000,
+    Number(
+      process.env.WORKER_MEMORY_PRESSURE_GRACE_MS ||
+      20_000
+    )
+  ),
+
+  workerResourcePollMs: Math.max(
+    500,
+    Number(
+      process.env.WORKER_RESOURCE_POLL_MS ||
+      2_000
+    )
+  ),
+
   sourceBuildIsolationMode:
     String(
       process.env.SOURCE_BUILD_ISOLATION_MODE ||
