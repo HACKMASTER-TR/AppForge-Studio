@@ -2,216 +2,36 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const main =
-  fs.readFileSync(
-    new URL(
-      "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-      import.meta.url
-    ),
-    "utf8"
-  );
+const main = fs.readFileSync(new URL("../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt", import.meta.url), "utf8");
+const security = fs.readFileSync(new URL("../../android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt", import.meta.url), "utf8");
 
-const security =
-  fs.readFileSync(
-    new URL(
-      "../../android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
-      import.meta.url
-    ),
-    "utf8"
-  );
+const start = main.indexOf("@Composable\nprivate fun ProUpgradeScreen(");
+const end = start >= 0 ? main.indexOf("\n@Composable", start + 20) : -1;
+const screen = start < 0 ? "" : end > start ? main.slice(start, end) : main.slice(start);
 
+test("legacy security quota parser remains intact until migration", () => {
+  assert.match(security, /data class QuotaStatus/);
+  assert.match(security, /\/api\/projects\/quota/);
+  assert.match(security, /buildQuota/);
+});
 
-test(
-  "Android can fetch project and successful-build quota",
-  () => {
-    assert.match(
-      security,
-      /data class QuotaStatus/
-    );
+test("lifetime Pro setup effect remains inside ProUpgradeScreen", () => {
+  assert.ok(start >= 0, "ProUpgradeScreen missing");
+  assert.match(screen, /LaunchedEffect\(serverUrl\)/);
+  assert.doesNotMatch(screen, /LaunchedEffect\([\s\S]*?session\?\.token/);
+});
 
-    assert.match(
-      security,
-      /\/api\/projects\/quota/
-    );
+test("Pro screen offers only lifetime purchase and restore", () => {
+  assert.match(screen, /Pro Ömür Boyu/);
+  assert.match(screen, /launchLifetime\s*\(/);
+  assert.match(screen, /restorePurchases\s*\(/);
+  assert.doesNotMatch(screen, /launchMonthly\s*\(|launchQuotaAddon\s*\(|redeemAddonPurchase|EK PAKETİ AL|AYLIK 50 PROJE/);
+});
 
-    assert.match(
-      security,
-      /buildQuota/
-    );
-  }
-);
-
-
-test(
-  "quota refresh effect stays inside ProUpgradeScreen scope",
-  () => {
-    const proStart =
-      main.indexOf(
-        "@Composable\nprivate fun ProUpgradeScreen("
-      );
-
-    assert.ok(
-      proStart >= 0
-    );
-
-    const marker =
-      "LaunchedEffect(\n        serverUrl,\n        session?.token";
-
-    const first =
-      main.indexOf(
-        marker
-      );
-
-    const insidePro =
-      main.indexOf(
-        marker,
-        proStart
-      );
-
-    assert.ok(
-      insidePro > proStart
-    );
-
-    assert.equal(
-      first,
-      insidePro
-    );
-  }
-);
-
-
-test(
-  "purchase callback separates add-ons from Pro subscription",
-  () => {
-    assert.match(
-      main,
-      /redeemAddonPurchase/
-    );
-
-    assert.match(
-      main,
-      /quota10ProductId/
-    );
-
-    assert.match(
-      main,
-      /quota25ProductId/
-    );
-
-    assert.match(
-      main,
-      /quota50ProductId/
-    );
-
-    assert.match(
-      main,
-      /Bu ürün artık AppForge tarafından satılmıyor/
-    );
-  }
-);
-
-
-test(
-  "billing manager receives all quota product ids",
-  () => {
-    assert.match(
-      main,
-      /quotaAddonProductIds[\s\S]*?quota10ProductId[\s\S]*?quota25ProductId[\s\S]*?quota50ProductId/
-    );
-  }
-);
-
-
-test(
-  "Pro screen shows approved monthly quota model",
-  () => {
-    assert.match(
-      main,
-      /AYLIK 50 PROJE • 100 BUILD/
-    );
-
-    assert.match(
-      main,
-      /50 başarılı farklı proje/
-    );
-
-    assert.match(
-      main,
-      /100 başarılı build/
-    );
-  }
-);
-
-
-test(
-  "Pro screen exposes all three add-on packages",
-  () => {
-    assert.match(
-      main,
-      /\+10 PROJE • \+20 BUILD/
-    );
-
-    assert.match(
-      main,
-      /\+25 PROJE • \+50 BUILD/
-    );
-
-    assert.match(
-      main,
-      /\+50 PROJE • \+100 BUILD/
-    );
-  }
-);
-
-
-test(
-  "add-ons use Google Play formatted prices",
-  () => {
-    assert.match(
-      main,
-      /quotaAddonPrices/
-    );
-
-    assert.match(
-      main,
-      /quotaAddonAvailability/
-    );
-  }
-);
-
-
-test(
-  "add-on UI is limited to active monthly Pro",
-  () => {
-    assert.match(
-      main,
-      /monthlyProActive/
-    );
-
-    assert.match(
-      main,
-      /google_play_subscription/
-    );
-
-    assert.match(
-      main,
-      /Sonraki aya devretmez/
-    );
-  }
-);
-
-
-test(
-  "successful rebuild wording distinguishes project and build quota",
-  () => {
-    assert.match(
-      main,
-      /projectId tekrar build edilirse proje hakkı yeniden düşmez/
-    );
-
-    assert.match(
-      main,
-      /Her başarılı build build kotasından 1 düşer/
-    );
-  }
-);
+test("a Play receipt goes to the server and never grants Pro on its own", () => {
+  assert.match(screen, /verifyLifetimePurchase\s*\(/);
+  assert.match(screen, /onVerified\(status\)/);
+  assert.match(screen, /ready\s*&&\s*prices\.lifetimeAvailable/);
+  assert.match(screen, /Satın alma doğrulanamadı/);
+  assert.doesNotMatch(screen, /session\s*!=\s*null\s*&&/);
+});

@@ -60,7 +60,7 @@ data class QuotaStatus(
 class StudioSecurityClient(
     context: Context,
     private val baseUrl: String,
-    private val accessToken: String
+    private val accessToken: String = ""
 ) {
     private val appContext =
         context.applicationContext
@@ -335,6 +335,31 @@ class StudioSecurityClient(
                 },
             integrityRequired =
                 cfg.strictProIntegrity
+        )
+    }
+
+    /** No AppForge account: receipt is checked by the HTTPS server against Google Play.
+     * A 503, invalid product, or non-active response never grants local Pro access.
+     */
+    suspend fun verifyLifetimePurchase(purchaseToken: String): ProStatus {
+        require(purchaseToken.isNotBlank()) { "Google Play satın alma kanıtı eksik." }
+        val json = request(
+            path = "/api/pro/activate",
+            method = "POST",
+            body = JSONObject()
+                .put("productId", APPFORGE_LIFETIME_PRODUCT_ID)
+                .put("purchaseToken", purchaseToken),
+            integritySession = null
+        )
+        check(json.optBoolean("active", false) &&
+            json.optString("productId") == APPFORGE_LIFETIME_PRODUCT_ID
+        ) { "Google Play doğrulaması tamamlanmadı." }
+        return ProStatus(
+            active = true,
+            source = json.optString("source", "google_play"),
+            productId = APPFORGE_LIFETIME_PRODUCT_ID,
+            expiresAt = null,
+            integrityRequired = json.optBoolean("integrityRequired", true)
         )
     }
 
@@ -858,10 +883,12 @@ class StudioSecurityClient(
                     "Accept",
                     "application/json"
                 )
-                setRequestProperty(
-                    "Authorization",
-                    "Bearer $accessToken"
-                )
+                if (accessToken.isNotBlank()) {
+                    setRequestProperty(
+                        "Authorization",
+                        "Bearer $accessToken"
+                    )
+                }
                 setRequestProperty(
                     "X-AppForge-Device-ID",
                     StudioDeviceIdentity.value(appContext)

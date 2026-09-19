@@ -11,6 +11,9 @@ tags:
 related:
   - "[[System_Architecture]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt"
   - "build-service/tests/device_build_toolchain_scope_contract.test.js"
   - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
@@ -216,3 +219,44 @@ five-build stress UI remains absent.
 `studio_home_modern_ui_contract.test.js`,
 `device_only_build_ui_contract.test.js`, Android Debug CI and real-device UI
 acceptance.
+
+## 2026-09-19 — Accountless, single lifetime Pro product
+
+### Decision
+
+AppForge's new paid offering consists of one Google Play non-consumable
+one-time Pro purchase, proposed product ID `appforge_pro_lifetime`. No normal
+AppForge login, recurring subscription or quota add-on sales. Verify a
+purchase server-side against Google Play and reconcile voids/refunds before
+granting rights; restore via Google Play Billing. Admin uses independent
+verified Google identity. Free build execution stays device-local.
+
+### Consequences
+
+The earlier monthly/add-on and Stage 2 email/password model is superseded,
+not silently deleted from historical project records. Android's legacy UI,
+Google Play Console products and purchase-validation implementation require
+separate verification before production cutover.
+
+## 2026-09-19 — One accountless lifetime purchase
+
+### Context
+
+The Android app previously exposed email/password accounts, monthly SUBS and
+10/25/50 add-on offers even though the new Cloudflare Worker has no account
+system and no live Play verification.
+
+### Decision
+
+Normal users need no AppForge account. Use one proposed non-consumable Google
+Play item (`appforge_pro_lifetime`) with server-verified receipts and restore.
+Retire monthly and add-on purchase UI; do not treat local Billing callbacks,
+headers, device IDs or a cached account as proof of payment/admin identity.
+
+### Consequences and evidence
+
+The UI remains fail-closed while the real verification API is unavailable.
+Play product/credentials, acknowledgement/refunds, verified Google admin OIDC,
+whole-repo CI and physical-device testing are independent release blockers.
+`cloudflare/control-plane/tests/worker.test.mjs` protects server staging;
+Android single-product source contracts accompany this change.

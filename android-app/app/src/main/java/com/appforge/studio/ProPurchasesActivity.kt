@@ -6,10 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
@@ -17,7 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -33,73 +30,117 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.appforge.studio.model.DEFAULT_CONTROL_PLANE_URL
-import com.appforge.studio.security.QuotaStatus
-import com.appforge.studio.security.SecureAccountStore
-import com.appforge.studio.security.SecurityConfig
+import com.appforge.studio.security.APPFORGE_LIFETIME_PRODUCT_ID
+import com.appforge.studio.security.ProStatus
 import com.appforge.studio.security.StudioBillingManager
 import com.appforge.studio.security.StudioPlanPrice
-import com.appforge.studio.security.ProStatus
 import com.appforge.studio.security.StudioPurchaseResult
 import com.appforge.studio.security.StudioSecurityClient
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.UnknownHostException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+
+/** A failed verification must never unlock Pro. Only network failures get an internet warning. */
+private fun purchaseErrorMessage(error: Throwable): String {
+    val connectionFailure = generateSequence(error) { it.cause }.any { cause ->
+        cause is UnknownHostException ||
+            cause is ConnectException ||
+            cause is SocketTimeoutException
+    }
+    return if (connectionFailure) {
+        "İnternet bağlantısı kurulamadı. Lütfen tekrar dene."
+    } else {
+        "İşlem tamamlanamadı. Lütfen tekrar dene."
+    }
+}
 
 private data class PurchaseCenterState(
     val loading: Boolean = true,
-    val message: String? = null,
-    val config: SecurityConfig? = null,
+    val message: String = "",
     val pro: ProStatus? = null,
-    val quota: QuotaStatus? = null,
-    val prices: StudioPlanPrice = StudioPlanPrice()
+    val prices: StudioPlanPrice = StudioPlanPrice(),
+    val serverReady: Boolean = false
 )
 
 class ProPurchasesActivity : ComponentActivity() {
     private var state by mutableStateOf(PurchaseCenterState())
     private var billing: StudioBillingManager? = null
-    private var security: StudioSecurityClient? = null
-    private var userId: String = ""
+    private val security by lazy {
+        StudioSecurityClient(this, DEFAULT_CONTROL_PLANE_URL, "")
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val session = SecureAccountStore.loadSession(this)
-        if (session == null) {
-            state = PurchaseCenterState(
-                loading = false,
-                message = "Pro ve satın alma bilgilerini görmek için önce AppForge hesabına giriş yapmalısın."
-            )
-        } else {
-            userId = session.userId
-            security = StudioSecurityClient(
-                context = this,
-                baseUrl = DEFAULT_CONTROL_PLANE_URL,
-                accessToken = session.token
-            )
-            loadCenter()
-        }
-
+        loadCenter()
         setContent {
             AppForgeTheme {
                 Surface(Modifier.fillMaxSize()) {
-                    ProPurchasesContent(
+                    LifetimeContent(
                         state = state,
                         onBack = ::finish,
                         onRefresh = ::loadCenter,
-                        onBuyMonthly = {
-                            billing?.launchMonthly(this)
-                        },
-                        onBuyAddon = { productId ->
-                            billing?.launchQuotaAddon(this, productId)
-                        },
-                        onRestore = {
-                            billing?.restorePurchases {
-                                refreshServerState()
-                            }
-                        },
-                        onManage = {
-                            billing?.openManageSubscription(this)
-                        }
+                        onBuy = { billing?.launchLifetime(this) },
+                        onRestore = { billing?.restorePurchases() }
                     )
                 }
+            }
+        }
+    }
+
+    private fun loadCenter() {
+        state = state.copy(loading = true, message = "", serverReady = false)
+        lifecycleScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { security.config() }
+            }.onSuccess { config ->
+                if (config.proProductId != APPFORGE_LIFETIME_PRODUCT_ID ||
+                    config.proMonthlyProductId.isNotBlank() ||
+                    listOf(config.quota10ProductId, config.quota25ProductId,
+                        config.quota50ProductId).any { it.isNotBlank() }
+                ) {
+                    state = state.copy(loading = false,
+                        message = "Sunucu tek Pro Ömür Boyu ürünü için hazır değil.")
+                    return@onSuccess
+                }
+                billing?.close()
+                val manager = StudioBillingManager(
+                    context = this@ProPurchasesActivity,
+                    lifetimeProductId = config.proProductId,
+                    onPurchase = ::verifyReceipt,
+                    onMessage = { state = state.copy(message = it) }
+                )
+                billing = manager
+                state = state.copy(loading = false, serverReady = true)
+                manager.start {
+                    manager.queryPlans { state = state.copy(prices = it) }
+                    manager.restorePurchases()
+                }
+            }.onFailure { error ->
+                state = state.copy(loading = false,
+                    message = purchaseErrorMessage(error))
+            }
+        }
+    }
+
+    private fun verifyReceipt(receipt: StudioPurchaseResult) {
+        if (receipt.productId != APPFORGE_LIFETIME_PRODUCT_ID) return
+        state = state.copy(loading = true,
+            message = "Satın alma Google Play üzerinden sunucuda doğrulanıyor...")
+        lifecycleScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    security.verifyLifetimePurchase(receipt.purchaseToken)
+                }
+            }.onSuccess { pro ->
+                state = state.copy(loading = false, pro = pro,
+                    message = "Pro Ömür Boyu sunucuda doğrulandı.")
+            }.onFailure { error ->
+                state = state.copy(loading = false,
+                    message = purchaseErrorMessage(error) +
+                        " Satın alımı geri yüklemeyi deneyebilirsin.")
             }
         }
     }
@@ -109,389 +150,61 @@ class ProPurchasesActivity : ComponentActivity() {
         billing = null
         super.onDestroy()
     }
-
-    private fun loadCenter() {
-        val client = security ?: return
-        state = state.copy(loading = true, message = null)
-
-        lifecycleScope.launch {
-            runCatching {
-                val cfg = client.config()
-                val pro = client.proStatus(userId)
-                val quota = client.quotaStatus()
-                Triple(cfg, pro, quota)
-            }.onSuccess { (cfg, pro, quota) ->
-                state = state.copy(
-                    loading = false,
-                    config = cfg,
-                    pro = pro,
-                    quota = quota,
-                    message = null
-                )
-                setupBilling(cfg)
-            }.onFailure { error ->
-                state = state.copy(
-                    loading = false,
-                    message = cleanMessage(error)
-                )
-            }
-        }
-    }
-
-    private fun setupBilling(cfg: SecurityConfig) {
-        billing?.close()
-
-        val manager = StudioBillingManager(
-            context = this,
-            lifetimeProductId = cfg.proProductId,
-            monthlyProductId = cfg.proMonthlyProductId,
-            quotaAddonProductIds = listOf(
-                cfg.quota10ProductId,
-                cfg.quota25ProductId,
-                cfg.quota50ProductId
-            ).filter { it.isNotBlank() },
-            onPurchase = ::handlePurchase,
-            onMessage = { message ->
-                state = state.copy(message = message)
-            }
-        )
-
-        billing = manager
-        manager.start {
-            manager.queryPlans { prices ->
-                state = state.copy(prices = prices)
-            }
-        }
-    }
-
-    private fun handlePurchase(purchase: StudioPurchaseResult) {
-        val client = security ?: return
-        val cfg = state.config ?: return
-
-        state = state.copy(
-            loading = true,
-            message = "Google Play satın alması AppForge sunucusunda doğrulanıyor…"
-        )
-
-        lifecycleScope.launch {
-            runCatching {
-                when (purchase.productId) {
-                    cfg.proMonthlyProductId -> {
-                        client.activatePro(
-                            userId = userId,
-                            purchaseToken = purchase.purchaseToken,
-                            plan = "monthly"
-                        )
-                    }
-
-                    cfg.quota10ProductId,
-                    cfg.quota25ProductId,
-                    cfg.quota50ProductId -> {
-                        client.redeemQuotaAddon(
-                            userId = userId,
-                            productId = purchase.productId,
-                            purchaseToken = purchase.purchaseToken
-                        )
-                    }
-
-                    else -> error("Bu Google Play ürünü AppForge Pro merkezinde tanınmıyor.")
-                }
-            }.onSuccess {
-                state = state.copy(
-                    loading = false,
-                    message = "Satın alma doğrulandı. Hakların güncellendi."
-                )
-                refreshServerState()
-            }.onFailure { error ->
-                state = state.copy(
-                    loading = false,
-                    message = cleanMessage(error)
-                )
-            }
-        }
-    }
-
-    private fun refreshServerState() {
-        val client = security ?: return
-        if (userId.isBlank()) return
-
-        lifecycleScope.launch {
-            runCatching {
-                client.proStatus(userId) to client.quotaStatus()
-            }.onSuccess { (pro, quota) ->
-                state = state.copy(
-                    loading = false,
-                    pro = pro,
-                    quota = quota
-                )
-            }.onFailure { error ->
-                state = state.copy(
-                    loading = false,
-                    message = cleanMessage(error)
-                )
-            }
-        }
-    }
-
-    private fun cleanMessage(error: Throwable): String {
-        val text = error.message.orEmpty().trim()
-
-        val connectionFailure =
-            generateSequence(error as Throwable?) {
-                it?.cause
-            }.filterNotNull().any { cause ->
-                cause is java.net.UnknownHostException ||
-                    cause is java.net.ConnectException ||
-                    cause is java.net.SocketTimeoutException ||
-                    cause is java.net.NoRouteToHostException
-            }
-
-        if (connectionFailure) {
-            return "İnternet bağlantısı kurulamadı. Bağlantını kontrol edip tekrar dene."
-        }
-
-        return if (text.isBlank()) {
-            "İşlem tamamlanamadı. Lütfen tekrar dene."
-        } else {
-            text.take(300)
-        }
-    }
 }
 
 @Composable
-private fun ProPurchasesContent(
+private fun LifetimeContent(
     state: PurchaseCenterState,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
-    onBuyMonthly: () -> Unit,
-    onBuyAddon: (String) -> Unit,
-    onRestore: () -> Unit,
-    onManage: () -> Unit
+    onBuy: () -> Unit,
+    onRestore: () -> Unit
 ) {
-    val scroll = rememberScrollState()
-
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .verticalScroll(scroll)
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize().statusBarsPadding()
+            .verticalScroll(rememberScrollState()).padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Column(
-            modifier = Modifier
-                .widthIn(max = 760.dp)
-                .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.widthIn(max = 760.dp).fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                OutlinedButton(onClick = onBack) {
-                    Text("Geri")
-                }
-                Text(
-                    "Pro ve Satın Almalar",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                OutlinedButton(onClick = onRefresh) {
-                    Text("Yenile")
-                }
+            Row(Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(onClick = onBack) { Text("Geri") }
+                Text("AppForge Pro", style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold)
+                OutlinedButton(onClick = onRefresh) { Text("Yenile") }
             }
-
-            state.message?.takeIf { it.isNotBlank() }?.let { message ->
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Text(
-                        message,
-                        modifier = Modifier.padding(14.dp)
-                    )
-                }
-            }
-
-            if (state.loading) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            val pro = state.pro
-            val quota = state.quota
-            val cfg = state.config
-
             Card {
-                Column(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        if (pro?.active == true) "Pro aktif" else "Standart plan",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        if (pro?.active == true) {
-                            "Yetki AppForge sunucusu tarafından doğrulandı."
-                        } else {
-                            "Pro Aylık ile gelişmiş özellikleri ve daha yüksek kotaları kullanabilirsin."
-                        }
-                    )
-                    pro?.expiresAt?.let { Text("Dönem sonu: $it") }
-
-                    val price = state.prices.monthlyPrice
+                Column(Modifier.fillMaxWidth().padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Pro Ömür Boyu", style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold)
+                    Text("Tek seferlik Google Play ödemesi. Aylık abonelik veya ek paket yok.")
+                    Text(if (state.pro?.active == true) "Pro doğrulandı"
+                        else "Satın alma doğrulanmayı bekliyor",
+                        fontWeight = FontWeight.SemiBold)
+                    if (state.loading) CircularProgressIndicator()
+                    Text(state.prices.lifetimePrice ?: "Fiyat Google Play'den yüklenir")
                     Button(
-                        onClick = onBuyMonthly,
-                        enabled = state.prices.monthlyAvailable && !state.loading,
+                        onClick = onBuy,
+                        enabled = state.serverReady && state.prices.lifetimeAvailable &&
+                            state.pro?.active != true && !state.loading,
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            if (price.isNullOrBlank()) "Pro Aylık" else "Pro Aylık • $price"
-                        )
-                    }
-
-                    OutlinedButton(
-                        onClick = onManage,
+                    ) { Text("PRO'YU ÖMÜR BOYU AÇ") }
+                    OutlinedButton(onClick = onRestore,
+                        enabled = state.serverReady && !state.loading,
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Aboneliği Google Play'de yönet")
-                    }
-
-                    OutlinedButton(
-                        onClick = onRestore,
-                        enabled = !state.loading,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Satın almaları geri yükle")
-                    }
+                    ) { Text("Satın alımı geri yükle") }
+                    if (!state.serverReady) Text(
+                        "Satın alma, gerçek sunucu doğrulaması tamamlandığında kullanılabilir.")
                 }
             }
-
-            if (quota != null) {
-                Card {
-                    Column(
-                        Modifier.fillMaxWidth().padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            "Kota durumu",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            quotaLine(
-                                label = "Projeler",
-                                used = quota.projectUsed,
-                                limit = quota.projectLimit,
-                                addon = quota.projectAddonBonus
-                            )
-                        )
-                        Text(
-                            quotaLine(
-                                label = "Başarılı build",
-                                used = quota.buildUsed,
-                                limit = quota.buildLimit,
-                                addon = quota.buildAddonBonus
-                            )
-                        )
-                        quota.periodEndsAt?.let {
-                            Text("Kota dönemi sonu: $it")
-                        }
-                        Text(
-                            "Başarısız veya iptal edilen build'ler aylık başarılı-build hakkı tüketmez.",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
+            if (state.message.isNotBlank()) Card {
+                Text(state.message, Modifier.padding(14.dp))
             }
-
-            val monthlyPro =
-                pro?.active == true &&
-                    (
-                        pro.source == "google_play_subscription" ||
-                            pro.productId == cfg?.proMonthlyProductId
-                    )
-
-            if (cfg != null && monthlyPro) {
-                Card {
-                    Column(
-                        Modifier.fillMaxWidth().padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Text(
-                            "Ek kota paketleri",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Ek paketler yalnız aktif Pro Aylık döneminde geçerlidir ve sonraki döneme devretmez."
-                        )
-
-                        AddonButton(
-                            label = "+10 proje / +20 build",
-                            productId = cfg.quota10ProductId,
-                            price = state.prices.quotaAddonPrices[cfg.quota10ProductId],
-                            available = state.prices.quotaAddonAvailability[cfg.quota10ProductId] == true,
-                            onBuy = onBuyAddon
-                        )
-                        AddonButton(
-                            label = "+25 proje / +50 build",
-                            productId = cfg.quota25ProductId,
-                            price = state.prices.quotaAddonPrices[cfg.quota25ProductId],
-                            available = state.prices.quotaAddonAvailability[cfg.quota25ProductId] == true,
-                            onBuy = onBuyAddon
-                        )
-                        AddonButton(
-                            label = "+50 proje / +100 build",
-                            productId = cfg.quota50ProductId,
-                            price = state.prices.quotaAddonPrices[cfg.quota50ProductId],
-                            available = state.prices.quotaAddonAvailability[cfg.quota50ProductId] == true,
-                            onBuy = onBuyAddon
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
         }
     }
-}
-
-@Composable
-private fun AddonButton(
-    label: String,
-    productId: String,
-    price: String?,
-    available: Boolean,
-    onBuy: (String) -> Unit
-) {
-    Button(
-        onClick = { onBuy(productId) },
-        enabled = productId.isNotBlank() && available,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            if (price.isNullOrBlank()) label else "$label • $price"
-        )
-    }
-}
-
-private fun quotaLine(
-    label: String,
-    used: Int?,
-    limit: Int?,
-    addon: Int
-): String {
-    val usedText = used?.toString() ?: "-"
-    val limitText = limit?.toString() ?: "Sınırsız"
-    val addonText = if (addon > 0) " • ek +$addon" else ""
-    return "$label: $usedText / $limitText$addonText"
 }

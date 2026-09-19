@@ -13,6 +13,9 @@ related:
   - "[[Project_Overview]]"
   - "[[Build_And_Worker_Architecture]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
@@ -74,3 +77,63 @@ Admin authorization is confirmed by the authenticated
 `StudioSecurityClient` against `/api/pro/status`. Update-policy network failure
 does not block normal offline app entry; maintenance remains the only cached
 blocking state.
+
+## Cloudflare Control Plane V1
+
+The standalone Cloudflare Worker is staged under
+`cloudflare/control-plane`.
+
+The existing PostgreSQL-backed Express API must not be deployed
+unchanged to Cloudflare D1.
+
+Until account migration, server authorization, Play verification
+and endpoint contracts are complete, protected API routes must
+remain unavailable rather than grant synthetic access.
+
+Normal Device Build V3 remains independent of Cloudflare.
+
+## Cloudflare Control Plane Phase 2: New Accounts (staging)
+
+User chose NEW accounts, not a legacy PostgreSQL import. D1 schema and WebCrypto
+password/session implementation are staged under `cloudflare/control-plane`.
+Auth signup/login requires a separate Cloudflare rate limiter binding; registration
+remains unverified until genuine email verification is delivered. Admin and Pro
+permissions remain fail-closed, never inferred from a local owner/email string.
+Android `/api/client/android/policy` is deliberately non-blocking pending actual
+release policy. No production deployment, domain switch or Google Play activation
+was performed. Device Build V3 is unchanged.
+
+## 2026-09-19 — Accountless Cloudflare Control Plane (staging)
+
+The earlier Cloudflare Phase 2 *new account* design is superseded before
+any deployment: users will not create AppForge email/password accounts.
+`cloudflare/control-plane/migrations/0001_accountless_control_plane.sql`
+replaces the un-applied accounts schema. Normal device builds stay local.
+Google Play Billing + server-side Google Play Developer API verification
+will own Pro entitlements; Google OpenID Connect verified `sub` and an
+explicit server allow-list will own admin. Neither the store account, client
+email, legacy bearer, nor device ID alone establishes server identity.
+The staged Worker fails closed for unfinished Admin/Pro/device/quotas.
+Android legacy session and purchase UX must be refactored before deployment.
+
+## 2026-09-19 — Single lifetime Pro contract (staging)
+
+The normal-user accountless model has one Google Play non-consumable,
+one-time INAPP Pro product (proposed ID `appforge_pro_lifetime`), not a
+subscription, renewal or add-on system. The Cloudflare D1 staging schema
+stores one-time purchase status and revocation, not monthly expiration.
+No Pro right is granted until Google Play Developer API verification and
+Android Billing purchase/restore integration are complete. Device Build V3
+is unchanged.
+
+## Accountless Lifetime Pro Android staging
+
+Regular users do not create AppForge accounts. Android Billing queries only
+`appforge_pro_lifetime` as a non-consumable Play INAPP item. No SUBS product
+or add-on product is requested or consumed. A completed Play purchase is not
+a Pro entitlement by itself; the accountless client sends its purchase token
+to the HTTPS `/api/pro/activate` verifier and accepts only a positive, matching
+server result. Outages must fail closed for paid entitlement while device-local
+build remains usable. Admin requires a separately verified Google identity.
+The staged Worker does not yet provide real Play verification, so paid purchase
+must stay disabled until a genuine ready config is available.

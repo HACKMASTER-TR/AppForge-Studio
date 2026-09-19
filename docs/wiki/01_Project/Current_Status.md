@@ -13,6 +13,9 @@ related:
   - "[[Hot_Context]]"
   - "[[Bug_Index]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt"
   - "build-service/tests/device_build_toolchain_scope_contract.test.js"
   - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
   - "build-service/tests/appforge_terminal_viewport_stability_contract.test.js"
@@ -163,3 +166,37 @@ source_files:
 - Update-policy failure retains the existing `Çevrimdışı devam et` path.
 - Device Build Runtime V3, AAPT2 and normal device-local APK/AAB execution are
   unchanged.
+
+## 2026-09-19 Cloudflare accountless pivot — staging only
+
+The user chose no normal-user AppForge registration/login; the previously
+staged Phase 2 password/schema path is replaced before deployment. Only
+staging health and non-blocking update-policy routes are available. Existing
+Android account screens, `session != null` purchase checks and bearer-based
+admin have not yet been refactored. Google Play purchase verification,
+Google admin sign-in, D1 migration, worker deployment and production domain
+switch remain BLOCKED until real end-to-end validation. No Play publishing.
+
+## 2026-09-19 Single lifetime Pro pivot — local staging
+
+One-time non-consumable Pro replaces monthly/annual subscriptions and quota
+add-ons in the new product design. The staging Worker returns 410 on retired
+purchase endpoints and 503 for unimplemented Play verification; D1 migration
+is not deployed. Android still has legacy session/monthly/add-on UI and must
+be updated before a physical-device acceptance. No commit/push/deploy/Play
+publish was done by this staging patch.
+
+## 2026-09-19 Accountless Lifetime Pro Android staging
+
+- Normal-user account/password UI is replaced by a no-login information screen.
+- Pro purchase surfaces and Billing Manager offer only `appforge_pro_lifetime`
+  as a non-consumable INAPP item, with INAPP-only restore.
+- The client never locally grants Pro on a Billing callback: the receipt must
+  pass the HTTPS `/api/pro/activate` server verification first.
+- The staged Worker still returns 503 for that route and `/api/security/config`;
+  its release is **blocked** until real Play Developer API and Play Integrity
+  checks, purchase acknowledgement/refund handling and device acceptance pass.
+- Owner/admin Google OIDC is not implemented. Never grant admin from email,
+  local device ID or stale AppForge bearer token.
+- This limited source export cannot prove Android compilation or the full app
+  gate; full-repo CI and physical-device acceptance are still required.

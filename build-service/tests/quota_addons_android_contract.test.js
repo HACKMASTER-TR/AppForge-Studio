@@ -2,145 +2,28 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const server =
-  fs.readFileSync(
-    new URL(
-      "../server.js",
-      import.meta.url
-    ),
-    "utf8"
-  );
+const server = fs.readFileSync(new URL("../server.js", import.meta.url), "utf8");
+const security = fs.readFileSync(new URL("../../android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt", import.meta.url), "utf8");
+const billing = fs.readFileSync(new URL("../../android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt", import.meta.url), "utf8");
 
-const security =
-  fs.readFileSync(
-    new URL(
-      "../../android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
-      import.meta.url
-    ),
-    "utf8"
-  );
+test("legacy build-service quota endpoints remain isolated from new Cloudflare product", () => {
+  assert.match(server, /quota10ProductId/);
+  assert.match(server, /quota25ProductId/);
+  assert.match(server, /quota50ProductId/);
+  assert.match(security, /\/api\/quota\/addons\/redeem/);
+});
 
-const billing =
-  fs.readFileSync(
-    new URL(
-      "../../android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt",
-      import.meta.url
-    ),
-    "utf8"
-  );
+test("Android Billing Manager offers exactly one non-consumable lifetime INAPP", () => {
+  assert.match(billing, /APPFORGE_LIFETIME_PRODUCT_ID\s*=\s*"appforge_pro_lifetime"/);
+  assert.match(billing, /\.setProductType\(BillingClient\.ProductType\.INAPP\)/);
+  assert.match(billing, /formattedPrice/);
+  assert.doesNotMatch(billing, /ProductType\.SUBS|fun launchMonthly\s*\(|fun launchQuotaAddon\s*\(|quotaAddonProductIds|consumeAsync/);
+});
 
-
-test(
-  "security config publishes quota product ids",
-  () => {
-    assert.match(
-      server,
-      /quota10ProductId/
-    );
-
-    assert.match(
-      server,
-      /quota25ProductId/
-    );
-
-    assert.match(
-      server,
-      /quota50ProductId/
-    );
-  }
-);
-
-
-test(
-  "Android security config receives all quota products",
-  () => {
-    assert.match(
-      security,
-      /quota10ProductId/
-    );
-
-    assert.match(
-      security,
-      /quota25ProductId/
-    );
-
-    assert.match(
-      security,
-      /quota50ProductId/
-    );
-  }
-);
-
-
-test(
-  "Android redeem request uses Integrity and official server endpoint",
-  () => {
-    assert.match(
-      security,
-      /quota_addon_redeem/
-    );
-
-    assert.match(
-      security,
-      /\/api\/quota\/addons\/redeem/
-    );
-
-    assert.match(
-      security,
-      /purchaseToken/
-    );
-  }
-);
-
-
-test(
-  "Billing Manager queries quota products as INAPP",
-  () => {
-    assert.match(
-      billing,
-      /quotaAddonProductIds/
-    );
-
-    assert.match(
-      billing,
-      /ProductType[\s\S]*?INAPP/
-    );
-
-    assert.match(
-      billing,
-      /quotaAddonDetails/
-    );
-  }
-);
-
-
-test(
-  "Billing Manager exposes Play formatted prices",
-  () => {
-    assert.match(
-      billing,
-      /quotaAddonPrices/
-    );
-
-    assert.match(
-      billing,
-      /formattedPrice/
-    );
-  }
-);
-
-
-test(
-  "Billing Manager can launch a quota add-on purchase",
-  () => {
-    assert.match(
-      billing,
-      /fun launchQuotaAddon/
-    );
-
-    assert.match(
-      billing,
-      /quotaAddonDetails/
-    );
-  }
-);
+test("restored and new purchases are PURCHASED receipts sent for verification", () => {
+  assert.match(billing, /fun restorePurchases\s*\(/);
+  assert.match(billing, /Purchase\.PurchaseState\.PURCHASED/);
+  assert.match(billing, /purchase\.purchaseToken\.isNotBlank\(\)/);
+  assert.match(billing, /onPurchase\(StudioPurchaseResult/);
+  assert.doesNotMatch(billing, /consumeAsync/);
+});
