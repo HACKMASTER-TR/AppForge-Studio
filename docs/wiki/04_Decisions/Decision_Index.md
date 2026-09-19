@@ -11,6 +11,9 @@ tags:
 related:
   - "[[System_Architecture]]"
 source_files:
+  - "build-service/tests/device_build_toolchain_scope_contract.test.js"
+  - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
+  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
   - "android-app/app/build.gradle.kts"
   - "build-service/package.json"
   - "build-service/source-worker-toolchain.json"
@@ -115,3 +118,27 @@ engines, and a React Native/Expo 20-minute hard timeout without a stall
 watchdog.
 
 - 2026-09-19: AppForge normal build execution moved from remote Worker/queue infrastructure to an on-device PRoot/Linux build engine. Remote build upload/polling is no longer part of the normal Android build path. Shipping acceptance requires real-device APK/AAB validation.
+
+## 2026-09-19 — Device Build Toolchain Scope v1
+
+### Context
+
+Real-device FIKSTUR TAKIP acceptance reached the device-local Linux build engine but failed before project Gradle execution. Sanitized logs showed Ubuntu dependency resolution failing while installing npm. The device installer provisioned Node.js/npm and Python for every source type even when an Android Gradle or static WebView build did not require them.
+
+### Decision
+
+Device build preparation uses the verified Ubuntu base environment rather than the complete Terminal development profile. The local toolchain installer receives the selected source-build engine and provisions optional language packages only when required: Node.js/npm for `node-web`, Python tooling for `python-android`, while Android/JDK tooling remains the common device-build base.
+
+### Alternatives considered
+
+- Keep one universal toolchain for every build: rejected because an unrelated Node/npm package failure can block Android projects before Gradle starts.
+- Remove Node and Python support from device builds: rejected because those source engines remain valid local build targets.
+- Fall back to a remote Worker when local package installation fails: rejected because normal user builds are intentionally device-only.
+
+### Consequences
+
+Android Gradle and static WebView builds no longer depend on npm package availability. Node and Python projects still receive their required toolchains. Failures are isolated closer to the source engine that actually requires the package. Real-device APK/AAB acceptance remains mandatory.
+
+### Evidence
+
+`device_build_toolchain_scope_contract.test.js` verifies that `DeviceBuildEngine` does not require the full Terminal development profile, passes the source engine to the installer, and prevents unconditional npm installation. Existing device-only contracts also pass.

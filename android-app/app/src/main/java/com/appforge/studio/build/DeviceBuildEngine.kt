@@ -155,9 +155,8 @@ object DeviceBuildEngine {
 
             val manager = AndroidLinuxRuntimeManager(context)
             runBlocking {
-                manager.ensureDevelopmentEnvironment(
-                    distribution = LinuxDistribution.UBUNTU,
-                    workspace = workspace
+                manager.ensureBaseEnvironment(
+                    distribution = LinuxDistribution.UBUNTU
                 ) { progress ->
                     state.logs.add("🐧 ${progress.detail}")
                 }
@@ -172,7 +171,7 @@ object DeviceBuildEngine {
                 rootfs = rootfs,
                 workspace = workspace,
                 state = state,
-                command = "chmod +x /workspace/runtime/install-toolchain.sh /workspace/runtime/build-node.sh && /bin/sh /workspace/runtime/install-toolchain.sh",
+                command = "chmod +x /workspace/runtime/install-toolchain.sh /workspace/runtime/build-node.sh && /bin/sh /workspace/runtime/install-toolchain.sh ${sh(draft.sourceBuildEngine.trim().lowercase().ifBlank { "webview-static" })}",
                 suffix = "toolchain"
             )
 

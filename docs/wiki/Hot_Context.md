@@ -11,6 +11,8 @@ tags:
 related:
   - "[[Index]]"
 source_files:
+  - "build-service/tests/device_build_toolchain_scope_contract.test.js"
+  - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
   - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt"
@@ -34,6 +36,8 @@ source_files:
 
 ## Recent Important Changes
 
+- Device build provisioning now uses the Ubuntu base runtime first and scopes optional Node/npm or Python packages to the selected source engine instead of requiring the full Terminal development profile for every Android build.
+
 - `DeviceBuildEngine` was introduced for local builds.
 - `BuildApiClient` is now a compatibility facade for the local build path.
 - Worker/deployment/autoscale workflows were retired.
@@ -42,9 +46,7 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- Real-device FIKSTUR TAKIP acceptance reached the device-local build preflight but failed at 0%; sanitized local build logs are required to identify the actual device-build failure.
-
-- Real-device FIKSTUR TAKIP acceptance reached the device-local build preflight but failed at 0%; the failure screen must expose sanitized local build logs before root-cause repair.
+- Real-device FIKSTUR TAKIP acceptance exposed the first concrete device-build blocker: the universal Linux toolchain installer attempted to install Node/npm for Android builds and failed in Ubuntu package dependency resolution. The local build path now scopes optional toolchains by source engine; a fresh APK and real-device retry remain required.
 
 - Real-device APK/AAB build acceptance is still required.
 - ARM64 Android Build Tools provisioning must remain checksum-pinned and reproducible.

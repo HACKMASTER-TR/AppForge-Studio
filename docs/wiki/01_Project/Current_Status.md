@@ -13,6 +13,8 @@ related:
   - "[[Hot_Context]]"
   - "[[Bug_Index]]"
 source_files:
+  - "build-service/tests/device_build_toolchain_scope_contract.test.js"
+  - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
   - "build-service/tests/appforge_terminal_viewport_stability_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
   - ".appforge/runtime-blockers.json"
@@ -86,3 +88,12 @@ source_files:
 - The failure UI claimed that live logs were available but no log renderer remained after the device-only cutover.
 - The current correction restores sanitized local device-build logs, highlights the first critical error, removes stale Worker/Autoscale wording from the active Builder surface, and aligns the admin stress-test concurrency with the two-thread local device engine.
 - APK/AAB physical-device acceptance remains pending until the newly exposed log identifies and the project fixes the actual local build failure.
+
+## 2026-09-19 device-build toolchain scope correction
+
+- Sanitized on-device logs identified the next real FIKSTUR TAKIP blocker before project Gradle execution: Ubuntu package resolution failed while the device toolchain attempted to install Node/npm.
+- `DeviceBuildEngine` no longer requires the full Terminal development profile before every project build. It prepares the verified Ubuntu base environment and invokes the device toolchain installer with the selected source-build engine.
+- `install-toolchain.sh` keeps the Android/JDK base toolchain common, installs Node.js/npm only for `node-web`, and installs Python packages only for `python-android`.
+- Android Gradle and static WebView builds therefore no longer depend on npm availability.
+- `device_build_toolchain_scope_contract.test.js` protects this separation. The targeted contract, existing device-only contracts and `git diff --check` passed before final local acceptance.
+- Physical-device FIKSTUR TAKIP APK/AAB acceptance is still pending a fresh AppForge Studio APK containing this correction.

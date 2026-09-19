@@ -4,6 +4,7 @@ set -eu
 ROOT="/opt/appforge-device"
 SDK="$ROOT/android-sdk"
 READY="$ROOT/.ready-v1"
+ENGINE="${1:-webview-static}"
 
 if [ -f "$READY" ] \
    && [ -x "$SDK/build-tools/36.0.0/aapt2" ] \
@@ -18,9 +19,17 @@ apt-get update
 apt-get install -y --no-install-recommends \
   ca-certificates curl unzip zip xz-utils \
   openjdk-17-jdk-headless \
-  python3 python3-pip python3-venv \
-  nodejs npm git file \
+  git file \
   libstdc++6 zlib1g libpng16-16
+
+case "$ENGINE" in
+  node-web)
+    apt-get install -y --no-install-recommends nodejs npm
+    ;;
+  python-android)
+    apt-get install -y --no-install-recommends python3 python3-pip python3-venv
+    ;;
+esac
 
 mkdir -p "$ROOT" "$SDK/platforms" "$SDK/build-tools" "$ROOT/cache"
 
@@ -138,9 +147,16 @@ chmod 0755 "$ROOT/ensure-gradle"
 "$SDK/build-tools/36.0.0/aapt2" version
 "$ROOT/gradle-9.3.1/bin/gradle" --version >/dev/null
 java -version
-node --version
-npm --version
-python3 --version
+
+case "$ENGINE" in
+  node-web)
+    node --version
+    npm --version
+    ;;
+  python-android)
+    python3 --version
+    ;;
+esac
 
 touch "$READY"
 rm -rf "$ROOT/platform-unpack" "$ROOT/buildtools-official" "$ROOT/buildtools-arm64"
