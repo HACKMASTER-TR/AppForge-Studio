@@ -283,6 +283,11 @@ android {
             "APPFORGE_GITHUB_OAUTH_CLIENT_ID",
             "\"${oauthClientId("APPFORGE_GITHUB_OAUTH_CLIENT_ID")}\""
         )
+        buildConfigField(
+            "String",
+            "APPFORGE_GOOGLE_WEB_CLIENT_ID",
+            "\"564043752274-ortqs7ep6cbhh7ji3taf4s41g8trnome.apps.googleusercontent.com\""
+        )
     }
 
     buildTypes {
@@ -358,6 +363,9 @@ dependencies {
     implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.google.android.play:app-update-ktx:2.1.0")
     implementation("com.android.billingclient:billing-ktx:9.1.0")
+    implementation("androidx.credentials:credentials:1.6.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.2.1")
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.11.0")
     implementation("org.eclipse.jgit:org.eclipse.jgit:7.7.1.202607240634-r")
     implementation("com.github.mwiede:jsch:2.28.7")

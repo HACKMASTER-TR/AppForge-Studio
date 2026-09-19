@@ -11,6 +11,13 @@ tags:
 related:
   - "[[System_Architecture]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/security/GoogleAdminIdentityClient.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt"
+  - "cloudflare/control-plane/src/google_oidc.mjs"
+  - "cloudflare/control-plane/src/index.mjs"
+  - "cloudflare/control-plane/src/google_oidc.mjs"
+  - "cloudflare/control-plane/tests/google_oidc_admin.test.mjs"
   - "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt"
@@ -260,3 +267,39 @@ Play product/credentials, acknowledgement/refunds, verified Google admin OIDC,
 whole-repo CI and physical-device testing are independent release blockers.
 `cloudflare/control-plane/tests/worker.test.mjs` protects server staging;
 Android single-product source contracts accompany this change.
+
+## 2026-09-20 — Admin privileges require verified Google identity
+
+### Context
+
+Accountless Android retirement left `OwnerAccessPolicy` depending on the old local session, hiding Terminal and Admin despite a successful Phase 5 Pro/device build. OAuth clients alone confer no administrator rights.
+
+### Decision
+
+Use Google RS256 OIDC signature/issuer/audience/expiry verification in Cloudflare and a server-provisioned active D1 allow-list keyed by SHA-256 of Google `sub`. No email, local cached owner flag, obsolete bearer, device ID or Play purchase grants Admin. Stage the server verifier first; keep Admin operations and Android Terminal access closed until Credential Manager and server-backed owner policy pass device acceptance.
+
+### Alternatives and consequences
+
+Unconditionally granting local owner or matching email was rejected as a privilege escalation. Missing JWKS/config/D1 fails closed. A control-plane outage does not stop normal device builds. Production Admin/Terminal acceptance and provisioning remain pending.
+
+## 2026-09-19 — Android admin isolation from normal user accounts (staging)
+
+**Context:** Normal user email/password login was retired before the Terminal
+owner guard was changed. The home still showed `GİRİŞ YAP` and even the former
+owner could no longer reach Terminal or Second Brain.
+
+**Decision:** Keep normal AppForge use accountless. Require a user-initiated
+Google Credential Manager sign-in for admin, server-verified signed ID token
+with nonce, and an explicitly provisioned D1 hash of Google `sub`. Only a
+short-lived in-process token can satisfy `OwnerAccessPolicy`; neither an
+AppForge email, old session, Play entitlement nor device identifier grants
+owner privileges. Keep the owner vault filesystem location unchanged. Do not
+restore obsolete account-management features.
+
+**Consequences:** Existing encrypted data is not cleared or migrated; previous
+Terminal workspace selection must be tested on-device. Staging deployment and
+real D1 admin provisioning are required before access is operational. Production
+Cloudflare/Play changes remain separate, explicitly gated steps.
+
+**Evidence:** Android owner policy, GoogleAdminIdentityClient, AdminOpsScreen,
+StudioHomeV2, Cloudflare google_oidc and Worker tests.

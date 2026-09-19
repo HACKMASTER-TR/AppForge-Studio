@@ -9,52 +9,12 @@ function text(path) {
   );
 }
 
-test(
-  "Android supports guest mode and visible account entry",
-  () => {
-    const main =
-      text(
-        "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
-      );
-
-    const home =
-      text(
+test("Android guest mode exposes Google admin entry", () => {
+    const home = text(
         "../../android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
-      );
-
-    assert.match(
-      main,
-      /AppScreen\.ACCOUNT/
     );
 
-    assert.match(
-      home,
-      /accountEmail:\s*String\?/
-    );
-
-    assert.match(
-      home,
-      /val loggedIn\s*=/
-    );
-
-    assert.match(
-      home,
-      /onClick\s*=\s*onOpenAccount/
-    );
-
-    assert.match(
-      home,
-      /GİRİŞ YAP/
-    );
-
-    assert.match(
-      home,
-      /OwnerAccessPolicy/
-    );
-
-    assert.match(
-      home,
-      /fullAdmin/
-    );
-  }
-);
+    assert.match(home, /YÖNETİCİ GİRİŞİ/);
+    assert.match(home, /onOpenAdmin/);
+    assert.doesNotMatch(home, /GİRİŞ YAP/);
+});

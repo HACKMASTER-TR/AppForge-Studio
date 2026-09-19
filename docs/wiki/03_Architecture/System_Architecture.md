@@ -13,6 +13,14 @@ related:
   - "[[Project_Overview]]"
   - "[[Build_And_Worker_Architecture]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/security/GoogleAdminIdentityClient.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
+  - "cloudflare/control-plane/src/google_oidc.mjs"
+  - "cloudflare/control-plane/src/index.mjs"
+  - "cloudflare/control-plane/src/google_oidc.mjs"
+  - "cloudflare/control-plane/tests/google_oidc_admin.test.mjs"
   - "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt"
@@ -137,3 +145,20 @@ server result. Outages must fail closed for paid entitlement while device-local
 build remains usable. Admin requires a separately verified Google identity.
 The staged Worker does not yet provide real Play verification, so paid purchase
 must stay disabled until a genuine ready config is available.
+
+## Google admin identity verifier — staging, not activated
+
+`/api/admin/google/verify` (POST Google ID token) and `/api/admin/system-status` (GET bearer Google ID token) validate Google's RS256 JWKS signature, issuer, expected Web OAuth audience, optional configured Android presenter, issued/expiry time, and the active SHA-256 `sub` allow-list in D1. Missing config, database or JWKS fails closed. Other Admin endpoints stay unavailable. Only a later Android Credential Manager integration may replace `OwnerAccessPolicy`'s obsolete AppForge session dependency; local terminal files must not be cleared.
+
+## 2026-09-19 — Google administrator Android staging (Phase 6B)
+
+The accountless home provides an explicit administrator login entry, not a
+normal-user login. Credential Manager obtains a short-lived Google ID token
+for the public Web OAuth audience. The staging HTTPS Worker verifies the signed
+token, issuer, audience/presenter and the client-request nonce, then checks a
+D1 allowlist of hashed Google `sub`. Android keeps the approved token in memory
+only and never grants Terminal, Second Brain or owner vault through legacy
+`SecureAccountStore`, an email hash, device ID or Pro. The old owner vault
+filesystem path remains untouched. Admin account-management endpoints are
+not migrated and stay disabled. Runtime acceptance, D1 migration, owner
+provisioning and staging deployment are outstanding; no production URL change.

@@ -73,22 +73,24 @@ test(
   }
 );
 
-test(
-  "Admin Ops remains protected by active owner policy",
-  () => {
+test("Admin Ops requires verified owner", () => {
     assert.match(
-      main,
-      /val isAdminOpsAccount\s*=\s*OwnerAccessPolicy[\s\S]{0,300}?isActiveOwner/
+        main,
+        /val terminalOwner[\s\S]{0,150}?OwnerAccessPolicy\.isActiveOwner\(\s*context\s*\)/
     );
 
     assert.match(
-      home,
-      /val fullAdmin\s*=\s*OwnerAccessPolicy[\s\S]{0,300}?isActiveOwner/
+        main,
+        /val isAdminOpsAccount\s*=\s*terminalOwner\b/
     );
 
     assert.match(
-      home,
-      /if\s*\(\s*fullAdmin\s*\)[\s\S]{0,1500}?onOpenAdmin/
+        home,
+        /val fullAdmin[\s\S]{0,300}?OwnerAccessPolicy\.isActiveOwner/
     );
-  }
-);
+
+    assert.match(
+        home,
+        /if\s*\(\s*fullAdmin\s*\)[\s\S]{0,1500}?onOpenAdmin/
+    );
+});

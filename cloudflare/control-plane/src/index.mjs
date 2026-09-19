@@ -1,3 +1,4 @@
+import { verifyGoogleIdToken, subjectSha256, InvalidIdentity, IdentityProviderUnavailable } from './google_oidc.mjs';
 /**
  * AppForge accountless control-plane staging.
  * No normal-user login, registration, synthetic admin or Pro entitlement.
@@ -26,8 +27,9 @@ async function health(env) {
   }
 }
 
-export default {
-  async fetch(request, env) {
+/** Staging only: protected endpoints require an ID token on EACH request. */
+export async function handleRequest(request, env, dependencies = {}) {
+
     try {
       const { pathname, searchParams } = new URL(request.url);
       if (pathname === '/health' && request.method === 'GET') return health(env);
@@ -53,11 +55,66 @@ export default {
         return fail('account_endpoints_retired', 410);
       }
 
-      // Admin needs verified Google identity and a server-side subject allow-list.
-      // Neither device ID, bearer from old accounts, email, nor a Google Play
-      // purchase can grant administrator access.
-      if (pathname === '/api/admin/system-status' || pathname.startsWith('/api/admin/')) {
-        return fail('admin_identity_not_configured', 503);
+      // Admin alone is account-based. Normal users stay accountless.
+      // An email, old bearer, device ID or Play purchase NEVER confers admin.
+      if (pathname === '/api/admin/system-status' || pathname === '/api/admin/google/verify') {
+        if ((pathname === '/api/admin/system-status' && request.method !== 'GET') ||
+            (pathname === '/api/admin/google/verify' && request.method !== 'POST')) {
+          return fail('method_not_allowed', 405);
+        }
+        if (!env?.GOOGLE_WEB_CLIENT_ID || !env?.GOOGLE_ANDROID_CLIENT_ID || !ready(env)) {
+          return fail('admin_identity_not_configured', 503);
+        }
+        let token = '';
+        let expectedNonce;
+        if (pathname === '/api/admin/system-status') {
+          const authorization = request.headers.get('authorization') || '';
+          if (/^Bearer [A-Za-z0-9_.-]{50,12000}$/.test(authorization)) {
+            token = authorization.slice(7);
+          }
+        } else {
+          if ((Number(request.headers.get('content-length')) || 0) > 14000) {
+            return fail('invalid_identity', 400);
+          }
+          const body = await request.text();
+          if (body.length > 14000) return fail('invalid_identity', 400);
+          try {
+            const submitted = JSON.parse(body);
+            token = submitted?.idToken;
+            expectedNonce = submitted?.nonce;
+          } catch { /* reject below */ }
+          if (typeof expectedNonce !== 'string' ||
+              !/^[A-Za-z0-9_-]{40,128}$/.test(expectedNonce)) {
+            return fail('invalid_identity', 401);
+          }
+        }
+        if (typeof token !== 'string' || token.length < 50) return fail('invalid_identity', 401);
+        let identity;
+        try {
+          identity = await verifyGoogleIdToken(token, env.GOOGLE_WEB_CLIENT_ID,
+            env.GOOGLE_ANDROID_CLIENT_ID, { ...dependencies, expectedNonce });
+        } catch (error) {
+          if (error instanceof IdentityProviderUnavailable) return fail('identity_provider_unavailable', 503);
+          if (error instanceof InvalidIdentity) return fail('invalid_identity', 401);
+          return fail('identity_provider_unavailable', 503);
+        }
+        try {
+          const hash = await subjectSha256(identity.sub);
+          const owner = await env.DB.prepare(
+            'SELECT state FROM admin_identities WHERE google_subject_hash = ?'
+          ).bind(hash).first();
+          if (owner?.state !== 'active') return fail('admin_forbidden', 403);
+        } catch {
+          return fail('admin_allowlist_unavailable', 503);
+        }
+        if (pathname === '/api/admin/google/verify') {
+          return json({ ok: true, adminVerified: true, expiresAt: identity.exp });
+        }
+        return json({ ok: true, adminVerified: true, expiresAt: identity.exp });
+      }
+      if (pathname === '/api/admin' || pathname.startsWith('/api/admin/')) {
+        // No account-management functions are enabled until separately audited.
+        return fail('admin_operation_not_migrated', 503);
       }
 
       // Monthly subscription and add-on routes are retired in the one-product model.
@@ -79,5 +136,6 @@ export default {
     } catch {
       return fail('service_unavailable', 503);
     }
-  }
-};
+}
+
+export default { fetch: (request, env) => handleRequest(request, env) };

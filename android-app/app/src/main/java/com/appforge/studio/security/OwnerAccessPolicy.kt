@@ -45,33 +45,38 @@ object OwnerAccessPolicy {
         digest(email) ==
             OWNER_EMAIL_SHA256
 
-    fun isActiveOwner(
-        context: Context,
-        accountEmail: String? = null
-    ): Boolean {
-        val session =
-            SecureAccountStore
-                .loadSession(context)
-                ?: return false
+    // Never persist an ID token, trust an email/session, or resurrect owner
+    // status after process restart. Only GoogleAdminIdentityClient writes this
+    // after a positive HTTPS response from the staged verifier.
+    @Volatile private var googleIdToken: String? = null
+    @Volatile private var validUntilMs: Long = 0L
 
-        if (!isOwnerEmail(session.email)) {
-            return false
-        }
-
-        if (
-            !accountEmail.isNullOrBlank() &&
-            !session.email
-                .trim()
-                .equals(
-                    accountEmail.trim(),
-                    ignoreCase = true
-                )
-        ) {
-            return false
-        }
-
-        return true
+    fun clearVerifiedGoogleAdmin() {
+        googleIdToken = null
+        validUntilMs = 0L
     }
+
+    internal fun rememberVerifiedGoogleAdmin(idToken: String, expiresAt: Long) {
+        val now = System.currentTimeMillis()
+        val deadline = expiresAt.coerceAtMost(Long.MAX_VALUE / 1000) * 1000
+        require(idToken.length in 50..12000 && deadline > now &&
+            deadline - now <= 3_700_000L) { "Invalid verified Google admin session." }
+        googleIdToken = idToken
+        validUntilMs = deadline
+    }
+
+    fun currentGoogleIdToken(): String? {
+        val token = googleIdToken
+        if (token == null || System.currentTimeMillis() >= validUntilMs) {
+            clearVerifiedGoogleAdmin()
+            return null
+        }
+        return token
+    }
+
+    @Suppress("UNUSED_PARAMETER")
+    fun isActiveOwner(context: Context, accountEmail: String? = null): Boolean =
+        currentGoogleIdToken() != null
 
     fun requireActiveOwner(
         context: Context,

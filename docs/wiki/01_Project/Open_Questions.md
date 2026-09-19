@@ -43,3 +43,21 @@ source_files:
 - Phase 5: implement separate verified Google OIDC admin authorization.
 - Phase 5: full-repo Kotlin/CI gate and real Play test purchase/restore are
   required; the staged API must not be switched to the production domain.
+
+## Google admin OIDC staging follow-ups — 2026-09-20
+
+- Provision the administrator's **verified** Google `sub` hash in the D1 allow-list; the OAuth test-user email is not sufficient. Do not paste raw ID tokens into issues or chats.
+- Configure both the Web OAuth Client ID and Android OAuth Client ID in the staging Worker; verify Debug and Play signing certificates separately.
+- Implement Android Credential Manager, server-backed owner state, token expiry/re-entry, Terminal navigation and owner vault access; do not bypass `OwnerAccessPolicy` or clear local data.
+- D1 migration, actual staging Worker deploy, negative/positive on-device auth tests and production cutover are still pending.
+
+- Phase 6B: Android Credential Manager and server nonce-binding are staged;
+  true Android CI compilation and real-device testing remain required.
+- Configure BOTH Web/Android OAuth IDs on the staging Worker, apply D1 schema
+  and provision the Google `sub` allowlist from a verified identity. Do not
+  infer admin from email or copy ID token into SQL/GitHub.
+- Determine a safe way to preserve existing Terminal per-account workspace
+  selection for previously signed-in users; no automated data migration.
+- The production domain still serves the old failover Worker: Android admin
+  cannot succeed until a separately reviewed HTTPS staging endpoint is
+  configured/deployed. Never switch production without testing.

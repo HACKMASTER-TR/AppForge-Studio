@@ -53,7 +53,6 @@ fun StudioHomeV2(
     val context = LocalContext.current
     val fullAdmin =
         OwnerAccessPolicy.isActiveOwner(context, accountEmail)
-    val loggedIn = !accountEmail.isNullOrBlank()
     val allProjects =
         remember(accountEmail) {
             ProjectLibrary.load(context)
@@ -92,16 +91,8 @@ fun StudioHomeV2(
                 ),
                 title = { HomeTopTitle() },
                 actions = {
-                    if (fullAdmin) {
-                        TextButton(onClick = onOpenAdmin) {
-                            Text("Admin")
-                        }
-                    }
-                    TextButton(onClick = onOpenAccount) {
-                        Text(
-                            if (loggedIn) "Hesap"
-                            else "GİRİŞ YAP"
-                        )
+                    TextButton(onClick = onOpenAdmin) {
+                        Text(if (fullAdmin) "Yönetici" else "YÖNETİCİ GİRİŞİ")
                     }
                     TextButton(onClick = onOpenSettings) {
                         Text("Ayarlar")

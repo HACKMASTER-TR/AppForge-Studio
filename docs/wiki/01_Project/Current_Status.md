@@ -13,6 +13,13 @@ related:
   - "[[Hot_Context]]"
   - "[[Bug_Index]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/security/GoogleAdminIdentityClient.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt"
+  - "cloudflare/control-plane/src/google_oidc.mjs"
+  - "cloudflare/control-plane/src/index.mjs"
+  - "cloudflare/control-plane/src/google_oidc.mjs"
+  - "cloudflare/control-plane/tests/google_oidc_admin.test.mjs"
   - "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt"
@@ -200,3 +207,22 @@ publish was done by this staging patch.
   local device ID or stale AppForge bearer token.
 - This limited source export cannot prove Android compilation or the full app
   gate; full-repo CI and physical-device acceptance are still required.
+
+## 2026-09-20 Google admin OIDC verifier — staging
+
+- The Cloudflare staging Worker now verifies the Google RS256 ID token signature and issuer/audience/expiry; the optional authorized presenter (`azp`) must match the configured Android client.
+- The stable Google `sub` is SHA-256 hashed and looked up in the explicitly active D1 `admin_identities` table. No email, local AppForge session or device ID grants admin.
+- Only identity-check endpoints are enabled; other Admin operations, Pro verification and project builds remain fail-closed/device-local.
+- **Not device accepted or deployed.** Android Credential Manager, admin `sub` provisioning, D1 migration and the Terminal owner-policy rewrite are separate required work.
+
+## 2026-09-19 — Phase 6B admin identity staging (local only)
+
+The A6B Android patch removes the obsolete AppForge email/password owner gate.
+The accountless home exposes explicit Google admin sign-in. Credential Manager
+asks for a Google ID token with a fresh nonce; the Cloudflare staging Worker
+verifies the signature and nonce and checks the D1 Google-subject allowlist.
+Android keeps approved identity in process memory only. Admin account-management
+remains disabled because server routes are not migrated. This is **not** a live
+admin access claim: Android CI, verified Google-subject provisioning, D1
+migration, staging deployment and physical Terminal acceptance are pending.
+Device Build V3, Play/Pro and the production custom domain were not changed.

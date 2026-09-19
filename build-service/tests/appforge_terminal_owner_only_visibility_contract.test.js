@@ -110,7 +110,7 @@ test(
 
     assert.match(
       main,
-      /val terminalOwner\s*=\s*OwnerAccessPolicy[\s\S]{0,300}?isActiveOwner\(\s*context,\s*session\?\.email\s*\)/
+      /val terminalOwner\s*=\s*[\s\S]{0,150}?OwnerAccessPolicy\.isActiveOwner\(\s*context\s*\)/
     );
 
     /*
@@ -118,7 +118,7 @@ test(
      */
     assert.match(
       main,
-      /val isAdminOpsAccount\s*=\s*OwnerAccessPolicy[\s\S]{0,300}?isActiveOwner/
+      /val isAdminOpsAccount\s*=\s*terminalOwner\b/
     );
 
     /*

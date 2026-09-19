@@ -26,8 +26,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.appforge.studio.security.SecureAccountStore
-import com.appforge.studio.security.StudioDeviceIdentity
+import com.appforge.studio.security.OwnerAccessPolicy
+import com.appforge.studio.security.GoogleAdminIdentityClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,6 +47,8 @@ fun AdminOpsScreen(
     apiKey: String,
     accountEmail: String,
     onOpenSecondBrain: () -> Unit,
+    onOpenTerminal: () -> Unit,
+    onAdminChanged: () -> Unit,
     onBack: () -> Unit
 ) {
     val context =
@@ -54,6 +56,8 @@ fun AdminOpsScreen(
 
     val scope =
         rememberCoroutineScope()
+    val activity = context as? android.app.Activity
+    var signingIn by remember { mutableStateOf(false) }
 
     val adminApi =
         remember(
@@ -95,31 +99,21 @@ fun AdminOpsScreen(
             )
         }
 
-    var showAccountManagement by
-        remember {
-            mutableStateOf(
-                false
-            )
-        }
 
     suspend fun refreshAuthorization() {
         refreshing =
             true
 
         try {
-            snapshot =
-                withContext(
-                    Dispatchers.IO
-                ) {
-                    adminApi
-                        .systemStatus()
-                }
-
-            systemError =
-                null
+            snapshot = withContext(Dispatchers.IO) { adminApi.systemStatus() }
+            systemError = null
+        } catch (error: Exception) {
+            snapshot = null
+            OwnerAccessPolicy.clearVerifiedGoogleAdmin()
+            onAdminChanged()
+            throw error
         } finally {
-            refreshing =
-                false
+            refreshing = false
         }
     }
 
@@ -143,33 +137,8 @@ fun AdminOpsScreen(
             }
     }
 
-    val authorized =
-        snapshot
-            ?.fullAccess == true &&
-            snapshot
-                ?.role
-                ?.equals(
-                    "admin",
-                    ignoreCase = true
-                ) == true
-
-    if (
-        showAccountManagement &&
-        authorized
-    ) {
-        AdminAccountsScreen(
-            serverUrl =
-                serverUrl,
-            apiKey =
-                apiKey,
-            onBack = {
-                showAccountManagement =
-                    false
-            }
-        )
-
-        return
-    }
+    val authorized = snapshot?.fullAccess == true &&
+        snapshot?.role == "admin" && OwnerAccessPolicy.isActiveOwner(context)
 
     LazyColumn(
         modifier =
@@ -263,41 +232,19 @@ fun AdminOpsScreen(
                     Text(
                         when {
                             authorized ->
-                                "ADMIN + PRO • Sunucu yetkisi aktif"
+                                "Yönetici • Google sunucu doğrulaması aktif"
 
                             !systemError
                                 .isNullOrBlank() ->
                                 "Sunucu admin yetkisi doğrulanamadı"
 
                             snapshot != null ->
-                                "Bu hesap sunucuda yönetici olarak yetkili değil"
+                                "Google hesabı sunucuda yönetici değil"
 
                             else ->
-                                "HTTPS üzerinden doğrulanıyor..."
+                                "Google ile yönetici girişi gerekli"
                         }
                     )
-
-                    val verifiedEmail =
-                        snapshot
-                            ?.email
-                            ?.takeIf {
-                                it.isNotBlank()
-                            }
-                            ?: accountEmail
-                                .takeIf {
-                                    it.isNotBlank()
-                                }
-
-                    verifiedEmail
-                        ?.let {
-                            Text(
-                                it,
-                                style =
-                                    MaterialTheme
-                                        .typography
-                                        .bodySmall
-                            )
-                        }
 
                     snapshot
                         ?.role
@@ -339,18 +286,8 @@ fun AdminOpsScreen(
             authorized
         ) {
             item {
-                Button(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth(),
-                    onClick = {
-                        showAccountManagement =
-                            true
-                    }
-                ) {
-                    Text(
-                        "HESAP YÖNETİMİ"
-                    )
+                Button(modifier = Modifier.fillMaxWidth(), onClick = onOpenTerminal) {
+                    Text("TERMİNAL")
                 }
             }
 
@@ -366,6 +303,45 @@ fun AdminOpsScreen(
                         "2. BEYİN"
                     )
                 }
+            }
+        }
+
+        if (!authorized) {
+            item {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !signingIn && !refreshing && activity != null,
+                    onClick = {
+                        val host = activity ?: return@Button
+                        scope.launch {
+                            signingIn = true
+                            systemError = null
+                            try {
+                                GoogleAdminIdentityClient(host, serverUrl).signIn()
+                                onAdminChanged()
+                                refreshAuthorization()
+                            } catch (error: Exception) {
+                                OwnerAccessPolicy.clearVerifiedGoogleAdmin()
+                                onAdminChanged()
+                                snapshot = null
+                                systemError = error.message
+                                    ?.take(240)
+                                    ?: "Google yönetici girişi başarısız."
+                            } finally {
+                                signingIn = false
+                            }
+                        }
+                    }
+                ) { Text(if (signingIn) "GOOGLE DOĞRULANIYOR..." else "GOOGLE İLE YÖNETİCİ GİRİŞİ") }
+            }
+        }
+        if (authorized) {
+            item {
+                OutlinedButton(onClick = {
+                    OwnerAccessPolicy.clearVerifiedGoogleAdmin()
+                    snapshot = null
+                    onAdminChanged()
+                }) { Text("YÖNETİCİ OTURUMUNU KAPAT") }
             }
         }
 
@@ -420,34 +396,10 @@ private class AdminOpsApiClient(
                     "/api/admin/system-status"
             )
 
-        val account =
-            json.optJSONObject(
-                "account"
-            )
-                ?: JSONObject()
-
-        return AdminSystemSnapshot(
-            email =
-                account
-                    .optString(
-                        "email",
-                        ""
-                    )
-                    .trim(),
-            role =
-                account
-                    .optString(
-                        "role",
-                        ""
-                    )
-                    .trim(),
-            fullAccess =
-                account
-                    .optBoolean(
-                        "fullAccess",
-                        false
-                    )
-        )
+        check(json.optBoolean("ok") && json.optBoolean("adminVerified")) {
+            "Sunucu yönetici yetkisi vermedi."
+        }
+        return AdminSystemSnapshot(role = "admin", fullAccess = true)
     }
 
     private fun controlPlaneBaseUrl(): String {
@@ -475,25 +427,8 @@ private class AdminOpsApiClient(
     private fun request(
         path: String
     ): JSONObject {
-        val session =
-            SecureAccountStore
-                .loadSession(
-                    context
-                )
-                ?: error(
-                    "Yönetici doğrulaması için aktif AppForge oturumu gerekli."
-                )
-
-        val token =
-            session
-                .token
-                .trim()
-
-        require(
-            token.isNotBlank()
-        ) {
-            "Yönetici doğrulaması için oturum anahtarı eksik."
-        }
+        val token = OwnerAccessPolicy.currentGoogleIdToken()
+            ?: error("Google ile yönetici girişi gerekli.")
 
         val connection =
             (
@@ -524,13 +459,6 @@ private class AdminOpsApiClient(
                         "Bearer $token"
                     )
 
-                    setRequestProperty(
-                        "X-AppForge-Device-ID",
-                        StudioDeviceIdentity
-                            .value(
-                                context
-                            )
-                    )
                 }
 
         try {

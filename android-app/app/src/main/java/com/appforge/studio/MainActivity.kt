@@ -657,12 +657,10 @@ private fun AppForgeApp() {
         )
     }
 
-    val terminalOwner =
-        OwnerAccessPolicy
-            .isActiveOwner(
-                context,
-                session?.email
-            )
+    var adminRevision by remember { mutableIntStateOf(0) }
+    // Read revision so a verified login/logout recomposes the owner-only UI.
+    val terminalOwner = adminRevision >= 0 &&
+        OwnerAccessPolicy.isActiveOwner(context)
 
     val appConfiguration =
         LocalConfiguration.current
@@ -848,17 +846,20 @@ private fun AppForgeApp() {
      * restored navigation state or an internal caller must never
      * expose Terminal to a non-owner account.
      */
-    LaunchedEffect(
-        screen,
-        terminalOwner
-    ) {
-        if (
-            screen ==
-                AppScreen.TERMINAL &&
-            !terminalOwner
-        ) {
-            screen =
-                AppScreen.HOME
+    LaunchedEffect(screen, terminalOwner) {
+        if ((screen == AppScreen.TERMINAL ||
+                screen == AppScreen.SECOND_BRAIN) && !terminalOwner) {
+            screen = AppScreen.HOME
+        }
+    }
+
+    // Credentials expire even if the user keeps a privileged screen open.
+    LaunchedEffect(screen) {
+        if (screen == AppScreen.TERMINAL || screen == AppScreen.SECOND_BRAIN) {
+            while (screen == AppScreen.TERMINAL || screen == AppScreen.SECOND_BRAIN) {
+                delay(60_000L)
+                adminRevision += 1
+            }
         }
     }
 
@@ -1635,12 +1636,7 @@ private fun AppForgeApp() {
             mutableStateOf(false)
         }
 
-    val isAdminOpsAccount =
-        OwnerAccessPolicy
-            .isActiveOwner(
-                context,
-                session?.email
-            )
+    val isAdminOpsAccount = terminalOwner
 
     val conversionApkPicker =
         rememberLauncherForActivityResult(
@@ -4789,12 +4785,20 @@ onOpenPro = {
                             ?.email
                             .orEmpty(),
                     onOpenSecondBrain = {
-                        screen =
-                            AppScreen.SECOND_BRAIN
+                        if (OwnerAccessPolicy.isActiveOwner(context)) {
+                            screen = AppScreen.SECOND_BRAIN
+                        }
                     },
+                    onOpenTerminal = {
+                        if (OwnerAccessPolicy.isActiveOwner(context)) {
+                            terminalReturnScreen = screen
+                            terminalReturnStep = step
+                            openWorkspaceScreen(AppScreen.TERMINAL)
+                        }
+                    },
+                    onAdminChanged = { adminRevision += 1 },
                     onBack = {
-                        screen =
-                            AppScreen.HOME
+                        screen = AppScreen.HOME
                     }
                 )
 

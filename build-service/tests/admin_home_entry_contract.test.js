@@ -33,10 +33,11 @@ test(
       /val fullAdmin\s*=\s*OwnerAccessPolicy[\s\S]{0,300}?isActiveOwner/
     );
 
-    assert.match(
-      home,
-      /if\s*\(\s*fullAdmin\s*\)[\s\S]{0,700}?onClick\s*=\s*onOpenAdmin/
-    );
+    // Accountless users can always reach Google admin sign-in. Only verified
+    // owners see the Terminal/Admin action card.
+    assert.match(home, /TextButton\(onClick = onOpenAdmin\)/);
+    assert.match(home, /if\s*\(\s*fullAdmin\s*\)[\s\S]{0,500}?OwnerAdminCard/);
+    assert.doesNotMatch(home, /GİRİŞ YAP/);
 
     assert.match(
       main,
