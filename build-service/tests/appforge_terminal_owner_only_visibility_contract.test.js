@@ -53,25 +53,35 @@ test(
 );
 
 test(
-  "terminal owner state is declared before route effects use it",
+  "terminal owner state is declared before Terminal entry uses it",
   async () => {
     const main = await read(
       "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
     );
 
     const declaration =
-      main.indexOf("val terminalOwner =");
-
-    const externalEffect =
       main.indexOf(
-        "hostActivity?.externalAuthorizationSequence"
+        "val terminalOwner ="
       );
 
-    assert.ok(declaration >= 0);
-    assert.ok(externalEffect >= 0);
+    const terminalEntry =
+      main.indexOf(
+        "onOpenTerminal = {"
+      );
+
     assert.ok(
-      declaration < externalEffect,
-      "terminalOwner must be declared before route/effect use"
+      declaration >= 0,
+      "terminalOwner declaration must exist"
+    );
+
+    assert.ok(
+      terminalEntry >= 0,
+      "Terminal entry callback must exist"
+    );
+
+    assert.ok(
+      declaration < terminalEntry,
+      "terminalOwner must be declared before Terminal entry uses it"
     );
   }
 );
@@ -83,24 +93,45 @@ test(
       "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
     );
 
+    /*
+     * Single authoritative owner state:
+     * isAdminOpsAccount comes from OwnerAccessPolicy.isActiveOwner,
+     * and Terminal reuses that verified state.
+     */
     assert.match(
       main,
-      /val terminalOwner\s*=\s*OwnerAccessPolicy[\s\S]{0,240}?isActiveOwner/
+      /val isAdminOpsAccount\s*=\s*OwnerAccessPolicy[\s\S]{0,300}?isActiveOwner/
     );
 
     assert.match(
       main,
-      /target == AppScreen\.TERMINAL[\s\S]{0,180}?!terminalOwner/
+      /val terminalOwner\s*=\s*isAdminOpsAccount/
     );
 
+    /*
+     * User-facing Terminal entry rejects non-owner accounts.
+     */
     assert.match(
       main,
-      /externalAuthorizationUri[\s\S]{0,900}?if \(terminalOwner\)[\s\S]{0,900}?consumeExternalAuthorization/
+      /onOpenTerminal\s*=\s*\{[\s\S]{0,1500}?if\s*\(terminalOwner\)[\s\S]{0,1500}?openWorkspaceScreen\(\s*AppScreen\.TERMINAL\s*\)[\s\S]{0,900}?else\s*\{[\s\S]{0,600}?AppScreen\.HOME/
     );
 
+    /*
+     * Defense in depth:
+     * even restored/internal Terminal navigation is forced HOME
+     * for a non-owner.
+     */
     assert.match(
       main,
-      /val visibleScreen[\s\S]{0,500}?AppScreen\.TERMINAL[\s\S]{0,500}?!terminalOwner[\s\S]{0,500}?AppScreen\.HOME/
+      /val visibleScreen[\s\S]{0,1000}?AppScreen\.TERMINAL[\s\S]{0,350}?!terminalOwner[\s\S]{0,600}?AppScreen\.HOME/
+    );
+
+    /*
+     * Retired Railway authorization routes must stay absent.
+     */
+    assert.doesNotMatch(
+      main,
+      /externalAuthorizationUri|externalAuthorizationSequence|consumeExternalAuthorization|\/railway/i
     );
   }
 );

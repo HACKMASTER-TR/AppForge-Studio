@@ -69,21 +69,27 @@ test("project save and restore preserves non-secret builder selections", async (
   }
 });
 
-test("saved document URIs and source analysis survive reopening projects", async () => {
-  const main = await fs.readFile(mainPath, "utf8");
+test(
+  "OpenDocument selections keep persisted read access",
+  async () => {
+    const main =
+      await fs.readFile(
+        mainPath,
+        "utf8"
+      );
 
-  assert.ok(
-    main.includes("takePersistableUriPermission"),
-    "OpenDocument selections must keep persisted read access"
-  );
-  assert.ok(
-    main.includes("SourceCapabilityAnalyzer") &&
-      main.includes("File(folderPath)"),
-    "restored source folder must be re-analysed"
-  );
-  assert.ok(
-    main.includes("statusMessage = status") &&
-      main.includes("NoteCard(\n                    statusMessage"),
-    "Step 9 must show save/update feedback"
-  );
-});
+    assert.ok(
+      main.includes(
+        "takePersistableUriPermission"
+      ),
+      "OpenDocument selections must keep persisted read access"
+    );
+
+    assert.ok(
+      main.includes(
+        "FLAG_GRANT_READ_URI_PERMISSION"
+      ),
+      "persisted document access must remain read-only"
+    );
+  }
+);

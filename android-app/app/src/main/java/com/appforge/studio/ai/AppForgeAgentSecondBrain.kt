@@ -12,8 +12,7 @@ internal data class AppForgeAgentSecondBrainSnapshot(
     val migrations: Int,
     val tests: Int,
     val release: String,
-    val liveGithub: String,
-    val liveRailway: String
+    val liveGithub: String
 ) {
     fun toContextFacts(): List<AppForgeAgentContextFact> = listOf(
         AppForgeAgentContextFact("secondBrain.version", version, "secondbrain", 100),
@@ -26,8 +25,7 @@ internal data class AppForgeAgentSecondBrainSnapshot(
         AppForgeAgentContextFact("architecture.migrations", migrations.toString(), "secondbrain", 80),
         AppForgeAgentContextFact("quality.tests", tests.toString(), "secondbrain", 85),
         AppForgeAgentContextFact("release.gate", release, "secondbrain", 100),
-        AppForgeAgentContextFact("live.github", liveGithub, "secondbrain", 70),
-        AppForgeAgentContextFact("live.railway", liveRailway, "secondbrain", 70)
+        AppForgeAgentContextFact("live.github", liveGithub, "secondbrain", 70)
     )
 }
 
@@ -67,8 +65,7 @@ internal object AppForgeAgentSecondBrainSnapshotParser {
             migrations = int("migrations").coerceAtLeast(0),
             tests = int("tests").coerceAtLeast(0),
             release = string("release").take(60),
-            liveGithub = string("liveGithub").take(60),
-            liveRailway = string("liveRailway").take(60)
+            liveGithub = string("liveGithub").take(60)
         )
     }
 }

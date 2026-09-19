@@ -50,8 +50,8 @@ object AppForgeKnowledgeBase {
             "• Servisler: Firebase Analytics/Crashlytics/Cloud Messaging, AdMob/UMP, Google Play Billing ve keystore ile debug/release imzalama.\n" +
             "• Kontrol ve yayın: canlı önizleme; console, ağ, performans ve güvenlik inspector; Test Lab, artifact boyut analizi, build karşılaştırma, release note, Production Center ve Play yayın rehberi.\n" +
             "• Çalışma alanı: proje kaydetme/geri yükleme, sürüm-geçmişi, 30 günlük çöp kutusu, yedek içe/dışa aktarma, GitHub ve takım akışları.\n" +
-            "• AppForge Terminal: proje bağlı çoklu terminal, dosya düzenleyici, gömülü Git, doğrulamalı SSH, runtime denetimi ve şifreli GitHub/Railway yetkilendirmesi.\n" +
-            "• Build ve AI: sunucu tabanlı build kuyruğu, canlı log, arka planda build bildirimi, FAST APK yolu ve cihazda çalışan gizlilik odaklı Yerel AI ile proje önerisi, komutlar ve hata açıklamaları."
+            "• AppForge Terminal: proje bağlı çoklu terminal, dosya düzenleyici, gömülü Git, doğrulamalı SSH, runtime denetimi ve şifreli GitHub yetkilendirmesi.\n" +
+            "• Build ve AI: cihaz üzerinde yerel build, canlı log, APK/AAB artifact yönetimi ve cihazda çalışan gizlilik odaklı Yerel AI ile proje önerisi, komutlar ve hata açıklamaları."
 
     /*
      * AppForge Studio'nun cihaz içi bilgi tabanı.
@@ -237,8 +237,8 @@ object AppForgeKnowledgeBase {
             ),
             KnowledgeChunk(
                 "AppForge Terminal",
-                "AppForge Terminal Studio içindeki seçili projeye bağlı komut merkezidir. Çoklu yerel shell oturumu, komut geçmişi, proje dosya düzenleyicisi, gömülü Git, sunucu anahtarı parmak izi doğrulamalı SSH ve runtime denetimi sunar. Bağlantılar sekmesinde GitHub Device Flow, Railway native OAuth + PKCE veya doğrulanan kişisel token kullanılabilir; tokenlar Android Keystore ile şifrelenir. Builder ve Yerel AI aynı seçili projeyle doğrudan açılabilir.",
-                setOf("terminal", "shell", "komut", "git", "github", "railway", "ssh", "oauth", "bağlantı")
+                "AppForge Terminal Studio içindeki seçili projeye bağlı komut merkezidir. Çoklu yerel shell oturumu, komut geçmişi, proje dosya düzenleyicisi, gömülü Git, sunucu anahtarı parmak izi doğrulamalı SSH ve runtime denetimi sunar. Bağlantılar sekmesinde GitHub Device Flow, doğrulanan kişisel token kullanılabilir; tokenlar Android Keystore ile şifrelenir. Builder ve Yerel AI aynı seçili projeyle doğrudan açılabilir.",
+                setOf("terminal", "shell", "komut", "git", "github", "ssh", "oauth", "bağlantı")
             ),
             KnowledgeChunk(
                 "Preflight",
@@ -397,7 +397,7 @@ object AppForgeKnowledgeBase {
             ),
             FastFaq(
                 "AppForge Studio ne işe yarar?",
-                "AppForge Studio; HTML, ZIP, web URL'si ve desteklenen kaynak projelerden Android APK/AAB ile Windows EXE üretmeye yardımcı olan bir geliştirme platformudur. Hızlı Oluştur ve Gelişmiş Oluştur ile proje başlatır; HTML/ZIP kaynak analizi, şablonlar, görsel tema/ikon/splash, otomatik paket adı ve otomatik sürüm artırma sunar.\n\nGelişmiş Builder'da izinler, WebView güvenliği, Native Bridge (paylaşım, pano, titreşim, QR), deep link, Media3 arka plan medya oynatma, Firebase, AdMob, Billing, keystore imzalama ve APK/AAB/EXE çıktıları yönetilir. AppForge Terminal; projeye bağlı shell, dosya düzenleme, gömülü Git, güvenli SSH ve şifreli GitHub/Railway bağlantıları sağlar. Canlı önizleme; console, network, performans ve güvenlik incelemesi; Test Lab, build karşılaştırma, release note, Production Center, proje yedeği, APK↔EXE dönüşümü ve build kuyruğu bulunur. Derlemeler sunucuda arka planda sürer; uygulama arka plana alındığında ilerleme bildirimi gösterir. Yerel AI ise proje önerileri, komutlar ve build hata açıklamaları sunar.",
+                "AppForge Studio; HTML, ZIP, web URL'si ve desteklenen kaynak projelerden Android APK/AAB ile Windows EXE üretmeye yardımcı olan bir geliştirme platformudur. Hızlı Oluştur ve Gelişmiş Oluştur ile proje başlatır; HTML/ZIP kaynak analizi, şablonlar, görsel tema/ikon/splash, otomatik paket adı ve otomatik sürüm artırma sunar.\n\nGelişmiş Builder'da izinler, WebView güvenliği, Native Bridge (paylaşım, pano, titreşim, QR), deep link, Media3 arka plan medya oynatma, Firebase, AdMob, Billing, keystore imzalama ve APK/AAB/EXE çıktıları yönetilir. AppForge Terminal; projeye bağlı shell, dosya düzenleme, gömülü Git, güvenli SSH ve şifreli GitHub bağlantıları sağlar. Canlı önizleme; console, network, performans ve güvenlik incelemesi; Test Lab, build karşılaştırma, release note, Production Center, proje yedeği, APK↔EXE dönüşümü ve yerel build akışı bulunur. Desteklenen derlemeler cihaz üzerinde çalıştırılır ve çıktılar yerel artifact olarak yönetilir. Yerel AI ise proje önerileri, komutlar ve build hata açıklamaları sunar.",
                 setOf("appforge", "studio", "ne", "işe", "yarar"),
                 setOf("appforge nedir", "uygulama ne işe yarar")
             ),
@@ -1186,7 +1186,7 @@ object AppForgeKnowledgeBase {
                             "2. Terminal 1 mevcut oturumdur; + Oturum ile aynı proje için ek terminal açabilirsin.\n" +
                             "3. Linux shell komutlarını doğrudan yaz ve Enter ile çalıştır.\n" +
                             "4. ESC, TAB, CTRL+C, CTRL+L, CTRL+A, CTRL+E, CTRL+R, CTRL+U ve CTRL+W kısayollarını üstteki terminal tuşlarından kullanabilirsin. CTRL+C çalışan komutu durdurur.\n" +
-                            "5. Dosyalar sekmesi proje dosyalarını görüntüleme ve düzenleme; Git sekmesi repository işlemleri; Bağlantılar GitHub/Railway yetkilendirmesi; SSH güvenli uzak bağlantı; Araçlar ise runtime ve geliştirme araçları içindir.\n" +
+                            "5. Dosyalar sekmesi proje dosyalarını görüntüleme ve düzenleme; Git sekmesi repository işlemleri; Bağlantılar GitHub yetkilendirmesi; SSH güvenli uzak bağlantı; Araçlar ise runtime ve geliştirme araçları içindir.\n" +
                             "6. SSH bağlantısında ilk bağlantı sırasında sunucu parmak izini doğrula.\n" +
                             "7. KOPYA modu terminal çıktısını seçip kopyalamak, YAZ modu tekrar terminale yazmak için kullanılır.\n\n" +
                             "Bilmediğin veya kaynağına güvenmediğin shell komutlarını çalıştırmadan önce içeriğini kontrol et.",
@@ -1199,7 +1199,6 @@ object AppForgeKnowledgeBase {
                             "dosyalar",
                             "git",
                             "github",
-                            "railway",
                             "ssh",
                             "araçlar",
                             "ctrl c"

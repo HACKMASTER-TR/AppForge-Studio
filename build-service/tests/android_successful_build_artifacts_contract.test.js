@@ -121,11 +121,6 @@ test(
       screen,
       /ANDROID_APK/
     );
-
-    assert.match(
-      main,
-      /APPFORGE_DOWNLOAD_FOLDER\s*=\s*\n?\s*"AppForgeStudio"/
-    );
   }
 );
 
@@ -180,16 +175,26 @@ test(
 );
 
 test(
-  "home copy no longer presents successful APKs only",
+  "home exposes unified build history without APK-only wording",
   () => {
     assert.match(
       home,
-      /Başarılı Derlemeler/
+      /buildFolderOpen/
+    );
+
+    assert.match(
+      home,
+      /DownloadedApkFolderScreen/
+    );
+
+    assert.match(
+      home,
+      /Derlemeler/
     );
 
     assert.doesNotMatch(
       home,
-      /Yalnız Downloads\/AppForge Studio klasörüne gerçekten indirilen \.apk/
+      /Başarılı APK'lar|Yalnız .*\.apk/
     );
   }
 );

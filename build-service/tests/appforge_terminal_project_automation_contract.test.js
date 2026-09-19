@@ -59,7 +59,7 @@ test("automation planner covers install test build and deployment hints", async 
   assert.match(core, /DeploymentProvider\.FIREBASE/);
   assert.match(core, /DeploymentProvider\.SUPABASE/);
   assert.match(core, /DeploymentProvider\.RENDER/);
-  assert.match(core, /DeploymentProvider\.RAILWAY/);
+  assert.doesNotMatch(core, /DeploymentProvider\.RAILWAY/);
 });
 
 test("automation commands execute only inside verified rootless Linux", async () => {

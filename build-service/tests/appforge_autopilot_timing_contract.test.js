@@ -51,23 +51,21 @@ test(
 );
 
 test(
-  "Source Worker workflow validates its own CI changes",
+  "device-only cutover keeps Source Worker workflow retired",
   async () => {
     const workflow =
-      await fs.readFile(
-        path.join(
-          repoRoot,
-          ".github",
-          "workflows",
-          "source-worker-image.yml"
-        ),
-        "utf8"
+      path.join(
+        repoRoot,
+        ".github",
+        "workflows",
+        "source-worker-image.yml"
       );
 
-    assert.ok(
-      workflow.includes(
-        '- ".github/workflows/source-worker-image.yml"'
-      )
+    await assert.rejects(
+      fs.access(workflow),
+      {
+        code: "ENOENT"
+      }
     );
   }
 );

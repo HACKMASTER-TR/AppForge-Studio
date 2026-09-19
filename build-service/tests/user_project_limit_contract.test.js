@@ -109,51 +109,16 @@ test(
 
 
 test(
-  "Android consumes server quota V2",
+  "Android normal build is independent from server quota V2",
   () => {
-    const main =
-      read(
-        "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
-      );
-
     const api =
       read(
         "android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt"
       );
 
-    const advisor =
-      read(
-        "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt"
-      );
-
-    assert.match(
+    assert.doesNotMatch(
       api,
       /\/api\/projects\/quota/
-    );
-
-    assert.match(
-      api,
-      /planKind/
-    );
-
-    assert.match(
-      api,
-      /failedBuildsConsumeQuota/
-    );
-
-    assert.doesNotMatch(
-      main,
-      /\.claimFreeProjectSlot\(/
-    );
-
-    assert.match(
-      advisor,
-      /free_project_limit_reached/
-    );
-
-    assert.match(
-      advisor,
-      /pro_monthly_project_limit_reached/
     );
   }
 );

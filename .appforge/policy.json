@@ -44,8 +44,6 @@
     ]
   },
   "external_adapters": {
-    "railway": "conditional",
-    "render": "conditional",
     "vercel": "conditional",
     "play_console": "full_autopilot"
   },
@@ -56,7 +54,6 @@
       "scripts/appforge",
       "scripts/appforge-stability-gate",
       ".github/workflows/**",
-      ".github/scripts/railway_production.py",
       ".secondbrain/**",
       ".appforge/**",
       "docs/**",

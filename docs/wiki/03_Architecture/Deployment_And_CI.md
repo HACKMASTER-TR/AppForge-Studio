@@ -3,37 +3,42 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-09-19
+last_verified: 2026-09-19
 confidence: high
 tags:
   - deployment
   - ci
 related:
   - "[[Test_And_CI_Map]]"
+  - "[[System_Architecture]]"
 source_files:
-  - "build-service/Dockerfile"
-  - "build-service/docker-compose.yml"
+  - ".github/workflows/android-debug.yml"
+  - ".github/workflows/android-play-release.yml"
   - ".github/workflows/appforge-stability-gate.yml"
-  - ".github/workflows/production-automation.yml"
-  - ".github/workflows/worker-autoscale.yml"
-  - ".github/scripts/worker_autoscale.py"
+  - ".github/workflows/cleanup-old-runs.yml"
+  - "scripts/appforge"
+  - "scripts/appforge-stability-gate"
 ---
 
 # Deployment and CI
 
-Docker Compose defines development services for PostgreSQL, Redis, MinIO, Mailpit, the API, workers, and a video-downloader. The default Dockerfile packages the API; specialized worker images are built by separate workflow paths.
+AppForge Studio no longer deploys a remote Build Service or Worker pool for
+normal application builds.
 
-GitHub Actions contains Android debug/release, stability, conversion, worker-image, source-worker-image, Windows-worker-image, production automation, cleanup, and autoscaling workflows. Railway-related URLs and production names in workflow files are configuration evidence, not live-health evidence.
+The active distribution path is:
 
-The old repository brain was removed from stability policy. The remaining stability gate checks diff integrity, forbidden staged outputs, and branch policy. Wiki health remains advisory.
+1. AppForge Studio builds user projects on the Android device.
+2. GitHub remains the source repository and CI authority.
+3. `android-debug.yml` validates Android application changes.
+4. `android-play-release.yml` handles Google Play delivery when explicitly
+   requested and eligible.
+5. Google Play / Google Cloud remain external distribution and billing
+   infrastructure.
 
-## Worker pool autoscaling
+Railway, Render, remote Android Workers, Source Workers, Windows Workers,
+autoscaling, and production build-service deployment workflows are retired
+from the active architecture.
 
-`worker-autoscale.yml` scales normal Android and dedicated Source Workers as
-separate Railway pools. The normal pool keeps its existing production floor.
-The Source pool has an independent one-replica floor and uses source-only
-queued/running counts from `/health`. Source queue admission can dispatch the
-workflow immediately; the five-minute schedule remains a reconciliation
-fallback. A Source Worker never becomes normal Android capacity and the
-`source-isolation-dedicated` boundary remains mandatory.
+CI success is not a substitute for device acceptance. Device-build changes
+must be tested on a real supported Android device before shipping.

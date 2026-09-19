@@ -1,0 +1,2 @@
+# AppForge Python Runtime
+# Kullanıcı projesinin requirements.txt içeriği build sırasında buraya yazılacak.

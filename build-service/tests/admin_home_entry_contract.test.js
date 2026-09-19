@@ -30,17 +30,12 @@ test(
 
     assert.match(
       home,
-      /YÖNETİCİ PANELİ/
+      /val fullAdmin\s*=\s*OwnerAccessPolicy[\s\S]{0,300}?isActiveOwner/
     );
 
     assert.match(
       home,
-      /fullAdmin[\s\S]*?onOpenAdmin\(\)/
-    );
-
-    assert.match(
-      home,
-      /Hesap yönetimi • PRO yetkileri • Sistem durumu • Autoscale/
+      /if\s*\(\s*fullAdmin\s*\)[\s\S]{0,700}?onClick\s*=\s*onOpenAdmin/
     );
 
     assert.match(

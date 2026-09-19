@@ -490,13 +490,21 @@ private fun downloadArtifact(
                 record.type.ticketKind
             )
 
+    val localSource =
+        if (ticket.url.startsWith("file://", ignoreCase = true)) {
+            Uri.parse(ticket.url)
+                .path
+                ?.let(::java.io.File)
+                ?.takeIf { it.isFile && it.length() > 0L }
+        } else {
+            null
+        }
+
     require(
-        ticket.url.startsWith(
-            "https://",
-            ignoreCase = true
-        )
+        localSource != null ||
+            ticket.url.startsWith("https://", ignoreCase = true)
     ) {
-        "İndirme adresi HTTPS değil."
+        "Artifact adresi geçersiz."
     }
 
     val resolver =
@@ -534,6 +542,46 @@ private fun downloadArtifact(
             ?: error(
                 "AppForgeStudio dosyası oluşturulamadı."
             )
+
+    if (localSource != null) {
+        try {
+            resolver
+                .openOutputStream(uri, "w")
+                ?.buffered(1024 * 1024)
+                ?.use { output ->
+                    localSource
+                        .inputStream()
+                        .buffered(1024 * 1024)
+                        .use { input ->
+                            input.copyTo(output, 1024 * 1024)
+                            output.flush()
+                        }
+                }
+                ?: error("Hedef dosya açılamadı.")
+
+            resolver.update(
+                uri,
+                ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                },
+                null,
+                null
+            )
+
+            return loadLocalBuildArtifacts(context)
+                .firstOrNull { it.uri == uri }
+                ?: LocalBuildArtifact(
+                    name = expectedName,
+                    uri = uri,
+                    modifiedAtMillis = System.currentTimeMillis(),
+                    sizeBytes = localSource.length(),
+                    type = record.type
+                )
+        } catch (t: Throwable) {
+            runCatching { resolver.delete(uri, null, null) }
+            throw t
+        }
+    }
 
     val connection =
         java.net.URL(

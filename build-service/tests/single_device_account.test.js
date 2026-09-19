@@ -125,27 +125,28 @@ test(
 );
 
 test(
-  "Android clients send device identity",
+  "device-only Android build client does not send remote build identity headers",
   async () => {
-    const files =
-      await Promise.all([
-        read(
-          "../../android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt"
-        ),
-        read(
-          "../../android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt"
-        ),
-        read(
-          "../../android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt"
-        ),
-        read(
-          "../../android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt"
-        )
-      ]);
+    const build =
+      await read(
+        "../../android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt"
+      );
 
-    for (const text of files) {
+    assert.doesNotMatch(
+      build,
+      /X-AppForge-Device-ID/
+    );
+
+    for (const file of [
+      "../../android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt",
+      "../../android-app/app/src/main/java/com/appforge/studio/net/WorkspaceClient.kt",
+      "../../android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt"
+    ]) {
+      const source =
+        await read(file);
+
       assert.match(
-        text,
+        source,
         /X-AppForge-Device-ID/
       );
     }

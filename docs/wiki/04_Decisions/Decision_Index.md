@@ -113,3 +113,5 @@ Source Workers excluded from the existing autoscaler, Worker heartbeat
 independent of process progress, direct-child `SIGKILL` in multiple source
 engines, and a React Native/Expo 20-minute hard timeout without a stall
 watchdog.
+
+- 2026-09-19: AppForge normal build execution moved from remote Worker/queue infrastructure to an on-device PRoot/Linux build engine. Remote build upload/polling is no longer part of the normal Android build path. Shipping acceptance requires real-device APK/AAB validation.

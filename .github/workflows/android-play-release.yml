@@ -61,22 +61,18 @@ jobs:
       - name: Validate Play release secrets
         shell: bash
         env:
-          APPFORGE_FIREBASE_GOOGLE_SERVICES_B64: ${{ secrets.APPFORGE_FIREBASE_GOOGLE_SERVICES_B64 }}
           APPFORGE_RELEASE_KEYSTORE_B64: ${{ secrets.APPFORGE_RELEASE_KEYSTORE_B64 }}
           APPFORGE_RELEASE_STORE_PASSWORD: ${{ secrets.APPFORGE_RELEASE_STORE_PASSWORD }}
           APPFORGE_RELEASE_KEY_PASSWORD: ${{ secrets.APPFORGE_RELEASE_KEY_PASSWORD }}
           APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
-          APPFORGE_RAILWAY_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_RAILWAY_OAUTH_CLIENT_ID }}
         run: |
           set -euo pipefail
 
           required=(
-            APPFORGE_FIREBASE_GOOGLE_SERVICES_B64
             APPFORGE_RELEASE_KEYSTORE_B64
             APPFORGE_RELEASE_STORE_PASSWORD
             APPFORGE_RELEASE_KEY_PASSWORD
             APPFORGE_GITHUB_OAUTH_CLIENT_ID
-            APPFORGE_RAILWAY_OAUTH_CLIENT_ID
           )
 
           missing=0
@@ -115,51 +111,6 @@ jobs:
           test -d "$ANDROID_HOME/cmake/${APPFORGE_ANDROID_CMAKE_VERSION}"
 
           echo "✅ Native toolchain PASS: NDK ${APPFORGE_ANDROID_NDK_VERSION} / CMake ${APPFORGE_ANDROID_CMAKE_VERSION}"
-
-      - name: Restore and verify AppForge Firebase config
-        shell: bash
-        env:
-          APPFORGE_FIREBASE_GOOGLE_SERVICES_B64: ${{ secrets.APPFORGE_FIREBASE_GOOGLE_SERVICES_B64 }}
-        run: |
-          set -euo pipefail
-
-          printf '%s' "$APPFORGE_FIREBASE_GOOGLE_SERVICES_B64" \
-            | base64 --decode \
-            > android-app/app/google-services.json
-
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-
-          path = Path("android-app/app/google-services.json")
-
-          data = json.loads(
-              path.read_text(encoding="utf-8")
-          )
-
-          packages = set()
-
-          for entry in data.get("client", []):
-              package_name = (
-                  entry
-                  .get("client_info", {})
-                  .get("android_client_info", {})
-                  .get("package_name")
-              )
-
-              if package_name:
-                  packages.add(package_name)
-
-          expected = "com.appforge.studio"
-
-          if expected not in packages:
-              raise SystemExit(
-                  f"Firebase config package mismatch. "
-                  f"Expected {expected}; found {sorted(packages)}"
-              )
-
-          print("✅ Firebase package config PASS.")
-          PY
 
       - name: Restore Play upload keystore
         shell: bash
@@ -275,7 +226,6 @@ jobs:
           APPFORGE_RELEASE_KEY_ALIAS: appforge-release
           APPFORGE_RELEASE_KEY_PASSWORD: ${{ secrets.APPFORGE_RELEASE_KEY_PASSWORD }}
           APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
-          APPFORGE_RAILWAY_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_RAILWAY_OAUTH_CLIENT_ID }}
         run: |
           set -uo pipefail
 
@@ -315,7 +265,6 @@ jobs:
           APPFORGE_RELEASE_KEY_ALIAS: appforge-release
           APPFORGE_RELEASE_KEY_PASSWORD: ${{ secrets.APPFORGE_RELEASE_KEY_PASSWORD }}
           APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
-          APPFORGE_RAILWAY_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_RAILWAY_OAUTH_CLIENT_ID }}
         run: |
           set -euo pipefail
 

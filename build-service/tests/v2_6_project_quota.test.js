@@ -124,7 +124,7 @@ test(
 );
 
 test(
-  "build client sends saved bearer session",
+  "device-only build client does not require saved bearer session",
   async () => {
     const text =
       await readFile(
@@ -132,19 +132,9 @@ test(
         "utf8"
       );
 
-    assert.match(
+    assert.doesNotMatch(
       text,
-      /SecureAccountStore/
-    );
-
-    assert.match(
-      text,
-      /"Authorization"/
-    );
-
-    assert.match(
-      text,
-      /"Bearer \$it"/
+      /SecureAccountStore|"Authorization"|"Bearer \$it"/
     );
   }
 );

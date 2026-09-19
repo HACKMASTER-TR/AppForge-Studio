@@ -39,7 +39,6 @@ test("preflight reports required delivery capabilities", () => {
     "PR write",
     "Auto-merge",
     "Pipeline mode",
-    "Railway",
     "Play production",
     "GitHub versioned release",
     "Play publish",

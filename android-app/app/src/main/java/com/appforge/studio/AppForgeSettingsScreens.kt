@@ -352,7 +352,7 @@ internal fun LegalCenterScreen(
         Triple(
             "🔌",
             "Üçüncü taraf hizmetleri ve açık kaynak",
-            "Google Play, Firebase, AdMob, GitHub, Railway ve benzeri entegrasyonlar yalnız kullandığın özelliğe göre devreye girebilir ve kendi şartlarına tabidir. AppForge içinde kullanılan açık kaynak bileşenlerin lisans koşulları dağıtım ve kullanım sırasında geçerliliğini korur."
+            "Google Play, Firebase, AdMob, GitHub ve benzeri entegrasyonlar yalnız kullandığın özelliğe göre devreye girebilir ve kendi şartlarına tabidir. AppForge içinde kullanılan açık kaynak bileşenlerin lisans koşulları dağıtım ve kullanım sırasında geçerliliğini korur."
         )
     )
 

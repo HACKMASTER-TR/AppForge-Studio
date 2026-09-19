@@ -234,8 +234,8 @@ object AppForgeBuildErrorAdvisor {
                     "connect timed out",
                     "sockettimeoutexception"
                 ),
-                reason = "Build Worker veya Gradle dış depolara erişirken geçici ağ/DNS problemi yaşadı.",
-                solution = "Bağlantı düzeldikten sonra aynı ayarlarla tekrar derle. Sorun sürekli olursa Worker/Railway ağ durumunu ve DNS erişimini kontrol et.",
+                reason = "Gradle veya cihazdaki build araçları dış depolara erişirken geçici ağ/DNS problemi yaşadı.",
+                solution = "Bağlantı düzeldikten sonra aynı ayarlarla tekrar derle. Sorun sürekli olursa cihazın internet, DNS veya proxy ayarlarını kontrol et.",
                 confidence = 98
             ),
             Rule(

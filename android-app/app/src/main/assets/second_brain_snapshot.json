@@ -10,6 +10,5 @@
   "migrations": 25,
   "tests": 300,
   "release": "REVIEW_REQUIRED",
-  "liveGithub": "NOT_CHECKED",
-  "liveRailway": "NOT_CHECKED"
+  "liveGithub": "NOT_CHECKED"
 }

@@ -141,8 +141,7 @@ fun SecondBrainScreen(
                 title = "Canlı Sistem",
                 lines =
                     listOf(
-                        "GitHub: ${snapshot.optString("liveGithub", "NOT_CHECKED")}",
-                        "Railway: ${snapshot.optString("liveRailway", "NOT_CHECKED")}"
+                        "GitHub: ${snapshot.optString("liveGithub", "NOT_CHECKED")}"
                     )
             )
         }

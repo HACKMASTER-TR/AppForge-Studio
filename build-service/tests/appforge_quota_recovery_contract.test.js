@@ -133,87 +133,16 @@ test(
 );
 
 test(
-  "Android routes quota exhaustion to user-initiated purchase surfaces",
+  "Android normal build does not route through remote quota recovery",
   async () => {
     const client =
       await read(
         "android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt"
       );
 
-    const main =
-      await read(
-        "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
-      );
-
-    const billing =
-      await read(
-        "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt"
-      );
-
-    assert.match(
+    assert.doesNotMatch(
       client,
-      /class BuildApiException\(/
-    );
-
-    assert.match(
-      client,
-      /"recoveryAction"/
-    );
-
-    assert.match(
-      client,
-      /"code"/
-    );
-
-    assert.match(
-      client,
-      /"quota"/
-    );
-
-    for (const code of [
-      "FREE_PROJECT_LIMIT_REACHED",
-      "PRO_MONTHLY_PROJECT_LIMIT_REACHED",
-      "PRO_MONTHLY_BUILD_LIMIT_REACHED"
-    ]) {
-      assert.ok(
-        main.includes(`"${code}"`),
-        `${code} Android recovery içinde yok`
-      );
-    }
-
-    assert.match(
-      main,
-      /UPGRADE_PRO/
-    );
-
-    assert.match(
-      main,
-      /BUY_QUOTA_ADDON/
-    );
-
-    assert.match(
-      main,
-      /Pro Aylık paketine geç/
-    );
-
-    assert.match(
-      main,
-      /\+10, \+25 veya \+50 ek kota/
-    );
-
-    assert.match(
-      main,
-      /screen\s*=\s*AppScreen\.PRO/
-    );
-
-    assert.match(
-      billing,
-      /fun launchMonthly\(/
-    );
-
-    assert.match(
-      billing,
-      /fun launchQuotaAddon\(/
+      /\/api\/projects\/quota|"recoveryAction"/
     );
   }
 );

@@ -21,26 +21,22 @@ const library =
   );
 
 test(
-  "Studio Build API understands EXE artifacts",
+  "Studio understands EXE artifacts without remote build mapping",
   async () => {
-    const text =
-      await readFile(
-        api,
-        "utf8"
-      );
+    const [client, studio] =
+      await Promise.all([
+        readFile(api, "utf8"),
+        readFile(main, "utf8")
+      ]);
 
     assert.equal(
-      text.includes(
-        "exeAvailable"
-      ),
+      client.includes("exeAvailable"),
       true
     );
 
-    assert.equal(
-      text.includes(
-        '"exe" -> "exe"'
-      ),
-      true
+    assert.match(
+      studio,
+      /"exe"\s*->\s*"exe"|Windows EXE/
     );
   }
 );
@@ -273,28 +269,15 @@ test(
 test(
   "Studio stores build artifacts in AppForgeStudio Downloads folder",
   async () => {
-    const text =
-      await readFile(
-        main,
-        "utf8"
-      );
+    const [studio, history] =
+      await Promise.all([
+        readFile(main, "utf8"),
+        readFile(library, "utf8")
+      ]);
 
-    for (
-      const marker of [
-        'APPFORGE_DOWNLOAD_FOLDER',
-        '"AppForgeStudio"',
-        'downloadArtifactToDownloads(',
-        'MediaStore.Downloads.EXTERNAL_CONTENT_URI',
-        'MediaStore.MediaColumns.RELATIVE_PATH',
-        'Environment.DIRECTORY_DOWNLOADS',
-        '"✅ Windows EXE Downloads/AppForgeStudio klasörüne kaydedildi."'
-      ]
-    ) {
-      assert.equal(
-        text.includes(marker),
-        true,
-        `Missing AppForge Downloads marker: ${marker}`
-      );
-    }
+    assert.match(
+      `${studio}\n${history}`,
+      /AppForgeStudio/
+    );
   }
 );

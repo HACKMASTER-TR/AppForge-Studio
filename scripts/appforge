@@ -2482,7 +2482,6 @@ def is_fast_lane_file(path):
     if path in {
         "scripts/appforge",
         "scripts/appforge-stability-gate",
-        ".github/scripts/railway_production.py",
     }:
         return True
 
@@ -3530,7 +3529,6 @@ def delivery_preflight_result():
         "pr_write",
         "auto_merge",
         "pipeline_mode",
-        "railway",
         "play_state",
         "versioned_release",
         "play_publish",

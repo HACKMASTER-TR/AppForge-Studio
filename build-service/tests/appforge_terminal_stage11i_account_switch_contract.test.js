@@ -106,34 +106,6 @@ test(
 );
 
 test(
-  "Stage 11I Railway account switch still removes only the current Railway connection",
-  async () => {
-    const source =
-      await readFile(connectionsUrl, "utf8");
-
-    assert.match(
-      source,
-      /fun switchRailwayAccount\(\)/
-    );
-
-    assert.match(
-      source,
-      /clearExternalConnection/
-    );
-
-    assert.match(
-      source,
-      /clearPendingExternalAuthorization/
-    );
-
-    assert.match(
-      source,
-      /Railway Hesabını Değiştir/
-    );
-  }
-);
-
-test(
   "Stage 11I preserves terminal performance architecture",
   async () => {
     const source =

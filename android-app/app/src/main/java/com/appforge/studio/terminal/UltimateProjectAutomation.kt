@@ -13,7 +13,6 @@ internal enum class ProjectAutomationStepKind {
 internal enum class DeploymentProvider(
     val title: String
 ) {
-    RAILWAY("Railway"),
     VERCEL("Vercel"),
     CLOUDFLARE("Cloudflare"),
     FIREBASE("Firebase"),
@@ -504,14 +503,7 @@ internal object UltimateProjectAutomationPlanner {
         root: File
     ): List<DeploymentProvider> =
         buildList {
-            if (
-                File(root, "railway.toml").isFile ||
-                File(root, "railway.json").isFile
-            ) {
-                add(
-                    DeploymentProvider.RAILWAY
-                )
-            }
+
 
             if (
                 File(root, "vercel.json").isFile

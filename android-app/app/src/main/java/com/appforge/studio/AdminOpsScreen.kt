@@ -665,7 +665,7 @@ fun AdminOpsScreen(
             text = {
                 Text(
                     "$count adet gerçek Android APK build'i oluşturulacak. " +
-                        "Worker kapasitesi ve Railway kullanımı artabilir."
+                        "Derlemeler cihaz üzerinde çalışacağı için CPU, RAM, depolama ve pil kullanımı artabilir."
                 )
             },
             confirmButton = {

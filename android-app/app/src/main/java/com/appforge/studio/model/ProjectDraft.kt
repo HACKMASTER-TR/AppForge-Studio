@@ -1,7 +1,7 @@
 package com.appforge.studio.model
 
 const val DEFAULT_BUILD_SERVICE_URL =
-    "https://api.appforgecloud.com"
+    "device://local"
 
 data class ProjectDraft(
     var appName: String = "",

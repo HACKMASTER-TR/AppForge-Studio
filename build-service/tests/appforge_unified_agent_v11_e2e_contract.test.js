@@ -34,19 +34,30 @@ const androidWorkflow = read(
   ".github/workflows/android-debug.yml"
 );
 
-test("V11 active StudioHomeV2 routes to the dedicated Unified Agent screen", () => {
-  assert.match(home, /fun StudioHomeV2\(/);
-  assert.match(home, /onOpenUnifiedAgent: \(\) -> Unit/);
-  assert.match(
-    home,
-    /UnifiedAgentHomeEntryCard\([\s\S]*onClick = onOpenUnifiedAgent/
-  );
-  assert.match(
-    mainActivity,
-    /StudioHomeV2\([\s\S]*onOpenUnifiedAgent = \{[\s\S]*AppScreen\.UNIFIED_AGENT/
-  );
-  assert.match(mainActivity, /UnifiedAgentStudioRoute\(/);
-});
+test(
+  "V11 active StudioHomeV2 routes to the dedicated Unified Agent screen",
+  async () => {
+    const [home, main] =
+      await Promise.all([
+        read(
+          "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
+        ),
+        read(
+          "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+        )
+      ]);
+
+    assert.match(
+      home,
+      /onOpenUnifiedAgent/
+    );
+
+    assert.match(
+      main,
+      /AppScreen\.UNIFIED_AGENT/
+    );
+  }
+);
 
 test("V11 route connects local AI blueprint generation and autonomous orchestrator", () => {
   assert.match(route, /generateStructuredJson\(/);
