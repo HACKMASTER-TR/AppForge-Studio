@@ -148,3 +148,18 @@ source_files:
   dashboard with project/build status, AI, conversion, import, recent projects
   and management actions.
 - Terminal and Admin remain owner-only.
+
+## 2026-09-19 HTTPS control-plane separation correction
+
+- `device://local` remains authoritative only for normal project compilation.
+- Account, Admin, Pro/security and Update flows use the dedicated HTTPS control
+  plane instead of inheriting the project's local build URL.
+- The `unknown protocol: device` failure is prevented at the routing boundary
+  and account/admin clients reject non-HTTPS production control-plane URLs.
+- Admin authorization is loaded from the authenticated server response.
+- Admin account management loads automatically when the screen opens.
+- The obsolete Autoscale dashboard and 10/25/50 real-build stress controls are
+  removed from Android Admin Ops.
+- Update-policy failure retains the existing `Çevrimdışı devam et` path.
+- Device Build Runtime V3, AAPT2 and normal device-local APK/AAB execution are
+  unchanged.

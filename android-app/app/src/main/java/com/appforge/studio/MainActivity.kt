@@ -89,6 +89,7 @@ import com.appforge.studio.io.PwaInspector
 import com.appforge.studio.io.SavedBuild
 import com.appforge.studio.io.SavedProject
 import com.appforge.studio.io.ZipUtils
+import com.appforge.studio.model.DEFAULT_CONTROL_PLANE_URL
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
@@ -2908,8 +2909,7 @@ private fun AppForgeApp() {
     // Uygulama açıldığında veya hesap değiştiğinde
     // Pro yetkisini sunucudan otomatik yenile.
     LaunchedEffect(
-        session?.token,
-        serverUrl
+        session?.token
     ) {
         val current =
             session
@@ -2936,7 +2936,7 @@ private fun AppForgeApp() {
                         context =
                             context,
                         baseUrl =
-                            serverUrl,
+                            DEFAULT_CONTROL_PLANE_URL,
                         accessToken =
                             current.token
                     ).proStatus(
@@ -4129,7 +4129,7 @@ private fun AppForgeApp() {
                         proUnlocked =
                             proStatus?.active == true,
                                                 serverUrl =
-                            serverUrl,
+                            DEFAULT_CONTROL_PLANE_URL,
 onOpenPro = {
                             screen =
                                 AppScreen.PRO
@@ -4145,7 +4145,7 @@ onOpenPro = {
                         proUnlocked =
                             proStatus?.active == true,
                                                 serverUrl =
-                            serverUrl,
+                            DEFAULT_CONTROL_PLANE_URL,
 onOpenPro = {
                             screen =
                                 AppScreen.PRO
@@ -4335,7 +4335,7 @@ onOpenPro = {
                 )
 
                 AppScreen.ACCOUNT -> AccountScreen(
-                    serverUrl = serverUrl,
+                    serverUrl = DEFAULT_CONTROL_PLANE_URL,
                     session = session,
                     actionUri =
                         hostActivity
@@ -4671,7 +4671,7 @@ onOpenPro = {
 
                 AppScreen.PRO -> ProUpgradeScreen(
                     languageCode = prefs.languageCode,
-                    serverUrl = serverUrl,
+                    serverUrl = DEFAULT_CONTROL_PLANE_URL,
                     session = session,
                     currentStatus = proStatus,
                     securityMessage = proSecurityMessage,
@@ -4781,7 +4781,7 @@ onOpenPro = {
 
                 AppScreen.ADMIN_OPS -> AdminOpsScreen(
                     serverUrl =
-                        serverUrl,
+                        DEFAULT_CONTROL_PLANE_URL,
                     apiKey =
                         apiKey,
                     accountEmail =

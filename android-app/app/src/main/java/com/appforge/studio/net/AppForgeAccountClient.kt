@@ -29,14 +29,34 @@ class AppForgeAccountClient(
             context.applicationContext
         )
 
+
+    private val controlPlaneBaseUrl =
+        baseUrl
+            .trim()
+            .trimEnd('/')
+            .also { value ->
+                require(
+                    value.startsWith(
+                        "https://",
+                        ignoreCase = true
+                    ) ||
+                        value.startsWith(
+                            "http://10.0.2.2",
+                            ignoreCase = true
+                        )
+                ) {
+                    "AppForge hesap API'si üretimde HTTPS control plane gerektirir."
+                }
+            }
+
     fun register(
         email: String,
         password: String,
         displayName: String
     ): Session {
         val json = request(
-            "/api/auth/register",
-            JSONObject().apply {
+            path = "/api/auth/register",
+            body = JSONObject().apply {
                 put("email", email)
                 put("password", password)
                 put("displayName", displayName)
@@ -47,8 +67,8 @@ class AppForgeAccountClient(
 
     fun login(email: String, password: String): LoginResult {
         val json = request(
-            "/api/auth/login",
-            JSONObject().apply {
+            path = "/api/auth/login",
+            body = JSONObject().apply {
                 put("email", email)
                 put("password", password)
             }
@@ -68,8 +88,8 @@ class AppForgeAccountClient(
     ): String {
         val json =
             request(
-                "/api/auth/forgot-password",
-                JSONObject().apply {
+                path = "/api/auth/forgot-password",
+                body = JSONObject().apply {
                     put(
                         "email",
                         email.trim()
@@ -87,8 +107,8 @@ class AppForgeAccountClient(
         token: String
     ) {
         request(
-            "/api/auth/verify-email",
-            JSONObject().apply {
+            path = "/api/auth/verify-email",
+            body = JSONObject().apply {
                 put(
                     "token",
                     token
@@ -102,8 +122,8 @@ class AppForgeAccountClient(
         password: String
     ) {
         request(
-            "/api/auth/reset-password",
-            JSONObject().apply {
+            path = "/api/auth/reset-password",
+            body = JSONObject().apply {
                 put(
                     "token",
                     token
@@ -122,8 +142,8 @@ class AppForgeAccountClient(
         code: String
     ): Session {
         val json = request(
-            "/api/auth/2fa/verify-login",
-            JSONObject().apply {
+            path = "/api/auth/2fa/verify-login",
+            body = JSONObject().apply {
                 put("challengeToken", challengeToken)
                 put("code", code)
             }
@@ -138,8 +158,8 @@ class AppForgeAccountClient(
     ): Session {
         return session(
             request(
-                "/api/auth/device-transfer",
-                JSONObject().apply {
+                path = "/api/auth/device-transfer",
+                body = JSONObject().apply {
                     put("email", email)
                     put("password", password)
                     if (twoFactorCode.isNotBlank()) {
@@ -158,7 +178,7 @@ class AppForgeAccountClient(
         val conn =
             (
                 URL(
-                    baseUrl.trimEnd('/') +
+                    controlPlaneBaseUrl +
                         "/api/auth/api-tokens"
                 ).openConnection()
                 as HttpURLConnection
@@ -250,8 +270,8 @@ class AppForgeAccountClient(
         twoFactorCode: String = ""
     ): JSONObject {
         return request(
-            "/api/auth/delete-account",
-            JSONObject().apply {
+            path = "/api/auth/delete-account",
+            body = JSONObject().apply {
                 put(
                     "email",
                     email
@@ -293,7 +313,7 @@ class AppForgeAccountClient(
         body: JSONObject
     ): JSONObject {
         val conn =
-            (URL(baseUrl.trimEnd('/') + path).openConnection()
+            (URL(controlPlaneBaseUrl + path).openConnection()
                 as HttpURLConnection).apply {
                 requestMethod = "POST"
                 doOutput = true

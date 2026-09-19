@@ -32,7 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
-import com.appforge.studio.model.DEFAULT_BUILD_SERVICE_URL
+import com.appforge.studio.model.DEFAULT_CONTROL_PLANE_URL
 import com.appforge.studio.security.QuotaStatus
 import com.appforge.studio.security.SecureAccountStore
 import com.appforge.studio.security.SecurityConfig
@@ -71,7 +71,7 @@ class ProPurchasesActivity : ComponentActivity() {
             userId = session.userId
             security = StudioSecurityClient(
                 context = this,
-                baseUrl = DEFAULT_BUILD_SERVICE_URL,
+                baseUrl = DEFAULT_CONTROL_PLANE_URL,
                 accessToken = session.token
             )
             loadCenter()

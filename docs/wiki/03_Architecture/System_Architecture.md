@@ -55,3 +55,22 @@ uploaded to a remote AppForge Worker.
 
 `DeviceBuildCapabilities` is the compatibility registry for source engines and
 artifact targets. Unsupported or unvalidated engines fail explicitly.
+
+## HTTPS Control Plane Separation
+
+Project-build transport and product control-plane transport are separate
+boundaries.
+
+`DEFAULT_BUILD_SERVICE_URL` is `device://local` and is only for device-local
+project compilation through `BuildApiClient` / `DeviceBuildEngine`.
+
+Account, Admin, Pro/security and Android update-policy traffic uses the
+dedicated HTTPS control plane at `https://api.appforgecloud.com`. Those flows
+must never inherit a project's `buildServiceUrl` and must never fall back to a
+remote project-build Worker.
+
+Admin authorization is confirmed by the authenticated
+`/api/admin/system-status` response. Pro entitlement remains confirmed by
+`StudioSecurityClient` against `/api/pro/status`. Update-policy network failure
+does not block normal offline app entry; maintenance remains the only cached
+blocking state.
