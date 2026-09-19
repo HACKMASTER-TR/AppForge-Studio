@@ -5,8 +5,6 @@ import android.net.Uri
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
-import com.appforge.studio.terminal.AndroidLinuxRuntimeManager
-import com.appforge.studio.terminal.LinuxDistribution
 import com.appforge.studio.terminal.LinuxShellEngine
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
@@ -132,8 +130,19 @@ object DeviceBuildEngine {
 
         try {
             validateCapabilities(draft)
+
+            val sourceEngine =
+                draft
+                    .sourceBuildEngine
+                    .trim()
+                    .lowercase()
+                    .ifBlank {
+                        "webview-static"
+                    }
+
             state.preflight.add("✅ Build cihaz üzerinde çalışacak.")
             state.preflight.add("✅ Worker / queue / cloud build kullanılmıyor.")
+            state.preflight.add("✅ Clean Device Build Runtime V3 • Terminal Linux ortamından izole.")
 
             workspace.deleteRecursively()
             workspace.mkdirs()
@@ -153,17 +162,22 @@ object DeviceBuildEngine {
             state.progress = 8
             state.status = "Hazırlanıyor"
 
-            val manager = AndroidLinuxRuntimeManager(context)
-            runBlocking {
-                manager.ensureBaseEnvironment(
-                    distribution = LinuxDistribution.UBUNTU
-                ) { progress ->
-                    state.logs.add("🐧 ${progress.detail}")
+            val rootfs =
+                runBlocking {
+                    DeviceBuildRuntimeV3
+                        .ensureReady(
+                            context
+                        ) { detail ->
+                            state.logs.add(
+                                detail
+                            )
+                        }
                 }
-            }
 
-            val rootfs = manager.requireReadyRootfs(LinuxDistribution.UBUNTU)
-            val shell = LinuxShellEngine(context)
+            val shell =
+                LinuxShellEngine(
+                    context
+                )
             state.shell = shell
 
             runShellBlocking(
@@ -171,7 +185,7 @@ object DeviceBuildEngine {
                 rootfs = rootfs,
                 workspace = workspace,
                 state = state,
-                command = "chmod +x /workspace/runtime/install-toolchain.sh /workspace/runtime/build-node.sh && /bin/sh /workspace/runtime/install-toolchain.sh ${sh(draft.sourceBuildEngine.trim().lowercase().ifBlank { "webview-static" })}",
+                command = "chmod +x /workspace/runtime/install-toolchain.sh /workspace/runtime/build-node.sh && /bin/sh /workspace/runtime/install-toolchain.sh ${sh(sourceEngine)}",
                 suffix = "toolchain"
             )
 
@@ -179,7 +193,7 @@ object DeviceBuildEngine {
             state.progress = 25
             state.status = "Derleniyor"
 
-            when (draft.sourceBuildEngine.trim().lowercase()) {
+            when (sourceEngine) {
                 "node-web" -> buildNodeWeb(context, draft, workspace, rootfs, shell, state)
                 "android-gradle" -> buildAndroidProject(context, draft, workspace, rootfs, shell, state)
                 "python-android" -> buildPythonProject(context, draft, workspace, rootfs, shell, state)
@@ -246,10 +260,69 @@ object DeviceBuildEngine {
             "Cihaz motorunda henüz taşınmamış eklentiler: ${unsupported.joinToString(", ")}"
         }
 
-        require(draft.sourceTechnology.lowercase() !in setOf(
-            "nextjs", "nuxt", "flutter", "react-native", "expo", "unity", "dotnet-maui", "dotnet-android"
-        )) {
-            "${draft.sourceTechnologyLabel} ilk cihaz-build paketinde desteklenmiyor."
+        val sourceEngine =
+            draft
+                .sourceBuildEngine
+                .trim()
+                .lowercase()
+                .ifBlank {
+                    "webview-static"
+                }
+
+        val technologyCapability =
+            DeviceBuildCapabilities
+                .forTechnology(
+                    draft.sourceTechnology
+                )
+
+        if (
+            technologyCapability != null &&
+            technologyCapability.support !=
+                DeviceBuildSupport.READY
+        ) {
+            error(
+                "${draft.sourceTechnologyLabel}: " +
+                    technologyCapability.note
+            )
+        }
+
+        val capability =
+            technologyCapability
+                ?: DeviceBuildCapabilities
+                    .forEngine(
+                        sourceEngine
+                    )
+                ?: error(
+                    "${draft.sourceTechnologyLabel} için cihaz-build capability kaydı yok."
+                )
+
+        require(
+            capability.support ==
+                DeviceBuildSupport.READY
+        ) {
+            capability.note
+        }
+
+        val requestedOutputs =
+            DeviceBuildCapabilities
+                .requestedOutputs(
+                    draft.buildOutput
+                )
+
+        val unavailable =
+            requestedOutputs -
+                capability.readyOutputs
+
+        require(
+            unavailable.isEmpty()
+        ) {
+            "Bu motor henüz şu cihaz-local çıktıları üretmiyor: " +
+                DeviceBuildCapabilities
+                    .outputLabels(
+                        unavailable
+                    ) +
+                ". " +
+                capability.note
         }
     }
 

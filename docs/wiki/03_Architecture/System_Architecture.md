@@ -43,3 +43,15 @@ remain device-local through `ProjectLibrary`.
 GitHub remains repository/CI infrastructure. Google Play and Google Cloud
 remain AppForge Studio distribution, billing and Play-integrity
 infrastructure. They are not project-build Workers.
+
+## Clean Device Build Runtime V3
+
+Terminal Linux and project-build Linux are separate trust/lifecycle domains.
+
+The Terminal rootfs is a persistent developer workspace. Project builds use a
+versioned build-only rootfs which may be replaced when the runtime revision
+changes. Project source is mounted through the build workspace and is not
+uploaded to a remote AppForge Worker.
+
+`DeviceBuildCapabilities` is the compatibility registry for source engines and
+artifact targets. Unsupported or unvalidated engines fail explicitly.

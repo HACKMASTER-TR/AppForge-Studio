@@ -150,3 +150,37 @@ Device-local Android builds must not depend on Ubuntu OpenJDK package post-insta
 ### 2026-09-19 — Persistent device rootfs cleanup is engine-aware
 
 Device-local builds may reuse a persistent Ubuntu rootfs, but package repair must remain scoped to the selected source engine. Non-Node builds may remove only incomplete or broken legacy Node/npm package states; healthy Node installations are preserved, while `node-web` builds retain their required Node toolchain.
+
+## 2026-09-19 — Clean Device Build Runtime V3
+
+### Context
+
+Repeated real-device failures were caused by package state inherited from a
+persistent Linux environment: first unconditional Node/npm provisioning, then
+OpenJDK dpkg configuration, then stale Node package state. Repairing packages
+one failure at a time allowed unrelated historical package state to influence a
+new Android project build.
+
+### Decision
+
+Project builds use a dedicated, versioned and disposable build rootfs which is
+physically separate from the AppForge Terminal rootfs. A runtime revision
+mismatch rebuilds only this build runtime. Terminal files and package state are
+outside the cleanup boundary.
+
+A central capability matrix records engine and output readiness. APK, AAB and
+Windows Portable EXE are first-class artifact kinds, but only platform-tested
+outputs may be marked READY.
+
+### Consequences
+
+Old Terminal package state cannot block new project builds. Toolchain upgrades
+can intentionally invalidate the build runtime without destroying developer
+workspaces. Future Flutter, React Native, NDK, .NET and Windows engines can use
+separate capability/toolchain layers without turning every build into a
+universal environment.
+
+Unity remains explicitly external-tool-required until a supported device build
+host exists.
+
+Remote Worker fallback remains forbidden for normal user project builds.

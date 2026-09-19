@@ -50,3 +50,23 @@ APK and AAB outputs remain local. Unsupported technologies fail locally with
 a capability explanation rather than silently falling back to cloud Workers.
 
 Real-device validation is required before this migration is shipping-complete.
+
+## Runtime V3 and multi-output direction
+
+`DeviceBuildRuntimeV3` owns the dedicated clean build rootfs lifecycle.
+
+Current READY engines remain:
+
+- webview-static
+- node-web
+- android-gradle
+- python-android
+
+The capability registry also models future Android NDK, React Native, Expo,
+Flutter/Dart, .NET Android, .NET MAUI, Windows Web and Unity requirements.
+
+APK/AAB are currently proven. Windows Portable EXE is an explicit artifact
+target but must remain gated until a local Windows packager passes actual
+Windows acceptance.
+
+No unvalidated engine or artifact may trigger a hidden cloud fallback.

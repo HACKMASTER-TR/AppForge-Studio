@@ -15,8 +15,10 @@ test("Android device build does not require full terminal development profile", 
     "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
   );
 
-  assert.match(source, /ensureBaseEnvironment/);
+  assert.match(source, /DeviceBuildRuntimeV3/);
+  assert.match(source, /ensureReady/);
   assert.doesNotMatch(source, /ensureDevelopmentEnvironment/);
+  assert.doesNotMatch(source, /ensureBaseEnvironment/);
 });
 
 test("device build passes source engine to local toolchain installer", () => {
@@ -26,7 +28,7 @@ test("device build passes source engine to local toolchain installer", () => {
 
   assert.match(
     source,
-    /install-toolchain\.sh.*sourceBuildEngine/s
+    /install-toolchain\.sh[\s\S]*sourceEngine/
   );
 });
 

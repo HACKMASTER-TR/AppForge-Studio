@@ -25,7 +25,8 @@ test("normal Android build client is device-local", () => {
 
 test("device engine has real local toolchain and APK-AAB paths", () => {
   const engine = read(repoFile("android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"));
-  assert.match(engine, /AndroidLinuxRuntimeManager/);
+  assert.match(engine, /DeviceBuildRuntimeV3/);
+  assert.doesNotMatch(engine, /AndroidLinuxRuntimeManager/);
   assert.match(engine, /LinuxShellEngine/);
   assert.match(engine, /assemble\$variant/);
   assert.match(engine, /bundle\$variant/);

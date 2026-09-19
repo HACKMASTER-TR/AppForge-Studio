@@ -118,3 +118,12 @@ source_files:
 - `node-web` builds skip this cleanup and retain the Node toolchain.
 - Dedicated regression coverage protects this engine-aware cleanup behavior.
 - Fresh Android Debug CI and physical-device FIKSTUR TAKIP build acceptance remain required.
+
+## 2026-09-19 Clean Device Build Runtime V3
+
+- The repeated npm/OpenJDK/stale-dpkg chain showed that repairing a persistent Terminal rootfs is the wrong project-build boundary.
+- Device project builds now have a dedicated V3 runtime architecture which is versioned and disposable independently from Terminal Linux.
+- A capability/output registry records current READY engines and future Android/Windows engine families.
+- APK/AAB remain the currently proven local artifacts.
+- Windows Portable EXE remains a required local target but must not be declared ready until its device-local packager and real Windows acceptance pass.
+- Existing AppForge APK/EXE conversion contracts remain product requirements.

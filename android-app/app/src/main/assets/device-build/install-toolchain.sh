@@ -3,7 +3,7 @@ set -eu
 
 ROOT="/opt/appforge-device"
 SDK="$ROOT/android-sdk"
-READY="$ROOT/.ready-v2"
+READY="$ROOT/.ready-v3"
 JAVA_HOME="$ROOT/jdk-17"
 ENGINE="${1:-webview-static}"
 
