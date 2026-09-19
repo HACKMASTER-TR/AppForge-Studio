@@ -46,7 +46,7 @@ test(
 
     assert.match(
       s,
-      /pending_install_apk_path/
+      /pending_apk_path/
     );
 
     assert.match(

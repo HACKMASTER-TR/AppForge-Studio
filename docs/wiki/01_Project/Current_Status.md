@@ -3,8 +3,8 @@ type: status
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-17
-last_verified: 2026-09-17
+updated: 2026-09-19
+last_verified: 2026-09-19
 confidence: high
 tags:
   - status
@@ -21,6 +21,8 @@ source_files:
   - "build-service/src/fastSigningKey.js"
   - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
   - "android-app/app/src/test/java/com/appforge/studio/UpdateGatePlayVisibilityTest.kt"
 ---
 
@@ -58,3 +60,18 @@ source_files:
 - Terminal `+ Oturum` moves persisted creation off the UI dispatcher and
   selects the new session before PTY startup. Device acceptance remains
   pending for this new multi-session correction.
+
+## 2026-09-19 device-only Android CI compile correction
+
+- Android Debug CI exposed an accidental structural deletion in
+  `MainActivity.kt` during retired Railway callback cleanup.
+- The known-good activity/app-shell prefix was restored from the immediate
+  parent revision, then Railway authorization state and callbacks were removed
+  surgically without removing lifecycle, navigation, URI persistence or
+  `AppForgeApp`.
+- `DeviceBuildEngine` Kotlin visibility and sequence-log collection compile
+  errors were corrected.
+- Local `file://` artifact handling in `DownloadedApkFolder.kt` now constructs
+  `java.io.File` explicitly.
+- A fresh Android Debug CI run remains the authoritative compile acceptance
+  before real-device APK/AAB acceptance.

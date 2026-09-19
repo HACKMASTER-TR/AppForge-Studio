@@ -118,58 +118,6 @@ import java.util.Date
 import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
-
-    override fun onResume() {
-        super.onResume()
-
-        if (
-            Build.VERSION.SDK_INT >=
-                Build.VERSION_CODES.O &&
-            !packageManager
-                .canRequestPackageInstalls()
-        ) {
-            return
-        }
-
-        val prefs =
-            getSharedPreferences(
-                "appforge_installer",
-                Context.MODE_PRIVATE
-            )
-
-        val pendingPath =
-            prefs.getString(
-                "pending_install_apk_path",
-                null
-            )
-
-        if (
-            pendingPath
-                .isNullOrBlank()
-        ) {
-            return
-        }
-
-        val result =
-            runCatching {
-                installCachedApk(
-                    this,
-                    java.io.File(
-                        pendingPath
-                    )
-                )
-            }
-
-        if (result.isSuccess) {
-            prefs
-                .edit()
-                .remove(
-                    "pending_install_apk_path"
-                )
-                .apply()
-        }
-    }
-
     override fun onStart() {
         super.onStart()
         AppVisibility.activityStarted()
@@ -200,7 +148,6 @@ class MainActivity : ComponentActivity() {
     var accountActionSequence by mutableIntStateOf(0)
         private set
 
-
     private fun captureAccountAction(
         sourceIntent: Intent?
     ) {
@@ -218,7 +165,963 @@ class MainActivity : ComponentActivity() {
                 ignoreCase = true
             )
         ) {
+            accountActionUri =
+                data
 
+            accountActionSequence +=
+                1
+        }
+    }
+
+    fun consumeAccountAction() {
+        accountActionUri =
+            null
+    }
+
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
+        super.onCreate(savedInstanceState)
+
+        captureAccountAction(
+            intent
+        )
+
+        openBuildFromNotification =
+            intent?.getBooleanExtra("appforge_open_builds", false) == true
+
+        buildIdFromNotification =
+            intent?.getStringExtra("appforge_build_id")
+
+        buildServerUrlFromNotification =
+            intent?.getStringExtra("appforge_build_server_url")
+
+        if (openBuildFromNotification) {
+            buildNotificationSequence += 1
+        }
+
+        /*
+         * Android 13+ bildirim izni.
+         * Kullanıcıya ilk kez yalnızca bir defa sorulur.
+         */
+        if (
+            Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.TIRAMISU
+        ) {
+            val permissionPrefs =
+                getSharedPreferences(
+                    "appforge_permissions",
+                    Context.MODE_PRIVATE
+                )
+
+            val alreadyAsked =
+                permissionPrefs.getBoolean(
+                    "notifications_asked",
+                    false
+                )
+
+            val granted =
+                checkSelfPermission(
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+
+            if (
+                !alreadyAsked &&
+                !granted
+            ) {
+                permissionPrefs
+                    .edit()
+                    .putBoolean(
+                        "notifications_asked",
+                        true
+                    )
+                    .apply()
+
+                requestPermissions(
+                    arrayOf(
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    ),
+                    9101
+                )
+            }
+        }
+
+        setContent {
+            AppForgeApp()
+        }
+    }
+
+    override fun onNewIntent(
+        intent: Intent
+    ) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+
+        captureAccountAction(intent)
+
+        if (
+            intent.getBooleanExtra(
+                "appforge_open_builds",
+                false
+            )
+        ) {
+            buildIdFromNotification =
+                intent.getStringExtra(
+                    "appforge_build_id"
+                )
+
+            buildServerUrlFromNotification =
+                intent.getStringExtra(
+                    "appforge_build_server_url"
+                )
+
+            openBuildFromNotification = true
+            buildNotificationSequence += 1
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        BuildProgressService.stop(this)
+
+        /*
+         * APK yükleme izni ekranından döndüğünde
+         * kuruluma otomatik devam et.
+         */
+        val installerPrefs =
+            getSharedPreferences(
+                "appforge_installer",
+                Context.MODE_PRIVATE
+            )
+
+        val pendingApkPath =
+            installerPrefs.getString(
+                "pending_apk_path",
+                null
+            )
+
+        if (
+            !pendingApkPath.isNullOrBlank() &&
+            (
+                Build.VERSION.SDK_INT <
+                    Build.VERSION_CODES.O ||
+                packageManager
+                    .canRequestPackageInstalls()
+            )
+        ) {
+            installerPrefs
+                .edit()
+                .remove(
+                    "pending_apk_path"
+                )
+                .apply()
+
+            installCachedApk(
+                context = this,
+                apkFile =
+                    File(
+                        pendingApkPath
+                    )
+            )
+        }
+
+        val pendingDownloadId =
+            installerPrefs.getLong(
+                "pending_download_id",
+                -1L
+            )
+
+        if (
+            pendingDownloadId > 0L &&
+            (
+                Build.VERSION.SDK_INT <
+                    Build.VERSION_CODES.O ||
+                packageManager
+                    .canRequestPackageInstalls()
+            )
+        ) {
+            installerPrefs
+                .edit()
+                .remove(
+                    "pending_download_id"
+                )
+                .apply()
+
+            installDownloadedApk(
+                context = this,
+                downloadId = pendingDownloadId
+            )
+        }
+    }
+
+    fun consumeBuildNotificationNavigation(): Boolean {
+        if (!openBuildFromNotification) return false
+        openBuildFromNotification = false
+        return true
+    }
+}
+
+
+private fun installDownloadedApkUri(
+    context: Context,
+    apkUri: Uri,
+    displayName: String
+): String {
+    if (!displayName.endsWith(".apk", ignoreCase = true)) {
+        return "Yalnız APK dosyaları kurulabilir."
+    }
+    return runCatching {
+        val dir = File(context.cacheDir, "apk-installer").apply { mkdirs() }
+        val raw = File(displayName).name
+        val cleaned = raw.replace(Regex("[^A-Za-z0-9._-]"), "_").take(120)
+            .ifBlank { "AppForge-downloaded.apk" }
+        val safe = if (cleaned.endsWith(".apk", true)) cleaned else "$cleaned.apk"
+        val target = File(dir, safe)
+        val temp = File(dir, ".$safe.copy")
+        temp.delete()
+        val input = if (apkUri.scheme.equals("file", true)) {
+            File(apkUri.path ?: error("APK yolu okunamadı.")).inputStream()
+        } else {
+            context.contentResolver.openInputStream(apkUri)
+                ?: error("APK dosyası açılamadı.")
+        }
+        input.use { i -> temp.outputStream().buffered().use { o -> i.copyTo(o, 1024*1024) } }
+        require(temp.isFile && temp.length() > 0L) { "APK kopyalanamadı." }
+        val zipOk = temp.inputStream().use { it.read()==0x50 && it.read()==0x4B }
+        require(zipOk) { "Seçilen dosya geçerli bir APK değil." }
+        target.delete()
+        if (!temp.renameTo(target)) { temp.copyTo(target, true); temp.delete() }
+        installCachedApk(context, target)
+    }.getOrElse { "APK yükleyici açılamadı: ${it.message}" }
+}
+
+private const val APPFORGE_DOWNLOAD_FOLDER =
+    "AppForgeStudio"
+
+private fun formatDownloadedArtifactSize(
+    bytes: Long
+): String {
+    if (bytes <= 0L) {
+        return "—"
+    }
+
+    if (bytes < 1024L * 1024L) {
+        val kb =
+            (
+                bytes +
+                    1023L
+            ) /
+                1024L
+
+        return "${kb.coerceAtLeast(1L)} KB"
+    }
+
+    return String.format(
+        java.util.Locale.ROOT,
+        "%.1f MB",
+        bytes.toDouble() /
+            (
+                1024.0 *
+                    1024.0
+            )
+    )
+}
+
+/*
+ * Build elapsed time is display-only.
+ *
+ * 250 ms updates forced up to four root AppForgeApp state changes
+ * per second while a build was running. One-second UI ticks preserve
+ * elapsed-time accuracy because the value itself is still calculated
+ * from System.currentTimeMillis().
+ */
+private const val BUILD_TIMER_UI_TICK_MS =
+    1_000L
+
+private fun persistReadUriPermission(
+    context: Context,
+    uri: Uri
+) {
+    runCatching {
+        context.contentResolver
+            .takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+    }
+}
+
+private enum class AiDownloadNetwork {
+    WIFI,
+    MOBILE,
+    OFFLINE
+}
+
+private fun getAiDownloadNetwork(
+    context: Context
+): AiDownloadNetwork {
+
+    val manager =
+        context.getSystemService(
+            Context.CONNECTIVITY_SERVICE
+        ) as? ConnectivityManager
+            ?: return AiDownloadNetwork.OFFLINE
+
+    val network =
+        manager.activeNetwork
+            ?: return AiDownloadNetwork.OFFLINE
+
+    val capabilities =
+        manager.getNetworkCapabilities(
+            network
+        )
+            ?: return AiDownloadNetwork.OFFLINE
+
+    val internetAvailable =
+        capabilities.hasCapability(
+            NetworkCapabilities.NET_CAPABILITY_INTERNET
+        ) &&
+        capabilities.hasCapability(
+            NetworkCapabilities.NET_CAPABILITY_VALIDATED
+        )
+
+    if (!internetAvailable) {
+        return AiDownloadNetwork.OFFLINE
+    }
+
+    if (
+        capabilities.hasTransport(
+            NetworkCapabilities.TRANSPORT_WIFI
+        ) ||
+        capabilities.hasTransport(
+            NetworkCapabilities.TRANSPORT_ETHERNET
+        )
+    ) {
+        return AiDownloadNetwork.WIFI
+    }
+
+    if (
+        capabilities.hasTransport(
+            NetworkCapabilities.TRANSPORT_CELLULAR
+        )
+    ) {
+        return AiDownloadNetwork.MOBILE
+    }
+
+    /*
+     * Bilinmeyen bağlantı türü:
+     * ölçümlü ise mobil gibi davran,
+     * ölçümsüz ise Wi-Fi gibi davran.
+     */
+    return if (
+        manager.isActiveNetworkMetered
+    ) {
+        AiDownloadNetwork.MOBILE
+    } else {
+        AiDownloadNetwork.WIFI
+    }
+}
+
+
+private fun isTransientBuildNetworkError(
+    error: Throwable
+): Boolean {
+
+    var current: Throwable? =
+        error
+
+    while (
+        current != null
+    ) {
+
+        if (
+            current is java.net.UnknownHostException ||
+            current is java.net.SocketTimeoutException ||
+            current is java.net.ConnectException ||
+            current is java.net.NoRouteToHostException ||
+            current is java.net.SocketException
+        ) {
+            return true
+        }
+
+        val message =
+            current.message
+                .orEmpty()
+                .lowercase()
+
+        val transientMessage =
+            listOf(
+                "unable to resolve host",
+                "failed to connect",
+                "connection reset",
+                "connection refused",
+                "network is unreachable",
+                "no route to host",
+                "timed out",
+                "timeout"
+            ).any {
+                message.contains(
+                    it
+                )
+            }
+
+        if (
+            transientMessage
+        ) {
+            return true
+        }
+
+        current =
+            current.cause
+    }
+
+    return false
+}
+
+
+private suspend fun <T> retryInitialBuildRequest(
+    maxAttempts: Int = 8,
+    initialDelayMs: Long = 1_500L,
+    onRetry: (
+        attempt: Int,
+        maxAttempts: Int,
+        error: Throwable
+    ) -> Unit,
+    request: suspend () -> T
+): T {
+
+    var attempt =
+        1
+
+    var waitMs =
+        initialDelayMs
+
+    while (
+        true
+    ) {
+        try {
+            return request()
+        } catch (
+            t: Throwable
+        ) {
+
+            if (
+                !isTransientBuildNetworkError(
+                    t
+                ) ||
+                attempt >=
+                    maxAttempts
+            ) {
+                throw t
+            }
+
+            attempt +=
+                1
+
+            onRetry(
+                attempt,
+                maxAttempts,
+                t
+            )
+
+            delay(
+                waitMs
+            )
+
+            waitMs =
+                (
+                    waitMs *
+                        2
+                ).coerceAtMost(
+                    8_000L
+                )
+        }
+    }
+}
+
+
+private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+
+private data class ParallelBuildTestItem(
+    val slot: Int,
+    val buildId: String? = null,
+    val status: String = "Bekliyor",
+    val progress: Int = 0
+)
+
+@Composable
+private fun AppForgeApp() {
+    val context = LocalContext.current
+    val hostActivity = context as? MainActivity
+    val scope = rememberCoroutineScope()
+
+    var session by remember {
+        mutableStateOf<Session?>(
+            SecureAccountStore
+                .loadSession(context)
+        )
+    }
+
+    val terminalOwner =
+        OwnerAccessPolicy
+            .isActiveOwner(
+                context,
+                session?.email
+            )
+
+    val appConfiguration =
+        LocalConfiguration.current
+
+    val appScreenWidthDp =
+        appConfiguration.screenWidthDp
+
+    val appScreenHeightDp =
+        appConfiguration.screenHeightDp
+
+    val builderCompact =
+        appScreenWidthDp < 380
+
+    val builderTablet =
+        minOf(
+            appScreenWidthDp,
+            appScreenHeightDp
+        ) >= 600
+
+    val builderWide =
+        appScreenWidthDp >= 600
+
+    val builderContentMaxWidth =
+        if (builderWide) {
+            980.dp
+        } else {
+            10000.dp
+        }
+
+    val builderHorizontalPadding =
+        when {
+            builderCompact -> 10.dp
+            builderTablet -> 28.dp
+            else -> 20.dp
+        }
+
+    var draft by remember { mutableStateOf(ProjectDraft()) }
+
+    var sourceAnalysis by
+        remember {
+            mutableStateOf<SourceCapabilityAnalysis?>(
+                null
+            )
+        }
+
+    var currentProjectId by rememberSaveable { mutableStateOf<String?>(null) }
+    var autosaveBaseline by
+        remember {
+            mutableStateOf<Pair<String, ProjectDraft>?>(
+                null
+            )
+        }
+    var screen by rememberSaveable {
+        mutableStateOf(
+            if (
+                context.getSharedPreferences(
+                    "appforge_onboarding",
+                    Context.MODE_PRIVATE
+                ).getBoolean(
+                    "completed",
+                    false
+                )
+            ) {
+                AppScreen.HOME
+            } else {
+                AppScreen.ONBOARDING
+            }
+        )
+    }
+
+    var step by rememberSaveable { mutableIntStateOf(1) }
+
+    /*
+     * APP_SCREEN_HISTORY_V1
+     *
+     * AppForge has several navigation entry points. Some routes use
+     * openWorkspaceScreen(), while others historically assign `screen`
+     * directly. Track every real screen transition here so Android system
+     * back can always return to the immediately previous AppForge screen
+     * without requiring every caller to use one navigation helper.
+     *
+     * HOME is the navigation root, so reaching HOME clears stale history.
+     */
+    var appScreenBackStack by
+        remember {
+            mutableStateOf<
+                List<Pair<AppScreen, Int>>
+            >(
+                emptyList()
+            )
+        }
+
+    var lastObservedAppScreen by
+        remember {
+            mutableStateOf(
+                screen
+            )
+        }
+
+    var lastObservedBuilderStep by
+        remember {
+            mutableIntStateOf(
+                step
+            )
+        }
+
+    LaunchedEffect(
+        screen,
+        step
+    ) {
+        if (
+            screen !=
+                lastObservedAppScreen
+        ) {
+            val returningToTop =
+                appScreenBackStack
+                    .lastOrNull()
+                    ?.first ==
+                    screen
+
+            appScreenBackStack =
+                when {
+                    screen ==
+                        AppScreen.HOME ->
+                        emptyList()
+
+                    returningToTop ->
+                        appScreenBackStack
+                            .dropLast(1)
+
+                    lastObservedAppScreen ==
+                        AppScreen.ONBOARDING ->
+                        appScreenBackStack
+
+                    else ->
+                        (
+                            appScreenBackStack +
+                                (
+                                    lastObservedAppScreen to
+                                        lastObservedBuilderStep
+                                )
+                        ).takeLast(
+                            32
+                        )
+                }
+
+            lastObservedAppScreen =
+                screen
+
+            lastObservedBuilderStep =
+                step
+        } else {
+            /*
+             * Preserve the latest Builder step while remaining on the same
+             * screen so returning from Preview/Production/etc. restores it.
+             */
+            lastObservedBuilderStep =
+                step
+        }
+    }
+
+    LaunchedEffect(hostActivity?.buildNotificationSequence) {
+        if (hostActivity?.consumeBuildNotificationNavigation() == true) {
+            screen = AppScreen.BUILDER
+            step = 10
+        }
+    }
+
+    LaunchedEffect(
+        hostActivity?.accountActionSequence
+    ) {
+        if (
+            hostActivity?.accountActionUri !=
+                null
+        ) {
+            screen =
+                AppScreen.ACCOUNT
+        }
+    }
+
+    /*
+     * Defense in depth:
+     * restored navigation state or an internal caller must never
+     * expose Terminal to a non-owner account.
+     */
+    LaunchedEffect(
+        screen,
+        terminalOwner
+    ) {
+        if (
+            screen ==
+                AppScreen.TERMINAL &&
+            !terminalOwner
+        ) {
+            screen =
+                AppScreen.HOME
+        }
+    }
+
+    /*
+     * Önizleme / Production / AI gibi yardımcı ekranlardan
+     * geri dönerken proje ve mevcut builder adımı korunur.
+     */
+    var workspaceReturnScreen by
+        rememberSaveable {
+            mutableStateOf(
+                AppScreen.HOME
+            )
+        }
+
+    var workspaceReturnStep by
+        rememberSaveable {
+            mutableIntStateOf(
+                1
+            )
+        }
+
+    var terminalReturnScreen by
+        rememberSaveable {
+            mutableStateOf(
+                AppScreen.HOME
+            )
+        }
+
+    var terminalReturnStep by
+        rememberSaveable {
+            mutableIntStateOf(
+                1
+            )
+        }
+
+    fun openWorkspaceScreen(
+        target: AppScreen
+    ) {
+        if (
+            target == AppScreen.TERMINAL &&
+            !terminalOwner
+        ) {
+            screen =
+                AppScreen.HOME
+            return
+        }
+
+        workspaceReturnScreen =
+            screen
+
+        workspaceReturnStep =
+            step
+
+        screen =
+            target
+    }
+
+    fun returnFromWorkspace() {
+        val destination =
+            workspaceReturnScreen
+
+        screen =
+            destination
+
+        if (
+            destination ==
+            AppScreen.BUILDER
+        ) {
+            step =
+                workspaceReturnStep
+        }
+    }
+
+    /*
+     * Android system back policy:
+     *
+     * HOME: explicit Yes/No exit confirmation.
+     * TERMINAL: TerminalWorkspaceScreen owns its already device-verified
+     * local tab back behavior.
+     * All other AppScreens: late route-level handler below pops the real
+     * AppScreen history.
+     */
+    var showExitConfirmation by
+        rememberSaveable {
+            mutableStateOf(false)
+        }
+
+    fun navigateAppSystemBack() {
+        /*
+         * BUILDER_STEP_SYSTEM_BACK_V1
+         *
+         * Builder steps 1..10 live inside the same AppScreen.BUILDER.
+         * Therefore AppScreen history cannot represent step transitions.
+         *
+         * Android system back must first move one Builder step backward.
+         * Only step 1 is allowed to leave Builder through AppScreen history.
+         */
+        if (
+            screen ==
+                AppScreen.BUILDER &&
+            step >
+                1
+        ) {
+            step -=
+                1
+
+            return
+        }
+
+        if (
+            screen ==
+                AppScreen.HOME
+        ) {
+            showExitConfirmation =
+                true
+
+            return
+        }
+
+        if (
+            screen ==
+                AppScreen.ONBOARDING
+        ) {
+            return
+        }
+
+        val previous =
+            appScreenBackStack
+                .lastOrNull()
+
+        if (
+            previous ==
+                null
+        ) {
+            screen =
+                AppScreen.HOME
+
+            return
+        }
+
+        if (
+            previous.first ==
+                AppScreen.BUILDER
+        ) {
+            step =
+                previous.second
+        }
+
+        /*
+         * Do not manually pop here.
+         * APP_SCREEN_HISTORY_V1 recognizes that the destination equals the
+         * current stack top and removes it exactly once after navigation.
+         */
+        screen =
+            previous.first
+    }
+
+    BackHandler(
+        enabled =
+            screen ==
+                AppScreen.HOME &&
+            !showExitConfirmation
+    ) {
+        showExitConfirmation =
+            true
+    }
+
+    var serverUrl by remember { mutableStateOf(draft.buildServiceUrl) }
+    var apiKey by remember {
+        mutableStateOf(
+            SecureAccountStore
+                .loadBuildApiKey(context)
+                .orEmpty()
+                .ifBlank {
+                    draft.buildApiKey
+                }
+        )
+    }
+
+    ProjectLibrary.setAccountScope(
+        context,
+        session?.userId
+    )
+
+    var rememberedAccountUserId by
+        rememberSaveable {
+            mutableStateOf(session?.userId)
+        }
+
+    LaunchedEffect(
+        currentProjectId,
+        session?.userId
+    ) {
+        val projectId =
+            currentProjectId
+
+        if (
+            projectId != null &&
+            autosaveBaseline == null
+        ) {
+            val restoredDraft =
+                ProjectLibrary.restore(
+                    context,
+                    projectId
+                )
+
+            if (restoredDraft != null) {
+                draft = restoredDraft
+                autosaveBaseline =
+                    projectId to restoredDraft
+                serverUrl =
+                    restoredDraft.buildServiceUrl
+                sourceAnalysis =
+                    restoredDraft.importedFolder
+                        ?.let { folderPath ->
+                            runCatching {
+                                SourceCapabilityAnalyzer.analyze(
+                                    File(folderPath)
+                                )
+                            }.getOrNull()
+                        }
+            }
+        }
+    }
+
+    LaunchedEffect(
+        session?.userId
+    ) {
+        val nextUserId =
+            session?.userId
+
+        if (rememberedAccountUserId == nextUserId) {
+            return@LaunchedEffect
+        }
+
+        rememberedAccountUserId =
+            nextUserId
+
+        /*
+         * Yalnız gerçek hesap değişiminde önceki hesabın açık projesini
+         * yeni hesaba taşımıyoruz. İlk composition restore'u silmez.
+         */
+        currentProjectId =
+            null
+
+        autosaveBaseline =
+            null
+
+        sourceAnalysis =
+            null
+
+        draft =
+            ProjectDraft()
+
+        serverUrl =
+            draft.buildServiceUrl
+    }
 
     var prefs by remember { mutableStateOf(AppSettingsStore.load(context)) }
     var proStatus by remember { mutableStateOf<ProStatus?>(null) }
@@ -809,7 +1712,7 @@ class MainActivity : ComponentActivity() {
         ) {
             uri: Uri? ->
             if (uri != null) {
-                persistDocumentReadPermission(
+                persistReadUriPermission(
                     context,
                     uri
                 )
@@ -836,7 +1739,7 @@ class MainActivity : ComponentActivity() {
         ) {
             uri: Uri? ->
             if (uri != null) {
-                persistDocumentReadPermission(
+                persistReadUriPermission(
                     context,
                     uri
                 )
@@ -1137,7 +2040,7 @@ class MainActivity : ComponentActivity() {
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
             if (uri != null) {
-                persistDocumentReadPermission(
+                persistReadUriPermission(
                     context,
                     uri
                 )
@@ -1160,7 +2063,7 @@ class MainActivity : ComponentActivity() {
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
             if (uri != null) {
-                persistDocumentReadPermission(
+                persistReadUriPermission(
                     context,
                     uri
                 )
@@ -1211,7 +2114,7 @@ class MainActivity : ComponentActivity() {
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
             if (uri != null) {
-                persistDocumentReadPermission(
+                persistReadUriPermission(
                     context,
                     uri
                 )
@@ -20594,19 +21497,6 @@ private fun publishApkToDownloads(
 
 
 
-private fun persistDocumentReadPermission(
-    context: Context,
-    uri: Uri
-) {
-    runCatching {
-        context
-            .contentResolver
-            .takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-    }
-}
 
 private fun installCachedApk(
     context: Context,
@@ -20645,19 +21535,7 @@ private fun installCachedApk(
                 .apply()
 
 
-            context
-                .getSharedPreferences(
-                    "appforge_installer",
-                    Context.MODE_PRIVATE
-                )
-                .edit()
-                .putString(
-                    "pending_install_apk_path",
-                    apkFile.absolutePath
-                )
-                .apply()
-
-val permissionIntent =
+            val permissionIntent =
                 Intent(
                     Settings
                         .ACTION_MANAGE_UNKNOWN_APP_SOURCES,

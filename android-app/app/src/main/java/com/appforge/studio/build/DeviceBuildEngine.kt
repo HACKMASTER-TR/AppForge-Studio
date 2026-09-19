@@ -34,7 +34,6 @@ internal data class DeviceBuildSnapshot(
     val aab: File?
 )
 
-internal
 private val LOCAL_ADDITIONAL_PERMISSION_ALLOWLIST =
     setOf(
         "BLUETOOTH_SCAN",
@@ -72,7 +71,7 @@ object DeviceBuildEngine {
         Thread(runnable, "AppForgeDeviceBuild").apply { isDaemon = true }
     }
 
-    fun start(
+    internal fun start(
         context: Context,
         draft: ProjectDraft,
         projectZip: File?
@@ -94,7 +93,7 @@ object DeviceBuildEngine {
         return DeviceBuildStart(id, buildNo)
     }
 
-    fun snapshot(id: String): DeviceBuildSnapshot? =
+    internal fun snapshot(id: String): DeviceBuildSnapshot? =
         jobs[id]?.let {
             DeviceBuildSnapshot(
                 id = it.id,
@@ -746,7 +745,11 @@ object DeviceBuildEngine {
         )
         state.shellSessionId = null
 
-        result.output.lineSequence().filter { it.isNotBlank() }.takeLast(120).forEach {
+        result.output.lineSequence()
+            .filter { it.isNotBlank() }
+            .toList()
+            .takeLast(120)
+            .forEach {
             state.logs.add(it.take(700))
         }
 

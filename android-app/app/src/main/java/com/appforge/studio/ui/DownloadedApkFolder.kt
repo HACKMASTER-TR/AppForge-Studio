@@ -494,7 +494,7 @@ private fun downloadArtifact(
         if (ticket.url.startsWith("file://", ignoreCase = true)) {
             Uri.parse(ticket.url)
                 .path
-                ?.let(::java.io.File)
+                ?.let { java.io.File(it) }
                 ?.takeIf { it.isFile && it.length() > 0L }
         } else {
             null
