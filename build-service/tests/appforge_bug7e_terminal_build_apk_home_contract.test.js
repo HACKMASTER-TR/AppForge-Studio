@@ -5,7 +5,7 @@ const mainUrl=new URL("../../android-app/app/src/main/java/com/appforge/studio/M
 const homeUrl=new URL("../../android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",import.meta.url);
 const folderUrl=new URL("../../android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt",import.meta.url);
 const terminalUrl=new URL("../../android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",import.meta.url);
-test("admin five-build remains protected",async()=>{const s=await readFile(mainUrl,"utf8");assert.match(s,/!isAdminOpsAccount/);assert.match(s,/5 Build Testi • Maks\. 3 Paralel/)});
+test("admin five-build remains protected",async()=>{const s=await readFile(mainUrl,"utf8");assert.match(s,/!isAdminOpsAccount/);assert.match(s,/5 Build Testi • Maks\. 2 Paralel/)});
 test("successful build result UI remains",async()=>{const s=await readFile(mainUrl,"utf8");assert.match(s,/builderBuildOutputReady/);assert.match(s,/APK'YI TEKRAR İNDİR/);assert.match(s,/APK'YI KUR/)});
 test("step10 home moved beside back",async()=>{const s=await readFile(mainUrl,"utf8");assert.match(s,/navigationIcon[\s\S]{0,300}if \(step != 10\)/);assert.match(s,/Text\("Geri"\)[\s\S]{0,800}⌂ Ana Sayfa/)});
 test(

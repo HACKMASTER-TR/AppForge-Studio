@@ -23,6 +23,8 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
   - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt"
+  - "build-service/tests/device_only_build_ui_contract.test.js"
   - "android-app/app/src/test/java/com/appforge/studio/UpdateGatePlayVisibilityTest.kt"
 ---
 
@@ -75,3 +77,12 @@ source_files:
   `java.io.File` explicitly.
 - A fresh Android Debug CI run remains the authoritative compile acceptance
   before real-device APK/AAB acceptance.
+
+## 2026-09-19 real-device device-build acceptance follow-up
+
+- AppForge Studio 5.0.29 installed and opened successfully on the physical Android device.
+- The new StudioHomeV2 was judged too minimal; the next UI iteration must restore a richer device-first dashboard without restoring remote build infrastructure.
+- FIKSTUR TAKIP entered the device-local build path and reported `Build cihaz üzerinde çalışacak`, then failed at 0%.
+- The failure UI claimed that live logs were available but no log renderer remained after the device-only cutover.
+- The current correction restores sanitized local device-build logs, highlights the first critical error, removes stale Worker/Autoscale wording from the active Builder surface, and aligns the admin stress-test concurrency with the two-thread local device engine.
+- APK/AAB physical-device acceptance remains pending until the newly exposed log identifies and the project fixes the actual local build failure.

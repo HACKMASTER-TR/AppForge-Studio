@@ -10,7 +10,10 @@ tags:
   - hot-context
 related:
   - "[[Index]]"
-source_files: []
+source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt"
 ---
 
 # Hot Context
@@ -19,7 +22,7 @@ source_files: []
 
 - Complete the device-only build cutover.
 - Validate APK and AAB creation on a real Android device.
-- Keep the primary AppForge UI simple and hide build-engine infrastructure.
+- Rework StudioHomeV2 from the rejected over-minimal layout into a richer but still clear device-first dashboard.
 
 ## Must Know
 
@@ -38,6 +41,10 @@ source_files: []
 - Home V2 was simplified around create, projects, AI, builds and developer tools.
 
 ## Current Risks / Open Questions
+
+- Real-device FIKSTUR TAKIP acceptance reached the device-local build preflight but failed at 0%; sanitized local build logs are required to identify the actual device-build failure.
+
+- Real-device FIKSTUR TAKIP acceptance reached the device-local build preflight but failed at 0%; the failure screen must expose sanitized local build logs before root-cause repair.
 
 - Real-device APK/AAB build acceptance is still required.
 - ARM64 Android Build Tools provisioning must remain checksum-pinned and reproducible.

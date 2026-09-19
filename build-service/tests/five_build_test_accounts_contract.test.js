@@ -78,7 +78,7 @@ test(
 
     assert.match(
       source,
-      /isAdminOpsAccount[\s\S]{0,1200}YÖNETİCİ SİSTEM DURUMU \/ AUTOSCALE/
+      /isAdminOpsAccount[\s\S]{0,1200}YÖNETİCİ SİSTEM DURUMU/
     );
 
     assert.match(

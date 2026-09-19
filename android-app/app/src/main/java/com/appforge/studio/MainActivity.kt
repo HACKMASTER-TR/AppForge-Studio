@@ -3575,7 +3575,7 @@ private fun AppForgeApp() {
                     ParallelBuildTestItem(
                         slot = slot,
                         status =
-                            if (slot <= 3) {
+                            if (slot <= 2) {
                                 "Hazırlanıyor"
                             } else {
                                 "Kuyrukta"
@@ -3649,7 +3649,7 @@ private fun AppForgeApp() {
 
                     val parallelGate =
                         kotlinx.coroutines.sync.Semaphore(
-                            permits = 3
+                            permits = 2
                         )
 
                     repeat(5) {
@@ -5989,7 +5989,7 @@ onOpenPro = {
                                         )
                                 ) {
                                     Text(
-                                        "5 Build Testi • Maks. 3 Paralel",
+                                        "5 Build Testi • Maks. 2 Paralel",
                                         fontWeight =
                                             FontWeight.Bold,
                                         color =
@@ -6047,7 +6047,7 @@ onOpenPro = {
                                             }
                                         ) {
                                             Text(
-                                                "YÖNETİCİ SİSTEM DURUMU / AUTOSCALE"
+                                                "YÖNETİCİ SİSTEM DURUMU"
                                             )
                                         }
                                     }
@@ -18844,11 +18844,6 @@ private fun BuildStep(
             )
         }
 
-    var showLogs by
-        remember(buildId) {
-            mutableStateOf(false)
-        }
-
     var showCancelConfirm by
         remember(buildId) {
             mutableStateOf(false)
@@ -19163,10 +19158,6 @@ private fun BuildStep(
             it != null
         }
 
-    val logsVisible =
-        showLogs ||
-        buildFailed
-
     val buildActive =
         buildId != null &&
         buildMatchesCurrentProject &&
@@ -19232,6 +19223,68 @@ private fun BuildStep(
                 }
         }
 
+
+    /*
+     * DEVICE_BUILD_VISIBLE_LOGS_V1
+     *
+     * Device-only builds must expose the real local failure instead of
+     * referring users to a retired remote Worker/Build Service.
+     *
+     * Obvious credential-bearing lines are suppressed before rendering.
+     */
+    val visibleLocalBuildLogs =
+        remember(logs) {
+            logs
+                .takeLast(80)
+                .map { line ->
+
+                    val sensitive =
+                        listOf(
+                            "password",
+                            "storepassword",
+                            "keypassword",
+                            "token",
+                            "authorization",
+                            "client_secret",
+                            "apikey",
+                            "api_key"
+                        ).any {
+                            marker ->
+
+                            line.contains(
+                                marker,
+                                ignoreCase = true
+                            )
+                        }
+
+                    if (sensitive) {
+                        "••• Hassas log satırı gizlendi •••"
+                    } else {
+                        line.take(1400)
+                    }
+                }
+        }
+
+    val firstLocalBuildError =
+        remember(
+            visibleLocalBuildLogs
+        ) {
+            visibleLocalBuildLogs
+                .firstOrNull {
+                    line ->
+
+                    val lower =
+                        line.lowercase()
+
+                    lower.contains("error") ||
+                        lower.contains("exception") ||
+                        lower.contains("failed") ||
+                        lower.contains("hata") ||
+                        lower.startsWith("❌")
+                }
+                ?: visibleLocalBuildLogs
+                    .lastOrNull()
+        }
 
     val buildDiagnosis =
         remember(
@@ -19764,7 +19817,7 @@ private fun BuildStep(
                             Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
                     ) {
                         Text(
-                            "✅ Uygun Source Worker toolchain planı",
+                            "✅ Uygun cihaz toolchain planı",
                             color =
                                 Accent,
                             fontWeight =
@@ -20008,6 +20061,89 @@ private fun BuildStep(
                                 color =
                                     TextSecondary
                             )
+                        }
+
+                        if (
+                            !firstLocalBuildError
+                                .isNullOrBlank()
+                        ) {
+                            Text(
+                                "İlk kritik hata",
+                                fontWeight =
+                                    FontWeight.Bold,
+                                fontSize =
+                                    13.sp
+                            )
+
+                            Text(
+                                firstLocalBuildError
+                                    .take(1400),
+                                color =
+                                    Color(0xFFFFB4AB),
+                                fontSize =
+                                    11.sp,
+                                lineHeight =
+                                    16.sp
+                            )
+                        }
+
+                        if (
+                            visibleLocalBuildLogs
+                                .isNotEmpty()
+                        ) {
+                            Text(
+                                "CİHAZ BUILD LOGLARI",
+                                fontWeight =
+                                    FontWeight.Bold,
+                                color =
+                                    Accent,
+                                fontSize =
+                                    13.sp
+                            )
+
+                            Card(
+                                colors =
+                                    CardDefaults
+                                        .cardColors(
+                                            containerColor =
+                                                Card2
+                                        ),
+                                shape =
+                                    RoundedCornerShape(
+                                        14.dp
+                                    ),
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(
+                                                12.dp
+                                            ),
+                                    verticalArrangement =
+                                        Arrangement
+                                            .spacedBy(
+                                                4.dp
+                                            )
+                                ) {
+                                    visibleLocalBuildLogs
+                                        .forEach {
+                                            line ->
+
+                                            Text(
+                                                line,
+                                                color =
+                                                    TextSecondary,
+                                                fontSize =
+                                                    10.sp,
+                                                lineHeight =
+                                                    14.sp
+                                            )
+                                        }
+                                }
+                            }
                         }
 
                         if (
