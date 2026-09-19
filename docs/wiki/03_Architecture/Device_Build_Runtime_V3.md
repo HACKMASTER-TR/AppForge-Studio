@@ -20,6 +20,7 @@ source_files:
   - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
   - "build-service/tests/device_build_runtime_v3_contract.test.js"
   - "build-service/tests/device_build_capability_matrix_contract.test.js"
+  - "build-service/tests/device_build_aapt2_arm64_contract.test.js"
 ---
 
 # Device Build Runtime V3
@@ -107,3 +108,18 @@ Shipping requires:
 5. Real APK and AAB build on Android.
 6. Per-engine device acceptance.
 7. Windows EXE acceptance on an actual Windows machine before EXE becomes READY.
+
+## ARM64 AAPT2 compatibility correction
+
+The first real V3 device build reached the SDK toolchain smoke test but failed
+before project Gradle execution because AAPT2 could not resolve libdl.so.
+
+The correction replaces the ARM64 native Android SDK tools with checksum-pinned
+Linux-glibc ARM64 executables from the fixed Build-Tools 36.0.0 release.
+The official x86_64 tools remain selected for x86_64 hosts.
+
+AAPT2 version execution and Android SDK 37 platform resource parsing are
+required before the new toolchain readiness marker is written.
+
+This source correction requires Android CI and physical-device APK/AAB
+acceptance. Static tests alone do not prove native execution.

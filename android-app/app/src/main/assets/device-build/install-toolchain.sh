@@ -3,7 +3,7 @@ set -eu
 
 ROOT="/opt/appforge-device"
 SDK="$ROOT/android-sdk"
-READY="$ROOT/.ready-v3"
+READY="$ROOT/.ready-v4"
 JAVA_HOME="$ROOT/jdk-17"
 ENGINE="${1:-webview-static}"
 
@@ -12,7 +12,8 @@ if [ -f "$READY" ] \
    && [ -f "$SDK/platforms/android-37/android.jar" ] \
    && [ -x "$ROOT/gradle-9.3.1/bin/gradle" ] \
    && [ -x "$JAVA_HOME/bin/java" ] \
-   && [ -x "$JAVA_HOME/bin/javac" ]; then
+   && [ -x "$JAVA_HOME/bin/javac" ] \
+   && "$SDK/build-tools/36.0.0/aapt2" version >/dev/null 2>&1; then
   echo "APPFORGE_DEVICE_TOOLCHAIN_READY"
   exit 0
 fi
@@ -238,21 +239,78 @@ test -n "$D8_PATH"
 OFFICIAL_DIR="$(dirname "$D8_PATH")"
 cp -a "$OFFICIAL_DIR"/. "$SDK/build-tools/36.0.0/"
 
-ARM_BT="$ROOT/cache/build-tools-36-aarch64.zip"
-download_sha256 \
-  "https://github.com/Qjj7679/build-tools-36-aarch64/releases/download/36.0.0/build-tools.zip" \
-  "ccbb8ad3b3dcd2c1e52b0c032d1101840d5539fdfbecf95a4fb6ec1d889b6703" \
-  "$ARM_BT"
 
-rm -rf "$ROOT/buildtools-arm64"
-mkdir -p "$ROOT/buildtools-arm64"
-unzip -q "$ARM_BT" -d "$ROOT/buildtools-arm64"
-for tool in aapt aapt2 aidl split-select zipalign; do
-  src="$(find "$ROOT/buildtools-arm64" -type f -name "$tool" | head -n 1)"
-  test -n "$src"
-  cp "$src" "$SDK/build-tools/36.0.0/$tool"
-  chmod 0755 "$SDK/build-tools/36.0.0/$tool"
-done
+# Android SDK's official Linux native executables target x86_64.
+#
+# ARM64 Ubuntu/PRoot needs Linux-glibc ARM64 binaries, not
+# Android-Bionic binaries. Pin each executable by SHA-256.
+#
+# Source:
+# Commit451/android-arm-build-tools
+# Release: platform-tools-36.0.0
+#
+# Never claim toolchain readiness merely because files exist.
+
+case "$(uname -m)" in
+
+  aarch64|arm64)
+
+    ARM_BASE="https://github.com/Commit451/android-arm-build-tools/releases/download/platform-tools-36.0.0"
+
+    install_arm64_tool() {
+      tool="$1"
+      expected="$2"
+
+      archive="$ROOT/cache/linux-glibc-arm64-36.0.0-$tool"
+      destination="$SDK/build-tools/36.0.0/$tool"
+
+      download_sha256 \
+        "$ARM_BASE/$tool" \
+        "$expected" \
+        "$archive"
+
+      file "$archive" | grep -Eqi 'aarch64|ARM aarch64' || {
+        echo "APPFORGE_AAPT2_ABI_MISMATCH:$tool" >&2
+        exit 51
+      }
+
+      cp "$archive" "$destination"
+      chmod 0755 "$destination"
+
+      echo "$expected  $destination" | sha256sum -c -
+
+      echo "APPFORGE_ARM64_TOOL_VERIFIED:$tool"
+    }
+
+    install_arm64_tool \
+      aapt2 \
+      7512ff7e381bea6fd310b6f6e347422c8fda21e07c6e3f0162742e95eb9d7f98
+
+    install_arm64_tool \
+      aidl \
+      8c97356b8bba8f7aad44cfd408e3ee24c66a1258244b5d08af1c9249f50dd659
+
+    install_arm64_tool \
+      zipalign \
+      e8856fb24b10095eb6e940c577ce96d89ddbfc45aa0f7eeaef1597ef68f11a12
+
+    install_arm64_tool \
+      split-select \
+      fb7f0c3c87dbd4243d7e1277ba64ded2399389244058b6a4c969cc615360766c
+    ;;
+
+  x86_64|amd64)
+
+    echo "APPFORGE_OFFICIAL_X86_64_BUILD_TOOLS"
+    ;;
+
+  *)
+
+    echo "Unsupported Android SDK host architecture: $(uname -m)" >&2
+    exit 52
+    ;;
+
+esac
 
 cat > "$SDK/build-tools/36.0.0/source.properties" <<'EOF'
 Pkg.Desc=Android SDK Build-Tools 36
@@ -286,7 +344,16 @@ printf '%s\n' "$dest/bin/gradle"
 EOF
 chmod 0755 "$ROOT/ensure-gradle"
 
+echo "APPFORGE_AAPT2_HOST_SMOKE_START"
+
 "$SDK/build-tools/36.0.0/aapt2" version
+
+echo "APPFORGE_AAPT2_PLATFORM_37_SMOKE_START"
+
+"$SDK/build-tools/36.0.0/aapt2"   dump resources   "$SDK/platforms/android-37/android.jar"   >/dev/null
+
+echo "APPFORGE_AAPT2_PLATFORM_37_SMOKE_PASS"
+
 "$ROOT/gradle-9.3.1/bin/gradle" --version >/dev/null
 java -version
 

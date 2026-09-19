@@ -122,7 +122,7 @@ test(
 
     assert.match(
       source,
-      /READY="\$ROOT\/\.ready-v3"/
+      /READY="\$ROOT\/\.ready-v4"/
     );
 
     assert.match(

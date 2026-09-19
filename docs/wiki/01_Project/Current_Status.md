@@ -127,3 +127,14 @@ source_files:
 - APK/AAB remain the currently proven local artifacts.
 - Windows Portable EXE remains a required local target but must not be declared ready until its device-local packager and real Windows acceptance pass.
 - Existing AppForge APK/EXE conversion contracts remain product requirements.
+
+## 2026-09-19 AAPT2 ARM64 device follow-up
+
+- The dedicated Runtime V3 reached the Android SDK toolchain installation.
+- AAPT2 failed its executable smoke test with a missing libdl.so dependency.
+- Project Gradle execution had not started at this failure point.
+- The selected ARM64 Build-Tools executables are replaced by SHA-256-pinned
+  Linux-glibc ARM64 builds.
+- Toolchain readiness is invalidated so the previously installed binary is
+  not silently reused.
+- Real-device execution and APK/AAB output remain pending acceptance.

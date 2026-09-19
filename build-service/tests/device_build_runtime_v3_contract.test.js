@@ -106,7 +106,7 @@ test(
 
     assert.match(
       installer,
-      /READY="\$ROOT\/\.ready-v3"/
+      /READY="\$ROOT\/\.ready-v4"/
     );
   }
 );
