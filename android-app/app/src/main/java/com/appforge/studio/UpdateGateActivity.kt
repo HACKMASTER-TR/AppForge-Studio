@@ -136,7 +136,7 @@ class UpdateGateActivity : ComponentActivity() {
         appUpdateManager = AppUpdateManagerFactory.create(this)
 
         setContent {
-            MaterialTheme {
+            AppForgeTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize()
                 ) {

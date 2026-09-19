@@ -21,7 +21,7 @@ const advisor =
   );
 
 test(
-  "Builder exposes Universal Toolchain Preflight and hides stale build state across projects",
+  "Builder preserves toolchain preflight state without exposing internal UI copy",
   async () => {
     const [main, runtime, errorAdvisor] =
       await Promise.all([
@@ -31,7 +31,6 @@ test(
       ]);
 
     for (const marker of [
-      "Universal Toolchain Preflight",
       "toolchainPreflight",
       "generalPreflight",
       "buildProjectKey",
@@ -43,6 +42,21 @@ test(
         `MainActivity missing ${marker}`
       );
     }
+
+    assert.equal(
+      main.includes(
+        "Universal Toolchain Preflight"
+      ),
+      false,
+      "Internal toolchain heading must stay out of normal Builder UI"
+    );
+
+    assert.ok(
+      main.includes(
+        "TEKNİK AYRINTILARI GÖSTER"
+      ),
+      "Technical diagnostics must remain explicitly accessible"
+    );
 
     assert.ok(
       runtime.includes("val buildProjectKey"),

@@ -78,7 +78,7 @@ class ProPurchasesActivity : ComponentActivity() {
         }
 
         setContent {
-            MaterialTheme {
+            AppForgeTheme {
                 Surface(Modifier.fillMaxSize()) {
                     ProPurchasesContent(
                         state = state,

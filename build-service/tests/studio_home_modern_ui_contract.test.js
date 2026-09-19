@@ -27,6 +27,11 @@ const dashboard =
     "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeDashboard.kt"
   );
 
+const tokens =
+  read(
+    "android-app/app/src/main/java/com/appforge/studio/AppForgeUiTokens.kt"
+  );
+
 const source =
   `${home}\n${dashboard}`;
 
@@ -55,7 +60,7 @@ test(
 
     assert.match(
       source,
-      /DEVICE BUILD V3/
+      /PROJE ÜRETİMİ/
     );
 
     assert.match(
@@ -145,6 +150,36 @@ test(
     assert.match(
       dashboard,
       /Modifier\.weight\(1f\)/
+    );
+  }
+);
+
+test(
+  "shared AppForge UI V2 theme is preserved",
+  () => {
+    assert.match(
+      tokens,
+      /internal fun AppForgeTheme/
+    );
+
+    assert.match(
+      tokens,
+      /0xFF050B18/
+    );
+
+    assert.match(
+      tokens,
+      /0xFF43D7FF/
+    );
+
+    assert.match(
+      tokens,
+      /0xFF7A5CFF/
+    );
+
+    assert.doesNotMatch(
+      dashboard,
+      /DEVICE BUILD V3/
     );
   }
 );

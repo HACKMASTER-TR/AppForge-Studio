@@ -178,7 +178,7 @@ test(
 
     const end =
       normalizedText.indexOf(
-        "    MaterialTheme(",
+        "    AppForgeTheme {",
         start
       );
 

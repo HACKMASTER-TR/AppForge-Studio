@@ -62,7 +62,7 @@ test(
 );
 
 test(
-  "Android build UI displays queue position workers and ETA",
+  "Android build UI displays queue position readiness and ETA",
   async () => {
     const text =
       await read(
@@ -77,7 +77,7 @@ test(
 
     assert.ok(
       text.includes(
-        "uygun build slotu aktif"
+        "Derleme ortamı hazır"
       )
     );
 
@@ -89,7 +89,7 @@ test(
 
     assert.ok(
       text.includes(
-        "Süre worker yüküne"
+        "Tahmini süre proje boyutuna"
       )
     );
   }

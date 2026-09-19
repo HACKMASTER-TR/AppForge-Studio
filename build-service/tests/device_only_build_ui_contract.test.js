@@ -36,7 +36,7 @@ const advisor =
   );
 
 test(
-  "device build failure exposes real local logs",
+  "device build failure keeps real local logs behind technical details",
   () => {
     assert.match(
       main,
@@ -45,12 +45,12 @@ test(
 
     assert.match(
       main,
-      /CİHAZ BUILD LOGLARI/
+      /TEKNİK AYRINTILARI GÖSTER/
     );
 
     assert.match(
       main,
-      /İlk kritik hata/
+      /Hata özeti/
     );
 
     assert.match(

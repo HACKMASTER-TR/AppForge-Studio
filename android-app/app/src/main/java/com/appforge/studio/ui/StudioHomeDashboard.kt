@@ -33,11 +33,30 @@ import java.util.Date
 @Composable
 internal fun HomeTopTitle() {
     Column {
-        Text(
-            "AppForge Studio",
-            fontWeight =
-                FontWeight.Black
-        )
+        Row(
+            verticalAlignment =
+                Alignment.CenterVertically
+        ) {
+            Text(
+                "AppForge ",
+                fontWeight =
+                    FontWeight.Black,
+                fontSize =
+                    21.sp
+            )
+
+            Text(
+                "Studio",
+                color =
+                    MaterialTheme
+                        .colorScheme
+                        .primary,
+                fontWeight =
+                    FontWeight.Black,
+                fontSize =
+                    21.sp
+            )
+        }
 
         Text(
             "Cihazda üretim merkezi",
@@ -95,7 +114,7 @@ internal fun ModernHomeHero(
                         .copy(alpha = 0.72f)
             ) {
                 Text(
-                    "DEVICE BUILD V3",
+                    "PROJE ÜRETİMİ",
                     modifier =
                         Modifier.padding(
                             horizontal = 12.dp,
@@ -119,7 +138,7 @@ internal fun ModernHomeHero(
             )
 
             Text(
-                "Kaynağı seç. AppForge uygun build motorunu otomatik belirlesin.",
+                "Proje türünü seç. AppForge uygun derleme yöntemini otomatik belirlesin.",
                 color =
                     MaterialTheme
                         .colorScheme
@@ -153,28 +172,43 @@ internal fun ModernHomeHero(
                 )
             }
 
-            Button(
-                onClick = onCreateQuick,
+            Row(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
+                    Modifier.fillMaxWidth(),
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        10.dp
+                    )
             ) {
-                Text(
-                    "YENİ PROJE",
-                    fontWeight =
-                        FontWeight.Bold
-                )
-            }
+                Button(
+                    onClick =
+                        onCreateQuick,
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .height(52.dp)
+                ) {
+                    Text(
+                        "YENİ PROJE",
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+                }
 
-            OutlinedButton(
-                onClick = onCreateAdvanced,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-            ) {
-                Text("GELİŞMİŞ AYARLAR")
+                OutlinedButton(
+                    onClick =
+                        onCreateAdvanced,
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .height(52.dp)
+                ) {
+                    Text(
+                        "GELİŞMİŞ AYARLAR",
+                        fontSize =
+                            11.sp
+                    )
+                }
             }
         }
     }
@@ -363,7 +397,7 @@ internal fun OwnerAdminCard(
             )
 
             Text(
-                "Terminal ve sistem yönetimi yalnız owner hesabında görünür.",
+                "Gelişmiş terminal ve yönetim araçlarına buradan ulaş.",
                 color =
                     MaterialTheme
                         .colorScheme

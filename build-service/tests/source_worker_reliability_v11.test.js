@@ -186,7 +186,7 @@ test(
 );
 
 test(
-  "queue ETA exposes automatic recovery instead of a false minute estimate",
+  "queue ETA keeps automatic recovery state with user-facing UI copy",
   async () => {
     const queue =
       await read(
@@ -212,7 +212,7 @@ test(
 
     assert.ok(
       ui.includes(
-        "Worker kapasitesi otomatik kurtarılıyor"
+        "Derleme ortamı hazırlanıyor"
       )
     );
   }

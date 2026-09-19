@@ -3716,20 +3716,7 @@ private fun AppForgeApp() {
     }
 
 
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = Accent,
-            onPrimary = Color(0xFF061827),
-            secondary = Color(0xFFB79CE5),
-            background = Bg,
-            onBackground = Color(0xFFE8EDF4),
-            surface = Card2,
-            onSurface = Color(0xFFE8EDF4),
-            surfaceVariant = Color(0xFF18212A),
-            onSurfaceVariant = TextSecondary,
-            outline = Color(0xFF3B4652)
-        )
-    ) {
+    AppForgeTheme {
 
         /*
          * HOME_EXIT_CONFIRMATION_V1
@@ -18141,6 +18128,11 @@ private fun BuildStep(
     val scope =
         rememberCoroutineScope()
 
+    var showBuildTechnicalDetails by
+        rememberSaveable {
+            mutableStateOf(false)
+        }
+
     var downloadMessage by
         remember {
             mutableStateOf("")
@@ -18865,7 +18857,7 @@ private fun BuildStep(
         item {
             Section(
                 "10. Derleme",
-                "Derleme durumunu takip et, çıktıları indir ve ön kontrolleri incele."
+                "Derleme durumunu takip et ve çıktıları yönet."
             )
         }
 
@@ -19045,14 +19037,14 @@ private fun BuildStep(
                                 when {
                                     queueEstimate ==
                                         "recovering_capacity" ->
-                                        "♻ Worker kapasitesi otomatik kurtarılıyor"
+                                        "Derleme ortamı hazırlanıyor"
 
                                     queueWorkerSlots >
                                         0 ->
-                                        "⚙ $queueWorkerSlots uygun build slotu aktif"
+                                        "Derleme ortamı hazır"
 
                                     else ->
-                                        "⚙ Uygun worker bekleniyor"
+                                        "Derleme ortamı hazırlanıyor"
                                 },
                             color =
                                 TextSecondary,
@@ -19078,7 +19070,7 @@ private fun BuildStep(
                                 "recovering_capacity"
                         ) {
                             Text(
-                                "AppForge takılan Worker'ı otomatik kurtarıyor ve kapasiteyi yeniden açıyor. Ek işlem yapman gerekmiyor.",
+                                "AppForge derleme ortamını hazırlıyor. Ek işlem yapman gerekmiyor.",
                                 color =
                                     TextSecondary,
                                 fontSize =
@@ -19091,7 +19083,7 @@ private fun BuildStep(
                                 "approximate"
                         ) {
                             Text(
-                                "Süre worker yüküne ve daha yüksek öncelikli build'lere göre değişebilir.",
+                                "Tahmini süre proje boyutuna ve cihaz yüküne göre değişebilir.",
                                 color =
                                     TextSecondary,
                                 fontSize =
@@ -19166,68 +19158,11 @@ private fun BuildStep(
         }
 
         if (
-            toolchainPreflight.isNotEmpty()
-        ) {
-            item {
-                Text(
-                    "Universal Toolchain Preflight",
-                    fontWeight =
-                        FontWeight.Bold,
-                    fontSize =
-                        14.sp
-                )
-            }
-
-            item {
-                Card(
-                    colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
-                    shape =
-                        RoundedCornerShape(
-                            18.dp
-                        ),
-                    modifier =
-                        Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier =
-                            Modifier.padding(if (formCompact) 12.dp else 16.dp),
-                        verticalArrangement =
-                            Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
-                    ) {
-                        Text(
-                            "✅ Uygun cihaz toolchain planı",
-                            color =
-                                Accent,
-                            fontWeight =
-                                FontWeight.SemiBold,
-                            fontSize =
-                                12.sp
-                        )
-
-                        toolchainPreflight
-                            .forEach {
-                                check ->
-                                Text(
-                                    check,
-                                    fontSize =
-                                        12.sp
-                                )
-                            }
-                    }
-                }
-            }
-        }
-
-        if (
             generalPreflight.isNotEmpty()
         ) {
             item {
                 Text(
-                    "Ön Kontroller",
+                    "Kontroller",
                     fontWeight =
                         FontWeight.Bold,
                     fontSize =
@@ -19378,7 +19313,7 @@ private fun BuildStep(
                             Arrangement.spacedBy(if (formCompact) 7.dp else 10.dp)
                     ) {
                         Text(
-                            "🧠 Build Hatası Asistanı",
+                            "Derleme Yardımcısı",
                             fontWeight =
                                 FontWeight.Bold,
                             fontSize =
@@ -19395,14 +19330,6 @@ private fun BuildStep(
                                     FontWeight.Bold,
                                 color =
                                     Color(0xFFFFB4AB)
-                            )
-
-                            Text(
-                                "Tanı güveni: %${diagnosis.confidence}",
-                                color =
-                                    TextSecondary,
-                                fontSize =
-                                    12.sp
                             )
 
                             Text(
@@ -19439,7 +19366,7 @@ private fun BuildStep(
 
                         } else {
                             Text(
-                                "Derleme tamamlanamadı. Canlı log ayrıntıları aşağıda gösteriliyor.",
+                                "Derleme tamamlanamadı. Teknik ayrıntıları istersen aşağıdan görüntüleyebilirsin.",
                                 color =
                                     TextSecondary
                             )
@@ -19450,7 +19377,7 @@ private fun BuildStep(
                                 .isNullOrBlank()
                         ) {
                             Text(
-                                "İlk kritik hata",
+                                "Hata özeti",
                                 fontWeight =
                                     FontWeight.Bold,
                                 fontSize =
@@ -19473,57 +19400,69 @@ private fun BuildStep(
                             visibleLocalBuildLogs
                                 .isNotEmpty()
                         ) {
-                            Text(
-                                "CİHAZ BUILD LOGLARI",
-                                fontWeight =
-                                    FontWeight.Bold,
-                                color =
-                                    Accent,
-                                fontSize =
-                                    13.sp
-                            )
-
-                            Card(
-                                colors =
-                                    CardDefaults
-                                        .cardColors(
-                                            containerColor =
-                                                Card2
-                                        ),
-                                shape =
-                                    RoundedCornerShape(
-                                        14.dp
-                                    ),
+                            OutlinedButton(
+                                onClick = {
+                                    showBuildTechnicalDetails =
+                                        !showBuildTechnicalDetails
+                                },
                                 modifier =
                                     Modifier.fillMaxWidth()
                             ) {
-                                Column(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(
-                                                12.dp
+                                Text(
+                                    if (
+                                        showBuildTechnicalDetails
+                                    ) {
+                                        "TEKNİK AYRINTILARI GİZLE"
+                                    } else {
+                                        "TEKNİK AYRINTILARI GÖSTER"
+                                    }
+                                )
+                            }
+
+                            if (
+                                showBuildTechnicalDetails
+                            ) {
+                                Card(
+                                    colors =
+                                        CardDefaults
+                                            .cardColors(
+                                                containerColor =
+                                                    Card2
                                             ),
-                                    verticalArrangement =
-                                        Arrangement
-                                            .spacedBy(
+                                    shape =
+                                        RoundedCornerShape(
+                                            14.dp
+                                        ),
+                                    modifier =
+                                        Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(
+                                                    12.dp
+                                                ),
+                                        verticalArrangement =
+                                            Arrangement.spacedBy(
                                                 4.dp
                                             )
-                                ) {
-                                    visibleLocalBuildLogs
-                                        .forEach {
-                                            line ->
+                                    ) {
+                                        visibleLocalBuildLogs
+                                            .forEach {
+                                                line ->
 
-                                            Text(
-                                                line,
-                                                color =
-                                                    TextSecondary,
-                                                fontSize =
-                                                    10.sp,
-                                                lineHeight =
-                                                    14.sp
-                                            )
-                                        }
+                                                Text(
+                                                    line,
+                                                    color =
+                                                        TextSecondary,
+                                                    fontSize =
+                                                        10.sp,
+                                                    lineHeight =
+                                                        14.sp
+                                                )
+                                            }
+                                    }
                                 }
                             }
                         }

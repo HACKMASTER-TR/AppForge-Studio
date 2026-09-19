@@ -102,7 +102,7 @@ over-minimal layout must not return.
 
 The Home surface now keeps a clearer visual hierarchy with:
 
-- a Device Build V3 hero and live project/build counts,
+- a branded project-production hero and live project/build counts,
 - quick project creation,
 - AI and Unified Agent entry points,
 - successful-build access,
@@ -131,3 +131,19 @@ below the existing size guard. Modern visual primitives live in
 This preserves the simplified-home architectural boundary without returning to
 the rejected sparse design. Terminal remains visible only inside the active
 owner guard. The retired five-build stress surface must not return.
+
+## AppForge UI V2
+
+`AppForgeTheme` in `AppForgeUiTokens.kt` is the shared visual authority for
+normal Android surfaces: deep navy background, cyan primary actions, violet
+accents and rounded elevated cards.
+
+Studio Home keeps the approved richer dashboard hierarchy. Internal labels
+such as runtime revision, Worker capacity and toolchain preflight names are
+not primary product copy. Build failures show an actionable summary first;
+sanitized raw logs remain available through an explicit technical-details
+control.
+
+Terminal and Excel Tools keep domain-specific layouts while sharing the same
+palette. Standalone update and Pro purchase activities also use the shared
+theme.

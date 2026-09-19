@@ -58,11 +58,11 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
-private val ExcelBg = Color(0xFF060711)
-private val ExcelCard = Color(0xFF101426)
-private val ExcelText = Color(0xFFF4F7FF)
-private val ExcelMuted = Color(0xFFA9B1C7)
-private val ExcelAccent = Color(0xFF63D9FF)
+private val ExcelBg = Color(0xFF050B18)
+private val ExcelCard = Color(0xFF0C1628)
+private val ExcelText = Color(0xFFF4F8FF)
+private val ExcelMuted = Color(0xFF8FA6C8)
+private val ExcelAccent = Color(0xFF43D7FF)
 
 @Composable
 fun ExcelToolsScreen(

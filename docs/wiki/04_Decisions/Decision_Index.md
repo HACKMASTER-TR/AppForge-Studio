@@ -184,3 +184,35 @@ Unity remains explicitly external-tool-required until a supported device build
 host exists.
 
 Remote Worker fallback remains forbidden for normal user project builds.
+
+## 2026-09-19 — AppForge UI V2 Design System
+
+### Context
+
+Studio screens had accumulated separate dark palettes and normal build
+failures exposed implementation-oriented runtime, Worker and toolchain
+wording.
+
+### Decision
+
+Use `AppForgeTheme` as the shared Material 3 color/shape authority. The
+product language is deep navy with cyan primary actions, violet accents and
+rounded elevated surfaces. Terminal and Excel Tools keep specialized layouts
+but share the same palette. Standalone update and Pro purchase activities
+also use the shared theme.
+
+Normal build UI presents status, progress, actionable error summaries and
+artifacts first. Sanitized local logs remain available behind an explicit
+technical-details control instead of dominating the default failure screen.
+
+### Consequences
+
+Visual changes can be coordinated centrally without altering build routing,
+owner authorization, Terminal behavior or entitlement logic. The retired
+five-build stress UI remains absent.
+
+### Evidence
+
+`studio_home_modern_ui_contract.test.js`,
+`device_only_build_ui_contract.test.js`, Android Debug CI and real-device UI
+acceptance.

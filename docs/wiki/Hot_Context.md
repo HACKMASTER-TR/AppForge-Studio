@@ -30,6 +30,7 @@ source_files:
 - Validate APK and AAB on a real Android device.
 - Keep Terminal Linux physically separate from project-build Linux.
 - Studio Home uses a richer modern dashboard; the rejected over-minimal Home V2 layout must not return.
+- App-wide UI V2 uses one navy/cyan/violet design language; runtime/toolchain internals stay out of primary user copy.
 - The temporary five-build device stress UI is retired; normal single-project device build remains authoritative.
 
 ## Must Know
