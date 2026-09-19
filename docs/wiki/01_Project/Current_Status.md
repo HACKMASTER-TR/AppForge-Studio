@@ -97,3 +97,14 @@ source_files:
 - Android Gradle and static WebView builds therefore no longer depend on npm availability.
 - `device_build_toolchain_scope_contract.test.js` protects this separation. The targeted contract, existing device-only contracts and `git diff --check` passed before final local acceptance.
 - Physical-device FIKSTUR TAKIP APK/AAB acceptance is still pending a fresh AppForge Studio APK containing this correction.
+
+## 2026-09-19 deterministic device JDK correction
+
+- The first real-device retry after source-engine toolchain scoping confirmed that the earlier Node/npm dependency-resolution failure was removed.
+- The next blocker occurred before project Gradle execution while Ubuntu `dpkg` configured `openjdk-17-jre-headless`.
+- Device build Java provisioning now uses checksum-pinned Temurin JDK 17 archives instead of installing OpenJDK through Ubuntu APT.
+- ARM64 and x86_64 JDK artifacts are pinned by exact SHA-256 values.
+- `DeviceBuildEngine` explicitly exports `/opt/appforge-device/jdk-17` as `JAVA_HOME` for Gradle.
+- The device-toolchain readiness marker was bumped so older apt-JDK installations are not accepted as the corrected toolchain.
+- A dedicated regression contract protects deterministic JDK provisioning.
+- Fresh Android Debug CI and physical-device FIKSTUR TAKIP APK/AAB acceptance remain required.

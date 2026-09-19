@@ -142,3 +142,7 @@ Android Gradle and static WebView builds no longer depend on npm package availab
 ### Evidence
 
 `device_build_toolchain_scope_contract.test.js` verifies that `DeviceBuildEngine` does not require the full Terminal development profile, passes the source engine to the installer, and prevents unconditional npm installation. Existing device-only contracts also pass.
+
+### 2026-09-19 — Device builds use a pinned JDK archive
+
+Device-local Android builds must not depend on Ubuntu OpenJDK package post-install/configuration behavior. AppForge provisions a checksum-pinned Temurin JDK 17 archive and passes its JAVA_HOME explicitly to Gradle. Ubuntu APT remains responsible for ordinary base utilities, while Java is treated as part of AppForge's deterministic device-build toolchain.

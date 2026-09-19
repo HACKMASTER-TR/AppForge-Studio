@@ -44,6 +44,10 @@ source_files:
 - Firebase Messaging was removed from the AppForge Studio runtime dependency set.
 - Home V2 was simplified around create, projects, AI, builds and developer tools.
 
+- Real-device FIKSTUR TAKIP retry confirmed that the earlier Node/npm package-resolution blocker is gone. The next concrete blocker was Ubuntu APT/dpkg failing while configuring `openjdk-17-jre-headless`.
+- Device build Java provisioning now avoids Ubuntu OpenJDK package post-install scripts. AppForge provisions a checksum-pinned Temurin JDK 17 archive, validates its SHA-256, exposes it as `/opt/appforge-device/jdk-17`, and passes that JAVA_HOME explicitly to Gradle.
+- The device-toolchain ready marker was advanced so an older apt-JDK environment cannot be mistaken for the new deterministic toolchain.
+
 ## Current Risks / Open Questions
 
 - Real-device FIKSTUR TAKIP acceptance exposed the first concrete device-build blocker: the universal Linux toolchain installer attempted to install Node/npm for Android builds and failed in Ubuntu package dependency resolution. The local build path now scopes optional toolchains by source engine; a fresh APK and real-device retry remain required.

@@ -3,24 +3,64 @@ set -eu
 
 ROOT="/opt/appforge-device"
 SDK="$ROOT/android-sdk"
-READY="$ROOT/.ready-v1"
+READY="$ROOT/.ready-v2"
+JAVA_HOME="$ROOT/jdk-17"
 ENGINE="${1:-webview-static}"
 
 if [ -f "$READY" ] \
    && [ -x "$SDK/build-tools/36.0.0/aapt2" ] \
    && [ -f "$SDK/platforms/android-37/android.jar" ] \
-   && [ -x "$ROOT/gradle-9.3.1/bin/gradle" ]; then
+   && [ -x "$ROOT/gradle-9.3.1/bin/gradle" ] \
+   && [ -x "$JAVA_HOME/bin/java" ] \
+   && [ -x "$JAVA_HOME/bin/javac" ]; then
   echo "APPFORGE_DEVICE_TOOLCHAIN_READY"
   exit 0
 fi
 
 export DEBIAN_FRONTEND=noninteractive
+# A previous AppForge device-build attempt may have left Ubuntu's
+# OpenJDK packages unpacked but unconfigured. Never purge a healthy
+# installation; remove only broken/partial OpenJDK package states.
+repair_broken_openjdk() {
+  for pkg in \
+    openjdk-17-jdk \
+    openjdk-17-jdk-headless \
+    openjdk-17-jre \
+    openjdk-17-jre-headless
+  do
+    status="$(
+      dpkg-query \
+        -W \
+        -f='${db:Status-Abbrev}' \
+        "$pkg" \
+        2>/dev/null \
+        || true
+    )"
+
+    case "$status" in
+      ""|ii*)
+        ;;
+      *)
+        echo "APPFORGE_REPAIR_BROKEN_PACKAGE:$pkg:$status"
+        dpkg \
+          --purge \
+          --force-all \
+          "$pkg" \
+          >/dev/null 2>&1 \
+          || true
+        ;;
+    esac
+  done
+}
+
+repair_broken_openjdk
+
 apt-get update
 apt-get install -y --no-install-recommends \
-  ca-certificates curl unzip zip xz-utils \
-  openjdk-17-jdk-headless \
+  ca-certificates curl unzip zip xz-utils tar \
   git file \
-  libstdc++6 zlib1g libpng16-16
+  libstdc++6 zlib1g libpng16-16 \
+  fontconfig libfreetype6
 
 case "$ENGINE" in
   node-web)
@@ -47,6 +87,49 @@ download_sha256() {
   rm -f "$out"
   curl -fL --retry 4 --connect-timeout 20 "$url" -o "$out"
   echo "$sha  $out" | sha256sum -c -
+}
+
+ensure_jdk() {
+  [ -x "$JAVA_HOME/bin/java" ] \
+    && [ -x "$JAVA_HOME/bin/javac" ] \
+    && return
+
+  arch="$(uname -m)"
+
+  case "$arch" in
+    aarch64|arm64)
+      jdk_url="https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_aarch64_linux_hotspot_17.0.20.1_1.tar.gz"
+      jdk_sha="457b57af8f9c93ec39080bb8c764f559dc8c89a6da1a39d718a400b7890d3e41"
+      ;;
+
+    x86_64|amd64)
+      jdk_url="https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_x64_linux_hotspot_17.0.20.1_1.tar.gz"
+      jdk_sha="3808d1d15e3ec6bd5b84057fb5d84c33d8a1536a258146bcea2e603fc726e08e"
+      ;;
+
+    *)
+      echo "Unsupported device JDK architecture: $arch" >&2
+      exit 41
+      ;;
+  esac
+
+  archive="$ROOT/cache/temurin-jdk17-$arch.tar.gz"
+
+  download_sha256 \
+    "$jdk_url" \
+    "$jdk_sha" \
+    "$archive"
+
+  rm -rf "$JAVA_HOME"
+  mkdir -p "$JAVA_HOME"
+
+  tar \
+    -xzf "$archive" \
+    -C "$JAVA_HOME" \
+    --strip-components=1
+
+  test -x "$JAVA_HOME/bin/java"
+  test -x "$JAVA_HOME/bin/javac"
 }
 
 ensure_gradle() {
@@ -121,6 +204,11 @@ cat > "$SDK/build-tools/36.0.0/source.properties" <<'EOF'
 Pkg.Desc=Android SDK Build-Tools 36
 Pkg.Revision=36.0.0
 EOF
+
+ensure_jdk
+
+export JAVA_HOME
+export PATH="$JAVA_HOME/bin:$PATH"
 
 ensure_gradle "9.3.1"
 ensure_gradle "8.14.3"

@@ -481,6 +481,8 @@ object DeviceBuildEngine {
         state.progress = 65
 
         val command = buildString {
+            append("export JAVA_HOME=/opt/appforge-device/jdk-17; ")
+            append("export PATH=/opt/appforge-device/jdk-17/bin:\$PATH; ")
             append("export ANDROID_SDK_ROOT=/opt/appforge-device/android-sdk; ")
             append("export ANDROID_HOME=/opt/appforge-device/android-sdk; ")
             append("export GRADLE_USER_HOME=/root/.gradle-appforge; ")
