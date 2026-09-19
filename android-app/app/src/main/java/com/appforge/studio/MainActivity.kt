@@ -1667,9 +1667,6 @@ private fun AppForgeApp() {
                 session?.email
             )
 
-    val terminalOwner =
-        isAdminOpsAccount
-
     var fiveParallelBuildRunning by
         remember {
             mutableStateOf(false)

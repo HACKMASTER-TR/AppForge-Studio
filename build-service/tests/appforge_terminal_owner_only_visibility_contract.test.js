@@ -94,18 +94,31 @@ test(
     );
 
     /*
-     * Single authoritative owner state:
-     * isAdminOpsAccount comes from OwnerAccessPolicy.isActiveOwner,
-     * and Terminal reuses that verified state.
+     * Terminal has one authoritative owner state and derives it
+     * directly from the centralized OwnerAccessPolicy.
      */
-    assert.match(
-      main,
-      /val isAdminOpsAccount\s*=\s*OwnerAccessPolicy[\s\S]{0,300}?isActiveOwner/
+    const terminalOwnerDeclarations =
+      main.match(
+        /val terminalOwner\s*=/g
+      ) ?? [];
+
+    assert.equal(
+      terminalOwnerDeclarations.length,
+      1,
+      "terminalOwner must have exactly one declaration"
     );
 
     assert.match(
       main,
-      /val terminalOwner\s*=\s*isAdminOpsAccount/
+      /val terminalOwner\s*=\s*OwnerAccessPolicy[\s\S]{0,300}?isActiveOwner\(\s*context,\s*session\?\.email\s*\)/
+    );
+
+    /*
+     * AdminOps independently uses the same centralized policy.
+     */
+    assert.match(
+      main,
+      /val isAdminOpsAccount\s*=\s*OwnerAccessPolicy[\s\S]{0,300}?isActiveOwner/
     );
 
     /*
