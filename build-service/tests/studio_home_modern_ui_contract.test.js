@@ -133,3 +133,18 @@ test(
     );
   }
 );
+
+test(
+  "dashboard avoids invalid scoped weight import",
+  () => {
+    assert.doesNotMatch(
+      dashboard,
+      /import androidx\.compose\.foundation\.layout\.weight/
+    );
+
+    assert.match(
+      dashboard,
+      /Modifier\.weight\(1f\)/
+    );
+  }
+);
