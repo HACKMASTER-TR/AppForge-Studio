@@ -29,7 +29,8 @@ source_files:
 - Finish Clean Device Build Runtime V3.
 - Validate APK and AAB on a real Android device.
 - Keep Terminal Linux physically separate from project-build Linux.
-- Restore a richer Studio dashboard; the over-minimal Home V2 design is rejected.
+- Studio Home uses a richer modern dashboard; the rejected over-minimal Home V2 layout must not return.
+- The temporary five-build device stress UI is retired; normal single-project device build remains authoritative.
 
 ## Must Know
 

@@ -138,3 +138,13 @@ source_files:
 - Toolchain readiness is invalidated so the previously installed binary is
   not silently reused.
 - Real-device execution and APK/AAB output remain pending acceptance.
+
+## 2026-09-19 Modern Home and five-build retirement
+
+- The temporary five-build device stress panel is retired from production UI.
+- Its dedicated tester allow-list, batch state and Builder controls are removed.
+- Normal device build and visible device-build logs remain.
+- Studio Home is upgraded from the rejected minimal layout to a richer modern
+  dashboard with project/build status, AI, conversion, import, recent projects
+  and management actions.
+- Terminal and Admin remain owner-only.

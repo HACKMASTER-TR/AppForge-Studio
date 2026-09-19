@@ -21,6 +21,8 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
   - "android-app/app/src/test/java/com/appforge/studio/UpdateGatePlayVisibilityTest.kt"
   - "build-service/tests/android_system_back_navigation_contract.test.js"
+  - "build-service/tests/studio_home_modern_ui_contract.test.js"
+  - "build-service/tests/retired_five_build_contract.test.js"
 ---
 
 # Android App Map
@@ -92,3 +94,40 @@ Android system back therefore consumes Builder steps first:
 through the normal AppScreen back history. This matches the Builder's
 visible Geri button behavior and prevents system back from jumping directly
 from step 2+ to Home.
+
+## Modern Studio Home
+
+`StudioHomeV2` is the primary project dashboard. The previously rejected
+over-minimal layout must not return.
+
+The Home surface now keeps a clearer visual hierarchy with:
+
+- a Device Build V3 hero and live project/build counts,
+- quick project creation,
+- AI and Unified Agent entry points,
+- successful-build access,
+- conversion and import actions,
+- recent project cards,
+- project-management tools,
+- owner-only Terminal/Admin controls.
+
+Normal account and owner authorization rules remain unchanged.
+
+## Retired five-build stress surface
+
+The temporary five-build stress/test surface was removed from the production
+Builder UI together with its dedicated tester allow-list and batch UI state.
+Normal project build execution remains available through `UYGULAMAYI DERLE`.
+
+Admin Ops remains protected by `OwnerAccessPolicy`; removing the stress surface
+does not broaden administrative access.
+
+## Studio Home composition boundary
+
+`StudioHomeV2.kt` remains a compact navigation/state coordinator and must stay
+below the existing size guard. Modern visual primitives live in
+`StudioHomeDashboard.kt`.
+
+This preserves the simplified-home architectural boundary without returning to
+the rejected sparse design. Terminal remains visible only inside the active
+owner guard. The retired five-build stress surface must not return.

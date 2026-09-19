@@ -61,33 +61,28 @@ test(
 );
 
 test(
-  "five build stress test matches two-thread device engine",
+  "retired five-build stress surface is removed",
   () => {
-    assert.match(
+    assert.doesNotMatch(
       main,
-      /5 Build Testi • Maks\. 2 Paralel/
-    );
-
-    assert.match(
-      main,
-      /Semaphore[\s\S]{0,300}?permits\s*=\s*2/
+      /5 Build Testi/
     );
 
     assert.doesNotMatch(
-        main,
-        /5 Build Testi • Maks\. 3 Paralel/
+      main,
+      /fiveParallelBuildRunning/
+    );
+
+    assert.doesNotMatch(
+      main,
+      /startFiveParallelBuildTest/
     );
   }
 );
 
 test(
-  "builder UI no longer advertises retired autoscale",
+  "builder UI no longer advertises retired remote autoscale",
   () => {
-    assert.match(
-      main,
-      /YÖNETİCİ SİSTEM DURUMU/
-    );
-
     assert.doesNotMatch(
       main,
       /YÖNETİCİ SİSTEM DURUMU \/ AUTOSCALE/
@@ -96,6 +91,26 @@ test(
     assert.doesNotMatch(
       main,
       /Uygun Source Worker toolchain planı/
+    );
+  }
+);
+
+test(
+  "normal device build action remains",
+  () => {
+    assert.match(
+      main,
+      /UYGULAMAYI DERLE/
+    );
+
+    assert.match(
+      main,
+      /builderBuildOutputReady/
+    );
+
+    assert.match(
+      main,
+      /startBuildWithDraft/
     );
   }
 );
