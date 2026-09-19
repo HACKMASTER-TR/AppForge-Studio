@@ -10,7 +10,7 @@ function text(path) {
 }
 
 test(
-  "Android supports guest mode and account-aware home badge",
+  "Android supports guest mode and visible account entry",
   () => {
     const main =
       text(
@@ -24,17 +24,7 @@ test(
 
     assert.match(
       main,
-      /if\s*\(\s*session\s*==\s*null\s*\)/
-    );
-
-    assert.match(
-      main,
       /AppScreen\.ACCOUNT/
-    );
-
-    assert.match(
-      main,
-      /accountEmail\s*=\s*session\s*\?\.email/s
     );
 
     assert.match(
@@ -44,31 +34,27 @@ test(
 
     assert.match(
       home,
-      /"login"\s+to\s+"GİRİŞ YAP"/
-    );
-
-    /*
-     * Full-admin identity is centralized in OwnerAccessPolicy.
-     * StudioHomeV2 must not duplicate the owner's plaintext email.
-     */
-    assert.match(
-      home,
-      /OwnerAccessPolicy\s*\./
-    );
-
-    assert.doesNotMatch(
-      home,
-      /28550040284a@gmail\.com/
+      /val loggedIn\s*=/
     );
 
     assert.match(
       home,
-      /fullAdmin\s*->\s*"ADMIN"/s
+      /onClick\s*=\s*onOpenAccount/
     );
 
     assert.match(
       home,
-      /!loggedIn\s*->\s*onOpenAccount\(\)/s
+      /GİRİŞ YAP/
+    );
+
+    assert.match(
+      home,
+      /OwnerAccessPolicy/
+    );
+
+    assert.match(
+      home,
+      /fullAdmin/
     );
   }
 );

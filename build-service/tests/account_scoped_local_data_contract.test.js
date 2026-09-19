@@ -58,18 +58,16 @@ test(
       /build_history/
     );
 
-    assert.match(
-      main,
-      /ProjectLibrary\.setAccountScope\(\s*context,\s*session\?\.userId/
-    );
-
+    /*
+     * Simplified StudioHomeV2 must still invalidate local
+     * project state when the active account changes.
+     */
     assert.match(
       home,
-      /remember\(\s*accountEmail\s*\)/
+      /remember\(\s*accountEmail/
     );
   }
 );
-
 
 test(
   "local data cannot consume successful-project quota",

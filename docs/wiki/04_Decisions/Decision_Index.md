@@ -11,6 +11,9 @@ tags:
 related:
   - "[[System_Architecture]]"
 source_files:
+  - "build-service/tests/device_build_toolchain_scope_contract.test.js"
+  - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
+  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
   - "android-app/app/build.gradle.kts"
   - "build-service/package.json"
   - "build-service/source-worker-toolchain.json"
@@ -113,3 +116,103 @@ Source Workers excluded from the existing autoscaler, Worker heartbeat
 independent of process progress, direct-child `SIGKILL` in multiple source
 engines, and a React Native/Expo 20-minute hard timeout without a stall
 watchdog.
+
+- 2026-09-19: AppForge normal build execution moved from remote Worker/queue infrastructure to an on-device PRoot/Linux build engine. Remote build upload/polling is no longer part of the normal Android build path. Shipping acceptance requires real-device APK/AAB validation.
+
+## 2026-09-19 — Device Build Toolchain Scope v1
+
+### Context
+
+Real-device FIKSTUR TAKIP acceptance reached the device-local Linux build engine but failed before project Gradle execution. Sanitized logs showed Ubuntu dependency resolution failing while installing npm. The device installer provisioned Node.js/npm and Python for every source type even when an Android Gradle or static WebView build did not require them.
+
+### Decision
+
+Device build preparation uses the verified Ubuntu base environment rather than the complete Terminal development profile. The local toolchain installer receives the selected source-build engine and provisions optional language packages only when required: Node.js/npm for `node-web`, Python tooling for `python-android`, while Android/JDK tooling remains the common device-build base.
+
+### Alternatives considered
+
+- Keep one universal toolchain for every build: rejected because an unrelated Node/npm package failure can block Android projects before Gradle starts.
+- Remove Node and Python support from device builds: rejected because those source engines remain valid local build targets.
+- Fall back to a remote Worker when local package installation fails: rejected because normal user builds are intentionally device-only.
+
+### Consequences
+
+Android Gradle and static WebView builds no longer depend on npm package availability. Node and Python projects still receive their required toolchains. Failures are isolated closer to the source engine that actually requires the package. Real-device APK/AAB acceptance remains mandatory.
+
+### Evidence
+
+`device_build_toolchain_scope_contract.test.js` verifies that `DeviceBuildEngine` does not require the full Terminal development profile, passes the source engine to the installer, and prevents unconditional npm installation. Existing device-only contracts also pass.
+
+### 2026-09-19 — Device builds use a pinned JDK archive
+
+Device-local Android builds must not depend on Ubuntu OpenJDK package post-install/configuration behavior. AppForge provisions a checksum-pinned Temurin JDK 17 archive and passes its JAVA_HOME explicitly to Gradle. Ubuntu APT remains responsible for ordinary base utilities, while Java is treated as part of AppForge's deterministic device-build toolchain.
+
+### 2026-09-19 — Persistent device rootfs cleanup is engine-aware
+
+Device-local builds may reuse a persistent Ubuntu rootfs, but package repair must remain scoped to the selected source engine. Non-Node builds may remove only incomplete or broken legacy Node/npm package states; healthy Node installations are preserved, while `node-web` builds retain their required Node toolchain.
+
+## 2026-09-19 — Clean Device Build Runtime V3
+
+### Context
+
+Repeated real-device failures were caused by package state inherited from a
+persistent Linux environment: first unconditional Node/npm provisioning, then
+OpenJDK dpkg configuration, then stale Node package state. Repairing packages
+one failure at a time allowed unrelated historical package state to influence a
+new Android project build.
+
+### Decision
+
+Project builds use a dedicated, versioned and disposable build rootfs which is
+physically separate from the AppForge Terminal rootfs. A runtime revision
+mismatch rebuilds only this build runtime. Terminal files and package state are
+outside the cleanup boundary.
+
+A central capability matrix records engine and output readiness. APK, AAB and
+Windows Portable EXE are first-class artifact kinds, but only platform-tested
+outputs may be marked READY.
+
+### Consequences
+
+Old Terminal package state cannot block new project builds. Toolchain upgrades
+can intentionally invalidate the build runtime without destroying developer
+workspaces. Future Flutter, React Native, NDK, .NET and Windows engines can use
+separate capability/toolchain layers without turning every build into a
+universal environment.
+
+Unity remains explicitly external-tool-required until a supported device build
+host exists.
+
+Remote Worker fallback remains forbidden for normal user project builds.
+
+## 2026-09-19 — AppForge UI V2 Design System
+
+### Context
+
+Studio screens had accumulated separate dark palettes and normal build
+failures exposed implementation-oriented runtime, Worker and toolchain
+wording.
+
+### Decision
+
+Use `AppForgeTheme` as the shared Material 3 color/shape authority. The
+product language is deep navy with cyan primary actions, violet accents and
+rounded elevated surfaces. Terminal and Excel Tools keep specialized layouts
+but share the same palette. Standalone update and Pro purchase activities
+also use the shared theme.
+
+Normal build UI presents status, progress, actionable error summaries and
+artifacts first. Sanitized local logs remain available behind an explicit
+technical-details control instead of dominating the default failure screen.
+
+### Consequences
+
+Visual changes can be coordinated centrally without altering build routing,
+owner authorization, Terminal behavior or entitlement logic. The retired
+five-build stress UI remains absent.
+
+### Evidence
+
+`studio_home_modern_ui_contract.test.js`,
+`device_only_build_ui_contract.test.js`, Android Debug CI and real-device UI
+acceptance.

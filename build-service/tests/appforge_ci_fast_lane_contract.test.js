@@ -13,53 +13,18 @@ async function read(path) {
 }
 
 test(
-  "heavy workflows ignore tests/control-plane changes",
+  "heavy remote Worker workflows stay retired",
   async () => {
-    const worker =
-      await read(
-        ".github/workflows/worker-image.yml"
-      );
-
-    const sourceWorker =
-      await read(
-        ".github/workflows/source-worker-image.yml"
-      );
-
-    const conversion =
-      await read(
-        ".github/workflows/conversion-smoke.yml"
-      );
-
-    const android =
-      await read(
-        ".github/workflows/android-debug.yml"
-      );
-
-    for (const text of [
-      worker,
-      sourceWorker,
-      conversion
+    for (const relative of [
+      ".github/workflows/worker-image.yml",
+      ".github/workflows/source-worker-image.yml",
+      ".github/workflows/worker-autoscale.yml"
     ]) {
-      assert.match(
-        text,
-        /!build-service\/tests\/\*\*/
-      );
-    }
-
-    for (const text of [
-      worker,
-      sourceWorker,
-      conversion,
-      android
-    ]) {
-      assert.doesNotMatch(
-        text,
-        /\.github\/scripts\/railway_production\.py/
-      );
-
-      assert.doesNotMatch(
-        text,
-        /\.github\/workflows\/production-automation\.yml/
+      await assert.rejects(
+        read(relative),
+        {
+          code: "ENOENT"
+        }
       );
     }
   }

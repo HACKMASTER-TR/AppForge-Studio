@@ -3,8 +3,8 @@ type: registry
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-09-19
+last_verified: 2026-09-19
 confidence: high
 tags:
   - coverage
@@ -30,6 +30,7 @@ This is a routing and completeness register, not proof that every listed source 
 | Build workers and artifacts | build-service/src/workerRuntime.js; build-service/src/jobQueue.js; build-service/src/downloadTickets.js; build-service/src/workspaceBuild.js | [[03_Architecture/Build_And_Worker_Architecture]]; [[03_Architecture/Worker_And_Artifact_Flow]] | covered | Verify worker capability and retry semantics against the active code path. |
 | Operations and automation | build-service/docker-compose.yml; build-service/Dockerfile; .github/workflows/; .appforge/; scripts/; README.md | [[03_Architecture/Deployment_And_CI]]; [[03_Architecture/Operations_And_Automation]]; [[01_Project/Current_Status]] | covered | Configuration evidence does not prove deployed or live state. |
 | Examples and historical backup files | examples/; android-app/app/src/main/java/com/appforge/studio/MainActivity.kt.fcm-dual-v2.bak; build-service/src/buildEngine.js.fcm-dual-v2.bak | [[01_Project/Open_Questions]] | unverified | Exclude from architecture claims unless a task explicitly needs provenance or cleanup. |
+| Device build runtime | android-app/app/src/main/java/com/appforge/studio/build/; android-app/app/src/main/assets/device-build/ | [[03_Architecture/Device_Build_Runtime_V3]]; [[03_Architecture/Build_And_Worker_Architecture]]; [[03_Architecture/System_Architecture]] | covered | Review engine capability, toolchain pinning and real-device acceptance together. |
 <!-- COVERAGE_REGISTRY_END -->
 
 ## Maintenance Rule

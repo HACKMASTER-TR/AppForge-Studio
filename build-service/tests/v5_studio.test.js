@@ -9,10 +9,7 @@ const androidMain = new URL(
   import.meta.url
 );
 const server = new URL("../server.js", import.meta.url);
-const buildProgressService = new URL(
-  "../../android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt",
-  import.meta.url
-);
+
 const knowledgeBase = new URL(
   "../../android-app/app/src/main/java/com/appforge/studio/ai/AppForgeKnowledgeBase.kt",
   import.meta.url
@@ -76,20 +73,6 @@ test("V5 scaffold API is authenticated and wired into the service", async () => 
   assert.match(text, /createV5Scaffold/);
 });
 
-test("Android keeps a remote build visible as a background notification", async () => {
-  const [main, service] = await Promise.all([
-    readFile(androidMain, "utf8"),
-    readFile(buildProgressService, "utf8")
-  ]);
-  assert.match(main, /BuildProgressService\.track/);
-  assert.match(main, /BuildProgressService\.startPending/);
-  assert.match(main, /BuildProgressService\.stop/);
-  assert.match(service, /startForeground/);
-  assert.match(service, /appforge_open_builds/);
-  assert.match(service, /client\.getBuild\(\s*buildId\s*\)/);
-  assert.match(service, /"AppForge derlemeleri"/);
-});
-
 test("local AI describes the current AppForge feature set", async () => {
   const knowledge = await readFile(knowledgeBase, "utf8");
   assert.match(knowledge, /FULL_FEATURES_ANSWER/);
@@ -99,7 +82,7 @@ test("local AI describes the current AppForge feature set", async () => {
   assert.match(knowledge, /Firebase Analytics\/Crashlytics\/Cloud Messaging/);
   assert.match(knowledge, /GitHub ve takım akışları/);
   assert.match(knowledge, /AppForge Terminal/);
-  assert.match(knowledge, /GitHub\/Railway/);
-  assert.match(knowledge, /arka planda.*bildirimi/);
+  assert.match(knowledge, /GitHub/);
+  assert.match(knowledge, /cihaz.*build|yerel build/i);
   assert.match(knowledge, /Yerel AI/);
 });

@@ -355,7 +355,7 @@ internal fun TerminalToolsPanel(
                     onClick = onOpenConnections,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("GitHub / Railway Bağlantıları")
+                    Text("GitHub Bağlantısı")
                 }
             }
         }

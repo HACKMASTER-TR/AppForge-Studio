@@ -3,8 +3,8 @@ type: codebase
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-17
-last_verified: 2026-09-17
+updated: 2026-09-19
+last_verified: 2026-09-19
 confidence: high
 tags:
   - terminal
@@ -43,7 +43,7 @@ The Android `terminal/` package owns terminal UI, local and Linux runtime adapte
 
 `LocalTerminalEngine` launches the Android shell path used by the local terminal. Linux runtime, PTY-session, workspace, Git, SSH, and connection modules are separate change surfaces; inspect the named module and its tests rather than inferring behavior from the screen name.
 
-GitHub and Railway connection flows use provider HTTPS endpoints in `ExternalConnectionsClient`. Connection and pending-authorization persistence are handled by `SecureAccountStore`; see [[Account_And_Security_Map]] for the storage boundary. The wiki makes no claim about live provider authorization, user data, or legal disclosures.
+GitHub remains the active external connection flow. Railway authorization and its user-facing connection card were retired during the device-only build cutover. Connection persistence remains handled by `SecureAccountStore`; see [[Account_And_Security_Map]] for the storage boundary. The wiki makes no claim about live provider authorization, user data, or legal disclosures.
 
 In normal terminal mode, the vendored Termux `TerminalView` owns touch drag, scrollback, and fling behavior. Compose transform gestures must not consume one-finger pan input while that native viewport is active. The Compose pinch path remains available only for the fallback renderer.
 

@@ -3,8 +3,8 @@ type: status
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-17
-last_verified: 2026-09-17
+updated: 2026-09-19
+last_verified: 2026-09-19
 confidence: high
 tags:
   - status
@@ -13,6 +13,8 @@ related:
   - "[[Hot_Context]]"
   - "[[Bug_Index]]"
 source_files:
+  - "build-service/tests/device_build_toolchain_scope_contract.test.js"
+  - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
   - "build-service/tests/appforge_terminal_viewport_stability_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
   - ".appforge/runtime-blockers.json"
@@ -21,6 +23,10 @@ source_files:
   - "build-service/src/fastSigningKey.js"
   - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt"
+  - "build-service/tests/device_only_build_ui_contract.test.js"
   - "android-app/app/src/test/java/com/appforge/studio/UpdateGatePlayVisibilityTest.kt"
 ---
 
@@ -58,3 +64,102 @@ source_files:
 - Terminal `+ Oturum` moves persisted creation off the UI dispatcher and
   selects the new session before PTY startup. Device acceptance remains
   pending for this new multi-session correction.
+
+## 2026-09-19 device-only Android CI compile correction
+
+- Android Debug CI exposed an accidental structural deletion in
+  `MainActivity.kt` during retired Railway callback cleanup.
+- The known-good activity/app-shell prefix was restored from the immediate
+  parent revision, then Railway authorization state and callbacks were removed
+  surgically without removing lifecycle, navigation, URI persistence or
+  `AppForgeApp`.
+- `DeviceBuildEngine` Kotlin visibility and sequence-log collection compile
+  errors were corrected.
+- Local `file://` artifact handling in `DownloadedApkFolder.kt` now constructs
+  `java.io.File` explicitly.
+- A fresh Android Debug CI run remains the authoritative compile acceptance
+  before real-device APK/AAB acceptance.
+
+## 2026-09-19 real-device device-build acceptance follow-up
+
+- AppForge Studio 5.0.29 installed and opened successfully on the physical Android device.
+- The new StudioHomeV2 was judged too minimal; the next UI iteration must restore a richer device-first dashboard without restoring remote build infrastructure.
+- FIKSTUR TAKIP entered the device-local build path and reported `Build cihaz üzerinde çalışacak`, then failed at 0%.
+- The failure UI claimed that live logs were available but no log renderer remained after the device-only cutover.
+- The current correction restores sanitized local device-build logs, highlights the first critical error, removes stale Worker/Autoscale wording from the active Builder surface, and aligns the admin stress-test concurrency with the two-thread local device engine.
+- APK/AAB physical-device acceptance remains pending until the newly exposed log identifies and the project fixes the actual local build failure.
+
+## 2026-09-19 device-build toolchain scope correction
+
+- Sanitized on-device logs identified the next real FIKSTUR TAKIP blocker before project Gradle execution: Ubuntu package resolution failed while the device toolchain attempted to install Node/npm.
+- `DeviceBuildEngine` no longer requires the full Terminal development profile before every project build. It prepares the verified Ubuntu base environment and invokes the device toolchain installer with the selected source-build engine.
+- `install-toolchain.sh` keeps the Android/JDK base toolchain common, installs Node.js/npm only for `node-web`, and installs Python packages only for `python-android`.
+- Android Gradle and static WebView builds therefore no longer depend on npm availability.
+- `device_build_toolchain_scope_contract.test.js` protects this separation. The targeted contract, existing device-only contracts and `git diff --check` passed before final local acceptance.
+- Physical-device FIKSTUR TAKIP APK/AAB acceptance is still pending a fresh AppForge Studio APK containing this correction.
+
+## 2026-09-19 deterministic device JDK correction
+
+- The first real-device retry after source-engine toolchain scoping confirmed that the earlier Node/npm dependency-resolution failure was removed.
+- The next blocker occurred before project Gradle execution while Ubuntu `dpkg` configured `openjdk-17-jre-headless`.
+- Device build Java provisioning now uses checksum-pinned Temurin JDK 17 archives instead of installing OpenJDK through Ubuntu APT.
+- ARM64 and x86_64 JDK artifacts are pinned by exact SHA-256 values.
+- `DeviceBuildEngine` explicitly exports `/opt/appforge-device/jdk-17` as `JAVA_HOME` for Gradle.
+- The device-toolchain readiness marker was bumped so older apt-JDK installations are not accepted as the corrected toolchain.
+- A dedicated regression contract protects deterministic JDK provisioning.
+- Fresh Android Debug CI and physical-device FIKSTUR TAKIP APK/AAB acceptance remain required.
+
+## 2026-09-19 stale Node/npm rootfs repair
+
+- Physical-device validation confirmed that the earlier unconditional Node/npm installation behavior had left broken Node packages inside the persistent Ubuntu rootfs.
+- Those stale packages could make a later Android/Kotlin build fail during an unrelated APT transaction even though the active source engine did not require Node.
+- Non-Node device builds now inspect package state and remove only incomplete/broken Node/npm packages.
+- Healthy installed Node packages are preserved.
+- `node-web` builds skip this cleanup and retain the Node toolchain.
+- Dedicated regression coverage protects this engine-aware cleanup behavior.
+- Fresh Android Debug CI and physical-device FIKSTUR TAKIP build acceptance remain required.
+
+## 2026-09-19 Clean Device Build Runtime V3
+
+- The repeated npm/OpenJDK/stale-dpkg chain showed that repairing a persistent Terminal rootfs is the wrong project-build boundary.
+- Device project builds now have a dedicated V3 runtime architecture which is versioned and disposable independently from Terminal Linux.
+- A capability/output registry records current READY engines and future Android/Windows engine families.
+- APK/AAB remain the currently proven local artifacts.
+- Windows Portable EXE remains a required local target but must not be declared ready until its device-local packager and real Windows acceptance pass.
+- Existing AppForge APK/EXE conversion contracts remain product requirements.
+
+## 2026-09-19 AAPT2 ARM64 device follow-up
+
+- The dedicated Runtime V3 reached the Android SDK toolchain installation.
+- AAPT2 failed its executable smoke test with a missing libdl.so dependency.
+- Project Gradle execution had not started at this failure point.
+- The selected ARM64 Build-Tools executables are replaced by SHA-256-pinned
+  Linux-glibc ARM64 builds.
+- Toolchain readiness is invalidated so the previously installed binary is
+  not silently reused.
+- Real-device execution and APK/AAB output remain pending acceptance.
+
+## 2026-09-19 Modern Home and five-build retirement
+
+- The temporary five-build device stress panel is retired from production UI.
+- Its dedicated tester allow-list, batch state and Builder controls are removed.
+- Normal device build and visible device-build logs remain.
+- Studio Home is upgraded from the rejected minimal layout to a richer modern
+  dashboard with project/build status, AI, conversion, import, recent projects
+  and management actions.
+- Terminal and Admin remain owner-only.
+
+## 2026-09-19 HTTPS control-plane separation correction
+
+- `device://local` remains authoritative only for normal project compilation.
+- Account, Admin, Pro/security and Update flows use the dedicated HTTPS control
+  plane instead of inheriting the project's local build URL.
+- The `unknown protocol: device` failure is prevented at the routing boundary
+  and account/admin clients reject non-HTTPS production control-plane URLs.
+- Admin authorization is loaded from the authenticated server response.
+- Admin account management loads automatically when the screen opens.
+- The obsolete Autoscale dashboard and 10/25/50 real-build stress controls are
+  removed from Android Admin Ops.
+- Update-policy failure retains the existing `Çevrimdışı devam et` path.
+- Device Build Runtime V3, AAPT2 and normal device-local APK/AAB execution are
+  unchanged.

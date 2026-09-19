@@ -56,44 +56,64 @@ test("terminal commands are reviewed and execute inside the Android app process"
   assert.doesNotMatch(server, /["']\/api\/(?:terminal|shell)["']/);
 });
 
-test("GitHub device flow and Railway native PKCE use official HTTPS endpoints and encrypted storage", async () => {
-  const [client, connections, secureStore, main, manifest, buildFile, privacy] = await Promise.all([
+test("GitHub device flow uses official HTTPS endpoints and encrypted storage", async () => {
+  const [client, connections, secureStore, buildFile, privacy] = await Promise.all([
     source("terminal/ExternalConnectionsClient.kt"),
     source("terminal/ConnectionsPanel.kt"),
     source("security/SecureAccountStore.kt"),
-    source("MainActivity.kt"),
-    readFile(new URL("src/main/AndroidManifest.xml", androidRoot), "utf8"),
     readFile(new URL("build.gradle.kts", androidRoot), "utf8"),
     readFile(new URL("../../docs/privacy.html", androidRoot), "utf8")
   ]);
 
   assert.match(client, /https:\/\/github\.com\/login\/device\/code/);
   assert.match(client, /https:\/\/github\.com\/login\/oauth\/access_token/);
-  assert.doesNotMatch(client, /railway\.com\/oauth\/device/);
-  assert.match(client, /https:\/\/backboard\.railway\.com\/oauth\/auth/);
-  assert.match(client, /https:\/\/backboard\.railway\.com\/oauth\/token/);
-  assert.match(client, /response_type=code/);
-  assert.match(client, /code_challenge_method=S256/);
-  assert.match(client, /"code_verifier"/);
-  assert.match(client, /prompt=consent/);
-  assert.match(client, /appforge-studio:\/\/auth\/railway/);
-  assert.match(client, /MessageDigest\.isEqual/);
   assert.match(client, /authorization_pending/);
   assert.match(client, /slow_down/);
-  assert.match(connections, /APPFORGE_GITHUB_OAUTH_CLIENT_ID/);
-  assert.match(connections, /APPFORGE_RAILWAY_OAUTH_CLIENT_ID/);
-  assert.match(connections, /savePendingExternalAuthorization/);
-  assert.match(main, /data\.path == "\/railway"/);
-  assert.match(main, /externalAuthorizationSequence/);
-  assert.match(manifest, /android:scheme="appforge-studio"/);
-  assert.match(manifest, /android:host="auth"/);
-  assert.match(secureStore, /saveExternalConnection/);
-  assert.match(secureStore, /savePendingExternalAuthorization/);
-  assert.match(secureStore, /AES\/GCM\/NoPadding/);
-  assert.match(secureStore, /json\.getString\("provider"\)[\s\S]*safeProvider/);
-  assert.doesNotMatch(buildFile, /client_secret/i);
-  assert.match(privacy, /GitHub ve Railway bağlantıları/);
-  assert.match(privacy, /tokenı AppForge Build Service'e göndermez/);
+
+  assert.match(
+    connections,
+    /APPFORGE_GITHUB_OAUTH_CLIENT_ID/
+  );
+
+  assert.match(
+    secureStore,
+    /saveExternalConnection/
+  );
+
+  assert.match(
+    secureStore,
+    /AES\/GCM\/NoPadding/
+  );
+
+  assert.doesNotMatch(
+    client,
+    /railway/i
+  );
+
+  assert.doesNotMatch(
+    connections,
+    /railway|APPFORGE_RAILWAY/i
+  );
+
+  assert.doesNotMatch(
+    secureStore,
+    /railway/i
+  );
+
+  assert.doesNotMatch(
+    buildFile,
+    /APPFORGE_RAILWAY|client_secret/i
+  );
+
+  assert.match(
+    privacy,
+    /GitHub bağlantısı/
+  );
+
+  assert.doesNotMatch(
+    privacy,
+    /Railway/i
+  );
 });
 
 test("embedded Git and SSH dependencies are part of the Android app", async () => {

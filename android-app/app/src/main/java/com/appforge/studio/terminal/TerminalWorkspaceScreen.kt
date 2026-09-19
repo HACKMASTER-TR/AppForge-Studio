@@ -1,7 +1,6 @@
 package com.appforge.studio.terminal
 
 import android.content.Context
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -340,9 +339,6 @@ fun TerminalWorkspaceScreen(
     activeProjectId: String?,
     activeDraft: ProjectDraft,
     accountEmail: String,
-    railwayAuthorizationUri: Uri?,
-    railwayAuthorizationSequence: Int,
-    onRailwayAuthorizationConsumed: () -> Unit,
     onBack: () -> Unit,
     onOpenBuilder: (String?) -> Unit,
     onOpenAi: (String?) -> Unit
@@ -597,14 +593,6 @@ fun TerminalWorkspaceScreen(
             mutableIntStateOf(0)
         }
 
-    LaunchedEffect(
-        railwayAuthorizationSequence
-    ) {
-        if (railwayAuthorizationUri != null) {
-            selectedTab =
-                TerminalWorkspaceTab.CONNECTIONS
-        }
-    }
 
     var pendingDangerousCommand by
         remember {
@@ -675,7 +663,7 @@ fun TerminalWorkspaceScreen(
         • appforge ai         Projeye bağlı AI Asistanı aç
         • appforge downloads  İndirilenler bölümünü aç
         • appforge import     Telefondan dosya seçip içe aktar
-        • appforge connect    GitHub / Railway bağlantılarını aç
+        • appforge connect    GitHub bağlantısını aç
         • runtime             Yerel araç durumunu göster
 
         Yerel kabuk örnekleri
@@ -1553,13 +1541,7 @@ fun TerminalWorkspaceScreen(
                             onOpenGit = {
                                 selectedTab =
                                     TerminalWorkspaceTab.GIT
-                            },
-                            railwayAuthorizationUri =
-                                railwayAuthorizationUri,
-                            railwayAuthorizationSequence =
-                                railwayAuthorizationSequence,
-                            onRailwayAuthorizationConsumed =
-                                onRailwayAuthorizationConsumed
+                            }
                         )
 
                     TerminalWorkspaceTab.SSH ->

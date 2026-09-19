@@ -23,83 +23,16 @@ const repoRoot =
   );
 
 test(
-  "source worker CI builds and smokes the dedicated image",
+  "Source Worker CI remains retired in device-only mode",
   async () => {
-    const workflow =
-      await fs.readFile(
-        path.join(
-          repoRoot,
-          ".github",
-          "workflows",
-          "source-worker-image.yml"
-        ),
-        "utf8"
-      );
-
-    for (
-      const marker of [
-        "Dockerfile.source-worker",
-        "load: false",
-        "ANDROID_SDK_LICENSE_ACCEPTED=true",
-        "10001:10001",
-        "--network none",
-        "--read-only",
-        "uid=10001,gid=10001,mode=0700",
-        "uid=10001,gid=10001,mode=0750",
-        "--cap-drop ALL",
-        "no-new-privileges:true",
-        "--pids-limit 256",
-        "source-worker-runtime-smoke.sh",
-        "ghcr.io/hackmaster-tr/appforge-source-worker",
-        "Resolve immutable image tag",
-        "push: true",
-        "provenance: false",
-        "Build and publish immutable source Worker candidate",
-        "Pull immutable source Worker candidate",
-        "Promote verified source Worker image",
-        'SHA_IMAGE="${IMAGE_NAME}:${{ steps.image-tag.outputs.sha_tag }}"',
-        'docker pull "${SHA_IMAGE}"',
-        'docker tag "${SHA_IMAGE}" "${LOCAL_IMAGE}"',
-        'docker push "${LATEST_IMAGE}"',
-        "cache-from: type=gha,scope=source-worker",
-        "cache-to: type=gha,mode=min,scope=source-worker"
-      ]
-    ) {
-      assert.ok(
-        workflow.includes(
-          marker
-        ),
-        marker
-      );
-    }
-
-    const buildPushActionCount =
-      workflow
-        .split(
-          "uses: docker/build-push-action@v7"
-        )
-        .length - 1;
-
-    assert.equal(
-      buildPushActionCount,
-      1,
-      "Source Worker image yalnız bir kez BuildKit ile build edilmeli."
+    const workflow = new URL(
+      "../../.github/workflows/source-worker-image.yml",
+      import.meta.url
     );
 
-    assert.equal(
-      workflow.includes(
-        'docker push "${SHA_IMAGE}"'
-      ),
-      false,
-      "Immutable SHA image Docker CLI ile ikinci kez push edilmemeli."
-    );
-
-    assert.equal(
-      workflow.includes(
-        "cache-to: type=gha,mode=max,scope=source-worker"
-      ),
-      false,
-      "Source Worker dev GHA cache export mode=max kullanmamalı."
+    await assert.rejects(
+      fs.access(workflow),
+      { code: "ENOENT" }
     );
   }
 );
@@ -265,141 +198,38 @@ test(
 );
 
 test(
-  "technology matrix stays in repository CI and outside build-service-only Docker context",
+  "device-only cutover does not restore Source Worker CI",
   async () => {
-    const workflow =
-      await fs.readFile(
-        path.join(
-          repoRoot,
-          ".github",
-          "workflows",
-          "source-worker-image.yml"
-        ),
-        "utf8"
-      );
-
-    const matrixCommand =
-      "node --test tests/technology_support_matrix.test.js";
-
-    assert.ok(
-      workflow.includes(
-        matrixCommand
-      ),
-      "Technology matrix GitHub Actions regression aşamasında kalmalı."
+    const workflow = new URL(
+      "../../.github/workflows/source-worker-image.yml",
+      import.meta.url
     );
 
-    for (
-      const dockerName of [
-        "Dockerfile.worker",
-        "Dockerfile.source-worker"
-      ]
-    ) {
-      const docker =
-        await fs.readFile(
-          path.join(
-            repoRoot,
-            "build-service",
-            dockerName
-          ),
-          "utf8"
-        );
-
-      assert.equal(
-        docker.includes(
-          `RUN ${matrixCommand}`
-        ),
-        false,
-        `${dockerName}: build-service-only Docker context cross-repo matrix testini çalıştırmamalı.`
-      );
-    }
+    await assert.rejects(
+      fs.access(workflow),
+      { code: "ENOENT" }
+    );
   }
 );
 
 test(
-  "source worker cache hardening keeps mutable caches UID-specific",
+  "source worker cache workflow stays retired in device-only mode",
   async () => {
-    const workflow =
-      await fs.readFile(
+    await assert.rejects(
+      fs.access(
         path.join(
           repoRoot,
           ".github",
           "workflows",
           "source-worker-image.yml"
-        ),
-        "utf8"
-      );
-
-    const docker =
-      await fs.readFile(
-        path.join(
-          repoRoot,
-          "build-service",
-          "Dockerfile.source-worker"
-        ),
-        "utf8"
-      );
-
-    const smoke =
-      await fs.readFile(
-        path.join(
-          repoRoot,
-          "build-service",
-          "scripts",
-          "source-worker-runtime-smoke.sh"
-        ),
-        "utf8"
-      );
-
-    for (
-      const marker of [
-        "--tmpfs /app/user-cache/10001:",
-        "mode=0700,size=1024m"
-      ]
-    ) {
-      assert.ok(
-        workflow.includes(marker),
-        marker
-      );
-    }
-
-    for (
-      const marker of [
-        "COREPACK_HOME=/opt/appforge-corepack",
-        "COREPACK_ENABLE_NETWORK=0",
-        "APPFORGE_USER_CACHE_ROOT=/app/user-cache/10001",
-        "GRADLE_USER_HOME=/app/user-cache/10001/gradle",
-        "NPM_CONFIG_CACHE=/app/user-cache/10001/npm",
-        "PIP_CACHE_DIR=/app/user-cache/10001/pip",
-        "DOTNET_CLI_HOME=/app/user-cache/10001/dotnet",
-        "NUGET_PACKAGES=/app/user-cache/10001/nuget",
-        "PUB_CACHE=/app/user-cache/10001/pub",
-        "FLUTTER_ALREADY_LOCKED=true"
-      ]
-    ) {
-      assert.ok(
-        docker.includes(marker),
-        marker
-      );
-    }
-
-    for (
-      const marker of [
-        "SOURCE_WORKER_CACHE_HARDENING_OK",
-        "ensure_cache_dir",
-        "cache_owner",
-        "cache_mode",
-        "COREPACK_ENABLE_NETWORK",
-        'code="$?"'
-      ]
-    ) {
-      assert.ok(
-        smoke.includes(marker),
-        marker
-      );
-    }
+        )
+      ),
+      {
+        code: "ENOENT"
+      }
+    );
   }
 );
-
 
 test(
   "source worker CI contract stays outside build-service Docker context",

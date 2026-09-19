@@ -1,0 +1,314 @@
+APPFORGE UNIQUE ACTIONABLE FAILURES
+
+NODE UNIQUE FAILURES
+
+1. local project data remains account scoped
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /ProjectLibrary\.setAccountScope\(\s*context,\s*session\?\.userId/. Input:
+
+2. full admin has a visible home entry to AdminOps
+   ✔ AdMob optional interstitial and rewarded IDs do not create unresolved Kotlin references (11.049948ms)
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /YÖNETİCİ PANELİ/. Input:
+   ✔ AdMob optional interstitial and rewarded IDs do not create unresolved Kotlin references (13.471667ms)
+
+3. Android build client parses queue position metadata
+
+4. APK and EXE save to AppForgeStudio
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /APPFORGE_DOWNLOAD_FOLDER\s*=\s*\n?\s*"AppForgeStudio"/. Input:
+
+5. home copy no longer presents successful APKs only
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Başarılı Derlemeler/. Input:
+
+6. AppForge records real screen history for system back
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /APP_SCREEN_HISTORY_V1/. Input:
+
+7. Home system back only opens explicit exit confirmation
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /screen ==[\s\S]*AppScreen\.HOME[\s\S]*!showExitConfirmation/. Input:
+
+8. Builder step is restored when back returns to Builder
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /previous\.first ==[\s\S]*AppScreen\.BUILDER[\s\S]*step =[\s\S]*previous\.second/. Input:
+
+9. Successful Builds keeps its nested Home back behavior
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /BackHandler\([\s\S]*successfulApkFolderOpen\.value[\s\S]*successfulApkFolderOpen\.value =[\s\S]*false/. Input:
+
+10. Builder system back moves through wizard steps before leaving Builder
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /BUILDER_STEP_SYSTEM_BACK_V1/. Input:
+
+11. home uses one APK folder
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /successfulApkFolderOpen/. Input:
+
+12. installer keeps permission-return continuation
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /onResume\(\)[\s\S]{0,4000}installCachedApk/. Input:
+
+13. heavy workflows ignore tests/control-plane changes
+
+14. Production ignores superseded cancelled image workflows
+
+15. Production still deploys only successful image workflows
+
+16. production health survives temporary startup failures
+
+17. production workflow identifies upstream workflow
+
+18. Android routes quota exhaustion to user-initiated purchase surfaces
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /"recoveryAction"/. Input:
+
+19. V11 active StudioHomeV2 routes to the dedicated Unified Agent screen
+   ✔ V12 recovery center detects stale build and missing workspace (2.121719ms)
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /UnifiedAgentHomeEntryCard\([\s\S]*onClick = onOpenUnifiedAgent/. Input:
+   ✔ V12 recovery center detects stale build and missing workspace (5.666198ms)
+
+20. FCM token callback handles SDK deprecation without removing refresh support
+
+21. AppForge Studio and generated apps wire Firebase Cloud Messaging
+   ✔ missing Git repository is rejected before JGit build (13.650989ms)
+   ✔ missing Git repository is rejected before JGit build (16.345417ms)
+
+22. Android supports guest mode and account-aware home badge
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /"login"\s+to\s+"GİRİŞ YAP"/. Input:
+
+23. Android clients send device identity
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /X-AppForge-Device-ID/. Input:
+
+24. source worker CI builds and smokes the dedicated image
+
+25. technology matrix stays in repository CI and outside build-service-only Docker context
+
+26. source worker cache hardening keeps mutable caches UID-specific
+
+27. source queue triggers a separate Source Worker autoscale pool
+
+28. saved document URIs and source analysis survive reopening projects
+
+29. Android client rescans saved projects and classifies this build error
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /findLocalWebStartPage/. Input:
+
+30. Android consumes server quota V2
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /\/api\/projects\/quota/. Input:
+
+31. build client sends saved bearer session
+   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /SecureAccountStore/. Input:
+
+32. additional Android permissions propagate securely
+
+33. WebView Pro settings propagate through Studio and Android builds
+
+34. Studio Build API understands EXE artifacts
+
+35. Studio stores build artifacts in AppForgeStudio Downloads folder
+   AssertionError [ERR_ASSERTION]: Missing AppForge Downloads marker: "AppForgeStudio"
+   code: 'ERR_ASSERTION',
+   expected: true,
+
+36. failing tests:
+   test at build-service/tests/account_scoped_local_data_contract.test.js:33:1
+
+37. Android build client parses queue position metadata
+   test at build-service/tests/android_successful_build_artifacts_contract.test.js:107:1
+   AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+   code: 'ERR_ASSERTION',
+   expected: true,
+
+38. heavy workflows ignore tests/control-plane changes
+   test at build-service/tests/appforge_production_cancelled_image_contract.test.js:10:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/worker-image.yml'
+   code: 'ENOENT',
+
+39. Production ignores superseded cancelled image workflows
+   test at build-service/tests/appforge_production_cancelled_image_contract.test.js:40:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/production-automation.yml'
+   code: 'ENOENT',
+
+40. Production still deploys only successful image workflows
+   test at build-service/tests/appforge_production_health_resilience_contract.test.js:17:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/production-automation.yml'
+   code: 'ENOENT',
+
+41. production health survives temporary startup failures
+   test at build-service/tests/appforge_production_health_resilience_contract.test.js:53:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/scripts/railway_production.py'
+   code: 'ENOENT',
+
+42. production workflow identifies upstream workflow
+   test at build-service/tests/appforge_quota_recovery_contract.test.js:135:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/production-automation.yml'
+   code: 'ENOENT',
+
+43. FCM token callback handles SDK deprecation without removing refresh support
+   test at build-service/tests/firebase_cloud_messaging.test.js:20:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/android-app/app/src/main/java/com/appforge/studio/AppForgeFirebaseMessagingService.kt'
+   code: 'ENOENT',
+
+44. AppForge Studio and generated apps wire Firebase Cloud Messaging
+   test at build-service/tests/guest_mode_contract.test.js:12:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/android-app/app/src/main/java/com/appforge/studio/AppForgeFirebaseMessagingService.kt'
+   code: 'ENOENT',
+
+45. source worker CI builds and smokes the dedicated image
+   test at build-service/tests/source_worker_ci_contract.test.js:267:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/source-worker-image.yml'
+   code: 'ENOENT',
+
+46. technology matrix stays in repository CI and outside build-service-only Docker context
+   test at build-service/tests/source_worker_ci_contract.test.js:318:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/source-worker-image.yml'
+   code: 'ENOENT',
+
+47. source worker cache hardening keeps mutable caches UID-specific
+   test at build-service/tests/source_worker_reliability_v11.test.js:174:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/source-worker-image.yml'
+   code: 'ENOENT',
+
+48. source queue triggers a separate Source Worker autoscale pool
+   test at build-service/tests/studio_project_persistence.test.js:72:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/worker-autoscale.yml'
+   code: 'ENOENT',
+
+49. saved document URIs and source analysis survive reopening projects
+   test at build-service/tests/unknown_web_fallback.test.js:158:1
+   AssertionError [ERR_ASSERTION]: OpenDocument selections must keep persisted read access
+   code: 'ERR_ASSERTION',
+   expected: true,
+
+50. additional Android permissions propagate securely
+   test at build-service/tests/webview_pro_settings.test.js:5:1
+   AssertionError [ERR_ASSERTION]: payload microphone
+   code: 'ERR_ASSERTION',
+   expected: true,
+
+51. WebView Pro settings propagate through Studio and Android builds
+   test at build-service/tests/windows_exe_studio.test.js:23:1
+   AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+   code: 'ERR_ASSERTION',
+   expected: true,
+
+52. Studio Build API understands EXE artifacts
+   test at build-service/tests/windows_exe_studio.test.js:273:1
+   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+   code: 'ERR_ASSERTION',
+   expected: true,
+
+53. normal Android build client is device-local
+
+54. device engine has real local toolchain and APK-AAB paths
+
+55. Studio home is simplified
+
+56. Firebase Messaging is removed from Studio runtime
+
+57. retired provider configuration is absent
+
+58. failing tests:
+   test at tests/account_scoped_local_data_contract.test.js:33:1
+
+59. Android build client parses queue position metadata
+   test at tests/android_successful_build_artifacts_contract.test.js:107:1
+   AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+   code: 'ERR_ASSERTION',
+   expected: true,
+
+60. heavy workflows ignore tests/control-plane changes
+   test at tests/appforge_production_cancelled_image_contract.test.js:10:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/worker-image.yml'
+   code: 'ENOENT',
+
+61. Production ignores superseded cancelled image workflows
+   test at tests/appforge_production_cancelled_image_contract.test.js:40:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/production-automation.yml'
+   code: 'ENOENT',
+
+62. Production still deploys only successful image workflows
+   test at tests/appforge_production_health_resilience_contract.test.js:17:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/production-automation.yml'
+   code: 'ENOENT',
+
+63. production health survives temporary startup failures
+   test at tests/appforge_production_health_resilience_contract.test.js:53:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/scripts/railway_production.py'
+   code: 'ENOENT',
+
+64. production workflow identifies upstream workflow
+   test at tests/appforge_quota_recovery_contract.test.js:135:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/production-automation.yml'
+   code: 'ENOENT',
+
+65. normal Android build client is device-local
+   test at tests/device_only_cutover_contract.test.js:13:1
+   Error: ENOENT: no such file or directory, open 'android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt'
+   code: 'ENOENT',
+
+66. device engine has real local toolchain and APK-AAB paths
+   test at tests/device_only_cutover_contract.test.js:24:1
+   Error: ENOENT: no such file or directory, open 'android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt'
+   code: 'ENOENT',
+
+67. Studio home is simplified
+   test at tests/device_only_cutover_contract.test.js:33:1
+   Error: ENOENT: no such file or directory, open 'android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt'
+   code: 'ENOENT',
+
+68. Firebase Messaging is removed from Studio runtime
+   test at tests/device_only_cutover_contract.test.js:41:1
+   Error: ENOENT: no such file or directory, open 'android-app/app/build.gradle.kts'
+   code: 'ENOENT',
+
+69. retired provider configuration is absent
+   test at tests/fcm_warning_regression.test.js:11:1
+   Error: ENOENT: no such file or directory, open '.github/workflows/android-debug.yml'
+   code: 'ENOENT',
+
+70. FCM token callback handles SDK deprecation without removing refresh support
+   test at tests/firebase_cloud_messaging.test.js:20:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/android-app/app/src/main/java/com/appforge/studio/AppForgeFirebaseMessagingService.kt'
+   code: 'ENOENT',
+
+71. AppForge Studio and generated apps wire Firebase Cloud Messaging
+   test at tests/guest_mode_contract.test.js:12:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/android-app/app/src/main/java/com/appforge/studio/AppForgeFirebaseMessagingService.kt'
+   code: 'ENOENT',
+
+72. source worker CI builds and smokes the dedicated image
+   test at tests/source_worker_ci_contract.test.js:267:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/source-worker-image.yml'
+   code: 'ENOENT',
+
+73. technology matrix stays in repository CI and outside build-service-only Docker context
+   test at tests/source_worker_ci_contract.test.js:318:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/source-worker-image.yml'
+   code: 'ENOENT',
+
+74. source worker cache hardening keeps mutable caches UID-specific
+   test at tests/source_worker_reliability_v11.test.js:174:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/source-worker-image.yml'
+   code: 'ENOENT',
+
+75. source queue triggers a separate Source Worker autoscale pool
+   test at tests/studio_project_persistence.test.js:72:1
+   Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/AppForge-Studio/.github/workflows/worker-autoscale.yml'
+   code: 'ENOENT',
+
+76. saved document URIs and source analysis survive reopening projects
+   test at tests/unknown_web_fallback.test.js:158:1
+   AssertionError [ERR_ASSERTION]: OpenDocument selections must keep persisted read access
+   code: 'ERR_ASSERTION',
+   expected: true,
+
+77. additional Android permissions propagate securely
+   test at tests/webview_pro_settings.test.js:5:1
+   AssertionError [ERR_ASSERTION]: payload microphone
+   code: 'ERR_ASSERTION',
+   expected: true,
+
+78. WebView Pro settings propagate through Studio and Android builds
+   test at tests/windows_exe_studio.test.js:23:1
+   AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+   code: 'ERR_ASSERTION',
+   expected: true,
+
+79. Studio Build API understands EXE artifacts
+   test at tests/windows_exe_studio.test.js:273:1
+   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+   code: 'ERR_ASSERTION',
+   expected: true,
+
+
+ANDROID / KOTLIN ERRORS

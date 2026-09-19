@@ -15,58 +15,24 @@ const workflowUrl =
   );
 
 test(
-  "production health survives temporary startup failures",
+  "device-only cutover keeps Railway production deployment retired",
   async () => {
-    const source =
-      await readFile(
-        productionUrl,
-        "utf8"
+    for (const relative of [
+      "../../.github/workflows/production-automation.yml",
+      "../../.github/scripts/railway_production.py"
+    ]) {
+      await assert.rejects(
+        readFile(
+          new URL(
+            relative,
+            import.meta.url
+          ),
+          "utf8"
+        ),
+        {
+          code: "ENOENT"
+        }
       );
-
-    assert.match(
-      source,
-      /def wait_json_gate\(/
-    );
-
-    assert.match(
-      source,
-      /consecutive=3/
-    );
-
-    assert.match(
-      source,
-      /warmup_seconds=30/
-    );
-
-    assert.match(
-      source,
-      /timeout=180/
-    );
-
-    assert.match(
-      source,
-      /Production health gate SUCCESS/
-    );
-  }
-);
-
-test(
-  "production workflow identifies upstream workflow",
-  async () => {
-    const source =
-      await readFile(
-        workflowUrl,
-        "utf8"
-      );
-
-    assert.match(
-      source,
-      /run-name:/
-    );
-
-    assert.match(
-      source,
-      /github\.event\.workflow_run\.name/
-    );
+    }
   }
 );

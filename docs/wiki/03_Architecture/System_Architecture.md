@@ -3,26 +3,74 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-09-19
+last_verified: 2026-09-19
 confidence: high
 tags:
   - architecture
-  - system
+  - device-build
 related:
   - "[[Project_Overview]]"
   - "[[Build_And_Worker_Architecture]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt"
-  - "build-service/server.js"
-  - "build-service/src/workerRuntime.js"
-  - "build-service/docker-compose.yml"
+  - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/AndroidLinuxRuntimeManager.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxShellEngine.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/io/ProjectLibrary.kt"
 ---
 
 # System Architecture
 
-The Android client calls the Build Service for account, project, build, artifact, entitlement, and administrative operations. The Build Service stores durable state in PostgreSQL, uses Redis for coordination/caching, and uses local or S3-compatible object storage for input/output artifacts.
+AppForge Studio uses a device-first architecture.
 
-Build submission is preflighted, persisted, queued, and claimed by capability-aware workers. Worker variants handle standard, source, Windows, and Unity paths. Artifact delivery is mediated by tickets and storage keys rather than exposing raw internal paths.
+User project compilation runs inside the Android application through the
+packaged rootless Linux/PRoot runtime. Project source is not uploaded to a
+remote AppForge build Worker.
 
-The local Android app also owns device-local project files, keystore data, terminal workspaces, and local AI state. Those local concerns must not be mistaken for server-authoritative state.
+`DeviceBuildEngine` owns local build execution. The existing
+`BuildApiClient` name is temporarily retained as an Android UI compatibility
+facade, but the normal build path delegates to the device engine instead of
+calling `/api/builds`.
+
+Initial device build families are static Web, npm-based Web projects,
+Android Gradle Kotlin/Java projects, and Python/Chaquopy projects.
+
+APK and AAB outputs are stored locally. Project metadata and build history
+remain device-local through `ProjectLibrary`.
+
+GitHub remains repository/CI infrastructure. Google Play and Google Cloud
+remain AppForge Studio distribution, billing and Play-integrity
+infrastructure. They are not project-build Workers.
+
+## Clean Device Build Runtime V3
+
+Terminal Linux and project-build Linux are separate trust/lifecycle domains.
+
+The Terminal rootfs is a persistent developer workspace. Project builds use a
+versioned build-only rootfs which may be replaced when the runtime revision
+changes. Project source is mounted through the build workspace and is not
+uploaded to a remote AppForge Worker.
+
+`DeviceBuildCapabilities` is the compatibility registry for source engines and
+artifact targets. Unsupported or unvalidated engines fail explicitly.
+
+## HTTPS Control Plane Separation
+
+Project-build transport and product control-plane transport are separate
+boundaries.
+
+`DEFAULT_BUILD_SERVICE_URL` is `device://local` and is only for device-local
+project compilation through `BuildApiClient` / `DeviceBuildEngine`.
+
+Account, Admin, Pro/security and Android update-policy traffic uses the
+dedicated HTTPS control plane at `https://api.appforgecloud.com`. Those flows
+must never inherit a project's `buildServiceUrl` and must never fall back to a
+remote project-build Worker.
+
+Admin authorization is confirmed by the authenticated
+`/api/admin/system-status` response. Pro entitlement remains confirmed by
+`StudioSecurityClient` against `/api/pro/status`. Update-policy network failure
+does not block normal offline app entry; maintenance remains the only cached
+blocking state.

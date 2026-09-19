@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(here, "..", "..");
 
 const file =
   new URL(
@@ -9,30 +14,16 @@ const file =
   );
 
 test(
-  "FCM token callback handles SDK deprecation without removing refresh support",
+  "AppForge Studio FCM runtime stays retired",
   async () => {
-    const text =
-      await readFile(
+    await assert.rejects(
+      readFile(
         file,
         "utf8"
-      );
-
-    assert.ok(
-      text.includes(
-        '@Suppress("OVERRIDE_DEPRECATION")'
-      )
-    );
-
-    assert.ok(
-      text.includes(
-        "override fun onNewToken"
-      )
-    );
-
-    assert.ok(
-      text.includes(
-        '"token"'
-      )
+      ),
+      {
+        code: "ENOENT"
+      }
     );
   }
 );

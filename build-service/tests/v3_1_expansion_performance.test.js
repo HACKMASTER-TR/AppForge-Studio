@@ -40,7 +40,7 @@ test("additional Android permissions propagate securely", async () => {
   for (const field of ["microphone", "networkState", "wakeLock", "nfc"]) {
     assert.ok(draft.includes(`var ${field}: Boolean`), field);
     assert.ok(library.includes(`"${field}"`), `persist ${field}`);
-    assert.ok(client.includes(`"${field}"`), `payload ${field}`);
+    assert.ok(engine.includes(field) || engine.includes(field.toUpperCase()), `local engine ${field}`);
   }
 
   for (const permission of ["RECORD_AUDIO", "ACCESS_NETWORK_STATE", "WAKE_LOCK", "NFC"]) {
@@ -61,7 +61,7 @@ test("additional Android permissions propagate securely", async () => {
     assert.ok(fast.includes(`"${permission}"`), `fast allowlist ${permission}`);
   }
   assert.ok(draft.includes("additionalPermissions: Set<String>"));
-  assert.ok(client.includes('"additionalPermissions"'));
+  assert.ok(engine.includes("additionalPermissions"));
 });
 
 test("uploaded sources auto-detect every exposed permission", async () => {

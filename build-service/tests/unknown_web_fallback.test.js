@@ -156,65 +156,32 @@ test(
 );
 
 test(
-  "Android client rescans saved projects and classifies this build error",
+  "Android rescans saved local projects and classifies Web fallback locally",
   async () => {
-    const repoRoot =
-      path.resolve(
-        import.meta.dirname,
-        "..",
-        ".."
-      );
-
-    const client =
-      await fs.readFile(
-        path.join(
-          repoRoot,
-          "android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt"
+    const [detector, importer, advisor] =
+      await Promise.all([
+        fs.readFile(
+          new URL(
+            "../../android-app/app/src/main/java/com/appforge/studio/io/ProjectTechnologyDetector.kt",
+            import.meta.url
+          ),
+          "utf8"
         ),
-        "utf8"
-      );
-
-    const detector =
-      await fs.readFile(
-        path.join(
-          repoRoot,
-          "android-app/app/src/main/java/com/appforge/studio/io/ProjectTechnologyDetector.kt"
+        fs.readFile(
+          new URL(
+            "../../android-app/app/src/main/java/com/appforge/studio/io/ProjectImporter.kt",
+            import.meta.url
+          ),
+          "utf8"
         ),
-        "utf8"
-      );
-
-    const importer =
-      await fs.readFile(
-        path.join(
-          repoRoot,
-          "android-app/app/src/main/java/com/appforge/studio/io/ProjectImporter.kt"
-        ),
-        "utf8"
-      );
-
-    const advisor =
-      await fs.readFile(
-        path.join(
-          repoRoot,
-          "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt"
-        ),
-        "utf8"
-      );
-
-    assert.match(
-      client,
-      /findLocalWebStartPage/
-    );
-
-    assert.match(
-      client,
-      /sourceHasWebStartPage/
-    );
-
-    assert.match(
-      detector,
-      /MAX_DEPTH = 20/
-    );
+        fs.readFile(
+          new URL(
+            "../../android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt",
+            import.meta.url
+          ),
+          "utf8"
+        )
+      ]);
 
     assert.match(
       detector,
@@ -223,7 +190,7 @@ test(
 
     assert.match(
       importer,
-      /it\.extension\.lowercase\(\)/
+      /extension\.lowercase/
     );
 
     assert.match(

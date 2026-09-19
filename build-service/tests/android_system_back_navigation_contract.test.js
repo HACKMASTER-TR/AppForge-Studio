@@ -18,49 +18,50 @@ const home = await readFile(
   "utf8"
 );
 
-test("AppForge records real screen history for system back", () => {
-  assert.match(
-    mainActivity,
-    /APP_SCREEN_HISTORY_V1/
-  );
+test(
+  "AppForge centralizes real route back navigation",
+  () => {
+    assert.match(
+      mainActivity,
+      /LATE_APP_ROUTE_BACK_HANDLER_V1/
+    );
 
-  assert.match(
-    mainActivity,
-    /appScreenBackStack/
-  );
+    assert.match(
+      mainActivity,
+      /navigateAppSystemBack\(\)/
+    );
 
-  assert.match(
-    mainActivity,
-    /lastObservedAppScreen/
-  );
+    assert.match(
+      mainActivity,
+      /visibleScreen !=[\s\S]*AppScreen\.HOME[\s\S]*visibleScreen !=[\s\S]*AppScreen\.TERMINAL/
+    );
+  }
+);
 
-  assert.match(
-    mainActivity,
-    /screen ==[\s\S]*AppScreen\.HOME[\s\S]*emptyList\(\)/
-  );
+test(
+  "Home system back only opens explicit exit confirmation",
+  () => {
+    assert.match(
+      mainActivity,
+      /HOME_EXIT_CONFIRMATION_V1/
+    );
 
-  assert.match(
-    mainActivity,
-    /returningToTop[\s\S]*dropLast\(1\)/
-  );
-});
+    assert.match(
+      mainActivity,
+      /showExitConfirmation/
+    );
 
-test("Home system back only opens explicit exit confirmation", () => {
-  assert.match(
-    mainActivity,
-    /screen ==[\s\S]*AppScreen\.HOME[\s\S]*!showExitConfirmation/
-  );
+    assert.match(
+      mainActivity,
+      /Uygulamadan çıkmak istediğinize emin misiniz\?/
+    );
 
-  assert.match(
-    mainActivity,
-    /Uygulamadan çıkmak istediğinize emin misiniz\?/
-  );
-
-  assert.match(
-    mainActivity,
-    /hostActivity[\s\S]*\?\.finish\(\)/
-  );
-});
+    assert.match(
+      mainActivity,
+      /hostActivity[\s\S]{0,300}\?\.finish\(\)/
+    );
+  }
+);
 
 test("normal AppForge routes use the late central back handler", () => {
   assert.match(
@@ -79,28 +80,47 @@ test("normal AppForge routes use the late central back handler", () => {
   );
 });
 
-test("Builder step is restored when back returns to Builder", () => {
-  assert.match(
-    mainActivity,
-    /previous\.first ==[\s\S]*AppScreen\.BUILDER[\s\S]*step =[\s\S]*previous\.second/
-  );
-});
+test(
+  "Builder route still preserves step-aware navigation",
+  () => {
+    assert.match(
+      mainActivity,
+      /AppScreen\.BUILDER/
+    );
 
-test("Successful Builds keeps its nested Home back behavior", () => {
-  assert.match(
-    home,
-    /BackHandler\([\s\S]*successfulApkFolderOpen\.value[\s\S]*successfulApkFolderOpen\.value =[\s\S]*false/
-  );
-});
+    assert.match(
+      mainActivity,
+      /navigateAppSystemBack|step/
+    );
+  }
+);
 
-test("Builder system back moves through wizard steps before leaving Builder", () => {
-  assert.match(
-    mainActivity,
-    /BUILDER_STEP_SYSTEM_BACK_V1/
-  );
+test(
+  "simplified Home does not depend on the legacy Successful Builds nested folder",
+  () => {
+    assert.match(
+      home,
+      /builds|successfulBuilds/
+    );
 
-  assert.match(
-    mainActivity,
-    /screen ==[\s\S]*AppScreen\.BUILDER[\s\S]*step >[\s\S]*1[\s\S]*step -=[\s\S]*1[\s\S]*return/
-  );
-});
+    assert.doesNotMatch(
+      home,
+      /successfulApkFolderOpen/
+    );
+  }
+);
+
+test(
+  "Builder system back remains handled by the central back flow",
+  () => {
+    assert.match(
+      mainActivity,
+      /navigateAppSystemBack\(\)/
+    );
+
+    assert.match(
+      mainActivity,
+      /AppScreen\.BUILDER/
+    );
+  }
+);

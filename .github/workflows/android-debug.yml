@@ -54,23 +54,6 @@ jobs:
 
           echo "Android native toolchain verified: NDK 28.2.13676358 / CMake 3.22.1"
 
-      - name: Restore AppForge Firebase config
-        shell: bash
-        env:
-          APPFORGE_FIREBASE_GOOGLE_SERVICES_B64: ${{ secrets.APPFORGE_FIREBASE_GOOGLE_SERVICES_B64 }}
-        run: |
-          set -euo pipefail
-
-          if [ -n "$APPFORGE_FIREBASE_GOOGLE_SERVICES_B64" ]; then
-            printf '%s' "$APPFORGE_FIREBASE_GOOGLE_SERVICES_B64"               | base64 --decode               > android-app/app/google-services.json
-
-            python3 -m json.tool               android-app/app/google-services.json               >/dev/null
-
-            echo "AppForge Studio Firebase config restored."
-          else
-            echo "APPFORGE_FIREBASE_GOOGLE_SERVICES_B64 tanımlı değil; Studio FCM bu build'de pasif."
-          fi
-
       - name: Restore CI debug signing key
         shell: bash
         env:
@@ -113,7 +96,6 @@ jobs:
           APPFORGE_DEBUG_KEY_ALIAS: appforge-debug
           APPFORGE_DEBUG_KEY_PASSWORD: ${{ secrets.APPFORGE_DEBUG_STORE_PASSWORD }}
           APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
-          APPFORGE_RAILWAY_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_RAILWAY_OAUTH_CLIENT_ID }}
         run: |
           gradle \
             -p android-app \

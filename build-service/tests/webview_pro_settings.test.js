@@ -103,11 +103,25 @@ test(
       );
     }
 
-    assert.ok(
-      apiClient.includes(
-        'put("webView", JSONObject().apply'
-      )
+    assert.doesNotMatch(
+      apiClient,
+      /put\("webView", JSONObject\(\)\.apply/
     );
+
+    for (const field of [
+      "webJavaScriptEnabled",
+      "webDomStorageEnabled",
+      "webZoomEnabled",
+      "webWideViewPortEnabled",
+      "webOverviewModeEnabled",
+      "webMediaAutoplayEnabled",
+      "webMixedContentAllowed"
+    ]) {
+      assert.ok(
+        buildEngine.includes(field),
+        `DeviceBuildEngine missing ${field}`
+      );
+    }
 
     assert.ok(
       buildEngine.includes(

@@ -18,6 +18,6 @@ source_files:
 
 # Integration Index
 
-Source evidence identifies PostgreSQL, Redis, S3-compatible storage/MinIO, Google APIs and Play services, Firebase Cloud Messaging, Sentry, SMTP/Mailjet/SendGrid, GitHub, Railway, and Android billing/integrity dependencies.
+Source evidence identifies PostgreSQL, Redis, S3-compatible storage/MinIO, Google APIs and Play services, Firebase Cloud Messaging, Sentry, SMTP/Mailjet/SendGrid, GitHub, and Android billing/integrity dependencies.
 
 Integration configuration and connection health are intentionally not inferred from dependency declarations. Use source/configuration to understand the contract and authenticated live checks to determine current external status.

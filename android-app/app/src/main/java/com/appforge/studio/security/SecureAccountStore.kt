@@ -25,13 +25,6 @@ data class ExternalServiceConnection(
         System.currentTimeMillis()
 )
 
-data class PendingExternalAuthorization(
-    val provider: String,
-    val state: String,
-    val codeVerifier: String,
-    val redirectUri: String,
-    val expiresAt: Long
-)
 
 object SecureAccountStore {
 
@@ -538,183 +531,6 @@ object SecureAccountStore {
             .apply()
     }
 
-    fun savePendingExternalAuthorization(
-        context: Context,
-        authorization: PendingExternalAuthorization
-    ) {
-        val provider =
-            normalizeProvider(
-                authorization.provider
-            )
-
-        require(
-            provider == "railway"
-        ) {
-            "Desteklenmeyen OAuth dönüş sağlayıcısı."
-        }
-
-        validatePendingAuthorization(
-            authorization
-        )
-
-        val json =
-            JSONObject().apply {
-                put(
-                    "provider",
-                    provider
-                )
-                put(
-                    "state",
-                    authorization.state
-                )
-                put(
-                    "codeVerifier",
-                    authorization.codeVerifier
-                )
-                put(
-                    "redirectUri",
-                    authorization.redirectUri
-                )
-                put(
-                    "expiresAt",
-                    authorization.expiresAt
-                )
-            }
-
-        val scope =
-            accountScope(context)
-
-        writeEncrypted(
-            context = context,
-            dataKey =
-                scopedKey(
-                    scope,
-                    pendingDataKey(
-                        provider
-                    )
-                ),
-            ivKey =
-                scopedKey(
-                    scope,
-                    pendingIvKey(
-                        provider
-                    )
-                ),
-            plaintext =
-                json.toString()
-        )
-    }
-
-    fun loadPendingExternalAuthorization(
-        context: Context,
-        provider: String
-    ): PendingExternalAuthorization? {
-        val safeProvider =
-            normalizeProvider(provider)
-
-        val scope =
-            accountScope(context)
-
-        val raw =
-            readEncrypted(
-                context = context,
-                dataKey =
-                    scopedKey(
-                        scope,
-                        pendingDataKey(
-                            safeProvider
-                        )
-                    ),
-                ivKey =
-                    scopedKey(
-                        scope,
-                        pendingIvKey(
-                            safeProvider
-                        )
-                    )
-            ) ?: return null
-
-        return runCatching {
-            val json =
-                JSONObject(raw)
-
-            require(
-                json.getString(
-                    "provider"
-                ) ==
-                    safeProvider
-            ) {
-                "OAuth sağlayıcısı eşleşmiyor."
-            }
-
-            PendingExternalAuthorization(
-                provider =
-                    safeProvider,
-
-                state =
-                    json.getString(
-                        "state"
-                    ),
-
-                codeVerifier =
-                    json.getString(
-                        "codeVerifier"
-                    ),
-
-                redirectUri =
-                    json.getString(
-                        "redirectUri"
-                    ),
-
-                expiresAt =
-                    json.getLong(
-                        "expiresAt"
-                    )
-            ).also {
-                validatePendingAuthorization(
-                    it
-                )
-            }
-        }.getOrElse {
-            clearPendingExternalAuthorization(
-                context,
-                safeProvider
-            )
-
-            null
-        }
-    }
-
-    fun clearPendingExternalAuthorization(
-        context: Context,
-        provider: String
-    ) {
-        val safeProvider =
-            normalizeProvider(provider)
-
-        val scope =
-            accountScope(context)
-
-        prefs(context)
-            .edit()
-            .remove(
-                scopedKey(
-                    scope,
-                    pendingDataKey(
-                        safeProvider
-                    )
-                )
-            )
-            .remove(
-                scopedKey(
-                    scope,
-                    pendingIvKey(
-                        safeProvider
-                    )
-                )
-            )
-            .apply()
-    }
 
     fun clearAll(
         context: Context
@@ -786,7 +602,7 @@ object SecureAccountStore {
         "$ACCOUNT_SCOPE_PREFIX${scope}_$baseKey"
 
     /*
-     * v1 sürümünde build API, GitHub ve Railway bilgileri
+     * v1 sürümünde build API, GitHub bilgileri
      * global preference anahtarlarında tutuluyordu.
      *
      * Güncelleme sonrası mevcut oturum ilk kez okunurken
@@ -819,20 +635,6 @@ object SecureAccountStore {
             ) to
                 externalIvKey(
                     "github"
-                ),
-
-            externalDataKey(
-                "railway"
-            ) to
-                externalIvKey(
-                    "railway"
-                ),
-
-            pendingDataKey(
-                "railway"
-            ) to
-                pendingIvKey(
-                    "railway"
                 )
         ).forEach {
             pair ->
@@ -1060,8 +862,7 @@ object SecureAccountStore {
         require(
             normalized in
                 setOf(
-                    "github",
-                    "railway"
+                    "github"
                 )
         ) {
             "Desteklenmeyen bağlantı sağlayıcısı."
@@ -1080,46 +881,6 @@ object SecureAccountStore {
     ) =
         "external_${provider}_iv"
 
-    private fun pendingDataKey(
-        provider: String
-    ) =
-        "pending_${provider}_data"
-
-    private fun pendingIvKey(
-        provider: String
-    ) =
-        "pending_${provider}_iv"
-
-    private fun validatePendingAuthorization(
-        authorization: PendingExternalAuthorization
-    ) {
-        require(
-            authorization.provider == "railway" &&
-                authorization.redirectUri ==
-                "appforge-studio://auth/railway" &&
-                authorization.state.length in 32..256 &&
-                authorization.codeVerifier.length in 43..128 &&
-                authorization.state.all {
-                    it.isLetterOrDigit() ||
-                        it == '-' ||
-                        it == '_'
-                } &&
-                authorization.codeVerifier.all {
-                    it.isLetterOrDigit() ||
-                        it == '-' ||
-                        it == '_' ||
-                        it == '.' ||
-                        it == '~'
-                } &&
-                authorization.expiresAt >=
-                System.currentTimeMillis() &&
-                authorization.expiresAt <=
-                System.currentTimeMillis() +
-                    MAX_PENDING_AUTH_LIFETIME_MS
-        ) {
-            "Geçersiz OAuth güvenlik durumu."
-        }
-    }
 
     private fun validateToken(
         value: String,
@@ -1198,6 +959,4 @@ object SecureAccountStore {
     private const val MAX_EXTERNAL_TOKEN_LENGTH =
         32 * 1_024
 
-    private const val MAX_PENDING_AUTH_LIFETIME_MS =
-        15 * 60 * 1_000L
 }

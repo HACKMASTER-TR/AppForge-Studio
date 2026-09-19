@@ -51,7 +51,7 @@ test(
 );
 
 test(
-  "Stage 11J scopes API GitHub Railway and pending OAuth storage",
+  "Stage 11J scopes API and GitHub secure storage",
   async () => {
     const source =
       await readFile(secureUrl, "utf8");
@@ -70,16 +70,6 @@ test(
       source,
       /scopedKey\s*\(\s*scope,\s*externalIvKey/
     );
-
-    assert.match(
-      source,
-      /scopedKey\s*\(\s*scope,\s*pendingDataKey/
-    );
-
-    assert.match(
-      source,
-      /scopedKey\s*\(\s*scope,\s*pendingIvKey/
-    );
   }
 );
 
@@ -97,21 +87,6 @@ test(
     assert.match(
       source,
       /migrateLegacyEncryptedPair/
-    );
-
-    assert.match(
-      source,
-      /externalDataKey\s*\(\s*"github"/
-    );
-
-    assert.match(
-      source,
-      /externalDataKey\s*\(\s*"railway"/
-    );
-
-    assert.match(
-      source,
-      /pendingDataKey\s*\(\s*"railway"/
     );
 
     assert.match(

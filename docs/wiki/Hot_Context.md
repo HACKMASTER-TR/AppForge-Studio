@@ -3,46 +3,68 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-16
-last_verified: 2026-09-16
+updated: 2026-09-19
+last_verified: 2026-09-19
 confidence: high
 tags:
   - hot-context
+  - device-build
+  - runtime-v3
 related:
   - "[[Index]]"
-source_files: []
+  - "[[Device_Build_Runtime_V3]]"
+source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+  - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
+  - "build-service/tests/device_build_runtime_v3_contract.test.js"
+  - "build-service/tests/device_build_capability_matrix_contract.test.js"
 ---
 
 # Hot Context
 
 ## Current Focus
 
-- Complete the source-verified wiki coverage registry and subsystem maps.
-- Keep the wiki independent from build, release, and pre-push gates.
+- Finish Clean Device Build Runtime V3.
+- Validate APK and AAB on a real Android device.
+- Keep Terminal Linux physically separate from project-build Linux.
+- Studio Home uses a richer modern dashboard; the rejected over-minimal Home V2 layout must not return.
+- App-wide UI V2 uses one navy/cyan/violet design language; runtime/toolchain internals stay out of primary user copy.
+- The temporary five-build device stress UI is retired; normal single-project device build remains authoritative.
 
 ## Must Know
 
-- Android Kotlin/Compose and the Node/Express build service are separate major surfaces.
-- Source, configuration, migrations, tests, CI, and runtime evidence override this wiki.
-- The application’s former repository-snapshot feature was removed with the legacy brain; local AI and Unified Agent features remain separate.
+- Normal user project builds are device-local.
+- Project builds use a versioned disposable build rootfs, not the persistent Terminal rootfs.
+- Railway, Render and Supabase are not AppForge project-build infrastructure.
+- GitHub remains repository/CI infrastructure.
+- Google Play / Google Cloud remain distribution and billing infrastructure.
+- Source, tests, CI and observed runtime behavior override wiki claims.
 
 ## Recent Important Changes
 
-- BUG-7 device acceptance passed on 2026-09-16; the active runtime blocker was cleared after the required Terminal regression checks passed.
-- AppForge Terminal is owner-only at the Android UI and route boundary. Free and Pro non-owner accounts do not receive a Terminal entry or Terminal navigation.
-
-- Legacy `.secondbrain` files and its command, snapshot, UI, sync, and hard-gate links were removed on 2026-09-15.
-- The old `docs` tree remains deleted; no legacy documentation is a source for this wiki.
+- `DeviceBuildRuntimeV3` owns the clean build-only Linux environment.
+- Toolchain revision moved to V3.
+- `DeviceBuildCapabilities` records engine and output readiness.
+- Current proven device engines are static Web, Node Web, Android Gradle Kotlin/Java and Python/Chaquopy.
+- APK and AAB are current local outputs.
+- Windows Portable EXE is a first-class target but remains gated until its local packager passes Windows acceptance.
+- APK ↔ EXE conversion remains a product requirement.
+- Flutter/Dart, React Native, Expo, Android NDK/C++, .NET Android and MAUI are explicit future capability families.
+- Unity remains external-tool-required until a supported build-host path exists.
 
 ## Current Risks / Open Questions
 
-- The local backend suite is not green: dependency provisioning and one keystore assertion need separate resolution.
-- Existing tracked APK and backup files remain technical-debt candidates; do not remove them without approval.
+- Real-device APK/AAB acceptance is still required.
+- Windows EXE must not be marked READY before real Windows validation.
+- Future engines must not silently fall back to remote Workers.
+- Toolchains must remain pinned and reproducible.
 
 ## Read Next
 
-- [[Current_Status]]
-- [[Open_Questions]]
+- [[Device_Build_Runtime_V3]]
 - [[System_Architecture]]
-- [[Bug_Index]]
-- [[Agent_Rules]]
+- [[Build_And_Worker_Architecture]]
+- [[Android_App_Map]]
+- [[Current_Status]]

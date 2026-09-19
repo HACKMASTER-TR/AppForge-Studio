@@ -52,53 +52,53 @@
     <li>Kullanıcının seçtiği uygulama ikonu ve yapılandırma dosyaları.</li>
     <li>Build işlemlerine ait durum, günlük ve çıktı bilgileri.</li>
     <li>Google Play satın alma ve abonelik durum bilgileri.</li>
-    <li>Kullanıcı isteğiyle bağlanan GitHub veya Railway hesabının görünen kimliği, verilen kapsamlar ve erişim/yenileme tokenları.</li>
+    <li>Kullanıcı isteğiyle bağlanan GitHub hesabının görünen kimliği, verilen kapsamlar ve erişim tokenı.</li>
   </ul>
 
   <h2>2. Yerel olarak saklanan veriler</h2>
   <p>
-    Hesap oturumu, Build API anahtarı ve isteğe bağlı GitHub/Railway
-    bağlantı tokenları ile kısa ömürlü Railway PKCE doğrulayıcısı gibi
-    hassas uygulama verileri,
-    desteklenen Android cihazlarda Android Keystore kullanılarak şifreli
-    biçimde cihazda saklanır.
+    Hesap oturumu, isteğe bağlı GitHub bağlantı tokenı ve
+    diğer hassas yerel uygulama verileri desteklenen Android
+    cihazlarda Android Keystore kullanılarak şifreli biçimde
+    cihazda saklanır.
   </p>
 
   <p>
-    Yerel projeler, indirilen yerel yapay zeka modeli ve kullanıcı tarafından
-    içe aktarılan bazı dosyalar da ilgili özellik kullanıldığında cihazda
-    saklanabilir.
+    Yerel projeler, build çıktıları, indirilen yerel yapay zeka
+    modeli ve kullanıcı tarafından içe aktarılan dosyalar ilgili
+    özellik kullanıldığında cihazda saklanabilir.
   </p>
 
-  <h2>3. Bulut build işlemleri</h2>
+  <h2>3. Cihazda build işlemleri</h2>
   <p>
-    Kullanıcı bir bulut build işlemini açıkça başlattığında, build işlemini
-    gerçekleştirebilmek için proje dosyaları ve gerekli proje yapılandırması
-    AppForge build servisine gönderilebilir.
+    AppForge Studio'nun normal build yolu cihaz üzerinde çalışır.
+    Desteklenen proje kaynakları uzak bir build worker'ına gönderilmez.
+    APK ve AAB çıktıları cihazdaki yerel build altyapısı tarafından
+    oluşturulur.
   </p>
 
   <p>
-    Kullanıcı özel imzalama seçeneğini kullanırsa seçtiği keystore dosyası,
-    anahtar takma adı ve build için gerekli imzalama bilgileri build servisine
-    aktarılabilir. AppForge Studio, özel keystore ile yapılan bu işlemlerde
-    HTTPS bağlantısını zorunlu tutar.
+    Kullanıcı özel imzalama seçeneğini kullanırsa keystore ve gerekli
+    imzalama bilgileri cihazdaki yerel build işlemi için kullanılır.
   </p>
 
-  <h2>4. GitHub ve Railway bağlantıları</h2>
+  <h2>4. GitHub bağlantısı</h2>
   <p>
-    Kullanıcı Bağlantılar ekranından açıkça yetki verdiğinde AppForge Studio,
-    GitHub veya Railway'in kendi HTTPS yetkilendirme ve API uç noktalarıyla
-    iletişim kurabilir. Sağlayıcı parolası AppForge Studio tarafından alınmaz.
-    Railway mobil yetkilendirmesi Authorization Code + PKCE kullanır ve
-    uygulama paketine client secret eklenmez.
-    Erişim tokenları bağlantıyı doğrulamak ve kullanıcının başlattığı Git,
-    hesap veya proje işlemlerini gerçekleştirmek için ilgili sağlayıcıya
-    gönderilir; bu bağlantı özelliği tokenı AppForge Build Service'e göndermez.
+    Kullanıcı Bağlantılar ekranından açıkça yetki verdiğinde
+    AppForge Studio, GitHub'ın resmi HTTPS yetkilendirme ve API
+    uç noktalarıyla iletişim kurabilir. GitHub parolası AppForge
+    Studio tarafından alınmaz ve OAuth client secret uygulama
+    paketine eklenmez.
   </p>
   <p>
-    Kullanıcı bağlantıyı uygulamadan kaldırabilir. Bu işlem cihazdaki şifreli
-    kaydı siler; sağlayıcı tarafındaki uygulama izni GitHub veya Railway hesap
-    ayarlarından ayrıca iptal edilebilir.
+    GitHub erişim tokenı Android Keystore ile korunan şifreli
+    hesap kasasında tutulur ve yalnız kullanıcının başlattığı
+    Git/GitHub işlemleri için kullanılır.
+  </p>
+  <p>
+    Kullanıcı GitHub bağlantısını uygulamadan kaldırabilir.
+    Bu işlem cihazdaki şifreli kaydı siler; GitHub tarafındaki
+    uygulama izni GitHub hesap ayarlarından ayrıca iptal edilebilir.
   </p>
 
   <h2>5. Google Play hizmetleri</h2>
@@ -108,7 +108,6 @@
   <ul>
     <li>Google Play Billing — uygulama içi satın alma ve abonelikler.</li>
     <li>Google Play Integrity — uygulama ve cihaz bütünlüğü kontrolleri.</li>
-    <li>Firebase Cloud Messaging — bildirim teslimi için cihaz/uygulama bildirim tokenı ve ilgili teknik tanımlayıcılar Google Firebase altyapısı tarafından işlenebilir.</li>
     <li>Google Play dağıtım ve güncelleme altyapısı.</li>
   </ul>
 
@@ -142,22 +141,22 @@
 
   <h2>8. Veri saklama</h2>
   <p>
-    Cihazda saklanan veriler kullanıcı tarafından silinene, uygulama verileri
-    temizlenene veya uygulama kaldırılana kadar cihazda kalabilir.
+    Cihazda saklanan projeler, build çıktıları, bağlantı verileri
+    ve diğer yerel veriler kullanıcı tarafından silinene,
+    uygulama verileri temizlenene veya uygulama kaldırılana kadar
+    cihazda kalabilir.
   </p>
 
   <p>
-    Bulut build işlemleriyle ilişkili dosyalar, build çıktıları ve teknik
-    kayıtlar hizmetin çalışması ve güvenliği için gerekli süre boyunca
-    saklanabilir ve hizmet yapılandırmasına göre silinebilir veya süresi
-    dolabilir.
+    Hesap ve Google Play işlemleriyle ilişkili kayıtların saklama
+    süresi ilgili hizmetin işlevi ve yasal gerekliliklere göre
+    değişebilir.
   </p>
 
   <h2>9. Veri güvenliği</h2>
   <p>
     AppForge Studio hassas yerel hesap bilgilerinin korunması için Android
-    Keystore tabanlı şifreleme kullanır. Ağ üzerinden hassas özel imzalama
-    işlemlerinde HTTPS bağlantısı zorunludur.
+    Keystore tabanlı şifreleme kullanır. Özel imzalama bilgileri cihazdaki yerel build akışında kullanılır.
   </p>
 
   <h2>10. Kullanıcı kontrolü</h2>

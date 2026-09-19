@@ -706,7 +706,7 @@ internal fun TerminalUltimatePanel(
                         title =
                             "Deployment Bağlantıları",
                         detail =
-                            "GitHub ve Railway OAuth bağlantılarını aç. Vercel, Cloudflare, Firebase, Supabase ve Render sağlayıcı adaptörleri sonraki aşamalarda aynı katmana eklenecek.",
+                            "GitHub hesabını güvenli OAuth bağlantısıyla aç.",
                         button =
                             "Bağlantıları Aç",
                         onClick =

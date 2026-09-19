@@ -77,7 +77,7 @@ fun AppForgeMotionBackground(
                 .fillMaxSize()
                 .background(
                     Color(
-                        0xFF060810
+                        0xFF050B18
                     )
                 )
     ) {
@@ -132,7 +132,7 @@ fun AppForgeMotionBackground(
                         colors =
                             listOf(
                                 Color(
-                                    0x553400FF
+                                    0x443D2DFF
                                 ),
                                 Color.Transparent
                             ),
@@ -159,7 +159,7 @@ fun AppForgeMotionBackground(
                         colors =
                             listOf(
                                 Color(
-                                    0x5533E6D1
+                                    0x3343D7FF
                                 ),
                                 Color.Transparent
                             ),

@@ -234,20 +234,20 @@ object AppForgeBuildErrorAdvisor {
                     "connect timed out",
                     "sockettimeoutexception"
                 ),
-                reason = "Build Worker veya Gradle dış depolara erişirken geçici ağ/DNS problemi yaşadı.",
-                solution = "Bağlantı düzeldikten sonra aynı ayarlarla tekrar derle. Sorun sürekli olursa Worker/Railway ağ durumunu ve DNS erişimini kontrol et.",
+                reason = "Gradle veya cihazdaki build araçları dış depolara erişirken geçici ağ/DNS problemi yaşadı.",
+                solution = "Bağlantı düzeldikten sonra aynı ayarlarla tekrar derle. Sorun sürekli olursa cihazın internet, DNS veya proxy ayarlarını kontrol et.",
                 confidence = 98
             ),
             Rule(
                 category = "Depolama",
-                title = "Build Worker disk alanı yetersiz",
+                title = "Cihaz build alanı yetersiz",
                 needles = listOf(
                     "no space left on device",
                     "disk quota exceeded",
                     "enospc"
                 ),
-                reason = "Worker veya derleme ortamında geçici dosyalar için yeterli boş alan kalmadı.",
-                solution = "Worker cache/artifact temizliği yap veya disk alanını artır. Sonra build'i tekrar başlat.",
+                reason = "Cihazdaki AppForge build çalışma alanında geçici dosyalar için yeterli boş alan kalmadı.",
+                solution = "AppForge cihaz build önbelleğini temizle veya cihazda boş alan aç. Sonra build'i tekrar başlat.",
                 confidence = 99
             ),
             Rule(
@@ -260,7 +260,7 @@ object AppForgeBuildErrorAdvisor {
                     "gc overhead limit exceeded"
                 ),
                 reason = "Gradle, Kotlin veya Android araçları derleme sırasında kullanılabilir JVM belleğini tüketti.",
-                solution = "Worker belleğini artır, büyük kaynakları küçült ve gereksiz bağımlılıkları azalt. Gerekirse Gradle JVM heap değerini yükselt."
+                solution = "Cihazdaki kullanılabilir belleği artır, büyük kaynakları küçült ve gereksiz bağımlılıkları azalt. Gerekirse yerel Gradle JVM heap değerini ayarla."
             ),
             Rule(
                 category = "SDK ayarı",
@@ -275,15 +275,15 @@ object AppForgeBuildErrorAdvisor {
                 confidence = 99
             ),
             Rule(
-                category = "Worker toolchain",
-                title = "Source Worker toolchain desteklenmiyor",
+                category = "Cihaz toolchain",
+                title = "Cihaz toolchain desteği eksik",
                 needles = listOf(
                     "source_toolchain_unsupported",
                     "production source worker registry",
                     "toolchain preflight"
                 ),
-                reason = "Projenin istediği Android/Gradle/NDK/CMake/JDK sürüm kombinasyonu production Source Worker registry tarafından karşılanmıyor.",
-                solution = "Bu kullanıcı kodu hatası değildir. Eksik sürümü Source Worker registry/image içine ekle veya registry tarafından desteklenen proje toolchain sürümünü kullan.",
+                reason = "Projenin istediği Android/Gradle/NDK/CMake/JDK sürüm kombinasyonu cihazdaki AppForge toolchain tarafından karşılanmıyor.",
+                solution = "Bu kullanıcı kodu hatası olmayabilir. Eksik sürümü cihazdaki AppForge toolchain'e ekle veya cihaz motorunun desteklediği proje toolchain sürümünü kullan.",
                 confidence = 100
             ),
             Rule(
@@ -297,7 +297,7 @@ object AppForgeBuildErrorAdvisor {
                     "failed to install the following android sdk packages",
                 ),
                 reason = "Derleme ortamında gereken Android SDK platformu, Build Tools veya lisans kabulü eksik.",
-                solution = "Worker imajında projenin compileSdk/targetSdk gereksinimine uygun Android SDK paketlerini kur ve lisansları kabul et."
+                solution = "Cihazdaki AppForge toolchain'de projenin compileSdk/targetSdk gereksinimine uygun Android SDK paketlerini kur ve lisansları kabul et."
             ),
             Rule(
                 category = "Kotlin",
@@ -336,7 +336,7 @@ object AppForgeBuildErrorAdvisor {
                     "requires java runtime",
                 ),
                 reason = "JDK sürümü ile Gradle/Android Gradle Plugin veya kaynak kod hedefi uyuşmuyor.",
-                solution = "AppForge Worker'ın kullandığı JDK sürümünü AGP/Gradle gereksinimiyle eşleştir. Gerekirse toolchain/sourceCompatibility ayarını düzelt."
+                solution = "Cihazdaki AppForge JDK sürümünü AGP/Gradle gereksinimiyle eşleştir. Gerekirse toolchain/sourceCompatibility ayarını düzelt."
             ),
             Rule(
                 category = "Duplicate",
@@ -572,7 +572,7 @@ object AppForgeBuildErrorAdvisor {
             reason =
                 "Logda bilinen AppForge hata kalıplarından net bir eşleşme bulunamadı.",
             solution =
-                "Canlı logdaki ilk ERROR/Exception satırını kontrol et. Aynı hatayı tekrar alırsan bu satırı Yerel AI'ya sorabilir veya Build Service/Worker logunu inceleyebilirsin.",
+                "Aşağıdaki Cihaz Build Logları bölümündeki ilk ERROR/Exception satırını kontrol et. Aynı hatayı tekrar alırsan bu satırı Yerel AI'ya sorabilirsin.",
             confidence =
                 45,
             evidence =

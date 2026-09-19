@@ -89,6 +89,7 @@ import com.appforge.studio.io.PwaInspector
 import com.appforge.studio.io.SavedBuild
 import com.appforge.studio.io.SavedProject
 import com.appforge.studio.io.ZipUtils
+import com.appforge.studio.model.DEFAULT_CONTROL_PLANE_URL
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
@@ -148,14 +149,6 @@ class MainActivity : ComponentActivity() {
     var accountActionSequence by mutableIntStateOf(0)
         private set
 
-    var externalAuthorizationUri by
-        mutableStateOf<Uri?>(null)
-        private set
-
-    var externalAuthorizationSequence by
-        mutableIntStateOf(0)
-        private set
-
     private fun captureAccountAction(
         sourceIntent: Intent?
     ) {
@@ -173,19 +166,11 @@ class MainActivity : ComponentActivity() {
                 ignoreCase = true
             )
         ) {
-            if (data.path == "/railway") {
-                externalAuthorizationUri =
-                    data
+            accountActionUri =
+                data
 
-                externalAuthorizationSequence +=
-                    1
-            } else {
-                accountActionUri =
-                    data
-
-                accountActionSequence +=
-                    1
-            }
+            accountActionSequence +=
+                1
         }
     }
 
@@ -193,12 +178,6 @@ class MainActivity : ComponentActivity() {
         accountActionUri =
             null
     }
-
-    fun consumeExternalAuthorization() {
-        externalAuthorizationUri =
-            null
-    }
-
 
     override fun onCreate(
         savedInstanceState: Bundle?
@@ -665,13 +644,6 @@ private suspend fun <T> retryInitialBuildRequest(
 
 private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
-private data class ParallelBuildTestItem(
-    val slot: Int,
-    val buildId: String? = null,
-    val status: String = "Bekliyor",
-    val progress: Int = 0
-)
-
 @Composable
 private fun AppForgeApp() {
     val context = LocalContext.current
@@ -871,24 +843,6 @@ private fun AppForgeApp() {
         }
     }
 
-    LaunchedEffect(
-        hostActivity?.externalAuthorizationSequence,
-        terminalOwner
-    ) {
-        if (
-            hostActivity?.externalAuthorizationUri !=
-                null
-        ) {
-            if (terminalOwner) {
-                screen =
-                    AppScreen.TERMINAL
-            } else {
-                hostActivity
-                    .consumeExternalAuthorization()
-            }
-        }
-    }
-
     /*
      * Defense in depth:
      * restored navigation state or an internal caller must never
@@ -905,9 +859,6 @@ private fun AppForgeApp() {
         ) {
             screen =
                 AppScreen.HOME
-
-            hostActivity
-                ?.consumeExternalAuthorization()
         }
     }
 
@@ -1684,25 +1635,6 @@ private fun AppForgeApp() {
             mutableStateOf(false)
         }
 
-    val fiveParallelBuildTesterEmails =
-        setOf(
-            "heyomert@gmail.com"
-        )
-
-    val isFiveParallelBuildTester =
-        OwnerAccessPolicy
-            .isOwnerEmail(
-                session?.email
-            ) ||
-            session
-                ?.email
-                ?.trim()
-                ?.lowercase()
-                ?.let { email ->
-                    email in
-                        fiveParallelBuildTesterEmails
-                } == true
-
     val isAdminOpsAccount =
         OwnerAccessPolicy
             .isActiveOwner(
@@ -1710,47 +1642,19 @@ private fun AppForgeApp() {
                 session?.email
             )
 
-    var fiveParallelBuildRunning by
-        remember {
-            mutableStateOf(false)
-        }
-
-    var fiveParallelBuildItems by
-        remember {
-            mutableStateOf(
-                (1..5).map {
-                    slot ->
-                    ParallelBuildTestItem(
-                        slot = slot
-                    )
-                }
-            )
-        }
-
-    fun updateFiveParallelBuildSlot(
-        slot: Int,
-        update: (ParallelBuildTestItem) -> ParallelBuildTestItem
-    ) {
-        fiveParallelBuildItems =
-            fiveParallelBuildItems.map {
-                item ->
-                if (
-                    item.slot ==
-                    slot
-                ) {
-                    update(item)
-                } else {
-                    item
-                }
-            }
-    }
-
     val conversionApkPicker =
         rememberLauncherForActivityResult(
             contract =
                 ActivityResultContracts.OpenDocument()
         ) {
             uri: Uri? ->
+            if (uri != null) {
+                persistReadUriPermission(
+                    context,
+                    uri
+                )
+            }
+
 
             if (uri != null) {
                 conversionApkUri =
@@ -1771,6 +1675,13 @@ private fun AppForgeApp() {
                 ActivityResultContracts.OpenDocument()
         ) {
             uri: Uri? ->
+            if (uri != null) {
+                persistReadUriPermission(
+                    context,
+                    uri
+                )
+            }
+
 
             if (uri != null) {
                 conversionExeUri =
@@ -2065,6 +1976,13 @@ private fun AppForgeApp() {
     val keystorePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
+            if (uri != null) {
+                persistReadUriPermission(
+                    context,
+                    uri
+                )
+            }
+
         if (uri != null) {
             persistReadUriPermission(
                 context,
@@ -2081,6 +1999,13 @@ private fun AppForgeApp() {
     val iconPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
+            if (uri != null) {
+                persistReadUriPermission(
+                    context,
+                    uri
+                )
+            }
+
         if (uri != null) {
             persistReadUriPermission(
                 context,
@@ -2125,6 +2050,13 @@ private fun AppForgeApp() {
     val firebasePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
+            if (uri != null) {
+                persistReadUriPermission(
+                    context,
+                    uri
+                )
+            }
+
         if (uri != null) {
             persistReadUriPermission(
                 context,
@@ -2977,8 +2909,7 @@ private fun AppForgeApp() {
     // Uygulama açıldığında veya hesap değiştiğinde
     // Pro yetkisini sunucudan otomatik yenile.
     LaunchedEffect(
-        session?.token,
-        serverUrl
+        session?.token
     ) {
         val current =
             session
@@ -3005,7 +2936,7 @@ private fun AppForgeApp() {
                         context =
                             context,
                         baseUrl =
-                            serverUrl,
+                            DEFAULT_CONTROL_PLANE_URL,
                         accessToken =
                             current.token
                     ).proStatus(
@@ -3039,17 +2970,6 @@ private fun AppForgeApp() {
 
     val startBuildWithDraft: (ProjectDraft) -> Unit =
         buildStart@{ buildDraft ->
-
-        if (session == null) {
-            status =
-                "Production derlemesi için kayıt ol veya giriş yap."
-
-            openWorkspaceScreen(
-                AppScreen.ACCOUNT
-            )
-
-            return@buildStart
-        }
 
         if (
             buildBusy
@@ -3552,413 +3472,6 @@ private fun AppForgeApp() {
         }
     }
 
-    val startFiveParallelBuildTest: (ProjectDraft) -> Unit =
-        parallelTest@{
-            testDraft ->
-
-            if (
-                !isAdminOpsAccount
-            ) {
-                status =
-                    "Bu test hesabın için yetkili değil."
-
-                return@parallelTest
-            }
-
-            if (
-                session ==
-                null
-            ) {
-                status =
-                    "5 paralel test için giriş yap."
-
-                return@parallelTest
-            }
-
-            if (
-                fiveParallelBuildRunning ||
-                buildBusy
-            ) {
-                status =
-                    "Devam eden build/test tamamlanmalı."
-
-                return@parallelTest
-            }
-
-            fiveParallelBuildRunning =
-                true
-
-            fiveParallelBuildItems =
-                (1..5).map {
-                    slot ->
-                    ParallelBuildTestItem(
-                        slot = slot,
-                        status =
-                            if (slot <= 3) {
-                                "Hazırlanıyor"
-                            } else {
-                                "Kuyrukta"
-                            }
-                    )
-                }
-
-            status =
-                "5 paralel build testi hazırlanıyor..."
-
-            /*
-             * Kullanıcı uygulamayı arka plana atarsa
-             * onStop -> BuildProgressService.startPending()
-             * bu batch'i foreground service'e aktarır.
-             */
-            BuildProgressService.trackBatch(
-                context = context,
-                serverUrl = serverUrl,
-                apiKey = apiKey,
-                totalBuilds = 5
-            )
-
-            scope.launch {
-                try {
-                    validateDraft(
-                        testDraft,
-                        serverUrl
-                    )
-
-                    val zip =
-                        withContext(
-                            Dispatchers.IO
-                        ) {
-                            if (
-                                testDraft.sourceMode ==
-                                SourceMode.LOCAL
-                            ) {
-                                val sourceDir =
-                                    testDraft
-                                        .importedFolder
-                                        ?.let(::File)
-                                        ?: error(
-                                            "Önce HTML/ZIP kaynağı seç."
-                                        )
-
-                                ZipUtils
-                                    .cachedZipDirectory(
-                                        sourceDir =
-                                            sourceDir,
-                                        cacheDir =
-                                            File(
-                                                context.cacheDir,
-                                                "build-upload-cache"
-                                            )
-                                    )
-                                    .file
-                            } else {
-                                null
-                            }
-                        }
-
-                    val client =
-                        BuildApiClient(
-                            context = context,
-                            baseUrl = serverUrl,
-                            apiKey = apiKey
-                        )
-
-                    val batchId =
-                        System.currentTimeMillis()
-
-                    val parallelGate =
-                        kotlinx.coroutines.sync.Semaphore(
-                            permits = 3
-                        )
-
-                    repeat(5) {
-                        index ->
-
-                        val slot =
-                            index + 1
-
-                        scope.launch {
-                            parallelGate.acquire()
-
-                            try {
-                                updateFiveParallelBuildSlot(
-                                    slot
-                                ) {
-                                    it.copy(
-                                        status =
-                                            "Gönderiliyor"
-                                    )
-                                }
-
-                                /*
-                                 * Her slotun key'i farklıdır.
-                                 * Retry sırasında aynı slot kendi
-                                 * key'ini korur.
-                                 */
-                                val idempotencyKey =
-                                    "android-parallel5-" +
-                                        "${testDraft.packageName}-" +
-                                        "$batchId-" +
-                                        "$slot-" +
-                                        java.util.UUID
-                                            .randomUUID()
-                                            .toString()
-
-                                val created =
-                                    retryInitialBuildRequest(
-                                        maxAttempts =
-                                            8,
-                                        onRetry = {
-                                            attempt,
-                                            maxAttempts,
-                                            _ ->
-
-                                            updateFiveParallelBuildSlot(
-                                                slot
-                                            ) {
-                                                it.copy(
-                                                    status =
-                                                        "Bağlanıyor $attempt/$maxAttempts"
-                                                )
-                                            }
-                                        }
-                                    ) {
-                                        withContext(
-                                            Dispatchers.IO
-                                        ) {
-                                            client.createBuild(
-                                                testDraft,
-                                                zip,
-                                                idempotencyKey =
-                                                    idempotencyKey,
-                                                cacheIdentityNonce =
-                                                    "parallel5-" +
-                                                        idempotencyKey
-                                            )
-                                        }
-                                    }
-
-                                BuildProgressService.addBatchBuild(
-                                    context = context,
-                                    buildId =
-                                        created.buildId
-                                )
-
-                                updateFiveParallelBuildSlot(
-                                    slot
-                                ) {
-                                    it.copy(
-                                        buildId =
-                                            created.buildId,
-                                        status =
-                                            created.status,
-                                        progress =
-                                            0
-                                    )
-                                }
-
-                                while (true) {
-                                    delay(
-                                        1_500L
-                                    )
-
-                                    var remoteAttempt =
-                                        1
-
-                                    var remoteResult =
-                                        runCatching {
-                                            withContext(
-                                                Dispatchers.IO
-                                            ) {
-                                                client.getBuild(
-                                                    created.buildId
-                                                )
-                                            }
-                                        }
-
-                                    while (
-                                        remoteResult.isFailure &&
-                                        remoteAttempt < 8
-                                    ) {
-                                        remoteAttempt += 1
-
-                                        updateFiveParallelBuildSlot(
-                                            slot
-                                        ) {
-                                            it.copy(
-                                                status =
-                                                    "Bağlantı yeniden deneniyor $remoteAttempt/8"
-                                            )
-                                        }
-
-                                        delay(
-                                            1_500L
-                                        )
-
-                                        remoteResult =
-                                            runCatching {
-                                                withContext(
-                                                    Dispatchers.IO
-                                                ) {
-                                                    client.getBuild(
-                                                        created.buildId
-                                                    )
-                                                }
-                                            }
-                                    }
-
-                                    val remote =
-                                        remoteResult.getOrThrow()
-
-                                    val remoteProgress =
-                                        if (
-                                            remote.status ==
-                                            "success"
-                                        ) {
-                                            100
-                                        } else {
-                                            remote.progress
-                                        }
-
-                                    updateFiveParallelBuildSlot(
-                                        slot
-                                    ) {
-                                        it.copy(
-                                            buildId =
-                                                created.buildId,
-                                            status =
-                                                remote.status,
-                                            progress =
-                                                remoteProgress
-                                        )
-                                    }
-
-                                    if (
-                                        remote.status ==
-                                            "success" ||
-                                        remote.status ==
-                                            "failed" ||
-                                        remote.status ==
-                                            "cancelled" ||
-                                        remote.status ==
-                                            "canceled"
-                                    ) {
-                                        break
-                                    }
-                                }
-
-                            } catch (
-                                t: Throwable
-                            ) {
-                                updateFiveParallelBuildSlot(
-                                    slot
-                                ) {
-                                    it.copy(
-                                        status =
-                                            "Hata: ${t.message.orEmpty()}",
-                                        progress =
-                                            0
-                                    )
-                                }
-
-                            } finally {
-                                parallelGate.release()
-
-                                val allFinished =
-                                    fiveParallelBuildItems
-                                        .all {
-                                            item ->
-
-                                            val state =
-                                                item.status
-                                                    .trim()
-                                                    .lowercase()
-
-                                            state ==
-                                                "success" ||
-                                            state ==
-                                                "failed" ||
-                                            state ==
-                                                "cancelled" ||
-                                            state ==
-                                                "canceled" ||
-                                            state.startsWith(
-                                                "hata:"
-                                            )
-                                        }
-
-                                if (
-                                    allFinished
-                                ) {
-                                    fiveParallelBuildRunning =
-                                        false
-
-                                    BuildProgressService.stop(
-                                        context
-                                    )
-
-                                    BuildProgressService.clear(
-                                        context
-                                    )
-
-                                    val successCount =
-                                        fiveParallelBuildItems.count {
-                                            item ->
-                                            item.status
-                                                .trim()
-                                                .equals(
-                                                    "success",
-                                                    ignoreCase = true
-                                                )
-                                        }
-
-                                    val failedCount =
-                                        fiveParallelBuildItems.size -
-                                            successCount
-
-                                    status =
-                                        if (successCount == 5) {
-                                            "5/5 build başarılı."
-                                        } else {
-                                            "$successCount/5 build başarılı • " +
-                                                "$failedCount başarısız."
-                                        }
-                                }
-                            }
-                        }
-                    }
-
-                } catch (
-                    t: Throwable
-                ) {
-                    BuildProgressService.stop(
-                        context
-                    )
-
-                    BuildProgressService.clear(
-                        context
-                    )
-
-                    fiveParallelBuildItems =
-                        fiveParallelBuildItems.map {
-                            item ->
-                            item.copy(
-                                status =
-                                    "Hata: ${t.message.orEmpty()}",
-                                progress =
-                                    0
-                            )
-                        }
-
-                    fiveParallelBuildRunning =
-                        false
-
-                    status =
-                        "5 paralel test hazırlanamadı: ${t.message.orEmpty()}"
-                }
-            }
-        }
-
     LaunchedEffect(
         conversionApkUri
     ) {
@@ -4203,20 +3716,7 @@ private fun AppForgeApp() {
     }
 
 
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = Accent,
-            onPrimary = Color(0xFF061827),
-            secondary = Color(0xFFB79CE5),
-            background = Bg,
-            onBackground = Color(0xFFE8EDF4),
-            surface = Card2,
-            onSurface = Color(0xFFE8EDF4),
-            surfaceVariant = Color(0xFF18212A),
-            onSurfaceVariant = TextSecondary,
-            outline = Color(0xFF3B4652)
-        )
-    ) {
+    AppForgeTheme {
 
         /*
          * HOME_EXIT_CONFIRMATION_V1
@@ -4629,7 +4129,7 @@ private fun AppForgeApp() {
                         proUnlocked =
                             proStatus?.active == true,
                                                 serverUrl =
-                            serverUrl,
+                            DEFAULT_CONTROL_PLANE_URL,
 onOpenPro = {
                             screen =
                                 AppScreen.PRO
@@ -4645,7 +4145,7 @@ onOpenPro = {
                         proUnlocked =
                             proStatus?.active == true,
                                                 serverUrl =
-                            serverUrl,
+                            DEFAULT_CONTROL_PLANE_URL,
 onOpenPro = {
                             screen =
                                 AppScreen.PRO
@@ -4835,7 +4335,7 @@ onOpenPro = {
                 )
 
                 AppScreen.ACCOUNT -> AccountScreen(
-                    serverUrl = serverUrl,
+                    serverUrl = DEFAULT_CONTROL_PLANE_URL,
                     session = session,
                     actionUri =
                         hostActivity
@@ -4932,7 +4432,7 @@ onOpenPro = {
                         ) {
                             /*
                              * Çıkış yalnız aktif sessionı kapatır.
-                             * Hesaba ait şifreli GitHub/Railway/API
+                             * Hesaba ait şifreli GitHub/API
                              * kasası cihazda korunur.
                              */
                             SecureAccountStore
@@ -5171,7 +4671,7 @@ onOpenPro = {
 
                 AppScreen.PRO -> ProUpgradeScreen(
                     languageCode = prefs.languageCode,
-                    serverUrl = serverUrl,
+                    serverUrl = DEFAULT_CONTROL_PLANE_URL,
                     session = session,
                     currentStatus = proStatus,
                     securityMessage = proSecurityMessage,
@@ -5281,7 +4781,7 @@ onOpenPro = {
 
                 AppScreen.ADMIN_OPS -> AdminOpsScreen(
                     serverUrl =
-                        serverUrl,
+                        DEFAULT_CONTROL_PLANE_URL,
                     apiKey =
                         apiKey,
                     accountEmail =
@@ -5320,17 +4820,7 @@ onOpenPro = {
                             session
                                 ?.email
                                 .orEmpty(),
-                        railwayAuthorizationUri =
-                            hostActivity
-                                ?.externalAuthorizationUri,
-                        railwayAuthorizationSequence =
-                            hostActivity
-                                ?.externalAuthorizationSequence
-                                ?: 0,
-                        onRailwayAuthorizationConsumed = {
-                            hostActivity
-                                ?.consumeExternalAuthorization()
-                        },
+
                         onBack = {
                             screen =
                                 terminalReturnScreen
@@ -5965,153 +5455,6 @@ onOpenPro = {
                     }
 
                     /*
-                     * High-frequency parallel-build progress is kept
-                     * inside its own child composition. Changes to the
-                     * five test slots do not need to invalidate the
-                     * rest of the Builder UI.
-                     */
-                    BuildRuntimeCompositionBoundary(
-                        runtime = buildRuntime
-                    ) {
-                        if (
-                            step == 10 &&
-                            isAdminOpsAccount
-                        ) {
-                            Card(
-                                modifier =
-                                    Modifier
-                                        .align(
-                                            Alignment.CenterHorizontally
-                                        )
-                                        .widthIn(
-                                            max =
-                                                builderContentMaxWidth
-                                        )
-                                        .fillMaxWidth()
-                                        .padding(
-                                            horizontal =
-                                                builderHorizontalPadding,
-                                            vertical =
-                                                6.dp
-                                        ),
-                                shape =
-                                    RoundedCornerShape(
-                                        20.dp
-                                    ),
-                                colors =
-                                    CardDefaults
-                                        .cardColors(
-                                            containerColor =
-                                                Card2
-                                        )
-                            ) {
-                                Column(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(
-                                                16.dp
-                                            ),
-                                    verticalArrangement =
-                                        Arrangement.spacedBy(
-                                            8.dp
-                                        )
-                                ) {
-                                    Text(
-                                        "5 Build Testi • Maks. 3 Paralel",
-                                        fontWeight =
-                                            FontWeight.Bold,
-                                        color =
-                                            Accent
-                                    )
-
-                                    Text(
-                                        "Yalnız yönetici • 5'li Build Test",
-                                        color =
-                                            TextSecondary,
-                                        fontSize =
-                                            11.sp
-                                    )
-
-                                    Button(
-                                        enabled =
-                                            !fiveParallelBuildRunning &&
-                                            !buildBusy,
-                                        onClick = {
-                                            startFiveParallelBuildTest(
-                                                draft
-                                            )
-                                        },
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                    ) {
-                                        Text(
-                                            if (
-                                                fiveParallelBuildRunning
-                                            ) {
-                                                "5 BUILD ÇALIŞIYOR"
-                                            } else {
-                                                "5 BUILD TESTİNİ BAŞLAT"
-                                            }
-                                        )
-                                    }
-
-                                    if (
-                                        isAdminOpsAccount
-                                    ) {
-                                        Spacer(
-                                            modifier =
-                                                Modifier.height(
-                                                    8.dp
-                                                )
-                                        )
-
-                                        OutlinedButton(
-                                            modifier =
-                                                Modifier.fillMaxWidth(),
-                                            onClick = {
-                                                screen =
-                                                    AppScreen.ADMIN_OPS
-                                            }
-                                        ) {
-                                            Text(
-                                                "YÖNETİCİ SİSTEM DURUMU / AUTOSCALE"
-                                            )
-                                        }
-                                    }
-
-                                    fiveParallelBuildItems
-                                        .forEach {
-                                            item ->
-
-                                            val shortId =
-                                                item.buildId
-                                                    ?.take(
-                                                        8
-                                                    )
-                                                    ?.let {
-                                                        id ->
-                                                        " • $id"
-                                                    }
-                                                    .orEmpty()
-
-                                            Text(
-                                                "#${item.slot} • " +
-                                                    "${item.status} • " +
-                                                    "${item.progress}%$shortId",
-                                                color =
-                                                    TextSecondary,
-                                                fontSize =
-                                                    12.sp
-                                            )
-                                        }
-                                }
-                            }
-                        }
-                    }
-
-                    /*
                      * Bottom Builder actions observe live build/test state.
                      * Keep their invalidation local instead of recomposing
                      * the complete Builder content tree.
@@ -6278,10 +5621,7 @@ onOpenPro = {
                                                         enabled =
                                                             !(
                                                                 step == 10 &&
-                                                                (
-                                                                    buildBusy ||
-                                                                    fiveParallelBuildRunning
-                                                                )
+                                                                buildBusy
                                                             ),
                                                         onClick = {
                                                             if (step < 10) {
@@ -13177,9 +12517,6 @@ private fun validateDraft(d: ProjectDraft, serverUrl: String) {
         require(d.keyAlias.isNotBlank()) { "Key alias gerekli." }
         require(d.storePassword.isNotBlank()) { "Store password gerekli." }
         require(d.keyPassword.isNotBlank()) { "Key password gerekli." }
-        require(serverUrl.startsWith("https://", true)) {
-            "Özel keystore ile imzalama için Build Service HTTPS olmalı."
-        }
     }
 
     if (d.deepLinkEnabled) {
@@ -18791,6 +18128,11 @@ private fun BuildStep(
     val scope =
         rememberCoroutineScope()
 
+    var showBuildTechnicalDetails by
+        rememberSaveable {
+            mutableStateOf(false)
+        }
+
     var downloadMessage by
         remember {
             mutableStateOf("")
@@ -18874,11 +18216,6 @@ private fun BuildStep(
             mutableStateOf(
                 false
             )
-        }
-
-    var showLogs by
-        remember(buildId) {
-            mutableStateOf(false)
         }
 
     var showCancelConfirm by
@@ -19195,10 +18532,6 @@ private fun BuildStep(
             it != null
         }
 
-    val logsVisible =
-        showLogs ||
-        buildFailed
-
     val buildActive =
         buildId != null &&
         buildMatchesCurrentProject &&
@@ -19264,6 +18597,68 @@ private fun BuildStep(
                 }
         }
 
+
+    /*
+     * DEVICE_BUILD_VISIBLE_LOGS_V1
+     *
+     * Device-only builds must expose the real local failure instead of
+     * referring users to a retired remote Worker/Build Service.
+     *
+     * Obvious credential-bearing lines are suppressed before rendering.
+     */
+    val visibleLocalBuildLogs =
+        remember(logs) {
+            logs
+                .takeLast(80)
+                .map { line ->
+
+                    val sensitive =
+                        listOf(
+                            "password",
+                            "storepassword",
+                            "keypassword",
+                            "token",
+                            "authorization",
+                            "client_secret",
+                            "apikey",
+                            "api_key"
+                        ).any {
+                            marker ->
+
+                            line.contains(
+                                marker,
+                                ignoreCase = true
+                            )
+                        }
+
+                    if (sensitive) {
+                        "••• Hassas log satırı gizlendi •••"
+                    } else {
+                        line.take(1400)
+                    }
+                }
+        }
+
+    val firstLocalBuildError =
+        remember(
+            visibleLocalBuildLogs
+        ) {
+            visibleLocalBuildLogs
+                .firstOrNull {
+                    line ->
+
+                    val lower =
+                        line.lowercase()
+
+                    lower.contains("error") ||
+                        lower.contains("exception") ||
+                        lower.contains("failed") ||
+                        lower.contains("hata") ||
+                        lower.startsWith("❌")
+                }
+                ?: visibleLocalBuildLogs
+                    .lastOrNull()
+        }
 
     val buildDiagnosis =
         remember(
@@ -19462,7 +18857,7 @@ private fun BuildStep(
         item {
             Section(
                 "10. Derleme",
-                "Derleme durumunu takip et, çıktıları indir ve ön kontrolleri incele."
+                "Derleme durumunu takip et ve çıktıları yönet."
             )
         }
 
@@ -19642,14 +19037,14 @@ private fun BuildStep(
                                 when {
                                     queueEstimate ==
                                         "recovering_capacity" ->
-                                        "♻ Worker kapasitesi otomatik kurtarılıyor"
+                                        "Derleme ortamı hazırlanıyor"
 
                                     queueWorkerSlots >
                                         0 ->
-                                        "⚙ $queueWorkerSlots uygun build slotu aktif"
+                                        "Derleme ortamı hazır"
 
                                     else ->
-                                        "⚙ Uygun worker bekleniyor"
+                                        "Derleme ortamı hazırlanıyor"
                                 },
                             color =
                                 TextSecondary,
@@ -19675,7 +19070,7 @@ private fun BuildStep(
                                 "recovering_capacity"
                         ) {
                             Text(
-                                "AppForge takılan Worker'ı otomatik kurtarıyor ve kapasiteyi yeniden açıyor. Ek işlem yapman gerekmiyor.",
+                                "AppForge derleme ortamını hazırlıyor. Ek işlem yapman gerekmiyor.",
                                 color =
                                     TextSecondary,
                                 fontSize =
@@ -19688,7 +19083,7 @@ private fun BuildStep(
                                 "approximate"
                         ) {
                             Text(
-                                "Süre worker yüküne ve daha yüksek öncelikli build'lere göre değişebilir.",
+                                "Tahmini süre proje boyutuna ve cihaz yüküne göre değişebilir.",
                                 color =
                                     TextSecondary,
                                 fontSize =
@@ -19763,68 +19158,11 @@ private fun BuildStep(
         }
 
         if (
-            toolchainPreflight.isNotEmpty()
-        ) {
-            item {
-                Text(
-                    "Universal Toolchain Preflight",
-                    fontWeight =
-                        FontWeight.Bold,
-                    fontSize =
-                        14.sp
-                )
-            }
-
-            item {
-                Card(
-                    colors =
-                        CardDefaults.cardColors(
-                            containerColor =
-                                Card2
-                        ),
-                    shape =
-                        RoundedCornerShape(
-                            18.dp
-                        ),
-                    modifier =
-                        Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier =
-                            Modifier.padding(if (formCompact) 12.dp else 16.dp),
-                        verticalArrangement =
-                            Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp)
-                    ) {
-                        Text(
-                            "✅ Uygun Source Worker toolchain planı",
-                            color =
-                                Accent,
-                            fontWeight =
-                                FontWeight.SemiBold,
-                            fontSize =
-                                12.sp
-                        )
-
-                        toolchainPreflight
-                            .forEach {
-                                check ->
-                                Text(
-                                    check,
-                                    fontSize =
-                                        12.sp
-                                )
-                            }
-                    }
-                }
-            }
-        }
-
-        if (
             generalPreflight.isNotEmpty()
         ) {
             item {
                 Text(
-                    "Ön Kontroller",
+                    "Kontroller",
                     fontWeight =
                         FontWeight.Bold,
                     fontSize =
@@ -19975,7 +19313,7 @@ private fun BuildStep(
                             Arrangement.spacedBy(if (formCompact) 7.dp else 10.dp)
                     ) {
                         Text(
-                            "🧠 Build Hatası Asistanı",
+                            "Derleme Yardımcısı",
                             fontWeight =
                                 FontWeight.Bold,
                             fontSize =
@@ -19992,14 +19330,6 @@ private fun BuildStep(
                                     FontWeight.Bold,
                                 color =
                                     Color(0xFFFFB4AB)
-                            )
-
-                            Text(
-                                "Tanı güveni: %${diagnosis.confidence}",
-                                color =
-                                    TextSecondary,
-                                fontSize =
-                                    12.sp
                             )
 
                             Text(
@@ -20036,10 +19366,105 @@ private fun BuildStep(
 
                         } else {
                             Text(
-                                "Derleme tamamlanamadı. Canlı log ayrıntıları aşağıda gösteriliyor.",
+                                "Derleme tamamlanamadı. Teknik ayrıntıları istersen aşağıdan görüntüleyebilirsin.",
                                 color =
                                     TextSecondary
                             )
+                        }
+
+                        if (
+                            !firstLocalBuildError
+                                .isNullOrBlank()
+                        ) {
+                            Text(
+                                "Hata özeti",
+                                fontWeight =
+                                    FontWeight.Bold,
+                                fontSize =
+                                    13.sp
+                            )
+
+                            Text(
+                                firstLocalBuildError
+                                    .take(1400),
+                                color =
+                                    Color(0xFFFFB4AB),
+                                fontSize =
+                                    11.sp,
+                                lineHeight =
+                                    16.sp
+                            )
+                        }
+
+                        if (
+                            visibleLocalBuildLogs
+                                .isNotEmpty()
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    showBuildTechnicalDetails =
+                                        !showBuildTechnicalDetails
+                                },
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    if (
+                                        showBuildTechnicalDetails
+                                    ) {
+                                        "TEKNİK AYRINTILARI GİZLE"
+                                    } else {
+                                        "TEKNİK AYRINTILARI GÖSTER"
+                                    }
+                                )
+                            }
+
+                            if (
+                                showBuildTechnicalDetails
+                            ) {
+                                Card(
+                                    colors =
+                                        CardDefaults
+                                            .cardColors(
+                                                containerColor =
+                                                    Card2
+                                            ),
+                                    shape =
+                                        RoundedCornerShape(
+                                            14.dp
+                                        ),
+                                    modifier =
+                                        Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(
+                                                    12.dp
+                                                ),
+                                        verticalArrangement =
+                                            Arrangement.spacedBy(
+                                                4.dp
+                                            )
+                                    ) {
+                                        visibleLocalBuildLogs
+                                            .forEach {
+                                                line ->
+
+                                                Text(
+                                                    line,
+                                                    color =
+                                                        TextSecondary,
+                                                    fontSize =
+                                                        10.sp,
+                                                    lineHeight =
+                                                        14.sp
+                                                )
+                                            }
+                                    }
+                                }
+                            }
                         }
 
                         if (
@@ -20746,6 +20171,21 @@ private fun downloadArtifactToOwnerVault(
             context
         )
 
+    if (url.startsWith("file://", ignoreCase = true)) {
+        val source =
+            Uri.parse(url)
+                .path
+                ?.let(::File)
+                ?.takeIf { it.isFile && it.length() > 0L }
+                ?: error("Yerel owner artifact bulunamadı.")
+
+        return copyArtifactToOwnerVault(
+            context = context,
+            sourceFile = source,
+            fileName = fileName
+        )
+    }
+
     require(
         url.startsWith(
             "https://",
@@ -20998,6 +20438,26 @@ private fun downloadArtifactToUri(
     url: String,
     destination: Uri
 ) {
+    if (url.startsWith("file://", ignoreCase = true)) {
+        val source =
+            Uri.parse(url)
+                .path
+                ?.let(::File)
+                ?.takeIf { it.isFile }
+                ?: error("Yerel artifact bulunamadı.")
+
+        context.contentResolver
+            .openOutputStream(destination, "w")
+            ?.use { output ->
+                source.inputStream().use { input ->
+                    input.copyTo(output, 1024 * 1024)
+                }
+            }
+            ?: error("Hedef dosya açılamadı.")
+
+        return
+    }
+
     require(
         url.startsWith(
             "https://",
@@ -21131,6 +20591,24 @@ private fun downloadApkToInstallerCache(
     url: String,
     fileName: String
 ): File {
+
+    if (url.startsWith("file://", ignoreCase = true)) {
+        val source =
+            Uri.parse(url)
+                .path
+                ?.let(::File)
+                ?.takeIf { it.isFile && it.length() > 0L }
+                ?: error("Yerel APK bulunamadı.")
+
+        val installerDir =
+            File(context.cacheDir, "apk-installer").apply { mkdirs() }
+
+        val safeName =
+            if (fileName.endsWith(".apk", ignoreCase = true)) fileName
+            else "$fileName.apk"
+
+        return source.copyTo(File(installerDir, safeName), overwrite = true)
+    }
 
     require(
         url.startsWith(
@@ -21472,6 +20950,8 @@ private fun publishApkToDownloads(
 }
 
 
+
+
 private fun installCachedApk(
     context: Context,
     apkFile: File
@@ -21507,6 +20987,7 @@ private fun installCachedApk(
                     apkFile.absolutePath
                 )
                 .apply()
+
 
             val permissionIntent =
                 Intent(

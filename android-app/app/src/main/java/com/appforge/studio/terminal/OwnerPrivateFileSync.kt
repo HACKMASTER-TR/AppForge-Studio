@@ -208,7 +208,6 @@ internal object OwnerPrivateFileSync {
             GitHub storage: OWNER ONLY
 
             GitHub tokens: encrypted account vault
-            Railway tokens: encrypted account vault
             Build API keys: encrypted account vault
 
             Plaintext token export: DISABLED

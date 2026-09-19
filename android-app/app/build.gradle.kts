@@ -192,11 +192,6 @@ val prepareAppForgeProrootRuntime =
         }
     }
 
-val appForgeStudioFirebaseConfigured = file("google-services.json").isFile
-
-if (appForgeStudioFirebaseConfigured) {
-    apply(plugin = "com.google.gms.google-services")
-}
 
 android {
     namespace = "com.appforge.studio"
@@ -288,11 +283,6 @@ android {
             "APPFORGE_GITHUB_OAUTH_CLIENT_ID",
             "\"${oauthClientId("APPFORGE_GITHUB_OAUTH_CLIENT_ID")}\""
         )
-        buildConfigField(
-            "String",
-            "APPFORGE_RAILWAY_OAUTH_CLIENT_ID",
-            "\"${oauthClientId("APPFORGE_RAILWAY_OAUTH_CLIENT_ID")}\""
-        )
     }
 
     buildTypes {
@@ -363,8 +353,6 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    implementation(platform("com.google.firebase:firebase-bom:34.17.0"))
-    implementation("com.google.firebase:firebase-messaging")
 
     implementation("com.google.android.play:integrity:1.6.0")
     implementation("com.google.android.play:app-update:2.1.0")

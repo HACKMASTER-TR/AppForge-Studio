@@ -19,35 +19,16 @@ const read =
     );
 
 test(
-  "Android build client parses queue position metadata",
+  "normal Android build path does not consume remote queue metadata",
   async () => {
-    const text =
+    const client =
       await read(
         "android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt"
       );
 
-    assert.ok(
-      text.includes(
-        "queuePosition"
-      )
-    );
-
-    assert.ok(
-      text.includes(
-        "queueCompatibleWorkerSlots"
-      )
-    );
-
-    assert.ok(
-      text.includes(
-        "estimatedWaitSeconds"
-      )
-    );
-
-    assert.ok(
-      text.includes(
-        'json.optJSONObject('
-      )
+    assert.doesNotMatch(
+      client,
+      /\/api\/builds\/[^"\n]*queue|queueEstimatedWaitSeconds\s*=\s*json|queuePosition\s*=\s*json/
     );
   }
 );
@@ -81,7 +62,7 @@ test(
 );
 
 test(
-  "Android build UI displays queue position workers and ETA",
+  "Android build UI displays queue position readiness and ETA",
   async () => {
     const text =
       await read(
@@ -96,7 +77,7 @@ test(
 
     assert.ok(
       text.includes(
-        "uygun build slotu aktif"
+        "Derleme ortamı hazır"
       )
     );
 
@@ -108,7 +89,7 @@ test(
 
     assert.ok(
       text.includes(
-        "Süre worker yüküne"
+        "Tahmini süre proje boyutuna"
       )
     );
   }

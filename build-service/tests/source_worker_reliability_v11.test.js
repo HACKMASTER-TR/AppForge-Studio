@@ -172,68 +172,21 @@ test(
 );
 
 test(
-  "source queue triggers a separate Source Worker autoscale pool",
+  "Source Worker autoscale pool stays retired in device-only mode",
   async () => {
-    const queue =
-      await read(
-        "build-service/src/jobQueue.js"
-      );
-
-    const dispatch =
-      await read(
-        "build-service/src/autoscaleDispatch.js"
-      );
-
-    const workflow =
-      await read(
+    await assert.rejects(
+      read(
         ".github/workflows/worker-autoscale.yml"
-      );
-
-    const autoscaler =
-      await read(
-        ".github/scripts/worker_autoscale.py"
-      );
-
-    assert.ok(
-      queue.includes(
-        "source_worker_recovery"
-      )
-    );
-
-    assert.ok(
-      queue.includes(
-        "source_queued"
-      )
-    );
-
-    assert.ok(
-      dispatch.includes(
-        "worker_kind"
-      )
-    );
-
-    assert.ok(
-      workflow.includes(
-        "AppForge-Source-Worker"
-      )
-    );
-
-    assert.ok(
-      workflow.includes(
-        "Scale Source Workers"
-      )
-    );
-
-    assert.ok(
-      autoscaler.includes(
-        'WORKER_KIND == "source"'
-      )
+      ),
+      {
+        code: "ENOENT"
+      }
     );
   }
 );
 
 test(
-  "queue ETA exposes automatic recovery instead of a false minute estimate",
+  "queue ETA keeps automatic recovery state with user-facing UI copy",
   async () => {
     const queue =
       await read(
@@ -259,7 +212,7 @@ test(
 
     assert.ok(
       ui.includes(
-        "Worker kapasitesi otomatik kurtarılıyor"
+        "Derleme ortamı hazırlanıyor"
       )
     );
   }

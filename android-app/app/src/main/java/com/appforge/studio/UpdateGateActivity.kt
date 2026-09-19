@@ -30,7 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
-import com.appforge.studio.model.DEFAULT_BUILD_SERVICE_URL
+import com.appforge.studio.model.DEFAULT_CONTROL_PLANE_URL
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.install.model.AppUpdateType
@@ -136,7 +136,7 @@ class UpdateGateActivity : ComponentActivity() {
         appUpdateManager = AppUpdateManagerFactory.create(this)
 
         setContent {
-            MaterialTheme {
+            AppForgeTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -375,7 +375,7 @@ class UpdateGateActivity : ComponentActivity() {
 
     private fun fetchPolicy(): StudioUpdatePolicy {
         val url = URL(
-            DEFAULT_BUILD_SERVICE_URL.trimEnd('/') +
+            DEFAULT_CONTROL_PLANE_URL.trimEnd('/') +
                 "/api/client/android/policy?versionCode=${BuildConfig.VERSION_CODE}"
         )
 

@@ -387,7 +387,7 @@ fun AdminAccountsScreen(
     }
 
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(serverUrl, apiKey) {
         runCatching {
             refresh()
         }
@@ -573,7 +573,7 @@ fun AdminAccountsScreen(
                 }
             ) {
                 Text(
-                    "HESAPLARI GETİR"
+                    "HESAPLARI YENİLE"
                 )
             }
         }
@@ -1044,6 +1044,29 @@ private class AdminAccountsApi(
     }
 
 
+    private fun controlPlaneBaseUrl(): String {
+        val value =
+            serverUrl
+                .trim()
+                .trimEnd('/')
+
+        require(
+            value.startsWith(
+                "https://",
+                ignoreCase = true
+            ) ||
+                value.startsWith(
+                    "http://10.0.2.2",
+                    ignoreCase = true
+                )
+        ) {
+            "Hesap yönetimi üretimde HTTPS control plane gerektirir."
+        }
+
+        return value
+    }
+
+
     private fun request(
         path: String,
         method: String,
@@ -1052,7 +1075,7 @@ private class AdminAccountsApi(
         val connection =
             (
                 URL(
-                    "${serverUrl.trimEnd('/')}$path"
+                    "${controlPlaneBaseUrl()}$path"
                 )
                     .openConnection()
                 as HttpURLConnection

@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.sp
 import com.appforge.studio.BuildConfig
 import com.appforge.studio.security.ExternalServiceConnection
 import com.appforge.studio.security.SecureAccountStore
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -54,10 +53,7 @@ import java.util.Date
 
 @Composable
 internal fun ConnectionsPanel(
-    onOpenGit: () -> Unit,
-    railwayAuthorizationUri: Uri?,
-    railwayAuthorizationSequence: Int,
-    onRailwayAuthorizationConsumed: () -> Unit
+    onOpenGit: () -> Unit
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
@@ -69,16 +65,6 @@ internal fun ConnectionsPanel(
                 SecureAccountStore.loadExternalConnection(
                     context,
                     ExternalProvider.GITHUB.key
-                )
-            )
-        }
-
-    var railwayConnection by
-        remember {
-            mutableStateOf(
-                SecureAccountStore.loadExternalConnection(
-                    context,
-                    ExternalProvider.RAILWAY.key
                 )
             )
         }
@@ -128,49 +114,17 @@ internal fun ConnectionsPanel(
             mutableStateOf<ExternalProvider?>(null)
         }
 
-    var railwayOverview by
-        remember {
-            mutableStateOf<RailwayReadOverview?>(
-                null
-            )
-        }
-
-    var railwayReadBusy by
-        remember {
-            mutableStateOf(false)
-        }
-
-    var railwayReadError by
-        remember {
-            mutableStateOf("")
-        }
-
-    fun clientId(provider: ExternalProvider): String =
-        when (provider) {
-            ExternalProvider.GITHUB ->
-                BuildConfig.APPFORGE_GITHUB_OAUTH_CLIENT_ID
-
-            ExternalProvider.RAILWAY ->
-                BuildConfig.APPFORGE_RAILWAY_OAUTH_CLIENT_ID
-        }
+    fun clientId(provider: ExternalProvider): String {
+        require(provider == ExternalProvider.GITHUB)
+        return BuildConfig.APPFORGE_GITHUB_OAUTH_CLIENT_ID
+    }
 
     fun updateConnection(
         provider: ExternalProvider,
         connection: ExternalServiceConnection?
     ) {
-        when (provider) {
-            ExternalProvider.GITHUB ->
-                githubConnection = connection
-
-            ExternalProvider.RAILWAY -> {
-                railwayConnection = connection
-
-                if (connection == null) {
-                    railwayOverview = null
-                    railwayReadError = ""
-                }
-            }
-        }
+        require(provider == ExternalProvider.GITHUB)
+        githubConnection = connection
     }
 
     fun saveConnection(
@@ -271,151 +225,6 @@ internal fun ConnectionsPanel(
         }
     }
 
-    fun beginRailwayFlow() {
-        if (busyProvider != null) return
-
-        val provider = ExternalProvider.RAILWAY
-        val id = clientId(provider)
-
-        if (id.isBlank()) {
-            manualError = ""
-            manualProvider = provider
-            return
-        }
-
-        busyProvider = provider
-        message = ""
-        scope.launch {
-            val result =
-                runCatching {
-                    withContext(Dispatchers.IO) {
-                        ExternalConnectionsClient
-                            .startRailwayAuthorization(id)
-                            .also {
-                                SecureAccountStore
-                                    .savePendingExternalAuthorization(
-                                        context,
-                                        it.pending
-                                    )
-                            }
-                    }
-                }
-
-            result.onSuccess {
-                message =
-                    "Railway onayı tarayıcıda açıldı; işlem bitince AppForge'a dönülecek."
-                openAuthorizationPage(
-                    it.authorizationUri,
-                    "Tarayıcı bulunamadı; Railway hesabını kişisel token ile bağlayabilirsin."
-                )
-            }.onFailure {
-                SecureAccountStore
-                    .clearPendingExternalAuthorization(
-                        context,
-                        provider.key
-                    )
-                message =
-                    it.message
-                        ?: "Railway yetkilendirmesi başlatılamadı."
-            }
-
-            busyProvider = null
-        }
-    }
-
-    fun switchRailwayAccount() {
-        if (
-            busyProvider != null ||
-            railwayReadBusy
-        ) {
-            return
-        }
-
-        val provider =
-            ExternalProvider.RAILWAY
-
-        /*
-         * Yeni hesaba geçmeden önce eski token ve
-         * bekleyen OAuth kaydı mutlaka silinir.
-         */
-        SecureAccountStore
-            .clearExternalConnection(
-                context,
-                provider.key
-            )
-
-        SecureAccountStore
-            .clearPendingExternalAuthorization(
-                context,
-                provider.key
-            )
-
-        updateConnection(
-            provider,
-            null
-        )
-
-        manualProvider = null
-        manualToken = ""
-        manualError = ""
-        railwayOverview = null
-        railwayReadError = ""
-        message =
-            "Eski Railway oturumu kaldırıldı. Yeni hesabı bağla."
-
-        if (
-            clientId(provider)
-                .isBlank()
-        ) {
-            manualProvider =
-                provider
-        } else {
-            beginRailwayFlow()
-        }
-    }
-
-    fun testRailwayReadAccess() {
-        val current =
-            railwayConnection
-
-        if (current == null) {
-            message =
-                "Önce Railway hesabını bağla."
-            return
-        }
-
-        if (railwayReadBusy) {
-            return
-        }
-
-        railwayReadBusy = true
-        railwayReadError = ""
-        railwayOverview = null
-
-        scope.launch {
-            runCatching {
-                ExternalConnectionsClient
-                    .readRailwayOverview(
-                        current.accessToken
-                    )
-            }.onSuccess {
-                railwayOverview = it
-
-                message =
-                    "Railway proje erişimi doğrulandı: " +
-                        "${it.projects.size} proje, " +
-                        "${it.totalServices} servis, " +
-                        "${it.totalEnvironments} ortam."
-            }.onFailure {
-                railwayReadError =
-                    it.message
-                        ?: "Railway proje erişimi test edilemedi."
-            }
-
-            railwayReadBusy = false
-        }
-    }
-
     LaunchedEffect(authorization) {
         val value = authorization
             ?: return@LaunchedEffect
@@ -504,102 +313,6 @@ internal fun ConnectionsPanel(
         ) {
             authorizationStatus =
                 "Yetkilendirme kodunun süresi doldu."
-        }
-    }
-
-    LaunchedEffect(
-        railwayAuthorizationSequence
-    ) {
-        val callback = railwayAuthorizationUri
-            ?: return@LaunchedEffect
-
-        busyProvider = ExternalProvider.RAILWAY
-        message = "Railway yetkilendirmesi doğrulanıyor…"
-
-        try {
-            val pending =
-                SecureAccountStore
-                    .loadPendingExternalAuthorization(
-                        context,
-                        ExternalProvider.RAILWAY.key
-                    )
-                    ?: error(
-                        "Railway yetkilendirme isteği bulunamadı veya süresi doldu."
-                    )
-
-            val token =
-                ExternalConnectionsClient
-                    .exchangeRailwayCallback(
-                        callback.toString(),
-                        pending,
-                        BuildConfig
-                            .APPFORGE_RAILWAY_OAUTH_CLIENT_ID
-                    )
-
-            val identity =
-                ExternalConnectionsClient
-                    .validateIdentity(
-                        ExternalProvider.RAILWAY,
-                        token.accessToken
-                    )
-
-            saveConnection(
-                ExternalProvider.RAILWAY,
-                token,
-                identity,
-                "oauth"
-            )
-            message = "Railway hesabı bağlandı."
-        } catch (failure: CancellationException) {
-            throw failure
-        } catch (failure: Exception) {
-            message =
-                failure.message
-                    ?: "Railway yetkilendirmesi tamamlanamadı."
-        }
-
-        SecureAccountStore
-            .clearPendingExternalAuthorization(
-                context,
-                ExternalProvider.RAILWAY.key
-            )
-        onRailwayAuthorizationConsumed()
-        busyProvider = null
-    }
-
-    LaunchedEffect(Unit) {
-        val current = railwayConnection
-        val clientId =
-            BuildConfig.APPFORGE_RAILWAY_OAUTH_CLIENT_ID
-
-        if (
-            current != null &&
-            current.tokenType == "oauth" &&
-            current.refreshToken.isNotBlank() &&
-            current.expiresAt > 0L &&
-            current.expiresAt <=
-                System.currentTimeMillis() + 120_000L &&
-            clientId.isNotBlank()
-        ) {
-            runCatching {
-                ExternalConnectionsClient
-                    .refreshRailway(
-                        current,
-                        clientId
-                    )
-                    .also {
-                        SecureAccountStore
-                            .saveExternalConnection(
-                                context,
-                                it
-                            )
-                    }
-            }.onSuccess {
-                railwayConnection = it
-            }.onFailure {
-                message =
-                    "Railway oturumu yenilenemedi; gerekirse hesabı yeniden yetkilendir."
-            }
         }
     }
 
@@ -868,7 +581,7 @@ internal fun ConnectionsPanel(
         item {
             TerminalPanelTitle(
                 "Hesap Bağlantıları",
-                "GitHub ve Railway yetkilerini tarayıcıdan ver; parolalar uygulamaya girilmez."
+                "GitHub hesabını güvenli şekilde bağla; parolan uygulamaya girilmez."
             )
         }
 
@@ -949,142 +662,6 @@ internal fun ConnectionsPanel(
         }
 
         item {
-            ProviderConnectionCard(
-                provider = ExternalProvider.RAILWAY,
-                connection = railwayConnection,
-                oauthConfigured =
-                    BuildConfig
-                        .APPFORGE_RAILWAY_OAUTH_CLIENT_ID
-                        .isNotBlank(),
-                busy =
-                    busyProvider ==
-                        ExternalProvider.RAILWAY,
-                onAuthorize = {
-                    beginRailwayFlow()
-                },
-                onManual = {
-                    manualError = ""
-                    manualProvider =
-                        ExternalProvider.RAILWAY
-                },
-                onDisconnect = {
-                    disconnectProvider =
-                        ExternalProvider.RAILWAY
-                },
-                onOpenService = {
-                    openExternalUrl(
-                        context,
-                        "https://railway.com/dashboard"
-                    )
-                },
-                extraAction = {
-                    if (
-                        railwayConnection !=
-                            null
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                switchRailwayAccount()
-                            },
-                            modifier =
-                                Modifier.fillMaxWidth(),
-                            enabled =
-                                busyProvider == null &&
-                                !railwayReadBusy
-                        ) {
-                            Text(
-                                "Railway Hesabını Değiştir"
-                            )
-                        }
-
-                        OutlinedButton(
-                            onClick = {
-                                testRailwayReadAccess()
-                            },
-                            modifier =
-                                Modifier.fillMaxWidth(),
-                            enabled =
-                                !railwayReadBusy
-                        ) {
-                            Text(
-                                if (
-                                    railwayReadBusy
-                                ) {
-                                    "Railway test ediliyor…"
-                                } else {
-                                    "Proje Erişimini Test Et"
-                                }
-                            )
-                        }
-
-                        if (
-                            railwayReadError
-                                .isNotBlank()
-                        ) {
-                            Text(
-                                railwayReadError,
-                                color =
-                                    TerminalError,
-                                fontSize =
-                                    11.sp
-                            )
-                        }
-
-                        railwayOverview
-                            ?.let { overview ->
-                                Text(
-                                    "Projeler: " +
-                                        "${overview.projects.size}" +
-                                        " • Servisler: " +
-                                        "${overview.totalServices}" +
-                                        " • Ortamlar: " +
-                                        "${overview.totalEnvironments}",
-                                    color =
-                                        TerminalSuccess,
-                                    fontSize =
-                                        11.sp,
-                                    fontWeight =
-                                        FontWeight.Bold
-                                )
-
-                                overview.projects
-                                    .take(8)
-                                    .forEach {
-                                        project ->
-                                        Text(
-                                            "• ${project.name}" +
-                                                " — " +
-                                                "${project.serviceCount} servis" +
-                                                " / " +
-                                                "${project.environmentCount} ortam",
-                                            color =
-                                                TerminalMuted,
-                                            fontSize =
-                                                10.sp
-                                        )
-                                    }
-
-                                if (
-                                    overview.projects.size >
-                                        8
-                                ) {
-                                    Text(
-                                        "… ve " +
-                                            "${overview.projects.size - 8}" +
-                                            " proje daha",
-                                        color =
-                                            TerminalMuted,
-                                        fontSize =
-                                            10.sp
-                                    )
-                                }
-                            }
-                    }
-                }
-            )
-        }
-
-        item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors =
@@ -1105,7 +682,7 @@ internal fun ConnectionsPanel(
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        "• OAuth client secret APK içine konmaz.\n• Railway mobil bağlantısı PKCE ve tek kullanımlık state ile korunur.\n• Tokenlar Android Keystore AES-GCM ile şifrelenir.\n• Tokenlar terminal çıktısında veya Git uzak adresinde gösterilmez.\n• Bağlantıyı kaldırınca cihazdaki şifreli kayıt silinir.",
+                        "• OAuth client secret APK içine konmaz.\n• Tokenlar Android Keystore AES-GCM ile şifrelenir.\n• Tokenlar terminal çıktısında veya Git uzak adresinde gösterilmez.\n• Bağlantıyı kaldırınca cihazdaki şifreli kayıt silinir.",
                         color = TerminalMuted,
                         fontSize = 11.sp,
                         lineHeight = 16.sp
