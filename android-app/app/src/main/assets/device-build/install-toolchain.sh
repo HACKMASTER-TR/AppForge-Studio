@@ -55,6 +55,60 @@ repair_broken_openjdk() {
 
 repair_broken_openjdk
 
+# Older AppForge device-toolchain revisions installed Node/npm
+# unconditionally. A failed installation can leave dozens of
+# node-* packages in unpacked/half-configured state inside the
+# persistent Ubuntu rootfs. Even an Android-only build can then
+# trigger dpkg configuration of those stale packages during the
+# next unrelated apt transaction.
+#
+# Preserve every healthy package. Remove only stale/broken Node/npm
+# package states when the current source engine does not need Node.
+repair_stale_node_packages() {
+  [ "$ENGINE" = "node-web" ] && return 0
+
+  dpkg-query \
+    -W \
+    -f='${binary:Package}\t${db:Status-Abbrev}\n' \
+    'node-*' \
+    'npm' \
+    2>/dev/null \
+  | while IFS="$(printf '\t')" read -r pkg status
+    do
+      [ -n "$pkg" ] || continue
+
+      case "$status" in
+        ii*)
+          # Healthy package: leave it untouched.
+          ;;
+
+        *)
+          echo "APPFORGE_REPAIR_STALE_NODE:$pkg:$status"
+
+          dpkg \
+            --purge \
+            --force-all \
+            "$pkg" \
+            >/dev/null 2>&1 \
+            || true
+          ;;
+      esac
+    done
+
+  # Clear stale package metadata/dependency state left by a
+  # previously interrupted universal Node installation.
+  dpkg --audit || true
+
+  apt-get \
+    -f install \
+    -y \
+    --no-install-recommends \
+    >/dev/null 2>&1 \
+    || true
+}
+
+repair_stale_node_packages
+
 apt-get update
 apt-get install -y --no-install-recommends \
   ca-certificates curl unzip zip xz-utils tar \

@@ -108,3 +108,13 @@ source_files:
 - The device-toolchain readiness marker was bumped so older apt-JDK installations are not accepted as the corrected toolchain.
 - A dedicated regression contract protects deterministic JDK provisioning.
 - Fresh Android Debug CI and physical-device FIKSTUR TAKIP APK/AAB acceptance remain required.
+
+## 2026-09-19 stale Node/npm rootfs repair
+
+- Physical-device validation confirmed that the earlier unconditional Node/npm installation behavior had left broken Node packages inside the persistent Ubuntu rootfs.
+- Those stale packages could make a later Android/Kotlin build fail during an unrelated APT transaction even though the active source engine did not require Node.
+- Non-Node device builds now inspect package state and remove only incomplete/broken Node/npm packages.
+- Healthy installed Node packages are preserved.
+- `node-web` builds skip this cleanup and retain the Node toolchain.
+- Dedicated regression coverage protects this engine-aware cleanup behavior.
+- Fresh Android Debug CI and physical-device FIKSTUR TAKIP build acceptance remain required.

@@ -146,3 +146,7 @@ Android Gradle and static WebView builds no longer depend on npm package availab
 ### 2026-09-19 — Device builds use a pinned JDK archive
 
 Device-local Android builds must not depend on Ubuntu OpenJDK package post-install/configuration behavior. AppForge provisions a checksum-pinned Temurin JDK 17 archive and passes its JAVA_HOME explicitly to Gradle. Ubuntu APT remains responsible for ordinary base utilities, while Java is treated as part of AppForge's deterministic device-build toolchain.
+
+### 2026-09-19 — Persistent device rootfs cleanup is engine-aware
+
+Device-local builds may reuse a persistent Ubuntu rootfs, but package repair must remain scoped to the selected source engine. Non-Node builds may remove only incomplete or broken legacy Node/npm package states; healthy Node installations are preserved, while `node-web` builds retain their required Node toolchain.

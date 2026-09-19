@@ -64,3 +64,7 @@ source_files:
 - [[Deployment_And_CI]]
 - [[Android_App_Map]]
 - [[Bug_Index]]
+
+- Real-device FIKSTUR TAKIP validation after deterministic JDK provisioning exposed another persistent-rootfs issue: stale half-configured Node/npm packages from older universal toolchain installs were being reconfigured by dpkg during unrelated Android builds.
+- Non-Node device builds now preserve healthy Node packages but purge only broken/partial Node/npm package states before the base APT transaction.
+- `node-web` explicitly bypasses this repair path and keeps its Node/npm toolchain.
