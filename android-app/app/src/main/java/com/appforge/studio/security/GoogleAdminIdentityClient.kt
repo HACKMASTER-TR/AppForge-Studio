@@ -61,8 +61,32 @@ class GoogleAdminIdentityClient(private val activity: Activity, serverUrl: Strin
                 stream.write(JSONObject().put("idToken", idToken)
                     .put("nonce", nonce).toString().toByteArray(Charsets.UTF_8))
             }
-            if (conn.responseCode != 200) {
-                throw IllegalStateException("Google yönetici doğrulaması başarısız (HTTP ${conn.responseCode}).")
+            val code = conn.responseCode
+            if (code != 200) {
+                // Never expose the ID token or arbitrary server response.
+                // Only display known public control-plane error codes.
+                val serverCode = runCatching {
+                    val body = conn.errorStream
+                        ?.bufferedReader(Charsets.UTF_8)
+                        ?.use { it.readText().take(2048) }
+                        .orEmpty()
+                    JSONObject(body).optString("error", "")
+                }.getOrDefault("")
+
+                val safeReason = when (serverCode) {
+                    "admin_identity_not_configured",
+                    "identity_provider_unavailable",
+                    "admin_allowlist_unavailable",
+                    "admin_forbidden",
+                    "invalid_identity",
+                    "service_unavailable" -> serverCode
+                    else -> "unknown_error"
+                }
+
+                throw IllegalStateException(
+                    "Google yönetici doğrulaması başarısız " +
+                        "(HTTP $code • $safeReason)."
+                )
             }
             val json = JSONObject(conn.inputStream.bufferedReader(Charsets.UTF_8)
                 .use { it.readText().take(8192) })
