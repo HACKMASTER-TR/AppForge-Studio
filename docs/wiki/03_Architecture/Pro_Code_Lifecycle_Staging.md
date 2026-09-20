@@ -19,6 +19,7 @@ source_files:
   - ".github/workflows/pro-cloudflare-auth-preflight.yml"
   - ".github/workflows/pro-cloudflare-dry-run.yml"
   - ".github/workflows/pro-cloudflare-staging-deploy.yml"
+  - ".github/workflows/pro-staging-live-audit.yml"
   - ".github/scripts/pro_cloudflare_auth_preflight.py"
   - "cloudflare/control-plane/src/pro_redemption.mjs"
   - "cloudflare/control-plane/src/device_proof.mjs"
@@ -90,3 +91,18 @@ source_files:
 - It does not apply migrations or reconcile `d1_migrations`.
 - Post-deploy health and route checks are required. Device
   acceptance remains a separate gate.
+
+
+## Post-deployment read-only audit
+
+- A feature-branch workflow separately verifies the existing
+  Cloudflare `DB` binding and Google variable names.
+- It checks the live staging health endpoint and the Pro
+  ownership route using GET requests only.
+- This workflow does not deploy, apply migrations, modify
+  the existing deployment marker, or prove real-device
+  activation and revocation.
+- The earlier Wrangler deploy command returned failure even
+  though Cloudflare subsequently showed the new version
+  receiving 100% traffic. Its suppressed temporary error
+  log was not recovered; the exact exit cause remains open.

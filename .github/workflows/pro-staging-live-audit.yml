@@ -1,0 +1,116 @@
+name: AppForge Pro Staging Live Audit
+
+on:
+  push:
+    branches:
+      - feat/cloudflare-control-plane-v1-20260919
+    paths:
+      - .github/workflows/pro-staging-live-audit.yml
+
+permissions:
+  contents: read
+
+jobs:
+  staging-live-audit:
+    name: Existing Staging Worker Read-Only Audit
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/cloudflare-control-plane-v1-20260919'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v7
+
+      - name: Verify feature source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = \
+            "refs/heads/feat/cloudflare-control-plane-v1-20260919"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "FEATURE_SOURCE=PASS"
+
+      - name: Verify existing Cloudflare bindings read-only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/pro_cloudflare_auth_preflight.py
+
+      - name: Verify current live staging responses
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import json
+          import urllib.error
+          import urllib.request
+
+          base = (
+              "https://appforge-control-plane."
+              "28550040284a.workers.dev"
+          )
+
+          def read(path):
+              request = urllib.request.Request(
+                  base + path,
+                  method="GET",
+              )
+
+              try:
+                  with urllib.request.urlopen(
+                      request, timeout=20
+                  ) as response:
+                      status = response.status
+                      result = json.load(response)
+              except urllib.error.HTTPError as error:
+                  status = error.code
+                  result = json.load(error)
+
+              if not isinstance(result, dict):
+                  raise SystemExit(
+                      "STOP: UNEXPECTED_RESPONSE_SHAPE"
+                  )
+
+              return status, result
+
+          status, health = read("/health")
+
+          if (
+              status != 200
+              or health.get("ok") is not True
+              or health.get("database") != "reachable"
+          ):
+              raise SystemExit(
+                  "STOP: STAGING_HEALTH_FAILED"
+              )
+
+          print("STAGING_HEALTH=PASS")
+          print("D1_REACHABILITY=PASS")
+
+          status, route = read(
+              "/api/pro/code/ownership-challenge"
+          )
+
+          if (
+              status != 405
+              or route.get("error")
+              != "method_not_allowed"
+          ):
+              raise SystemExit(
+                  "STOP: PRO_ROUTE_FAILED"
+              )
+
+          print("PRO_OWNERSHIP_ROUTE=PASS")
+          print("HTTP_METHOD=GET_ONLY")
+          print("DATABASE_WRITES=NONE")
+          print("WORKER_DEPLOY=NOT_STARTED")
+          print("MIGRATIONS_APPLY=NOT_STARTED")
+          print("LIVE_STAGING_AUDIT=PASS")
+          PY
