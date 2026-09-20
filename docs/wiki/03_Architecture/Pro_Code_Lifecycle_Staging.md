@@ -18,6 +18,7 @@ source_files:
   - "cloudflare/control-plane/migrations/0005_pro_lifecycle.sql"
   - ".github/workflows/pro-cloudflare-auth-preflight.yml"
   - ".github/workflows/pro-cloudflare-dry-run.yml"
+  - ".github/workflows/pro-cloudflare-staging-deploy.yml"
   - ".github/scripts/pro_cloudflare_auth_preflight.py"
   - "cloudflare/control-plane/src/pro_redemption.mjs"
   - "cloudflare/control-plane/src/device_proof.mjs"
@@ -75,3 +76,17 @@ source_files:
   copy Google variable values into GitHub source.
 - Passing this check is not evidence of an actual Worker deploy,
   migration-ledger reconciliation, or real-device acceptance.
+
+
+## Controlled staging deployment
+
+- Only a separate, explicit marker-only feature-branch commit
+  may trigger the staging deployment workflow.
+- Ordinary source or workflow pushes do not trigger deployment.
+- The deployment target is `appforge-control-plane`, using the
+  existing `DB` D1 binding and `keep_vars = true`.
+- The workflow runs a fresh read-only target check and Wrangler
+  dry-run before attempting deployment.
+- It does not apply migrations or reconcile `d1_migrations`.
+- Post-deploy health and route checks are required. Device
+  acceptance remains a separate gate.

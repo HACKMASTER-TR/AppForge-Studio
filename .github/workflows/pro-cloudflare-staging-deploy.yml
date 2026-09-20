@@ -1,0 +1,194 @@
+name: AppForge Pro Controlled Staging Deploy
+
+on:
+  push:
+    branches:
+      - feat/cloudflare-control-plane-v1-20260919
+    paths:
+      - cloudflare/control-plane/.pro-staging-deploy-request
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-staging-control-plane:
+    name: Deploy Only appforge-control-plane
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/cloudflare-control-plane-v1-20260919'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout exact feature commit
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Verify explicit deploy-request commit
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MARKER="cloudflare/control-plane/.pro-staging-deploy-request"
+
+          test "$GITHUB_REF" = \
+            "refs/heads/feat/cloudflare-control-plane-v1-20260919"
+
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+          test "$(git show -s --format=%s HEAD)" = \
+            "deploy(staging): appforge-control-plane"
+
+          test "$(git diff --name-only HEAD^ HEAD)" = "$MARKER"
+
+          test -f "$MARKER"
+
+          test "$(cat "$MARKER")" = \
+            "$(git rev-parse HEAD^)"
+
+          echo "TARGET=appforge-control-plane"
+          echo "EXPLICIT_DEPLOY_REQUEST=PASS"
+          echo "SOURCE_CHANGE_IN_DEPLOY_COMMIT=NONE"
+
+      - name: Set up Linux Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Verify existing Cloudflare target read-only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/pro_cloudflare_auth_preflight.py
+
+      - name: Dry-run then deploy ONLY staging Worker
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+
+          CONFIG="$(
+            mktemp \
+              "$PWD/cloudflare/control-plane/.wrangler-ci-XXXXXXXX.toml"
+          )"
+          trap 'rm -f "$CONFIG"' EXIT
+
+          cat > "$CONFIG" <<TOML
+          name = "appforge-control-plane"
+          main = "src/index.mjs"
+          compatibility_date = "2026-09-19"
+          workers_dev = true
+          preview_urls = false
+          keep_vars = true
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "appforge-control-plane-db"
+          database_id = "$CLOUDFLARE_D1_DATABASE_ID"
+          migrations_dir = "migrations"
+          TOML
+
+          cd cloudflare/control-plane
+
+          LOG="$RUNNER_TEMP/pro-staging-deploy.log"
+          OUTDIR="$RUNNER_TEMP/pro-staging-bundle"
+          mkdir -p "$OUTDIR"
+
+          if npx --yes wrangler@4 deploy \
+              --config "$CONFIG" \
+              --dry-run \
+              --keep-vars \
+              --outdir "$OUTDIR" >"$LOG" 2>&1
+          then
+            echo "WRANGLER_DRY_RUN=PASS"
+          else
+            echo "STOP: DRY_RUN_FAILED"
+            echo "WORKER_DEPLOY=NOT_STARTED"
+            exit 1
+          fi
+
+          if npx --yes wrangler@4 deploy \
+              --config "$CONFIG" \
+              --keep-vars >"$LOG" 2>&1
+          then
+            echo "WORKER_DEPLOY=PASS"
+          else
+            echo "STOP: WORKER_DEPLOY_FAILED"
+            exit 1
+          fi
+
+          echo "TARGET_WORKER=appforge-control-plane"
+          echo "DB_BINDING=DB"
+          echo "GOOGLE_VARIABLE_VALUES=NOT_PRINTED"
+          echo "MIGRATIONS_APPLY=NOT_STARTED"
+          echo "MAIN=UNTOUCHED"
+          echo "PLAY_PRODUCTION=UNTOUCHED"
+
+      - name: Verify deployed staging routes without writes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE="https://appforge-control-plane.28550040284a.workers.dev"
+
+          python3 - "$BASE" <<'PY'
+          import json
+          import sys
+          import urllib.error
+          import urllib.request
+
+          base = sys.argv[1]
+
+          def get(path):
+              request = urllib.request.Request(
+                  base + path,
+                  method="GET",
+              )
+              try:
+                  with urllib.request.urlopen(
+                      request, timeout=20
+                  ) as response:
+                      return response.status, json.load(response)
+              except urllib.error.HTTPError as error:
+                  return error.code, json.load(error)
+
+          status, health = get("/health")
+          if (
+              status != 200
+              or health.get("ok") is not True
+              or health.get("database") != "reachable"
+          ):
+              raise SystemExit("STOP: HEALTH_CHECK_FAILED")
+
+          print("STAGING_HEALTH=PASS")
+
+          paths = [
+              "/api/pro/code/ownership-challenge",
+              "/api/pro/code/status",
+          ]
+
+          for path in paths:
+              status, result = get(path)
+
+              if (
+                  status != 405
+                  or result.get("error") != "method_not_allowed"
+              ):
+                  raise SystemExit(
+                      "STOP: PRO_ROUTE_CHECK_FAILED"
+                  )
+
+          print("PRO_ROUTES=PASS")
+          print("DATABASE_WRITES=NONE")
+          print("STAGING_SMOKE=PASS")
+          PY
