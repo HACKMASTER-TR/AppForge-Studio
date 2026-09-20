@@ -17,6 +17,7 @@ related:
 source_files:
   - "cloudflare/control-plane/migrations/0005_pro_lifecycle.sql"
   - ".github/workflows/pro-cloudflare-auth-preflight.yml"
+  - ".github/workflows/pro-cloudflare-dry-run.yml"
   - ".github/scripts/pro_cloudflare_auth_preflight.py"
   - "cloudflare/control-plane/src/pro_redemption.mjs"
   - "cloudflare/control-plane/src/device_proof.mjs"
@@ -62,3 +63,15 @@ source_files:
 - No deploy or migration is part of this workflow.
 - A passing read-only check does not itself prove deployment
   permission or reconcile the missing `d1_migrations` history.
+
+
+## Staging Worker bundle dry-run
+
+- The feature-only GitHub workflow rechecks the selected
+  `appforge-control-plane` Worker and its exact `DB` D1 binding.
+- Wrangler bundles the Pro routes using `--dry-run`; it does not
+  deploy the Worker or apply D1 migrations.
+- The temporary configuration uses `keep_vars = true` and does not
+  copy Google variable values into GitHub source.
+- Passing this check is not evidence of an actual Worker deploy,
+  migration-ledger reconciliation, or real-device acceptance.
