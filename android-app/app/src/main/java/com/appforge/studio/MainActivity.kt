@@ -18260,124 +18260,14 @@ private fun BuildStep(
                 "hata:"
             )
 
-    var flowingProgress by
-        remember(
-            buildId
-        ) {
-            mutableIntStateOf(
-                when {
-                    normalizedStatus ==
-                        "success" ||
-                    backendProgress >=
-                        100 ->
-                        100
-
-                    progressTerminalFailure ->
-                        backendProgress
-
-                    backendProgress >
-                        0 ->
-                        backendProgress
-                            .coerceAtMost(
-                                99
-                            )
-
-                    else ->
-                        0
-                }
-            )
-        }
-
-    LaunchedEffect(
-        buildId,
-        backendProgress,
-        normalizedStatus
-    ) {
-        val active =
-            backendProgress > 0 ||
-            normalizedStatus ==
-                "queued" ||
-            normalizedStatus ==
-                "building" ||
-            normalizedStatus ==
-                "success"
-
-        if (
-            !active
-        ) {
-            flowingProgress =
-                0
-
-            return@LaunchedEffect
-        }
-
-        if (
-            flowingProgress <= 0
-        ) {
-            flowingProgress =
-                1
-        }
-
-        if (
-            normalizedStatus ==
-                "success"
-        ) {
-            flowingProgress =
-                100
-
-            return@LaunchedEffect
-        }
-
-        if (
-            progressTerminalFailure
-        ) {
-            return@LaunchedEffect
-        }
-
-        while (
-            flowingProgress <
-                99
-        ) {
-            val serverTarget =
-                backendProgress
-                    .coerceIn(
-                        1,
-                        99
-                    )
-
-            val waitMs =
-                when {
-                    flowingProgress <
-                        serverTarget ->
-                        40L
-
-                    flowingProgress <
-                        60 ->
-                        850L
-
-                    flowingProgress <
-                        85 ->
-                        1_150L
-
-                    else ->
-                        1_650L
-                }
-
-            delay(
-                waitMs
-            )
-
-            flowingProgress +=
-                1
-        }
-    }
-
+    // UI animations must never invent build progress.
+    // The device build engine is the source of truth.
     val safeProgress =
-        flowingProgress
-            .coerceIn(
-                0,
-                100
-            )
+        if (normalizedStatus == "success") {
+            100
+        } else {
+            backendProgress.coerceAtMost(99)
+        }
 
     val queueWaitLabel =
         when {
@@ -18915,14 +18805,47 @@ private fun BuildStep(
                             12.sp
                     )
 
-                    LinearProgressIndicator(
-                        progress = {
-                            safeProgress /
-                                100f
-                        },
-                        modifier =
-                            Modifier.fillMaxWidth()
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(4.dp)
+                    ) {
+                        LinearProgressIndicator(
+                            progress = {
+                                (safeProgress / 25f)
+                                    .coerceIn(0f, 1f)
+                            },
+                            modifier = Modifier.weight(25f),
+                            color =
+                                androidx.compose.ui.graphics.Color(
+                                    0xFF38BDF8
+                                )
+                        )
+
+                        LinearProgressIndicator(
+                            progress = {
+                                ((safeProgress - 25) / 65f)
+                                    .coerceIn(0f, 1f)
+                            },
+                            modifier = Modifier.weight(65f),
+                            color =
+                                androidx.compose.ui.graphics.Color(
+                                    0xFFA78BFA
+                                )
+                        )
+
+                        LinearProgressIndicator(
+                            progress = {
+                                ((safeProgress - 90) / 10f)
+                                    .coerceIn(0f, 1f)
+                            },
+                            modifier = Modifier.weight(10f),
+                            color =
+                                androidx.compose.ui.graphics.Color(
+                                    0xFF4ADE80
+                                )
+                        )
+                    }
 
                     if (
                         buildTimerRunning ||

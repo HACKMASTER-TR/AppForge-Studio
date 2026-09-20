@@ -6,6 +6,7 @@ SDK="$ROOT/android-sdk"
 READY="$ROOT/.ready-v4"
 JAVA_HOME="$ROOT/jdk-17"
 ENGINE="${1:-webview-static}"
+OFFLINE="${APPFORGE_DEVICE_OFFLINE:-0}"
 
 if [ -f "$READY" ] \
    && [ -x "$SDK/build-tools/36.0.0/aapt2" ] \
@@ -13,9 +14,23 @@ if [ -f "$READY" ] \
    && [ -x "$ROOT/gradle-9.3.1/bin/gradle" ] \
    && [ -x "$JAVA_HOME/bin/java" ] \
    && [ -x "$JAVA_HOME/bin/javac" ] \
+   && { [ "$ENGINE" != "node-web" ] || {
+        command -v node >/dev/null 2>&1 &&
+        command -v npm >/dev/null 2>&1;
+      }; } \
+   && { [ "$ENGINE" != "python-android" ] || {
+        command -v python3 >/dev/null 2>&1 &&
+        python3 -m pip --version >/dev/null 2>&1;
+      }; } \
    && "$SDK/build-tools/36.0.0/aapt2" version >/dev/null 2>&1; then
   echo "APPFORGE_DEVICE_TOOLCHAIN_READY"
   exit 0
+fi
+
+if [ "$OFFLINE" = "1" ]; then
+  echo "APPFORGE_OFFLINE_TOOLCHAIN_MISSING: Yerel Android araçları eksik veya hazır değil." >&2
+  echo "İnternetsiz derleme için doğrulanmış SDK/JDK/Gradle ve ilgili dil araçları önceden hazırlanmalı." >&2
+  exit 42
 fi
 
 export DEBIAN_FRONTEND=noninteractive

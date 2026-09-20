@@ -1,6 +1,8 @@
 package com.appforge.studio.build
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
@@ -57,6 +59,7 @@ object DeviceBuildEngine {
         val cancelled: AtomicBoolean = AtomicBoolean(false),
         @Volatile var status: String = "Hazırlanıyor",
         @Volatile var progress: Int = 1,
+        @Volatile var offline: Boolean = false,
         @Volatile var apk: File? = null,
         @Volatile var aab: File? = null,
         @Volatile var shell: LinuxShellEngine? = null,
@@ -129,6 +132,26 @@ object DeviceBuildEngine {
         val workspace = File(context.cacheDir, "device-build/${state.id}")
 
         try {
+            state.offline = runCatching {
+                val manager = context.getSystemService(
+                    ConnectivityManager::class.java
+                )
+                val capabilities = manager?.activeNetwork?.let { network ->
+                    manager.getNetworkCapabilities(network)
+                }
+                capabilities?.hasCapability(
+                    NetworkCapabilities.NET_CAPABILITY_VALIDATED
+                ) != true
+            }.getOrDefault(true)
+
+            state.logs.add(
+                if (state.offline) {
+                    "📴 Çevrimdışı build • yalnız yerel araçlar kullanılacak."
+                } else {
+                    "🌐 Bağlantı mevcut • eksik araç hazırlığı yapılabilir."
+                }
+            )
+
             validateCapabilities(draft)
 
             val sourceEngine =
@@ -185,7 +208,7 @@ object DeviceBuildEngine {
                 rootfs = rootfs,
                 workspace = workspace,
                 state = state,
-                command = "chmod +x /workspace/runtime/install-toolchain.sh /workspace/runtime/build-node.sh && /bin/sh /workspace/runtime/install-toolchain.sh ${sh(sourceEngine)}",
+                command = "chmod +x /workspace/runtime/install-toolchain.sh /workspace/runtime/build-node.sh && APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} /bin/sh /workspace/runtime/install-toolchain.sh ${sh(sourceEngine)}",
                 suffix = "toolchain"
             )
 
@@ -226,7 +249,6 @@ object DeviceBuildEngine {
                 state.progress = 0
             } else {
                 state.status = "failed"
-                state.progress = 0
                 state.logs.add("❌ ${t.message ?: t.javaClass.simpleName}")
             }
         } finally {
@@ -335,7 +357,7 @@ object DeviceBuildEngine {
         state: JobState
     ) {
         state.logs.add("📦 Node/Web bağımlılıkları hazırlanıyor.")
-        runShellBlocking(shell, rootfs, workspace, state, "/bin/sh /workspace/runtime/build-node.sh", "node-web")
+        runShellBlocking(shell, rootfs, workspace, state, "APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} /bin/sh /workspace/runtime/build-node.sh", "node-web")
 
         val relative = File(workspace, ".appforge-web-output").readText().trim()
         require(relative.isNotBlank()) { "Web build çıktısı belirlenemedi." }
@@ -563,6 +585,7 @@ object DeviceBuildEngine {
             append(" -p ")
             append(sh("/workspace/$relativeProject"))
             append(" --no-daemon --stacktrace ")
+            if (state.offline) append("--offline ")
             append(tasks.joinToString(" "))
             if (signingArgs.isNotBlank()) append(" $signingArgs")
         }
