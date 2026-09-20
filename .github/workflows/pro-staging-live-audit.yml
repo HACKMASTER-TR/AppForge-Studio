@@ -68,12 +68,59 @@ jobs:
                       request, timeout=20
                   ) as response:
                       status = response.status
-                      result = json.load(response)
+                      content_type = response.headers.get(
+                          "Content-Type", ""
+                      )
+                      body = response.read(1048576)
+
               except urllib.error.HTTPError as error:
                   status = error.code
-                  result = json.load(error)
+                  content_type = error.headers.get(
+                      "Content-Type", ""
+                  )
+                  body = error.read(1048576)
+
+              except urllib.error.URLError:
+                  raise SystemExit(
+                      "STOP: LIVE_STAGING_NETWORK_ERROR"
+                  )
+
+              try:
+                  result = json.loads(body)
+              except (ValueError, UnicodeDecodeError):
+                  stripped = body.lstrip().lower()
+
+                  if not body:
+                      body_kind = "EMPTY"
+                  elif (
+                      stripped.startswith(b"<!doctype html")
+                      or stripped.startswith(b"<html")
+                  ):
+                      body_kind = "HTML"
+                  else:
+                      body_kind = "OTHER"
+
+                  mime = content_type.lower()
+
+                  if "application/json" in mime:
+                      type_kind = "JSON"
+                  elif "text/html" in mime:
+                      type_kind = "HTML"
+                  else:
+                      type_kind = "OTHER"
+
+                  print("ROUTE=" + path)
+                  print("HTTP_STATUS=" + str(status))
+                  print("CONTENT_TYPE_CLASS=" + type_kind)
+                  print("BODY_CLASS=" + body_kind)
+
+                  raise SystemExit(
+                      "STOP: LIVE_RESPONSE_NOT_JSON"
+                  )
 
               if not isinstance(result, dict):
+                  print("ROUTE=" + path)
+                  print("HTTP_STATUS=" + str(status))
                   raise SystemExit(
                       "STOP: UNEXPECTED_RESPONSE_SHAPE"
                   )
