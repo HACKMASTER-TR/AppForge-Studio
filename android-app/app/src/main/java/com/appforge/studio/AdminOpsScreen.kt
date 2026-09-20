@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.appforge.studio.security.OwnerAccessPolicy
+import com.appforge.studio.security.SecureAccountStore
 import com.appforge.studio.security.GoogleAdminIdentityClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -38,8 +39,12 @@ import java.net.URL
 private data class AdminSystemSnapshot(
     val email: String = "",
     val role: String = "",
-    val fullAccess: Boolean = false
+    val fullAccess: Boolean = false,
+    val expiresAt: Long = 0L
 )
+
+private class AdminAuthorizationDenied(message: String) :
+    IllegalStateException(message)
 
 @Composable
 fun AdminOpsScreen(
@@ -105,10 +110,48 @@ fun AdminOpsScreen(
             true
 
         try {
-            snapshot = withContext(Dispatchers.IO) { adminApi.systemStatus() }
+            val inMemory = OwnerAccessPolicy.currentGoogleIdToken()
+
+            val stored = if (inMemory == null) {
+                withContext(Dispatchers.IO) {
+                    SecureAccountStore.loadVerifiedGoogleAdmin(
+                        context,
+                        serverUrl
+                    )
+                }
+            } else {
+                null
+            }
+
+            val token = inMemory
+                ?: stored?.first
+                ?: error("Google ile yönetici girişi gerekli.")
+
+            val verified = withContext(Dispatchers.IO) {
+                adminApi.systemStatus(token)
+            }
+
+            if (stored != null) {
+                OwnerAccessPolicy.rememberVerifiedGoogleAdmin(
+                    context,
+                    token,
+                    verified.expiresAt,
+                    serverUrl
+                )
+            }
+
+            snapshot = verified
             systemError = null
+            onAdminChanged()
         } catch (error: Exception) {
             snapshot = null
+
+            if (error is AdminAuthorizationDenied) {
+                SecureAccountStore.clearVerifiedGoogleAdmin(context)
+            }
+
+            // Fail closed. A temporary network error must not grant
+            // admin, but should not erase the encrypted candidate.
             OwnerAccessPolicy.clearVerifiedGoogleAdmin()
             onAdminChanged()
             throw error
@@ -338,7 +381,7 @@ fun AdminOpsScreen(
         if (authorized) {
             item {
                 OutlinedButton(onClick = {
-                    OwnerAccessPolicy.clearVerifiedGoogleAdmin()
+                    OwnerAccessPolicy.clearVerifiedGoogleAdmin(context)
                     snapshot = null
                     onAdminChanged()
                 }) { Text("YÖNETİCİ OTURUMUNU KAPAT") }
@@ -389,17 +432,22 @@ private class AdminOpsApiClient(
     private val context: Context,
     private val baseUrl: String
 ) {
-    fun systemStatus(): AdminSystemSnapshot {
+    fun systemStatus(token: String): AdminSystemSnapshot {
         val json =
             request(
                 path =
-                    "/api/admin/system-status"
+                    "/api/admin/system-status",
+                token = token
             )
 
         check(json.optBoolean("ok") && json.optBoolean("adminVerified")) {
             "Sunucu yönetici yetkisi vermedi."
         }
-        return AdminSystemSnapshot(role = "admin", fullAccess = true)
+        return AdminSystemSnapshot(
+            role = "admin",
+            fullAccess = true,
+            expiresAt = json.getLong("expiresAt")
+        )
     }
 
     private fun controlPlaneBaseUrl(): String {
@@ -425,10 +473,12 @@ private class AdminOpsApiClient(
     }
 
     private fun request(
-        path: String
+        path: String,
+        token: String
     ): JSONObject {
-        val token = OwnerAccessPolicy.currentGoogleIdToken()
-            ?: error("Google ile yönetici girişi gerekli.")
+        require(token.length in 50..12000) {
+            "Google ile yönetici girişi gerekli."
+        }
 
         val connection =
             (
@@ -508,6 +558,12 @@ private class AdminOpsApiClient(
                         .ifBlank {
                             "Yönetici yetkisi doğrulanamadı."
                         }
+
+                if (code == 401 || code == 403) {
+                    throw AdminAuthorizationDenied(
+                        "HTTP $code • $message"
+                    )
+                }
 
                 throw IllegalStateException(
                     "HTTP $code • $message"

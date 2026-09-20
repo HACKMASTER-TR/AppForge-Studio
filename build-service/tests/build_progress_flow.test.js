@@ -1,54 +1,30 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  readFile
-} from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 
 test(
-  "Studio build progress resumes from backend state and completed success stays at 100",
+  "Studio progress uses device build state; only success reaches 100",
   async () => {
-    const source =
-      await readFile(
-        new URL(
-          "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-          import.meta.url
-        ),
-        "utf8"
-      );
-
-    assert.match(
-      source,
-      /var flowingProgress by/
+    const source = await readFile(
+      new URL(
+        "../../android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
+        import.meta.url
+      ),
+      "utf8"
     );
 
     assert.match(
       source,
-      /flowingProgress\s*<\s*99/
+      /val backendProgress\s*=\s*progress\.coerceIn\(\s*0,\s*100\s*\)/
     );
 
     assert.match(
       source,
-      /normalizedStatus\s*==\s*"success"/
+      /val safeProgress\s*=\s*if\s*\(\s*normalizedStatus\s*==\s*"success"\s*\)\s*\{\s*100\s*\}\s*else\s*\{\s*backendProgress\.coerceAtMost\(99\)\s*\}/
     );
 
-    assert.match(
-      source,
-      /flowingProgress\s*=\s*100/
-    );
-
-    assert.match(
-      source,
-      /backendProgress\s*>=\s*100/
-    );
-
-    assert.match(
-      source,
-      /backendProgress[\s\S]*?coerceAtMost\(\s*99\s*\)/
-    );
-
-    assert.match(
-      source,
-      /flowingProgress\s*\+=\s*1/
-    );
+    // The retired timer-based progress must not return.
+    assert.doesNotMatch(source, /var flowingProgress by/);
+    assert.doesNotMatch(source, /flowingProgress\s*\+=\s*1/);
   }
 );

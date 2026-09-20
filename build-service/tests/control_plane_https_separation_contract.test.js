@@ -17,9 +17,15 @@ test("device build and HTTPS control plane stay separated", () => {
     draft,
     /DEFAULT_BUILD_SERVICE_URL[\s\S]{0,80}?"device:\/\/local"/
   );
+  // Local builds never become remote builds. Only HTTPS
+  // control-plane routing differs between Debug and Release.
   assert.match(
     draft,
-    /DEFAULT_CONTROL_PLANE_URL[\s\S]{0,100}?"https:\/\/api\.appforgecloud\.com"/
+    /DEFAULT_CONTROL_PLANE_URL[\s\S]{0,200}?BuildConfig\.DEBUG[\s\S]{0,150}?"https:\/\/appforge-control-plane\.28550040284a\.workers\.dev"/
+  );
+  assert.match(
+    draft,
+    /else\s*\{\s*"https:\/\/api\.appforgecloud\.com"/
   );
 
   const buildClient = read(

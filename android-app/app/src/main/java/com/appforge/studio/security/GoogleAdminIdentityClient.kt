@@ -43,7 +43,7 @@ class GoogleAdminIdentityClient(private val activity: Activity, serverUrl: Strin
         }
         val idToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
         val expiresAt = withContext(Dispatchers.IO) { verify(idToken, nonce) }
-        OwnerAccessPolicy.rememberVerifiedGoogleAdmin(idToken, expiresAt)
+        OwnerAccessPolicy.rememberVerifiedGoogleAdmin(activity, idToken, expiresAt, endpoint)
     }
 
     private fun verify(idToken: String, nonce: String): Long {

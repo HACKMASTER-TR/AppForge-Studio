@@ -45,22 +45,36 @@ object OwnerAccessPolicy {
         digest(email) ==
             OWNER_EMAIL_SHA256
 
-    // Never persist an ID token, trust an email/session, or resurrect owner
-    // status after process restart. Only GoogleAdminIdentityClient writes this
-    // after a positive HTTPS response from the staged verifier.
+    // The owner gate is memory-only. An encrypted stored ID token is
+    // merely a candidate until the HTTPS server verifies it again.
+    // Email, local sessions and stored admin flags never grant access.
     @Volatile private var googleIdToken: String? = null
     @Volatile private var validUntilMs: Long = 0L
 
-    fun clearVerifiedGoogleAdmin() {
+    fun clearVerifiedGoogleAdmin(context: Context? = null) {
         googleIdToken = null
         validUntilMs = 0L
+        context?.let {
+            SecureAccountStore.clearVerifiedGoogleAdmin(it)
+        }
     }
 
-    internal fun rememberVerifiedGoogleAdmin(idToken: String, expiresAt: Long) {
+    internal fun rememberVerifiedGoogleAdmin(
+        context: Context,
+        idToken: String,
+        expiresAt: Long,
+        serverUrl: String
+    ) {
         val now = System.currentTimeMillis()
         val deadline = expiresAt.coerceAtMost(Long.MAX_VALUE / 1000) * 1000
         require(idToken.length in 50..12000 && deadline > now &&
             deadline - now <= 3_700_000L) { "Invalid verified Google admin session." }
+        SecureAccountStore.saveVerifiedGoogleAdmin(
+            context,
+            idToken,
+            expiresAt,
+            serverUrl
+        )
         googleIdToken = idToken
         validUntilMs = deadline
     }
