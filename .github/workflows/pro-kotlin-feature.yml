@@ -57,11 +57,11 @@ jobs:
           test -x "$SDKMANAGER"
 
           "$SDKMANAGER" \
-            "platforms;android-37" \
+            "platforms;android-37.0" \
             "ndk;28.2.13676358" \
             "cmake;3.22.1"
 
-          test -f "$ANDROID_HOME/platforms/android-37/android.jar"
+          test -f "$ANDROID_HOME/platforms/android-37.0/android.jar"
 
           echo "ANDROID_TOOLCHAIN=PASS"
 
