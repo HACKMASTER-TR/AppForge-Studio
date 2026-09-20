@@ -38,6 +38,7 @@ source_files: []
 
 ## Core Pages
 
+- [[Pro_Code_Lifecycle_Staging]]
 - [[Project_Overview]]
 - [[Current_Status]]
 - [[Feature_Overview]]

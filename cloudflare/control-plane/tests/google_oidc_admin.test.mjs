@@ -105,6 +105,33 @@ test('reject altered signature and alg substitution', async () => {
   assert.equal((await call(get(signedToken({}, { alg: 'HS256' })))).status, 401);
 });
 
+test('Cloudflare JWKS uses manual redirects and rejects redirect responses', async () => {
+  const token = signedToken();
+
+  const redirected = await call(get(token), env(), {
+    fetchKeys: async (url, init) => {
+      assert.equal(url, 'https://www.googleapis.com/oauth2/v3/certs');
+      assert.equal(init.redirect, 'manual');
+      return { ok: false, status: 302 };
+    }
+  });
+
+  assert.equal(redirected.status, 503);
+  assert.deepEqual(await redirected.json(), {
+    ok: false,
+    error: 'identity_provider_unavailable'
+  });
+
+  const valid = await call(get(token), env(), {
+    fetchKeys: async (url, init) => {
+      assert.equal(init.redirect, 'manual');
+      return keys(url);
+    }
+  });
+
+  assert.equal(valid.status, 200);
+});
+
 test('Google JWKS outage must be 503 without revealing claims', async () => {
   const result = await call(get(signedToken()), env(), {
     fetchKeys: async () => { throw Error('network outage with private data'); }

@@ -1,4 +1,6 @@
 import { verifyGoogleIdToken, subjectSha256, InvalidIdentity, IdentityProviderUnavailable } from './google_oidc.mjs';
+import { handleAdminProCodes } from './admin_pro_codes.mjs';
+import { handleProRedemption } from './pro_redemption.mjs';
 /**
  * AppForge accountless control-plane staging.
  * No normal-user login, registration, synthetic admin or Pro entitlement.
@@ -55,9 +57,15 @@ export async function handleRequest(request, env, dependencies = {}) {
         return fail('account_endpoints_retired', 410);
       }
 
+      const proAdminRoute =
+        pathname === '/api/admin/pro-codes' ||
+        pathname.startsWith('/api/admin/pro-codes/') ||
+        pathname === '/api/admin/pro-grants' ||
+        pathname.startsWith('/api/admin/pro-grants/');
+
       // Admin alone is account-based. Normal users stay accountless.
       // An email, old bearer, device ID or Play purchase NEVER confers admin.
-      if (pathname === '/api/admin/system-status' || pathname === '/api/admin/google/verify') {
+      if (pathname === '/api/admin/system-status' || pathname === '/api/admin/google/verify' || proAdminRoute) {
         if ((pathname === '/api/admin/system-status' && request.method !== 'GET') ||
             (pathname === '/api/admin/google/verify' && request.method !== 'POST')) {
           return fail('method_not_allowed', 405);
@@ -67,7 +75,7 @@ export async function handleRequest(request, env, dependencies = {}) {
         }
         let token = '';
         let expectedNonce;
-        if (pathname === '/api/admin/system-status') {
+        if (pathname !== '/api/admin/google/verify') {
           const authorization = request.headers.get('authorization') || '';
           if (/^Bearer [A-Za-z0-9_.-]{50,12000}$/.test(authorization)) {
             token = authorization.slice(7);
@@ -98,8 +106,10 @@ export async function handleRequest(request, env, dependencies = {}) {
           if (error instanceof InvalidIdentity) return fail('invalid_identity', 401);
           return fail('identity_provider_unavailable', 503);
         }
+        let verifiedAdminHash = '';
         try {
           const hash = await subjectSha256(identity.sub);
+          verifiedAdminHash = hash;
           const owner = await env.DB.prepare(
             'SELECT state FROM admin_identities WHERE google_subject_hash = ?'
           ).bind(hash).first();
@@ -110,11 +120,27 @@ export async function handleRequest(request, env, dependencies = {}) {
         if (pathname === '/api/admin/google/verify') {
           return json({ ok: true, adminVerified: true, expiresAt: identity.exp });
         }
+        if (proAdminRoute) {
+          return handleAdminProCodes(
+            request, env, verifiedAdminHash, pathname
+          );
+        }
         return json({ ok: true, adminVerified: true, expiresAt: identity.exp });
       }
       if (pathname === '/api/admin' || pathname.startsWith('/api/admin/')) {
         // No account-management functions are enabled until separately audited.
         return fail('admin_operation_not_migrated', 503);
+      }
+
+      if (
+        pathname === '/api/pro/code/redeem' ||
+        pathname === '/api/pro/code/challenge' ||
+        pathname === '/api/pro/code/ownership-challenge' ||
+        pathname === '/api/pro/code/recover' ||
+        pathname === '/api/pro/code/reactivate' ||
+        pathname === '/api/pro/code/status'
+      ) {
+        return handleProRedemption(request, env, pathname);
       }
 
       // Monthly subscription and add-on routes are retired in the one-product model.

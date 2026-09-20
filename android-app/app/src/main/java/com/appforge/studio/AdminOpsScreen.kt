@@ -329,6 +329,12 @@ fun AdminOpsScreen(
             authorized
         ) {
             item {
+                AdminProCodesPanel(
+                    serverUrl = serverUrl
+                )
+            }
+
+            item {
                 Button(modifier = Modifier.fillMaxWidth(), onClick = onOpenTerminal) {
                     Text("TERMİNAL")
                 }

@@ -28,10 +28,13 @@ async function keys(fetchKeys) {
   if (!fetchKeys && cached && cached.expiresAt > Date.now()) return cached.value;
   let result;
   try {
-    result = await (fetchKeys || fetch)(GOOGLE_JWKS, {
-      method: 'GET', redirect: 'error', cache: 'no-store',
-      signal: AbortSignal.timeout(5_000)
-    });
+    result = await (fetchKeys || ((url, init) => fetch(url, init)))(
+      GOOGLE_JWKS, {
+        method: 'GET',
+        redirect: 'manual',
+        signal: AbortSignal.timeout(5_000)
+      }
+    );
     if (!result.ok) throw new Error('Google JWKS response');
     const document = await result.json();
     if (!Array.isArray(document?.keys) || document.keys.length < 1 || document.keys.length > 12) {

@@ -3,8 +3,8 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-19
-last_verified: 2026-09-19
+updated: 2026-09-20
+last_verified: 2026-09-20
 confidence: high
 tags:
   - hot-context
@@ -26,6 +26,7 @@ source_files:
 
 ## Current Focus
 
+- Stage accountless, admin-issued Pro code lifecycle (grant revocation, owner-key recovery and safe reactivation). **Not shipped or device-accepted.**
 - Finish Clean Device Build Runtime V3.
 - Validate APK and AAB on a real Android device.
 - Keep Terminal Linux physically separate from project-build Linux.
@@ -56,6 +57,10 @@ source_files:
 
 ## Current Risks / Open Questions
 
+- Pro staging migrations 0002–0005 have not been applied remotely; Worker not deployed, Android Kotlin not compiled, and device acceptance pending.
+- A signed device challenge authenticates the Android installation; the HTTPS server status response has no separate application-level server signature.
+- A revoked Pro status is checked on startup and refreshed on a best-effort 60-second loop while active; it is not an instantaneous offline revocation promise. Server-gated features must enforce their own authorization.
+- Legacy account/Play billing entitlements are independent of admin-issued codes; they require separate end-to-end verification.
 - Real-device APK/AAB acceptance is still required.
 - Windows EXE must not be marked READY before real Windows validation.
 - Future engines must not silently fall back to remote Workers.
@@ -63,6 +68,7 @@ source_files:
 
 ## Read Next
 
+- [[Pro_Code_Lifecycle_Staging]]
 - [[Device_Build_Runtime_V3]]
 - [[System_Architecture]]
 - [[Build_And_Worker_Architecture]]

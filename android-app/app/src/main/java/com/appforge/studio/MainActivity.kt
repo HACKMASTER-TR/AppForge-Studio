@@ -2910,14 +2910,62 @@ private fun AppForgeApp() {
         val current =
             session
 
-        if (current == null) {
-            proStatus =
-                null
+        // Clear previous entitlement before verifying
+        // the current session or installation.
+        proStatus = null
 
-            proSecurityMessage =
-                ""
+        if (current == null) {
+            proSecurityMessage = ""
+
+            // Accountless Pro: verify the stored public installation
+            // through a NEW server challenge on every app start.
+            // No stored ID or local flag grants access.
+            val codeClient =
+                com.appforge.studio.security.ProCodeClient(
+                    context,
+                    DEFAULT_CONTROL_PLANE_URL
+                )
+
+            if (codeClient.hasInstallation()) {
+                proSecurityMessage =
+                    "Pro yetkisi sunucuda doğrulanıyor..."
+
+                try {
+                    proStatus = withContext(Dispatchers.IO) {
+                        codeClient.verifyStatus()
+                    }
+
+                    proSecurityMessage =
+                        "Yönetici Pro yetkisi doğrulandı."
+                } catch (error: Exception) {
+                    proStatus = null
+                    proSecurityMessage =
+                        "Pro yetkisi şu anda doğrulanamadı."
+                }
+            }
 
             return@LaunchedEffect
+        }
+
+        // An existing account session must not skip a valid, device-bound
+        // administrator grant. Fail closed for that grant, then preserve the
+        // independent legacy purchase verification below.
+        val codeClient =
+            com.appforge.studio.security.ProCodeClient(
+                context, DEFAULT_CONTROL_PLANE_URL
+            )
+        if (codeClient.hasInstallation()) {
+            try {
+                proStatus = withContext(Dispatchers.IO) {
+                    codeClient.verifyStatus()
+                }
+                proSecurityMessage = "Yönetici Pro yetkisi doğrulandı."
+                return@LaunchedEffect
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                proStatus = null
+            }
         }
 
         proSecurityMessage =
@@ -2963,6 +3011,30 @@ private fun AppForgeApp() {
         }
     }
 
+
+    // Best-effort refresh of admin-issued Pro while the UI stays open.
+    // Privileged backend actions still require their own server checks.
+    LaunchedEffect(session?.token, proStatus?.source) {
+        while (proStatus?.active == true &&
+               proStatus?.source == "admin_code") {
+            delay(60_000L)
+            try {
+                val refreshed = withContext(Dispatchers.IO) {
+                    com.appforge.studio.security.ProCodeClient(
+                        context, DEFAULT_CONTROL_PLANE_URL
+                    ).verifyStatus()
+                }
+                proStatus = refreshed
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                proStatus = null
+                proSecurityMessage =
+                    "Pro yetkisi yeniden doğrulanamadı."
+                break
+            }
+        }
+    }
 
     val startBuildWithDraft: (ProjectDraft) -> Unit =
         buildStart@{ buildDraft ->
@@ -22769,11 +22841,14 @@ private fun ProUpgradeScreen(
                             fontWeight = FontWeight.Bold)
                         Text("Tek seferlik Google Play ödemesi; aylık abonelik ve ek paket yok.")
                         if (currentStatus?.active == true &&
+                            currentStatus.source == "admin_code") {
+                            Text("Yönetici Pro yetkin sunucuda doğrulandı.")
+                        } else if (currentStatus?.active == true &&
                             currentStatus.productId ==
                                 com.appforge.studio.security.APPFORGE_LIFETIME_PRODUCT_ID) {
                             Text("Ömür boyu Pro hakkın sunucu tarafından doğrulandı.")
                         } else {
-                            Text("Pro erişimi, Google Play satın alımı sunucuda doğrulanınca açılır.")
+                            Text("Pro erişimi sunucuda doğrulanınca açılır.")
                         }
                         Text(prices.lifetimePrice ?: "Fiyat Google Play'den yüklenir")
                         Button(
@@ -22793,6 +22868,13 @@ private fun ProUpgradeScreen(
                             "Gerçek sunucu doğrulaması hazır olana kadar satın alma kapalı.")
                     }
                 }
+            }
+            item {
+                ProCodeActivationPanel(
+                    serverUrl = serverUrl,
+                    onVerified = onVerified,
+                    onMessage = onSecurityMessage
+                )
             }
             if (securityMessage.isNotBlank()) item { NoteCard(securityMessage) }
         }
