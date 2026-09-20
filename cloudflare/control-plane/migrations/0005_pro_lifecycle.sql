@@ -22,8 +22,8 @@ CREATE TRIGGER IF NOT EXISTS trg_archive_reactivated_pro_grant
 BEFORE UPDATE OF activation_code_id ON pro_admin_grants
 WHEN OLD.activation_code_id <> NEW.activation_code_id
 BEGIN
-  SELECT CASE WHEN OLD.state <> 'revoked' OR NEW.state <> 'active'
-    THEN RAISE(ABORT, 'grant_must_be_revoked') END;
+  SELECT (CASE WHEN OLD.state <> 'revoked' OR NEW.state <> 'active'
+    THEN RAISE(ABORT, 'grant_must_be_revoked') END);
   INSERT INTO pro_admin_grant_history
     (activation_code_id, installation_id, granted_at,
      revoked_at, revoked_by_hash, superseded_at)

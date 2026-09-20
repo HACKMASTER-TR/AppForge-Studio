@@ -40,3 +40,12 @@ source_files:
 - Run Kotlin compilation, real second-device redemption/revocation/restart, interrupted-activation recovery, revoked-key reactivation, challenge replay and offline checks separately.
 - Refresh while the app is open is best-effort; protected server routes must independently enforce active grants.
 - Keep `main`, Git history, existing .appforge directories, Termux backups and Android app data intact.
+
+## Actual staging schema status — 2026-09-20
+
+- D1 `appforge-control-plane-db` received 0002–0005 SQL manually via Cloudflare Console.
+- All 16 expected objects/columns checked OK; `PRAGMA foreign_key_check` returned no violations.
+- `admin_identities`: one active admin preserved.
+- Console required a parenthesized CASE expression in the grant-archive trigger; the source migration now matches it.
+- `d1_migrations` does not exist. Do not run `wrangler d1 migrations apply` or invent ledger entries before reconciling the existing schema and migration history.
+- Worker deployment and real-device acceptance remain pending.

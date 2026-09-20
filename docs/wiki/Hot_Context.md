@@ -57,7 +57,7 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- Pro staging migrations 0002–0005 have not been applied remotely; Worker not deployed, Android Kotlin not compiled, and device acceptance pending.
+- Pro staging 0002–0005 schema was applied manually through the D1 Console; 16/16 objects checked, foreign_key_check returned no violations, and the one active admin was preserved. Wrangler d1_migrations is absent and must be reconciled before any migrations apply. Worker not deployed; Android Kotlin CI passed; real-device acceptance remains pending.
 - A signed device challenge authenticates the Android installation; the HTTPS server status response has no separate application-level server signature.
 - A revoked Pro status is checked on startup and refreshed on a best-effort 60-second loop while active; it is not an instantaneous offline revocation promise. Server-gated features must enforce their own authorization.
 - Legacy account/Play billing entitlements are independent of admin-issued codes; they require separate end-to-end verification.
