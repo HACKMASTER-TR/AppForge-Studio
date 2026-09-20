@@ -16,6 +16,8 @@ related:
   - "[[Hot_Context]]"
 source_files:
   - "cloudflare/control-plane/migrations/0005_pro_lifecycle.sql"
+  - ".github/workflows/pro-cloudflare-auth-preflight.yml"
+  - ".github/scripts/pro_cloudflare_auth_preflight.py"
   - "cloudflare/control-plane/src/pro_redemption.mjs"
   - "cloudflare/control-plane/src/device_proof.mjs"
   - "android-app/app/src/main/java/com/appforge/studio/security/ProCodeClient.kt"
@@ -49,3 +51,14 @@ source_files:
 - Console required a parenthesized CASE expression in the grant-archive trigger; the source migration now matches it.
 - `d1_migrations` does not exist. Do not run `wrangler d1 migrations apply` or invent ledger entries before reconciling the existing schema and migration history.
 - Worker deployment and real-device acceptance remain pending.
+
+## Cloudflare credential preflight
+
+- A feature-branch-only GitHub Actions check validates the active
+  account token and reads only `appforge-control-plane` settings.
+- It compares the existing `DB` D1 binding against the GitHub
+  Database ID secret and checks Google variable names without
+  printing any configuration values.
+- No deploy or migration is part of this workflow.
+- A passing read-only check does not itself prove deployment
+  permission or reconcile the missing `d1_migrations` history.
