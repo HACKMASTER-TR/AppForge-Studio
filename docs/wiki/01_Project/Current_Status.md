@@ -3,8 +3,8 @@ type: status
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-19
-last_verified: 2026-09-19
+updated: 2026-09-21
+last_verified: 2026-09-21
 confidence: high
 tags:
   - status
@@ -38,13 +38,15 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeBuildErrorAdvisor.kt"
   - "build-service/tests/device_only_build_ui_contract.test.js"
   - "android-app/app/src/test/java/com/appforge/studio/UpdateGatePlayVisibilityTest.kt"
+  - ".github/workflows/pro-staging-http-matrix.yml"
+  - ".github/workflows/pro-staging-live-audit.yml"
 ---
 
 # Current Status
 
 ## Verified repository state
 
-- The checked-out revision is `591a65b`; no live deployment state was inspected.
+- This status page includes live Pro staging evidence verified through 2026-09-21; dated sections preserve earlier checkpoints rather than rewriting their historical state.
 - The old `.secondbrain` and legacy `docs` content were intentionally deleted before this wiki bootstrap.
 - Legacy brain references in scripts, CI policy, Android navigation, owner sync, and local-AI context were removed during this bootstrap.
 
@@ -226,3 +228,28 @@ remains disabled because server routes are not migrated. This is **not** a live
 admin access claim: Android CI, verified Google-subject provisioning, D1
 migration, staging deployment and physical Terminal acceptance are pending.
 Device Build V3, Play/Pro and the production custom domain were not changed.
+
+## 2026-09-21 Pro staging deployment and live audit acceptance
+
+- The dedicated feature branch remains isolated from
+  `main`, Play Production, `appforge-failover` and migration
+  application.
+- The staging Worker version identified as `a1f3c746...`
+  was observed receiving 100% traffic. Existing `DB`
+  binding and Google configuration names were preserved.
+- The HTTP Matrix tested three request profiles against
+  `/health`: default curl, AppForge User-Agent and browser
+  User-Agent. All returned HTTP 200 JSON with
+  `database=reachable`.
+- The earlier Python `urllib` 403 is not treated as a
+  general GitHub Runner block after those curl results.
+- Commit `d7fe56ffcdbd94a264bf402230cb941b66a2642d`
+  converted the read-only Live Audit transport to curl.
+- GitHub Actions Live Audit run 3 completed successfully:
+  `STAGING_HEALTH=PASS`, `D1_REACHABILITY=PASS`,
+  `PRO_OWNERSHIP_ROUTE=PASS` and
+  `LIVE_STAGING_AUDIT=PASS`.
+- The audit made no database writes, applied no migrations
+  and initiated no new Worker deployment.
+- `d1_migrations` reconciliation and physical-device Pro
+  acceptance remain open gates.

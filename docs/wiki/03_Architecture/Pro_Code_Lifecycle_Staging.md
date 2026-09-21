@@ -3,8 +3,8 @@ type: architecture
 status: draft
 project: AppForge Studio
 created: 2026-09-20
-updated: 2026-09-20
-last_verified: 2026-09-20
+updated: 2026-09-21
+last_verified: 2026-09-21
 confidence: medium
 tags:
   - pro
@@ -19,6 +19,7 @@ source_files:
   - ".github/workflows/pro-cloudflare-auth-preflight.yml"
   - ".github/workflows/pro-cloudflare-dry-run.yml"
   - ".github/workflows/pro-cloudflare-staging-deploy.yml"
+  - ".github/workflows/pro-staging-http-matrix.yml"
   - ".github/workflows/pro-staging-live-audit.yml"
   - ".github/scripts/pro_cloudflare_auth_preflight.py"
   - "cloudflare/control-plane/src/pro_redemption.mjs"
@@ -53,7 +54,7 @@ source_files:
 - `admin_identities`: one active admin preserved.
 - Console required a parenthesized CASE expression in the grant-archive trigger; the source migration now matches it.
 - `d1_migrations` does not exist. Do not run `wrangler d1 migrations apply` or invent ledger entries before reconciling the existing schema and migration history.
-- Worker deployment and real-device acceptance remain pending.
+- Staging Worker deployment completed; Cloudflare showed version `a1f3c746...` receiving 100% traffic. Real-device acceptance remains pending.
 
 ## Cloudflare credential preflight
 
@@ -95,14 +96,30 @@ source_files:
 
 ## Post-deployment read-only audit
 
-- A feature-branch workflow separately verifies the existing
-  Cloudflare `DB` binding and Google variable names.
-- It checks the live staging health endpoint and the Pro
-  ownership route using GET requests only.
-- This workflow does not deploy, apply migrations, modify
-  the existing deployment marker, or prove real-device
-  activation and revocation.
+- The feature-branch audit separately verifies the existing
+  Cloudflare `DB` binding and Google variable names without
+  printing configuration values.
+- The live HTTP transport is `curl`; the former Python
+  `urllib` request path is no longer used by this audit.
+- On 2026-09-21, commit
+  `d7fe56ffcdbd94a264bf402230cb941b66a2642d`
+  completed the Live Audit successfully.
+- `/health` returned HTTP 200 JSON with `ok=true` and
+  `database=reachable`.
+- GET `/api/pro/code/ownership-challenge` returned the
+  expected HTTP 405 JSON `method_not_allowed`, proving the
+  route is present while the audit remains read-only.
+- The preceding HTTP Matrix also verified default curl,
+  AppForge User-Agent and browser User-Agent profiles
+  against `/health`; all three received HTTP 200 JSON with
+  D1 reachable. The earlier `urllib` 403 is therefore not
+  treated as a general GitHub Runner connectivity block.
+- The audit performed no database writes, migration apply,
+  deployment-marker change or new Worker deployment.
 - The earlier Wrangler deploy command returned failure even
-  though Cloudflare subsequently showed the new version
-  receiving 100% traffic. Its suppressed temporary error
-  log was not recovered; the exact exit cause remains open.
+  though Cloudflare subsequently showed the deployed Worker
+  version receiving 100% traffic. The suppressed temporary
+  error log was not recovered, so that command's exact exit
+  cause remains open.
+- Real-device Pro activation, revocation, restart, recovery,
+  replay and offline acceptance remain separate gates.

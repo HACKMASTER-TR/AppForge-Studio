@@ -3,8 +3,8 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-20
-last_verified: 2026-09-20
+updated: 2026-09-21
+last_verified: 2026-09-21
 confidence: high
 tags:
   - hot-context
@@ -20,6 +20,8 @@ source_files:
   - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
   - "build-service/tests/device_build_runtime_v3_contract.test.js"
   - "build-service/tests/device_build_capability_matrix_contract.test.js"
+  - ".github/workflows/pro-staging-http-matrix.yml"
+  - ".github/workflows/pro-staging-live-audit.yml"
 ---
 
 # Hot Context
@@ -54,10 +56,11 @@ source_files:
 - APK ↔ EXE conversion remains a product requirement.
 - Flutter/Dart, React Native, Expo, Android NDK/C++, .NET Android and MAUI are explicit future capability families.
 - Unity remains external-tool-required until a supported build-host path exists.
+- Pro staging Live Audit now uses `curl`; the 2026-09-21 feature-branch run passed live health, D1 reachability and the GET-only ownership-route check without database writes, migration apply or a new Worker deployment.
 
 ## Current Risks / Open Questions
 
-- Pro staging 0002–0005 schema was applied manually through the D1 Console; 16/16 objects checked, foreign_key_check returned no violations, and the one active admin was preserved. Wrangler d1_migrations is absent and must be reconciled before any migrations apply. Worker not deployed; Android Kotlin CI passed; real-device acceptance remains pending.
+- Pro staging 0002–0005 schema was applied manually through the D1 Console; 16/16 objects checked, `foreign_key_check` returned no violations, and the one active admin was preserved. Wrangler `d1_migrations` is absent and must be reconciled before any migrations apply. The staging Worker is deployed and the verified version receives 100% traffic; curl-based Live Audit passed health, D1 reachability and the GET-only ownership route. Android Kotlin CI passed; real-device acceptance remains pending.
 - A signed device challenge authenticates the Android installation; the HTTPS server status response has no separate application-level server signature.
 - A revoked Pro status is checked on startup and refreshed on a best-effort 60-second loop while active; it is not an instantaneous offline revocation promise. Server-gated features must enforce their own authorization.
 - Legacy account/Play billing entitlements are independent of admin-issued codes; they require separate end-to-end verification.

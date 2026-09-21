@@ -3,8 +3,8 @@ type: log
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-09-21
+last_verified: 2026-09-21
 confidence: high
 tags:
   - log
@@ -33,3 +33,17 @@ source_files: []
 - Summary: Removed legacy Markdown and backup files from the `docs/` root so durable project memory remains under `docs/wiki/`.
 - Validation: `docs/` now contains only `docs/wiki/`, `privacy.html`, and `delete-account.html`. The latest GitHub Actions run for the cleanup commit completed successfully.
 - Boundary: `privacy.html` and `delete-account.html` are product/legal pages, not second-brain wiki pages.
+
+## 2026-09-21 — validation | Pro staging Live Audit accepted
+
+- Summary: Replaced the staging Live Audit HTTP transport
+  from Python `urllib` to curl after the HTTP Matrix proved
+  GitHub Runner access across three request profiles.
+- Validation: Live Audit run 3 passed staging health, D1
+  reachability and the GET-only ownership route. Existing
+  DB binding and Google configuration names were preserved.
+- Boundaries: No database write, migration apply, new Worker
+  deployment, `main` change, Play Production change or
+  failover change was part of the audit.
+- Remaining gates: `d1_migrations` reconciliation and
+  real-device Pro lifecycle acceptance.
