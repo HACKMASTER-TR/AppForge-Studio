@@ -53,7 +53,7 @@ source_files:
 - Root cause is the reactivation response path trusting exact D1 `meta.changes` values after a trigger-backed batch.
 - Current source fix keeps the atomic `receiptGuard` and post-verifies the committed activation code, active grant and redemption receipt.
 - The corrected staging Worker was deployed; same-device direct reactivation, restart verification, offline fail-closed and online recovery passed.
-- An isolated APK passed controlled interruption, ownership recovery and post-recovery restart checks. Real process death and second-device acceptance remain open.
+- An isolated APK passed controlled interruption, ownership recovery and post-recovery restart checks. Live staging challenge replay passed: reused signed status challenge returned HTTP 409 and fresh verification passed. A second physical Android device passed initial activation and automatic verification after restart. Actual process death remains open.
 
 ## Current Risks / Open Questions
 

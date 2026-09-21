@@ -191,7 +191,7 @@ source_files:
 - No new migration was applied and Play Production,
   main and appforge-failover remained untouched.
 
-## Live staging challenge replay — pending
+## Live staging challenge replay — device accepted
 
 - The isolated Pro Recovery debug APK tests replay after
   a successful device-bound installation recovery.
@@ -203,7 +203,7 @@ source_files:
 - Local contract tests are not live staging acceptance.
 - Real process death and second-device tests remain open.
 
-## Second physical device staging APK — pending
+## Second physical device staging APK — device accepted
 
 - The Redmi staging APK uses an isolated `.prodevice2`
   application ID and must not replace the Google Play app.
@@ -213,3 +213,35 @@ source_files:
 - The second phone must create its own private Keystore key.
 - Physical-device activation and restart remain untested.
 - No Worker deployment, D1 migration or Play publishing.
+
+## Second physical device acceptance — 2026-09-22
+
+- Device: Redmi 4 Pro Harry Potter Edition, separate from the
+  first physical Android phone.
+- The existing Google Play closed-test 5.0.17 installation
+  was kept; an isolated staging APK was installed alongside it.
+- Isolated application ID: `com.appforge.studio.prodevice2`.
+- Source commit:
+  `6af9dba119e48c4768688c2f9d9c3755ec41b5b2`.
+- Android Kotlin Feature CI and opt-in second-device APK
+  workflow completed successfully.
+- The second-device build had recovery interruption disabled.
+- Before redemption, Pro was inactive and the activation
+  code field was empty.
+- One new, single-use admin code was redeemed on the Redmi.
+- The Redmi displayed server-verified administrator Pro access.
+- After closing and reopening the staging application,
+  administrator Pro access was automatically verified without
+  using manual verification or ownership recovery.
+- Evidence: user-observed screenshots from the physical Redmi.
+  No plaintext activation code, token, private key, challenge
+  or signature is stored in this wiki.
+- Result: second physical device **initial activation PASS**
+  and **restart automatic verification PASS**.
+- Do not infer second-device revocation, reactivation, offline
+  behavior or actual process-death acceptance from these checks;
+  those scenarios were not exercised on the Redmi.
+- Actual process death remains an open acceptance criterion.
+- The separate Play billing path is not covered by this test.
+- No new Worker deployment or D1 migration was performed
+  as part of the second-device APK acceptance.
