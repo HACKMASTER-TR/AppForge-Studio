@@ -247,7 +247,7 @@ source_files:
 - No new Worker deployment or D1 migration was performed
   as part of the second-device APK acceptance.
 
-## Actual Android process-death test — pending
+## Actual Android process-death test — device accepted
 
 - An isolated opt-in debug APK uses the `.prodeath`
   application ID; existing app packages and their
@@ -265,8 +265,49 @@ source_files:
   The same private Keystore key should recover the
   installation ID, then fresh HTTPS status should
   confirm the existing grant.
-- This is test design only; no physical-device PASS
-  is claimed until the APK and actual process
-  termination/recovery have been observed.
+- Device-observed acceptance for the isolated `.prodeath`
+  debug package is recorded in the dated result below.
+  The source-instrumented kill path and observed app exit
+  are evidence of this test scenario; independent PID/log
+  confirmation was not collected.
 - No new Worker deployment, migration, main merge
   or Play publishing is part of this test.
+
+## Process-death physical-device result — 2026-09-22
+
+- Source commit:
+  `001078f3b58d1efafae79f6616a4d1c4a6506544`.
+- Kotlin feature CI completed successfully; isolated debug
+  APK workflow `35668775571` completed successfully.
+- The APK package was verified as
+  `com.appforge.studio.prodeath` before installation.
+- The test used a fresh, single-use admin Pro code on
+  the isolated package, not the existing installations.
+- During initial redemption, the app abruptly exited.
+  Its source-instrumented test path calls Android
+  `Process.killProcess(myPid())` after successful redeem
+  and before saving the installation ID.
+- On reopening, Pro remained inactive. No entitlement
+  was granted merely from the previous redeem response.
+- A single ownership-recovery action using the existing
+  Android Keystore key recovered the installation and
+  returned server-verified administrator Pro access.
+- No replacement code or key rotation was required.
+- On the next app restart, Pro was automatically verified
+  without manual recovery or verification.
+- Evidence: source and CI checks plus user-observed
+  physical-device screenshots. No independent process
+  PID/log trace was collected.
+- Result for this isolated test scenario:
+  **device-observed process termination PASS**,
+  **fail-closed restart PASS**,
+  **unchanged-key recovery PASS**,
+  **fresh server verification PASS**, and
+  **subsequent automatic verification PASS**.
+- These observations do not establish behavior for every
+  possible Android crash timing or device model.
+- Redmi-specific revocation, reactivation and offline
+  scenarios were not exercised. The Google Play billing
+  path was not tested.
+- No Worker deployment, D1 migration, main merge or
+  Play Production publishing occurred as part of this test.
