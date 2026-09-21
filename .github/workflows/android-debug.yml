@@ -2,6 +2,12 @@ name: AppForge Android Debug
 
 on:
   workflow_dispatch:
+    inputs:
+      pro_recovery_test:
+        description: "Build isolated Pro recovery test APK"
+        type: boolean
+        required: false
+        default: false
   push:
     branches:
       - main
@@ -97,8 +103,14 @@ jobs:
           APPFORGE_DEBUG_KEY_PASSWORD: ${{ secrets.APPFORGE_DEBUG_STORE_PASSWORD }}
           APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
         run: |
+          EXTRA=()
+          if [ "${{ inputs.pro_recovery_test }}" = "true" ]; then
+            EXTRA=(-PappforgeProRecoveryTest=true)
+          fi
+
           gradle \
             -p android-app \
+            "${EXTRA[@]}" \
             :app:testDebugUnitTest \
             :app:signingReport \
             :app:assembleDebug \
@@ -157,9 +169,14 @@ jobs:
               "$APK"
           )"
 
+          PACKAGE="com.appforge.studio"
+          if [ "${{ inputs.pro_recovery_test }}" = "true" ]; then
+            PACKAGE="com.appforge.studio.prorecovery"
+          fi
+
           echo "$BADGING" \
             | grep -F \
-              "package: name='com.appforge.studio'"
+              "package: name='$PACKAGE'"
 
           echo "$BADGING" \
             | grep -F \
@@ -172,6 +189,7 @@ jobs:
           echo "APK metadata + signature verified."
 
       - name: Upload debug APK artifact
+        if: ${{ !inputs.pro_recovery_test }}
         uses: actions/upload-artifact@v5
         with:
           name: AppForgeStudio-debug-${{ github.sha }}
@@ -179,8 +197,17 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Upload isolated Pro recovery test APK
+        if: ${{ inputs.pro_recovery_test }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: AppForgeStudio-Pro-Recovery-Test-${{ github.sha }}
+          path: AppForgeStudio-latest.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Publish latest APK release
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && !inputs.pro_recovery_test
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

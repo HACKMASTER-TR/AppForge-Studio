@@ -193,6 +193,8 @@ val prepareAppForgeProrootRuntime =
     }
 
 
+val appforgeProRecoveryTest = providers.gradleProperty("appforgeProRecoveryTest").orNull == "true"
+
 android {
     namespace = "com.appforge.studio"
     compileSdk = 37
@@ -293,9 +295,22 @@ android {
     buildTypes {
         getByName("debug") {
             ciDebugSigning?.let { signingConfig = it }
+            if (appforgeProRecoveryTest) {
+                applicationIdSuffix = ".prorecovery"
+            }
+            buildConfigField(
+                "boolean",
+                "PRO_RECOVERY_TEST",
+                appforgeProRecoveryTest.toString()
+            )
         }
 
         getByName("release") {
+            buildConfigField(
+                "boolean",
+                "PRO_RECOVERY_TEST",
+                "false"
+            )
             ciReleaseSigning?.let { signingConfig = it }
             isMinifyEnabled = true
             isShrinkResources = true

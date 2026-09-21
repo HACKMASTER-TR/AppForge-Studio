@@ -1,5 +1,7 @@
 package com.appforge.studio.security
 
+import com.appforge.studio.BuildConfig
+
 import android.content.Context
 import android.util.Base64
 import org.json.JSONObject
@@ -485,6 +487,15 @@ class ProCodeClient(
                 UUID_PATTERN.matches(id)
         ) {
             "Sunucu Pro aktivasyonunu doğrulamadı."
+        }
+
+        // Only the isolated opt-in debug APK simulates a
+        // lost response before local persistence. The normal
+        // app and every release build never enter this branch.
+        if (BuildConfig.PRO_RECOVERY_TEST) {
+            error(
+                "STAGING_TEST_INTERRUPTED_AFTER_REDEEM_BEFORE_SAVE"
+            )
         }
 
         persistInstallation(id)

@@ -24,6 +24,7 @@ source_files:
   - ".github/scripts/pro_cloudflare_auth_preflight.py"
   - "cloudflare/control-plane/src/pro_redemption.mjs"
   - "cloudflare/control-plane/tests/pro_reactivation_postcommit_contract.test.mjs"
+  - "build-service/tests/pro_recovery_interruption_contract.test.js"
   - "cloudflare/control-plane/src/device_proof.mjs"
   - "android-app/app/src/main/java/com/appforge/studio/security/ProCodeClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/security/ProInstallationProof.kt"
@@ -146,3 +147,18 @@ source_files:
 - The source fix still requires staging deployment and physical-device
   reactivation retest before reactivation acceptance can be marked
   complete.
+
+## Isolated first-activation interruption test — pending
+
+- Existing AppForge data, Keystore key and active Pro grant
+  on the phone must remain untouched.
+- An opt-in debug APK uses a separate `.prorecovery` package,
+  with separate preferences and Keystore ownership.
+- The test simulates interruption after successful initial
+  redeem and before local installation ID persistence.
+- Reopening the test app and recovering with its unchanged
+  key must restore the installation identity and pass fresh
+  HTTPS status verification.
+- This is controlled error simulation, not actual process death.
+- Normal debug and release activation paths remain unchanged.
+- This does not count as second-device acceptance.
