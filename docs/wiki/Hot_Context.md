@@ -52,7 +52,8 @@ source_files:
 - Reactivation committed successfully in D1 but returned a false-negative HTTP 409.
 - Root cause is the reactivation response path trusting exact D1 `meta.changes` values after a trigger-backed batch.
 - Current source fix keeps the atomic `receiptGuard` and post-verifies the committed activation code, active grant and redemption receipt.
-- The source fix has passed local regression, control-plane and full tests; staging redeploy and physical-device reactivation retest remain pending.
+- The corrected staging Worker was deployed; same-device direct reactivation, restart verification, offline fail-closed and online recovery passed.
+- An isolated APK passed controlled interruption, ownership recovery and post-recovery restart checks. Real process death and second-device acceptance remain open.
 
 ## Current Risks / Open Questions
 

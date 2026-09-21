@@ -626,6 +626,38 @@ fun ProCodeActivationPanel(
             ) {
                 Text("MEVCUT PRO YETKİSİNİ DOĞRULA")
             }
+
+            if (BuildConfig.DEBUG && BuildConfig.PRO_RECOVERY_TEST) {
+                OutlinedButton(
+                    enabled = !busy && client.hasInstallation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        scope.launch {
+                            busy = true
+                            try {
+                                val verified =
+                                    withContext(Dispatchers.IO) {
+                                        client.testLiveStatusReplay()
+                                    }
+                                onVerified(verified)
+                                onMessage(
+                                    "LIVE_REPLAY=BLOCKED_409 " +
+                                        "• FRESH_VERIFY=PASS"
+                                )
+                            } catch (error: Exception) {
+                                onMessage(
+                                    error.message?.take(160)
+                                        ?: "LIVE_REPLAY=FAIL"
+                                )
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    }
+                ) {
+                    Text("STAGING CHALLENGE REPLAY TEST")
+                }
+            }
         }
     }
 }

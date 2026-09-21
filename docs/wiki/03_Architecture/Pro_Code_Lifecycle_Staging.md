@@ -25,6 +25,7 @@ source_files:
   - "cloudflare/control-plane/src/pro_redemption.mjs"
   - "cloudflare/control-plane/tests/pro_reactivation_postcommit_contract.test.mjs"
   - "build-service/tests/pro_recovery_interruption_contract.test.js"
+  - "build-service/tests/pro_live_status_replay_contract.test.js"
   - "cloudflare/control-plane/src/device_proof.mjs"
   - "android-app/app/src/main/java/com/appforge/studio/security/ProCodeClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/security/ProInstallationProof.kt"
@@ -148,7 +149,7 @@ source_files:
   reactivation retest before reactivation acceptance can be marked
   complete.
 
-## Isolated first-activation interruption test — pending
+## Isolated first-activation interruption test — device accepted
 
 - Existing AppForge data, Keystore key and active Pro grant
   on the phone must remain untouched.
@@ -162,3 +163,39 @@ source_files:
 - This is controlled error simulation, not actual process death.
 - Normal debug and release activation paths remain unchanged.
 - This does not count as second-device acceptance.
+
+
+## 2026-09-21 physical-device acceptance update
+
+- The corrected staging Worker was deployed and direct
+  same-installation reactivation passed without recovery.
+- Automatic verification passed after restart.
+- Offline restart failed closed; online restart restored
+  Pro through fresh server verification.
+- A separately packaged debug APK on the same phone
+  simulated interruption after successful initial redeem
+  and before local installation ID persistence.
+- The simulated interruption left Pro disabled.
+- Reopening that test APK and using ownership recovery
+  restored the installation ID using its unchanged key.
+- Fresh HTTPS status verified Pro after recovery.
+- Automatic verification also passed on the next restart.
+- Real process death and a second physical Android device
+  remain untested. Do not count the separate APK as a
+  second physical device.
+- Local challenge/code replay regression tests passed.
+  Live staging challenge replay remains a separate gate.
+- No new migration was applied and Play Production,
+  main and appforge-failover remained untouched.
+
+## Live staging challenge replay — pending
+
+- The isolated Pro Recovery debug APK tests replay after
+  a successful device-bound installation recovery.
+- The same signed status payload must succeed once,
+  then return HTTP 409 `challenge_unavailable`.
+- A fresh challenge must still verify Pro afterwards.
+- No new activation code, grant revocation or key export.
+- No challenge IDs, nonces or signatures in logs.
+- Local contract tests are not live staging acceptance.
+- Real process death and second-device tests remain open.

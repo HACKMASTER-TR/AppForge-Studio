@@ -503,6 +503,78 @@ class ProCodeClient(
         return verifyStatus()
     }
 
+    /**
+     * Isolated debug-only live replay test.
+     * Never exports the installation private key.
+     */
+    fun testLiveStatusReplay(): ProStatus {
+        check(
+            BuildConfig.DEBUG &&
+                BuildConfig.PRO_RECOVERY_TEST &&
+                appContext.packageName ==
+                    "com.appforge.studio.prorecovery"
+        ) {
+            "Replay testi yalnız izole debug paketinde çalışır."
+        }
+
+        val id = installationId()
+            ?: error("Replay testi için kurulum gerekli.")
+
+        val challenge = post(
+            "/api/pro/code/challenge",
+            JSONObject()
+                .put("installationId", id)
+                .put("requestNonce", randomNonce())
+        )
+
+        check(challenge.optBoolean("ok")) {
+            "REPLAY_CHALLENGE_FAILED"
+        }
+
+        val proof =
+            ProInstallationProof.createStatusProof(
+                installationId = id,
+                challengeId =
+                    challenge.getString("challengeId"),
+                nonce = challenge.getString("nonce")
+            )
+
+        val payload = JSONObject()
+            .put("installationId", proof.installationId)
+            .put("challengeId", proof.challengeId)
+            .put("nonce", proof.nonce)
+            .put("signature", proof.signature)
+
+        val first = post(
+            "/api/pro/code/status",
+            payload
+        )
+
+        check(
+            first.optBoolean("ok") &&
+                first.optBoolean("active") &&
+                first.optString("source") ==
+                    "admin_code" &&
+                first.optString("entitlementKind") ==
+                    "admin_grant"
+        ) {
+            "REPLAY_FIRST_STATUS_FAILED"
+        }
+
+        val secondError = runCatching {
+            post("/api/pro/code/status", payload)
+        }.exceptionOrNull()
+
+        check(
+            secondError?.message ==
+                "Pro sunucusu HTTP 409 • challenge_unavailable"
+        ) {
+            "REPLAY_SECOND_STATUS_NOT_BLOCKED"
+        }
+
+        return verifyStatus()
+    }
+
     fun verifyStatus(): ProStatus {
         val id = installationId()
             ?: error("Bu kurulumda Pro kodu etkinleştirilmemiş.")
