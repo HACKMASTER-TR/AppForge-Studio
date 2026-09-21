@@ -15,6 +15,9 @@ related:
   - "[[Database_Map]]"
   - "[[Hot_Context]]"
 source_files:
+  - "build-service/tests/pro_second_device_package_contract.test.js"
+  - ".github/workflows/android-debug.yml"
+  - "android-app/app/build.gradle.kts"
   - "cloudflare/control-plane/migrations/0005_pro_lifecycle.sql"
   - ".github/workflows/pro-cloudflare-auth-preflight.yml"
   - ".github/workflows/pro-cloudflare-dry-run.yml"
@@ -199,3 +202,14 @@ source_files:
 - No challenge IDs, nonces or signatures in logs.
 - Local contract tests are not live staging acceptance.
 - Real process death and second-device tests remain open.
+
+## Second physical device staging APK — pending
+
+- The Redmi staging APK uses an isolated `.prodevice2`
+  application ID and must not replace the Google Play app.
+- Recovery interruption and replay-test UI are disabled
+  because `PRO_RECOVERY_TEST=false` for this build.
+- Recovery and second-device build flags are mutually exclusive.
+- The second phone must create its own private Keystore key.
+- Physical-device activation and restart remain untested.
+- No Worker deployment, D1 migration or Play publishing.

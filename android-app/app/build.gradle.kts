@@ -194,6 +194,11 @@ val prepareAppForgeProrootRuntime =
 
 
 val appforgeProRecoveryTest = providers.gradleProperty("appforgeProRecoveryTest").orNull == "true"
+val appforgeProSecondDevice = providers.gradleProperty("appforgeProSecondDevice").orNull == "true"
+
+require(!(appforgeProRecoveryTest && appforgeProSecondDevice)) {
+    "Pro recovery and second-device modes cannot be combined."
+}
 
 android {
     namespace = "com.appforge.studio"
@@ -297,6 +302,8 @@ android {
             ciDebugSigning?.let { signingConfig = it }
             if (appforgeProRecoveryTest) {
                 applicationIdSuffix = ".prorecovery"
+            } else if (appforgeProSecondDevice) {
+                applicationIdSuffix = ".prodevice2"
             }
             buildConfigField(
                 "boolean",

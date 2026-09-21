@@ -8,6 +8,11 @@ on:
         type: boolean
         required: false
         default: false
+      pro_second_device:
+        description: "Build isolated normal Pro staging APK for second device"
+        type: boolean
+        required: false
+        default: false
   push:
     branches:
       - main
@@ -104,8 +109,17 @@ jobs:
           APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
         run: |
           EXTRA=()
+
+          if [ "${{ inputs.pro_recovery_test }}" = "true" ] &&
+             [ "${{ inputs.pro_second_device }}" = "true" ]; then
+            echo "STOP: Incompatible Pro test modes"
+            exit 1
+          fi
+
           if [ "${{ inputs.pro_recovery_test }}" = "true" ]; then
             EXTRA=(-PappforgeProRecoveryTest=true)
+          elif [ "${{ inputs.pro_second_device }}" = "true" ]; then
+            EXTRA=(-PappforgeProSecondDevice=true)
           fi
 
           gradle \
@@ -172,6 +186,8 @@ jobs:
           PACKAGE="com.appforge.studio"
           if [ "${{ inputs.pro_recovery_test }}" = "true" ]; then
             PACKAGE="com.appforge.studio.prorecovery"
+          elif [ "${{ inputs.pro_second_device }}" = "true" ]; then
+            PACKAGE="com.appforge.studio.prodevice2"
           fi
 
           echo "$BADGING" \
@@ -189,7 +205,7 @@ jobs:
           echo "APK metadata + signature verified."
 
       - name: Upload debug APK artifact
-        if: ${{ !inputs.pro_recovery_test }}
+        if: ${{ !inputs.pro_recovery_test && !inputs.pro_second_device }}
         uses: actions/upload-artifact@v5
         with:
           name: AppForgeStudio-debug-${{ github.sha }}
@@ -206,8 +222,17 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Upload isolated second-device APK
+        if: ${{ inputs.pro_second_device && !inputs.pro_recovery_test }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: AppForgeStudio-Pro-Device2-${{ github.sha }}
+          path: AppForgeStudio-latest.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Publish latest APK release
-        if: github.ref == 'refs/heads/main' && !inputs.pro_recovery_test
+        if: github.ref == 'refs/heads/main' && !inputs.pro_recovery_test && !inputs.pro_second_device
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
