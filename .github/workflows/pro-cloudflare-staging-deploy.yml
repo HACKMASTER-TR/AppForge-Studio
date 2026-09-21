@@ -138,57 +138,196 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          set +x
 
-          BASE="https://appforge-control-plane.28550040284a.workers.dev"
-
-          python3 - "$BASE" <<'PY'
+          python3 - <<'PY'
           import json
-          import sys
-          import urllib.error
-          import urllib.request
+          import os
+          import subprocess
+          import tempfile
 
-          base = sys.argv[1]
+          base = (
+              "https://appforge-control-plane."
+              "28550040284a.workers.dev"
+          )
 
-          def get(path):
-              request = urllib.request.Request(
-                  base + path,
-                  method="GET",
-              )
+          def read(path):
+              with tempfile.TemporaryDirectory() as temp_dir:
+                  headers_path = os.path.join(
+                      temp_dir, "headers.txt"
+                  )
+                  body_path = os.path.join(
+                      temp_dir, "body.bin"
+                  )
+
+                  result = subprocess.run(
+                      [
+                          "curl",
+                          "--silent",
+                          "--show-error",
+                          "--max-time",
+                          "20",
+                          "--max-redirs",
+                          "0",
+                          "--request",
+                          "GET",
+                          "--header",
+                          (
+                              "User-Agent: "
+                              "AppForge-Staging-Audit/1.0"
+                          ),
+                          "--header",
+                          "Accept: application/json",
+                          "--dump-header",
+                          headers_path,
+                          "--output",
+                          body_path,
+                          "--write-out",
+                          "%{http_code}",
+                          base + path,
+                      ],
+                      check=False,
+                      capture_output=True,
+                      text=True,
+                  )
+
+                  if result.returncode != 0:
+                      print("ROUTE=" + path)
+                      print(
+                          "CURL_EXIT="
+                          + str(result.returncode)
+                      )
+                      raise SystemExit(
+                          "STOP: LIVE_STAGING_NETWORK_ERROR"
+                      )
+
+                  status_text = result.stdout.strip()
+
+                  if (
+                      len(status_text) != 3
+                      or not status_text.isdigit()
+                  ):
+                      print("ROUTE=" + path)
+                      print("HTTP_STATUS_RAW=" + status_text)
+                      raise SystemExit(
+                          "STOP: LIVE_HTTP_STATUS_INVALID"
+                      )
+
+                  status = int(status_text)
+                  content_type = ""
+
+                  with open(
+                      headers_path,
+                      encoding="utf-8",
+                      errors="replace",
+                  ) as headers:
+                      for line in headers:
+                          if ":" not in line:
+                              continue
+
+                          key, value = line.split(":", 1)
+
+                          if (
+                              key.strip().lower()
+                              == "content-type"
+                          ):
+                              content_type = value.strip()
+
+                  with open(body_path, "rb") as body_file:
+                      body = body_file.read(1048576)
+
               try:
-                  with urllib.request.urlopen(
-                      request, timeout=20
-                  ) as response:
-                      return response.status, json.load(response)
-              except urllib.error.HTTPError as error:
-                  return error.code, json.load(error)
+                  payload = json.loads(body)
+              except (ValueError, UnicodeDecodeError):
+                  stripped = body.lstrip().lower()
 
-          status, health = get("/health")
+                  if not body:
+                      body_kind = "EMPTY"
+                  elif (
+                      stripped.startswith(b"<!doctype html")
+                      or stripped.startswith(b"<html")
+                  ):
+                      body_kind = "HTML"
+                  else:
+                      body_kind = "OTHER"
+
+                  mime = content_type.lower()
+
+                  if "application/json" in mime:
+                      type_kind = "JSON"
+                  elif "text/html" in mime:
+                      type_kind = "HTML"
+                  else:
+                      type_kind = "OTHER"
+
+                  print("ROUTE=" + path)
+                  print("HTTP_STATUS=" + str(status))
+                  print(
+                      "CONTENT_TYPE_CLASS=" + type_kind
+                  )
+                  print("BODY_CLASS=" + body_kind)
+
+                  raise SystemExit(
+                      "STOP: LIVE_RESPONSE_NOT_JSON"
+                  )
+
+              if not isinstance(payload, dict):
+                  print("ROUTE=" + path)
+                  print("HTTP_STATUS=" + str(status))
+                  raise SystemExit(
+                      "STOP: UNEXPECTED_RESPONSE_SHAPE"
+                  )
+
+              return status, payload
+
+          print("HTTP_TRANSPORT=CURL")
+
+          status, health = read("/health")
+
           if (
               status != 200
               or health.get("ok") is not True
               or health.get("database") != "reachable"
           ):
-              raise SystemExit("STOP: HEALTH_CHECK_FAILED")
+              raise SystemExit(
+                  "STOP: STAGING_HEALTH_FAILED"
+              )
 
           print("STAGING_HEALTH=PASS")
+          print("D1_REACHABILITY=PASS")
 
-          paths = [
-              "/api/pro/code/ownership-challenge",
-              "/api/pro/code/status",
-          ]
+          status, route = read(
+              "/api/pro/code/ownership-challenge"
+          )
 
-          for path in paths:
-              status, result = get(path)
+          if (
+              status != 405
+              or route.get("error")
+              != "method_not_allowed"
+          ):
+              raise SystemExit(
+                  "STOP: PRO_ROUTE_FAILED"
+              )
 
-              if (
-                  status != 405
-                  or result.get("error") != "method_not_allowed"
-              ):
-                  raise SystemExit(
-                      "STOP: PRO_ROUTE_CHECK_FAILED"
-                  )
+          print("PRO_OWNERSHIP_ROUTE=PASS")
 
-          print("PRO_ROUTES=PASS")
+          status, route = read(
+              "/api/pro/code/status"
+          )
+
+          if (
+              status != 405
+              or route.get("error")
+              != "method_not_allowed"
+          ):
+              raise SystemExit(
+                  "STOP: PRO_STATUS_ROUTE_FAILED"
+              )
+
+          print("PRO_STATUS_ROUTE=PASS")
+          print("HTTP_METHOD=GET_ONLY")
           print("DATABASE_WRITES=NONE")
+          print("WORKER_DEPLOY=COMPLETED_BEFORE_SMOKE")
+          print("MIGRATIONS_APPLY=NOT_STARTED")
           print("STAGING_SMOKE=PASS")
           PY
