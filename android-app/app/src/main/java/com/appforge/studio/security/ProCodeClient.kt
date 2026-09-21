@@ -489,6 +489,23 @@ class ProCodeClient(
             "Sunucu Pro aktivasyonunu doğrulamadı."
         }
 
+        // Only the isolated .prodeath debug package terminates
+        // its own Android process after server acceptance and
+        // before local installation persistence.
+        if (
+            BuildConfig.DEBUG &&
+            BuildConfig.PRO_PROCESS_DEATH_TEST &&
+            appContext.packageName ==
+                "com.appforge.studio.prodeath"
+        ) {
+            android.os.Process.killProcess(
+                android.os.Process.myPid()
+            )
+            // If termination unexpectedly returns without
+            // stopping this process, never persist or grant Pro.
+            error("PROCESS_DEATH_TEST_TERMINATION_NOT_CONFIRMED")
+        }
+
         // Only the isolated opt-in debug APK simulates a
         // lost response before local persistence. The normal
         // app and every release build never enter this branch.

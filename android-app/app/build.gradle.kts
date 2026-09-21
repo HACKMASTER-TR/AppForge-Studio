@@ -195,6 +195,14 @@ val prepareAppForgeProrootRuntime =
 
 val appforgeProRecoveryTest = providers.gradleProperty("appforgeProRecoveryTest").orNull == "true"
 val appforgeProSecondDevice = providers.gradleProperty("appforgeProSecondDevice").orNull == "true"
+val appforgeProProcessDeathTest = providers.gradleProperty("appforgeProProcessDeathTest").orNull == "true"
+
+require(
+    !appforgeProProcessDeathTest ||
+        (!appforgeProRecoveryTest && !appforgeProSecondDevice)
+) {
+    "Process-death mode must be isolated from other Pro test modes."
+}
 
 require(!(appforgeProRecoveryTest && appforgeProSecondDevice)) {
     "Pro recovery and second-device modes cannot be combined."
@@ -304,11 +312,18 @@ android {
                 applicationIdSuffix = ".prorecovery"
             } else if (appforgeProSecondDevice) {
                 applicationIdSuffix = ".prodevice2"
+            } else if (appforgeProProcessDeathTest) {
+                applicationIdSuffix = ".prodeath"
             }
             buildConfigField(
                 "boolean",
                 "PRO_RECOVERY_TEST",
                 appforgeProRecoveryTest.toString()
+            )
+            buildConfigField(
+                "boolean",
+                "PRO_PROCESS_DEATH_TEST",
+                appforgeProProcessDeathTest.toString()
             )
         }
 
@@ -316,6 +331,11 @@ android {
             buildConfigField(
                 "boolean",
                 "PRO_RECOVERY_TEST",
+                "false"
+            )
+            buildConfigField(
+                "boolean",
+                "PRO_PROCESS_DEATH_TEST",
                 "false"
             )
             ciReleaseSigning?.let { signingConfig = it }

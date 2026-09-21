@@ -15,6 +15,7 @@ related:
   - "[[Database_Map]]"
   - "[[Hot_Context]]"
 source_files:
+  - "build-service/tests/pro_process_death_contract.test.js"
   - "build-service/tests/pro_second_device_package_contract.test.js"
   - ".github/workflows/android-debug.yml"
   - "android-app/app/build.gradle.kts"
@@ -245,3 +246,27 @@ source_files:
 - The separate Play billing path is not covered by this test.
 - No new Worker deployment or D1 migration was performed
   as part of the second-device APK acceptance.
+
+## Actual Android process-death test — pending
+
+- An isolated opt-in debug APK uses the `.prodeath`
+  application ID; existing app packages and their
+  Android Keystore entries must remain untouched.
+- Following a successful first redeem response, the
+  test calls Android `Process.killProcess(myPid())`
+  before persisting the installation ID.
+- The death path is guarded by debug build configuration,
+  an explicit test flag and the exact runtime package.
+- An unexpected return from process termination must
+  fail closed without local persistence or Pro access.
+- Normal, recovery, second-device and release builds
+  must not enter the process-death path.
+- Reopening must not auto-enable Pro before recovery.
+  The same private Keystore key should recover the
+  installation ID, then fresh HTTPS status should
+  confirm the existing grant.
+- This is test design only; no physical-device PASS
+  is claimed until the APK and actual process
+  termination/recovery have been observed.
+- No new Worker deployment, migration, main merge
+  or Play publishing is part of this test.
