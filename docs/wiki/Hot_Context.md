@@ -13,67 +13,57 @@ tags:
 related:
   - "[[Index]]"
   - "[[Device_Build_Runtime_V3]]"
+  - "[[Pro_Code_Lifecycle_Staging]]"
 source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt"
-  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
-  - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
   - "build-service/tests/device_build_runtime_v3_contract.test.js"
-  - "build-service/tests/device_build_capability_matrix_contract.test.js"
-  - ".github/workflows/pro-staging-http-matrix.yml"
   - ".github/workflows/pro-staging-live-audit.yml"
+  - "cloudflare/control-plane/src/pro_redemption.mjs"
+  - "cloudflare/control-plane/tests/pro_reactivation_postcommit_contract.test.mjs"
 ---
 
 # Hot Context
 
 ## Current Focus
 
-- Stage accountless, admin-issued Pro code lifecycle (grant revocation, owner-key recovery and safe reactivation). **Not shipped or device-accepted.**
-- Finish Clean Device Build Runtime V3.
-- Validate APK and AAB on a real Android device.
-- Keep Terminal Linux physically separate from project-build Linux.
-- Studio Home uses a richer modern dashboard; the rejected over-minimal Home V2 layout must not return.
-- App-wide UI V2 uses one navy/cyan/violet design language; runtime/toolchain internals stay out of primary user copy.
-- The temporary five-build device stress UI is retired; normal single-project device build remains authoritative.
+- Complete accountless admin-issued Pro staging acceptance.
+- Finish Clean Device Build Runtime V3 and real Android APK/AAB validation.
+- Keep Terminal Linux separate from project-build Linux.
+- Preserve the current Studio Home and UI V2 design direction.
 
 ## Must Know
 
-- Normal user project builds are device-local.
-- Project builds use a versioned disposable build rootfs, not the persistent Terminal rootfs.
-- Railway, Render and Supabase are not AppForge project-build infrastructure.
-- GitHub remains repository/CI infrastructure.
-- Google Play / Google Cloud remain distribution and billing infrastructure.
 - Source, tests, CI and observed runtime behavior override wiki claims.
+- Normal project builds are device-local and use a disposable build rootfs.
+- Railway, Render and Supabase are not AppForge project-build infrastructure.
+- GitHub is repository/CI infrastructure; Google Play/Cloud are distribution and billing infrastructure.
+- Windows Portable EXE remains gated until real Windows acceptance.
 
 ## Recent Important Changes
 
-- `DeviceBuildRuntimeV3` owns the clean build-only Linux environment.
-- Toolchain revision moved to V3.
-- `DeviceBuildCapabilities` records engine and output readiness.
-- Current proven device engines are static Web, Node Web, Android Gradle Kotlin/Java and Python/Chaquopy.
-- APK and AAB are current local outputs.
-- Windows Portable EXE is a first-class target but remains gated until its local packager passes Windows acceptance.
-- APK ↔ EXE conversion remains a product requirement.
-- Flutter/Dart, React Native, Expo, Android NDK/C++, .NET Android and MAUI are explicit future capability families.
-- Unity remains external-tool-required until a supported build-host path exists.
-- Pro staging Live Audit now uses `curl`; the 2026-09-21 feature-branch run passed live health, D1 reachability and the GET-only ownership-route check without database writes, migration apply or a new Worker deployment.
+- D1 staging schema 0002–0005 was applied manually and validated; `d1_migrations` is absent, so do not run migration apply until ledger reconciliation.
+- Existing DB binding and Google configuration are preserved.
+- Staging Worker deployment is live; curl HTTP Matrix and Live Audit passed health, D1 reachability and the read-only ownership route.
+- Android Kotlin CI and physical-device initial activation passed.
+- Restart auto-verification passed.
+- Admin revoke removed Pro and the active refresh path failed closed.
+- Keystore recovery preserved installation identity without restoring a revoked entitlement.
+- Reactivation committed successfully in D1 but returned a false-negative HTTP 409.
+- Root cause is the reactivation response path trusting exact D1 `meta.changes` values after a trigger-backed batch.
+- Current source fix keeps the atomic `receiptGuard` and post-verifies the committed activation code, active grant and redemption receipt.
+- The source fix has passed local regression, control-plane and full tests; staging redeploy and physical-device reactivation retest remain pending.
 
 ## Current Risks / Open Questions
 
-- Pro staging 0002–0005 schema was applied manually through the D1 Console; 16/16 objects checked, `foreign_key_check` returned no violations, and the one active admin was preserved. Wrangler `d1_migrations` is absent and must be reconciled before any migrations apply. The staging Worker is deployed and the verified version receives 100% traffic; curl-based Live Audit passed health, D1 reachability and the GET-only ownership route. Android Kotlin CI passed; real-device acceptance remains pending.
-- A signed device challenge authenticates the Android installation; the HTTPS server status response has no separate application-level server signature.
-- A revoked Pro status is checked on startup and refreshed on a best-effort 60-second loop while active; it is not an instantaneous offline revocation promise. Server-gated features must enforce their own authorization.
-- Legacy account/Play billing entitlements are independent of admin-issued codes; they require separate end-to-end verification.
-- Real-device APK/AAB acceptance is still required.
-- Windows EXE must not be marked READY before real Windows validation.
-- Future engines must not silently fall back to remote Workers.
-- Toolchains must remain pinned and reproducible.
+- Never touch `main`, Play Production, `appforge-failover` or migrations during this staging sequence.
+- A signed device challenge authenticates the installation; HTTPS status has no separate application-level response signature.
+- Open-app revocation refresh is best-effort; protected server routes must enforce active grants independently.
+- Legacy Play entitlement is separate from admin-issued Pro.
+- APK/AAB real-device acceptance and Windows EXE acceptance remain open gates.
 
 ## Read Next
 
 - [[Pro_Code_Lifecycle_Staging]]
 - [[Device_Build_Runtime_V3]]
-- [[System_Architecture]]
-- [[Build_And_Worker_Architecture]]
-- [[Android_App_Map]]
 - [[Current_Status]]

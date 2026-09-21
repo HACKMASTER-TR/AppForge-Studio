@@ -23,6 +23,7 @@ source_files:
   - ".github/workflows/pro-staging-live-audit.yml"
   - ".github/scripts/pro_cloudflare_auth_preflight.py"
   - "cloudflare/control-plane/src/pro_redemption.mjs"
+  - "cloudflare/control-plane/tests/pro_reactivation_postcommit_contract.test.mjs"
   - "cloudflare/control-plane/src/device_proof.mjs"
   - "android-app/app/src/main/java/com/appforge/studio/security/ProCodeClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/security/ProInstallationProof.kt"
@@ -123,3 +124,25 @@ source_files:
   cause remains open.
 - Real-device Pro activation, revocation, restart, recovery,
   replay and offline acceptance remain separate gates.
+
+## Real-device lifecycle checkpoint — 2026-09-21
+
+- Initial admin-code activation passed on a physical Android device.
+- Fresh server verification survived an app restart without manual
+  verification.
+- Administrator grant revocation removed Pro access and the active
+  refresh loop failed closed.
+- Keystore ownership recovery preserved the existing installation
+  identity and did not restore a revoked entitlement.
+- A new-code reactivation committed successfully in D1, but the
+  Worker returned a false-negative HTTP 409 `code_unavailable`.
+  A subsequent ownership recovery observed the grant as active,
+  proving that the transaction had committed.
+- Root cause was the reactivation response path treating every D1
+  batch statement as requiring exactly `meta.changes === 1`.
+  The source now keeps `receiptGuard` as the atomic rollback guard
+  and post-verifies the committed code, active grant and redemption
+  receipt instead of trusting exact statement metadata.
+- The source fix still requires staging deployment and physical-device
+  reactivation retest before reactivation acceptance can be marked
+  complete.

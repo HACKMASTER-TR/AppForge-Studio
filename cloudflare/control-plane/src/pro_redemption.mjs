@@ -406,9 +406,57 @@ async function ownership(env, body, operation) {
         issued.id, redemptionId, thumbprint),
       receiptGuard(env, { redemptionId, codeId: issued.id, installationId, now })
     ]);
-    if (!Array.isArray(results) || results.length !== 4 ||
-        results.some(item => item?.meta?.changes !== 1))
+    if (!Array.isArray(results) || results.length !== 4) {
+      return fail('pro_storage_unavailable', 503);
+    }
+
+    /*
+     * D1 statement metadata is not the entitlement authority.
+     * In particular, the 0005 archive trigger may make an otherwise
+     * successful reactivation unsuitable for an exact
+     * meta.changes === 1 assertion.
+     *
+     * The receiptGuard above remains the atomic rollback guard.
+     * After a successful batch, prove the committed entitlement by
+     * reading the exact code + current grant + receipt transaction.
+     */
+    const committed = await env.DB.prepare(
+      `SELECT c.id AS code_id,
+              g.installation_id,
+              g.activation_code_id,
+              g.state AS grant_state,
+              r.redemption_id AS receipt_redemption_id
+       FROM pro_activation_codes c
+       JOIN pro_admin_grants g
+         ON g.activation_code_id = c.id
+       JOIN pro_redemption_receipts r
+         ON r.activation_code_id = c.id
+        AND r.installation_id = g.installation_id
+       WHERE c.id = ?
+         AND c.state = 'redeemed'
+         AND c.redemption_id = ?
+         AND c.redeemed_by_thumbprint = ?
+         AND g.installation_id = ?
+         AND g.state = 'active'
+         AND r.redemption_id = ?`
+    ).bind(
+      issued.id,
+      redemptionId,
+      thumbprint,
+      installationId,
+      redemptionId
+    ).first();
+
+    if (
+      committed?.code_id !== issued.id ||
+      committed?.installation_id !== installationId ||
+      committed?.activation_code_id !== issued.id ||
+      committed?.grant_state !== 'active' ||
+      committed?.receipt_redemption_id !== redemptionId
+    ) {
       return fail('code_unavailable', 409);
+    }
+
     return reply({ ok: true, installationId,
       active: true, source: 'admin_code' }, 201);
   } catch { return fail('pro_storage_unavailable', 503); }
