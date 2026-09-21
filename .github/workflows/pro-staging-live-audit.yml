@@ -46,11 +46,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          set +x
 
           python3 - <<'PY'
           import json
-          import urllib.error
-          import urllib.request
+          import os
+          import subprocess
+          import tempfile
 
           base = (
               "https://appforge-control-plane."
@@ -58,35 +60,92 @@ jobs:
           )
 
           def read(path):
-              request = urllib.request.Request(
-                  base + path,
-                  method="GET",
-              )
+              with tempfile.TemporaryDirectory() as temp_dir:
+                  headers_path = os.path.join(
+                      temp_dir, "headers.txt"
+                  )
+                  body_path = os.path.join(
+                      temp_dir, "body.bin"
+                  )
 
-              try:
-                  with urllib.request.urlopen(
-                      request, timeout=20
-                  ) as response:
-                      status = response.status
-                      content_type = response.headers.get(
-                          "Content-Type", ""
+                  result = subprocess.run(
+                      [
+                          "curl",
+                          "--silent",
+                          "--show-error",
+                          "--max-time",
+                          "20",
+                          "--max-redirs",
+                          "0",
+                          "--request",
+                          "GET",
+                          "--header",
+                          (
+                              "User-Agent: "
+                              "AppForge-Staging-Audit/1.0"
+                          ),
+                          "--header",
+                          "Accept: application/json",
+                          "--dump-header",
+                          headers_path,
+                          "--output",
+                          body_path,
+                          "--write-out",
+                          "%{http_code}",
+                          base + path,
+                      ],
+                      check=False,
+                      capture_output=True,
+                      text=True,
+                  )
+
+                  if result.returncode != 0:
+                      print("ROUTE=" + path)
+                      print(
+                          "CURL_EXIT="
+                          + str(result.returncode)
                       )
-                      body = response.read(1048576)
+                      raise SystemExit(
+                          "STOP: LIVE_STAGING_NETWORK_ERROR"
+                      )
 
-              except urllib.error.HTTPError as error:
-                  status = error.code
-                  content_type = error.headers.get(
-                      "Content-Type", ""
-                  )
-                  body = error.read(1048576)
+                  status_text = result.stdout.strip()
 
-              except urllib.error.URLError:
-                  raise SystemExit(
-                      "STOP: LIVE_STAGING_NETWORK_ERROR"
-                  )
+                  if (
+                      len(status_text) != 3
+                      or not status_text.isdigit()
+                  ):
+                      print("ROUTE=" + path)
+                      print("HTTP_STATUS_RAW=" + status_text)
+                      raise SystemExit(
+                          "STOP: LIVE_HTTP_STATUS_INVALID"
+                      )
+
+                  status = int(status_text)
+                  content_type = ""
+
+                  with open(
+                      headers_path,
+                      encoding="utf-8",
+                      errors="replace",
+                  ) as headers:
+                      for line in headers:
+                          if ":" not in line:
+                              continue
+
+                          key, value = line.split(":", 1)
+
+                          if (
+                              key.strip().lower()
+                              == "content-type"
+                          ):
+                              content_type = value.strip()
+
+                  with open(body_path, "rb") as body_file:
+                      body = body_file.read(1048576)
 
               try:
-                  result = json.loads(body)
+                  payload = json.loads(body)
               except (ValueError, UnicodeDecodeError):
                   stripped = body.lstrip().lower()
 
@@ -111,21 +170,25 @@ jobs:
 
                   print("ROUTE=" + path)
                   print("HTTP_STATUS=" + str(status))
-                  print("CONTENT_TYPE_CLASS=" + type_kind)
+                  print(
+                      "CONTENT_TYPE_CLASS=" + type_kind
+                  )
                   print("BODY_CLASS=" + body_kind)
 
                   raise SystemExit(
                       "STOP: LIVE_RESPONSE_NOT_JSON"
                   )
 
-              if not isinstance(result, dict):
+              if not isinstance(payload, dict):
                   print("ROUTE=" + path)
                   print("HTTP_STATUS=" + str(status))
                   raise SystemExit(
                       "STOP: UNEXPECTED_RESPONSE_SHAPE"
                   )
 
-              return status, result
+              return status, payload
+
+          print("HTTP_TRANSPORT=CURL")
 
           status, health = read("/health")
 
