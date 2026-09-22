@@ -8,6 +8,78 @@ JAVA_HOME="$ROOT/jdk-17"
 ENGINE="${1:-webview-static}"
 OFFLINE="${APPFORGE_DEVICE_OFFLINE:-0}"
 
+mkdir -p "$ROOT"
+
+cat > "$ROOT/ensure-gradle" <<'EOF'
+#!/bin/sh
+set -eu
+
+version="${1:?Gradle version required}"
+root="/opt/appforge-device"
+dest="$root/gradle-$version"
+
+if [ -x "$dest/bin/gradle" ]; then
+  printf '%s\n' "$dest/bin/gradle"
+  exit 0
+fi
+
+zip="$root/cache/gradle-$version-bin.zip"
+sha="$root/cache/gradle-$version-bin.zip.sha256"
+
+mkdir -p "$root/cache"
+
+valid_cache=0
+
+if [ -s "$zip" ] && [ -s "$sha" ]; then
+  expected="$(tr -d '[:space:]' < "$sha")"
+
+  if printf '%s  %s\n' "$expected" "$zip" |
+       sha256sum -c - >/dev/null 2>&1; then
+    valid_cache=1
+  fi
+fi
+
+if [ "$valid_cache" -ne 1 ]; then
+
+  if [ "${APPFORGE_DEVICE_OFFLINE:-0}" = "1" ]; then
+    echo "APPFORGE_OFFLINE_GRADLE_MISSING: Gradle $version" >&2
+    echo "Gerekli Gradle sürümü yerel önbellekte bulunamadı." >&2
+    exit 42
+  fi
+
+  tmpzip="$zip.part.$$"
+  tmpsha="$sha.part.$$"
+
+  trap 'rm -f "$tmpzip" "$tmpsha"' 0
+
+  curl -fL --retry 4 \
+    "https://services.gradle.org/distributions/gradle-$version-bin.zip" \
+    -o "$tmpzip"
+
+  curl -fL --retry 4 \
+    "https://services.gradle.org/distributions/gradle-$version-bin.zip.sha256" \
+    -o "$tmpsha"
+
+  expected="$(tr -d '[:space:]' < "$tmpsha")"
+
+  printf '%s  %s\n' "$expected" "$tmpzip" |
+    sha256sum -c -
+
+  mv "$tmpzip" "$zip"
+  mv "$tmpsha" "$sha"
+
+  trap - 0
+fi
+
+unzip -q "$zip" -d "$root"
+
+test -x "$dest/bin/gradle"
+
+printf '%s\n' "$dest/bin/gradle"
+EOF
+
+chmod 0755 "$ROOT/ensure-gradle"
+
 if [ -f "$READY" ] \
    && [ -x "$SDK/build-tools/36.0.0/aapt2" ] \
    && [ -f "$SDK/platforms/android-37/android.jar" ] \
@@ -340,24 +412,6 @@ export PATH="$JAVA_HOME/bin:$PATH"
 ensure_gradle "9.3.1"
 ensure_gradle "8.14.3"
 
-cat > "$ROOT/ensure-gradle" <<'EOF'
-#!/bin/sh
-set -eu
-version="${1:?Gradle version required}"
-root="/opt/appforge-device"
-dest="$root/gradle-$version"
-if [ -x "$dest/bin/gradle" ]; then printf '%s\n' "$dest/bin/gradle"; exit 0; fi
-zip="$root/cache/gradle-$version-bin.zip"
-sha="$root/cache/gradle-$version-bin.zip.sha256"
-curl -fL --retry 4 "https://services.gradle.org/distributions/gradle-$version-bin.zip" -o "$zip"
-curl -fL --retry 4 "https://services.gradle.org/distributions/gradle-$version-bin.zip.sha256" -o "$sha"
-expected="$(tr -d '[:space:]' < "$sha")"
-echo "$expected  $zip" | sha256sum -c -
-unzip -q -o "$zip" -d "$root"
-test -x "$dest/bin/gradle"
-printf '%s\n' "$dest/bin/gradle"
-EOF
-chmod 0755 "$ROOT/ensure-gradle"
 
 echo "APPFORGE_AAPT2_HOST_SMOKE_START"
 

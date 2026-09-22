@@ -19,6 +19,8 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
   - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
   - "build-service/tests/device_build_runtime_v3_contract.test.js"
+  - "build-service/tests/device_build_offline_gradle_contract.test.js"
+  - "build-service/tests/device_build_gradle_helper_runtime.test.js"
   - "build-service/tests/device_build_capability_matrix_contract.test.js"
   - "build-service/tests/device_build_aapt2_arm64_contract.test.js"
 ---
@@ -96,6 +98,33 @@ The previously over-minimal StudioHomeV2 layout was rejected. Future V3 build
 UI should remain clear but restore useful project/build status, output targets,
 capability information and richer dashboard affordances without returning to an
 unmanageable single screen.
+
+## Offline Gradle shell regression
+
+The installer defines one ensure-gradle helper before the
+toolchain readiness shortcut. A separate runtime regression
+test executes its extracted shell body in disposable test
+directories with curl blocked, covering installed Gradle,
+verified cache, missing cache and invalid cache checksum.
+
+These checks do not constitute physical Android APK/AAB
+acceptance or prove that project dependencies are cached.
+
+## Offline Gradle preflight
+
+The device build engine passes offline state to the
+version-specific Gradle installer.
+
+A verified cached distribution can be reused without
+network access. An unavailable distribution fails with
+APPFORGE_OFFLINE_GRADLE_MISSING instead of downloading.
+
+The ensure-gradle helper is refreshed before the existing
+toolchain readiness shortcut, preserving already installed
+V3 toolchains and their readiness marker.
+
+This is a source-level implementation. Real Android offline
+APK/AAB acceptance remains pending.
 
 ## Acceptance
 
