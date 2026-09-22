@@ -1,0 +1,47 @@
+{
+  "name": "appforge-windows-portable-host",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generic offline AppForge Windows Portable EXE host",
+  "main": "main.cjs",
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "dist": "electron-builder --win portable --x64 --publish never"
+  },
+  "dependencies": {
+    "adm-zip": "0.6.0"
+  },
+  "devDependencies": {
+    "electron": "43.4.1",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.appforge.portablehost",
+    "productName": "AppForge Portable Host",
+    "asar": true,
+    "npmRebuild": false,
+    "compression": "store",
+    "files": [
+      "main.cjs",
+      "payload.cjs",
+      "node_modules/adm-zip/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "AppForge-Windows-Host-v1.${ext}"
+    }
+  }
+}

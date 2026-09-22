@@ -360,3 +360,34 @@ Python version must have identical major/minor versions.
 The device template, generated device project and toolchain readiness
 checks therefore pin `/usr/bin/python3.12` and Chaquopy Python 3.12.
 A mismatch is a fail-closed toolchain condition.
+
+
+## 2026-09-22 — Windows Portable EXE Uses a Generic Verified Host
+
+### Context
+
+Running Electron Builder, Wine and the complete Windows packaging toolchain
+for every project on an Android phone would make offline EXE generation large,
+slow and fragile.
+
+### Decision
+
+Build a generic x64 AppForge Portable Host on a Windows CI runner. The host
+contains the Windows Electron runtime but no user project.
+
+After that base host has been verified and SHA-256 pinned, Android may create
+a project-specific EXE by copying the host and appending the existing AppForge
+reversible manifest/project payload.
+
+Normal project source remains on-device. GitHub CI creates only the generic
+host and never receives the user's project as part of the normal packaging
+flow.
+
+### Acceptance
+
+The generic host must prove on Windows that the outer portable executable
+remains runnable after an AppForge payload is appended and that the host can
+read and load that payload.
+
+Windows remains PLANNED until Android offline packaging and a real Windows
+machine acceptance test both pass.

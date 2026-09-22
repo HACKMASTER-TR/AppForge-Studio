@@ -14,6 +14,11 @@ related:
   - "[[System_Architecture]]"
   - "[[Build_And_Worker_Architecture]]"
 source_files:
+  - "build-service/tests/windows_portable_host_v1_contract.test.js"
+  - ".github/workflows/windows-portable-host.yml"
+  - "windows-host/payload.cjs"
+  - "windows-host/main.cjs"
+  - "windows-host/package.json"
   - "build-service/tests/offline_build_pack_v1_contract.test.js"
   - "android-app/app/src/main/assets/device-build/prepare-offline-pack.sh"
   - "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
@@ -222,6 +227,43 @@ missing or reports a different major/minor version.
 
 This change applies to the device-local Python engine. It does not
 silently rewrite unrelated legacy/cloud Python templates.
+
+
+## Windows Portable Host V1
+
+The first device-local Windows EXE architecture does not run Wine or
+electron-builder for every project on Android.
+
+A generic x64 Windows Portable Host is built separately on a Windows CI host.
+The generic host contains Electron and the AppForge Windows runtime but no
+user project.
+
+At project-package time, Android will copy the verified generic host and append
+the existing AppForge reversible payload format:
+
+- `AFEXEP01`
+- manifest length
+- AppForge manifest
+- local site/project ZIP when required
+- payload length
+- `APPFORGE-EXE-V1!`
+
+Electron Builder's portable runtime exposes the original outer portable
+executable path. The host reads the appended payload from that outer file,
+validates bounds and paths, extracts local content into a temporary isolated
+directory and starts the project without a remote AppForge build Worker.
+
+The Windows CI gate must prove that an actual generated portable EXE still
+starts after an AppForge payload is appended and that the runtime can read
+that payload through the portable-executable path.
+
+The base host is not yet an Offline Pack component and Windows remains
+`PLANNED` until:
+
+1. the Windows host CI passes,
+2. the artifact SHA-256 is pinned in Android,
+3. Android can package a real project into a `.exe` without network access,
+4. that generated EXE passes acceptance on an actual Windows machine.
 
 ## Acceptance
 
