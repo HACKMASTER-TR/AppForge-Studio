@@ -100,3 +100,97 @@ test(
     );
   }
 );
+
+
+test(
+  "AAB and EXE owner downloads also publish to public Downloads",
+  async () => {
+    const main = await read(
+      "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+    );
+
+    const aabButton =
+      main.indexOf(
+        "\"AAB'Yİ İNDİR\""
+      );
+
+    const exeButton =
+      main.indexOf(
+        "\"WINDOWS EXE'Yİ İNDİR\""
+      );
+
+    assert.notEqual(aabButton, -1);
+    assert.notEqual(exeButton, -1);
+
+    const aabStart =
+      main.lastIndexOf(
+        "if (\n            aabUrl != null",
+        aabButton
+      );
+
+    const exeStart =
+      main.lastIndexOf(
+        "if (\n            exeUrl != null",
+        exeButton
+      );
+
+    const messageStart =
+      main.indexOf(
+        "if (\n            downloadMessage.isNotBlank()",
+        exeButton
+      );
+
+    assert.notEqual(aabStart, -1);
+    assert.notEqual(exeStart, -1);
+    assert.notEqual(messageStart, -1);
+
+    const aabBlock =
+      main.slice(
+        aabStart,
+        exeStart
+      );
+
+    const exeBlock =
+      main.slice(
+        exeStart,
+        messageStart
+      );
+
+    for (
+      const [name, block] of [
+        ["AAB", aabBlock],
+        ["EXE", exeBlock]
+      ]
+    ) {
+      assert.match(
+        block,
+        /OwnerAccessPolicy/
+      );
+
+      assert.match(
+        block,
+        /downloadArtifactToDownloads/
+      );
+
+      assert.match(
+        block,
+        /downloadArtifactToOwnerVault/
+      );
+
+      assert.match(
+        block,
+        /Downloads\/AppForgeStudio ve/
+      );
+
+      assert.ok(
+        block.indexOf(
+          "downloadArtifactToDownloads"
+        ) <
+          block.indexOf(
+            "downloadArtifactToOwnerVault"
+          ),
+        `${name} must publish public copy before optional owner copy`
+      );
+    }
+  }
+);

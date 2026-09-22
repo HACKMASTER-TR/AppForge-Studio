@@ -82,7 +82,7 @@ test(
 );
 
 test(
-  "portable EXE cannot be falsely marked ready",
+  "portable EXE readiness requires accepted gate and verified host",
   () => {
     const manager =
       read(
@@ -96,7 +96,12 @@ test(
 
     assert.match(
       manager,
-      /windowsExeReady\s*=\s*false/
+      /WINDOWS_EXE_ACCEPTED\s*=\s*\n?\s*true/
+    );
+
+    assert.match(
+      manager,
+      /windowsExeReady\s*=\s*[\s\S]{0,100}?windowsHostReady[\s\S]{0,100}?WINDOWS_EXE_ACCEPTED/
     );
 
     assert.match(
@@ -424,7 +429,7 @@ test(
 
     assert.match(
       manager,
-      /windowsExeReady\s*=\s*false/
+      /windowsExeReady\s*=\s*[\s\S]{0,100}?windowsHostReady[\s\S]{0,100}?WINDOWS_EXE_ACCEPTED/
     );
 
     assert.match(
@@ -495,7 +500,7 @@ test(
 
     assert.match(
       manager,
-      /windowsExeReady\s*=\s*false/
+      /windowsExeReady\s*=\s*[\s\S]{0,100}?windowsHostReady[\s\S]{0,100}?WINDOWS_EXE_ACCEPTED/
     );
   }
 );

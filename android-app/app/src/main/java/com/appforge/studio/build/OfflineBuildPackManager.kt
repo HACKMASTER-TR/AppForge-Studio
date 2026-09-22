@@ -46,6 +46,14 @@ internal object OfflineBuildPackManager {
     private const val PACK_DIRECTORY =
         "opt/appforge-device/offline-pack-v1"
 
+    /*
+     * Acceptance completed on 2026-09-22:
+     * Windows host CI -> Android offline packager -> physical Windows 11
+     * smoke -> normal Studio web-project EXE -> JavaScript runtime PASS.
+     */
+    private const val WINDOWS_EXE_ACCEPTED =
+        true
+
     private val installMutex =
         Mutex()
 
@@ -77,7 +85,9 @@ internal object OfflineBuildPackManager {
                 pythonAndroidReady = false,
                 windowsHostReady =
                     windowsHostReady,
-                windowsExeReady = false
+                windowsExeReady =
+                    windowsHostReady &&
+                        WINDOWS_EXE_ACCEPTED
             )
         }
 
@@ -116,12 +126,12 @@ internal object OfflineBuildPackManager {
                 windowsHostReady,
 
             /*
-             * Portable EXE deliberately remains false until
-             * the Android-hosted Windows packager and a real
-             * Windows execution acceptance test both pass.
+             * Windows EXE product acceptance is complete.
+             * Per-device readiness still requires the exact pinned host.
              */
             windowsExeReady =
-                false
+                windowsHostReady &&
+                    WINDOWS_EXE_ACCEPTED
         )
     }
 
@@ -330,8 +340,8 @@ internal object OfflineBuildPackManager {
                 )
 
                 onProgress(
-                    "Android, Node, Python ve Windows Portable Host " +
-                        "cihazda doğrulandı. EXE paketleme kabulü bekleniyor."
+                    "Android, Node, Python ve Windows Portable EXE " +
+                        "tam çevrimdışı kullanım için hazır."
                 )
 
                 status(

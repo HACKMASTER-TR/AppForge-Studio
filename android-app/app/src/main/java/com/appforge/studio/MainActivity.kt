@@ -19856,6 +19856,20 @@ private fun BuildStep(
                                     withContext(
                                         Dispatchers.IO
                                     ) {
+                                        if (
+                                            Build.VERSION.SDK_INT >=
+                                                Build.VERSION_CODES.Q
+                                        ) {
+                                            downloadArtifactToDownloads(
+                                                context =
+                                                    context,
+                                                url =
+                                                    ticket.url,
+                                                fileName =
+                                                    ownerFileName
+                                            )
+                                        }
+
                                         downloadArtifactToOwnerVault(
                                             context =
                                                 context,
@@ -19867,7 +19881,15 @@ private fun BuildStep(
                                     }
 
                                     downloadMessage =
-                                        "✅ AAB indirildi • AppForge Dosyaları/APK bölümüne kaydedildi."
+                                        if (
+                                            Build.VERSION.SDK_INT >=
+                                                Build.VERSION_CODES.Q
+                                        ) {
+                                            "✅ AAB indirildi • Downloads/AppForgeStudio ve " +
+                                                "AppForge Dosyaları/APK bölümüne kaydedildi."
+                                        } else {
+                                            "✅ AAB indirildi • AppForge Dosyaları/APK bölümüne kaydedildi."
+                                        }
 
                                     return@launch
                                 }
@@ -19981,6 +20003,20 @@ private fun BuildStep(
                                     withContext(
                                         Dispatchers.IO
                                     ) {
+                                        if (
+                                            Build.VERSION.SDK_INT >=
+                                                Build.VERSION_CODES.Q
+                                        ) {
+                                            downloadArtifactToDownloads(
+                                                context =
+                                                    context,
+                                                url =
+                                                    ticket.url,
+                                                fileName =
+                                                    fileName
+                                            )
+                                        }
+
                                         downloadArtifactToOwnerVault(
                                             context =
                                                 context,
@@ -19991,8 +20027,21 @@ private fun BuildStep(
                                         )
                                     }
 
-                                    downloadMessage =
-                                        "✅ Windows EXE indirildi • AppForge Dosyaları/APK bölümüne kaydedildi."
+                                    if (
+                                        Build.VERSION.SDK_INT >=
+                                            Build.VERSION_CODES.Q
+                                    ) {
+                                        downloadMessage =
+                                            "✅ Windows EXE indirildi • Downloads/AppForgeStudio ve " +
+                                                "AppForge Dosyaları/APK bölümüne kaydedildi."
+                                    } else {
+                                        downloadMessage =
+                                            "✅ Windows EXE özel kopyası kaydedildi. Public hedefi seç..."
+
+                                        exeSaveLauncher.launch(
+                                            fileName
+                                        )
+                                    }
 
                                 } catch (
                                     t: Throwable

@@ -611,8 +611,8 @@ internal fun OfflineBuildPackScreen(
 
                     subtitle =
                         "Generic x64 host • 375025483 byte • SHA-256 sabit. " +
-                            "Host indirildikten sonra cihaz-local EXE üretimi " +
-                            "ve son Windows kabulü tamamlanmadan READY olmayacak.",
+                            "Cihaz-local paketleme ve fiziksel Windows 11 " +
+                            "normal-proje kabul testleri tamamlandı.",
 
                     ready =
                         status.windowsExeReady,

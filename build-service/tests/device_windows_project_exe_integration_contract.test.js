@@ -87,14 +87,31 @@ test("BuildApiClient exposes local EXE through existing Studio UI contract", () 
   assert.match(main, /createDownloadTicket\([\s\S]*"exe"/);
 });
 
-test("complete offline pack stays gated until a real normal project EXE passes", () => {
+test("accepted normal-project EXE enables Windows offline-pack readiness", () => {
   const offline = read(
     "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
   );
   const capabilities = read(
     "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt"
   );
-  assert.match(offline, /windowsExeReady\s*=\s*false/);
+
+  assert.match(
+    offline,
+    /WINDOWS_EXE_ACCEPTED\s*=\s*\n?\s*true/
+  );
+
+  assert.match(
+    offline,
+    /windowsExeReady\s*=\s*[\s\S]{0,100}?windowsHostReady[\s\S]{0,100}?WINDOWS_EXE_ACCEPTED/
+  );
+
+  const staticWeb = engineBlock(capabilities, "webview-static", "node-web");
+  const nodeWeb = engineBlock(capabilities, "node-web", "android-gradle");
+
+  assert.match(staticWeb, /DeviceArtifactKind\.WINDOWS_EXE/);
+  assert.match(nodeWeb, /DeviceArtifactKind\.WINDOWS_EXE/);
+
+  // Reserved standalone pseudo-engine is not silently promoted.
   assert.match(
     capabilities,
     /engine\s*=\s*"windows-web"[\s\S]*DeviceBuildSupport\.PLANNED/

@@ -452,3 +452,18 @@ Framework.
 Native Android and Python engines do not advertise Windows output. The complete
 offline-pack READY flag remains gated until a real normal-project EXE passes
 Android-to-Windows acceptance.
+
+
+## 2026-09-22 — Windows EXE Accepted and Public Artifact Copies Are Canonical
+
+### Decision
+
+Windows Portable EXE is accepted for the device-local `webview-static` and
+`node-web` engines after generic-host CI, Android offline packaging, physical
+Windows 11 smoke, normal Studio project execution and JavaScript runtime
+acceptance passed.
+
+The public `Downloads/AppForgeStudio` copy is canonical for APK, AAB and EXE.
+An active owner/admin session may retain an additional private copy under
+`AppForge Dosyaları/APK`, but private storage must not replace public output.
+The reserved standalone `windows-web` engine remains PLANNED.

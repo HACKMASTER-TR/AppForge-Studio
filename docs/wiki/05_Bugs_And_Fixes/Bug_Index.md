@@ -105,3 +105,11 @@ Document only significant, reusable debugging knowledge. Do not add one-off visu
   produced secondary type-inference errors. The two concepts are now named
   `requestedArtifacts` and `artifactFiles`, and a scoped regression contract
   protects the compile boundary.
+
+
+- Owner artifact visibility inconsistency — APK already wrote a public
+  `Downloads/AppForgeStudio` copy plus an optional private owner copy, while
+  AAB and Windows EXE short-circuited to the private owner vault. On Android
+  10+ AAB and EXE now publish the public copy as well, so owner/admin builds
+  remain visible in the normal Files application. Combined outputs inherit the
+  same per-artifact rule.

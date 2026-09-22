@@ -3,8 +3,8 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-09-19
-updated: 2026-09-19
-last_verified: 2026-09-19
+updated: 2026-09-22
+last_verified: 2026-09-22
 confidence: high
 tags:
   - device-build
@@ -266,10 +266,14 @@ The host CI passed, its artifact SHA-256 is pinned in Android, Android created
 an EXE without network access, and the Android-generated deterministic smoke
 EXE was executed successfully on a physical Windows 11 machine.
 
-Those results accept the generic host and payload packager. The complete
-Windows output remains gated until the normal Studio project-build route
-produces and saves a real project EXE through `DeviceBuildEngine` and that
-artifact receives device/Windows acceptance.
+Those results accepted the generic host and payload packager.
+
+The normal Studio project-build route was accepted on 2026-09-22: a real
+`webview-static` project produced its EXE through `DeviceBuildEngine` on
+Android, opened on a physical Windows 11 machine, and its JavaScript acceptance
+action returned `JAVASCRIPT_OK`. Windows Portable EXE is therefore accepted for
+`webview-static` and `node-web`. Per-device readiness still requires the exact
+pinned generic host.
 
 
 ### Windows Host Android pack integration
@@ -365,3 +369,12 @@ required before the new toolchain readiness marker is written.
 
 This source correction requires Android CI and physical-device APK/AAB
 acceptance. Static tests alone do not prove native execution.
+
+
+### Public artifact save policy
+
+User-visible build outputs use `Downloads/AppForgeStudio` as the canonical
+public location. APK already followed this rule. AAB and Windows EXE now do the
+same on Android 10+ even during an active owner/admin session. The private
+`AppForge Dosyaları/APK` copy is additional only and never replaces the public
+copy. APK+AAB and APK+AAB+EXE combinations inherit the same per-artifact rule.

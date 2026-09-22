@@ -156,7 +156,7 @@ test(
 
 
 test(
-  "Windows capability remains gated until real acceptance",
+  "Windows accepted output remains pinned-host gated",
   () => {
     const capability =
       read(
@@ -174,6 +174,16 @@ test(
     );
 
     assert.match(
+      offline,
+      /WINDOWS_EXE_ACCEPTED\s*=\s*\n?\s*true/
+    );
+
+    assert.match(
+      offline,
+      /windowsExeReady\s*=\s*\n?\s*windowsHostReady\s*&&\s*\n?\s*WINDOWS_EXE_ACCEPTED/
+    );
+
+    assert.doesNotMatch(
       offline,
       /windowsExeReady\s*=\s*false/
     );
