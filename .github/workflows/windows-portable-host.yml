@@ -1,6 +1,14 @@
 name: AppForge Windows Portable Host
 
 on:
+  push:
+    branches:
+      - feat/windows-portable-host-v1-20260922
+    paths:
+      - ".github/workflows/windows-portable-host.yml"
+      - "windows-host/**"
+      - "build-service/tests/windows_portable_host_v1_contract.test.js"
+
   workflow_dispatch:
 
 permissions:
