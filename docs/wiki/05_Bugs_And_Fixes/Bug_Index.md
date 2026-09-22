@@ -113,3 +113,11 @@ Document only significant, reusable debugging knowledge. Do not add one-off visu
   10+ AAB and EXE now publish the public copy as well, so owner/admin builds
   remain visible in the normal Files application. Combined outputs inherit the
   same per-artifact rule.
+
+- Device-local AAB public save rejected `file://` artifact URI — normal
+  device builds return local artifact tickets. The AAB non-owner path still
+  used Android `DownloadManager.Request`, which rejects non-HTTP(S) URIs with
+  `Can only download HTTP/HTTPS URIs`. AAB export now uses the existing
+  MediaStore `downloadArtifactToDownloads` stream on Android 10+ and SAF on
+  Android 8/9, matching the device-local EXE transport behavior. Physical
+  public-save re-acceptance remains required.

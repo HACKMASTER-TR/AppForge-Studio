@@ -57,6 +57,7 @@ source_files:
 
 ## Current Risks / Open Questions
 
+- Physical-device AAB generation succeeded, but the first public-save acceptance exposed a local `file://` ticket being sent to Android `DownloadManager`, which only accepts HTTP/HTTPS. Source now routes AAB through the same MediaStore/SAF streaming path used for local artifacts; physical save re-acceptance is pending.
 - Never touch `main`, Play Production, `appforge-failover` or migrations during this staging sequence.
 - A signed device challenge authenticates the installation; HTTPS status has no separate application-level response signature.
 - Open-app revocation refresh is best-effort; protected server routes must enforce active grants independently.

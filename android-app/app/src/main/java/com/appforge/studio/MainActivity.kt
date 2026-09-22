@@ -18231,6 +18231,92 @@ private fun BuildStep(
      * kullanıcı hedef dosyayı seçer ve AppForge çıktıyı
      * doğrudan o URI'ye stream eder.
      */
+    val aabSaveLauncher =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts.CreateDocument(
+                    "application/octet-stream"
+                )
+        ) {
+            destination: Uri? ->
+
+            val id =
+                buildId
+
+            if (
+                destination != null &&
+                id != null
+            ) {
+                scope.launch {
+                    try {
+                        downloadMessage =
+                            "AAB indiriliyor..."
+
+                        val ticket =
+                            withContext(
+                                Dispatchers.IO
+                            ) {
+                                BuildApiClient(
+                                    context,
+                                    serverUrl,
+                                    apiKey
+                                ).createDownloadTicket(
+                                    id,
+                                    "aab"
+                                )
+                            }
+
+                        withContext(
+                            Dispatchers.IO
+                        ) {
+                            downloadArtifactToUri(
+                                context,
+                                ticket.url,
+                                destination
+                            )
+                        }
+
+                        if (
+                            OwnerAccessPolicy
+                                .isActiveOwner(
+                                    context
+                                )
+                        ) {
+                            withContext(
+                                Dispatchers.IO
+                            ) {
+                                downloadArtifactToOwnerVault(
+                                    context =
+                                        context,
+                                    url =
+                                        ticket.url,
+                                    fileName =
+                                        artifactDownloadName(
+                                            appName,
+                                            AppForgeBuildNumbers.label(buildNo),
+                                            "aab"
+                                        )
+                                )
+                            }
+
+                            downloadMessage =
+                                "✅ AAB dışa kaydedildi • " +
+                                    "AppForge Dosyaları/APK kopyası da oluşturuldu."
+                        } else {
+                            downloadMessage =
+                                "✅ AAB başarıyla kaydedildi."
+                        }
+
+                    } catch (
+                        t: Throwable
+                    ) {
+                        downloadMessage =
+                            "AAB indirme hatası: ${t.message}"
+                    }
+                }
+            }
+        }
+
     val exeSaveLauncher =
         rememberLauncherForActivityResult(
             contract =
@@ -19823,128 +19909,98 @@ private fun BuildStep(
                             buildId
                                 ?: return@Button
 
-                        scope.launch {
-                            try {
-                                val ticket =
-                                    withContext(
-                                        Dispatchers.IO
-                                    ) {
-                                        BuildApiClient(
-                                            context,
-                                            serverUrl,
-                                            apiKey
-                                        )
-                                            .createDownloadTicket(
+                        val fileName =
+                            artifactDownloadName(
+                                appName,
+                                AppForgeBuildNumbers.label(buildNo),
+                                "aab"
+                            )
+
+                        if (
+                            Build.VERSION.SDK_INT >=
+                                Build.VERSION_CODES.Q
+                        ) {
+                            scope.launch {
+                                try {
+                                    downloadMessage =
+                                        "AAB indiriliyor..."
+
+                                    val ticket =
+                                        withContext(
+                                            Dispatchers.IO
+                                        ) {
+                                            BuildApiClient(
+                                                context,
+                                                serverUrl,
+                                                apiKey
+                                            ).createDownloadTicket(
                                                 id,
                                                 "aab"
                                             )
-                                    }
+                                        }
 
-                                val ownerFileName =
-                                    artifactDownloadName(
-                                        appName,
-                                        AppForgeBuildNumbers.label(buildNo),
-                                        "aab"
-                                    )
+                                    val isOwner =
+                                        OwnerAccessPolicy
+                                            .isActiveOwner(
+                                                context
+                                            )
 
-                                if (
-                                    OwnerAccessPolicy
-                                        .isActiveOwner(
-                                            context
-                                        )
-                                ) {
                                     withContext(
                                         Dispatchers.IO
                                     ) {
-                                        if (
-                                            Build.VERSION.SDK_INT >=
-                                                Build.VERSION_CODES.Q
-                                        ) {
-                                            downloadArtifactToDownloads(
-                                                context =
-                                                    context,
-                                                url =
-                                                    ticket.url,
-                                                fileName =
-                                                    ownerFileName
-                                            )
-                                        }
-
-                                        downloadArtifactToOwnerVault(
+                                        /*
+                                         * Device-local build tickets are file:// URIs.
+                                         * MediaStore streaming supports both file://
+                                         * and HTTPS, while DownloadManager does not.
+                                         */
+                                        downloadArtifactToDownloads(
                                             context =
                                                 context,
                                             url =
                                                 ticket.url,
                                             fileName =
-                                                ownerFileName
+                                                fileName
                                         )
+
+                                        if (
+                                            isOwner
+                                        ) {
+                                            downloadArtifactToOwnerVault(
+                                                context =
+                                                    context,
+                                                url =
+                                                    ticket.url,
+                                                fileName =
+                                                    fileName
+                                            )
+                                        }
                                     }
 
                                     downloadMessage =
                                         if (
-                                            Build.VERSION.SDK_INT >=
-                                                Build.VERSION_CODES.Q
+                                            isOwner
                                         ) {
                                             "✅ AAB indirildi • Downloads/AppForgeStudio ve " +
                                                 "AppForge Dosyaları/APK bölümüne kaydedildi."
                                         } else {
-                                            "✅ AAB indirildi • AppForge Dosyaları/APK bölümüne kaydedildi."
+                                            "✅ AAB Downloads/AppForgeStudio klasörüne kaydedildi."
                                         }
 
-                                    return@launch
+                                } catch (
+                                    t: Throwable
+                                ) {
+                                    downloadMessage =
+                                        "AAB indirme hatası: ${t.message}"
                                 }
-
-                                val request =
-                                    DownloadManager.Request(
-                                        Uri.parse(
-                                            ticket.url
-                                        )
-                                    )
-                                        .setTitle(
-                                            "AppForge AAB"
-                                        )
-                                        .setDescription(
-                                            "AAB indiriliyor"
-                                        )
-                                        .setMimeType(
-                                            "application/octet-stream"
-                                        )
-                                        .setNotificationVisibility(
-                                            DownloadManager.Request
-                                                .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-                                        )
-                                        .setAllowedOverMetered(
-                                            true
-                                        )
-                                        .setAllowedOverRoaming(
-                                            true
-                                        )
-                                        .setDestinationInExternalPublicDir(
-                                            Environment.DIRECTORY_DOWNLOADS,
-                                            "$APPFORGE_DOWNLOAD_FOLDER/${artifactDownloadName(
-                                                appName,
-                                                AppForgeBuildNumbers.label(buildNo),
-                                                "aab"
-                                            )}"
-                                        )
-
-                                val manager =
-                                    context.getSystemService(
-                                        Context.DOWNLOAD_SERVICE
-                                    ) as DownloadManager
-
-                                manager.enqueue(
-                                    request
-                                )
-
-                                downloadMessage =
-                                    "AAB indiriliyor • Downloads/AppForgeStudio klasörüne kaydedilecek."
-                            } catch (
-                                t: Throwable
-                            ) {
-                                downloadMessage =
-                                    "İndirme hatası: ${t.message}"
                             }
+                        } else {
+                            /*
+                             * Android 8/9 public export fallback.
+                             * The SAF stream also accepts device-local file://.
+                             */
+                            aabSaveLauncher.launch(
+                                fileName
+                            )
                         }
                     },
                     modifier =

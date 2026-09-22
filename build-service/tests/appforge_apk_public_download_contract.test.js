@@ -191,6 +191,20 @@ test(
           ),
         `${name} must publish public copy before optional owner copy`
       );
+
+      if (
+        name === "AAB"
+      ) {
+        assert.doesNotMatch(
+          block,
+          /DownloadManager\.Request/
+        );
+
+        assert.match(
+          block,
+          /aabSaveLauncher\.launch/
+        );
+      }
     }
   }
 );
