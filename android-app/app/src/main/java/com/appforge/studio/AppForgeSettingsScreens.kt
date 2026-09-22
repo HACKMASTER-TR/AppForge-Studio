@@ -47,6 +47,7 @@ internal fun SettingsHubScreen(
     onOpenLanguage: () -> Unit,
     onOpenKeystore: () -> Unit,
     onOpenPro: () -> Unit,
+    onOpenOfflinePack: () -> Unit,
     onOpenHowTo: () -> Unit,
     onOpenPlayGuide: () -> Unit,
     onOpenLegal: () -> Unit,
@@ -77,6 +78,12 @@ internal fun SettingsHubScreen(
             settingsT(languageCode, "keystore_manager"),
             "JKS / keystore kasası ve parmak izleri",
             onOpenKeystore
+        ),
+        SettingsEntry(
+            "⬇",
+            "Tam Çevrimdışı Derleme Paketi",
+            "Android, Node, Python ve Portable EXE için tek seferlik runtime kurulumu",
+            onOpenOfflinePack
         ),
         SettingsEntry(
             "★",

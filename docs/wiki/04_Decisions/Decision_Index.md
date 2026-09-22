@@ -303,3 +303,34 @@ Cloudflare/Play changes remain separate, explicitly gated steps.
 
 **Evidence:** Android owner policy, GoogleAdminIdentityClient, AdminOpsScreen,
 StudioHomeV2, Cloudflare google_oidc and Worker tests.
+
+
+## 2026-09-22 — Modular One-Click Offline Build Pack
+
+### Context
+
+Embedding every Android, Node, Python and future Windows build tool
+directly into the main AppForge APK would make ordinary application
+updates excessively large.
+
+### Decision
+
+Keep the main APK comparatively small and install a versioned,
+AppForge-managed offline build pack from inside the application.
+The user sees one installation action while the implementation keeps
+Android, Node, Python and future Windows EXE capabilities modular.
+
+The pack lives only inside the dedicated Device Build Runtime
+boundary. It does not reuse or mutate the persistent Terminal Linux
+workspace.
+
+Portable EXE remains a declared target but cannot become READY until
+the Android-hosted packager and real Windows execution acceptance
+both pass.
+
+### Consequences
+
+Normal AppForge APK updates do not require re-downloading the whole
+offline toolchain. Pack revisions can update only affected modules.
+Physical-device offline APK/AAB acceptance and future Windows EXE
+acceptance remain mandatory release gates.

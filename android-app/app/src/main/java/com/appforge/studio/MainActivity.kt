@@ -642,7 +642,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, OFFLINE_PACK, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 @Composable
 private fun AppForgeApp() {
@@ -4692,6 +4692,7 @@ onOpenPro = {
                     onOpenLanguage = { screen = AppScreen.LANGUAGE },
                     onOpenKeystore = { screen = AppScreen.KEYSTORES },
                     onOpenPro = { screen = AppScreen.PRO },
+                    onOpenOfflinePack = { screen = AppScreen.OFFLINE_PACK },
                     onOpenHowTo = { screen = AppScreen.HELP },
                     onOpenPlayGuide = { screen = AppScreen.PLAY_GUIDE },
                     onOpenLegal = { screen = AppScreen.LEGAL },
@@ -4712,6 +4713,14 @@ onOpenPro = {
                         status = "${StudioI18n.t(prefs.languageCode, "cache_cleared")}: ${formatFileSize(cleared)}"
                     }
                 )
+
+                AppScreen.OFFLINE_PACK ->
+                    OfflineBuildPackScreen(
+                        onBack = {
+                            screen =
+                                AppScreen.SETTINGS
+                        }
+                    )
 
                 AppScreen.LANGUAGE -> LanguageSettingsScreen(
                     languageCode = prefs.languageCode,

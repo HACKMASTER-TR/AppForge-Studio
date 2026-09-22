@@ -14,6 +14,10 @@ related:
   - "[[System_Architecture]]"
   - "[[Build_And_Worker_Architecture]]"
 source_files:
+  - "build-service/tests/offline_build_pack_v1_contract.test.js"
+  - "android-app/app/src/main/assets/device-build/prepare-offline-pack.sh"
+  - "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
@@ -143,6 +147,35 @@ V4 to V5 so an existing device runtime is re-provisioned on
 the next build.
 
 Physical-device APK/AAB acceptance remains required.
+
+## One-click Offline Build Pack
+
+AppForge uses a small application APK plus an optional one-click
+offline build pack instead of embedding multi-gigabyte toolchains
+inside every APK update.
+
+The pack reuses the dedicated Device Build Runtime V3 boundary and
+must never modify the persistent AppForge Terminal Linux workspace.
+
+The first implementation prepares the currently enabled Android
+device engines:
+
+- Android SDK / Build Tools / JDK / Gradle and AGP cache
+- Node.js and npm toolchain
+- Python and Chaquopy Android cache
+
+Node project dependencies remain version-specific and must be proven
+present before an arbitrary imported npm project can be claimed as
+offline-ready.
+
+Windows Portable EXE is part of the target pack architecture but
+remains PLANNED until Android-hosted packaging and execution on an
+actual Windows machine pass acceptance. The UI must not report the
+complete pack as READY before that gate passes.
+
+The target user experience is one action in Settings. Internally the
+pack remains modular so later runtime updates can replace only changed
+components instead of redownloading the complete payload.
 
 ## Acceptance
 
