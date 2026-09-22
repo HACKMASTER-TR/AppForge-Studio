@@ -108,11 +108,28 @@ EOF
     write_gradle_properties \
       "$PROJECT"
 
-    "$GRADLE" \
+    LOG="$BASE/android-gradle.log"
+
+    if ! "$GRADLE" \
       -p "$PROJECT" \
       --no-daemon \
-      --stacktrace \
-      :app:assembleDebug
+      --console=plain \
+      :app:assembleDebug \
+      >"$LOG" 2>&1
+    then
+      echo "APPFORGE_OFFLINE_PREWARM_FAILED:ANDROID"
+      echo "----- GRADLE FAILURE -----"
+
+      sed -n '/FAILURE:/,$p' "$LOG" \
+        | grep -v '^[[:space:]]*at org\.gradle\.' \
+        | tail -120 \
+        || true
+
+      echo "----- END GRADLE FAILURE -----"
+      exit 62
+    fi
+
+    tail -80 "$LOG"
 
     echo "APPFORGE_OFFLINE_ANDROID_PREWARM=PASS"
     ;;
@@ -161,11 +178,28 @@ EOF
     write_gradle_properties \
       "$PROJECT"
 
-    "$GRADLE" \
+    LOG="$BASE/python-gradle.log"
+
+    if ! "$GRADLE" \
       -p "$PROJECT" \
       --no-daemon \
-      --stacktrace \
-      :app:assembleDebug
+      --console=plain \
+      :app:assembleDebug \
+      >"$LOG" 2>&1
+    then
+      echo "APPFORGE_OFFLINE_PREWARM_FAILED:PYTHON"
+      echo "----- GRADLE FAILURE -----"
+
+      sed -n '/FAILURE:/,$p' "$LOG" \
+        | grep -v '^[[:space:]]*at org\.gradle\.' \
+        | tail -120 \
+        || true
+
+      echo "----- END GRADLE FAILURE -----"
+      exit 63
+    fi
+
+    tail -80 "$LOG"
 
     echo "APPFORGE_OFFLINE_PYTHON_PREWARM=PASS"
     ;;

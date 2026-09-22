@@ -177,6 +177,15 @@ The target user experience is one action in Settings. Internally the
 pack remains modular so later runtime updates can replace only changed
 components instead of redownloading the complete payload.
 
+
+### Offline pack failure diagnostics
+
+Offline pack prewarm Gradle commands intentionally use concise
+`--console=plain` output. On failure the runtime emits the Gradle
+`FAILURE:` section rather than flooding the user-visible error with
+internal Gradle stack frames. The pack remains fail-closed and no
+component readiness marker is written after a failed prewarm.
+
 ## Acceptance
 
 Shipping requires:

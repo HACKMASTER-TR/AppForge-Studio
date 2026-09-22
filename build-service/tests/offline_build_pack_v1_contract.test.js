@@ -141,6 +141,42 @@ test(
   }
 );
 
+
+test(
+  "offline prewarm reports the real Gradle cause instead of stacktrace noise",
+  () => {
+    const script =
+      read(
+        "android-app/app/src/main/assets/device-build/prepare-offline-pack.sh"
+      );
+
+    assert.doesNotMatch(
+      script,
+      /--stacktrace/
+    );
+
+    assert.match(
+      script,
+      /--console=plain/
+    );
+
+    assert.match(
+      script,
+      /APPFORGE_OFFLINE_PREWARM_FAILED:ANDROID/
+    );
+
+    assert.match(
+      script,
+      /APPFORGE_OFFLINE_PREWARM_FAILED:PYTHON/
+    );
+
+    assert.match(
+      script,
+      /sed -n '\/FAILURE:\/,\$p'/
+    );
+  }
+);
+
 test(
   "settings exposes the offline pack screen",
   () => {
