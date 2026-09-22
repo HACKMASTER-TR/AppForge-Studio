@@ -31,7 +31,8 @@ internal data class DeviceBuildSnapshot(
     val logs: List<String>,
     val preflight: List<String>,
     val apk: File?,
-    val aab: File?
+    val aab: File?,
+    val exe: File?
 )
 
 private val LOCAL_ADDITIONAL_PERMISSION_ALLOWLIST =
@@ -62,6 +63,7 @@ object DeviceBuildEngine {
         @Volatile var offline: Boolean = false,
         @Volatile var apk: File? = null,
         @Volatile var aab: File? = null,
+        @Volatile var exe: File? = null,
         @Volatile var shell: LinuxShellEngine? = null,
         @Volatile var shellSessionId: String? = null
     )
@@ -104,14 +106,37 @@ object DeviceBuildEngine {
                 logs = it.logs.toList(),
                 preflight = it.preflight.toList(),
                 apk = it.apk,
-                aab = it.aab
+                aab = it.aab,
+                exe = it.exe
             )
         }
 
     fun artifact(id: String, kind: String): File? {
         val state = jobs[id] ?: return null
-        val file = if (kind.equals("aab", true)) state.aab else state.apk
-        return file?.takeIf { it.isFile && it.length() > 0L }
+
+        val file =
+            when (
+                kind
+                    .trim()
+                    .lowercase()
+            ) {
+                "aab" ->
+                    state.aab
+
+                "exe",
+                "windows-exe" ->
+                    state.exe
+
+                else ->
+                    state.apk
+            }
+
+        return file
+            ?.takeIf {
+                it.isFile &&
+                    it.length() >
+                        0L
+            }
     }
 
     fun cancel(id: String): Boolean {
@@ -163,9 +188,41 @@ object DeviceBuildEngine {
                         "webview-static"
                     }
 
+            val requestedOutputs =
+                DeviceBuildCapabilities
+                    .requestedOutputs(
+                        draft.buildOutput
+                    )
+
+            val wantsWindowsExe =
+                DeviceArtifactKind.WINDOWS_EXE in
+                    requestedOutputs
+
+            if (
+                wantsWindowsExe
+            ) {
+                check(
+                    WindowsPortableHostStore
+                        .isInstalled(
+                            context
+                        )
+                ) {
+                    "Windows Portable Host kurulu değil. " +
+                        "Ayarlar > Tam Çevrimdışı Derleme Paketi bölümünden paketi tamamla."
+                }
+            }
+
             state.preflight.add("✅ Build cihaz üzerinde çalışacak.")
             state.preflight.add("✅ Worker / queue / cloud build kullanılmıyor.")
             state.preflight.add("✅ Clean Device Build Runtime V3 • Terminal Linux ortamından izole.")
+
+            if (
+                wantsWindowsExe
+            ) {
+                state.preflight.add(
+                    "✅ Windows Portable EXE • doğrulanmış generic host ile cihaz-local paketleme."
+                )
+            }
 
             workspace.deleteRecursively()
             workspace.mkdirs()
@@ -220,24 +277,48 @@ object DeviceBuildEngine {
                 "node-web" -> buildNodeWeb(context, draft, workspace, rootfs, shell, state)
                 "android-gradle" -> buildAndroidProject(context, draft, workspace, rootfs, shell, state)
                 "python-android" -> buildPythonProject(context, draft, workspace, rootfs, shell, state)
-                "webview-static", "", "unknown" -> buildWebWrapper(
-                    context,
-                    draft,
-                    workspace,
-                    rootfs,
-                    shell,
-                    state,
-                    resolveStaticWebRoot(draft, workspace)
-                )
+                "webview-static", "", "unknown" ->
+                    buildStaticWeb(
+                        context,
+                        draft,
+                        workspace,
+                        rootfs,
+                        shell,
+                        state
+                    )
                 else -> error("${draft.sourceTechnologyLabel} için cihaz build motoru henüz etkin değil.")
             }
 
             checkCancelled(state)
-            state.status = "İmzalanıyor"
+            state.status = "Çıktılar doğrulanıyor"
             state.progress = 94
 
-            check(state.apk != null || state.aab != null) {
-                "APK/AAB çıktısı üretilemedi."
+            val missingOutputs =
+                requestedOutputs
+                    .filter {
+                        artifact ->
+                        when (
+                            artifact
+                        ) {
+                            DeviceArtifactKind.APK ->
+                                state.apk == null
+
+                            DeviceArtifactKind.AAB ->
+                                state.aab == null
+
+                            DeviceArtifactKind.WINDOWS_EXE ->
+                                state.exe == null
+                        }
+                    }
+
+            check(
+                missingOutputs.isEmpty()
+            ) {
+                "İstenen cihaz-local çıktılar üretilemedi: " +
+                    DeviceBuildCapabilities
+                        .outputLabels(
+                            missingOutputs
+                        )
             }
 
             state.status = "success"
@@ -348,6 +429,148 @@ object DeviceBuildEngine {
         }
     }
 
+
+    private fun requestedOutputs(
+        draft: ProjectDraft
+    ): Set<DeviceArtifactKind> =
+        DeviceBuildCapabilities
+            .requestedOutputs(
+                draft.buildOutput
+            )
+
+    private fun wantsAndroidOutputs(
+        draft: ProjectDraft
+    ): Boolean {
+        val outputs =
+            requestedOutputs(
+                draft
+            )
+
+        return DeviceArtifactKind.APK in outputs ||
+            DeviceArtifactKind.AAB in outputs
+    }
+
+    private fun buildStaticWeb(
+        context: Context,
+        draft: ProjectDraft,
+        workspace: File,
+        rootfs: File,
+        shell: LinuxShellEngine,
+        state: JobState
+    ) {
+        val siteRoot =
+            resolveStaticWebRoot(
+                draft,
+                workspace
+            )
+
+        if (
+            wantsAndroidOutputs(
+                draft
+            )
+        ) {
+            buildWebWrapper(
+                context,
+                draft,
+                workspace,
+                rootfs,
+                shell,
+                state,
+                siteRoot
+            )
+        }
+
+        buildWindowsIfRequested(
+            context = context,
+            draft = draft,
+            siteRoot = siteRoot,
+            state = state
+        )
+    }
+
+    private fun buildWindowsIfRequested(
+        context: Context,
+        draft: ProjectDraft,
+        siteRoot: File?,
+        state: JobState
+    ) {
+        if (
+            DeviceArtifactKind.WINDOWS_EXE !in
+                requestedOutputs(
+                    draft
+                )
+        ) {
+            return
+        }
+
+        check(
+            WindowsPortableHostStore
+                .isInstalled(
+                    context
+                )
+        ) {
+            "Windows Portable Host doğrulanmadı."
+        }
+
+        val artifactRoot =
+            File(
+                context.filesDir,
+                "device-build/artifacts/${state.id}"
+            ).apply {
+                mkdirs()
+            }
+
+        val target =
+            File(
+                artifactRoot,
+                "${safeName(draft.appName)}-${state.buildNo}.exe"
+            )
+
+        state.logs.add(
+            "🪟 Windows Portable EXE cihaz üzerinde hazırlanıyor."
+        )
+
+        state.progress =
+            maxOf(
+                state.progress,
+                70
+            )
+
+        runBlocking {
+            WindowsPortableExePackager
+                .packageProject(
+                    context = context,
+                    draft = draft,
+                    siteRoot = siteRoot,
+                    target = target
+                ) {
+                    detail ->
+                    state.logs.add(
+                        detail
+                    )
+                }
+        }
+
+        require(
+            target.isFile &&
+                target.length() >
+                    WindowsPortableHostStore.HOST_BYTES
+        ) {
+            "Windows Portable EXE çıktısı oluşturulamadı."
+        }
+
+        state.exe = target
+        state.progress =
+            maxOf(
+                state.progress,
+                90
+            )
+
+        state.logs.add(
+            "✅ Windows Portable EXE hazır."
+        )
+    }
+
     private fun buildNodeWeb(
         context: Context,
         draft: ProjectDraft,
@@ -369,7 +592,29 @@ object DeviceBuildEngine {
 
         state.logs.add("✅ Web kaynakları derlendi.")
         state.progress = 55
-        buildWebWrapper(context, draft, workspace, rootfs, shell, state, site)
+
+        if (
+            wantsAndroidOutputs(
+                draft
+            )
+        ) {
+            buildWebWrapper(
+                context,
+                draft,
+                workspace,
+                rootfs,
+                shell,
+                state,
+                site
+            )
+        }
+
+        buildWindowsIfRequested(
+            context = context,
+            draft = draft,
+            siteRoot = site,
+            state = state
+        )
     }
 
     private fun resolveStaticWebRoot(draft: ProjectDraft, workspace: File): File? {
@@ -557,11 +802,32 @@ object DeviceBuildEngine {
             ?: error("Gradle hazırlanamadı.")
 
         val variant = if (draft.signingMode == SigningMode.CUSTOM) "Release" else "Debug"
-        val tasks = buildList {
-            if (draft.buildOutput != "aab") add(":app:assemble$variant")
-            if (draft.buildOutput != "apk") add(":app:bundle$variant")
+
+        val outputs =
+            requestedOutputs(
+                draft
+            )
+
+        val tasks =
+            buildList {
+                if (
+                    DeviceArtifactKind.APK in outputs
+                ) {
+                    add(":app:assemble$variant")
+                }
+
+                if (
+                    DeviceArtifactKind.AAB in outputs
+                ) {
+                    add(":app:bundle$variant")
+                }
+            }
+
+        require(
+            tasks.isNotEmpty()
+        ) {
+            "Android build çağrıldı ancak APK/AAB çıktısı seçilmedi."
         }
-        require(tasks.isNotEmpty()) { "En az bir build çıktısı seçilmeli." }
 
         val signingArgs = if (draft.signingMode == SigningMode.CUSTOM) {
             val key = copyKeystore(context, draft, workspace)
@@ -611,11 +877,24 @@ object DeviceBuildEngine {
             state.aab = target
         }
 
-        if (draft.buildOutput == "apk" || draft.buildOutput == "both") {
-            require(state.apk != null) { "Gradle tamamlandı ancak APK bulunamadı." }
+        if (
+            DeviceArtifactKind.APK in outputs
+        ) {
+            require(
+                state.apk != null
+            ) {
+                "Gradle tamamlandı ancak APK bulunamadı."
+            }
         }
-        if (draft.buildOutput == "aab" || draft.buildOutput == "both") {
-            require(state.aab != null) { "Gradle tamamlandı ancak AAB bulunamadı." }
+
+        if (
+            DeviceArtifactKind.AAB in outputs
+        ) {
+            require(
+                state.aab != null
+            ) {
+                "Gradle tamamlandı ancak AAB bulunamadı."
+            }
         }
     }
 

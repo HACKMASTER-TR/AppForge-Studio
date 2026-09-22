@@ -43,12 +43,13 @@ internal object DeviceBuildCapabilities {
                 readyOutputs =
                     setOf(
                         DeviceArtifactKind.APK,
-                        DeviceArtifactKind.AAB
+                        DeviceArtifactKind.AAB,
+                        DeviceArtifactKind.WINDOWS_EXE
                     ),
                 support =
                     DeviceBuildSupport.READY,
                 note =
-                    "Statik Web / WebView cihaz üzerinde APK ve AAB üretebilir."
+                    "Statik Web / WebView cihaz üzerinde APK, AAB ve doğrulanmış generic host ile Windows Portable EXE üretebilir."
             ),
 
             DeviceBuildCapability(
@@ -65,12 +66,13 @@ internal object DeviceBuildCapabilities {
                 readyOutputs =
                     setOf(
                         DeviceArtifactKind.APK,
-                        DeviceArtifactKind.AAB
+                        DeviceArtifactKind.AAB,
+                        DeviceArtifactKind.WINDOWS_EXE
                     ),
                 support =
                     DeviceBuildSupport.READY,
                 note =
-                    "npm tabanlı statik web çıktıları cihaz üzerinde APK/AAB paketlenebilir."
+                    "npm tabanlı statik web çıktıları cihaz üzerinde APK/AAB ve Windows Portable EXE olarak paketlenebilir."
             ),
 
             DeviceBuildCapability(

@@ -3,8 +3,8 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-21
-last_verified: 2026-09-21
+updated: 2026-09-22
+last_verified: 2026-09-22
 confidence: high
 tags:
   - hot-context
@@ -38,7 +38,7 @@ source_files:
 - Normal project builds are device-local and use a disposable build rootfs.
 - Railway, Render and Supabase are not AppForge project-build infrastructure.
 - GitHub is repository/CI infrastructure; Google Play/Cloud are distribution and billing infrastructure.
-- Windows Portable EXE remains gated until real Windows acceptance.
+- Windows generic-host CI, Android device packaging, and a physical Windows 11 smoke execution passed. Normal-project EXE integration still needs device acceptance before the complete offline pack is marked READY.
 
 ## Recent Important Changes
 
@@ -61,7 +61,7 @@ source_files:
 - A signed device challenge authenticates the installation; HTTPS status has no separate application-level response signature.
 - Open-app revocation refresh is best-effort; protected server routes must enforce active grants independently.
 - Legacy Play entitlement is separate from admin-issued Pro.
-- APK/AAB real-device acceptance and Windows EXE acceptance remain open gates.
+- APK/AAB real-device acceptance remains open. Windows generic-host/device-packager physical acceptance passed; normal-project EXE integration acceptance remains open.
 
 ## Read Next
 

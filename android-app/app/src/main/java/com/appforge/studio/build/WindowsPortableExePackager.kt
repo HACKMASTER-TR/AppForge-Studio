@@ -1,6 +1,8 @@
 package com.appforge.studio.build
 
 import android.content.Context
+import com.appforge.studio.model.ProjectDraft
+import com.appforge.studio.model.SourceMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -238,6 +240,144 @@ internal object WindowsPortableExePackager {
             }
         }
 
+
+    suspend fun packageProject(
+        context: Context,
+        draft: ProjectDraft,
+        siteRoot: File?,
+        target: File,
+        onProgress: (String) -> Unit = {}
+    ): File =
+        withContext(Dispatchers.IO) {
+            val appContext = context.applicationContext
+            val local = draft.sourceMode == SourceMode.LOCAL
+            val localSite = if (local) {
+                siteRoot?.canonicalFile
+                    ?: error("Windows LOCAL proje çıktısı bulunamadı.")
+            } else null
+
+            if (local) {
+                require(
+                    localSite?.isDirectory == true &&
+                        File(localSite, "index.html").isFile
+                ) { "Windows LOCAL proje index.html bulunamadı." }
+            } else {
+                require(draft.webUrl.startsWith("https://", ignoreCase = true)) {
+                    "Windows URL modu HTTPS gerektirir."
+                }
+            }
+
+            require(draft.appName.trim().isNotBlank()) {
+                "Windows uygulama adı gerekli."
+            }
+            require(Regex("""^[A-Za-z_]\w*(\.[A-Za-z_]\w*)+$""").matches(draft.packageName)) {
+                "Windows app ID geçersiz."
+            }
+
+            val host = WindowsPortableHostStore.requireVerifiedHost(appContext)
+            val temporaryRoot = File(
+                appContext.cacheDir,
+                "windows-project-packager/${UUID.randomUUID()}"
+            ).apply { mkdirs() }
+            val projectZip = if (local) {
+                File(temporaryRoot, "project.zip").also {
+                    createProjectZip(localSite!!, it)
+                }
+            } else null
+
+            try {
+                val manifest = createProjectManifest(
+                    draft,
+                    if (local) "index.html" else ""
+                )
+                val manifestBytes = manifest.toString().toByteArray(Charsets.UTF_8)
+                require(manifestBytes.size in 1..MAX_MANIFEST_BYTES) {
+                    "Windows EXE manifest boyutu geçersiz."
+                }
+                val payloadLength =
+                    12L + manifestBytes.size.toLong() + (projectZip?.length() ?: 0L)
+                require(payloadLength in 1..MAX_PAYLOAD_BYTES) {
+                    "Windows EXE payload'ı 512 MB sınırını aşıyor."
+                }
+
+                val parent = target.parentFile
+                    ?: error("Windows EXE hedef klasörü bulunamadı.")
+                parent.mkdirs()
+                val part = File(parent, "${target.name}.part")
+                part.delete()
+
+                onProgress("Windows EXE • doğrulanmış host kopyalanıyor...")
+                copyHost(host, part)
+                require(part.length() == WindowsPortableHostStore.HOST_BYTES) {
+                    "Windows Host kopyası beklenen boyutta değil."
+                }
+
+                onProgress("Windows EXE • gerçek proje payload'ı ekleniyor...")
+                appendPayload(part, manifestBytes, projectZip, payloadLength)
+                verifyPackagedExe(part, payloadLength)
+
+                if (target.exists()) {
+                    require(target.delete()) { "Eski Windows EXE çıktısı silinemedi." }
+                }
+                require(part.renameTo(target)) {
+                    "Windows EXE final konuma taşınamadı."
+                }
+                require(
+                    target.isFile &&
+                        target.length() > WindowsPortableHostStore.HOST_BYTES
+                ) { "Windows EXE çıktısı geçersiz." }
+
+                onProgress("Windows EXE • gerçek proje cihaz üzerinde paketlendi.")
+                target
+            } finally {
+                temporaryRoot.deleteRecursively()
+            }
+        }
+
+    private fun createProjectManifest(
+        draft: ProjectDraft,
+        startPage: String
+    ): JSONObject {
+        val local = draft.sourceMode == SourceMode.LOCAL
+        return JSONObject()
+            .put("format", "appforge-project")
+            .put("formatVersion", 1)
+            .put("producer", "AppForge Studio")
+            .put("platform", "windows")
+            .put("appName", draft.appName.trim())
+            .put("appId", draft.packageName)
+            .put("versionName", draft.versionName.ifBlank { "1.0.0" })
+            .put("versionCode", draft.versionCode.coerceAtLeast(1))
+            .put("sourceMode", if (local) "LOCAL" else "URL")
+            .put("webUrl", if (local) "" else draft.webUrl)
+            .put("projectRoot", if (local) "project.zip" else JSONObject.NULL)
+            .put(
+                "startPage",
+                if (local) normalizeRelativePath(startPage) else ""
+            )
+            .put(
+                "webView",
+                JSONObject()
+                    .put("javaScriptEnabled", draft.webJavaScriptEnabled)
+                    .put("domStorageEnabled", draft.webDomStorageEnabled)
+                    .put("zoomEnabled", draft.webZoomEnabled)
+                    .put("wideViewPortEnabled", draft.webWideViewPortEnabled)
+                    .put("overviewModeEnabled", draft.webOverviewModeEnabled)
+                    .put("mediaAutoplayEnabled", draft.webMediaAutoplayEnabled)
+                    .put("mixedContentAllowed", draft.webMixedContentAllowed)
+            )
+            .put(
+                "nativeBridge",
+                JSONObject().put("mediaPlayer", draft.mediaPlayerBridge)
+            )
+            .put(
+                "conversion",
+                JSONObject().put("apkToExe", true).put("exeToApk", true)
+            )
+            .put("createdBy", "AppForge Studio")
+            .put("target", "windows-x64")
+    }
+
     private fun validateSpec(
         spec: WindowsPortablePackageSpec
     ) {
@@ -437,7 +577,7 @@ internal object WindowsPortableExePackager {
     private fun appendPayload(
         target: File,
         manifest: ByteArray,
-        projectZip: File,
+        projectZip: File?,
         payloadLength: Long
     ) {
         FileOutputStream(
@@ -457,9 +597,9 @@ internal object WindowsPortableExePackager {
             output.write(manifest)
 
             projectZip
-                .inputStream()
-                .buffered(COPY_BUFFER)
-                .use { input ->
+                ?.inputStream()
+                ?.buffered(COPY_BUFFER)
+                ?.use { input ->
                     input.copyTo(
                         output,
                         COPY_BUFFER

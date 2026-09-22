@@ -432,3 +432,23 @@ A deterministic device-generated smoke EXE is provided as the first physical
 acceptance artifact. Windows output remains gated until that Android-generated
 EXE opens successfully on an actual Windows machine and displays the expected
 AppForge smoke content.
+
+
+## 2026-09-22 — Normal Web Engines Own Device-Local Windows EXE Output
+
+### Decision
+
+The accepted Windows generic host is not exposed through a second remote build
+route. `webview-static` and `node-web` produce `WINDOWS_EXE` as another
+device-local artifact in the existing Studio build job.
+
+For npm web projects, AppForge runs the web build once and reuses the resulting
+static site for Android and Windows packaging.
+
+`BuildApiClient` exposes the EXE like the existing local APK/AAB artifacts,
+while Studio continues to save large EXE files through Android Storage Access
+Framework.
+
+Native Android and Python engines do not advertise Windows output. The complete
+offline-pack READY flag remains gated until a real normal-project EXE passes
+Android-to-Windows acceptance.

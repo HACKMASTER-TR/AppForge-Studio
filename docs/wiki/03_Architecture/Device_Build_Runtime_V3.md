@@ -14,6 +14,7 @@ related:
   - "[[System_Architecture]]"
   - "[[Build_And_Worker_Architecture]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableHostStore.kt"
   - "build-service/tests/windows_portable_host_v1_contract.test.js"
@@ -259,13 +260,16 @@ The Windows CI gate must prove that an actual generated portable EXE still
 starts after an AppForge payload is appended and that the runtime can read
 that payload through the portable-executable path.
 
-The base host is not yet an Offline Pack component and Windows remains
-`PLANNED` until:
+The generic base host is now an Offline Pack component.
 
-1. the Windows host CI passes,
-2. the artifact SHA-256 is pinned in Android,
-3. Android can package a real project into a `.exe` without network access,
-4. that generated EXE passes acceptance on an actual Windows machine.
+The host CI passed, its artifact SHA-256 is pinned in Android, Android created
+an EXE without network access, and the Android-generated deterministic smoke
+EXE was executed successfully on a physical Windows 11 machine.
+
+Those results accept the generic host and payload packager. The complete
+Windows output remains gated until the normal Studio project-build route
+produces and saves a real project EXE through `DeviceBuildEngine` and that
+artifact receives device/Windows acceptance.
 
 
 ### Windows Host Android pack integration
@@ -314,6 +318,26 @@ The Offline Pack screen provides a deterministic device-generated acceptance
 EXE containing `APPFORGE_WINDOWS_DEVICE_SMOKE_OK`. The file must still be
 saved and executed on a real Windows machine before Windows output can move
 from PLANNED to READY.
+
+
+### Normal Studio project EXE integration
+
+The accepted generic host/payload mechanism is wired into the normal
+`DeviceBuildEngine` artifact path for `webview-static` and `node-web`.
+
+For `node-web`, the npm-built static output is produced once and reused by the
+Android wrapper and Windows packager when those outputs are requested. The EXE
+is exposed through the existing `BuildApiClient` status and Storage Access
+Framework save flow. Normal project source is not uploaded to a remote Windows
+Worker.
+
+Native Android/Kotlin/Java and Python Android engines do not advertise
+`WINDOWS_EXE`. The legacy `windows-web` capability alias remains PLANNED while
+the normal web engines own the accepted output.
+
+The complete offline-pack `windowsExeReady` flag remains false until a real
+normal project is built on Android and that resulting EXE is executed on
+Windows.
 
 ## Acceptance
 

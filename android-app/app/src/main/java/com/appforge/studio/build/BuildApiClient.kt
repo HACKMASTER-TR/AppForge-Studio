@@ -121,7 +121,7 @@ class BuildApiClient(
             preflight = state.preflight,
             apkAvailable = state.apk?.isFile == true,
             aabAvailable = state.aab?.isFile == true,
-            exeAvailable = false
+            exeAvailable = state.exe?.isFile == true
         )
     }
 
@@ -131,10 +131,14 @@ class BuildApiClient(
     }
 
     fun createDownloadTicket(buildId: String, kind: String): DownloadTicketResult {
-        require(!kind.equals("exe", true)) { "Windows EXE cihaz-build geçişinde devre dışı." }
         val artifact = DeviceBuildEngine.artifact(buildId, kind)
             ?: error("${kind.uppercase()} çıktısı hazır değil.")
-        return DownloadTicketResult(Uri.fromFile(artifact).toString(), true, Int.MAX_VALUE)
+
+        return DownloadTicketResult(
+            Uri.fromFile(artifact).toString(),
+            true,
+            Int.MAX_VALUE
+        )
     }
 
     fun projectQuota(): ProjectQuotaResult = ProjectQuotaResult(
