@@ -4,6 +4,8 @@
 
 package com.appforge.studio
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,7 +38,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.appforge.studio.build.OfflineBuildPackManager
 import com.appforge.studio.build.OfflineBuildPackStatus
+import com.appforge.studio.build.WindowsPortableExePackager
 import kotlinx.coroutines.launch
+import java.io.File
 
 @Composable
 internal fun OfflineBuildPackScreen(
@@ -72,9 +76,16 @@ internal fun OfflineBuildPackScreen(
                 ) {
                     "Tam çevrimdışı paket hazır."
                 } else if (
+                    status.currentAndroidEnginesReady &&
+                    status.windowsHostReady
+                ) {
+                    "Android / Node / Python ve Windows Host hazır. " +
+                        "Cihaz EXE paketleme kabulü bekliyor."
+                } else if (
                     status.currentAndroidEnginesReady
                 ) {
-                    "Android / Node / Python paketi hazır. Portable EXE doğrulaması bekliyor."
+                    "Android / Node / Python paketi hazır. " +
+                        "Windows Host kurulumu bekliyor."
                 } else {
                     "Paket henüz kurulmadı."
                 }
@@ -107,6 +118,108 @@ internal fun OfflineBuildPackScreen(
                 false
             )
         }
+
+
+    var windowsSmokeBusy by
+        remember {
+            mutableStateOf(false)
+        }
+
+    var windowsSmokeFile by
+        remember {
+            mutableStateOf<File?>(null)
+        }
+
+    val windowsSmokeSaveLauncher =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts.CreateDocument(
+                    "application/octet-stream"
+                )
+        ) { uri ->
+            val source = windowsSmokeFile
+
+            if (
+                uri != null &&
+                source?.isFile == true
+            ) {
+                val result =
+                    runCatching {
+                        context.contentResolver
+                            .openOutputStream(uri, "w")
+                            ?.use { output ->
+                                source.inputStream()
+                                    .buffered(1024 * 1024)
+                                    .use { input ->
+                                        input.copyTo(
+                                            output,
+                                            1024 * 1024
+                                        )
+                                    }
+                            }
+                            ?: error(
+                                "Windows EXE kayıt hedefi açılamadı."
+                            )
+                    }
+
+                detail =
+                    result.fold(
+                        onSuccess = {
+                            "Windows kabul EXE'si kaydedildi. " +
+                                "Dosyayı gerçek Windows bilgisayarda aç."
+                        },
+                        onFailure = {
+                            "Windows EXE kaydedilemedi: " +
+                                (
+                                    it.message
+                                        ?: it.javaClass.simpleName
+                                )
+                        }
+                    )
+            }
+        }
+
+    fun beginWindowsSmoke() {
+        windowsSmokeBusy = true
+        windowsSmokeFile = null
+        detail =
+            "Cihaz-local Windows EXE kabul dosyası oluşturuluyor..."
+
+        scope.launch {
+            val result =
+                runCatching {
+                    WindowsPortableExePackager
+                        .createAcceptanceSmoke(
+                            context
+                        ) { message ->
+                            scope.launch {
+                                detail = message
+                            }
+                        }
+                }
+
+            windowsSmokeFile =
+                result.getOrNull()
+
+            detail =
+                result.fold(
+                    onSuccess = {
+                        "Cihazda gerçek Portable EXE oluşturuldu. " +
+                            "Şimdi Windows'a kaydet ve çalıştır."
+                    },
+                    onFailure = {
+                        "Cihaz EXE paketleme testi başarısız: " +
+                            (
+                                it.message
+                                    ?: it.javaClass.simpleName
+                            )
+                    }
+                )
+
+            windowsSmokeBusy = false
+        }
+    }
+
 
     fun beginInstall() {
         installing =
@@ -146,10 +259,14 @@ internal fun OfflineBuildPackScreen(
                             it.completeTargetReady
                         ) {
                             "Tam çevrimdışı paket hazır."
+                        } else if (
+                            it.windowsHostReady
+                        ) {
+                            "Android / Node / Python ve Windows Host hazır. " +
+                                "Cihaz-local EXE paketleme kabulü bekliyor."
                         } else {
-                            "Hazır bileşenler kuruldu. " +
-                                "Portable EXE motoru " +
-                                "Windows kabul testini bekliyor."
+                            "Hazır Android bileşenleri kuruldu. " +
+                                "Windows Host kurulumu tamamlanmadı."
                         }
                     },
 
@@ -493,13 +610,109 @@ internal fun OfflineBuildPackScreen(
                         "Windows Portable EXE",
 
                     subtitle =
-                        "Paket mimarisine dahil. Android üzerinde EXE motoru " +
-                            "ve gerçek Windows çalıştırma testi tamamlanmadan " +
-                            "READY olmayacak.",
+                        "Generic x64 host • 375025483 byte • SHA-256 sabit. " +
+                            "Host indirildikten sonra cihaz-local EXE üretimi " +
+                            "ve son Windows kabulü tamamlanmadan READY olmayacak.",
 
                     ready =
-                        status.windowsExeReady
+                        status.windowsExeReady,
+
+                    pendingText =
+                        if (
+                            status.windowsHostReady
+                        ) {
+                            "HOST KURULDU • CİHAZ EXE TESTİ BEKLİYOR"
+                        } else {
+                            "BEKLİYOR"
+                        }
                 )
+            }
+
+            if (
+                status.windowsHostReady &&
+                !status.windowsExeReady
+            ) {
+                item {
+                    Card(
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor =
+                                    MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                        shape =
+                            RoundedCornerShape(18.dp)
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                            verticalArrangement =
+                                Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                "Windows cihaz kabul testi",
+                                fontWeight =
+                                    FontWeight.Bold
+                            )
+
+                            Text(
+                                "Doğrulanmış generic host telefonda kopyalanacak, " +
+                                    "AppForge proje payload'ı eklenecek ve gerçek " +
+                                    "Portable EXE oluşturulacak. Bu işlem internet " +
+                                    "gerektirmez."
+                            )
+
+                            Button(
+                                modifier =
+                                    Modifier.fillMaxWidth(),
+                                enabled =
+                                    !windowsSmokeBusy &&
+                                        !installing,
+                                onClick = {
+                                    beginWindowsSmoke()
+                                }
+                            ) {
+                                Text(
+                                    if (windowsSmokeBusy) {
+                                        "EXE OLUŞTURULUYOR..."
+                                    } else {
+                                        "CİHAZ EXE KABUL DOSYASI OLUŞTUR"
+                                    }
+                                )
+                            }
+
+                            if (
+                                windowsSmokeFile?.isFile == true
+                            ) {
+                                Text(
+                                    "EXE boyutu: " +
+                                        (
+                                            windowsSmokeFile
+                                                ?.length()
+                                                ?: 0L
+                                            ) +
+                                        " byte"
+                                )
+
+                                Button(
+                                    modifier =
+                                        Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        windowsSmokeSaveLauncher
+                                            .launch(
+                                                "AppForge-Windows-Device-Smoke.exe"
+                                            )
+                                    }
+                                ) {
+                                    Text(
+                                        "WINDOWS TEST EXE'SİNİ KAYDET"
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -509,7 +722,8 @@ internal fun OfflineBuildPackScreen(
 private fun OfflinePackComponentCard(
     title: String,
     subtitle: String,
-    ready: Boolean
+    ready: Boolean,
+    pendingText: String = "BEKLİYOR"
 ) {
     Card(
         colors =
@@ -554,7 +768,7 @@ private fun OfflinePackComponentCard(
                 ) {
                     "HAZIR ✓"
                 } else {
-                    "BEKLİYOR"
+                    pendingText
                 },
 
                 color =

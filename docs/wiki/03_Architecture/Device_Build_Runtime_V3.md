@@ -14,6 +14,8 @@ related:
   - "[[System_Architecture]]"
   - "[[Build_And_Worker_Architecture]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableHostStore.kt"
   - "build-service/tests/windows_portable_host_v1_contract.test.js"
   - ".github/workflows/windows-portable-host.yml"
   - "windows-host/payload.cjs"
@@ -264,6 +266,54 @@ The base host is not yet an Offline Pack component and Windows remains
 2. the artifact SHA-256 is pinned in Android,
 3. Android can package a real project into a `.exe` without network access,
 4. that generated EXE passes acceptance on an actual Windows machine.
+
+
+### Windows Host Android pack integration
+
+The verified generic Windows Portable Host is distributed as a prerelease
+asset and is pinned by immutable transport metadata in Android:
+
+- release tag: `windows-host-v1-a8c5323`
+- expected byte length: `375025483`
+- SHA-256:
+  `699e5e13a157b9e436f8c19d0d6bca6264b510a71939a741d756078148d56c03`
+
+The host is stored under AppForge's `noBackupFilesDir` modular build-pack
+namespace, not inside the Terminal Linux workspace and not inside the
+disposable Device Build Runtime rootfs.
+
+Downloads use a `.part` file and HTTP Range resume where supported. A server
+which ignores Range and returns HTTP 200 causes a clean full-file rewrite
+instead of appending incompatible data.
+
+The host is promoted to its final filename only after exact byte-length and
+SHA-256 validation. A separate marker records the verified revision,
+digest and length.
+
+A verified host installation is not equivalent to Windows EXE readiness.
+The UI may report `HOST KURULDU`, but `windowsExeReady` stays false until
+Android creates a project-specific EXE locally and that artifact passes the
+real Windows acceptance gate.
+
+
+### Android-local Windows EXE packager
+
+After the generic Windows host has been downloaded and SHA-256 verified,
+Android can create a project-specific Portable EXE without Wine,
+electron-builder or a remote AppForge Worker.
+
+The device packager copies the verified host, creates a bounded local
+`project.zip`, appends the existing AppForge manifest/payload contract and
+verifies the resulting MZ/payload/footer structure before promoting the
+`.part` file.
+
+Project packaging limits remain aligned with the Windows runtime contract:
+at most 10000 local files, 500 MB site content and a 512 MB AppForge payload.
+
+The Offline Pack screen provides a deterministic device-generated acceptance
+EXE containing `APPFORGE_WINDOWS_DEVICE_SMOKE_OK`. The file must still be
+saved and executed on a real Windows machine before Windows output can move
+from PLANNED to READY.
 
 ## Acceptance
 

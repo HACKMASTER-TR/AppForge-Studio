@@ -17,6 +17,7 @@ internal data class OfflineBuildPackStatus(
     val androidCoreReady: Boolean,
     val nodeToolchainReady: Boolean,
     val pythonAndroidReady: Boolean,
+    val windowsHostReady: Boolean,
     val windowsExeReady: Boolean
 ) {
     val currentAndroidEnginesReady: Boolean
@@ -52,9 +53,18 @@ internal object OfflineBuildPackManager {
         context: Context
     ): OfflineBuildPackStatus {
 
+        val appContext =
+            context.applicationContext
+
+        val windowsHostReady =
+            WindowsPortableHostStore
+                .isInstalled(
+                    appContext
+                )
+
         val rootfs =
             runtimeRootfs(
-                context.applicationContext
+                appContext
             )
 
         if (
@@ -65,6 +75,8 @@ internal object OfflineBuildPackManager {
                 androidCoreReady = false,
                 nodeToolchainReady = false,
                 pythonAndroidReady = false,
+                windowsHostReady =
+                    windowsHostReady,
                 windowsExeReady = false
             )
         }
@@ -99,6 +111,9 @@ internal object OfflineBuildPackManager {
                         "python.ready"
                     )
                 ),
+
+            windowsHostReady =
+                windowsHostReady,
 
             /*
              * Portable EXE deliberately remains false until
@@ -185,7 +200,7 @@ internal object OfflineBuildPackManager {
                     }
 
                 onProgress(
-                    "1/3 • Android SDK, JDK ve Gradle hazırlanıyor..."
+                    "1/4 • Android SDK, JDK ve Gradle hazırlanıyor..."
                 )
 
                 execute(
@@ -226,7 +241,7 @@ internal object OfflineBuildPackManager {
                 )
 
                 onProgress(
-                    "2/3 • Node.js ve npm hazırlanıyor..."
+                    "2/4 • Node.js ve npm hazırlanıyor..."
                 )
 
                 execute(
@@ -259,7 +274,7 @@ internal object OfflineBuildPackManager {
                 )
 
                 onProgress(
-                    "3/3 • Python ve Chaquopy hazırlanıyor..."
+                    "3/4 • Python ve Chaquopy hazırlanıyor..."
                 )
 
                 execute(
@@ -291,6 +306,21 @@ internal object OfflineBuildPackManager {
                     )
                 )
 
+                onProgress(
+                    "4/4 • Windows Portable Host hazırlanıyor..."
+                )
+
+                WindowsPortableHostStore
+                    .install(
+                        appContext
+                    ) {
+                        detail ->
+
+                        onProgress(
+                            detail
+                        )
+                    }
+
                 File(
                     packDirectory,
                     "revision"
@@ -300,8 +330,8 @@ internal object OfflineBuildPackManager {
                 )
 
                 onProgress(
-                    "Android, Node ve Python çevrimdışı runtime hazır. " +
-                        "Portable EXE motoru doğrulama aşamasında."
+                    "Android, Node, Python ve Windows Portable Host " +
+                        "cihazda doğrulandı. EXE paketleme kabulü bekleniyor."
                 )
 
                 status(

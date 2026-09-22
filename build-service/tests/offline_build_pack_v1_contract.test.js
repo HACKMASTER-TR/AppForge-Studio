@@ -348,3 +348,154 @@ test(
     );
   }
 );
+
+test(
+  "Windows host pack is immutable resumable and remains acceptance gated",
+  () => {
+    const store =
+      read(
+        "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableHostStore.kt"
+      );
+
+    const manager =
+      read(
+        "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
+      );
+
+    const screen =
+      read(
+        "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
+      );
+
+    assert.match(
+      store,
+      /windows-host-v1-a8c5323/
+    );
+
+    assert.match(
+      store,
+      /699e5e13a157b9e436f8c19d0d6bca6264b510a71939a741d756078148d56c03/
+    );
+
+    assert.match(
+      store,
+      /375_025_483L/
+    );
+
+    assert.match(
+      store,
+      /Range/
+    );
+
+    assert.match(
+      store,
+      /\.exe\.part/
+    );
+
+    assert.match(
+      store,
+      /MessageDigest/
+    );
+
+    assert.match(
+      store,
+      /SHA-256/
+    );
+
+    assert.match(
+      store,
+      /noBackupFilesDir/
+    );
+
+    assert.doesNotMatch(
+      store,
+      /AndroidLinuxRuntimeManager/
+    );
+
+    assert.match(
+      manager,
+      /windowsHostReady/
+    );
+
+    assert.match(
+      manager,
+      /WindowsPortableHostStore[\s\S]*\.install/
+    );
+
+    assert.match(
+      manager,
+      /windowsExeReady\s*=\s*false/
+    );
+
+    assert.match(
+      screen,
+      /HOST KURULDU • CİHAZ EXE TESTİ BEKLİYOR/
+    );
+
+    assert.match(
+      screen,
+      /status\.windowsExeReady/
+    );
+  }
+);
+
+test(
+  "Android packages AppForge Windows EXE locally without Wine or remote worker",
+  () => {
+    const packager =
+      read(
+        "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt"
+      );
+
+    const screen =
+      read(
+        "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
+      );
+
+    const manager =
+      read(
+        "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
+      );
+
+    assert.match(
+      packager,
+      /WindowsPortableHostStore[\s\S]*requireVerifiedHost/
+    );
+
+    assert.match(packager, /AFEXEP01/);
+    assert.match(packager, /APPFORGE-EXE-V1!/);
+    assert.match(packager, /ZipOutputStream/);
+    assert.match(packager, /Deflater\.NO_COMPRESSION/);
+    assert.match(packager, /DataOutputStream/);
+    assert.match(packager, /RandomAccessFile/);
+    assert.match(packager, /MAX_SITE_FILES/);
+    assert.match(packager, /MAX_SITE_BYTES/);
+    assert.match(packager, /MAX_PAYLOAD_BYTES/);
+    assert.match(packager, /\$\{target\.name\}\.part/);
+
+    assert.doesNotMatch(
+      packager,
+      /Wine|electron-builder|Railway|Render/
+    );
+
+    assert.match(
+      packager,
+      /APPFORGE_WINDOWS_DEVICE_SMOKE_OK/
+    );
+
+    assert.match(
+      screen,
+      /CİHAZ EXE KABUL DOSYASI OLUŞTUR/
+    );
+
+    assert.match(
+      screen,
+      /WINDOWS TEST EXE'SİNİ KAYDET/
+    );
+
+    assert.match(
+      manager,
+      /windowsExeReady\s*=\s*false/
+    );
+  }
+);

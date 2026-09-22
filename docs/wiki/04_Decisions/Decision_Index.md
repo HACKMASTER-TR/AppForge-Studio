@@ -391,3 +391,44 @@ read and load that payload.
 
 Windows remains PLANNED until Android offline packaging and a real Windows
 machine acceptance test both pass.
+
+
+## 2026-09-22 — Windows Host Pack Uses Pinned Resumable Distribution
+
+### Decision
+
+The generic Windows Portable Host is installed as a separate AppForge-managed
+offline-pack module rather than embedding the 375 MB host in every Android APK.
+
+Android pins the exact prerelease asset URL, byte length and SHA-256. Download
+state uses a resumable `.part` file. The final host is exposed to later
+packaging only after cryptographic verification.
+
+The host module lives under `noBackupFilesDir` and remains physically separate
+from both the persistent Terminal Linux workspace and the disposable Device
+Build Runtime rootfs.
+
+Installing the host does not mark Windows EXE output READY. Device-local
+project packaging and actual Windows execution remain independent acceptance
+gates.
+
+
+## 2026-09-22 — Android Packages Windows EXE by Payload Append
+
+### Decision
+
+Android does not run Wine or electron-builder for each Windows build.
+
+After the generic Windows host is cryptographically verified, the device
+copies that immutable host and appends the AppForge reversible manifest and
+project ZIP payload directly.
+
+The project therefore remains on the user's device and the packaging step can
+run without an internet connection.
+
+### Acceptance
+
+A deterministic device-generated smoke EXE is provided as the first physical
+acceptance artifact. Windows output remains gated until that Android-generated
+EXE opens successfully on an actual Windows machine and displays the expected
+AppForge smoke content.
