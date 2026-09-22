@@ -3,14 +3,86 @@ set -eu
 
 ROOT="/opt/appforge-device"
 SDK="$ROOT/android-sdk"
-READY="$ROOT/.ready-v4"
+READY="$ROOT/.ready-v5"
 JAVA_HOME="$ROOT/jdk-17"
 ENGINE="${1:-webview-static}"
 OFFLINE="${APPFORGE_DEVICE_OFFLINE:-0}"
 
+mkdir -p "$ROOT"
+
+cat > "$ROOT/ensure-gradle" <<'EOF'
+#!/bin/sh
+set -eu
+
+version="${1:?Gradle version required}"
+root="/opt/appforge-device"
+dest="$root/gradle-$version"
+
+if [ -x "$dest/bin/gradle" ]; then
+  printf '%s\n' "$dest/bin/gradle"
+  exit 0
+fi
+
+zip="$root/cache/gradle-$version-bin.zip"
+sha="$root/cache/gradle-$version-bin.zip.sha256"
+
+mkdir -p "$root/cache"
+
+valid_cache=0
+
+if [ -s "$zip" ] && [ -s "$sha" ]; then
+  expected="$(tr -d '[:space:]' < "$sha")"
+
+  if printf '%s  %s\n' "$expected" "$zip" |
+       sha256sum -c - >/dev/null 2>&1; then
+    valid_cache=1
+  fi
+fi
+
+if [ "$valid_cache" -ne 1 ]; then
+
+  if [ "${APPFORGE_DEVICE_OFFLINE:-0}" = "1" ]; then
+    echo "APPFORGE_OFFLINE_GRADLE_MISSING: Gradle $version" >&2
+    echo "Gerekli Gradle sürümü yerel önbellekte bulunamadı." >&2
+    exit 42
+  fi
+
+  tmpzip="$zip.part.$$"
+  tmpsha="$sha.part.$$"
+
+  trap 'rm -f "$tmpzip" "$tmpsha"' 0
+
+  curl -fL --retry 4 \
+    "https://services.gradle.org/distributions/gradle-$version-bin.zip" \
+    -o "$tmpzip"
+
+  curl -fL --retry 4 \
+    "https://services.gradle.org/distributions/gradle-$version-bin.zip.sha256" \
+    -o "$tmpsha"
+
+  expected="$(tr -d '[:space:]' < "$tmpsha")"
+
+  printf '%s  %s\n' "$expected" "$tmpzip" |
+    sha256sum -c -
+
+  mv "$tmpzip" "$zip"
+  mv "$tmpsha" "$sha"
+
+  trap - 0
+fi
+
+unzip -q "$zip" -d "$root"
+
+test -x "$dest/bin/gradle"
+
+printf '%s\n' "$dest/bin/gradle"
+EOF
+
+chmod 0755 "$ROOT/ensure-gradle"
+
 if [ -f "$READY" ] \
    && [ -x "$SDK/build-tools/36.0.0/aapt2" ] \
-   && [ -f "$SDK/platforms/android-37/android.jar" ] \
+   && [ -f "$SDK/platforms/android-37.0/android.jar" ] \
    && [ -x "$ROOT/gradle-9.3.1/bin/gradle" ] \
    && [ -x "$JAVA_HOME/bin/java" ] \
    && [ -x "$JAVA_HOME/bin/javac" ] \
@@ -223,17 +295,17 @@ download_sha1 \
   "ed8ebf7f8822a4de5686d427f237d2fa30ff7410" \
   "$PLATFORM_ZIP"
 
-rm -rf "$ROOT/platform-unpack" "$SDK/platforms/android-37"
-mkdir -p "$ROOT/platform-unpack" "$SDK/platforms/android-37"
+rm -rf "$ROOT/platform-unpack" "$SDK/platforms/android-37.0"
+mkdir -p "$ROOT/platform-unpack" "$SDK/platforms/android-37.0"
 unzip -q "$PLATFORM_ZIP" -d "$ROOT/platform-unpack"
 PLATFORM_JAR="$(find "$ROOT/platform-unpack" -type f -name android.jar | head -n 1)"
 test -n "$PLATFORM_JAR"
 PLATFORM_DIR="$(dirname "$PLATFORM_JAR")"
-cp -a "$PLATFORM_DIR"/. "$SDK/platforms/android-37/"
-test -f "$SDK/platforms/android-37/android.jar"
+cp -a "$PLATFORM_DIR"/. "$SDK/platforms/android-37.0/"
+test -f "$SDK/platforms/android-37.0/android.jar"
 
-if [ ! -f "$SDK/platforms/android-37/source.properties" ]; then
-  cat > "$SDK/platforms/android-37/source.properties" <<'EOF'
+if [ ! -f "$SDK/platforms/android-37.0/source.properties" ]; then
+  cat > "$SDK/platforms/android-37.0/source.properties" <<'EOF'
 Pkg.Desc=Android SDK Platform 37
 Pkg.Revision=2
 AndroidVersion.ApiLevel=37
@@ -340,24 +412,6 @@ export PATH="$JAVA_HOME/bin:$PATH"
 ensure_gradle "9.3.1"
 ensure_gradle "8.14.3"
 
-cat > "$ROOT/ensure-gradle" <<'EOF'
-#!/bin/sh
-set -eu
-version="${1:?Gradle version required}"
-root="/opt/appforge-device"
-dest="$root/gradle-$version"
-if [ -x "$dest/bin/gradle" ]; then printf '%s\n' "$dest/bin/gradle"; exit 0; fi
-zip="$root/cache/gradle-$version-bin.zip"
-sha="$root/cache/gradle-$version-bin.zip.sha256"
-curl -fL --retry 4 "https://services.gradle.org/distributions/gradle-$version-bin.zip" -o "$zip"
-curl -fL --retry 4 "https://services.gradle.org/distributions/gradle-$version-bin.zip.sha256" -o "$sha"
-expected="$(tr -d '[:space:]' < "$sha")"
-echo "$expected  $zip" | sha256sum -c -
-unzip -q -o "$zip" -d "$root"
-test -x "$dest/bin/gradle"
-printf '%s\n' "$dest/bin/gradle"
-EOF
-chmod 0755 "$ROOT/ensure-gradle"
 
 echo "APPFORGE_AAPT2_HOST_SMOKE_START"
 
@@ -365,7 +419,7 @@ echo "APPFORGE_AAPT2_HOST_SMOKE_START"
 
 echo "APPFORGE_AAPT2_PLATFORM_37_SMOKE_START"
 
-"$SDK/build-tools/36.0.0/aapt2"   dump resources   "$SDK/platforms/android-37/android.jar"   >/dev/null
+"$SDK/build-tools/36.0.0/aapt2"   dump resources   "$SDK/platforms/android-37.0/android.jar"   >/dev/null
 
 echo "APPFORGE_AAPT2_PLATFORM_37_SMOKE_PASS"
 
