@@ -204,6 +204,25 @@ the platform files. A failed or unaccepted license must remain
 fail-closed and no Android offline-pack readiness marker may be
 written.
 
+
+### Python / Chaquopy device runtime
+
+The Device Build Runtime V3 Python Android engine uses Python 3.12.
+
+Chaquopy 17 requires the `buildPython` interpreter major/minor version
+to match the Python version selected for the Android application.
+The pinned Ubuntu 24.04 device runtime provides Python 3.12, therefore
+both the device template and generated Python Gradle project use:
+
+- Chaquopy Python version `3.12`
+- build interpreter `/usr/bin/python3.12`
+
+The toolchain readiness check fails closed if that interpreter is
+missing or reports a different major/minor version.
+
+This change applies to the device-local Python engine. It does not
+silently rewrite unrelated legacy/cloud Python templates.
+
 ## Acceptance
 
 Shipping requires:

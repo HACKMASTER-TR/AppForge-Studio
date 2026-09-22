@@ -97,7 +97,8 @@ if [ -f "$READY" ] \
         command -v npm >/dev/null 2>&1;
       }; } \
    && { [ "$ENGINE" != "python-android" ] || {
-        command -v python3 >/dev/null 2>&1 &&
+        [ -x /usr/bin/python3.12 ] &&
+        /usr/bin/python3.12 -c 'import sys; assert sys.version_info[:2] == (3, 12)' &&
         python3 -m pip --version >/dev/null 2>&1;
       }; } \
    && "$SDK/build-tools/36.0.0/aapt2" version >/dev/null 2>&1; then
@@ -222,7 +223,13 @@ case "$ENGINE" in
     apt-get install -y --no-install-recommends nodejs npm
     ;;
   python-android)
-    apt-get install -y --no-install-recommends python3 python3-pip python3-venv
+    apt-get install -y --no-install-recommends       python3       python3-pip       python3-venv
+
+    test -x /usr/bin/python3.12
+
+    /usr/bin/python3.12 -c       'import sys; assert sys.version_info[:2] == (3, 12)'
+
+    echo "APPFORGE_PYTHON_BUILD_RUNTIME=3.12"
     ;;
 esac
 
@@ -537,7 +544,11 @@ case "$ENGINE" in
     npm --version
     ;;
   python-android)
-    python3 --version
+    /usr/bin/python3.12 --version
+
+    /usr/bin/python3.12 -c       'import sys; assert sys.version_info[:2] == (3, 12)'
+
+    echo "APPFORGE_PYTHON_BUILD_RUNTIME_VERIFIED=3.12"
     ;;
 esac
 

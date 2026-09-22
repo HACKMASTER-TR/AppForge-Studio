@@ -44,9 +44,39 @@ test("Android toolchain no longer installs npm unconditionally", () => {
     /node-web\)[\s\S]*apt-get install[\s\S]*nodejs npm/
   );
 
+  const pythonCase =
+    source.match(
+      /python-android\)([\s\S]*?);;/
+    )?.[1];
+
+  assert.ok(
+    pythonCase,
+    "python-android toolchain case must exist"
+  );
+
   assert.match(
-    source,
-    /python-android\)[\s\S]*python3 python3-pip python3-venv/
+    pythonCase,
+    /apt-get install/
+  );
+
+  for (
+    const requiredPackage of [
+      "python3",
+      "python3-pip",
+      "python3-venv"
+    ]
+  ) {
+    assert.match(
+      pythonCase,
+      new RegExp(
+        `\\b${requiredPackage.replaceAll(".", "\\.")}\\b`
+      )
+    );
+  }
+
+  assert.doesNotMatch(
+    pythonCase,
+    /\bnodejs\b|\bnpm\b/
   );
 
   const unconditional = source

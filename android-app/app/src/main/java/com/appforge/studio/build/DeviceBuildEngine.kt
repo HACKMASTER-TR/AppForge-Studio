@@ -717,8 +717,8 @@ object DeviceBuildEngine {
         }
         chaquopy {
             defaultConfig {
-                version = "3.11"
-                buildPython("/usr/bin/python3")
+                version = "3.12"
+                buildPython("/usr/bin/python3.12")
                 pip { install("-r", "requirements.txt") }
             }
         }

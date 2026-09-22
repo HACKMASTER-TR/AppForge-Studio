@@ -349,3 +349,14 @@ runtime keeps its own verified license marker.
 
 License refusal or missing license metadata is fail-closed and cannot
 produce an Android offline readiness marker.
+
+
+## 2026-09-22 — Device Python Runtime Aligned to 3.12
+
+The Android device-build Python engine uses Python 3.12 end-to-end.
+The Ubuntu 24.04 runtime's Python interpreter and Chaquopy application
+Python version must have identical major/minor versions.
+
+The device template, generated device project and toolchain readiness
+checks therefore pin `/usr/bin/python3.12` and Chaquopy Python 3.12.
+A mismatch is a fail-closed toolchain condition.

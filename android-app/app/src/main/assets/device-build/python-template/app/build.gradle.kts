@@ -25,10 +25,10 @@ android {
 
 chaquopy {
     defaultConfig {
-        version = "3.11"
+        version = "3.12"
 
         buildPython(
-            "/usr/bin/python3"
+            "/usr/bin/python3.12"
         )
 
         pip {

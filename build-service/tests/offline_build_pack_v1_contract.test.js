@@ -258,6 +258,62 @@ test(
   }
 );
 
+
+test(
+  "device Python and Chaquopy use the same Python 3.12 runtime",
+  () => {
+    const template =
+      read(
+        "android-app/app/src/main/assets/device-build/python-template/app/build.gradle.kts"
+      );
+
+    const engine =
+      read(
+        "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+      );
+
+    const installer =
+      read(
+        "android-app/app/src/main/assets/device-build/install-toolchain.sh"
+      );
+
+    assert.match(
+      template,
+      /version = "3\.12"/
+    );
+
+    assert.match(
+      template,
+      /buildPython\(\s*"\/usr\/bin\/python3\.12"\s*\)/
+    );
+
+    assert.doesNotMatch(
+      template,
+      /version = "3\.11"/
+    );
+
+    assert.match(
+      engine,
+      /version = "3\.12"/
+    );
+
+    assert.match(
+      engine,
+      /buildPython\("\/usr\/bin\/python3\.12"\)/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_PYTHON_BUILD_RUNTIME=3\.12/
+    );
+
+    assert.match(
+      installer,
+      /sys\.version_info\[:2\] == \(3, 12\)/
+    );
+  }
+);
+
 test(
   "settings exposes the offline pack screen",
   () => {
