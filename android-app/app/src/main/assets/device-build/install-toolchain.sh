@@ -3,7 +3,7 @@ set -eu
 
 ROOT="/opt/appforge-device"
 SDK="$ROOT/android-sdk"
-READY="$ROOT/.ready-v4"
+READY="$ROOT/.ready-v5"
 JAVA_HOME="$ROOT/jdk-17"
 ENGINE="${1:-webview-static}"
 OFFLINE="${APPFORGE_DEVICE_OFFLINE:-0}"
@@ -82,7 +82,7 @@ chmod 0755 "$ROOT/ensure-gradle"
 
 if [ -f "$READY" ] \
    && [ -x "$SDK/build-tools/36.0.0/aapt2" ] \
-   && [ -f "$SDK/platforms/android-37/android.jar" ] \
+   && [ -f "$SDK/platforms/android-37.0/android.jar" ] \
    && [ -x "$ROOT/gradle-9.3.1/bin/gradle" ] \
    && [ -x "$JAVA_HOME/bin/java" ] \
    && [ -x "$JAVA_HOME/bin/javac" ] \
@@ -295,17 +295,17 @@ download_sha1 \
   "ed8ebf7f8822a4de5686d427f237d2fa30ff7410" \
   "$PLATFORM_ZIP"
 
-rm -rf "$ROOT/platform-unpack" "$SDK/platforms/android-37"
-mkdir -p "$ROOT/platform-unpack" "$SDK/platforms/android-37"
+rm -rf "$ROOT/platform-unpack" "$SDK/platforms/android-37.0"
+mkdir -p "$ROOT/platform-unpack" "$SDK/platforms/android-37.0"
 unzip -q "$PLATFORM_ZIP" -d "$ROOT/platform-unpack"
 PLATFORM_JAR="$(find "$ROOT/platform-unpack" -type f -name android.jar | head -n 1)"
 test -n "$PLATFORM_JAR"
 PLATFORM_DIR="$(dirname "$PLATFORM_JAR")"
-cp -a "$PLATFORM_DIR"/. "$SDK/platforms/android-37/"
-test -f "$SDK/platforms/android-37/android.jar"
+cp -a "$PLATFORM_DIR"/. "$SDK/platforms/android-37.0/"
+test -f "$SDK/platforms/android-37.0/android.jar"
 
-if [ ! -f "$SDK/platforms/android-37/source.properties" ]; then
-  cat > "$SDK/platforms/android-37/source.properties" <<'EOF'
+if [ ! -f "$SDK/platforms/android-37.0/source.properties" ]; then
+  cat > "$SDK/platforms/android-37.0/source.properties" <<'EOF'
 Pkg.Desc=Android SDK Platform 37
 Pkg.Revision=2
 AndroidVersion.ApiLevel=37
@@ -419,7 +419,7 @@ echo "APPFORGE_AAPT2_HOST_SMOKE_START"
 
 echo "APPFORGE_AAPT2_PLATFORM_37_SMOKE_START"
 
-"$SDK/build-tools/36.0.0/aapt2"   dump resources   "$SDK/platforms/android-37/android.jar"   >/dev/null
+"$SDK/build-tools/36.0.0/aapt2"   dump resources   "$SDK/platforms/android-37.0/android.jar"   >/dev/null
 
 echo "APPFORGE_AAPT2_PLATFORM_37_SMOKE_PASS"
 

@@ -126,6 +126,24 @@ V3 toolchains and their readiness marker.
 This is a source-level implementation. Real Android offline
 APK/AAB acceptance remains pending.
 
+## Real-device API 37.0 platform layout correction
+
+Physical-device acceptance exposed an Android SDK platform
+layout mismatch. AGP 9.1.1 requested `platforms;android-37.0`,
+while Device Build Runtime V4 had materialized the pinned
+platform under `platforms/android-37`.
+
+AGP therefore treated API 37.0 as missing and attempted an
+SDK package installation, which reached the Android license
+gate instead of using the already packaged platform.
+
+The device installer now materializes the pinned platform at
+`platforms/android-37.0`. The readiness marker advances from
+V4 to V5 so an existing device runtime is re-provisioned on
+the next build.
+
+Physical-device APK/AAB acceptance remains required.
+
 ## Acceptance
 
 Shipping requires:
