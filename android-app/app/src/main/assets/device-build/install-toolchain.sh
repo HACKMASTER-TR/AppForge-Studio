@@ -7,6 +7,11 @@ READY="$ROOT/.ready-v5"
 JAVA_HOME="$ROOT/jdk-17"
 ENGINE="${1:-webview-static}"
 OFFLINE="${APPFORGE_DEVICE_OFFLINE:-0}"
+SDK_LICENSE_ACCEPTED="${APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED:-0}"
+SDK_LICENSE_MARKER="$ROOT/.android-sdk-license-20260428"
+
+CMDLINE_TOOLS_VERSION="15859902"
+CMDLINE_TOOLS_SHA256="4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
 
 mkdir -p "$ROOT"
 
@@ -81,6 +86,7 @@ EOF
 chmod 0755 "$ROOT/ensure-gradle"
 
 if [ -f "$READY" ] \
+   && [ -f "$SDK_LICENSE_MARKER" ] \
    && [ -x "$SDK/build-tools/36.0.0/aapt2" ] \
    && [ -f "$SDK/platforms/android-37.0/android.jar" ] \
    && [ -x "$ROOT/gradle-9.3.1/bin/gradle" ] \
@@ -103,6 +109,13 @@ if [ "$OFFLINE" = "1" ]; then
   echo "APPFORGE_OFFLINE_TOOLCHAIN_MISSING: Yerel Android araçları eksik veya hazır değil." >&2
   echo "İnternetsiz derleme için doğrulanmış SDK/JDK/Gradle ve ilgili dil araçları önceden hazırlanmalı." >&2
   exit 42
+fi
+
+if [ ! -f "$SDK_LICENSE_MARKER" ] &&
+   [ "$SDK_LICENSE_ACCEPTED" != "1" ]; then
+  echo "APPFORGE_ANDROID_SDK_LICENSE_REQUIRED" >&2
+  echo "Android SDK kurulumu için lisans koşulları uygulama içinden açıkça kabul edilmeli." >&2
+  exit 43
 fi
 
 export DEBIAN_FRONTEND=noninteractive
@@ -289,6 +302,86 @@ ensure_gradle() {
   test -x "$dest/bin/gradle"
 }
 
+
+ensure_android_commandline_tools() {
+  sdkmanager="$SDK/cmdline-tools/latest/bin/sdkmanager"
+
+  if [ -x "$sdkmanager" ]; then
+    return 0
+  fi
+
+  archive="$ROOT/cache/commandlinetools-linux-${CMDLINE_TOOLS_VERSION}_latest.zip"
+
+  repo_base="$(
+    printf '%s%s' \
+      'https:' \
+      '//dl.google.com/android/repository'
+  )"
+
+  download_sha256 \
+    "$repo_base/commandlinetools-linux-${CMDLINE_TOOLS_VERSION}_latest.zip" \
+    "$CMDLINE_TOOLS_SHA256" \
+    "$archive"
+
+  rm -rf \
+    "$ROOT/cmdline-tools-unpack" \
+    "$SDK/cmdline-tools/latest"
+
+  mkdir -p \
+    "$ROOT/cmdline-tools-unpack" \
+    "$SDK/cmdline-tools/latest"
+
+  unzip -q \
+    "$archive" \
+    -d "$ROOT/cmdline-tools-unpack"
+
+  source_dir="$ROOT/cmdline-tools-unpack/cmdline-tools"
+
+  test -x \
+    "$source_dir/bin/sdkmanager"
+
+  cp -a \
+    "$source_dir"/. \
+    "$SDK/cmdline-tools/latest/"
+
+  test -x \
+    "$sdkmanager"
+
+  echo "APPFORGE_ANDROID_CMDLINE_TOOLS_READY"
+}
+
+accept_android_sdk_license() {
+  if [ -f "$SDK_LICENSE_MARKER" ]; then
+    echo "APPFORGE_ANDROID_SDK_LICENSE_ALREADY_ACCEPTED"
+    return 0
+  fi
+
+  if [ "$SDK_LICENSE_ACCEPTED" != "1" ]; then
+    echo "APPFORGE_ANDROID_SDK_LICENSE_REQUIRED" >&2
+    exit 43
+  fi
+
+  ensure_android_commandline_tools
+
+  echo "APPFORGE_ANDROID_SDK_LICENSE_ACCEPT_START"
+
+  yes |
+    "$SDK/cmdline-tools/latest/bin/sdkmanager" \
+      --sdk_root="$SDK" \
+      "platforms;android-37.0"
+
+  test -s \
+    "$SDK/licenses/android-sdk-license" || {
+      echo "APPFORGE_ANDROID_SDK_LICENSE_FILE_MISSING" >&2
+      exit 44
+    }
+
+  touch \
+    "$SDK_LICENSE_MARKER"
+
+  echo "APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED"
+}
+
 PLATFORM_ZIP="$ROOT/cache/platform-37.0_r02.zip"
 download_sha1 \
   "https://dl.google.com/android/repository/platform-37.0_r02.zip" \
@@ -408,6 +501,18 @@ ensure_jdk
 
 export JAVA_HOME
 export PATH="$JAVA_HOME/bin:$PATH"
+
+accept_android_sdk_license
+
+# SDK Manager may repair/create package metadata for API 37.0.
+# Re-overlay the already SHA1-pinned r02 platform payload without
+# deleting package.xml so the actual platform files remain pinned.
+if [ -n "${PLATFORM_DIR:-}" ] &&
+   [ -d "$PLATFORM_DIR" ]; then
+  cp -a     "$PLATFORM_DIR"/.     "$SDK/platforms/android-37.0/"
+fi
+
+test -f   "$SDK/platforms/android-37.0/android.jar"
 
 ensure_gradle "9.3.1"
 ensure_gradle "8.14.3"

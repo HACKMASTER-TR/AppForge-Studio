@@ -186,6 +186,24 @@ Offline pack prewarm Gradle commands intentionally use concise
 internal Gradle stack frames. The pack remains fail-closed and no
 component readiness marker is written after a failed prewarm.
 
+
+### Android SDK license gate
+
+The one-click Offline Build Pack must not silently accept the Google
+Android SDK license.
+
+Before the first Android toolchain preparation, the AppForge UI shows
+an explicit Android SDK license confirmation flow and lets the user
+open the current terms. Only an explicit confirmation permits the
+runtime to invoke the pinned Android command-line tools for API 37.0
+license/package registration.
+
+The command-line tools artifact is SHA-256 pinned. The existing pinned
+Android 37.0 r02 platform payload remains the deterministic source for
+the platform files. A failed or unaccepted license must remain
+fail-closed and no Android offline-pack readiness marker may be
+written.
+
 ## Acceptance
 
 Shipping requires:

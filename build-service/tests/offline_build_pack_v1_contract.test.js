@@ -177,6 +177,87 @@ test(
   }
 );
 
+
+test(
+  "Android SDK license requires explicit app consent",
+  () => {
+    const installer =
+      read(
+        "android-app/app/src/main/assets/device-build/install-toolchain.sh"
+      );
+
+    const manager =
+      read(
+        "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
+      );
+
+    const screen =
+      read(
+        "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
+      );
+
+    assert.match(
+      manager,
+      /androidSdkLicenseAccepted/
+    );
+
+    assert.match(
+      manager,
+      /APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED=1/
+    );
+
+    assert.match(
+      screen,
+      /Android SDK Lisansı/
+    );
+
+    assert.match(
+      screen,
+      /KABUL ET VE KUR/
+    );
+
+    assert.match(
+      screen,
+      /android_sdk_license_2026_04_28/
+    );
+
+    assert.match(
+      screen,
+      /developer\.android\.com/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_ANDROID_SDK_LICENSE_REQUIRED/
+    );
+
+    assert.match(
+      installer,
+      /commandlinetools-linux-\$\{CMDLINE_TOOLS_VERSION\}_latest\.zip/
+    );
+
+    assert.match(
+      installer,
+      /4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583/
+    );
+
+    assert.match(
+      installer,
+      /platforms;android-37\.0/
+    );
+
+    assert.match(
+      installer,
+      /SDK_LICENSE_MARKER/
+    );
+
+    assert.doesNotMatch(
+      installer,
+      /echo\s+[0-9a-f]{40}\s*>\s*["']?\$SDK\/licenses/
+    );
+  }
+);
+
 test(
   "settings exposes the offline pack screen",
   () => {

@@ -334,3 +334,18 @@ Normal AppForge APK updates do not require re-downloading the whole
 offline toolchain. Pack revisions can update only affected modules.
 Physical-device offline APK/AAB acceptance and future Windows EXE
 acceptance remain mandatory release gates.
+
+
+## 2026-09-22 — Android SDK License Requires Explicit Consent
+
+The Offline Build Pack must never manufacture or silently mark an
+Android SDK license as accepted.
+
+The application presents a dedicated consent step before the first
+Android SDK runtime installation. Only after explicit acceptance may
+the device runtime register the required Android SDK package/license.
+The acceptance state is versioned in AppForge preferences and the
+runtime keeps its own verified license marker.
+
+License refusal or missing license metadata is fail-closed and cannot
+produce an Android offline readiness marker.

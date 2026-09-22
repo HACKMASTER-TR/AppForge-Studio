@@ -81,6 +81,205 @@ internal fun OfflineBuildPackScreen(
             )
         }
 
+
+    val licensePreferences =
+        remember {
+            context.getSharedPreferences(
+                "appforge_offline_pack",
+                android.content.Context.MODE_PRIVATE
+            )
+        }
+
+    var androidSdkLicenseAccepted by
+        remember {
+            mutableStateOf(
+                licensePreferences
+                    .getBoolean(
+                        "android_sdk_license_2026_04_28",
+                        false
+                    )
+            )
+        }
+
+    var showAndroidSdkLicenseDialog by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+    fun beginInstall() {
+        installing =
+            true
+
+        detail =
+            "Paket kurulumu başlatılıyor..."
+
+        scope.launch {
+
+            val result =
+                runCatching {
+                    OfflineBuildPackManager
+                        .installReadyComponents(
+                            context = context,
+                            androidSdkLicenseAccepted = true
+                        ) {
+                            message ->
+
+                            scope.launch {
+                                detail =
+                                    message
+                            }
+                        }
+                }
+
+            status =
+                OfflineBuildPackManager
+                    .status(
+                        context
+                    )
+
+            detail =
+                result.fold(
+                    onSuccess = {
+                        if (
+                            it.completeTargetReady
+                        ) {
+                            "Tam çevrimdışı paket hazır."
+                        } else {
+                            "Hazır bileşenler kuruldu. " +
+                                "Portable EXE motoru " +
+                                "Windows kabul testini bekliyor."
+                        }
+                    },
+
+                    onFailure = {
+                        "Kurulum durdu: " +
+                            (
+                                it.message
+                                    ?: it.javaClass.simpleName
+                            )
+                    }
+                )
+
+            installing =
+                false
+        }
+    }
+
+    if (
+        showAndroidSdkLicenseDialog
+    ) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {
+                showAndroidSdkLicenseDialog =
+                    false
+            },
+
+            title = {
+                Text(
+                    "Android SDK Lisansı"
+                )
+            },
+
+            text = {
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            10.dp
+                        )
+                ) {
+                    Text(
+                        "Android SDK araçlarını kullanabilmek için " +
+                            "Google Android SDK Lisans Sözleşmesi'ni " +
+                            "inceleyip kabul etmen gerekir."
+                    )
+
+                    Text(
+                        "Bir kurum veya işveren adına kabul ediyorsan " +
+                            "bunu yapmaya yetkili olman gerekir."
+                    )
+
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            val termsUri =
+                                android.net.Uri.Builder()
+                                    .scheme(
+                                        "https"
+                                    )
+                                    .authority(
+                                        "developer.android.com"
+                                    )
+                                    .appendPath(
+                                        "studio"
+                                    )
+                                    .appendPath(
+                                        "terms"
+                                    )
+                                    .build()
+
+                            runCatching {
+                                context.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        termsUri
+                                    )
+                                )
+                            }
+                        }
+                    ) {
+                        Text(
+                            "KOŞULLARI AÇ"
+                        )
+                    }
+                }
+            },
+
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        androidSdkLicenseAccepted =
+                            true
+
+                        licensePreferences
+                            .edit()
+                            .putBoolean(
+                                "android_sdk_license_2026_04_28",
+                                true
+                            )
+                            .putLong(
+                                "android_sdk_license_accepted_at",
+                                System.currentTimeMillis()
+                            )
+                            .apply()
+
+                        showAndroidSdkLicenseDialog =
+                            false
+
+                        beginInstall()
+                    }
+                ) {
+                    Text(
+                        "KABUL ET VE KUR"
+                    )
+                }
+            },
+
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        showAndroidSdkLicenseDialog =
+                            false
+                    }
+                ) {
+                    Text(
+                        "İPTAL"
+                    )
+                }
+            }
+        )
+    }
+
     Scaffold(
         containerColor =
             MaterialTheme
@@ -199,61 +398,13 @@ internal fun OfflineBuildPackScreen(
                                 !installing,
 
                             onClick = {
-
-                                installing =
-                                    true
-
-                                detail =
-                                    "Paket kurulumu başlatılıyor..."
-
-                                scope.launch {
-
-                                    val result =
-                                        runCatching {
-                                            OfflineBuildPackManager
-                                                .installReadyComponents(
-                                                    context
-                                                ) {
-                                                    message ->
-
-                                                    scope.launch {
-                                                        detail =
-                                                            message
-                                                    }
-                                                }
-                                        }
-
-                                    status =
-                                        OfflineBuildPackManager
-                                            .status(
-                                                context
-                                            )
-
-                                    detail =
-                                        result.fold(
-                                            onSuccess = {
-                                                if (
-                                                    it.completeTargetReady
-                                                ) {
-                                                    "Tam çevrimdışı paket hazır."
-                                                } else {
-                                                    "Hazır bileşenler kuruldu. " +
-                                                        "Portable EXE motoru " +
-                                                        "Windows kabul testini bekliyor."
-                                                }
-                                            },
-
-                                            onFailure = {
-                                                "Kurulum durdu: " +
-                                                    (
-                                                        it.message
-                                                            ?: it.javaClass.simpleName
-                                                    )
-                                            }
-                                        )
-
-                                    installing =
-                                        false
+                                if (
+                                    androidSdkLicenseAccepted
+                                ) {
+                                    beginInstall()
+                                } else {
+                                    showAndroidSdkLicenseDialog =
+                                        true
                                 }
                             }
                         ) {
@@ -278,6 +429,10 @@ internal fun OfflineBuildPackScreen(
                             } else {
                                 Text(
                                     if (
+                                        !androidSdkLicenseAccepted
+                                    ) {
+                                        "ANDROID SDK LİSANSINI İNCELE VE KUR"
+                                    } else if (
                                         status.currentAndroidEnginesReady
                                     ) {
                                         "PAKETİ KONTROL ET / TAMAMLA"

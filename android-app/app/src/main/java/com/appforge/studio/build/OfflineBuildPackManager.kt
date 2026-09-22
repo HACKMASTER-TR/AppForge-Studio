@@ -112,12 +112,19 @@ internal object OfflineBuildPackManager {
 
     suspend fun installReadyComponents(
         context: Context,
+        androidSdkLicenseAccepted: Boolean,
         onProgress: (String) -> Unit = {}
     ): OfflineBuildPackStatus =
         installMutex.withLock {
 
             val appContext =
                 context.applicationContext
+
+            require(
+                androidSdkLicenseAccepted
+            ) {
+                "Android SDK lisansı kabul edilmeden kurulum başlatılamaz."
+            }
 
             require(
                 hasValidatedInternet(
@@ -190,6 +197,7 @@ internal object OfflineBuildPackManager {
                         "chmod +x " +
                             "/workspace/runtime/install-toolchain.sh " +
                             "/workspace/runtime/prepare-offline-pack.sh && " +
+                            "APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED=1 " +
                             "APPFORGE_DEVICE_OFFLINE=0 " +
                             "/bin/sh /workspace/runtime/install-toolchain.sh " +
                             "webview-static"
