@@ -48,6 +48,7 @@ object TerminalWorkspaceResolver {
 
         val accountScope =
             accountScope(
+                context,
                 accountEmail
             )
 
@@ -75,6 +76,7 @@ object TerminalWorkspaceResolver {
          */
         if (
             !target.exists() &&
+            accountEmail.isNotBlank() &&
             OwnerAccessPolicy.isActiveOwner(
                 context,
                 accountEmail
@@ -96,6 +98,7 @@ object TerminalWorkspaceResolver {
 
 
     private fun accountScope(
+        context: Context,
         accountEmail: String
     ): String {
         val normalized =
@@ -103,10 +106,19 @@ object TerminalWorkspaceResolver {
                 .trim()
                 .lowercase()
 
-        require(
-            normalized.isNotBlank()
-        ) {
-            "Aktif hesap bulunamadı."
+        /*
+         * Accountless verified-owner mode has its own stable workspace.
+         * Do not route it to a normal user, anonymous shared workspace,
+         * or the old legacy workspace; never bypass server owner proof.
+         */
+        if (normalized.isBlank()) {
+            check(
+                OwnerAccessPolicy.isActiveOwner(context)
+            ) {
+                "Terminal için yönetici doğrulaması gerekli."
+            }
+
+            return "verified-owner-accountless-v1"
         }
 
         val digest =

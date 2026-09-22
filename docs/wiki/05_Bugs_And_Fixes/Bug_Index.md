@@ -121,3 +121,5 @@ Document only significant, reusable debugging knowledge. Do not add one-off visu
   MediaStore `downloadArtifactToDownloads` stream on Android 10+ and SAF on
   Android 8/9, matching the device-local EXE transport behavior. Physical
   public-save re-acceptance remains required.
+
+- Terminal accountless verified-owner crash — empty session email reached `TerminalWorkspaceResolver.accountScope` and threw on the Compose UI thread before Terminal opened. Verified owners without a normal account now use a separate stable workspace namespace; blank-email legacy workspace migration is disabled, and expired owner access returns a recoverable screen. Terminal Linux, Pro state and build assets are not reset. Source/test/CI/device acceptance must be reported separately.
