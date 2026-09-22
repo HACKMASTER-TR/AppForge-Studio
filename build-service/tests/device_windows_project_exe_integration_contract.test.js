@@ -100,3 +100,64 @@ test("complete offline pack stays gated until a real normal project EXE passes",
     /engine\s*=\s*"windows-web"[\s\S]*DeviceBuildSupport\.PLANNED/
   );
 });
+
+
+test(
+  "Gradle output selection does not collide with produced artifact file list",
+  () => {
+    const engine =
+      read(
+        "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+      );
+
+    const start =
+      engine.indexOf(
+        "private fun buildGradleProject("
+      );
+
+    const end =
+      engine.indexOf(
+        "private fun copyKeystore(",
+        start
+      );
+
+    assert.notEqual(start, -1);
+    assert.notEqual(end, -1);
+
+    const block =
+      engine.slice(
+        start,
+        end
+      );
+
+    assert.match(
+      block,
+      /val requestedArtifacts\s*=\s*[\s\S]*requestedOutputs/
+    );
+
+    assert.match(
+      block,
+      /val artifactFiles\s*=\s*project\.walkTopDown/
+    );
+
+    assert.match(
+      block,
+      /DeviceArtifactKind\.APK in requestedArtifacts/
+    );
+
+    assert.match(
+      block,
+      /DeviceArtifactKind\.AAB in requestedArtifacts/
+    );
+
+    assert.match(
+      block,
+      /artifactFiles\.filter/
+    );
+
+    assert.doesNotMatch(
+      block,
+      /\bval outputs\b/
+    );
+  }
+);

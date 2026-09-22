@@ -3,8 +3,8 @@ type: bug
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-18
-last_verified: 2026-09-18
+updated: 2026-09-22
+last_verified: 2026-09-22
 confidence: high
 tags:
   - bugs
@@ -96,3 +96,12 @@ Document only significant, reusable debugging knowledge. Do not add one-off visu
   package name such as `platform-toolsnplatforms;android-34...`. The generator
   now emits real newline separators and a regression contract protects this
   Docker build boundary.
+
+
+- Device-local Windows EXE Gradle compile collision — normal-project EXE
+  integration used the same local name `outputs` for both requested
+  `DeviceArtifactKind` values and discovered APK/AAB files inside
+  `buildGradleProject`. Kotlin rejected the conflicting declarations and
+  produced secondary type-inference errors. The two concepts are now named
+  `requestedArtifacts` and `artifactFiles`, and a scoped regression contract
+  protects the compile boundary.

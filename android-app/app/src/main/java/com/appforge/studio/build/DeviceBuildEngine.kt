@@ -803,7 +803,7 @@ object DeviceBuildEngine {
 
         val variant = if (draft.signingMode == SigningMode.CUSTOM) "Release" else "Debug"
 
-        val outputs =
+        val requestedArtifacts =
             requestedOutputs(
                 draft
             )
@@ -811,13 +811,13 @@ object DeviceBuildEngine {
         val tasks =
             buildList {
                 if (
-                    DeviceArtifactKind.APK in outputs
+                    DeviceArtifactKind.APK in requestedArtifacts
                 ) {
                     add(":app:assemble$variant")
                 }
 
                 if (
-                    DeviceArtifactKind.AAB in outputs
+                    DeviceArtifactKind.AAB in requestedArtifacts
                 ) {
                     add(":app:bundle$variant")
                 }
@@ -859,26 +859,26 @@ object DeviceBuildEngine {
         runShellBlocking(shell, rootfs, workspace, state, command, "android-build")
         state.progress = 90
 
-        val outputs = project.walkTopDown().maxDepth(14).filter {
+        val artifactFiles = project.walkTopDown().maxDepth(14).filter {
             it.isFile && (it.extension.equals("apk", true) || it.extension.equals("aab", true))
         }.toList()
 
         val artifactRoot = File(context.filesDir, "device-build/artifacts/${state.id}").apply { mkdirs() }
 
-        outputs.filter { it.extension.equals("apk", true) }.maxByOrNull { it.lastModified() }?.let { source ->
+        artifactFiles.filter { it.extension.equals("apk", true) }.maxByOrNull { it.lastModified() }?.let { source ->
             val target = File(artifactRoot, "${safeName(draft.appName)}-${state.buildNo}.apk")
             source.copyTo(target, overwrite = true)
             state.apk = target
         }
 
-        outputs.filter { it.extension.equals("aab", true) }.maxByOrNull { it.lastModified() }?.let { source ->
+        artifactFiles.filter { it.extension.equals("aab", true) }.maxByOrNull { it.lastModified() }?.let { source ->
             val target = File(artifactRoot, "${safeName(draft.appName)}-${state.buildNo}.aab")
             source.copyTo(target, overwrite = true)
             state.aab = target
         }
 
         if (
-            DeviceArtifactKind.APK in outputs
+            DeviceArtifactKind.APK in requestedArtifacts
         ) {
             require(
                 state.apk != null
@@ -888,7 +888,7 @@ object DeviceBuildEngine {
         }
 
         if (
-            DeviceArtifactKind.AAB in outputs
+            DeviceArtifactKind.AAB in requestedArtifacts
         ) {
             require(
                 state.aab != null
