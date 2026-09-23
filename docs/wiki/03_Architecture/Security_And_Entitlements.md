@@ -15,16 +15,10 @@ related:
   - "[[Integration_Index]]"
 source_files:
   - "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt"
-  - "build-service/server.js"
-  - "build-service/src/projectQuotaV2.js"
   - "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/tools/excel/ExcelToolsScreen.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ui/OtherAppsScreen.kt"
   - "android-app/app/src/main/java/com/appforge/studio/tools/OtherAppsUsageGate.kt"
-  - "build-service/src/auth.js"
-  - "build-service/src/security.js"
-  - "build-service/src/clientHardening.js"
-  - "build-service/src/playVerifier.js"
   - "android-app/app/src/main/java/com/appforge/studio/security/SecureAccountStore.kt"
 ---
 

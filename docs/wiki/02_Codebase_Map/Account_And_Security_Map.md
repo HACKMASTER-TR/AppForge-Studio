@@ -20,11 +20,6 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt"
   - "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/net/AppForgeAccountClient.kt"
-  - "build-service/src/auth.js"
-  - "build-service/src/security.js"
-  - "build-service/src/clientHardening.js"
-  - "build-service/src/playVerifier.js"
-  - "build-service/src/proEntitlements.js"
 ---
 
 # Account and Security Map

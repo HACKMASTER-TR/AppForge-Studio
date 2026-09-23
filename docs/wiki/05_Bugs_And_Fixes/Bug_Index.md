@@ -13,24 +13,16 @@ related:
   - "[[Current_Status]]"
 source_files:
   - ".appforge/runtime-blockers.json"
-  - "build-service/tests/fast_signing_key.test.js"
-  - "build-service/tests/appforge_terminal_integration.test.js"
-  - "build-service/tests/appforge_terminal_viewport_stability_contract.test.js"
+  - "quality/tests/appforge_terminal_viewport_stability_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt"
-  - "build-service/tests/appforge_terminal_mirror_lifecycle_contract.test.js"
+  - "quality/tests/appforge_terminal_mirror_lifecycle_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentArtifactClient.kt"
-  - "build-service/src/clientHardening.js"
   - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
   - ".github/workflows/android-play-release.yml"
   - "scripts/appforge"
   - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
-  - "build-service/tests/appforge_terminal_persistent_viewport_workspace_contract.test.js"
-  - "build-service/src/reactNativeBuildEngine.js"
-  - "build-service/tests/react_native_build_error_excerpt.test.js"
-  - "build-service/tests/source_worker_toolchain_matrix_contract.test.js"
-  - "build-service/scripts/source-worker-toolchain-doctor.js"
-  - "build-service/source-worker-toolchain.json"
+  - "quality/tests/appforge_terminal_persistent_viewport_workspace_contract.test.js"
 ---
 
 # Bug Index
@@ -132,3 +124,9 @@ Document only significant, reusable debugging knowledge. Do not add one-off visu
   exact successful saved build's canonical artifact directory and output kind;
   missing or ambiguous files fail closed. Device re-save after restart remains
   a separate physical acceptance gate.
+
+## 2026-09-23 retired backend cleanup
+
+Legacy remote Build Service source and backend-only test cases retired with
+explicit mapping to preserved device, Terminal, Pro, Windows and CI tests
+under `quality/tests`. Existing historical bug records are retained.

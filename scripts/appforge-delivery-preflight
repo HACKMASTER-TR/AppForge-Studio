@@ -256,10 +256,10 @@ def scope_for(
 
     backend = any(
         path.startswith(
-            "build-service/"
+            "quality/"
         )
         and not path.startswith(
-            "build-service/tests/"
+            "quality/tests/"
         )
         for path in files
     )
@@ -267,7 +267,7 @@ def scope_for(
     control_only = bool(files) and all(
         (
             path.startswith(
-                "build-service/tests/"
+                "quality/tests/"
             )
             or path.startswith(
                 "scripts/"

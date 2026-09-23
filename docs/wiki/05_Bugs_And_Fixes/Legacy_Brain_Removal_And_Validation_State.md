@@ -14,8 +14,6 @@ related:
   - "[[Current_Status]]"
 source_files:
   - ".appforge/runtime-blockers.json"
-  - "build-service/tests/appforge_terminal_integration.test.js"
-  - "build-service/tests/fast_signing_key.test.js"
 ---
 
 # Legacy Brain Removal and Validation State

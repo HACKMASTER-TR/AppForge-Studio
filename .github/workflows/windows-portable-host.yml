@@ -7,7 +7,7 @@ on:
     paths:
       - ".github/workflows/windows-portable-host.yml"
       - "windows-host/**"
-      - "build-service/tests/windows_portable_host_v1_contract.test.js"
+      - "quality/tests/windows_portable_host_v1_contract.test.js"
 
   workflow_dispatch:
 

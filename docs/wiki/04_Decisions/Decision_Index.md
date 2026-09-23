@@ -21,18 +21,10 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/security/StudioBillingManager.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ProPurchasesActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt"
-  - "build-service/tests/device_build_toolchain_scope_contract.test.js"
+  - "quality/tests/device_build_toolchain_scope_contract.test.js"
   - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
   - "android-app/app/build.gradle.kts"
-  - "build-service/package.json"
-  - "build-service/source-worker-toolchain.json"
-  - "build-service/src/sourceToolchainRegistry.js"
-  - "build-service/src/projectToolchainInspector.js"
-  - "build-service/src/sourceBuildIsolation.js"
-  - "build-service/src/jobQueue.js"
-  - "build-service/worker.js"
-  - "build-service/tests/source_toolchain_router.test.js"
 ---
 
 # Decision Index
@@ -467,3 +459,9 @@ The public `Downloads/AppForgeStudio` copy is canonical for APK, AAB and EXE.
 An active owner/admin session may retain an additional private copy under
 `AppForge Dosyaları/APK`, but private storage must not replace public output.
 The reserved standalone `windows-web` engine remains PLANNED.
+
+## 2026-09-23 decision: remove remote Build Service
+
+Remote build server, Worker pool, queues, monthly backend quota and obsolete
+backend-only contracts are retired together. Device builds, Windows Portable
+Host and Cloudflare Pro remain separate; retained contracts move to quality.

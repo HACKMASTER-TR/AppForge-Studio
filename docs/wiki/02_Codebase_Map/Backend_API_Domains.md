@@ -14,11 +14,6 @@ related:
   - "[[Worker_And_Artifact_Flow]]"
   - "[[Security_And_Entitlements]]"
 source_files:
-  - "build-service/bootstrap.js"
-  - "build-service/server.js"
-  - "build-service/src/clientHardening.js"
-  - "build-service/src/v5Studio.js"
-  - "build-service/tests"
 ---
 
 # Backend API Domains

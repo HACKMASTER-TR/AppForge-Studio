@@ -16,18 +16,18 @@ if [ -z "$repo_root" ] &&
 fi
 
 if [ -n "$repo_root" ] &&
-   [ -f "$repo_root/build-service/package.json" ]; then
-    cd "$repo_root/build-service"
+   [ -f "$repo_root/quality/package.json" ]; then
+    cd "$repo_root/quality"
 elif [ -n "$repo_root" ] &&
      [ -f "$repo_root/package.json" ]; then
     cd "$repo_root"
-elif [ -f /workspace/build-service/package.json ]; then
-    cd /workspace/build-service
+elif [ -f /workspace/quality/package.json ]; then
+    cd /workspace/quality
 elif [ -f /workspace/package.json ]; then
     cd /workspace
 else
     printf '%s\n' \
-        "package.json veya build-service/package.json bulunamadı." >&2
+        "quality/package.json veya proje package.json bulunamadı." >&2
     exit 2
 fi
 

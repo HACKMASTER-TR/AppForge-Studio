@@ -11,8 +11,6 @@ tags:
 related:
   - "[[Current_Status]]"
 source_files:
-  - "build-service/src/fastSigningKey.js"
-  - "build-service/tests/fast_signing_key.test.js"
   - ".appforge/runtime-blockers.json"
 ---
 

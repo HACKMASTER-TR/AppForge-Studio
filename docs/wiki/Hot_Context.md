@@ -17,7 +17,7 @@ related:
 source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt"
-  - "build-service/tests/device_build_runtime_v3_contract.test.js"
+  - "quality/tests/device_build_runtime_v3_contract.test.js"
   - ".github/workflows/pro-staging-live-audit.yml"
   - "cloudflare/control-plane/src/pro_redemption.mjs"
   - "cloudflare/control-plane/tests/pro_reactivation_postcommit_contract.test.mjs"
@@ -27,7 +27,7 @@ source_files:
 
 ## Current Focus
 
-- Complete accountless admin-issued Pro staging acceptance.
+- Pro staging; remote Build Service retired.
 - Finish Clean Device Build Runtime V3 and real Android APK/AAB validation.
 - Keep Terminal Linux separate from project-build Linux.
 - Preserve the current Studio Home and UI V2 design direction.

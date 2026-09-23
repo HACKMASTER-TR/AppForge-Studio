@@ -41,7 +41,7 @@ jobs:
 
 
   backend-regression:
-    name: Build Service Regression
+    name: Device Feature Contracts
     runs-on: ubuntu-latest
 
     steps:
@@ -52,16 +52,9 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: build-service/package-lock.json
 
-      - name: Install dependencies
-        working-directory: build-service
-        run: npm ci
-
-      - name: Run complete backend regression suite
-        working-directory: build-service
-        run: npm test
+      - name: Run device, Pro, Windows and Terminal contracts
+        run: npm --prefix quality test
 
 
   android-regression:
@@ -128,20 +121,7 @@ jobs:
           bash -n scripts/appforge-stability-gate
           bash -n .githooks/pre-push
 
-          if [ -f build-service/scripts/source-worker-runtime-smoke.sh ]; then
-            bash -n build-service/scripts/source-worker-runtime-smoke.sh
-          fi
-
-      - name: Node syntax
-        shell: bash
-        run: |
-          if [ -f build-service/scripts/fast-apk-runtime-smoke.js ]; then
-            node --check build-service/scripts/fast-apk-runtime-smoke.js
-          fi
-
-          if [ -f build-service/scripts/toolchain-doctor.js ]; then
-            node --check build-service/scripts/toolchain-doctor.js
-          fi
+          python3 -m py_compile scripts/appforge scripts/appforge-delivery-preflight
 
 
   stability-summary:
@@ -160,7 +140,7 @@ jobs:
         shell: bash
         run: |
           echo "Policy:  ${{ needs.policy.result }}"
-          echo "Backend: ${{ needs.backend-regression.result }}"
+          echo "Device contracts: ${{ needs.backend-regression.result }}"
           echo "Android: ${{ needs.android-regression.result }}"
           echo "Smoke:   ${{ needs.static-smoke.result }}"
 

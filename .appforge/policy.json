@@ -32,13 +32,6 @@
     "android": [
       "Android Debug"
     ],
-    "worker": [
-      "Worker Image",
-      "Source Worker Image"
-    ],
-    "deploy": [
-      "Production Deploy"
-    ],
     "conversion": [
       "Conversion Smoke"
     ]
@@ -50,7 +43,7 @@
   "fast_lane": {
     "enabled": true,
     "control_plane_patterns": [
-      "build-service/tests/**",
+      "quality/tests/**",
       "scripts/appforge",
       "scripts/appforge-stability-gate",
       ".github/workflows/**",

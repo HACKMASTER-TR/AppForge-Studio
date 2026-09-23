@@ -60,3 +60,10 @@ The initial CI run failed during Android SDK setup
 because it requested `platforms;android-37`.
 Kotlin compilation was skipped. A later successful
 run is required before recording Kotlin compile PASS.
+
+## 2026-09-23 retirement
+
+The legacy Node backend test entrypoint was replaced by
+`npm --prefix quality test`; `appforge-stability-gate.yml` runs the retained
+device/Pro/Windows/Terminal contracts with Node 22 and does not build or
+deploy any remote worker. Android Debug remains the compilation gate.

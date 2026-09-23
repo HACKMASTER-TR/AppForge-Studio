@@ -12,8 +12,6 @@ tags:
 related:
   - "[[Deployment_And_CI]]"
 source_files:
-  - "build-service/src/config.js"
-  - "build-service/.env.example"
   - "android-app/app/build.gradle.kts"
 ---
 

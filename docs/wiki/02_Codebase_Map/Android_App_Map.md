@@ -20,9 +20,9 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
   - "android-app/app/src/test/java/com/appforge/studio/UpdateGatePlayVisibilityTest.kt"
-  - "build-service/tests/android_system_back_navigation_contract.test.js"
-  - "build-service/tests/studio_home_modern_ui_contract.test.js"
-  - "build-service/tests/retired_five_build_contract.test.js"
+  - "quality/tests/android_system_back_navigation_contract.test.js"
+  - "quality/tests/studio_home_modern_ui_contract.test.js"
+  - "quality/tests/retired_five_build_contract.test.js"
 ---
 
 # Android App Map

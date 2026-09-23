@@ -1,3 +1,10 @@
+# AppForge Studio — device-local build architecture
+
+As of 2026-09-23 the remote Build Service, Workers, queue and backend
+monthly quota have been retired from the repository. Builds run on device;
+Cloudflare Pro, Windows Portable Host and Google Play have separate roles.
+The earlier V5 release notes below are historical, not a live backend contract.
+
 # AppForge Studio V5 — AI Application Studio
 
 V5 adds a working Quick/Advanced application scaffold flow to the shared Studio: responsive visual UI, live preview, CRUD data schema, Node.js backend, authentication, notifications and Android/Windows/Web publishing metadata are generated together. HTML and ZIP source selection now includes an `Otomatik sürüm arttır` control; when enabled, semantic `versionName` and Android `versionCode` advance together.

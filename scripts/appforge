@@ -135,20 +135,6 @@ def ci_timing_label(key):
         "android-debug.yml":
             "AppForge Android Debug",
 
-        "worker-image.yml":
-            "Build AppForge Worker Image",
-
-        "source-worker-image.yml":
-            "Build AppForge Source Worker Image",
-
-        "conversion-smoke.yml":
-            "AppForge Conversion Smoke",
-
-        "production:worker-image.yml":
-            "Production Automation · Worker",
-
-        "production:source-worker-image.yml":
-            "Production Automation · Source Worker",
     }
 
     return labels.get(
@@ -276,7 +262,7 @@ def repair_known_stale_contracts():
     Only exact, previously verified contract migrations are auto-fixed.
     Unknown stale assertions remain BLOCKED rather than being guessed.
     """
-    tests = ROOT / "build-service" / "tests"
+    tests = ROOT / "quality" / "tests"
     repaired = []
 
     known = {
@@ -345,7 +331,7 @@ def repair_known_stale_contracts():
 
 def stale_contracts():
     hits = []
-    tests = ROOT / "build-service" / "tests"
+    tests = ROOT / "quality" / "tests"
 
     for path in tests.glob(
         "appforge_terminal_*.test.js"
@@ -384,8 +370,8 @@ def classify(files):
     for f in files:
         if f.startswith("android-app/"):
             groups.add("android")
-        if "worker" in f.lower() or f.startswith("build-service/"):
-            groups.add("worker")
+        if f.startswith("quality/tests/"):
+            groups.add("device-contracts")
         if f.startswith(".github/") or "deploy" in f.lower():
             groups.add("deploy")
         if "conversion" in f.lower():
@@ -405,7 +391,7 @@ def classify(files):
     return sorted(groups)
 
 def targeted_tests(files):
-    tests_dir = ROOT / "build-service" / "tests"
+    tests_dir = ROOT / "quality" / "tests"
     selected = set()
 
     if "terminal" in classify(files):
@@ -861,7 +847,7 @@ def local_gate():
         print("No targeted tests selected.")
 
     print("\n=== FULL REGRESSION ===")
-    run(["npm", "--prefix", "build-service", "test"])
+    run(["npm", "--prefix", "quality", "test"])
 
     android_unit_test_gate()
 
@@ -1864,22 +1850,9 @@ def wait_main_validation_only(head_sha, source_files):
 
 
 def wait_production_deploy(head_sha, required, results):
-    production_map = {
-        "worker-image.yml": "Production · Build AppForge Worker Image",
-        "source-worker-image.yml": "Production · Build AppForge Source Worker Image",
-    }
-    targets = [(wf, production_map[wf]) for wf in required if wf in production_map]
-    if not targets:
-        print("DEPLOY: NOT_APPLICABLE (no production runtime target)")
-        return results
-    print("\n=== PRODUCTION DEPLOY ===")
-    for upstream, title in targets:
-        key = "production:" + upstream
-        state_write("DEPLOYING", workflow=key, main_sha=head_sha)
-        results[key] = wait_workflow("production-automation.yml", head_sha, min_count=1, event_filter="workflow_run", display_title=title)
-    print("DEPLOY: SUCCESS")
+    """Remote production build service was retired; no deployment is attempted."""
+    print("DEPLOY: NOT_APPLICABLE (device-local project builds)")
     return results
-
 
 def wait_play_publish(main_sha):
     print("\n=== GOOGLE PLAY PUBLISH ===")
@@ -2475,7 +2448,7 @@ def require_remote_sync(branch):
 
 def is_fast_lane_file(path):
     if path.startswith(
-        "build-service/tests/"
+        "quality/tests/"
     ):
         return True
 
@@ -2550,50 +2523,6 @@ def required_main_workflows(files):
             "android-debug.yml"
         )
 
-    build_runtime_files = [
-        f
-        for f in runtime_files
-        if f.startswith(
-            "build-service/"
-        )
-    ]
-
-    source_only = {
-        "build-service/Dockerfile.source-worker",
-        "build-service/source-worker.js",
-        (
-            "build-service/scripts/"
-            "patch-flutter-readonly-sdk.sh"
-        ),
-        (
-            "build-service/scripts/"
-            "source-worker-runtime-smoke.sh"
-        ),
-    }
-
-    normal_worker_change = any(
-        f not in source_only
-        for f in build_runtime_files
-    )
-
-    if normal_worker_change:
-        required.append(
-            "worker-image.yml"
-        )
-
-    source_worker_ci_change = (
-        ".github/workflows/source-worker-image.yml"
-        in files
-    )
-
-    if (
-        build_runtime_files
-        or source_worker_ci_change
-    ):
-        required.append(
-            "source-worker-image.yml"
-        )
-
     conversion_android_files = {
         (
             "android-app/app/src/main/java/"
@@ -2613,17 +2542,13 @@ def required_main_workflows(files):
     }
 
     conversion_change = (
-        bool(build_runtime_files)
-        or any(
+        any(
             f in conversion_android_files
             for f in runtime_files
         )
     )
 
-    if conversion_change:
-        required.append(
-            "conversion-smoke.yml"
-        )
+    # Conversion is validated by Android Debug and Windows Portable Host CI.
 
     return list(
         dict.fromkeys(required)
@@ -2672,60 +2597,6 @@ def wait_required_main_ci(
                 workflow_file,
                 head_sha,
             )
-        )
-
-    production_map = {
-        "worker-image.yml":
-            (
-                "Production · "
-                "Build AppForge Worker Image"
-            ),
-
-        "source-worker-image.yml":
-            (
-                "Production · "
-                "Build AppForge Source Worker Image"
-            ),
-    }
-
-    production_targets = [
-        (
-            workflow_file,
-            production_map[
-                workflow_file
-            ],
-        )
-        for workflow_file in required
-        if workflow_file
-        in production_map
-    ]
-
-    if production_targets:
-        print(
-            "\n=== PRODUCTION AUTOMATION ==="
-        )
-
-    for (
-        upstream_workflow,
-        title
-    ) in production_targets:
-        key = (
-            "production:"
-            + upstream_workflow
-        )
-
-        state_write(
-            "DEPLOYING",
-            workflow=key,
-            main_sha=head_sha,
-        )
-
-        results[key] = wait_workflow(
-            "production-automation.yml",
-            head_sha,
-            min_count=1,
-            event_filter="workflow_run",
-            display_title=title,
         )
 
     timing = ci_timing_summary(
@@ -3659,7 +3530,7 @@ def main():
         selected = targeted_tests(files)
         if selected:
             run(["node", "--test", *[str(p.relative_to(ROOT)) for p in selected]])
-        run(["npm", "--prefix", "build-service", "test"])
+        run(["npm", "--prefix", "quality", "test"])
         android_unit_test_gate()
     elif args.cmd == "security":
         if not security_gate(changed_files()):
