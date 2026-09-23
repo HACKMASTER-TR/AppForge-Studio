@@ -106,6 +106,7 @@ import com.appforge.studio.security.SecureAccountStore
 import com.appforge.studio.security.OwnerAccessPolicy
 import com.appforge.studio.security.StudioPlanPrice
 import com.appforge.studio.task.AppForgeTaskManager
+import com.appforge.studio.terminal.OwnerArtifactReferenceStore
 import com.hackmaster.videoforge.AppVisibility
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -20291,6 +20292,23 @@ private fun downloadArtifactToOwnerVault(
                 ?.let(::File)
                 ?.takeIf { it.isFile && it.length() > 0L }
                 ?: error("Yerel owner artifact bulunamadı.")
+
+        if (
+            fileName.endsWith(
+                ".exe",
+                ignoreCase = true
+            )
+        ) {
+            OwnerArtifactReferenceStore
+                .publishLocalExeReference(
+                    context = context,
+                    sourceFile = source,
+                    displayName = fileName
+                )
+                ?.let {
+                    return it
+                }
+        }
 
         return copyArtifactToOwnerVault(
             context = context,

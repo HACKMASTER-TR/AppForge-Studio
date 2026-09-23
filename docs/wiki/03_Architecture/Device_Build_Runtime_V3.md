@@ -3,8 +3,8 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-09-19
-updated: 2026-09-22
-last_verified: 2026-09-22
+updated: 2026-09-23
+last_verified: 2026-09-23
 confidence: high
 tags:
   - device-build
@@ -29,6 +29,11 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerArtifactReferenceStore.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerFilesPanel.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFilesPanel.kt"
+  - "build-service/tests/owner_exe_single_copy_contract.test.js"
   - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
   - "build-service/tests/device_build_runtime_v3_contract.test.js"
   - "build-service/tests/device_build_offline_gradle_contract.test.js"
@@ -70,6 +75,20 @@ The common artifact model covers:
 A project may eventually request APK, AAB, EXE, APK+AAB or all compatible
 outputs. An output must not be exposed as ready until its device-local packager
 has passed CI and physical-device/platform acceptance.
+
+## Owner EXE single-copy projection
+
+Device-local Windows EXE artifacts remain canonical under
+`files/device-build/artifacts/local-*/`. Owner visibility does not require a
+second private byte copy. `OwnerArtifactReferenceStore` keeps owner-gated
+metadata under `no_backup` and `OwnerFilesPanel` projects valid references into
+`AppForge Dosyaları/APK`. A reference resolves only to a direct local build EXE;
+symlink/hardlink assumptions are not used. Existing owner-vault EXE copies are
+adopted only after size and SHA-256 equality, an atomic reference write and a
+successful reference re-read. Removing the projected entry removes only its
+reference; the canonical build artifact is preserved. Public
+`Downloads/AppForgeStudio` export remains unchanged. Physical storage acceptance
+remains required after source/test acceptance.
 
 ## Windows and conversion target
 

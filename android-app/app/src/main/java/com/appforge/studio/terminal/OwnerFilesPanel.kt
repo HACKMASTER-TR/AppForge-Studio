@@ -47,14 +47,17 @@ internal fun OwnerFilesPanel(
         return
     }
 
-    val root =
+    val apkRoot =
         remember(accountEmail) {
             OwnerAccessPolicy
                 .apkRoot(
                     context,
                     accountEmail
                 )
+        }
 
+    val root =
+        remember(accountEmail) {
             OwnerAccessPolicy
                 .githubRoot(
                     context,
@@ -118,6 +121,11 @@ internal fun OwnerFilesPanel(
                     legacyWorkspace
             )
 
+            OwnerArtifactReferenceStore
+                .adoptDuplicateExeCopies(
+                    context
+                )
+
             OwnerPrivateFileSync.sync(
                 context = context,
                 accountEmail = accountEmail
@@ -127,7 +135,50 @@ internal fun OwnerFilesPanel(
 
     WorkspaceFilesPanel(
         workspace =
-            root
+            root,
+        additionalEntries = { directory ->
+            if (
+                directory.canonicalFile ==
+                    apkRoot.canonicalFile
+            ) {
+                OwnerArtifactReferenceStore
+                    .list(
+                        context
+                    )
+                    .map { reference ->
+                        WorkspaceEntry(
+                            file =
+                                File(
+                                    apkRoot,
+                                    reference.displayName
+                                ),
+                            relativePath =
+                                "APK/${reference.displayName}",
+                            isDirectory =
+                                false,
+                            sizeBytes =
+                                reference.sizeBytes,
+                            modifiedAt =
+                                reference.modifiedAt,
+                            referenceId =
+                                reference.id
+                        )
+                    }
+            } else {
+                emptyList()
+            }
+        },
+        onDeleteReference = { entry ->
+            entry.referenceId
+                ?.let { referenceId ->
+                    OwnerArtifactReferenceStore
+                        .remove(
+                            context,
+                            referenceId
+                        )
+                }
+                ?: false
+        }
     )
 }
 

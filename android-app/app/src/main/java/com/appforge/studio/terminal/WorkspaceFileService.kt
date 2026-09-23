@@ -211,7 +211,8 @@ data class WorkspaceEntry(
     val relativePath: String,
     val isDirectory: Boolean,
     val sizeBytes: Long,
-    val modifiedAt: Long
+    val modifiedAt: Long,
+    val referenceId: String? = null
 )
 
 
@@ -330,7 +331,9 @@ object WorkspaceFileService {
         directory: File,
         pageIndex: Int,
         pageSize: Int =
-            DEFAULT_PAGE_SIZE
+            DEFAULT_PAGE_SIZE,
+        additionalEntries: List<WorkspaceEntry> =
+            emptyList()
     ): WorkspacePage =
         withContext(
             Dispatchers.IO
@@ -344,16 +347,76 @@ object WorkspaceFileService {
                     directory
                 )
 
-            val children =
+            val physicalEntries =
                 sortedChildren(
                     safeDirectory
-                )
+                ).map { file ->
+                    workspaceEntry(
+                        safeRoot,
+                        file
+                    )
+                }
+
+            val physicalPaths =
+                physicalEntries
+                    .map {
+                        it.file.canonicalPath
+                    }
+                    .toSet()
+
+            val projectedEntries =
+                additionalEntries
+                    .mapNotNull { entry ->
+                        val safeFile =
+                            requireInside(
+                                safeRoot,
+                                entry.file
+                            )
+
+                        require(
+                            safeFile.parentFile ==
+                                safeDirectory &&
+                                !entry.isDirectory &&
+                                !entry.referenceId.isNullOrBlank()
+                        ) {
+                            "Geçersiz sanal dosya referansı."
+                        }
+
+                        if (
+                            safeFile.canonicalPath in
+                                physicalPaths
+                        ) {
+                            null
+                        } else {
+                            entry.copy(
+                                file = safeFile,
+                                relativePath =
+                                    safeFile
+                                        .relativeTo(
+                                            safeRoot
+                                        )
+                                        .invariantSeparatorsPath
+                            )
+                        }
+                    }
+
+            val entries =
+                (
+                    physicalEntries +
+                        projectedEntries
+                    ).sortedWith(
+                        compareBy<WorkspaceEntry> {
+                            !it.isDirectory
+                        }.thenBy {
+                            it.file.name.lowercase()
+                        }
+                    )
 
             val window =
                 WorkspacePagination
                     .window(
                         totalCount =
-                            children.size,
+                            entries.size,
                         requestedPage =
                             pageIndex,
                         requestedPageSize =
@@ -367,24 +430,17 @@ object WorkspaceFileService {
                 ) {
                     emptyList()
                 } else {
-                    children
-                        .subList(
-                            window.fromIndex,
-                            window.toIndex
-                        )
-                        .map { file ->
-                            workspaceEntry(
-                                safeRoot,
-                                file
-                            )
-                        }
+                    entries.subList(
+                        window.fromIndex,
+                        window.toIndex
+                    )
                 }
 
             WorkspacePage(
                 entries =
                     pageEntries,
                 totalCount =
-                    children.size,
+                    entries.size,
                 pageIndex =
                     window.pageIndex,
                 pageSize =
