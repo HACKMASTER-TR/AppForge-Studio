@@ -360,7 +360,7 @@ internal fun UnifiedAgentStudioRoute(
                             busy = resumeBuild,
                             message =
                                 if (resumeBuild) {
-                                    "Mevcut Cloud Build'e yeniden bağlanılıyor..."
+                                    "Mevcut cihaz build kaydı yeniden açılıyor..."
                                 } else {
                                     session.state.message
                                 }
@@ -1158,7 +1158,7 @@ internal fun UnifiedAgentStudioRoute(
                         busy = true,
                         remoteBuild = null,
                         message =
-                            "TEST → AppForge Cloud BUILD → güvenli repair hazırlanıyor..."
+                            "TEST → cihazda BUILD → güvenli repair hazırlanıyor..."
                     )
 
                     scope.launch {

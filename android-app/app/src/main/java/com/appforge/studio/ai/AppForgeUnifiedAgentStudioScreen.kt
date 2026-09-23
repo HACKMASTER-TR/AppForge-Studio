@@ -196,11 +196,11 @@ private fun PromptStep(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            "AI ile Uygulama Oluştur",
+            "AI ile Uygulama / Oyun Oluştur",
             style = MaterialTheme.typography.headlineSmall
         )
         Text(
-            "İstediğin uygulamayı normal dille anlat. AppForge önce güvenli Blueprint oluşturur.",
+            "İstediğin uygulamayı veya oyunu normal dille anlat. Yerel AI güvenli Blueprint oluşturur; Web hedefi cihazda APK ve hazırsa Portable EXE üretebilir.",
             style = MaterialTheme.typography.bodyMedium
         )
 
