@@ -27,6 +27,7 @@ source_files:
   - "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentPromptToProductV1Test.kt"
   - "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintRecoveryTest.kt"
   - "quality/tests/appforge_local_ai_prompt_to_product_contract.test.js"
+  - "quality/tests/appforge_unified_agent_local_artifact_save_contract.test.js"
 ---
 
 # Local AI and Agent Map
@@ -68,3 +69,13 @@ web-game template, not a model-designed game. Ordinary application prompts
 remain blocked rather than silently receiving generic screens. The original
 user prompt is retained for generation and classification. Device acceptance
 is required to verify inference and gameplay; tests alone do not establish it.
+
+## Unified Agent local artifact delivery
+
+The Unified Agent's APK, AAB and Portable EXE actions must handle device-local
+`file://` tickets by validating the canonical build-artifacts file and copying
+it through MediaStore Downloads/AppForgeStudio on Android 10+. DownloadManager
+is only for HTTPS. Save success must mean bytes were copied and published; do
+not label local saves as queued downloads. Android 8/9 uses an explicitly
+labeled app-specific directory. Keep exact build-ID artifact resolution and
+never upload sources or artifacts to a retired remote build service.

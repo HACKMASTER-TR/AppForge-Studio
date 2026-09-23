@@ -18,6 +18,7 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt"
   - "quality/tests/appforge_terminal_mirror_lifecycle_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentArtifactClient.kt"
+  - "quality/tests/appforge_unified_agent_local_artifact_save_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
   - ".github/workflows/android-play-release.yml"
   - "scripts/appforge"
@@ -130,3 +131,10 @@ Document only significant, reusable debugging knowledge. Do not add one-off visu
 Legacy remote Build Service source and backend-only test cases retired with
 explicit mapping to preserved device, Terminal, Pro, Windows and CI tests
 under `quality/tests`. Existing historical bug records are retained.
+
+- Unified Agent local APK/AAB/EXE buttons rejected device `file://` tickets:
+  after device build succeeded, all three buttons passed the local ticket to an
+  HTTPS-only DownloadManager path. Save local bytes to public MediaStore
+  Downloads/AppForgeStudio, verify the copied byte count, publish only after
+  success and roll back incomplete copies. Keep HTTPS downloads distinct.
+  Physical-device re-acceptance remains required after Android CI.

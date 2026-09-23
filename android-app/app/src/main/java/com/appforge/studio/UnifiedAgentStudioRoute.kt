@@ -905,13 +905,11 @@ internal fun UnifiedAgentStudioRoute(
 
                         artifactState =
                             result.fold(
-                                onSuccess = { downloadId ->
+                                onSuccess = { saved ->
                                     artifactState.copy(
                                         busy = false,
-                                        lastDownloadId =
-                                            downloadId,
-                                        message =
-                                            "${kind.uppercase()} indirme kuyruğuna eklendi."
+                                        lastDownloadId = saved.downloadId,
+                                        message = saved.message
                                     )
                                 },
                                 onFailure = { error ->
