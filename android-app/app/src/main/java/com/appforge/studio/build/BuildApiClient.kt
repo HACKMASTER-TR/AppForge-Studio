@@ -3,6 +3,7 @@ package com.appforge.studio.build
 import android.content.Context
 import android.net.Uri
 import com.appforge.studio.io.ProjectLibrary
+import com.appforge.studio.ai.AppForgeAgentSessionStore
 import com.appforge.studio.model.ProjectDraft
 import org.json.JSONObject
 import java.io.File
@@ -133,6 +134,7 @@ class BuildApiClient(
     fun createDownloadTicket(buildId: String, kind: String): DownloadTicketResult {
         val artifact = DeviceBuildEngine.artifact(buildId, kind)
             ?: persistedDeviceArtifact(buildId, kind)
+            ?: persistedUnifiedAgentArtifact(buildId, kind)
             ?: error("${kind.uppercase()} çıktısı hazır değil.")
 
         return DownloadTicketResult(
@@ -193,6 +195,52 @@ class BuildApiClient(
                         file.name.endsWith("-${saved.buildNo}.$extension", ignoreCase = true))
             }
             matches.singleOrNull()
+        }.getOrNull()
+
+    /** Legacy Unified Agent builds have session history, not ProjectLibrary rows. */
+    private fun persistedUnifiedAgentArtifact(buildId: String, kind: String): File? =
+        runCatching {
+            if (!Regex("^local-[0-9a-f]{20}$").matches(buildId)) {
+                return@runCatching null
+            }
+            val extension = when (kind.trim().lowercase()) {
+                "apk" -> "apk"
+                "aab" -> "aab"
+                "exe", "windows-exe" -> "exe"
+                else -> return@runCatching null
+            }
+            val store = AppForgeAgentSessionStore(
+                File(context.filesDir, "unified-agent-session")
+            )
+            val candidates = (store.listRecent(12) + store.listArchived(12))
+                .mapNotNull { it.state.remoteBuild }
+                .filter { remote ->
+                    remote.buildId == buildId &&
+                        remote.status.equals("success", ignoreCase = true) &&
+                        when (extension) {
+                            "apk" -> remote.apkAvailable
+                            "aab" -> remote.aabAvailable
+                            else -> remote.exeAvailable
+                        }
+                }
+            val buildNo = candidates.mapNotNull { it.buildNo }
+                .distinct().singleOrNull() ?: return@runCatching null
+            if (candidates.any { it.buildNo != buildNo }) {
+                return@runCatching null
+            }
+            val root = File(context.filesDir, "device-build/artifacts").canonicalFile
+            val directory = File(root, buildId).canonicalFile
+            if (directory.parentFile != root || directory.name != buildId ||
+                !directory.isDirectory
+            ) {
+                return@runCatching null
+            }
+            directory.listFiles().orEmpty().filter { candidate ->
+                val file = candidate.canonicalFile
+                file.parentFile == directory && file.isFile && file.length() > 0L &&
+                    file.extension.equals(extension, ignoreCase = true) &&
+                    file.name.endsWith("-$buildNo.$extension", ignoreCase = true)
+            }.singleOrNull()
         }.getOrNull()
 
     fun projectQuota(): ProjectQuotaResult = ProjectQuotaResult(

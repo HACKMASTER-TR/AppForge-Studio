@@ -9,12 +9,21 @@ function text(path) {
   );
 }
 
-test("Android guest mode exposes Google admin entry", () => {
+test("guest Home hides admin while Settings retains secure discovery", () => {
     const home = text(
         "../../android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
     );
+    const settings = text(
+        "../../android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt"
+    );
+    const admin = text(
+        "../../android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt"
+    );
 
-    assert.match(home, /YÖNETİCİ GİRİŞİ/);
-    assert.match(home, /onOpenAdmin/);
-    assert.doesNotMatch(home, /GİRİŞ YAP/);
+    assert.doesNotMatch(home, /YÖNETİCİ GİRİŞİ|OwnerAdminCard\s*\(/);
+    assert.doesNotMatch(home, /TextButton\(onClick = onOpenAdmin\)/);
+    assert.match(settings, /versionTapCount\s*>=\s*7/);
+    assert.match(settings, /onOpenAdmin\(\)/);
+    assert.match(admin, /GoogleAdminIdentityClient\(host, serverUrl\)\.signIn\(\)/);
+    assert.match(admin, /adminApi\.systemStatus\(token\)/);
 });

@@ -147,3 +147,14 @@ control.
 Terminal and Excel Tools keep domain-specific layouts while sharing the same
 palette. Standalone update and Pro purchase activities also use the shared
 theme.
+
+## User-facing creation and admin navigation
+
+New Quick and Advanced projects start with `com.appforgestudio.myapp`;
+existing saved package IDs are not migrated. Quick and Advanced preserve a
+manually edited package name when editing the app title. Advanced Version Code
+keeps temporary text separate from the numeric draft, allowing clear-and-type
+without submitting a blank/zero version to build. Quick optional device and
+Pro controls are collapsed but not removed. Public Home has no admin entry;
+Settings' version line opens the normal Google admin verification screen after
+seven taps. A hidden navigation gesture is never authorization.

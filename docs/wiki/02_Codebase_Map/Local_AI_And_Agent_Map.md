@@ -79,3 +79,12 @@ is only for HTTPS. Save success must mean bytes were copied and published; do
 not label local saves as queued downloads. Android 8/9 uses an explicitly
 labeled app-specific directory. Keep exact build-ID artifact resolution and
 never upload sources or artifacts to a retired remote build service.
+
+## Agent output after AppForge restart
+
+Unified Agent local artifact tickets resolve only a successful saved session's
+exact `local-...` build ID and advertised APK/AAB/EXE kind after the process
+lost `DeviceBuildEngine.jobs`. Canonical nonempty artifact path and build number
+must match; missing or ambiguous files fail closed. UI hides detailed quality,
+checkpoint, release and raw log output behind explicit technical disclosure,
+not by destroying diagnostic evidence. Device acceptance remains open.

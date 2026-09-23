@@ -418,3 +418,12 @@ The generated XML declaration must begin at byte zero even when multiline
 permission entries prevent trimIndent from removing the leading indentation.
 The manifest builder therefore applies trimStart after trimIndent. This is a
 device-local APK packaging correction, not a remote build service restoration.
+
+## Unified Agent historical artifact resolution
+
+Unified Agent's checksum-validated session history is distinct from normal
+`ProjectLibrary` build history. `BuildApiClient` can reissue a local ticket
+only from a successful session's exact `local-...` ID, explicit advertised
+output kind, canonical build directory and matching build number. The saved
+artifact remains in private app files and is copied to public Downloads only
+when explicitly requested. Never scan arbitrary project names or owner vaults.

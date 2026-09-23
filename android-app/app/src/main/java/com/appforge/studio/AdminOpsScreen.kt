@@ -46,6 +46,33 @@ private data class AdminSystemSnapshot(
 private class AdminAuthorizationDenied(message: String) :
     IllegalStateException(message)
 
+/** Only reuse unexpired encrypted Google credentials after fresh server verification. */
+internal suspend fun restoreStoredAdminSession(
+    context: Context,
+    serverUrl: String
+): Boolean {
+    val stored = withContext(Dispatchers.IO) {
+        SecureAccountStore.loadVerifiedGoogleAdmin(context, serverUrl)
+    } ?: return false
+    return try {
+        val verified = withContext(Dispatchers.IO) {
+            AdminOpsApiClient(context, serverUrl).systemStatus(stored.first)
+        }
+        OwnerAccessPolicy.rememberVerifiedGoogleAdmin(
+            context, stored.first, verified.expiresAt, serverUrl
+        )
+        true
+    } catch (_: AdminAuthorizationDenied) {
+        SecureAccountStore.clearVerifiedGoogleAdmin(context)
+        OwnerAccessPolicy.clearVerifiedGoogleAdmin()
+        false
+    } catch (_: Exception) {
+        // Temporary network failure never grants admin or deletes the candidate.
+        OwnerAccessPolicy.clearVerifiedGoogleAdmin()
+        false
+    }
+}
+
 @Composable
 fun AdminOpsScreen(
     serverUrl: String,

@@ -63,7 +63,7 @@ test(
 
     assert.match(
       main,
-      /onOpenAdmin\s*=\s*\{[\s\S]*?screen\s*=[\s\S]*?AppScreen\.ADMIN_OPS/
+      /onOpenAdmin = \{ screen = AppScreen\.ADMIN_OPS \}/
     );
   }
 );

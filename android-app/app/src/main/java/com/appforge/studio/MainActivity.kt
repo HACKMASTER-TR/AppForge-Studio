@@ -659,6 +659,10 @@ private fun AppForgeApp() {
     }
 
     var adminRevision by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        restoreStoredAdminSession(context, DEFAULT_CONTROL_PLANE_URL)
+        adminRevision += 1
+    }
     // Read revision so a verified login/logout recomposes the owner-only UI.
     val terminalOwner = adminRevision >= 0 &&
         OwnerAccessPolicy.isActiveOwner(context)
@@ -4712,7 +4716,8 @@ onOpenPro = {
                     onClearCache = {
                         val cleared = clearTemporaryCache(context)
                         status = "${StudioI18n.t(prefs.languageCode, "cache_cleared")}: ${formatFileSize(cleared)}"
-                    }
+                    },
+                    onOpenAdmin = { screen = AppScreen.ADMIN_OPS }
                 )
 
                 AppScreen.OFFLINE_PACK ->
@@ -5962,9 +5967,7 @@ private fun createQuickDraft(
 ): ProjectDraft =
     base.copy(
         packageName =
-            quickPackageName(
-                base.appName
-            ),
+            base.packageName,
         versionName =
             "1.0.0",
         versionCode =
@@ -6521,6 +6524,7 @@ private fun QuickCreateScreen(
     isPro: Boolean,
     onOpenPro: () -> Unit
 ) {
+    var extraFeaturesExpanded by remember { mutableStateOf(false) }
     var proFeatureRequest by
         remember {
             mutableStateOf<String?>(
@@ -6603,22 +6607,6 @@ private fun QuickCreateScreen(
                     Text("←")
                 }
             },
-            actions = {
-                TextButton(
-                    onClick =
-                        onAdvanced
-                ) {
-                    Text(
-                        if (quickCompact) {
-                            "Ayarlar"
-                        } else {
-                            "Gelişmiş"
-                        },
-                        fontSize =
-                            if (quickCompact) 12.sp else 14.sp
-                    )
-                }
-            },
             colors =
                 TopAppBarDefaults
                     .topAppBarColors(
@@ -6648,6 +6636,80 @@ private fun QuickCreateScreen(
                     if (quickCompact) 10.dp else 16.dp
                 )
         ) {
+            item {
+                Card(
+                    colors =
+                        CardDefaults
+                            .cardColors(
+                                containerColor =
+                                    Card2
+                            ),
+                    shape =
+                        RoundedCornerShape(
+                            20.dp
+                        )
+                ) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(if (quickCompact) 14.dp else 18.dp),
+                        verticalArrangement =
+                            Arrangement.spacedBy(if (quickCompact) 8.dp else 12.dp)
+                    ) {
+                        Text(
+                            "1. Uygulama adı",
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        OutlinedTextField(
+                            value =
+                                draft.appName,
+                            onValueChange = {
+                                onDraftChange(
+                                    draft.copy(appName = it)
+                                )
+                            },
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth(),
+                            singleLine =
+                                true,
+                            placeholder = {
+                                Text(
+                                    "Örn. Benim Uygulamam"
+                                )
+                            }
+                        )
+
+                        OutlinedTextField(
+                            value = draft.packageName,
+                            onValueChange = { entered ->
+                                onDraftChange(
+                                    draft.copy(packageName = entered.trim().lowercase())
+                                )
+                            },
+                            label = { Text("Paket adı") },
+                            supportingText = {
+                                Text("Her farklı uygulama için benzersiz olmalı.")
+                            },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        val quickContext = LocalContext.current
+                        if (ProjectLibrary.load(quickContext).any {
+                                it.packageName == draft.packageName
+                            }) {
+                            Text(
+                                "Bu paket adı başka bir projede kullanılıyor.",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+            }
+
             item {
                 Card(
                     colors =
@@ -6759,24 +6821,6 @@ private fun QuickCreateScreen(
                                 )
                             }
 
-                            OutlinedButton(
-                                onClick = {
-                                    onDraftChange(
-                                        draft.copy(
-                                            autoVersionCode =
-                                                !draft.autoVersionCode
-                                        )
-                                    )
-                                },
-                                modifier =
-                                    Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    "Otomatik sürüm arttır: ${
-                                        if (draft.autoVersionCode) "Açık" else "Kapalı"
-                                    }"
-                                )
-                            }
                         } else {
                             OutlinedTextField(
                                 value =
@@ -6803,82 +6847,7 @@ private fun QuickCreateScreen(
 
                             Text(
                                 text =
-                                    "Hızlı mod uzak sitelerde Native Bridge'i güvenlik için kapalı tutar.",
-                                color =
-                                    TextSecondary,
-                                fontSize =
-                                    12.sp
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                Card(
-                    colors =
-                        CardDefaults
-                            .cardColors(
-                                containerColor =
-                                    Card2
-                            ),
-                    shape =
-                        RoundedCornerShape(
-                            20.dp
-                        )
-                ) {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(if (quickCompact) 14.dp else 18.dp),
-                        verticalArrangement =
-                            Arrangement.spacedBy(if (quickCompact) 8.dp else 12.dp)
-                    ) {
-                        Text(
-                            "1. Uygulama adı",
-                            fontWeight =
-                                FontWeight.Bold
-                        )
-
-                        OutlinedTextField(
-                            value =
-                                draft.appName,
-                            onValueChange = {
-                                onDraftChange(
-                                    draft.copy(
-                                        appName =
-                                            it,
-                                        packageName =
-                                            quickPackageName(
-                                                it
-                                            )
-                                    )
-                                )
-                            },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth(),
-                            singleLine =
-                                true,
-                            placeholder = {
-                                Text(
-                                    "Örn. Benim Uygulamam"
-                                )
-                            }
-                        )
-
-                        if (
-                            draft.appName
-                                .isNotBlank()
-                        ) {
-                            Text(
-                                text =
-                                    "Paket adı otomatik: ${
-                                        quickPackageName(
-                                            draft.appName
-                                        )
-                                    }",
+                                    "Güvenli varsayılan ayarlar kullanılır.",
                                 color =
                                     TextSecondary,
                                 fontSize =
@@ -6986,7 +6955,7 @@ private fun QuickCreateScreen(
                         )
 
                         Text(
-                            "• Paket adı\n• SDK / WebView ayarları\n• Güvenli izinler\n• Splash ekranı\n• Debug imzalama\n• APK + AAB çıktısı",
+                            "Paketleme ve gerekli ayarlar otomatik hazırlanır.",
                             color =
                                 TextSecondary,
                             lineHeight =
@@ -7017,6 +6986,39 @@ private fun QuickCreateScreen(
                 )
             }
 
+            item {
+                OutlinedButton(
+                    onClick = { extraFeaturesExpanded = !extraFeaturesExpanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (extraFeaturesExpanded) "Ek özellikleri gizle" else "Ek özellikler")
+                }
+            }
+            if (extraFeaturesExpanded) {
+            if (draft.sourceMode == SourceMode.LOCAL) {
+                item {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                onClick = {
+                                    onDraftChange(
+                                        draft.copy(
+                                            autoVersionCode =
+                                                !draft.autoVersionCode
+                                        )
+                                    )
+                                },
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    "Otomatik sürüm arttır: ${
+                                        if (draft.autoVersionCode) "Açık" else "Kapalı"
+                                    }"
+                                )
+                            }
+                    }
+                }
+            }
             item {
                 Column(
                     modifier =
@@ -7101,7 +7103,7 @@ private fun QuickCreateScreen(
                                 Modifier.weight(1f)
                         ) {
                             Text(
-                                "📍 Konum / Geolocation",
+                                "📍 Konum",
                                 fontWeight =
                                     FontWeight.SemiBold
                             )
@@ -7248,7 +7250,7 @@ private fun QuickCreateScreen(
                     ) {
 
                         Text(
-                            "🚀 FAST Extended",
+                            "Ek geliştirme seçenekleri",
                             fontWeight =
                                 FontWeight.Bold,
                             fontSize =
@@ -7837,6 +7839,7 @@ private fun QuickCreateScreen(
                     }
                 }
                 }
+            }
             }
         }
 
@@ -12653,6 +12656,9 @@ private fun SourceStep(
     val formCompact =
         LocalConfiguration.current
             .screenWidthDp < 380
+    var versionCodeInput by remember(d.versionCode) {
+        mutableStateOf(d.versionCode.toString())
+    }
 
     fun autoPackageName(
         appName: String
@@ -12757,6 +12763,7 @@ private fun SourceStep(
     val stepReady =
         appNameValid &&
         packageValid &&
+        versionCodeInput.toIntOrNull()?.let { it >= 1 } == true &&
         sourceValid
 
     LazyColumn(
@@ -12848,15 +12855,15 @@ private fun SourceStep(
                         currentPackage ==
                             "com.example.myapp" ||
                         currentPackage ==
+                            "com.appforgestudio.myapp" ||
+                        currentPackage ==
                             oldAutoPackage
 
                     val nextPackage =
                         if (
                             autoMode
                         ) {
-                            autoPackageName(
-                                appName
-                            )
+                            "com.appforgestudio.myapp"
                         } else {
                             d.packageName
                         }
@@ -12993,34 +13000,23 @@ private fun SourceStep(
                     )
 
                     OutlinedTextField(
-                        value =
-                            d.versionCode.toString(),
-                        onValueChange = {
-                            raw ->
-
-                            raw
-                                .filter {
-                                    it.isDigit()
-                                }
-                                .toIntOrNull()
-                                ?.takeIf {
-                                    it >= 1
-                                }
-                                ?.let {
-                                    update(
-                                        d.copy(
-                                            versionCode = it,
-                                            autoVersionCode = false
-                                        )
-                                    )
-                                }
+                        value = versionCodeInput,
+                        onValueChange = { raw ->
+                            val digits = raw.filter { it.isDigit() }.take(10)
+                            versionCodeInput = digits
+                            digits.toIntOrNull()?.takeIf { it >= 1 }?.let { valid ->
+                                update(d.copy(versionCode = valid, autoVersionCode = false))
+                            }
                         },
                         label = {
                             Text("Version Code")
                         },
                         supportingText = {
                             Text(
-                                "Her yeni Play Store sürümünde artırılmalı."
+                                if (versionCodeInput.isBlank() ||
+                                    versionCodeInput.toIntOrNull()?.let { it >= 1 } != true
+                                ) "1 veya daha büyük bir sayı gir." else
+                                    "Her yeni Play Store sürümünde artırılmalı."
                             )
                         },
                         singleLine = true,

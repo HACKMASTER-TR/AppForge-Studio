@@ -33,10 +33,10 @@ test(
       /val fullAdmin\s*=\s*OwnerAccessPolicy[\s\S]{0,300}?isActiveOwner/
     );
 
-    // Accountless users can always reach Google admin sign-in. Only verified
-    // owners see the Terminal/Admin action card.
-    assert.match(home, /TextButton\(onClick = onOpenAdmin\)/);
-    assert.match(home, /if\s*\(\s*fullAdmin\s*\)[\s\S]{0,500}?OwnerAdminCard/);
+    // Admin discovery is Settings-only, including on Play production builds.
+    assert.doesNotMatch(home, /TextButton\(onClick = onOpenAdmin\)/);
+    assert.doesNotMatch(home, /OwnerAdminCard\(/);
+    assert.match(main, /onOpenAdmin = \{ screen = AppScreen\.ADMIN_OPS \}/);
     assert.doesNotMatch(home, /GİRİŞ YAP/);
 
     assert.match(

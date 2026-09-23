@@ -12,43 +12,29 @@ const read = async (path) =>
   );
 
 test(
-  "Terminal home entry is owner-only",
+  "public Home hides Terminal and Admin; Settings retains server-verified Admin route",
   async () => {
     const home = await read(
       "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
     );
-
-    assert.match(
-      home,
-      /OwnerAccessPolicy\s*\.\s*isActiveOwner\(\s*context,\s*accountEmail\s*\)/
+    const settings = await read(
+      "android-app/app/src/main/java/com/appforge/studio/AppForgeSettingsScreens.kt"
+    );
+    const main = await read(
+      "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+    );
+    const admin = await read(
+      "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt"
     );
 
-    assert.doesNotMatch(
-      home,
-      /28550040284a@gmail\.com/
-    );
-
-    const card =
-      home.indexOf(
-        "onClick = onOpenTerminal"
-      );
-
-    assert.ok(
-      card >= 0,
-      "Terminal card source must still exist for owner"
-    );
-
-    const guard =
-      home.lastIndexOf(
-        "if (fullAdmin)",
-        card
-      );
-
-    assert.ok(
-      guard >= 0 &&
-        card - guard < 2500,
-      "Terminal card must be inside owner-only guard"
-    );
+    assert.doesNotMatch(home, /OwnerAdminCard\s*\(/);
+    assert.doesNotMatch(home, /onClick = onOpenTerminal/);
+    assert.doesNotMatch(home, /TextButton\(onClick = onOpenAdmin\)/);
+    assert.doesNotMatch(home, /YÖNETİCİ GİRİŞİ/);
+    assert.match(settings, /versionTapCount\s*>=\s*7/);
+    assert.match(settings, /onOpenAdmin\(\)/);
+    assert.match(main, /AppScreen\.ADMIN_OPS\s*->\s*AdminOpsScreen/);
+    assert.match(admin, /adminApi\.systemStatus\(token\)/);
   }
 );
 

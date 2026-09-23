@@ -34,9 +34,9 @@ test('home entry replaces legacy login; Terminal and Second Brain require owner'
   const [home, main, ops] = await Promise.all([
     read('ui/StudioHomeV2.kt'), read('MainActivity.kt'), read('AdminOpsScreen.kt')
   ]);
-  assert.match(home, /YÖNETİCİ GİRİŞİ/);
+  assert.doesNotMatch(home, /YÖNETİCİ GİRİŞİ/);
   assert.doesNotMatch(home, /GİRİŞ YAP/);
-  assert.match(home, /if \(fullAdmin\)[\s\S]*OwnerAdminCard/);
+  assert.doesNotMatch(home, /OwnerAdminCard\(/);
   assert.match(main, /terminalOwner[\s\S]*AppScreen\.TERMINAL/);
   assert.match(main, /AppScreen\.SECOND_BRAIN[\s\S]*isAdminOpsAccount/);
   assert.match(ops, /GoogleAdminIdentityClient\(host, serverUrl\)\.signIn\(\)/);

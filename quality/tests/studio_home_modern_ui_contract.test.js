@@ -86,7 +86,7 @@ test(
     for (
       const label of [
         "AppForge AI",
-        "Unified Agent",
+        "AI ile Oluştur",
         "Derlemeler",
         "Dönüştür",
         "İçe aktar",
@@ -112,9 +112,9 @@ test(
       /OwnerAccessPolicy\s*\.\s*isActiveOwner/
     );
 
-    assert.match(
+    assert.doesNotMatch(
       home,
-      /if \(fullAdmin\)[\s\S]{0,1800}?onClick = onOpenTerminal/
+      /OwnerAdminCard\(/
     );
 
     assert.doesNotMatch(

@@ -12,7 +12,7 @@ val DEFAULT_CONTROL_PLANE_URL: String =
 
 data class ProjectDraft(
     var appName: String = "",
-    var packageName: String = "com.example.myapp",
+    var packageName: String = "com.appforgestudio.myapp",
     var sourceMode: SourceMode = SourceMode.LOCAL,
     var sourceLabel: String = "",
     var sourceUri: String? = null,

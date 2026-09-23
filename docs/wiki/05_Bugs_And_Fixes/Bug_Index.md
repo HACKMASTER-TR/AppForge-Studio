@@ -138,3 +138,15 @@ under `quality/tests`. Existing historical bug records are retained.
   Downloads/AppForgeStudio, verify the copied byte count, publish only after
   success and roll back incomplete copies. Keep HTTPS downloads distinct.
   Physical-device re-acceptance remains required after Android CI.
+
+- Unified Agent historical artifact lookup after app update — its durable
+  session contains the successful build ID but `ProjectLibrary` does not contain
+  that agent-owned build. After process restart local jobs are empty; exact
+  session/build/output-kind fallback is needed without searching other builds.
+  Device acceptance must check saved outputs without rebuilding.
+
+- Google admin restore after APK update — owner memory is intentionally
+  process-only and stored ID token expires within an hour. On startup, only
+  an unexpired encrypted candidate may be revalidated with HTTPS admin status;
+  network failure must not grant access or erase valid encrypted candidate.
+  Expired credentials require an explicit fresh Google sign-in.

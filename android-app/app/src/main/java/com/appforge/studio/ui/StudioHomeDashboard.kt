@@ -189,7 +189,7 @@ internal fun ModernHomeHero(
                             .height(52.dp)
                 ) {
                     Text(
-                        "YENİ PROJE",
+                        "HIZLI OLUŞTUR",
                         fontWeight =
                             FontWeight.Bold
                     )
@@ -204,7 +204,7 @@ internal fun ModernHomeHero(
                             .height(52.dp)
                 ) {
                     Text(
-                        "GELİŞMİŞ AYARLAR",
+                        "GELİŞMİŞ OLUŞTUR",
                         fontSize =
                             11.sp
                     )
@@ -325,28 +325,6 @@ private fun ModernHomeActionCard(
             verticalArrangement =
                 Arrangement.spacedBy(9.dp)
         ) {
-            Surface(
-                shape =
-                    RoundedCornerShape(999.dp),
-                color =
-                    MaterialTheme
-                        .colorScheme
-                        .primaryContainer
-            ) {
-                Text(
-                    badge,
-                    modifier =
-                        Modifier.padding(
-                            horizontal = 9.dp,
-                            vertical = 5.dp
-                        ),
-                    fontWeight =
-                        FontWeight.Bold,
-                    fontSize =
-                        9.sp
-                )
-            }
-
             Text(
                 title,
                 fontWeight =
