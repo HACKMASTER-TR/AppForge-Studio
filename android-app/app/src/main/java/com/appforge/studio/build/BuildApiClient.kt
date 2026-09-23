@@ -132,6 +132,7 @@ class BuildApiClient(
 
     fun createDownloadTicket(buildId: String, kind: String): DownloadTicketResult {
         val artifact = DeviceBuildEngine.artifact(buildId, kind)
+            ?: persistedDeviceArtifact(buildId, kind)
             ?: error("${kind.uppercase()} çıktısı hazır değil.")
 
         return DownloadTicketResult(
@@ -140,6 +141,59 @@ class BuildApiClient(
             Int.MAX_VALUE
         )
     }
+
+    /**
+     * A process restart clears DeviceBuildEngine.jobs but not the successful
+     * history record or its canonical artifact. Resolve only that exact build
+     * directory; never pick a file by project name or from another account.
+     */
+    private fun persistedDeviceArtifact(buildId: String, kind: String): File? =
+        runCatching {
+            if (!Regex("^local-[0-9a-f]{20}$").matches(buildId)) {
+                return@runCatching null
+            }
+
+            val extension = when (kind.trim().lowercase()) {
+                "apk" -> "apk"
+                "aab" -> "aab"
+                "exe", "windows-exe" -> "exe"
+                else -> return@runCatching null
+            }
+
+            val saved = ProjectLibrary.loadBuilds(context)
+                .firstOrNull { it.id == buildId }
+                ?: return@runCatching null
+
+            if (!saved.status.equals("success", ignoreCase = true)) {
+                return@runCatching null
+            }
+
+            val advertised = when (extension) {
+                "apk" -> saved.apkUrl
+                "aab" -> saved.aabUrl
+                else -> saved.exeUrl
+            }
+            if (advertised.isNullOrBlank()) {
+                return@runCatching null
+            }
+
+            val root = File(context.filesDir, "device-build/artifacts").canonicalFile
+            val directory = File(root, buildId).canonicalFile
+            if (directory.parentFile != root || directory.name != buildId ||
+                !directory.isDirectory
+            ) {
+                return@runCatching null
+            }
+
+            val matches = directory.listFiles().orEmpty().filter { candidate ->
+                val file = candidate.canonicalFile
+                file.parentFile == directory && file.isFile && file.length() > 0L &&
+                    file.extension.equals(extension, ignoreCase = true) &&
+                    (saved.buildNo == null ||
+                        file.name.endsWith("-${saved.buildNo}.$extension", ignoreCase = true))
+            }
+            matches.singleOrNull()
+        }.getOrNull()
 
     fun projectQuota(): ProjectQuotaResult = ProjectQuotaResult(
         plan = "device",

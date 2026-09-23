@@ -76,6 +76,19 @@ A project may eventually request APK, AAB, EXE, APK+AAB or all compatible
 outputs. An output must not be exposed as ready until its device-local packager
 has passed CI and physical-device/platform acceptance.
 
+## Historical artifact re-save after process restart
+
+`DeviceBuildEngine.jobs` is process memory and is empty after APK update or
+process restart. `BuildApiClient.createDownloadTicket` first retains the live
+artifact path, then resolves an exact successful `ProjectLibrary` history ID
+under `files/device-build/artifacts/local-*/` for APK, AAB and Windows EXE.
+The history must advertise that output; the resolved canonical build directory
+must match the requested ID, contain exactly one nonempty file of the correct
+extension, and match the persisted build number when available. No project-name
+search, owner-vault duplicate, public Downloads copy, network fallback or
+cross-account lookup is permitted. A missing or ambiguous artifact fails closed.
+CI compilation and physical save-after-restart acceptance are required.
+
 ## Owner EXE single-copy projection
 
 Device-local Windows EXE artifacts remain canonical under

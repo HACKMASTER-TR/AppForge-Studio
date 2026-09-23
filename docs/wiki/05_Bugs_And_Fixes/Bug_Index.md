@@ -123,3 +123,12 @@ Document only significant, reusable debugging knowledge. Do not add one-off visu
   public-save re-acceptance remains required.
 
 - Terminal accountless verified-owner crash — empty session email reached `TerminalWorkspaceResolver.accountScope` and threw on the Compose UI thread before Terminal opened. Verified owners without a normal account now use a separate stable workspace namespace; blank-email legacy workspace migration is disabled, and expired owner access returns a recoverable screen. Terminal Linux, Pro state and build assets are not reset. Source/test/CI/device acceptance must be reported separately.
+
+- Successful Builds re-save after process restart — the UI retained persisted
+  `ProjectLibrary` build history while `BuildApiClient.createDownloadTicket`
+  required an in-memory `DeviceBuildEngine.jobs` entry. After an APK update,
+  the EXE canonical file and public Share remained available but `Kaydet`
+  reported `EXE çıktısı hazır değil.` The ticket now falls back only to the
+  exact successful saved build's canonical artifact directory and output kind;
+  missing or ambiguous files fail closed. Device re-save after restart remains
+  a separate physical acceptance gate.
