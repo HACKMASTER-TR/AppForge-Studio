@@ -26,7 +26,8 @@ data class PreparedAppIcon(
 
 object AppIconProcessor {
     private const val OUTPUT_SIZE = 1024
-    private const val SAFE_CONTENT_SIZE = 640
+    // Avoid double-padding: Android launchers also scale legacy icons.
+    private const val SAFE_CONTENT_SIZE = 960
     private const val MAX_DECODE_SIZE = 2048
 
     fun prepare(

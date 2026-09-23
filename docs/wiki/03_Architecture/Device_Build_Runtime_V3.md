@@ -440,3 +440,16 @@ without moving the PE sections, changing the host cache or shifting the large
 NSIS overlay and AppForge footer. Missing/undersized slots fail closed rather
 than advertising an EXE with the wrong icon. CI compilation, physical Android
 icon acceptance and Windows Explorer/file launch acceptance remain separate.
+
+### Physical icon visual regression (2026-09-24)
+
+The first selected-icon implementation passed source tests, but on-device
+acceptance found its prepared Android PNG double-padded content (640/1024),
+and high-detail photos failed in the fixed-size RT_ICON slots of the pinned
+Windows Portable Host. Prepared Android content now fills 960/1024. The
+project-copy PE patcher first tries full-resolution PNG and DIB, then bounded
+color quantization/detail reduction if the existing slot is smaller. It still
+fails closed if the selected artwork cannot be embedded; the pinned Host
+and its NSIS overlay/footer are not resized or rewritten. Windows Explorer
+icon appearance AND actual Windows executable startup still require physical
+acceptance. Device CI alone is not acceptance.

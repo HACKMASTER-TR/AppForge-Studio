@@ -167,41 +167,103 @@ internal object WindowsPeIconPatcher {
         }
     }
 
+    /**
+     * RT_ICON slots in the pinned NSIS host have fixed byte capacities. PNG
+     * "quality" is ignored by Android, so high-detail photos may not fit even
+     * when the user manually resizes the input. Try original resolution, a
+     * true 32-bit DIB where it fits, then reduced palettes and progressively
+     * smaller details while keeping the declared ICO dimensions unchanged.
+     * Only the project's .part copy is patched; never change the Host cache,
+     * PE layout, NSIS overlay or AppForge footer to make room.
+     */
     private fun encode(bitmap: Bitmap, w: Int, h: Int, capacity: Int): ByteArray? {
-        if (w !in 1..256 || h !in 1..256) return null
-        val scaled = Bitmap.createScaledBitmap(bitmap,w,h,true)
+        if (w !in 1..256 || h !in 1..256 || capacity <= 0) return null
+        val scaled = Bitmap.createScaledBitmap(bitmap, w, h, true)
         try {
-            val png = ByteArrayOutputStream().also {
-                check(scaled.compress(Bitmap.CompressFormat.PNG,100,it)) {
+            fun png(value: Bitmap): ByteArray = ByteArrayOutputStream().use { stream ->
+                check(value.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
                     "Windows ikon PNG'ye çevrilemedi."
                 }
-            }.toByteArray()
-            if (png.size <= capacity) return png
-            // DIB + AND mask for original small RT_ICON slots that cannot fit PNG.
+                stream.toByteArray()
+            }
+
+            png(scaled).takeIf { it.size <= capacity }?.let { return it }
+
+            // A DIB retains all pixels and transparency where an old host
+            // resource reserves enough bytes for an uncompressed icon.
             val maskRow = ((w + 31) / 32) * 4
             val dibSize = 40 + w * h * 4 + maskRow * h
-            if (dibSize > capacity) return null
-            val data = ByteArray(dibSize)
-            fun put16(o: Int, v: Int) { data[o] = v.toByte(); data[o+1] = (v ushr 8).toByte() }
-            fun put32(o: Int, v: Int) { put16(o,v);put16(o+2,v ushr 16) }
-            put32(0,40);put32(4,w);put32(8,h*2);put16(12,1);put16(14,32)
-            put32(20,w*h*4 + maskRow*h)
-            val pixels = IntArray(w*h)
-            scaled.getPixels(pixels,0,w,0,0,w,h)
-            val maskBase = 40+w*h*4
-            for(y in 0 until h) for(x in 0 until w) {
-                val pixel = pixels[(h-1-y)*w+x]
-                val at = 40+(y*w+x)*4
-                data[at] = pixel.toByte()
-                data[at+1] = (pixel ushr 8).toByte()
-                data[at+2] = (pixel ushr 16).toByte()
-                data[at+3] = (pixel ushr 24).toByte()
-                if ((pixel ushr 24) < 128) {
-                    val m = maskBase + y*maskRow + x/8
-                    data[m] = (data[m].toInt() or (0x80 ushr (x%8))).toByte()
+            if (dibSize <= capacity) {
+                val data = ByteArray(dibSize)
+                fun put16(o: Int, v: Int) {
+                    data[o] = v.toByte(); data[o + 1] = (v ushr 8).toByte()
+                }
+                fun put32(o: Int, v: Int) { put16(o, v); put16(o + 2, v ushr 16) }
+                put32(0, 40); put32(4, w); put32(8, h * 2)
+                put16(12, 1); put16(14, 32)
+                put32(20, w * h * 4 + maskRow * h)
+                val pixels = IntArray(w * h)
+                scaled.getPixels(pixels, 0, w, 0, 0, w, h)
+                val maskBase = 40 + w * h * 4
+                for (y in 0 until h) for (x in 0 until w) {
+                    val pixel = pixels[(h - 1 - y) * w + x]
+                    val at = 40 + (y * w + x) * 4
+                    data[at] = pixel.toByte()
+                    data[at + 1] = (pixel ushr 8).toByte()
+                    data[at + 2] = (pixel ushr 16).toByte()
+                    data[at + 3] = (pixel ushr 24).toByte()
+                    if ((pixel ushr 24) < 128) {
+                        val m = maskBase + y * maskRow + x / 8
+                        data[m] = (data[m].toInt() or (0x80 ushr (x % 8))).toByte()
+                    }
+                }
+                return data
+            }
+
+            // Preserve silhouette and detail before reducing spatial
+            // resolution. PNG's compression is deterministic for a bitmap.
+            val originalPixels = IntArray(w * h)
+            scaled.getPixels(originalPixels, 0, w, 0, 0, w, h)
+            for (bits in intArrayOf(6, 5, 4, 3)) {
+                val mask = (0xff shl (8 - bits)) and 0xff
+                val quantized = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                try {
+                    val colors = IntArray(originalPixels.size) { index ->
+                        val pixel = originalPixels[index]
+                        (pixel and 0xff000000.toInt()) or
+                            (((pixel ushr 16) and mask) shl 16) or
+                            (((pixel ushr 8) and mask) shl 8) or
+                            (pixel and mask)
+                    }
+                    quantized.setPixels(colors, 0, w, 0, 0, w, h)
+                    png(quantized).takeIf { it.size <= capacity }?.let { return it }
+                } finally {
+                    quantized.recycle()
                 }
             }
-            return data
+
+            // Fixed-slot hosts may reserve only a small compressed icon. A
+            // bounded lower-detail PNG is preferable to an unrelated stock
+            // icon or a "successful" EXE with missing selected artwork.
+            val longest = max(w, h)
+            for (limit in intArrayOf(192, 160, 128, 96, 72, 64, 48, 40,
+                                     32, 24, 16, 12, 8, 6, 4, 2, 1)) {
+                if (limit >= longest) continue
+                val shortW = maxOf(1, (w.toLong() * limit / longest).toInt())
+                val shortH = maxOf(1, (h.toLong() * limit / longest).toInt())
+                val thumbnail = Bitmap.createScaledBitmap(scaled, shortW, shortH, true)
+                try {
+                    val expanded = Bitmap.createScaledBitmap(thumbnail, w, h, false)
+                    try {
+                        png(expanded).takeIf { it.size <= capacity }?.let { return it }
+                    } finally {
+                        if (expanded !== thumbnail && expanded !== scaled) expanded.recycle()
+                    }
+                } finally {
+                    if (thumbnail !== scaled) thumbnail.recycle()
+                }
+            }
+            return null // Fail closed if the Host slot cannot hold even a valid PNG.
         } finally {
             if (scaled !== bitmap) scaled.recycle()
         }

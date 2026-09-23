@@ -70,12 +70,13 @@ test("uploaded photos become orientation-safe adaptive launcher PNGs", async () 
     "ImageDecoder",
     "ExifInterface",
     "OUTPUT_SIZE = 1024",
-    "SAFE_CONTENT_SIZE = 640",
     "Bitmap.CompressFormat.PNG",
     "prepared-icons"
   ]) {
     assert.equal(processor.includes(marker), true, marker);
   }
+
+  assert.doesNotMatch(processor, /SAFE_CONTENT_SIZE\\s*=\\s*640\\b/);
 
   assert.equal(ui.includes('arrayOf("image/*")'), true);
   assert.equal(ui.includes("AppIconProcessor"), true);

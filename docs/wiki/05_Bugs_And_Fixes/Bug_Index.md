@@ -156,3 +156,11 @@ under `quality/tests`. Existing historical bug records are retained.
   project-specific Windows PE icons. New source integration fails closed for
   selected icons; no generic Host mutation. Physical APK launcher and Windows
   Explorer/portable launch acceptance remain pending.
+
+- Selected icon visual acceptance regression — the initially successful
+  source-level icon test did not exercise actual launcher/Explorer appearance.
+  AppIconProcessor applied a 640/1024 inset to content that Android launchers
+  already shrink, and detailed photos exceeded the unchanged NSIS Host's
+  RT_ICON slot capacities. Android content sizing and project-copy bounded
+  PE PNG encoding are corrected in source. Physical APK icon and Windows
+  Explorer/launch re-acceptance remain open; never count contract tests alone.

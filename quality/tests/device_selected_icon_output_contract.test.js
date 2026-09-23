@@ -30,3 +30,20 @@ test("Windows icon changes only a verified Host copy, before signed payload foot
   assert.match(host,/HOST_SHA256/);
   assert.doesNotMatch(packager,/host\.outputStream/);
 });
+
+
+test("prepared Android launcher icon uses the actual graphic instead of the old 640px inset", () => {
+  const processor = read("android-app/app/src/main/java/com/appforge/studio/io/AppIconProcessor.kt");
+  assert.match(processor, /OUTPUT_SIZE = 1024/);
+  assert.match(processor, /SAFE_CONTENT_SIZE = 960/);
+  assert.doesNotMatch(processor, /SAFE_CONTENT_SIZE = 640/);
+});
+
+test("Windows PE slots adapt high-detail images without modifying verified host or layout", () => {
+  assert.match(windows, /intArrayOf\(6, 5, 4, 3\)/);
+  assert.match(windows, /Bitmap\.createScaledBitmap\(thumbnail, w, h, false\)/);
+  assert.match(windows, /if \(limit >= longest\) continue/);
+  assert.match(windows, /if \(scaled !== bitmap\) scaled\.recycle\(\)/);
+  assert.match(windows, /return null \/\/ Fail closed/);
+  assert.match(windows, /pe\.length\(\) == originalLength/);
+});
