@@ -35,6 +35,7 @@ source_files:
   - "quality/tests/owner_exe_single_copy_contract.test.js"
   - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
   - "quality/tests/device_build_runtime_v3_contract.test.js"
+  - "quality/tests/device_web_manifest_xml_declaration_contract.test.js"
   - "quality/tests/device_build_offline_gradle_contract.test.js"
   - "quality/tests/device_build_gradle_helper_runtime.test.js"
   - "quality/tests/device_build_capability_matrix_contract.test.js"
@@ -409,3 +410,11 @@ public location. APK already followed this rule. AAB and Windows EXE now do the
 same on Android 10+ even during an active owner/admin session. The private
 `AppForge Dosyaları/APK` copy is additional only and never replaces the public
 copy. APK+AAB and APK+AAB+EXE combinations inherit the same per-artifact rule.
+
+## Web APK Manifest declaration fix
+
+The Web wrapper writes AndroidManifest.xml through DeviceBuildEngine.webManifest.
+The generated XML declaration must begin at byte zero even when multiline
+permission entries prevent trimIndent from removing the leading indentation.
+The manifest builder therefore applies trimStart after trimIndent. This is a
+device-local APK packaging correction, not a remote build service restoration.

@@ -1075,7 +1075,7 @@ object DeviceBuildEngine {
                     </activity>
                 </application>
             </manifest>
-        """.trimIndent()
+        """.trimIndent().trimStart()
     }
 
     private fun detectGradleVersion(project: File): String {
