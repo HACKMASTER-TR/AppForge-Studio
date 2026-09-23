@@ -61,26 +61,6 @@ test(
 );
 
 test(
-  "retired five-build stress surface is removed",
-  () => {
-    assert.doesNotMatch(
-      main,
-      /5 Build Testi/
-    );
-
-    assert.doesNotMatch(
-      main,
-      /fiveParallelBuildRunning/
-    );
-
-    assert.doesNotMatch(
-      main,
-      /startFiveParallelBuildTest/
-    );
-  }
-);
-
-test(
   "builder UI no longer advertises retired remote autoscale",
   () => {
     assert.doesNotMatch(

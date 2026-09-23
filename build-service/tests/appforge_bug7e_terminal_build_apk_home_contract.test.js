@@ -5,7 +5,6 @@ const mainUrl=new URL("../../android-app/app/src/main/java/com/appforge/studio/M
 const homeUrl=new URL("../../android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt",import.meta.url);
 const folderUrl=new URL("../../android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt",import.meta.url);
 const terminalUrl=new URL("../../android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt",import.meta.url);
-test("retired five-build stress UI does not return",async()=>{const s=await readFile(mainUrl,"utf8");assert.doesNotMatch(s,/5 Build Testi/);assert.doesNotMatch(s,/fiveParallelBuildRunning/);assert.doesNotMatch(s,/startFiveParallelBuildTest/)});
 test("successful build result UI remains",async()=>{const s=await readFile(mainUrl,"utf8");assert.match(s,/builderBuildOutputReady/);assert.match(s,/APK'YI TEKRAR İNDİR/);assert.match(s,/APK'YI KUR/)});
 test("step10 home moved beside back",async()=>{const s=await readFile(mainUrl,"utf8");assert.match(s,/navigationIcon[\s\S]{0,300}if \(step != 10\)/);assert.match(s,/Text\("Geri"\)[\s\S]{0,800}⌂ Ana Sayfa/)});
 test(

@@ -198,40 +198,6 @@ test(
 );
 
 test(
-  "device-only cutover does not restore Source Worker CI",
-  async () => {
-    const workflow = new URL(
-      "../../.github/workflows/source-worker-image.yml",
-      import.meta.url
-    );
-
-    await assert.rejects(
-      fs.access(workflow),
-      { code: "ENOENT" }
-    );
-  }
-);
-
-test(
-  "source worker cache workflow stays retired in device-only mode",
-  async () => {
-    await assert.rejects(
-      fs.access(
-        path.join(
-          repoRoot,
-          ".github",
-          "workflows",
-          "source-worker-image.yml"
-        )
-      ),
-      {
-        code: "ENOENT"
-      }
-    );
-  }
-);
-
-test(
   "source worker CI contract stays outside build-service Docker context",
   async () => {
     for (

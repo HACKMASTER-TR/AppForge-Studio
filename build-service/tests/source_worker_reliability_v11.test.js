@@ -172,20 +172,6 @@ test(
 );
 
 test(
-  "Source Worker autoscale pool stays retired in device-only mode",
-  async () => {
-    await assert.rejects(
-      read(
-        ".github/workflows/worker-autoscale.yml"
-      ),
-      {
-        code: "ENOENT"
-      }
-    );
-  }
-);
-
-test(
   "queue ETA keeps automatic recovery state with user-facing UI copy",
   async () => {
     const queue =

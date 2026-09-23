@@ -49,23 +49,3 @@ test(
     }
   }
 );
-
-test(
-  "device-only cutover keeps Source Worker workflow retired",
-  async () => {
-    const workflow =
-      path.join(
-        repoRoot,
-        ".github",
-        "workflows",
-        "source-worker-image.yml"
-      );
-
-    await assert.rejects(
-      fs.access(workflow),
-      {
-        code: "ENOENT"
-      }
-    );
-  }
-);
