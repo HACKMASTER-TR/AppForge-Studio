@@ -15,6 +15,9 @@ const json = read(
 const route = read(
   "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt"
 );
+const recovery = read(
+  "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintRecovery.kt"
+);
 
 test("selected platform can safely fill only a missing Blueprint platform", () => {
   assert.match(
@@ -31,15 +34,12 @@ test("selected platform can safely fill only a missing Blueprint platform", () =
   );
 });
 
-test("Unified Agent passes the selected platform into strict parsing", () => {
-  assert.match(
-    route,
-    /fallbackPlatform\s*=\s*state\.platform/
-  );
-  assert.match(
-    route,
-    /require\(blueprint\.platform == state\.platform\)/
-  );
+test("Unified Agent passes the selected platform through strict recovery parsing", () => {
+  assert.match(route, /AppForgeAgentBlueprintRecovery\.generate\(/);
+  assert.match(route, /platform\s*=\s*state\.platform/);
+  assert.match(recovery, /AppForgeAgentBlueprintJson\.parse\(/);
+  assert.match(recovery, /fallbackPlatform\s*=\s*platform/);
+  assert.match(recovery, /require\(parsed\.platform == platform\)/);
 });
 
 test("strict schema and unknown-field validation remain enabled", () => {

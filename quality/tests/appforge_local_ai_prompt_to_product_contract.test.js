@@ -53,3 +53,17 @@ test("product UI explicitly accepts application or game prompts", () => {
   assert.match(screen, /AI ile Uygulama \/ Oyun Oluştur/);
   assert.match(screen, /uygulamayı veya oyunu normal dille anlat/);
 });
+
+test("invalid LiteRT-LM Blueprint retries once with strict schema and labels game template", () => {
+  const recovery = read(
+    "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintRecovery.kt"
+  );
+  assert.match(route, /AppForgeAgentBlueprintRecovery\.generate\(/);
+  assert.match(recovery, /catch \(_: AppForgeAgentBlueprintJsonException\)/);
+  assert.match(recovery, /catch \(invalid: AppForgeAgentBlueprintJsonException\)/);
+  assert.match(recovery, /screens MUTLAKA dizi olmalı/);
+  assert.match(recovery, /VERIFIED_WEB_GAME_TEMPLATE/);
+  assert.match(recovery, /platform == AppForgeAgentPlatform\.WEB && explicitGameRequest/);
+  assert.match(recovery, /AI özel tasarımı değildir/);
+  assert.doesNotMatch(recovery, /catch \(_: Throwable\)/);
+});

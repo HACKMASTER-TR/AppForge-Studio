@@ -19,11 +19,13 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentStudioOrchestrator.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentAutonomousPipeline.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentPromptProductClassifier.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintRecovery.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentArtifactClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentSessionStore.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelStore.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/LocalAiModelDownloader.kt"
   - "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentPromptToProductV1Test.kt"
+  - "android-app/app/src/test/java/com/appforge/studio/ai/AppForgeAgentBlueprintRecoveryTest.kt"
   - "quality/tests/appforge_local_ai_prompt_to_product_contract.test.js"
 ---
 
@@ -54,3 +56,15 @@ remote AppForge Worker.
 This V1 is a bounded deterministic game renderer, not arbitrary unrestricted
 AI code execution. Broader prompt-driven application behavior and additional
 game genres require separate source/test/device acceptance.
+
+## Bounded local Blueprint recovery
+
+If LiteRT-LM returns an invalid structured Blueprint, the strict schema parser
+remains authoritative. One compact local inference retry is allowed; model
+execution errors and platform mismatches do not trigger a template fallback.
+If both JSON responses fail validation, only an explicit WEB game prompt may
+open a validated deterministic game Blueprint. The UI labels this as a ready
+web-game template, not a model-designed game. Ordinary application prompts
+remain blocked rather than silently receiving generic screens. The original
+user prompt is retained for generation and classification. Device acceptance
+is required to verify inference and gameplay; tests alone do not establish it.

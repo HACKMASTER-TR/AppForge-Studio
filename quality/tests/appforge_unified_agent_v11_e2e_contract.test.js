@@ -18,6 +18,9 @@ const home = read(
 const route = read(
   "android-app/app/src/main/java/com/appforge/studio/UnifiedAgentStudioRoute.kt"
 );
+const blueprintRecovery = read(
+  "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentBlueprintRecovery.kt"
+);
 const studioScreen = read(
   "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeUnifiedAgentStudioScreen.kt"
 );
@@ -61,7 +64,9 @@ test(
 
 test("V11 route connects local AI blueprint generation and autonomous orchestrator", () => {
   assert.match(route, /generateStructuredJson\(/);
-  assert.match(route, /AppForgeAgentBlueprintJson\.parse\(/);
+  assert.match(route, /AppForgeAgentBlueprintRecovery\.generate\(/);
+  assert.match(blueprintRecovery, /AppForgeAgentBlueprintJson\.parse\(/);
+  assert.match(blueprintRecovery, /fallbackPlatform\s*=\s*platform/);
   assert.match(route, /AppForgeAgentStudioOrchestrator\(/);
   assert.match(route, /AppForgeAgentLocalPatchProvider\(/);
 });
