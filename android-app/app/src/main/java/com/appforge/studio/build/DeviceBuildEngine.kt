@@ -696,6 +696,7 @@ object DeviceBuildEngine {
             parentFile?.mkdirs()
             writeText(webManifest(draft))
         }
+        DeviceProjectIcon.install(context, draft, project)
         writeSdkFiles(project)
 
         state.logs.add("🤖 Android paketi cihazda oluşturuluyor.")
@@ -714,6 +715,7 @@ object DeviceBuildEngine {
         require(File(project, "settings.gradle").isFile || File(project, "settings.gradle.kts").isFile) {
             "Android Gradle settings.gradle(.kts) bulunamadı."
         }
+        DeviceProjectIcon.install(context, draft, project)
         writeSdkFiles(project)
         val gradleVersion = detectGradleVersion(project)
         state.logs.add("🤖 Native Android proje • Gradle $gradleVersion")
@@ -774,6 +776,7 @@ object DeviceBuildEngine {
                 "android:label=\"${xml(draft.appName)}\""
             )
         )
+        DeviceProjectIcon.install(context, draft, project)
         writeSdkFiles(project)
 
         state.logs.add("🐍 Python / Chaquopy cihaz derlemesi hazırlanıyor.")

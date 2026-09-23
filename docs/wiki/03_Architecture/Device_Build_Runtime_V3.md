@@ -427,3 +427,16 @@ only from a successful session's exact `local-...` ID, explicit advertised
 output kind, canonical build directory and matching build number. The saved
 artifact remains in private app files and is copied to public Downloads only
 when explicitly requested. Never scan arbitrary project names or owner vaults.
+
+## Selected app icon embedding (device build)
+
+User-selected prepared PNG is embedded into the disposable Web/Node,
+Python or native Android project's drawable resources and manifests before
+Gradle executes; the original imported project stays unchanged. The selected
+PNG must not silently fall back to a default icon. For normal Windows Portable
+EXE packaging only, the verified host is first copied to the per-project
+`.part` file. Existing RT_ICON and RT_GROUP_ICON slots in that copy are updated
+without moving the PE sections, changing the host cache or shifting the large
+NSIS overlay and AppForge footer. Missing/undersized slots fail closed rather
+than advertising an EXE with the wrong icon. CI compilation, physical Android
+icon acceptance and Windows Explorer/file launch acceptance remain separate.

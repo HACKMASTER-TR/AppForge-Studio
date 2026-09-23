@@ -150,3 +150,9 @@ under `quality/tests`. Existing historical bug records are retained.
   an unexpired encrypted candidate may be revalidated with HTTPS admin status;
   network failure must not grant access or erase valid encrypted candidate.
   Expired credentials require an explicit fresh Google sign-in.
+
+- Selected icon not embedded in device-local outputs — prepared icon URI was
+  persisted but not injected into generated Android resources/manifest or
+  project-specific Windows PE icons. New source integration fails closed for
+  selected icons; no generic Host mutation. Physical APK launcher and Windows
+  Explorer/portable launch acceptance remain pending.

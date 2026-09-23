@@ -311,6 +311,13 @@ internal object WindowsPortableExePackager {
                 require(part.length() == WindowsPortableHostStore.HOST_BYTES) {
                     "Windows Host kopyası beklenen boyutta değil."
                 }
+                if (!draft.iconUri.isNullOrBlank()) {
+                    onProgress("Windows EXE • uygulama simgesi gömülüyor...")
+                    val icons = WindowsPeIconPatcher.install(appContext, draft.iconUri!!, part)
+                    require(icons > 0 && part.length() == WindowsPortableHostStore.HOST_BYTES) {
+                        "Windows EXE özel ikonu doğrulanamadı."
+                    }
+                }
 
                 onProgress("Windows EXE • gerçek proje payload'ı ekleniyor...")
                 appendPayload(part, manifestBytes, projectZip, payloadLength)
