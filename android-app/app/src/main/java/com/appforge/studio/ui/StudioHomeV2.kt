@@ -223,12 +223,6 @@ fun StudioHomeV2(
                     onExportAllAndroidProjects
                 )
             }
-            item {
-                ModernProCard(
-                    proUnlocked = proUnlocked,
-                    onClick = onOpenPro
-                )
-            }
         }
     }
 }

@@ -28,6 +28,9 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/io/AppIconProcessor.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceProjectIcon.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPeIconPatcher.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerArtifactReferenceStore.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerFilesPanel.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt"
@@ -453,3 +456,19 @@ fails closed if the selected artwork cannot be embedded; the pinned Host
 and its NSIS overlay/footer are not resized or rewritten. Windows Explorer
 icon appearance AND actual Windows executable startup still require physical
 acceptance. Device CI alone is not acceptance.
+
+## Shared selected-icon master (real-device visual follow-up)
+
+Selecting a NEW icon prepares one 1024 px square master under prepared-icons.
+The entire source graphic is contained at full available width without
+resizing its aspect ratio or synthesizing a coloured frame. For opaque wide
+images, the uncovered square bars match the source corner background rather
+than the unrelated primary UI colour; transparent sources keep the explicitly
+selected background. The same saved iconUri is consumed by APK/AAB and the
+project-copy Windows PE icon patcher. Pre-existing prepared-icons PNG files
+are not silently rewritten; reselect the ORIGINAL source when validating.
+
+A landscape design cannot simultaneously occupy the complete square AND
+remain uncropped/undistorted. Real Android launcher and Windows Explorer
+large/small-icon screenshots, plus Windows EXE execution, are separate
+acceptance gates. The verified generic Windows Host is immutable.

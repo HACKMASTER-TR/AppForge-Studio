@@ -164,3 +164,12 @@ under `quality/tests`. Existing historical bug records are retained.
   RT_ICON slot capacities. Android content sizing and project-copy bounded
   PE PNG encoding are corrected in source. Physical APK icon and Windows
   Explorer/launch re-acceptance remain open; never count contract tests alone.
+
+- Custom-icon visual size after source-level green tests — physical Android
+  and Windows screenshots showed the old 960/1024 inset plus a cyan/white
+  frame around a wide logo. Source-only contract PASS does not establish
+  visual acceptance. The selected opaque image now creates a full-width
+  aspect-preserving square master with background sampled from its own
+  corners. Previously prepared icon files stay unchanged; reselect the
+  original artwork for device acceptance. Never claim that a wide design
+  can fill a square without crop or distortion. Windows host remains pinned.

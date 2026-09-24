@@ -32,10 +32,11 @@ test("Windows icon changes only a verified Host copy, before signed payload foot
 });
 
 
-test("prepared Android launcher icon uses the actual graphic instead of the old 640px inset", () => {
+test("prepared icon master preserves the full graphic and matches the source backplate", () => {
   const processor = read("android-app/app/src/main/java/com/appforge/studio/io/AppIconProcessor.kt");
   assert.match(processor, /OUTPUT_SIZE = 1024/);
-  assert.match(processor, /SAFE_CONTENT_SIZE = 960/);
+  assert.match(processor, /SAFE_CONTENT_SIZE = OUTPUT_SIZE/);
+  assert.match(processor, /masterBackgroundColor\(decoded, backgroundColor\)/);
   assert.doesNotMatch(processor, /SAFE_CONTENT_SIZE = 640/);
 });
 
