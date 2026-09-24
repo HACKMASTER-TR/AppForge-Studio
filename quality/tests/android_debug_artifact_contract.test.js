@@ -38,3 +38,8 @@ test("latest GitHub Release remains main-only", () => {
     /Publish latest APK release[\s\S]*github\.ref == 'refs\/heads\/main'/
   );
 });
+
+test("main push cannot publish a Release without explicit approval", () => {
+  assert.match(workflow, /publish_latest_release:/);
+  assert.match(workflow, /github\.event_name == 'workflow_dispatch' && inputs\.publish_latest_release == true/);
+});
