@@ -27,6 +27,7 @@ source_files:
 
 ## Current Focus
 
+- node-web React/Vite offline APK runtime acceptance.
 - Pro staging; remote Build Service retired.
 - Finish Clean Device Build Runtime V3 and real Android APK/AAB validation.
 - Keep Terminal Linux separate from project-build Linux.
@@ -38,9 +39,12 @@ source_files:
 - Normal project builds are device-local and use a disposable build rootfs.
 - Railway, Render and Supabase are not AppForge project-build infrastructure.
 - GitHub is repository/CI infrastructure; Google Play/Cloud are distribution and billing infrastructure.
-- Windows generic-host CI, Android device packaging, physical Windows 11 smoke execution, normal Studio web-project EXE generation, Windows execution, and JavaScript runtime acceptance all passed. The offline pack may report Windows Portable EXE ready when the pinned host is installed.
+- Windows host CI, Android packaging, Windows 11 smoke, Studio web-project EXE and JavaScript runtime passed. Offline EXE readiness requires the pinned host.
 
 ## Recent Important Changes
+
+- PR #55 merged to main at 15c608f18a3bc9fd50620d561e6b4049b4dd8b8f; main Stability and Android Debug CI passed.
+- React/Vite APK bundled JS/CSS but displayed a blank WebView. node-web local HTTPS loading awaits CI and physical-device acceptance.
 
 - D1 staging schema 0002–0005 was applied manually and validated; `d1_migrations` is absent, so do not run migration apply until ledger reconciliation.
 - Existing DB binding and Google configuration are preserved.
@@ -53,11 +57,11 @@ source_files:
 - Root cause is the reactivation response path trusting exact D1 `meta.changes` values after a trigger-backed batch.
 - Current source fix keeps the atomic `receiptGuard` and post-verifies the committed activation code, active grant and redemption receipt.
 - The corrected staging Worker was deployed; same-device direct reactivation, restart verification, offline fail-closed and online recovery passed.
-- An isolated APK passed controlled interruption, ownership recovery and post-recovery restart checks. Live staging challenge replay passed: reused signed status challenge returned HTTP 409 and fresh verification passed. A second physical Android device passed initial activation and automatic verification after restart. An isolated `.prodeath` debug APK passed the device-observed process-termination, fail-closed restart, unchanged-key recovery, fresh HTTPS verification and subsequent automatic-verification sequence. Independent PID/log evidence was not collected; unrelated crash scenarios remain untested.
+- Isolated APK: interruption, ownership recovery and restart passed. Live challenge replay returned 409; fresh verification passed. Second Android device activated and auto-verified after restart. Isolated `.prodeath` APK: observed process termination, fail-closed restart, unchanged-key recovery, fresh HTTPS verification and auto-verification passed. Independent PID/log evidence absent; unrelated crashes untested.
 
 ## Current Risks / Open Questions
 
-- Physical-device AAB generation succeeded, but the first public-save acceptance exposed a local `file://` ticket being sent to Android `DownloadManager`, which only accepts HTTP/HTTPS. Source now routes AAB through the same MediaStore/SAF streaming path used for local artifacts; physical save re-acceptance is pending.
+- Device AAB generated; public save failed because `DownloadManager` rejects local `file://` tickets. Source now streams local AAB through MediaStore/SAF; physical save re-acceptance pending.
 - Never touch `main`, Play Production, `appforge-failover` or migrations during this staging sequence.
 - A signed device challenge authenticates the installation; HTTPS status has no separate application-level response signature.
 - Open-app revocation refresh is best-effort; protected server routes must enforce active grants independently.

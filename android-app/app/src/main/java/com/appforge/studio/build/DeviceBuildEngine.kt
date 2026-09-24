@@ -605,7 +605,8 @@ object DeviceBuildEngine {
                 rootfs,
                 shell,
                 state,
-                site
+                site,
+                nodeWebAssets = true
             )
         }
 
@@ -642,7 +643,8 @@ object DeviceBuildEngine {
         rootfs: File,
         shell: LinuxShellEngine,
         state: JobState,
-        siteRoot: File?
+        siteRoot: File?,
+        nodeWebAssets: Boolean = false
     ) {
         val project = File(workspace, "android-wrapper")
         project.deleteRecursively()
@@ -650,6 +652,7 @@ object DeviceBuildEngine {
         val javaDir = File(project, "app/src/main/java/com/appforge/runtime").apply { mkdirs() }
         val assetsDir = File(project, "app/src/main/assets").apply { mkdirs() }
         File(workspace, "runtime/FastActivity.java").copyTo(File(javaDir, "FastActivity.java"), overwrite = true)
+        File(workspace, "runtime/AppForgeLocalAssets.java").copyTo(File(javaDir, "AppForgeLocalAssets.java"), overwrite = true)
 
         val site = File(assetsDir, "site").apply { mkdirs() }
         if (draft.sourceMode == SourceMode.LOCAL) {
@@ -663,6 +666,7 @@ object DeviceBuildEngine {
 
         val config = JSONObject()
             .put("sourceMode", draft.sourceMode.name)
+            .put("assetHttpsEnabled", nodeWebAssets && draft.sourceMode == SourceMode.LOCAL)
             .put("webUrl", draft.webUrl)
             .put("appName", draft.appName)
             .put("splashEnabled", draft.splashEnabled)

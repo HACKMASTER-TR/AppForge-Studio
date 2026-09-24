@@ -28,6 +28,9 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+  - "android-app/app/src/main/assets/device-build/FastActivity.java"
+  - "android-app/app/src/main/assets/device-build/AppForgeLocalAssets.java"
+  - "quality/tests/node_web_https_assets_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/io/AppIconProcessor.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceProjectIcon.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPeIconPatcher.kt"
@@ -472,3 +475,25 @@ A landscape design cannot simultaneously occupy the complete square AND
 remain uncropped/undistorted. Real Android launcher and Windows Explorer
 large/small-icon screenshots, plus Windows EXE execution, are separate
 acceptance gates. The verified generic Windows Host is immutable.
+
+## node-web local HTTPS module loading (2026-09-24)
+
+A physical React/Vite APK packaged its JS and CSS correctly
+but displayed a blank WebView when loaded from file://.
+
+The node-web Android wrapper now opts in to framework-only,
+offline, same-origin HTTPS asset interception through
+appassets.androidplatform.net/assets/site/.
+
+Explicit MIME types and path traversal rejection are enforced.
+webview-static keeps its original file loading path.
+
+Native bridge and geolocation trust recognize the exact local
+origin when this node-web flag is enabled.
+
+No new AndroidX dependency or Windows Host revision is added.
+
+The earlier npm ENOENT remains a separate intermittent issue.
+No npm cache is purged by this patch.
+
+Static tests, CI and physical APK/AAB re-acceptance are required.
