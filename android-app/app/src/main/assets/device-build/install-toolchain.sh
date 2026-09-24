@@ -3,19 +3,120 @@ set -eu
 
 ROOT="/opt/appforge-device"
 SDK="$ROOT/android-sdk"
-READY="$ROOT/.ready-v4"
+READY="$ROOT/.ready-v5"
 JAVA_HOME="$ROOT/jdk-17"
 ENGINE="${1:-webview-static}"
+OFFLINE="${APPFORGE_DEVICE_OFFLINE:-0}"
+SDK_LICENSE_ACCEPTED="${APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED:-0}"
+SDK_LICENSE_MARKER="$ROOT/.android-sdk-license-20260428"
+
+CMDLINE_TOOLS_VERSION="15859902"
+CMDLINE_TOOLS_SHA256="4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
+
+mkdir -p "$ROOT"
+
+cat > "$ROOT/ensure-gradle" <<'EOF'
+#!/bin/sh
+set -eu
+
+version="${1:?Gradle version required}"
+root="/opt/appforge-device"
+dest="$root/gradle-$version"
+
+if [ -x "$dest/bin/gradle" ]; then
+  printf '%s\n' "$dest/bin/gradle"
+  exit 0
+fi
+
+zip="$root/cache/gradle-$version-bin.zip"
+sha="$root/cache/gradle-$version-bin.zip.sha256"
+
+mkdir -p "$root/cache"
+
+valid_cache=0
+
+if [ -s "$zip" ] && [ -s "$sha" ]; then
+  expected="$(tr -d '[:space:]' < "$sha")"
+
+  if printf '%s  %s\n' "$expected" "$zip" |
+       sha256sum -c - >/dev/null 2>&1; then
+    valid_cache=1
+  fi
+fi
+
+if [ "$valid_cache" -ne 1 ]; then
+
+  if [ "${APPFORGE_DEVICE_OFFLINE:-0}" = "1" ]; then
+    echo "APPFORGE_OFFLINE_GRADLE_MISSING: Gradle $version" >&2
+    echo "Gerekli Gradle sürümü yerel önbellekte bulunamadı." >&2
+    exit 42
+  fi
+
+  tmpzip="$zip.part.$$"
+  tmpsha="$sha.part.$$"
+
+  trap 'rm -f "$tmpzip" "$tmpsha"' 0
+
+  curl -fL --retry 4 \
+    "https://services.gradle.org/distributions/gradle-$version-bin.zip" \
+    -o "$tmpzip"
+
+  curl -fL --retry 4 \
+    "https://services.gradle.org/distributions/gradle-$version-bin.zip.sha256" \
+    -o "$tmpsha"
+
+  expected="$(tr -d '[:space:]' < "$tmpsha")"
+
+  printf '%s  %s\n' "$expected" "$tmpzip" |
+    sha256sum -c -
+
+  mv "$tmpzip" "$zip"
+  mv "$tmpsha" "$sha"
+
+  trap - 0
+fi
+
+unzip -q "$zip" -d "$root"
+
+test -x "$dest/bin/gradle"
+
+printf '%s\n' "$dest/bin/gradle"
+EOF
+
+chmod 0755 "$ROOT/ensure-gradle"
 
 if [ -f "$READY" ] \
+   && [ -f "$SDK_LICENSE_MARKER" ] \
    && [ -x "$SDK/build-tools/36.0.0/aapt2" ] \
-   && [ -f "$SDK/platforms/android-37/android.jar" ] \
+   && [ -f "$SDK/platforms/android-37.0/android.jar" ] \
    && [ -x "$ROOT/gradle-9.3.1/bin/gradle" ] \
    && [ -x "$JAVA_HOME/bin/java" ] \
    && [ -x "$JAVA_HOME/bin/javac" ] \
+   && { [ "$ENGINE" != "node-web" ] || {
+        command -v node >/dev/null 2>&1 &&
+        command -v npm >/dev/null 2>&1;
+      }; } \
+   && { [ "$ENGINE" != "python-android" ] || {
+        [ -x /usr/bin/python3.12 ] &&
+        /usr/bin/python3.12 -c 'import sys; assert sys.version_info[:2] == (3, 12)' &&
+        python3 -m pip --version >/dev/null 2>&1;
+      }; } \
    && "$SDK/build-tools/36.0.0/aapt2" version >/dev/null 2>&1; then
   echo "APPFORGE_DEVICE_TOOLCHAIN_READY"
   exit 0
+fi
+
+if [ "$OFFLINE" = "1" ]; then
+  echo "APPFORGE_OFFLINE_TOOLCHAIN_MISSING: Yerel Android araçları eksik veya hazır değil." >&2
+  echo "İnternetsiz derleme için doğrulanmış SDK/JDK/Gradle ve ilgili dil araçları önceden hazırlanmalı." >&2
+  exit 42
+fi
+
+if [ ! -f "$SDK_LICENSE_MARKER" ] &&
+   [ "$SDK_LICENSE_ACCEPTED" != "1" ]; then
+  echo "APPFORGE_ANDROID_SDK_LICENSE_REQUIRED" >&2
+  echo "Android SDK kurulumu için lisans koşulları uygulama içinden açıkça kabul edilmeli." >&2
+  exit 43
 fi
 
 export DEBIAN_FRONTEND=noninteractive
@@ -122,7 +223,13 @@ case "$ENGINE" in
     apt-get install -y --no-install-recommends nodejs npm
     ;;
   python-android)
-    apt-get install -y --no-install-recommends python3 python3-pip python3-venv
+    apt-get install -y --no-install-recommends       python3       python3-pip       python3-venv
+
+    test -x /usr/bin/python3.12
+
+    /usr/bin/python3.12 -c       'import sys; assert sys.version_info[:2] == (3, 12)'
+
+    echo "APPFORGE_PYTHON_BUILD_RUNTIME=3.12"
     ;;
 esac
 
@@ -202,23 +309,103 @@ ensure_gradle() {
   test -x "$dest/bin/gradle"
 }
 
+
+ensure_android_commandline_tools() {
+  sdkmanager="$SDK/cmdline-tools/latest/bin/sdkmanager"
+
+  if [ -x "$sdkmanager" ]; then
+    return 0
+  fi
+
+  archive="$ROOT/cache/commandlinetools-linux-${CMDLINE_TOOLS_VERSION}_latest.zip"
+
+  repo_base="$(
+    printf '%s%s' \
+      'https:' \
+      '//dl.google.com/android/repository'
+  )"
+
+  download_sha256 \
+    "$repo_base/commandlinetools-linux-${CMDLINE_TOOLS_VERSION}_latest.zip" \
+    "$CMDLINE_TOOLS_SHA256" \
+    "$archive"
+
+  rm -rf \
+    "$ROOT/cmdline-tools-unpack" \
+    "$SDK/cmdline-tools/latest"
+
+  mkdir -p \
+    "$ROOT/cmdline-tools-unpack" \
+    "$SDK/cmdline-tools/latest"
+
+  unzip -q \
+    "$archive" \
+    -d "$ROOT/cmdline-tools-unpack"
+
+  source_dir="$ROOT/cmdline-tools-unpack/cmdline-tools"
+
+  test -x \
+    "$source_dir/bin/sdkmanager"
+
+  cp -a \
+    "$source_dir"/. \
+    "$SDK/cmdline-tools/latest/"
+
+  test -x \
+    "$sdkmanager"
+
+  echo "APPFORGE_ANDROID_CMDLINE_TOOLS_READY"
+}
+
+accept_android_sdk_license() {
+  if [ -f "$SDK_LICENSE_MARKER" ]; then
+    echo "APPFORGE_ANDROID_SDK_LICENSE_ALREADY_ACCEPTED"
+    return 0
+  fi
+
+  if [ "$SDK_LICENSE_ACCEPTED" != "1" ]; then
+    echo "APPFORGE_ANDROID_SDK_LICENSE_REQUIRED" >&2
+    exit 43
+  fi
+
+  ensure_android_commandline_tools
+
+  echo "APPFORGE_ANDROID_SDK_LICENSE_ACCEPT_START"
+
+  yes |
+    "$SDK/cmdline-tools/latest/bin/sdkmanager" \
+      --sdk_root="$SDK" \
+      "platforms;android-37.0"
+
+  test -s \
+    "$SDK/licenses/android-sdk-license" || {
+      echo "APPFORGE_ANDROID_SDK_LICENSE_FILE_MISSING" >&2
+      exit 44
+    }
+
+  touch \
+    "$SDK_LICENSE_MARKER"
+
+  echo "APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED"
+}
+
 PLATFORM_ZIP="$ROOT/cache/platform-37.0_r02.zip"
 download_sha1 \
   "https://dl.google.com/android/repository/platform-37.0_r02.zip" \
   "ed8ebf7f8822a4de5686d427f237d2fa30ff7410" \
   "$PLATFORM_ZIP"
 
-rm -rf "$ROOT/platform-unpack" "$SDK/platforms/android-37"
-mkdir -p "$ROOT/platform-unpack" "$SDK/platforms/android-37"
+rm -rf "$ROOT/platform-unpack" "$SDK/platforms/android-37.0"
+mkdir -p "$ROOT/platform-unpack" "$SDK/platforms/android-37.0"
 unzip -q "$PLATFORM_ZIP" -d "$ROOT/platform-unpack"
 PLATFORM_JAR="$(find "$ROOT/platform-unpack" -type f -name android.jar | head -n 1)"
 test -n "$PLATFORM_JAR"
 PLATFORM_DIR="$(dirname "$PLATFORM_JAR")"
-cp -a "$PLATFORM_DIR"/. "$SDK/platforms/android-37/"
-test -f "$SDK/platforms/android-37/android.jar"
+cp -a "$PLATFORM_DIR"/. "$SDK/platforms/android-37.0/"
+test -f "$SDK/platforms/android-37.0/android.jar"
 
-if [ ! -f "$SDK/platforms/android-37/source.properties" ]; then
-  cat > "$SDK/platforms/android-37/source.properties" <<'EOF'
+if [ ! -f "$SDK/platforms/android-37.0/source.properties" ]; then
+  cat > "$SDK/platforms/android-37.0/source.properties" <<'EOF'
 Pkg.Desc=Android SDK Platform 37
 Pkg.Revision=2
 AndroidVersion.ApiLevel=37
@@ -322,27 +509,21 @@ ensure_jdk
 export JAVA_HOME
 export PATH="$JAVA_HOME/bin:$PATH"
 
+accept_android_sdk_license
+
+# SDK Manager may repair/create package metadata for API 37.0.
+# Re-overlay the already SHA1-pinned r02 platform payload without
+# deleting package.xml so the actual platform files remain pinned.
+if [ -n "${PLATFORM_DIR:-}" ] &&
+   [ -d "$PLATFORM_DIR" ]; then
+  cp -a     "$PLATFORM_DIR"/.     "$SDK/platforms/android-37.0/"
+fi
+
+test -f   "$SDK/platforms/android-37.0/android.jar"
+
 ensure_gradle "9.3.1"
 ensure_gradle "8.14.3"
 
-cat > "$ROOT/ensure-gradle" <<'EOF'
-#!/bin/sh
-set -eu
-version="${1:?Gradle version required}"
-root="/opt/appforge-device"
-dest="$root/gradle-$version"
-if [ -x "$dest/bin/gradle" ]; then printf '%s\n' "$dest/bin/gradle"; exit 0; fi
-zip="$root/cache/gradle-$version-bin.zip"
-sha="$root/cache/gradle-$version-bin.zip.sha256"
-curl -fL --retry 4 "https://services.gradle.org/distributions/gradle-$version-bin.zip" -o "$zip"
-curl -fL --retry 4 "https://services.gradle.org/distributions/gradle-$version-bin.zip.sha256" -o "$sha"
-expected="$(tr -d '[:space:]' < "$sha")"
-echo "$expected  $zip" | sha256sum -c -
-unzip -q -o "$zip" -d "$root"
-test -x "$dest/bin/gradle"
-printf '%s\n' "$dest/bin/gradle"
-EOF
-chmod 0755 "$ROOT/ensure-gradle"
 
 echo "APPFORGE_AAPT2_HOST_SMOKE_START"
 
@@ -350,7 +531,7 @@ echo "APPFORGE_AAPT2_HOST_SMOKE_START"
 
 echo "APPFORGE_AAPT2_PLATFORM_37_SMOKE_START"
 
-"$SDK/build-tools/36.0.0/aapt2"   dump resources   "$SDK/platforms/android-37/android.jar"   >/dev/null
+"$SDK/build-tools/36.0.0/aapt2"   dump resources   "$SDK/platforms/android-37.0/android.jar"   >/dev/null
 
 echo "APPFORGE_AAPT2_PLATFORM_37_SMOKE_PASS"
 
@@ -363,7 +544,11 @@ case "$ENGINE" in
     npm --version
     ;;
   python-android)
-    python3 --version
+    /usr/bin/python3.12 --version
+
+    /usr/bin/python3.12 -c       'import sys; assert sys.version_info[:2] == (3, 12)'
+
+    echo "APPFORGE_PYTHON_BUILD_RUNTIME_VERIFIED=3.12"
     ;;
 esac
 

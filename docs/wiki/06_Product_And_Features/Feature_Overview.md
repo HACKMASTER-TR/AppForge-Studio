@@ -14,7 +14,6 @@ related:
 source_files:
   - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/StudioHomeScreen.kt"
-  - "build-service/src/v5Studio.js"
 ---
 
 # Feature Overview

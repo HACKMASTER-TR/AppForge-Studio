@@ -346,6 +346,26 @@ fun TerminalWorkspaceScreen(
     val context =
         LocalContext.current
 
+    /*
+     * Never compose a workspace without active server-verified owner
+     * access. A timed-out owner gets a recoverable screen, not a crash.
+     */
+    if (!OwnerAccessPolicy.isActiveOwner(context, accountEmail)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("Terminal için yönetici doğrulaması gerekli.")
+            Spacer(Modifier.height(16.dp))
+            Button(onClick = onBack) {
+                Text("Geri dön")
+            }
+        }
+        return
+    }
+
     val scope =
         rememberCoroutineScope()
 

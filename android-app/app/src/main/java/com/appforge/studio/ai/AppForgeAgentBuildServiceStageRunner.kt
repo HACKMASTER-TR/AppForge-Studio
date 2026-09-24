@@ -4,6 +4,7 @@ import android.content.Context
 import com.appforge.studio.build.BuildApiClient
 import com.appforge.studio.build.BuildApiException
 import com.appforge.studio.build.BuildStatusResult
+import com.appforge.studio.build.WindowsPortableHostStore
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
@@ -35,7 +36,7 @@ internal class AppForgeAgentBuildServiceStageRunner(
     private val appContext = context.applicationContext
     private val effectiveBuildServiceUrl =
         buildServiceUrl.trim().ifBlank {
-            "https://api.appforgecloud.com"
+            "device://local"
         }
 
     private val client = BuildApiClient(
@@ -128,7 +129,7 @@ internal class AppForgeAgentBuildServiceStageRunner(
 
             onStatus(
                 null,
-                "BUILD • AppForge Build Service'e güvenli kaynak yükleniyor..."
+                "BUILD • proje cihazda yerel olarak derleniyor..."
             )
 
             val created = retryNetwork {
@@ -245,7 +246,15 @@ internal class AppForgeAgentBuildServiceStageRunner(
             sourceBuildReady = true,
             versionName = "1.0.0",
             versionCode = 1,
-            buildOutput = "both",
+            buildOutput =
+                if (
+                    blueprint.platform == AppForgeAgentPlatform.WEB &&
+                    WindowsPortableHostStore.isInstalled(appContext)
+                ) {
+                    "all"
+                } else {
+                    "both"
+                },
             minSdk = 26,
             targetSdk = 37,
             primaryColor = blueprint.tokens.primary.take(7),
@@ -307,7 +316,7 @@ internal class AppForgeAgentBuildServiceStageRunner(
     ): String =
         buildString {
             appendLine(
-                "AppForge Build Service başarısız • " +
+                "Cihaz build başarısız • " +
                     "buildId=${status.buildId} • status=${status.status}"
             )
 

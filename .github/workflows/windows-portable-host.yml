@@ -1,0 +1,181 @@
+name: AppForge Windows Portable Host
+
+on:
+  push:
+    branches:
+      - feat/windows-portable-host-v1-20260922
+    paths:
+      - ".github/workflows/windows-portable-host.yml"
+      - "windows-host/**"
+      - "quality/tests/windows_portable_host_v1_contract.test.js"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: windows-host/package-lock.json
+
+      - name: Install pinned host dependencies
+        shell: pwsh
+        run: npm ci --prefix windows-host --no-audit --no-fund
+
+      - name: Host payload unit tests
+        shell: pwsh
+        run: npm test --prefix windows-host
+
+      - name: Build generic Windows portable host
+        shell: pwsh
+        run: npm run dist --prefix windows-host
+
+      - name: Locate and verify base host
+        id: host
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem `
+            -Path "windows-host/dist" `
+            -Filter "*.exe" `
+            -File |
+            Select-Object -First 1
+
+          if (-not $exe) {
+            throw "Windows portable host EXE not found."
+          }
+
+          $bytes = [System.IO.File]::ReadAllBytes($exe.FullName)
+
+          if (
+            $bytes.Length -lt 2 -or
+            $bytes[0] -ne 0x4D -or
+            $bytes[1] -ne 0x5A
+          ) {
+            throw "Portable host does not have an MZ header."
+          }
+
+          "path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
+          "name=$($exe.Name)" >> $env:GITHUB_OUTPUT
+
+          Write-Host "BASE_HOST=$($exe.FullName)"
+          Write-Host "BASE_HOST_SIZE=$($exe.Length)"
+
+      - name: Verify appended payload on real portable EXE
+        shell: pwsh
+        run: |
+          $base = "${{ steps.host.outputs.path }}"
+          $smoke = Join-Path $pwd "windows-host/dist/AppForge-Windows-Host-smoke.exe"
+          $result = Join-Path $pwd "windows-host/dist/smoke-result.json"
+
+          Copy-Item `
+            -LiteralPath $base `
+            -Destination $smoke `
+            -Force
+
+          node `
+            windows-host/scripts/append-smoke-payload.cjs `
+            $smoke
+
+          $env:APPFORGE_HOST_SMOKE_FILE = $result
+          $env:APPFORGE_HOST_SMOKE_EXIT = "1"
+
+          $process = Start-Process `
+            -FilePath $smoke `
+            -PassThru
+
+          if (-not $process.WaitForExit(60000)) {
+            $process.Kill()
+            throw "Portable host smoke test timed out."
+          }
+
+          if (-not (Test-Path -LiteralPath $result)) {
+            throw "Portable host did not write smoke result."
+          }
+
+          $data = Get-Content `
+            -LiteralPath $result `
+            -Raw |
+            ConvertFrom-Json
+
+          if ($data.payloadLoaded -ne $true) {
+            throw "Portable host did not load appended payload."
+          }
+
+          if ($data.appId -ne "com.appforge.windows.smoke") {
+            throw "Portable host loaded wrong manifest."
+          }
+
+          if ($data.sourceMode -ne "LOCAL") {
+            throw "Portable host source mode mismatch."
+          }
+
+          if (
+            [string]::IsNullOrWhiteSpace(
+              $data.portableExecutableFile
+            )
+          ) {
+            throw "PORTABLE_EXECUTABLE_FILE was not available."
+          }
+
+          Write-Host "WINDOWS_PORTABLE_PAYLOAD_SMOKE=PASS"
+          Write-Host "PORTABLE_EXECUTABLE_FILE=$($data.portableExecutableFile)"
+
+      - name: Create host manifest
+        shell: pwsh
+        run: |
+          $base = "${{ steps.host.outputs.path }}"
+          $hash = (
+            Get-FileHash `
+              -LiteralPath $base `
+              -Algorithm SHA256
+          ).Hash.ToLowerInvariant()
+
+          $size = (
+            Get-Item `
+              -LiteralPath $base
+          ).Length
+
+          $manifest = @{
+            format = "appforge-windows-host"
+            version = 1
+            architecture = "x64"
+            electron = "43.4.1"
+            electronBuilder = "26.15.3"
+            sha256 = $hash
+            bytes = $size
+            commit = "${{ github.sha }}"
+          }
+
+          $manifest |
+            ConvertTo-Json |
+            Set-Content `
+              -LiteralPath "windows-host/dist/AppForge-Windows-Host-v1.json" `
+              -Encoding UTF8
+
+          Write-Host "WINDOWS_HOST_SHA256=$hash"
+          Write-Host "WINDOWS_HOST_BYTES=$size"
+
+      - name: Upload generic Windows host artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: AppForge-Windows-Host-v1-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            ${{ steps.host.outputs.path }}
+            windows-host/dist/AppForge-Windows-Host-v1.json

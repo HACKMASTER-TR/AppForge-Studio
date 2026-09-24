@@ -48,6 +48,7 @@ object TerminalWorkspaceResolver {
 
         val accountScope =
             accountScope(
+                context,
                 accountEmail
             )
 
@@ -75,6 +76,7 @@ object TerminalWorkspaceResolver {
          */
         if (
             !target.exists() &&
+            accountEmail.isNotBlank() &&
             OwnerAccessPolicy.isActiveOwner(
                 context,
                 accountEmail
@@ -96,6 +98,7 @@ object TerminalWorkspaceResolver {
 
 
     private fun accountScope(
+        context: Context,
         accountEmail: String
     ): String {
         val normalized =
@@ -103,10 +106,19 @@ object TerminalWorkspaceResolver {
                 .trim()
                 .lowercase()
 
-        require(
-            normalized.isNotBlank()
-        ) {
-            "Aktif hesap bulunamadı."
+        /*
+         * Accountless verified-owner mode has its own stable workspace.
+         * Do not route it to a normal user, anonymous shared workspace,
+         * or the old legacy workspace; never bypass server owner proof.
+         */
+        if (normalized.isBlank()) {
+            check(
+                OwnerAccessPolicy.isActiveOwner(context)
+            ) {
+                "Terminal için yönetici doğrulaması gerekli."
+            }
+
+            return "verified-owner-accountless-v1"
         }
 
         val digest =
@@ -199,7 +211,8 @@ data class WorkspaceEntry(
     val relativePath: String,
     val isDirectory: Boolean,
     val sizeBytes: Long,
-    val modifiedAt: Long
+    val modifiedAt: Long,
+    val referenceId: String? = null
 )
 
 
@@ -318,7 +331,9 @@ object WorkspaceFileService {
         directory: File,
         pageIndex: Int,
         pageSize: Int =
-            DEFAULT_PAGE_SIZE
+            DEFAULT_PAGE_SIZE,
+        additionalEntries: List<WorkspaceEntry> =
+            emptyList()
     ): WorkspacePage =
         withContext(
             Dispatchers.IO
@@ -332,16 +347,76 @@ object WorkspaceFileService {
                     directory
                 )
 
-            val children =
+            val physicalEntries =
                 sortedChildren(
                     safeDirectory
-                )
+                ).map { file ->
+                    workspaceEntry(
+                        safeRoot,
+                        file
+                    )
+                }
+
+            val physicalPaths =
+                physicalEntries
+                    .map {
+                        it.file.canonicalPath
+                    }
+                    .toSet()
+
+            val projectedEntries =
+                additionalEntries
+                    .mapNotNull { entry ->
+                        val safeFile =
+                            requireInside(
+                                safeRoot,
+                                entry.file
+                            )
+
+                        require(
+                            safeFile.parentFile ==
+                                safeDirectory &&
+                                !entry.isDirectory &&
+                                !entry.referenceId.isNullOrBlank()
+                        ) {
+                            "Geçersiz sanal dosya referansı."
+                        }
+
+                        if (
+                            safeFile.canonicalPath in
+                                physicalPaths
+                        ) {
+                            null
+                        } else {
+                            entry.copy(
+                                file = safeFile,
+                                relativePath =
+                                    safeFile
+                                        .relativeTo(
+                                            safeRoot
+                                        )
+                                        .invariantSeparatorsPath
+                            )
+                        }
+                    }
+
+            val entries =
+                (
+                    physicalEntries +
+                        projectedEntries
+                    ).sortedWith(
+                        compareBy<WorkspaceEntry> {
+                            !it.isDirectory
+                        }.thenBy {
+                            it.file.name.lowercase()
+                        }
+                    )
 
             val window =
                 WorkspacePagination
                     .window(
                         totalCount =
-                            children.size,
+                            entries.size,
                         requestedPage =
                             pageIndex,
                         requestedPageSize =
@@ -355,24 +430,17 @@ object WorkspaceFileService {
                 ) {
                     emptyList()
                 } else {
-                    children
-                        .subList(
-                            window.fromIndex,
-                            window.toIndex
-                        )
-                        .map { file ->
-                            workspaceEntry(
-                                safeRoot,
-                                file
-                            )
-                        }
+                    entries.subList(
+                        window.fromIndex,
+                        window.toIndex
+                    )
                 }
 
             WorkspacePage(
                 entries =
                     pageEntries,
                 totalCount =
-                    children.size,
+                    entries.size,
                 pageIndex =
                     window.pageIndex,
                 pageSize =

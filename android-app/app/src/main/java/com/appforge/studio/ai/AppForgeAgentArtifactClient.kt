@@ -1,5 +1,6 @@
 package com.appforge.studio.ai
 
+import android.annotation.TargetApi
 import android.app.DownloadManager
 import android.content.ContentValues
 import android.content.Context
@@ -12,6 +13,11 @@ import java.io.File
 import java.nio.file.Files
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+
+internal data class AppForgeAgentArtifactSaveResult(
+    val downloadId: Long?,
+    val message: String
+)
 
 internal class AppForgeAgentArtifactClient(
     context: Context,
@@ -141,69 +147,129 @@ internal class AppForgeAgentArtifactClient(
         )
     }
 
+    /** Device builds return file:// tickets; Android DownloadManager only accepts HTTPS. */
     fun enqueueDownload(
         buildId: String,
         kind: String
-    ): Long {
-        val safeKind =
-            AppForgeAgentArtifactSafety.safeKind(kind)
-
-        val ticket =
-            client.createDownloadTicket(
-                buildId = buildId,
-                kind = safeKind
-            )
-
+    ): AppForgeAgentArtifactSaveResult {
+        val safeKind = AppForgeAgentArtifactSafety.safeKind(kind)
+        val ticket = client.createDownloadTicket(buildId = buildId, kind = safeKind)
         val uri = Uri.parse(ticket.url)
+        val fileName = AppForgeAgentArtifactSafety.fileName(buildId, safeKind)
 
-        require(
-            uri.scheme.equals(
-                "https",
-                ignoreCase = true
+        if (uri.scheme.equals("file", ignoreCase = true)) {
+            val root = File(appContext.filesDir, "device-build/artifacts").canonicalFile
+            val source = File(uri.path ?: error("Yerel artifact yolu eksik.")).canonicalFile
+            require(source.path.startsWith(root.path + File.separator) &&
+                source.isFile && source.length() > 0L) {
+                "Yerel artifact dosyası doğrulanamadı."
+            }
+
+            val savedPath = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                savePublicArtifact(source, fileName, safeKind)
+            } else {
+                saveLegacyArtifact(source, fileName)
+            }
+            return AppForgeAgentArtifactSaveResult(
+                downloadId = null,
+                message = "${safeKind.uppercase()} kaydedildi: $savedPath"
             )
-        ) {
-            "Artifact download yalnız HTTPS ile yapılabilir."
         }
 
-        val manager =
-            appContext.getSystemService(
-                Context.DOWNLOAD_SERVICE
-            ) as? DownloadManager
-                ?: error(
-                    "Android DownloadManager kullanılamıyor."
-                )
+        require(uri.scheme.equals("https", ignoreCase = true)) {
+            "Artifact download yalnız güvenli HTTPS veya doğrulanmış yerel dosyayla yapılabilir."
+        }
 
-        val request =
-            DownloadManager.Request(uri)
-                .setTitle(
-                    AppForgeAgentArtifactSafety.fileName(
-                        buildId,
-                        safeKind
-                    )
-                )
-                .setDescription(
-                    "AppForge Unified Agent artifact"
-                )
-                .setMimeType(
-                    when (safeKind) {
-                        "apk" ->
-                            "application/vnd.android.package-archive"
+        val manager = appContext.getSystemService(Context.DOWNLOAD_SERVICE)
+            as? DownloadManager ?: error("Android DownloadManager kullanılamıyor.")
+        val request = DownloadManager.Request(uri)
+            .setTitle(fileName)
+            .setDescription("AppForge Unified Agent artifact")
+            .setMimeType(artifactMimeType(safeKind))
+            .setAllowedOverMetered(true)
+            .setAllowedOverRoaming(false)
+            .setNotificationVisibility(
+                DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+            )
+        return AppForgeAgentArtifactSaveResult(
+            downloadId = manager.enqueue(request),
+            message = "${safeKind.uppercase()} indirme kuyruğuna eklendi."
+        )
+    }
 
-                        "exe" ->
-                            "application/vnd.microsoft.portable-executable"
+    @TargetApi(Build.VERSION_CODES.Q)
+    private fun savePublicArtifact(source: File, fileName: String, kind: String): String {
+        val resolver = appContext.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, artifactMimeType(kind))
+            put(
+                MediaStore.MediaColumns.RELATIVE_PATH,
+                "${Environment.DIRECTORY_DOWNLOADS}/AppForgeStudio"
+            )
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+        val target = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: error("AppForgeStudio indirme kaydı oluşturulamadı.")
+        try {
+            val count = resolver.openOutputStream(target, "w")?.use { output ->
+                source.inputStream().use { input -> input.copyTo(output, 1024 * 1024) }
+            } ?: error("Artifact kaydetme çıkışı açılamadı.")
+            require(count == source.length()) { "Kaydedilen artifact boyutu eşleşmiyor." }
+            val storedSize = resolver.openFileDescriptor(target, "r")?.use { it.statSize }
+            require(storedSize == null || storedSize < 0L || storedSize == count) {
+                "İndirilenler'deki artifact eksik kaydedildi."
+            }
+            val published = resolver.update(
+                target,
+                ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) },
+                null,
+                null
+            )
+            require(published > 0) { "Artifact kaydı yayımlanamadı." }
+            val actualName = resolver.query(
+                target,
+                arrayOf(MediaStore.MediaColumns.DISPLAY_NAME),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
+            }?.takeIf { it.isNotBlank() } ?: fileName
+            return "İndirilenler/AppForgeStudio/$actualName"
+        } catch (failure: Throwable) {
+            runCatching { resolver.delete(target, null, null) }
+            throw failure
+        }
+    }
 
-                        else ->
-                            "application/octet-stream"
-                    }
-                )
-                .setAllowedOverMetered(true)
-                .setAllowedOverRoaming(false)
-                .setNotificationVisibility(
-                    DownloadManager.Request
-                        .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-                )
+    /** API 26–28 cannot use MediaStore Downloads; never pretend this is public Downloads. */
+    private fun saveLegacyArtifact(source: File, fileName: String): String {
+        val base = appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            ?: error("Uygulama dosya klasörü kullanılamıyor.")
+        val dir = File(base, "AppForgeStudio")
+        require(dir.isDirectory || dir.mkdirs()) { "Artifact klasörü oluşturulamadı." }
+        val target = File(dir, fileName)
+        val temp = File.createTempFile("appforge-", ".partial", dir)
+        try {
+            val count = source.inputStream().use { input ->
+                temp.outputStream().use { output -> input.copyTo(output, 1024 * 1024) }
+            }
+            require(count == source.length() && temp.length() == count) {
+                "Artifact boyutu eşleşmiyor."
+            }
+            require(!target.exists() || target.delete()) { "Önceki artifact değiştirilemedi." }
+            require(temp.renameTo(target)) { "Artifact kaydı tamamlanamadı." }
+            return target.absolutePath
+        } finally {
+            if (temp.exists()) temp.delete()
+        }
+    }
 
-        return manager.enqueue(request)
+    private fun artifactMimeType(kind: String): String = when (kind) {
+        "apk" -> "application/vnd.android.package-archive"
+        "exe" -> "application/vnd.microsoft.portable-executable"
+        else -> "application/octet-stream"
     }
 
     private companion object {

@@ -4,7 +4,7 @@ internal enum class AppForgeAgentPlatform(val title: String) {
     ANDROID("Android / Jetpack Compose"),
     FLUTTER("Flutter"),
     REACT_NATIVE("React Native"),
-    WEB("Web")
+    WEB("Web / APK + Portable EXE")
 }
 
 internal data class AppForgeAgentDesignTokens(

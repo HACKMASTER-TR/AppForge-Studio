@@ -3,10 +3,16 @@ set -eu
 cd /workspace/source
 [ -f package.json ] || { echo "package.json bulunamadı." >&2; exit 31; }
 
-if [ -f package-lock.json ]; then
-  npm ci --include=dev --ignore-scripts --no-audit --no-fund
+if [ "${APPFORGE_DEVICE_OFFLINE:-0}" = "1" ]; then
+  set -- --offline
 else
-  npm install --include=dev --ignore-scripts --no-audit --no-fund
+  set --
+fi
+
+if [ -f package-lock.json ]; then
+  npm ci "$@" --include=dev --ignore-scripts --no-audit --no-fund
+else
+  npm install "$@" --include=dev --ignore-scripts --no-audit --no-fund
 fi
 
 if grep -Eq '"vite"[[:space:]]*:' package.json; then

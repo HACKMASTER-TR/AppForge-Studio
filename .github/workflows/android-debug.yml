@@ -2,6 +2,27 @@ name: AppForge Android Debug
 
 on:
   workflow_dispatch:
+    inputs:
+      pro_recovery_test:
+        description: "Build isolated Pro recovery test APK"
+        type: boolean
+        required: false
+        default: false
+      pro_second_device:
+        description: "Build isolated normal Pro staging APK for second device"
+        type: boolean
+        required: false
+        default: false
+      pro_process_death_test:
+        description: "Build isolated actual Android process-death test APK"
+        type: boolean
+        required: false
+        default: false
+      publish_latest_release:
+        description: "Explicit approval required; may trigger Play Production"
+        type: boolean
+        required: false
+        default: false
   push:
     branches:
       - main
@@ -97,8 +118,33 @@ jobs:
           APPFORGE_DEBUG_KEY_PASSWORD: ${{ secrets.APPFORGE_DEBUG_STORE_PASSWORD }}
           APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
         run: |
+          EXTRA=()
+
+          if [ "${{ inputs.pro_recovery_test }}" = "true" ] &&
+             [ "${{ inputs.pro_second_device }}" = "true" ]; then
+            echo "STOP: Incompatible Pro test modes"
+            exit 1
+          fi
+
+          if [ "${{ inputs.pro_process_death_test }}" = "true" ]; then
+            if [ "${{ inputs.pro_recovery_test }}" = "true" ] ||
+               [ "${{ inputs.pro_second_device }}" = "true" ]; then
+              echo "STOP: Process-death mode must be isolated"
+              exit 1
+            fi
+          fi
+
+          if [ "${{ inputs.pro_recovery_test }}" = "true" ]; then
+            EXTRA=(-PappforgeProRecoveryTest=true)
+          elif [ "${{ inputs.pro_second_device }}" = "true" ]; then
+            EXTRA=(-PappforgeProSecondDevice=true)
+          elif [ "${{ inputs.pro_process_death_test }}" = "true" ]; then
+            EXTRA=(-PappforgeProProcessDeathTest=true)
+          fi
+
           gradle \
             -p android-app \
+            "${EXTRA[@]}" \
             :app:testDebugUnitTest \
             :app:signingReport \
             :app:assembleDebug \
@@ -157,9 +203,18 @@ jobs:
               "$APK"
           )"
 
+          PACKAGE="com.appforge.studio"
+          if [ "${{ inputs.pro_recovery_test }}" = "true" ]; then
+            PACKAGE="com.appforge.studio.prorecovery"
+          elif [ "${{ inputs.pro_second_device }}" = "true" ]; then
+            PACKAGE="com.appforge.studio.prodevice2"
+          elif [ "${{ inputs.pro_process_death_test }}" = "true" ]; then
+            PACKAGE="com.appforge.studio.prodeath"
+          fi
+
           echo "$BADGING" \
             | grep -F \
-              "package: name='com.appforge.studio'"
+              "package: name='$PACKAGE'"
 
           echo "$BADGING" \
             | grep -F \
@@ -172,6 +227,7 @@ jobs:
           echo "APK metadata + signature verified."
 
       - name: Upload debug APK artifact
+        if: ${{ !inputs.pro_recovery_test && !inputs.pro_second_device && !inputs.pro_process_death_test }}
         uses: actions/upload-artifact@v5
         with:
           name: AppForgeStudio-debug-${{ github.sha }}
@@ -179,8 +235,35 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Upload isolated Pro recovery test APK
+        if: ${{ inputs.pro_recovery_test }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: AppForgeStudio-Pro-Recovery-Test-${{ github.sha }}
+          path: AppForgeStudio-latest.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload isolated second-device APK
+        if: ${{ inputs.pro_second_device && !inputs.pro_recovery_test }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: AppForgeStudio-Pro-Device2-${{ github.sha }}
+          path: AppForgeStudio-latest.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload isolated process-death test APK
+        if: ${{ inputs.pro_process_death_test && !inputs.pro_recovery_test && !inputs.pro_second_device }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: AppForgeStudio-Pro-Process-Death-${{ github.sha }}
+          path: AppForgeStudio-latest.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Publish latest APK release
-        if: github.ref == 'refs/heads/main'
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_latest_release == true && github.ref == 'refs/heads/main' && !inputs.pro_recovery_test && !inputs.pro_second_device && !inputs.pro_process_death_test
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

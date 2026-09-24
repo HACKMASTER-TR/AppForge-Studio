@@ -53,7 +53,6 @@ fun StudioHomeV2(
     val context = LocalContext.current
     val fullAdmin =
         OwnerAccessPolicy.isActiveOwner(context, accountEmail)
-    val loggedIn = !accountEmail.isNullOrBlank()
     val allProjects =
         remember(accountEmail) {
             ProjectLibrary.load(context)
@@ -92,17 +91,6 @@ fun StudioHomeV2(
                 ),
                 title = { HomeTopTitle() },
                 actions = {
-                    if (fullAdmin) {
-                        TextButton(onClick = onOpenAdmin) {
-                            Text("Admin")
-                        }
-                    }
-                    TextButton(onClick = onOpenAccount) {
-                        Text(
-                            if (loggedIn) "Hesap"
-                            else "GİRİŞ YAP"
-                        )
-                    }
                     TextButton(onClick = onOpenSettings) {
                         Text("Ayarlar")
                     }
@@ -147,8 +135,8 @@ fun StudioHomeV2(
                     "Projeyi analiz et ve düzelt.",
                     onOpenAi,
                     "AGENT",
-                    "Unified Agent",
-                    "Geliştirme akışını yönet.",
+                    "AI ile Oluştur",
+                    "Anlatarak uygulama veya oyun oluştur.",
                     onOpenUnifiedAgent
                 )
             }
@@ -156,11 +144,11 @@ fun StudioHomeV2(
                 ModernHomeActionRow(
                     "BUILD",
                     "Derlemeler",
-                    "${builds.size} kayıt • APK / AAB / EXE",
+                    "${builds.size} derleme",
                     { buildFolderOpen.value = true },
                     "CONVERT",
                     "Dönüştür",
-                    "APK ↔ EXE proje dönüşümü.",
+                    "Projeni farklı biçimlere dönüştür.",
                     onCreateConversion
                 )
             }
@@ -175,15 +163,6 @@ fun StudioHomeV2(
                     "Aktif çalışma listesini aç.",
                     onOpenTasks
                 )
-            }
-            if (fullAdmin) {
-                item {
-                    OwnerAdminCard(
-                        terminalTitle = "Terminal",
-                        onClick = onOpenTerminal,
-                        onAdminClick = onOpenAdmin
-                    )
-                }
             }
             item {
                 HomeSectionTitle(
@@ -242,12 +221,6 @@ fun StudioHomeV2(
                     onExportAllProjects,
                     "Android dışa aktar",
                     onExportAllAndroidProjects
-                )
-            }
-            item {
-                ModernProCard(
-                    proUnlocked = proUnlocked,
-                    onClick = onOpenPro
                 )
             }
         }

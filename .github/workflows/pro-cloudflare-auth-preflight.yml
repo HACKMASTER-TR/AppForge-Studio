@@ -1,0 +1,52 @@
+name: AppForge Pro Cloudflare Auth Preflight
+
+on:
+  push:
+    branches:
+      - feat/cloudflare-control-plane-v1-20260919
+    paths:
+      - .github/workflows/pro-cloudflare-auth-preflight.yml
+      - .github/scripts/pro_cloudflare_auth_preflight.py
+
+permissions:
+  contents: read
+
+jobs:
+  staging-auth-preflight:
+    name: Cloudflare Staging Read-Only Preflight
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/cloudflare-control-plane-v1-20260919'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout feature source
+        uses: actions/checkout@v7
+
+      - name: Verify exact branch and source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test "$GITHUB_REF" = \
+            "refs/heads/feat/cloudflare-control-plane-v1-20260919"
+
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+          test -f \
+            .github/scripts/pro_cloudflare_auth_preflight.py
+
+          echo "FEATURE_SOURCE=PASS"
+
+      - name: Verify Cloudflare staging read-only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+
+          python3 \
+            .github/scripts/pro_cloudflare_auth_preflight.py

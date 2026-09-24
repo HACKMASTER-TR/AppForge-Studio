@@ -1,0 +1,159 @@
+name: AppForge Pro Cloudflare Worker Dry Run
+
+on:
+  push:
+    branches:
+      - feat/cloudflare-control-plane-v1-20260919
+    paths:
+      - .github/workflows/pro-cloudflare-dry-run.yml
+      - cloudflare/control-plane/src/**
+      - cloudflare/control-plane/wrangler.example.toml
+
+permissions:
+  contents: read
+
+jobs:
+  worker-dry-run:
+    name: Staging Worker Bundle Dry Run
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/cloudflare-control-plane-v1-20260919'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout feature source
+        uses: actions/checkout@v7
+
+      - name: Verify exact feature branch
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test "$GITHUB_REF" = \
+            "refs/heads/feat/cloudflare-control-plane-v1-20260919"
+
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+          test -f cloudflare/control-plane/src/index.mjs
+          test -f cloudflare/control-plane/src/pro_redemption.mjs
+
+          echo "FEATURE_SOURCE=PASS"
+
+      - name: Set up Linux Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Recheck Cloudflare target read-only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/pro_cloudflare_auth_preflight.py
+
+      - name: Bundle Worker without deploying
+        shell: bash
+        env:
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+
+          test -n "$CLOUDFLARE_D1_DATABASE_ID"
+
+          CONFIG="$(
+            mktemp \
+              "$PWD/cloudflare/control-plane/.wrangler-ci-XXXXXXXX.toml"
+          )"
+
+          trap 'rm -f "$CONFIG"' EXIT
+
+          cat > "$CONFIG" <<TOML
+          name = "appforge-control-plane"
+          main = "src/index.mjs"
+          compatibility_date = "2026-09-19"
+          workers_dev = true
+          keep_vars = true
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "appforge-control-plane-db"
+          database_id = "$CLOUDFLARE_D1_DATABASE_ID"
+          migrations_dir = "migrations"
+          TOML
+
+          OUTDIR="$(
+            mktemp -d \
+              "$RUNNER_TEMP/appforge-pro-worker-bundle-XXXXXXXX"
+          )"
+
+          LOG="$RUNNER_TEMP/appforge-pro-wrangler-dry-run.log"
+
+          if (
+            cd cloudflare/control-plane
+            npx --yes wrangler@4 deploy \
+              --config "$CONFIG" \
+              --dry-run \
+              --keep-vars \
+              --outdir "$OUTDIR"
+          ) >"$LOG" 2>&1
+          then
+            echo "WRANGLER_DRY_RUN=PASS"
+          else
+            echo "STOP: WRANGLER_DRY_RUN_FAILED"
+            echo "NO_DEPLOY_PERFORMED"
+            exit 1
+          fi
+
+          python3 - "$OUTDIR" <<'PY'
+          from pathlib import Path
+          import sys
+
+          folder = Path(sys.argv[1])
+
+          bundles = [
+              p for p in folder.rglob("*.js")
+              if p.is_file()
+          ]
+
+          if not bundles:
+              raise SystemExit("STOP: NO_WORKER_BUNDLE")
+
+          combined = "\n".join(
+              path.read_text(errors="replace")
+              for path in bundles
+          )
+
+          required = [
+              "/api/pro/code/ownership-challenge",
+              "/api/pro/code/reactivate",
+              "/api/pro/code/status",
+          ]
+
+          missing = [
+              route for route in required
+              if route not in combined
+          ]
+
+          if missing:
+              raise SystemExit(
+                  "STOP: EXPECTED_PRO_ROUTES_MISSING"
+              )
+
+          print("PRO_ROUTE_BUNDLE=PASS")
+          print("BUNDLED_JS_FILES=", len(bundles))
+          PY
+
+          echo "TARGET_WORKER=appforge-control-plane"
+          echo "DB_BINDING=DB"
+          echo "DB_NAME=appforge-control-plane-db"
+          echo "KEEP_VARS=ENABLED"
+          echo "GOOGLE_VALUES=NOT_PRINTED"
+          echo "WORKER_DEPLOY=NOT_STARTED"
+          echo "MIGRATIONS_APPLY=NOT_STARTED"
+          echo "DRY_RUN=PASS"

@@ -68,13 +68,13 @@ internal fun UnifiedAgentHomeEntryCard(
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
-                    text = "AI ile Uygulama Oluştur",
+                    text = "AI ile Uygulama / Oyun Oluştur",
                     color = Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Prompt → Blueprint → Visual Designer → Test → Build",
+                    text = "Prompt → Yerel AI → Uygulama/Oyun → Cihaz Build",
                     color = UnifiedAgentSecondaryText,
                     fontSize = 12.sp
                 )

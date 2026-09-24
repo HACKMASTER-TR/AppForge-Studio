@@ -1,0 +1,10 @@
+# EXAMPLE ONLY. No live deployment until full Google Play/admin/Android flow.
+name = "appforge-control-plane"
+main = "src/index.mjs"
+compatibility_date = "2026-09-19"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "appforge-control-plane-db"
+database_id = "REPLACE_WITH_REAL_D1_DATABASE_ID"
+migrations_dir = "migrations"

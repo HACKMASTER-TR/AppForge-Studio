@@ -133,7 +133,7 @@ if (fs.existsSync(registry)) {
 }
 if (changed) try {
   const sources = execFileSync("git", ["diff", "--name-only", "HEAD"], { cwd: root, encoding: "utf8" }).split(/\r?\n/).filter(Boolean).map(normalize);
-  const sourcePrefixes = ["android-app/", "build-service/", ".github/", ".appforge/", "scripts/", "README.md"];
+  const sourcePrefixes = ["android-app/", "quality/", ".github/", ".appforge/", "scripts/", "README.md"];
   for (const source of sources) {
     if (referenced.has(source)) add("warning", source, `referenced by wiki pages: ${referenced.get(source).join(", ")}`);
     if (!sourcePrefixes.some(prefix => source === prefix || source.startsWith(prefix))) continue;

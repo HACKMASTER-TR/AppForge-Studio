@@ -1,0 +1,226 @@
+name: AppForge Pro Staging Live Audit
+
+on:
+  push:
+    branches:
+      - feat/cloudflare-control-plane-v1-20260919
+    paths:
+      - .github/workflows/pro-staging-live-audit.yml
+
+permissions:
+  contents: read
+
+jobs:
+  staging-live-audit:
+    name: Existing Staging Worker Read-Only Audit
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/cloudflare-control-plane-v1-20260919'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v7
+
+      - name: Verify feature source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = \
+            "refs/heads/feat/cloudflare-control-plane-v1-20260919"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "FEATURE_SOURCE=PASS"
+
+      - name: Verify existing Cloudflare bindings read-only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/pro_cloudflare_auth_preflight.py
+
+      - name: Verify current live staging responses
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import tempfile
+
+          base = (
+              "https://appforge-control-plane."
+              "28550040284a.workers.dev"
+          )
+
+          def read(path):
+              with tempfile.TemporaryDirectory() as temp_dir:
+                  headers_path = os.path.join(
+                      temp_dir, "headers.txt"
+                  )
+                  body_path = os.path.join(
+                      temp_dir, "body.bin"
+                  )
+
+                  result = subprocess.run(
+                      [
+                          "curl",
+                          "--silent",
+                          "--show-error",
+                          "--max-time",
+                          "20",
+                          "--max-redirs",
+                          "0",
+                          "--request",
+                          "GET",
+                          "--header",
+                          (
+                              "User-Agent: "
+                              "AppForge-Staging-Audit/1.0"
+                          ),
+                          "--header",
+                          "Accept: application/json",
+                          "--dump-header",
+                          headers_path,
+                          "--output",
+                          body_path,
+                          "--write-out",
+                          "%{http_code}",
+                          base + path,
+                      ],
+                      check=False,
+                      capture_output=True,
+                      text=True,
+                  )
+
+                  if result.returncode != 0:
+                      print("ROUTE=" + path)
+                      print(
+                          "CURL_EXIT="
+                          + str(result.returncode)
+                      )
+                      raise SystemExit(
+                          "STOP: LIVE_STAGING_NETWORK_ERROR"
+                      )
+
+                  status_text = result.stdout.strip()
+
+                  if (
+                      len(status_text) != 3
+                      or not status_text.isdigit()
+                  ):
+                      print("ROUTE=" + path)
+                      print("HTTP_STATUS_RAW=" + status_text)
+                      raise SystemExit(
+                          "STOP: LIVE_HTTP_STATUS_INVALID"
+                      )
+
+                  status = int(status_text)
+                  content_type = ""
+
+                  with open(
+                      headers_path,
+                      encoding="utf-8",
+                      errors="replace",
+                  ) as headers:
+                      for line in headers:
+                          if ":" not in line:
+                              continue
+
+                          key, value = line.split(":", 1)
+
+                          if (
+                              key.strip().lower()
+                              == "content-type"
+                          ):
+                              content_type = value.strip()
+
+                  with open(body_path, "rb") as body_file:
+                      body = body_file.read(1048576)
+
+              try:
+                  payload = json.loads(body)
+              except (ValueError, UnicodeDecodeError):
+                  stripped = body.lstrip().lower()
+
+                  if not body:
+                      body_kind = "EMPTY"
+                  elif (
+                      stripped.startswith(b"<!doctype html")
+                      or stripped.startswith(b"<html")
+                  ):
+                      body_kind = "HTML"
+                  else:
+                      body_kind = "OTHER"
+
+                  mime = content_type.lower()
+
+                  if "application/json" in mime:
+                      type_kind = "JSON"
+                  elif "text/html" in mime:
+                      type_kind = "HTML"
+                  else:
+                      type_kind = "OTHER"
+
+                  print("ROUTE=" + path)
+                  print("HTTP_STATUS=" + str(status))
+                  print(
+                      "CONTENT_TYPE_CLASS=" + type_kind
+                  )
+                  print("BODY_CLASS=" + body_kind)
+
+                  raise SystemExit(
+                      "STOP: LIVE_RESPONSE_NOT_JSON"
+                  )
+
+              if not isinstance(payload, dict):
+                  print("ROUTE=" + path)
+                  print("HTTP_STATUS=" + str(status))
+                  raise SystemExit(
+                      "STOP: UNEXPECTED_RESPONSE_SHAPE"
+                  )
+
+              return status, payload
+
+          print("HTTP_TRANSPORT=CURL")
+
+          status, health = read("/health")
+
+          if (
+              status != 200
+              or health.get("ok") is not True
+              or health.get("database") != "reachable"
+          ):
+              raise SystemExit(
+                  "STOP: STAGING_HEALTH_FAILED"
+              )
+
+          print("STAGING_HEALTH=PASS")
+          print("D1_REACHABILITY=PASS")
+
+          status, route = read(
+              "/api/pro/code/ownership-challenge"
+          )
+
+          if (
+              status != 405
+              or route.get("error")
+              != "method_not_allowed"
+          ):
+              raise SystemExit(
+                  "STOP: PRO_ROUTE_FAILED"
+              )
+
+          print("PRO_OWNERSHIP_ROUTE=PASS")
+          print("HTTP_METHOD=GET_ONLY")
+          print("DATABASE_WRITES=NONE")
+          print("WORKER_DEPLOY=NOT_STARTED")
+          print("MIGRATIONS_APPLY=NOT_STARTED")
+          print("LIVE_STAGING_AUDIT=PASS")
+          PY

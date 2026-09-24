@@ -3,6 +3,7 @@ package com.appforge.studio.build
 import android.content.Context
 import android.net.Uri
 import com.appforge.studio.io.ProjectLibrary
+import com.appforge.studio.ai.AppForgeAgentSessionStore
 import com.appforge.studio.model.ProjectDraft
 import org.json.JSONObject
 import java.io.File
@@ -121,7 +122,7 @@ class BuildApiClient(
             preflight = state.preflight,
             apkAvailable = state.apk?.isFile == true,
             aabAvailable = state.aab?.isFile == true,
-            exeAvailable = false
+            exeAvailable = state.exe?.isFile == true
         )
     }
 
@@ -131,11 +132,116 @@ class BuildApiClient(
     }
 
     fun createDownloadTicket(buildId: String, kind: String): DownloadTicketResult {
-        require(!kind.equals("exe", true)) { "Windows EXE cihaz-build geçişinde devre dışı." }
         val artifact = DeviceBuildEngine.artifact(buildId, kind)
+            ?: persistedDeviceArtifact(buildId, kind)
+            ?: persistedUnifiedAgentArtifact(buildId, kind)
             ?: error("${kind.uppercase()} çıktısı hazır değil.")
-        return DownloadTicketResult(Uri.fromFile(artifact).toString(), true, Int.MAX_VALUE)
+
+        return DownloadTicketResult(
+            Uri.fromFile(artifact).toString(),
+            true,
+            Int.MAX_VALUE
+        )
     }
+
+    /**
+     * A process restart clears DeviceBuildEngine.jobs but not the successful
+     * history record or its canonical artifact. Resolve only that exact build
+     * directory; never pick a file by project name or from another account.
+     */
+    private fun persistedDeviceArtifact(buildId: String, kind: String): File? =
+        runCatching {
+            if (!Regex("^local-[0-9a-f]{20}$").matches(buildId)) {
+                return@runCatching null
+            }
+
+            val extension = when (kind.trim().lowercase()) {
+                "apk" -> "apk"
+                "aab" -> "aab"
+                "exe", "windows-exe" -> "exe"
+                else -> return@runCatching null
+            }
+
+            val saved = ProjectLibrary.loadBuilds(context)
+                .firstOrNull { it.id == buildId }
+                ?: return@runCatching null
+
+            if (!saved.status.equals("success", ignoreCase = true)) {
+                return@runCatching null
+            }
+
+            val advertised = when (extension) {
+                "apk" -> saved.apkUrl
+                "aab" -> saved.aabUrl
+                else -> saved.exeUrl
+            }
+            if (advertised.isNullOrBlank()) {
+                return@runCatching null
+            }
+
+            val root = File(context.filesDir, "device-build/artifacts").canonicalFile
+            val directory = File(root, buildId).canonicalFile
+            if (directory.parentFile != root || directory.name != buildId ||
+                !directory.isDirectory
+            ) {
+                return@runCatching null
+            }
+
+            val matches = directory.listFiles().orEmpty().filter { candidate ->
+                val file = candidate.canonicalFile
+                file.parentFile == directory && file.isFile && file.length() > 0L &&
+                    file.extension.equals(extension, ignoreCase = true) &&
+                    (saved.buildNo == null ||
+                        file.name.endsWith("-${saved.buildNo}.$extension", ignoreCase = true))
+            }
+            matches.singleOrNull()
+        }.getOrNull()
+
+    /** Legacy Unified Agent builds have session history, not ProjectLibrary rows. */
+    private fun persistedUnifiedAgentArtifact(buildId: String, kind: String): File? =
+        runCatching {
+            if (!Regex("^local-[0-9a-f]{20}$").matches(buildId)) {
+                return@runCatching null
+            }
+            val extension = when (kind.trim().lowercase()) {
+                "apk" -> "apk"
+                "aab" -> "aab"
+                "exe", "windows-exe" -> "exe"
+                else -> return@runCatching null
+            }
+            val store = AppForgeAgentSessionStore(
+                File(context.filesDir, "unified-agent-session")
+            )
+            val candidates = (store.listRecent(12) + store.listArchived(12))
+                .mapNotNull { it.state.remoteBuild }
+                .filter { remote ->
+                    remote.buildId == buildId &&
+                        remote.status.equals("success", ignoreCase = true) &&
+                        when (extension) {
+                            "apk" -> remote.apkAvailable
+                            "aab" -> remote.aabAvailable
+                            else -> remote.exeAvailable
+                        }
+                }
+            val buildNo = candidates.mapNotNull { it.buildNo }
+                .distinct().singleOrNull() ?: return@runCatching null
+            if (candidates.any { it.buildNo != buildNo }) {
+                return@runCatching null
+            }
+            val root = File(context.filesDir, "device-build/artifacts").canonicalFile
+            val directory = File(root, buildId).canonicalFile
+            if (directory.parentFile != root || directory.name != buildId ||
+                !directory.isDirectory
+            ) {
+                return@runCatching null
+            }
+            directory.listFiles().orEmpty().filter { candidate ->
+                val file = candidate.canonicalFile
+                file.parentFile == directory && file.isFile && file.length() > 0L &&
+                    file.extension.equals(extension, ignoreCase = true) &&
+                    file.name.endsWith("-$buildNo.$extension", ignoreCase = true)
+            }.singleOrNull()
+        }.getOrNull()
 
     fun projectQuota(): ProjectQuotaResult = ProjectQuotaResult(
         plan = "device",

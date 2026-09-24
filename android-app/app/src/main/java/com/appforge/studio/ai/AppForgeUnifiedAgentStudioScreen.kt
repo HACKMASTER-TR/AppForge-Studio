@@ -196,11 +196,11 @@ private fun PromptStep(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            "AI ile Uygulama Oluştur",
+            "AI ile Uygulama / Oyun Oluştur",
             style = MaterialTheme.typography.headlineSmall
         )
         Text(
-            "İstediğin uygulamayı normal dille anlat. AppForge önce güvenli Blueprint oluşturur.",
+            "İstediğin uygulamayı veya oyunu normal dille anlat. Yerel AI güvenli Blueprint oluşturur; Web hedefi cihazda APK ve hazırsa Portable EXE üretebilir.",
             style = MaterialTheme.typography.bodyMedium
         )
 
@@ -661,6 +661,7 @@ private fun BlueprintReviewStep(
     modifier: Modifier
 ) {
     val blueprint = state.blueprint
+    var showBlueprintDetails by remember { mutableStateOf(false) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -668,7 +669,7 @@ private fun BlueprintReviewStep(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Blueprint Önizleme", style = MaterialTheme.typography.headlineSmall)
+        Text("Uygulama özeti", style = MaterialTheme.typography.headlineSmall)
         if (blueprint == null) {
             Text("Blueprint bulunamadı.")
             OutlinedButton(onClick = onReset) { Text("Başa dön") }
@@ -682,9 +683,14 @@ private fun BlueprintReviewStep(
             ) {
                 Text(blueprint.appName, style = MaterialTheme.typography.titleLarge)
                 Text(blueprint.platform.title)
-                Text("Ekran: ${blueprint.screens.size}")
-                Text("Başlangıç: ${blueprint.startRoute}")
-                Text("Repair sınırı: ${blueprint.maxRepairAttempts}")
+                OutlinedButton(onClick = { showBlueprintDetails = !showBlueprintDetails }) {
+                    Text(if (showBlueprintDetails) "Teknik ayrıntıları gizle" else "Teknik ayrıntılar")
+                }
+                if (showBlueprintDetails) {
+                    Text("Ekran: ${blueprint.screens.size}")
+                    Text("Başlangıç: ${blueprint.startRoute}")
+                    Text("Repair sınırı: ${blueprint.maxRepairAttempts}")
+                }
             }
         }
 
@@ -704,20 +710,20 @@ private fun BlueprintReviewStep(
             enabled = state.canDesign,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Visual Designer'da düzenle")
+            Text("Görünümü düzenle")
         }
         Button(
             onClick = onBuild,
             enabled = state.canBuild,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Test + Build başlat")
+            Text("Uygulamayı oluştur")
         }
         OutlinedButton(
             onClick = onReset,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Yeni prompt")
+            Text("Yeni açıklama")
         }
     }
 }
@@ -738,7 +744,7 @@ private fun BuildProgressStep(
         Text(state.message.ifBlank { "Planlama → Test → Build → Repair" })
         state.remoteBuild?.let { remote ->
             Text(
-                "Cloud Build • ${remote.status} • %${remote.progress}",
+                "Cihazda oluşturuluyor • %${remote.progress}",
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -771,8 +777,22 @@ private fun ResultStep(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text("Build Sonucu", style = MaterialTheme.typography.headlineSmall)
-        Text(state.message)
+        var technicalDetails by remember { mutableStateOf(false) }
+        Text("Oluşturma sonucu", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            if (state.remoteBuild?.status.equals("success", ignoreCase = true)) {
+                "Derleme tamamlandı. Dosyalarını aşağıdan indirebilirsin."
+            } else state.message
+        )
+        if (artifactState.message.isNotBlank()) {
+            Text(artifactState.message, style = MaterialTheme.typography.bodySmall)
+        }
+        OutlinedButton(
+            onClick = { technicalDetails = !technicalDetails },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (technicalDetails) "Teknik ayrıntıları gizle" else "Teknik ayrıntılar")
+        }
 
         state.remoteBuild?.let { remote ->
             Card(modifier = Modifier.fillMaxWidth()) {
@@ -781,7 +801,7 @@ private fun ResultStep(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        "AppForge Cloud Build",
+                        "Cihazda oluşturuldu",
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(
@@ -789,8 +809,10 @@ private fun ResultStep(
                             ?.let { "Build #$it • ${remote.status}" }
                             ?: remote.status
                     )
-                    Text("Build ID: ${remote.buildId}")
-                    Text("İlerleme: %${remote.progress}")
+                    if (technicalDetails) {
+                        Text("Build ID: ${remote.buildId}")
+                        Text("İlerleme: %${remote.progress}")
+                    }
                     Text(
                         "APK: ${if (remote.apkAvailable) "Hazır" else "—"} • " +
                             "AAB: ${if (remote.aabAvailable) "Hazır" else "—"} • " +
@@ -802,7 +824,7 @@ private fun ResultStep(
 
         state.remoteBuild?.let { remote ->
             Text(
-                "Artifactlar",
+                "İndirilebilir dosyalar",
                 style = MaterialTheme.typography.titleMedium
             )
 
@@ -842,6 +864,7 @@ private fun ResultStep(
                 }
             }
 
+            if (technicalDetails) {
             OutlinedButton(
                 onClick = onRefreshArtifacts,
                 enabled = !artifactState.busy,
@@ -865,8 +888,10 @@ private fun ResultStep(
             ) {
                 Text("Üretilen kaynak ZIP'i dışa aktar")
             }
+            }
         }
 
+        if (technicalDetails) {
         OutlinedButton(
             onClick = onRefreshReleaseReview,
             enabled =
@@ -891,19 +916,12 @@ private fun ResultStep(
                     !artifactState.busy,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Aynı Blueprint ile yeniden build")
+            Text("Yeniden oluştur")
         }
 
         ReleaseReviewCard(
             review = releaseReviewState
         )
-
-        if (artifactState.message.isNotBlank()) {
-            Text(
-                artifactState.message,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
 
         artifactState.apk?.let { report ->
             ArtifactReportCard(report)
@@ -975,6 +993,8 @@ private fun ResultStep(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
+        }
+
         }
 
         OutlinedButton(

@@ -1,0 +1,179 @@
+name: AppForge Pro Staging HTTP Matrix
+
+on:
+  push:
+    branches:
+      - feat/cloudflare-control-plane-v1-20260919
+    paths:
+      - .github/workflows/pro-staging-http-matrix.yml
+
+permissions:
+  contents: read
+
+jobs:
+  http-matrix:
+    name: GitHub Runner to Staging HTTP Matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout feature source
+        uses: actions/checkout@v7
+
+      - name: Verify feature source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = \
+            "refs/heads/feat/cloudflare-control-plane-v1-20260919"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "FEATURE_SOURCE=PASS"
+
+      - name: Probe staging with multiple request profiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+
+          URL="https://appforge-control-plane.28550040284a.workers.dev/health"
+
+          probe() {
+            NAME="$1"
+            shift
+
+            HDR="$(mktemp)"
+            BODY="$(mktemp)"
+            trap 'rm -f "$HDR" "$BODY"' RETURN
+
+            set +e
+            HTTP="$(
+              curl \
+                --silent \
+                --show-error \
+                --max-time 20 \
+                --max-redirs 0 \
+                --dump-header "$HDR" \
+                --output "$BODY" \
+                --write-out '%{http_code}' \
+                "$@" \
+                "$URL"
+            )"
+            CURL_EXIT=$?
+            set -e
+
+            echo "PROFILE=$NAME"
+            echo "CURL_EXIT=$CURL_EXIT"
+            echo "HTTP_STATUS=$HTTP"
+
+            python3 - "$HDR" "$BODY" <<'PY'
+          import json
+          import sys
+
+          headers_path = sys.argv[1]
+          body_path = sys.argv[2]
+
+          headers = open(
+              headers_path,
+              encoding="utf-8",
+              errors="replace",
+          ).read().splitlines()
+
+          body = open(body_path, "rb").read(1048576)
+
+          safe_headers = {}
+
+          for line in headers:
+              if ":" not in line:
+                  continue
+
+              key, value = line.split(":", 1)
+              key = key.strip().lower()
+              value = value.strip()
+
+              if key in {
+                  "content-type",
+                  "server",
+                  "cf-mitigated",
+              }:
+                  safe_headers[key] = value[:120]
+
+          for key in (
+              "content-type",
+              "server",
+              "cf-mitigated",
+          ):
+              if key in safe_headers:
+                  print(
+                      "HEADER_"
+                      + key.upper().replace("-", "_")
+                      + "="
+                      + safe_headers[key]
+                  )
+
+          try:
+              data = json.loads(body)
+          except Exception:
+              stripped = body.lstrip().lower()
+
+              if not body:
+                  kind = "EMPTY"
+              elif (
+                  stripped.startswith(b"<!doctype html")
+                  or stripped.startswith(b"<html")
+              ):
+                  kind = "HTML"
+              else:
+                  kind = "OTHER"
+
+              print("BODY_CLASS=" + kind)
+              raise SystemExit(0)
+
+          print("BODY_CLASS=JSON")
+
+          if isinstance(data, dict):
+              for key in (
+                  "ok",
+                  "error",
+                  "service",
+                  "database",
+              ):
+                  value = data.get(key)
+
+                  if isinstance(value, bool):
+                      print(
+                          key.upper()
+                          + "="
+                          + str(value)
+                      )
+                  elif (
+                      isinstance(value, str)
+                      and len(value) <= 80
+                  ):
+                      print(
+                          key.upper()
+                          + "="
+                          + value
+                      )
+          PY
+
+            rm -f "$HDR" "$BODY"
+            trap - RETURN
+            echo
+          }
+
+          probe "CURL_DEFAULT"
+
+          probe \
+            "APPFORGE_UA" \
+            -H 'User-Agent: AppForge-Staging-Audit/1.0' \
+            -H 'Accept: application/json'
+
+          probe \
+            "BROWSER_UA" \
+            -H 'User-Agent: Mozilla/5.0' \
+            -H 'Accept: application/json'
+
+          echo "DATABASE_WRITES=NONE"
+          echo "WORKER_DEPLOY=NOT_STARTED"
+          echo "MIGRATIONS_APPLY=NOT_STARTED"
+          echo "HTTP_MATRIX=COMPLETE"

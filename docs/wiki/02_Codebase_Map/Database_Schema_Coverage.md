@@ -13,13 +13,6 @@ related:
   - "[[Database_Map]]"
   - "[[Worker_And_Artifact_Flow]]"
 source_files:
-  - "build-service/src/db.js"
-  - "build-service/sql/001_init.sql"
-  - "build-service/sql/002_teams_workers.sql"
-  - "build-service/sql/003_security_storage_workers.sql"
-  - "build-service/sql/005_workspace_build_control.sql"
-  - "build-service/sql/009_pro_integrity_security.sql"
-  - "build-service/sql/024_client_hardening.sql"
 ---
 
 # Database Schema Coverage

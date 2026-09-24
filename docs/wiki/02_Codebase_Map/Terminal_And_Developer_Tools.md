@@ -3,8 +3,8 @@ type: codebase
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-19
-last_verified: 2026-09-19
+updated: 2026-09-23
+last_verified: 2026-09-23
 confidence: high
 tags:
   - terminal
@@ -16,25 +16,27 @@ related:
 source_files:
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalWorkspaceScreen.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerFilesPanel.kt"
-  - "build-service/tests/appforge_terminal_back_navigation_contract.test.js"
-  - "build-service/tests/appforge_latest_apk_replace_contract.test.js"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/OwnerArtifactReferenceStore.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFilesPanel.kt"
+  - "quality/tests/owner_exe_single_copy_contract.test.js"
+  - "quality/tests/appforge_terminal_back_navigation_contract.test.js"
+  - "quality/tests/appforge_latest_apk_replace_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LocalTerminalEngine.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalStandaloneDeveloperBootstrap.kt"
   - "android-app/app/src/main/assets/terminal/appforge-apk"
-  - "build-service/tests/appforge_apk_current_head_contract.test.js"
+  - "quality/tests/appforge_apk_current_head_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxTerminalJobService.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/WorkspaceFileService.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/GitWorkspaceService.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/SshTerminalClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/ExternalConnectionsClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TerminalCommandPolicy.kt"
-  - "build-service/tests/appforge_terminal_integration.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
   - "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt"
-  - "build-service/tests/appforge_terminal_persistent_viewport_workspace_contract.test.js"
+  - "quality/tests/appforge_terminal_persistent_viewport_workspace_contract.test.js"
 ---
 
 # Terminal and Developer Tools
@@ -99,3 +101,13 @@ atomic publication and exposes only the completed
 `AppForgeStudio-latest.apk`. The owner APK vault treats AppForge latest and
 commit-named AppForge update APKs as one self-update family so stale update
 copies are removed without touching project APK/EXE artifacts.
+
+## Owner artifact reference projection
+
+The owner Files surface may project validated Windows EXE references inside the
+private `APK` view while the bytes stay in the canonical Device Build artifact
+store. The generic workspace browser accepts these entries only through an
+opt-in overlay and keeps normal project workspaces physical-only. Deleting a
+projected EXE removes only owner metadata, never the canonical build artifact.
+Existing physical owner EXE duplicates are converted only after SHA-256 equality.
+APK install behavior and the permanent Terminal Linux bridge are unchanged.

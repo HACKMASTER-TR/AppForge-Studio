@@ -21,7 +21,7 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxRuntimeFoundation.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxShellEngine.kt"
   - "android-app/app/src/main/java/com/appforge/studio/io/ProjectTechnologyDetector.kt"
-  - "build-service/tests/device_only_cutover_contract.test.js"
+  - "quality/tests/device_only_cutover_contract.test.js"
 ---
 
 # Build Architecture

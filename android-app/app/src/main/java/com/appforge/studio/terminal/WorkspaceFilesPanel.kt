@@ -53,7 +53,11 @@ import java.util.Date
 
 @Composable
 internal fun WorkspaceFilesPanel(
-    workspace: File
+    workspace: File,
+    additionalEntries: (File) -> List<WorkspaceEntry> =
+        { emptyList() },
+    onDeleteReference: (WorkspaceEntry) -> Boolean =
+        { false }
 ) {
     val scope =
         rememberCoroutineScope()
@@ -191,15 +195,23 @@ internal fun WorkspaceFilesPanel(
             ""
 
         runCatching {
-            WorkspaceFileService
-                .listPage(
-                    root =
-                        workspace,
-                    directory =
-                        currentDirectory,
-                    pageIndex =
-                        pageIndex
-                )
+            withContext(
+                Dispatchers.IO
+            ) {
+                WorkspaceFileService
+                    .listPage(
+                        root =
+                            workspace,
+                        directory =
+                            currentDirectory,
+                        pageIndex =
+                            pageIndex,
+                        additionalEntries =
+                            additionalEntries(
+                                currentDirectory
+                            )
+                    )
+            }
         }.onSuccess { page ->
             entries =
                 page.entries
@@ -253,6 +265,26 @@ internal fun WorkspaceFilesPanel(
 
                     scope.launch {
                         runCatching {
+                            val referenceConflict =
+                                withContext(
+                                    Dispatchers.IO
+                                ) {
+                                    additionalEntries(
+                                        currentDirectory
+                                    ).any { entry ->
+                                        entry.file.name.equals(
+                                            name,
+                                            ignoreCase = true
+                                        )
+                                    }
+                                }
+
+                            require(
+                                !referenceConflict
+                            ) {
+                                "Aynı adda bir derleme referansı zaten var."
+                            }
+
                             WorkspaceFileService.create(
                                 root = workspace,
                                 parent =
@@ -288,11 +320,25 @@ internal fun WorkspaceFilesPanel(
                         null
                 },
                 title = {
-                    Text("Geri dönüşüme taşı")
+                    Text(
+                        if (
+                            target.referenceId != null
+                        ) {
+                            "Listeden kaldır"
+                        } else {
+                            "Geri dönüşüme taşı"
+                        }
+                    )
                 },
                 text = {
                     Text(
-                        "${target.file.name} proje içindeki gizli geri dönüşüm alanına taşınacak."
+                        if (
+                            target.referenceId != null
+                        ) {
+                            "${target.file.name} AppForge Dosyaları görünümünden kaldırılacak; asıl derleme çıktısı korunacak."
+                        } else {
+                            "${target.file.name} proje içindeki gizli geri dönüşüm alanına taşınacak."
+                        }
                     )
                 },
                 confirmButton = {
@@ -303,13 +349,38 @@ internal fun WorkspaceFilesPanel(
 
                             scope.launch {
                                 runCatching {
-                                    WorkspaceFileService.moveToTrash(
-                                        workspace,
-                                        target.file
-                                    )
+                                    if (
+                                        target.referenceId != null
+                                    ) {
+                                        val removed =
+                                            withContext(
+                                                Dispatchers.IO
+                                            ) {
+                                                onDeleteReference(
+                                                    target
+                                                )
+                                            }
+
+                                        check(
+                                            removed
+                                        ) {
+                                            "Derleme referansı kaldırılamadı."
+                                        }
+                                    } else {
+                                        WorkspaceFileService.moveToTrash(
+                                            workspace,
+                                            target.file
+                                        )
+                                    }
                                 }.onSuccess {
                                     message =
-                                        "Öğe geri dönüşüme taşındı."
+                                        if (
+                                            target.referenceId != null
+                                        ) {
+                                            "Derleme kısayolu kaldırıldı; asıl build çıktısı korundu."
+                                        } else {
+                                            "Öğe geri dönüşüme taşındı."
+                                        }
 
                                     refreshKey +=
                                         1
@@ -321,7 +392,15 @@ internal fun WorkspaceFilesPanel(
                             }
                         }
                     ) {
-                        Text("Taşı")
+                        Text(
+                            if (
+                                target.referenceId != null
+                            ) {
+                                "Kaldır"
+                            } else {
+                                "Taşı"
+                            }
+                        )
                     }
                 },
                 dismissButton = {

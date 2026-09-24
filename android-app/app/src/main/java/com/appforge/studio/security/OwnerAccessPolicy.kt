@@ -45,33 +45,52 @@ object OwnerAccessPolicy {
         digest(email) ==
             OWNER_EMAIL_SHA256
 
-    fun isActiveOwner(
-        context: Context,
-        accountEmail: String? = null
-    ): Boolean {
-        val session =
-            SecureAccountStore
-                .loadSession(context)
-                ?: return false
+    // The owner gate is memory-only. An encrypted stored ID token is
+    // merely a candidate until the HTTPS server verifies it again.
+    // Email, local sessions and stored admin flags never grant access.
+    @Volatile private var googleIdToken: String? = null
+    @Volatile private var validUntilMs: Long = 0L
 
-        if (!isOwnerEmail(session.email)) {
-            return false
+    fun clearVerifiedGoogleAdmin(context: Context? = null) {
+        googleIdToken = null
+        validUntilMs = 0L
+        context?.let {
+            SecureAccountStore.clearVerifiedGoogleAdmin(it)
         }
-
-        if (
-            !accountEmail.isNullOrBlank() &&
-            !session.email
-                .trim()
-                .equals(
-                    accountEmail.trim(),
-                    ignoreCase = true
-                )
-        ) {
-            return false
-        }
-
-        return true
     }
+
+    internal fun rememberVerifiedGoogleAdmin(
+        context: Context,
+        idToken: String,
+        expiresAt: Long,
+        serverUrl: String
+    ) {
+        val now = System.currentTimeMillis()
+        val deadline = expiresAt.coerceAtMost(Long.MAX_VALUE / 1000) * 1000
+        require(idToken.length in 50..12000 && deadline > now &&
+            deadline - now <= 3_700_000L) { "Invalid verified Google admin session." }
+        SecureAccountStore.saveVerifiedGoogleAdmin(
+            context,
+            idToken,
+            expiresAt,
+            serverUrl
+        )
+        googleIdToken = idToken
+        validUntilMs = deadline
+    }
+
+    fun currentGoogleIdToken(): String? {
+        val token = googleIdToken
+        if (token == null || System.currentTimeMillis() >= validUntilMs) {
+            clearVerifiedGoogleAdmin()
+            return null
+        }
+        return token
+    }
+
+    @Suppress("UNUSED_PARAMETER")
+    fun isActiveOwner(context: Context, accountEmail: String? = null): Boolean =
+        currentGoogleIdToken() != null
 
     fun requireActiveOwner(
         context: Context,

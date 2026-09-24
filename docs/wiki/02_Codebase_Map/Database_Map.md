@@ -13,9 +13,6 @@ related:
   - "[[Build_Service_Map]]"
   - "[[Security_And_Entitlements]]"
 source_files:
-  - "build-service/src/db.js"
-  - "build-service/sql/001_init.sql"
-  - "build-service/sql/024_client_hardening.sql"
 ---
 
 # Database Map

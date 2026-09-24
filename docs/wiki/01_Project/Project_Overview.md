@@ -15,7 +15,6 @@ related:
 source_files:
   - "README.md"
   - "android-app/settings.gradle.kts"
-  - "build-service/package.json"
 ---
 
 # Project Overview

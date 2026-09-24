@@ -61,6 +61,102 @@ object SecureAccountStore {
     private const val TRANSFORMATION =
         "AES/GCM/NoPadding"
 
+    private const val GOOGLE_ADMIN_DATA =
+        "google_admin_session_data_v1"
+
+    private const val GOOGLE_ADMIN_IV =
+        "google_admin_session_iv_v1"
+
+    /**
+     * A server-verified, short-lived Google ID token is encrypted
+     * with the existing Android Keystore-backed AES-GCM storage.
+     * Persisting it does NOT confer admin access.
+     */
+    fun saveVerifiedGoogleAdmin(
+        context: Context,
+        idToken: String,
+        expiresAt: Long,
+        serverUrl: String
+    ) {
+        val now = System.currentTimeMillis()
+        require(expiresAt in 1..Long.MAX_VALUE / 1000)
+        val deadline = expiresAt * 1000
+
+        require(
+            idToken.length in 50..12000 &&
+                deadline > now &&
+                deadline - now <= 3_700_000L
+        ) {
+            "Invalid verified Google session."
+        }
+
+        val endpoint = serverUrl.trim().trimEnd('/')
+        require(endpoint.startsWith("https://"))
+
+        val value = JSONObject()
+            .put("token", idToken)
+            .put("expiresAt", expiresAt)
+            .put("endpoint", endpoint)
+            .toString()
+
+        writeEncrypted(
+            context,
+            GOOGLE_ADMIN_DATA,
+            GOOGLE_ADMIN_IV,
+            value
+        )
+    }
+
+    /**
+     * Returns only a candidate. The caller must verify it against
+     * the HTTPS server BEFORE restoring owner privileges.
+     */
+    fun loadVerifiedGoogleAdmin(
+        context: Context,
+        serverUrl: String
+    ): Pair<String, Long>? {
+        val raw = readEncrypted(
+            context,
+            GOOGLE_ADMIN_DATA,
+            GOOGLE_ADMIN_IV
+        ) ?: return null
+
+        return runCatching {
+            val value = JSONObject(raw)
+            val token = value.getString("token")
+            val expiresAt = value.getLong("expiresAt")
+            val endpoint = value.getString("endpoint")
+
+            if (endpoint != serverUrl.trim().trimEnd('/')) {
+                return null
+            }
+
+            require(expiresAt in 1..Long.MAX_VALUE / 1000)
+
+            val deadline = expiresAt * 1000
+            val now = System.currentTimeMillis()
+
+            require(
+                token.length in 50..12000 &&
+                    deadline > now &&
+                    deadline - now <= 3_700_000L
+            )
+
+            token to expiresAt
+        }.getOrElse {
+            clearVerifiedGoogleAdmin(context)
+            null
+        }
+    }
+
+    fun clearVerifiedGoogleAdmin(context: Context) {
+        prefs(context)
+            .edit()
+            .remove(GOOGLE_ADMIN_DATA)
+            .remove(GOOGLE_ADMIN_IV)
+            .commit()
+    }
+
     fun saveSession(
         context: Context,
         session: Session

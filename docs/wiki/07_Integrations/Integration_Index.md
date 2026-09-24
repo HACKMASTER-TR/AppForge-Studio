@@ -11,8 +11,6 @@ tags:
 related:
   - "[[Security_And_Entitlements]]"
 source_files:
-  - "build-service/package.json"
-  - "build-service/src/storage.js"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/ExternalConnectionsClient.kt"
 ---
 

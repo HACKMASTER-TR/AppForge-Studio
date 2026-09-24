@@ -14,15 +14,18 @@ related:
   - "[[Feature_Overview]]"
 source_files:
   - "android-app/app/src/main/AndroidManifest.xml"
+  - "android-app/app/src/main/assets/branding/appforge_studio_launcher_source.png"
+  - "android-app/app/src/main/assets/branding/appforge_studio_launcher_master.png"
+  - "quality/tests/appforge_studio_launcher_assets_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
   - "android-app/app/build.gradle.kts"
   - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
   - "android-app/app/src/test/java/com/appforge/studio/UpdateGatePlayVisibilityTest.kt"
-  - "build-service/tests/android_system_back_navigation_contract.test.js"
-  - "build-service/tests/studio_home_modern_ui_contract.test.js"
-  - "build-service/tests/retired_five_build_contract.test.js"
+  - "quality/tests/android_system_back_navigation_contract.test.js"
+  - "quality/tests/studio_home_modern_ui_contract.test.js"
+  - "quality/tests/retired_five_build_contract.test.js"
 ---
 
 # Android App Map
@@ -147,3 +150,30 @@ control.
 Terminal and Excel Tools keep domain-specific layouts while sharing the same
 palette. Standalone update and Pro purchase activities also use the shared
 theme.
+
+## User-facing creation and admin navigation
+
+New Quick and Advanced projects start with `com.appforgestudio.myapp`;
+existing saved package IDs are not migrated. Quick and Advanced preserve a
+manually edited package name when editing the app title. Advanced Version Code
+keeps temporary text separate from the numeric draft, allowing clear-and-type
+without submitting a blank/zero version to build. Quick optional device and
+Pro controls are collapsed but not removed. Public Home has no admin entry;
+Settings' version line opens the normal Google admin verification screen after
+seven taps. A hidden navigation gesture is never authorization.
+
+## Home Pro card placement
+
+The redundant bottom `ModernProCard` is not rendered in Studio Home. The
+hero's Plan badge remains, and Pro entitlements, purchase and Settings
+entries are not disabled or removed.
+
+## Studio launcher artwork (separate from generated-project icons)
+
+The main AppForge Studio Android manifest references mipmap/ic_launcher and
+mipmap/ic_launcher_round. The user-approved original black AppForge artwork
+is kept in app/src/main/assets/branding; its 1024px, aspect-preserving,
+black-background, outer-margin-trimmed square master generates all five
+raster density launcher/round variants. No unrelated template/project icons
+or Play Store listing assets are silently changed. Device launcher visual
+acceptance remains separate from successful Kotlin CI.

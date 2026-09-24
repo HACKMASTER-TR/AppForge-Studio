@@ -6,6 +6,8 @@ package com.appforge.studio
 
 import android.content.Intent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,12 +49,15 @@ internal fun SettingsHubScreen(
     onOpenLanguage: () -> Unit,
     onOpenKeystore: () -> Unit,
     onOpenPro: () -> Unit,
+    onOpenOfflinePack: () -> Unit,
     onOpenHowTo: () -> Unit,
     onOpenPlayGuide: () -> Unit,
     onOpenLegal: () -> Unit,
     onFeedback: () -> Unit,
-    onClearCache: () -> Unit
+    onClearCache: () -> Unit,
+    onOpenAdmin: () -> Unit
 ) {
+    var versionTapCount by remember { mutableIntStateOf(0) }
     val configuration = LocalConfiguration.current
     val context = LocalContext.current
     val compact = configuration.screenWidthDp < 380
@@ -79,15 +84,21 @@ internal fun SettingsHubScreen(
             onOpenKeystore
         ),
         SettingsEntry(
+            "⬇",
+            "Tam Çevrimdışı Derleme Paketi",
+            "Android, Node, Python ve Portable EXE için tek seferlik runtime kurulumu",
+            onOpenOfflinePack
+        ),
+        SettingsEntry(
             "★",
-            settingsT(languageCode, "pro"),
+            "Pro durumum",
             if (proUnlocked) settingsT(languageCode, "active") else "Standart",
             onOpenPro
         ),
         SettingsEntry(
             "🛒",
-            "Pro ve Satın Almalar",
-            "Play fiyatları, kota, ek paketler, geri yükleme ve abonelik yönetimi",
+            "Satın alımlar ve geri yükleme",
+            "Satın alımları ve mevcut hakkını geri yükle.",
             {
                 context.startActivity(
                     Intent(
@@ -112,7 +123,7 @@ internal fun SettingsHubScreen(
         SettingsEntry(
             "🛡",
             settingsT(languageCode, "legal"),
-            "Kullanım koşulları, gizlilik, bulut build, ödeme ve AI açıklamaları",
+            "Kullanım koşulları, gizlilik, cihazda derleme ve AI açıklamaları",
             onOpenLegal
         ),
         SettingsEntry(
@@ -163,6 +174,23 @@ internal fun SettingsHubScreen(
         ) {
             items(entries) { item ->
                 SettingsCardRow(item)
+            }
+            item {
+                Text(
+                    "Sürüm ${BuildConfig.VERSION_NAME}",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            versionTapCount += 1
+                            if (versionTapCount >= 7) {
+                                versionTapCount = 0
+                                onOpenAdmin()
+                            }
+                        }
+                        .padding(16.dp),
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
             }
         }
     }

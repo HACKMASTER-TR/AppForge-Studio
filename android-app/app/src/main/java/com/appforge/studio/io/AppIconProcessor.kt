@@ -26,7 +26,8 @@ data class PreparedAppIcon(
 
 object AppIconProcessor {
     private const val OUTPUT_SIZE = 1024
-    private const val SAFE_CONTENT_SIZE = 640
+    // Full-width, aspect-preserving master; no synthetic cyan outline.
+    private const val SAFE_CONTENT_SIZE = OUTPUT_SIZE
     private const val MAX_DECODE_SIZE = 2048
 
     fun prepare(
@@ -64,9 +65,7 @@ object AppIconProcessor {
             Canvas(output)
 
         canvas.drawColor(
-            parseColor(
-                backgroundColor
-            )
+            masterBackgroundColor(decoded, backgroundColor)
         )
 
         val scale =
@@ -321,6 +320,32 @@ object AppIconProcessor {
         ).also {
             bitmap.recycle()
         }
+    }
+
+    /**
+     * An opaque wide logo already has a background in its source artwork.
+     * Match its corner colour so the square master's remaining bars do not
+     * become the unrelated UI primary colour (seen as a cyan/white frame).
+     * Transparent artwork continues to use the explicitly selected colour.
+     * Preserve aspect ratio and ALL of the original design; do not crop text.
+     */
+    private fun masterBackgroundColor(bitmap: Bitmap, fallback: String): Int {
+        val corners = listOf(
+            bitmap.getPixel(0, 0),
+            bitmap.getPixel(bitmap.width - 1, 0),
+            bitmap.getPixel(0, bitmap.height - 1),
+            bitmap.getPixel(bitmap.width - 1, bitmap.height - 1)
+        )
+        if (corners.count { Color.alpha(it) >= 240 } < 3) {
+            return parseColor(fallback)
+        }
+        fun median(channel: (Int) -> Int): Int =
+            corners.map(channel).sorted()[corners.size / 2]
+        return Color.rgb(
+            median(Color::red),
+            median(Color::green),
+            median(Color::blue)
+        )
     }
 
     private fun parseColor(

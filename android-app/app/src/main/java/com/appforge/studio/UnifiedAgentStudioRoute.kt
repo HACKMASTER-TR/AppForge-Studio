@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.appforge.studio.ai.AgentBlueprintIssueLevel
 import com.appforge.studio.ai.AppForgeAgentBlueprintJson
+import com.appforge.studio.ai.AppForgeAgentBlueprintRecovery
 import com.appforge.studio.ai.AppForgeAgentBlueprintPrompt
 import com.appforge.studio.ai.AppForgeAgentBlueprintValidator
 import com.appforge.studio.ai.AppForgeAgentStudioState
@@ -360,7 +361,7 @@ internal fun UnifiedAgentStudioRoute(
                             busy = resumeBuild,
                             message =
                                 if (resumeBuild) {
-                                    "Mevcut Cloud Build'e yeniden bağlanılıyor..."
+                                    "Mevcut cihaz build kaydı yeniden açılıyor..."
                                 } else {
                                     session.state.message
                                 }
@@ -904,13 +905,11 @@ internal fun UnifiedAgentStudioRoute(
 
                         artifactState =
                             result.fold(
-                                onSuccess = { downloadId ->
+                                onSuccess = { saved ->
                                     artifactState.copy(
                                         busy = false,
-                                        lastDownloadId =
-                                            downloadId,
-                                        message =
-                                            "${kind.uppercase()} indirme kuyruğuna eklendi."
+                                        lastDownloadId = saved.downloadId,
+                                        message = saved.message
                                     )
                                 },
                                 onFailure = { error ->
@@ -1023,23 +1022,19 @@ internal fun UnifiedAgentStudioRoute(
                                 )
                             }
 
-                            val promptContract = AppForgeAgentBlueprintPrompt.build(
+                            val recovery = AppForgeAgentBlueprintRecovery.generate(
                                 userPrompt = state.prompt.trim(),
-                                preferredPlatform = state.platform
+                                platform = state.platform,
+                                generator = { structuredPrompt ->
+                                    assistant.generateStructuredJson(structuredPrompt)
+                                },
+                                onRetry = {
+                                    state = state.copy(
+                                        message = "Yerel AI eksik Blueprint üretti; bir kez kısa şema ile yeniden deneniyor..."
+                                    )
+                                }
                             )
-
-                            val raw = assistant.generateStructuredJson(
-                                promptContract
-                            )
-                            val blueprint =
-                                AppForgeAgentBlueprintJson.parse(
-                                    raw = raw,
-                                    fallbackPlatform = state.platform
-                                )
-
-                            require(blueprint.platform == state.platform) {
-                                "AI Blueprint platformu seçilen platform ile eşleşmiyor."
-                            }
+                            val blueprint = recovery.blueprint
 
                             val validation =
                                 AppForgeAgentBlueprintValidator.validate(blueprint)
@@ -1061,7 +1056,7 @@ internal fun UnifiedAgentStudioRoute(
                                 autonomousResult = null,
                                 busy = false,
                                 message =
-                                    "Blueprint hazır. İncele veya Visual Designer'da düzenle."
+                                    recovery.notice + " İncele veya Visual Designer'da düzenle."
                             )
                         }.getOrElse { error ->
                             state.copy(
@@ -1158,7 +1153,7 @@ internal fun UnifiedAgentStudioRoute(
                         busy = true,
                         remoteBuild = null,
                         message =
-                            "TEST → AppForge Cloud BUILD → güvenli repair hazırlanıyor..."
+                            "TEST → cihazda BUILD → güvenli repair hazırlanıyor..."
                     )
 
                     scope.launch {

@@ -3,8 +3,8 @@ type: bug
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-18
-last_verified: 2026-09-18
+updated: 2026-09-22
+last_verified: 2026-09-22
 confidence: high
 tags:
   - bugs
@@ -13,24 +13,17 @@ related:
   - "[[Current_Status]]"
 source_files:
   - ".appforge/runtime-blockers.json"
-  - "build-service/tests/fast_signing_key.test.js"
-  - "build-service/tests/appforge_terminal_integration.test.js"
-  - "build-service/tests/appforge_terminal_viewport_stability_contract.test.js"
+  - "quality/tests/appforge_terminal_viewport_stability_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/LocalPtyTerminalPanel.kt"
   - "android-app/app/src/main/java/com/appforge/studio/terminal/TermuxTerminalCoreAdapter.kt"
-  - "build-service/tests/appforge_terminal_mirror_lifecycle_contract.test.js"
+  - "quality/tests/appforge_terminal_mirror_lifecycle_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentArtifactClient.kt"
-  - "build-service/src/clientHardening.js"
+  - "quality/tests/appforge_unified_agent_local_artifact_save_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
   - ".github/workflows/android-play-release.yml"
   - "scripts/appforge"
   - "android-app/app/src/main/java/com/appforge/studio/ui/DownloadedApkFolder.kt"
-  - "build-service/tests/appforge_terminal_persistent_viewport_workspace_contract.test.js"
-  - "build-service/src/reactNativeBuildEngine.js"
-  - "build-service/tests/react_native_build_error_excerpt.test.js"
-  - "build-service/tests/source_worker_toolchain_matrix_contract.test.js"
-  - "build-service/scripts/source-worker-toolchain-doctor.js"
-  - "build-service/source-worker-toolchain.json"
+  - "quality/tests/appforge_terminal_persistent_viewport_workspace_contract.test.js"
 ---
 
 # Bug Index
@@ -96,3 +89,87 @@ Document only significant, reusable debugging knowledge. Do not add one-off visu
   package name such as `platform-toolsnplatforms;android-34...`. The generator
   now emits real newline separators and a regression contract protects this
   Docker build boundary.
+
+
+- Device-local Windows EXE Gradle compile collision — normal-project EXE
+  integration used the same local name `outputs` for both requested
+  `DeviceArtifactKind` values and discovered APK/AAB files inside
+  `buildGradleProject`. Kotlin rejected the conflicting declarations and
+  produced secondary type-inference errors. The two concepts are now named
+  `requestedArtifacts` and `artifactFiles`, and a scoped regression contract
+  protects the compile boundary.
+
+
+- Owner artifact visibility inconsistency — APK already wrote a public
+  `Downloads/AppForgeStudio` copy plus an optional private owner copy, while
+  AAB and Windows EXE short-circuited to the private owner vault. On Android
+  10+ AAB and EXE now publish the public copy as well, so owner/admin builds
+  remain visible in the normal Files application. Combined outputs inherit the
+  same per-artifact rule.
+
+- Device-local AAB public save rejected `file://` artifact URI — normal
+  device builds return local artifact tickets. The AAB non-owner path still
+  used Android `DownloadManager.Request`, which rejects non-HTTP(S) URIs with
+  `Can only download HTTP/HTTPS URIs`. AAB export now uses the existing
+  MediaStore `downloadArtifactToDownloads` stream on Android 10+ and SAF on
+  Android 8/9, matching the device-local EXE transport behavior. Physical
+  public-save re-acceptance remains required.
+
+- Terminal accountless verified-owner crash — empty session email reached `TerminalWorkspaceResolver.accountScope` and threw on the Compose UI thread before Terminal opened. Verified owners without a normal account now use a separate stable workspace namespace; blank-email legacy workspace migration is disabled, and expired owner access returns a recoverable screen. Terminal Linux, Pro state and build assets are not reset. Source/test/CI/device acceptance must be reported separately.
+
+- Successful Builds re-save after process restart — the UI retained persisted
+  `ProjectLibrary` build history while `BuildApiClient.createDownloadTicket`
+  required an in-memory `DeviceBuildEngine.jobs` entry. After an APK update,
+  the EXE canonical file and public Share remained available but `Kaydet`
+  reported `EXE çıktısı hazır değil.` The ticket now falls back only to the
+  exact successful saved build's canonical artifact directory and output kind;
+  missing or ambiguous files fail closed. Device re-save after restart remains
+  a separate physical acceptance gate.
+
+## 2026-09-23 retired backend cleanup
+
+Legacy remote Build Service source and backend-only test cases retired with
+explicit mapping to preserved device, Terminal, Pro, Windows and CI tests
+under `quality/tests`. Existing historical bug records are retained.
+
+- Unified Agent local APK/AAB/EXE buttons rejected device `file://` tickets:
+  after device build succeeded, all three buttons passed the local ticket to an
+  HTTPS-only DownloadManager path. Save local bytes to public MediaStore
+  Downloads/AppForgeStudio, verify the copied byte count, publish only after
+  success and roll back incomplete copies. Keep HTTPS downloads distinct.
+  Physical-device re-acceptance remains required after Android CI.
+
+- Unified Agent historical artifact lookup after app update — its durable
+  session contains the successful build ID but `ProjectLibrary` does not contain
+  that agent-owned build. After process restart local jobs are empty; exact
+  session/build/output-kind fallback is needed without searching other builds.
+  Device acceptance must check saved outputs without rebuilding.
+
+- Google admin restore after APK update — owner memory is intentionally
+  process-only and stored ID token expires within an hour. On startup, only
+  an unexpired encrypted candidate may be revalidated with HTTPS admin status;
+  network failure must not grant access or erase valid encrypted candidate.
+  Expired credentials require an explicit fresh Google sign-in.
+
+- Selected icon not embedded in device-local outputs — prepared icon URI was
+  persisted but not injected into generated Android resources/manifest or
+  project-specific Windows PE icons. New source integration fails closed for
+  selected icons; no generic Host mutation. Physical APK launcher and Windows
+  Explorer/portable launch acceptance remain pending.
+
+- Selected icon visual acceptance regression — the initially successful
+  source-level icon test did not exercise actual launcher/Explorer appearance.
+  AppIconProcessor applied a 640/1024 inset to content that Android launchers
+  already shrink, and detailed photos exceeded the unchanged NSIS Host's
+  RT_ICON slot capacities. Android content sizing and project-copy bounded
+  PE PNG encoding are corrected in source. Physical APK icon and Windows
+  Explorer/launch re-acceptance remain open; never count contract tests alone.
+
+- Custom-icon visual size after source-level green tests — physical Android
+  and Windows screenshots showed the old 960/1024 inset plus a cyan/white
+  frame around a wide logo. Source-only contract PASS does not establish
+  visual acceptance. The selected opaque image now creates a full-width
+  aspect-preserving square master with background sampled from its own
+  corners. Previously prepared icon files stay unchanged; reselect the
+  original artwork for device acceptance. Never claim that a wide design
+  can fill a square without crop or distortion. Windows host remains pinned.
