@@ -112,4 +112,69 @@ internal class BuildRuntimeState {
         mutableStateOf<String?>(
             null
         )
+
+    /*
+     * A completed build belongs to one project/source identity.
+     *
+     * When another project becomes active, never leak the previous
+     * project's progress, logs or downloadable artifacts into the
+     * new Builder screen.
+     */
+    fun resetForProjectChange() {
+
+        status.value =
+            "Hazır"
+
+        progress.intValue =
+            0
+
+        buildStartedAtMs.value =
+            null
+
+        buildElapsedMs.longValue =
+            0L
+
+        buildTimerRunning.value =
+            false
+
+        logs.value =
+            emptyList()
+
+        preflight.value =
+            emptyList()
+
+        buildProjectKey.value =
+            null
+
+        buildId.value =
+            null
+
+        buildNo.value =
+            null
+
+        apkUrl.value =
+            null
+
+        aabUrl.value =
+            null
+
+        exeUrl.value =
+            null
+
+        queuePosition.value =
+            null
+
+        queueAhead.value =
+            null
+
+        queueWorkerSlots.intValue =
+            0
+
+        queueEtaSeconds.value =
+            null
+
+        queueEstimate.value =
+            null
+    }
+
 }

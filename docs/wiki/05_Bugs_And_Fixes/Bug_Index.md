@@ -173,3 +173,14 @@ under `quality/tests`. Existing historical bug records are retained.
   corners. Previously prepared icon files stay unchanged; reselect the
   original artwork for device acceptance. Never claim that a wide design
   can fill a square without crop or distortion. Windows host remains pinned.
+
+
+- Builder stale successful-build state after project switch — after a
+  successful device build, `BuildRuntimeState` retained the previous
+  project's progress and artifact URLs when another project was opened.
+  The bottom Builder action treated those stale URLs as outputs for the
+  new project, which could leave the old success screen visible and hide
+  the new build action until process restart. Project/source identity
+  changes now clear transient build runtime state after active work
+  finishes, and output readiness is gated by `buildProjectKey`. Saved
+  history and canonical build artifacts are not deleted.

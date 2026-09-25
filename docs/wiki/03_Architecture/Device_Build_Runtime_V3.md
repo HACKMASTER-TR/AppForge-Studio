@@ -28,6 +28,8 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/BuildRuntimeState.kt"
+  - "quality/tests/builder_project_switch_build_state_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
   - "android-app/app/src/main/assets/device-build/FastActivity.java"
@@ -554,3 +556,25 @@ This closes physical APK/AAB offline acceptance for the
 current React/Vite node-web fixture. Arbitrary imported npm
 projects remain dependent on their exact package versions being
 available in the AppForge persistent npm cache.
+
+
+## 2026-09-25 Native Java offline acceptance and project-switch build state
+
+A fresh native Android Java Gradle fixture passed physical-device
+offline APK/AAB generation. The generated APK launched and the
+runtime marker `APPFORGE_NATIVE_JAVA_PASS` was observed.
+
+The same acceptance session exposed a separate Builder UI regression:
+after one project completed successfully, opening another project
+could retain the previous project's success/progress/artifact state
+until the AppForge process restarted.
+
+The root cause was the intentionally stable `BuildRuntimeState`
+outliving the selected project while the Builder bottom action
+considered any APK/AAB/EXE URL ready without confirming the
+`buildProjectKey`.
+
+Project/source identity changes now clear only transient runtime build
+state after an active build has finished. Saved build history and
+canonical artifacts are preserved. The bottom Build action also gates
+output readiness by project identity.

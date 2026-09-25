@@ -1641,6 +1641,53 @@ private fun AppForgeApp() {
             mutableStateOf(false)
         }
 
+    /*
+     * PROJECT_SWITCH_BUILD_STATE_RESET_V1
+     *
+     * BuildRuntimeState intentionally survives normal Compose
+     * recomposition, but a completed build must never follow the user
+     * into another project.
+     *
+     * The same project key used when starting a build is compared with
+     * the currently selected source. If they differ, clear only the
+     * transient build runtime state. Saved build history and canonical
+     * artifacts remain untouched.
+     *
+     * An active build is never reset midway. If the user changes project
+     * during a build, buildBusy becoming false retriggers this effect and
+     * clears the now-stale result.
+     */
+    LaunchedEffect(
+        draft.packageName,
+        draft.importedFolder,
+        draft.sourceUri,
+        buildProjectKey,
+        buildBusy
+    ) {
+        if (
+            buildBusy
+        ) {
+            return@LaunchedEffect
+        }
+
+        val previousBuildKey =
+            buildProjectKey
+                ?: return@LaunchedEffect
+
+        val currentProjectKey =
+            "${draft.packageName}|" +
+                "${draft.importedFolder.orEmpty()}|" +
+                draft.sourceUri.orEmpty()
+
+        if (
+            previousBuildKey !=
+                currentProjectKey
+        ) {
+            buildRuntime
+                .resetForProjectChange()
+        }
+    }
+
     val isAdminOpsAccount = terminalOwner
 
     val conversionApkPicker =
@@ -5694,13 +5741,33 @@ onOpenPro = {
                             }
                         }
 
+                        val builderCurrentProjectKey =
+                            remember(
+                                draft.packageName,
+                                draft.importedFolder,
+                                draft.sourceUri
+                            ) {
+                                "${draft.packageName}|" +
+                                    "${draft.importedFolder.orEmpty()}|" +
+                                    draft.sourceUri.orEmpty()
+                            }
+
+                        val builderBuildMatchesCurrentProject =
+                            buildProjectKey ==
+                                null ||
+                            buildProjectKey ==
+                                builderCurrentProjectKey
+
                         val builderBuildOutputReady =
-                            !apkUrl
-                                .isNullOrBlank() ||
-                            !aabUrl
-                                .isNullOrBlank() ||
-                            !exeUrl
-                                .isNullOrBlank()
+                            builderBuildMatchesCurrentProject &&
+                                (
+                                    !apkUrl
+                                        .isNullOrBlank() ||
+                                    !aabUrl
+                                        .isNullOrBlank() ||
+                                    !exeUrl
+                                        .isNullOrBlank()
+                                )
 
                         if (
                             !(
