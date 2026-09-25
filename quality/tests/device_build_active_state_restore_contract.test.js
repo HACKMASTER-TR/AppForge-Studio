@@ -113,6 +113,21 @@ test(
       /var buildBusy by\s*buildRuntime\.buildBusy/
     );
 
+    assert.match(
+      main,
+      /val buildBusy by\s*runtime\.buildBusy/
+    );
+
+    assert.match(
+      main,
+      /BuildStep\([\s\S]*buildBusy\s*=\s*buildBusy/
+    );
+
+    assert.match(
+      main,
+      /private fun BuildStep\([\s\S]*buildBusy:\s*Boolean/
+    );
+
     assert.doesNotMatch(
       main,
       /var buildBusy by\s*remember\s*\{[\s\S]*mutableStateOf\(false\)/

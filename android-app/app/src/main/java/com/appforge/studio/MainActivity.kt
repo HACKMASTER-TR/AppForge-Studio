@@ -6222,6 +6222,9 @@ private fun BuildRuntimeStep(
     val buildTimerRunning by
         runtime.buildTimerRunning
 
+    val buildBusy by
+        runtime.buildBusy
+
     val logs by
         runtime.logs
 
@@ -6276,6 +6279,8 @@ private fun BuildRuntimeStep(
             buildElapsedMs,
         buildTimerRunning =
             buildTimerRunning,
+        buildBusy =
+            buildBusy,
         logs =
             logs,
         preflight =
@@ -18564,6 +18569,7 @@ private fun BuildStep(
     progress: Int,
     buildElapsedMs: Long,
     buildTimerRunning: Boolean,
+    buildBusy: Boolean,
     logs: List<String>,
     preflight: List<String>,
     buildProjectKey: String?,

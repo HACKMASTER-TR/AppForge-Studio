@@ -816,7 +816,7 @@ class BuildProgressService : Service() {
                 .apply()
         }
 
-        fun activeSingleBuild(
+        internal fun activeSingleBuild(
             context: Context
         ): ActiveBuildReference? {
             val prefs =
