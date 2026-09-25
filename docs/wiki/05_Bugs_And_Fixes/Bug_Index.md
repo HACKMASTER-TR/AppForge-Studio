@@ -184,3 +184,11 @@ under `quality/tests`. Existing historical bug records are retained.
   changes now clear transient build runtime state after active work
   finishes, and output readiness is gated by `buildProjectKey`. Saved
   history and canonical build artifacts are not deleted.
+
+
+- Builder stale source-engine metadata after project restore/switch —
+  a saved draft could still declare `node-web` even when the currently
+  imported project tree was detected as another technology. The build
+  then entered npm preparation and failed with `package.json bulunamadı`.
+  Local Builder builds now refresh source technology and build engine
+  from the actual imported folder immediately before build start.

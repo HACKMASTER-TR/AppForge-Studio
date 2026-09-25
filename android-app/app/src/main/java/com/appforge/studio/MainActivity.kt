@@ -645,6 +645,68 @@ private suspend fun <T> retryInitialBuildRequest(
 
 private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, OFFLINE_PACK, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
+/*
+ * BUILD_SOURCE_ENGINE_REFRESH_V1
+ *
+ * Saved project metadata can outlive the actual imported source tree.
+ * The real source tree is authoritative for local builds.
+ *
+ * Refresh only technology/build-engine metadata. User-selected
+ * permissions, signing and output settings remain untouched.
+ */
+private fun refreshLocalSourceBuildMetadata(
+    draft: ProjectDraft
+): ProjectDraft {
+
+    if (
+        draft.sourceMode !=
+            SourceMode.LOCAL
+    ) {
+        return draft
+    }
+
+    val sourceDir =
+        draft.importedFolder
+            ?.let(::File)
+            ?.takeIf {
+                it.isDirectory
+            }
+            ?: return draft
+
+    val detected =
+        runCatching {
+            SourceCapabilityAnalyzer
+                .analyze(
+                    sourceDir
+                )
+        }.getOrNull()
+            ?: return draft
+
+    if (
+        detected.technologyId ==
+            "unknown" ||
+        detected.buildEngine ==
+            "unknown"
+    ) {
+        return draft
+    }
+
+    return draft.copy(
+        sourceTechnology =
+            detected.technologyId,
+
+        sourceTechnologyLabel =
+            detected.technologyLabel,
+
+        sourceBuildEngine =
+            detected.buildEngine,
+
+        sourceBuildReady =
+            detected.buildReady
+    )
+}
+
+
 @Composable
 private fun AppForgeApp() {
     val context = LocalContext.current
@@ -3105,14 +3167,30 @@ private fun AppForgeApp() {
             return@buildStart
         }
 
+        val verifiedBuildDraft =
+            refreshLocalSourceBuildMetadata(
+                buildDraft
+            )
+
+        val sourceEngineCorrected =
+            verifiedBuildDraft
+                .sourceBuildEngine !=
+                buildDraft
+                    .sourceBuildEngine ||
+            verifiedBuildDraft
+                .sourceTechnology !=
+                buildDraft
+                    .sourceTechnology
+
         buildBusy =
             true
+
         val storedVersionCode =
             ProjectLibrary
                 .load(context)
                 .firstOrNull {
                     it.packageName ==
-                        buildDraft.packageName
+                        verifiedBuildDraft.packageName
                 }
                 ?.let {
                     ProjectLibrary
@@ -3126,17 +3204,17 @@ private fun AppForgeApp() {
 
         val effectiveBuildDraft =
             if (
-                buildDraft.autoVersionCode
+                verifiedBuildDraft.autoVersionCode
             ) {
-                buildDraft.copy(
+                verifiedBuildDraft.copy(
                     versionCode =
                         maxOf(
-                            buildDraft.versionCode,
+                            verifiedBuildDraft.versionCode,
                             storedVersionCode
                         ) + 1
                 )
             } else {
-                buildDraft
+                verifiedBuildDraft
             }
 
         draft =
@@ -3154,7 +3232,20 @@ private fun AppForgeApp() {
 
             status = "Derleme hazırlanıyor..."
             progress = 2
-            logs = emptyList()
+            logs =
+                if (
+                    sourceEngineCorrected
+                ) {
+                    listOf(
+                        "🧭 Proje türü kaynak klasörden yeniden doğrulandı • " +
+                            effectiveBuildDraft.sourceTechnologyLabel +
+                            " • " +
+                            effectiveBuildDraft.sourceBuildEngine
+                    )
+                } else {
+                    emptyList()
+                }
+
             preflight = emptyList()
             buildProjectKey =
                 "${effectiveBuildDraft.packageName}|" +

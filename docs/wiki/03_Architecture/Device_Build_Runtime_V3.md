@@ -29,6 +29,7 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
   - "android-app/app/src/main/java/com/appforge/studio/BuildRuntimeState.kt"
+  - "quality/tests/builder_source_engine_refresh_contract.test.js"
   - "quality/tests/builder_project_switch_build_state_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
@@ -578,3 +579,21 @@ Project/source identity changes now clear only transient runtime build
 state after an active build has finished. Saved build history and
 canonical artifacts are preserved. The bottom Build action also gates
 output readiness by project identity.
+
+
+## 2026-09-25 source-engine refresh after project switch
+
+Physical re-acceptance confirmed that stale successful-build UI state
+no longer followed the user into another project.
+
+The next build exposed a separate metadata issue: the selected source
+tree did not contain `package.json`, but the saved draft still selected
+`node-web`, so the Node build script failed immediately.
+
+Local Builder builds now re-analyze the actual imported source tree at
+build start and refresh only technology/build-engine readiness metadata.
+User-selected permissions, signing and output settings are preserved.
+
+This makes the real project source authoritative when saved project
+metadata is stale. The correction is recorded in the build log when an
+engine change is detected.
