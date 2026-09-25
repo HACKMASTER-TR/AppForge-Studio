@@ -3,8 +3,8 @@ type: status
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-21
-last_verified: 2026-09-21
+updated: 2026-09-25
+last_verified: 2026-09-25
 confidence: high
 tags:
   - status
@@ -250,3 +250,36 @@ Device Build V3, Play/Pro and the production custom domain were not changed.
   and initiated no new Worker deployment.
 - `d1_migrations` reconciliation and physical-device Pro
   acceptance remain open gates.
+
+
+## 2026-09-25 Device Build Runtime V3 physical acceptance closure
+
+The current physical-device acceptance matrix is closed for the proven
+device-local engines and fixtures:
+
+- React/Vite `node-web`: fresh project built fully offline to APK+AAB and
+  launched successfully.
+- Native Android Java: fully offline APK+AAB build and
+  `APPFORGE_NATIVE_JAVA_PASS`.
+- Native Android Kotlin: fully offline APK+AAB build and
+  `APPFORGE_NATIVE_KOTLIN_PASS`.
+- Python / Chaquopy: fully offline APK+AAB build using Chaquopy 17.0.0 and
+  Python 3.12, followed by runtime
+  `APPFORGE_PYTHON_CHAQUOPY_PASS`.
+- The generated Python Android runtime now applies platform system-bar insets;
+  physical re-acceptance confirmed that content begins below the status bar.
+- Active device builds survive Activity/Compose recreation without the Builder
+  incorrectly returning to `Hazır • %0`.
+- `DERLEMEYİ İPTAL ET` physically re-tested without terminating AppForge.
+
+The source-level Python safe-area correction is commit
+`c6158de78aa759b92191b89b9d99fc3cc679defe`. Its focused regression tests,
+the complete quality suite, Stability Gate and Android Debug CI passed before
+device re-acceptance.
+
+This closes the current device-offline-engine acceptance sequence. It does not
+generalize acceptance to arbitrary dependency sets which are not present in the
+offline pack/cache.
+
+PR #56 remains Draft. No merge, Play Production publication, Cloudflare
+deployment, D1 migration or Windows Host modification is part of this closure.

@@ -641,3 +641,34 @@ An active restored build is allowed to own the Builder view even while the
 project draft itself is being restored. Explicit project navigation remains
 blocked while `buildBusy` is true. Saved build history and canonical artifacts
 are not deleted.
+
+
+## 2026-09-25 physical offline acceptance matrix
+
+Physical Android acceptance now confirms the current proven Runtime V3 engine
+matrix:
+
+| Technology | Engine | Offline APK | Offline AAB | Runtime evidence |
+| --- | --- | --- | --- | --- |
+| React / Vite | `node-web` | PASS | PASS | `APPFORGE_REACT_VITE_JS_PASS` |
+| Native Android Java | `android-gradle` | PASS | PASS | `APPFORGE_NATIVE_JAVA_PASS` |
+| Native Android Kotlin | `android-gradle` | PASS | PASS | `APPFORGE_NATIVE_KOTLIN_PASS` |
+| Python / Chaquopy | `python-android` | PASS | PASS | `APPFORGE_PYTHON_CHAQUOPY_PASS`, Python 3.12 |
+
+The Python fixture additionally verified Chaquopy 17.0.0 and the generated
+runtime system-bar safe area on the physical device.
+
+Runtime reliability acceptance in the same sequence also confirmed:
+
+- active builds remain attached to their real `DeviceBuildEngine` job across
+  Builder lifecycle recreation instead of resetting to Ready / 0;
+- explicit cancellation safely closes the Linux build process without an
+  uncaught reader-thread `InterruptedIOException`;
+- project switching does not inherit inactive build progress/artifacts from the
+  previous selected project;
+- local build start refreshes source-engine metadata from the actual imported
+  source tree.
+
+These results apply to the exact accepted fixtures and cached/offline
+dependencies. A different imported project can still require dependencies that
+have not been prepared in the AppForge offline pack.

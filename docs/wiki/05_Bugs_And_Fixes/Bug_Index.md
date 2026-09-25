@@ -202,7 +202,8 @@ under `quality/tests`. Existing historical bug records are retained.
   expected before destroying the process. Expected close-time reader I/O is
   contained; unexpected reader I/O is propagated back to normal build error
   handling instead of escaping an unmanaged thread. Physical cancel
-  re-acceptance remains required.
+  re-acceptance passed on 2026-09-25: the active build cancelled without
+  terminating AppForge.
 
 - Active device build UI reset to Ready / 0 — `DeviceBuildEngine` jobs are
   process-level, while Builder runtime state and `buildBusy` were only Compose
@@ -210,4 +211,15 @@ under `quality/tests`. Existing historical bug records are retained.
   although the real local build continued. The foreground tracker now persists
   the active build identity/project key/start time, Builder rehydrates from the
   real engine snapshot before rendering, and lifecycle-restored polling resumes
-  until a terminal state. Physical lifecycle re-acceptance remains required.
+  until a terminal state. Physical lifecycle re-acceptance passed on
+  2026-09-25: an active build no longer fell back to `Hazır • %0`.
+
+
+- Python generated runtime system-bar overlap — physical Python/Chaquopy
+  acceptance produced a valid APK+AAB but Android edge-to-edge rendering placed
+  the first runtime text underneath the status bar. The generated Python
+  template now applies native platform `WindowInsets.Type.systemBars()` on
+  API 30+ with the legacy platform inset fallback below API 30, avoiding a new
+  AndroidX dependency. Physical re-acceptance passed on 2026-09-25:
+  `APPFORGE_PYTHON_CHAQUOPY_PASS` and `PYTHON_VERSION=3.12` rendered inside
+  the safe content area.
