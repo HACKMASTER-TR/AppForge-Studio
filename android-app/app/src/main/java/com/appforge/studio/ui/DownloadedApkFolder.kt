@@ -738,6 +738,9 @@ internal fun DownloadedApkFolderScreen(
     val scope =
         rememberCoroutineScope()
 
+    val listState =
+        androidx.compose.foundation.lazy.rememberLazyListState()
+
     val configuration =
         LocalConfiguration.current
 
@@ -977,6 +980,8 @@ internal fun DownloadedApkFolderScreen(
         padding ->
 
         LazyColumn(
+            state =
+                listState,
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -1094,7 +1099,9 @@ internal fun DownloadedApkFolderScreen(
 
             when {
 
-                loading ->
+                loading &&
+                    builds.isEmpty() &&
+                    localFiles.isEmpty() ->
                     item {
                         Text(
                             "Başarılı derlemeler okunuyor..."

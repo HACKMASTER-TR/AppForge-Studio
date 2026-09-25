@@ -198,3 +198,24 @@ test(
     );
   }
 );
+
+
+test(
+  "successful builds refresh preserves scroll position",
+  () => {
+    assert.match(
+      screen,
+      /rememberLazyListState/
+    );
+
+    assert.match(
+      screen,
+      /state\s*=\s*listState/
+    );
+
+    assert.match(
+      screen,
+      /loading\s*&&\s*builds\.isEmpty\(\)\s*&&\s*localFiles\.isEmpty\(\)/
+    );
+  }
+);

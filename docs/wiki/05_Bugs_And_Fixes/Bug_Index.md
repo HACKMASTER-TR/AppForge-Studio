@@ -223,3 +223,11 @@ under `quality/tests`. Existing historical bug records are retained.
   AndroidX dependency. Physical re-acceptance passed on 2026-09-25:
   `APPFORGE_PYTHON_CHAQUOPY_PASS` and `PYTHON_VERSION=3.12` rendered inside
   the safe content area.
+
+- Successful Builds scroll jump after artifact save — pressing `Kaydet`
+  refreshed the screen by setting `loading=true`, temporarily replacing the
+  full `LazyColumn` content with a single loading row. The existing lazy-list
+  position could then clamp to the end and remain there when the artifact list
+  returned. The screen now owns an explicit `LazyListState` and keeps the
+  current list visible during non-initial refreshes, so save/trash refreshes
+  preserve the user's scroll position.
