@@ -3,8 +3,8 @@ type: bug
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-22
-last_verified: 2026-09-22
+updated: 2026-09-25
+last_verified: 2026-09-25
 confidence: high
 tags:
   - bugs
@@ -173,3 +173,53 @@ under `quality/tests`. Existing historical bug records are retained.
   corners. Previously prepared icon files stay unchanged; reselect the
   original artwork for device acceptance. Never claim that a wide design
   can fill a square without crop or distortion. Windows host remains pinned.
+
+
+- Builder stale build state after project switch — physical re-test
+  showed the first project-key-only reset was insufficient. After a
+  completed/failed build, opening another project could overwrite the
+  status with `Proje yüklendi` while retaining the old build ID,
+  progress and timer. That stale state was then interpreted as active,
+  exposing old progress and `DERLEMEYİ İPTAL ET` until process restart.
+  Explicit project create/open/load actions now reset inactive transient
+  build state immediately. Active builds block project replacement.
+  Saved history and canonical artifacts are preserved, and output state
+  requires a non-null matching `buildProjectKey`.
+
+
+- Builder stale source-engine metadata after project restore/switch —
+  a saved draft could still declare `node-web` even when the currently
+  imported project tree was detected as another technology. The build
+  then entered npm preparation and failed with `package.json bulunamadı`.
+  Local Builder builds now refresh source technology and build engine
+  from the actual imported folder immediately before build start.
+
+
+- Device build cancel reader-thread crash — physical-device logcat on
+  2026-09-25 confirmed `FATAL EXCEPTION: AppForgeLinux-device-...-android-build`
+  with `InterruptedIOException: read interrupted by close() on another thread`
+  at `LinuxShellEngine.kt`. Cancel/timeout teardown now marks pipe closure as
+  expected before destroying the process. Expected close-time reader I/O is
+  contained; unexpected reader I/O is propagated back to normal build error
+  handling instead of escaping an unmanaged thread. Physical cancel
+  re-acceptance passed on 2026-09-25: the active build cancelled without
+  terminating AppForge.
+
+- Active device build UI reset to Ready / 0 — `DeviceBuildEngine` jobs are
+  process-level, while Builder runtime state and `buildBusy` were only Compose
+  `remember` state. Activity/UI recreation could therefore show `Hazır • %0`
+  although the real local build continued. The foreground tracker now persists
+  the active build identity/project key/start time, Builder rehydrates from the
+  real engine snapshot before rendering, and lifecycle-restored polling resumes
+  until a terminal state. Physical lifecycle re-acceptance passed on
+  2026-09-25: an active build no longer fell back to `Hazır • %0`.
+
+
+- Python generated runtime system-bar overlap — physical Python/Chaquopy
+  acceptance produced a valid APK+AAB but Android edge-to-edge rendering placed
+  the first runtime text underneath the status bar. The generated Python
+  template now applies native platform `WindowInsets.Type.systemBars()` on
+  API 30+ with the legacy platform inset fallback below API 30, avoiding a new
+  AndroidX dependency. Physical re-acceptance passed on 2026-09-25:
+  `APPFORGE_PYTHON_CHAQUOPY_PASS` and `PYTHON_VERSION=3.12` rendered inside
+  the safe content area.

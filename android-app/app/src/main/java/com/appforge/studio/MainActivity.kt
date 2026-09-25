@@ -645,6 +645,68 @@ private suspend fun <T> retryInitialBuildRequest(
 
 private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, OFFLINE_PACK, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
+/*
+ * BUILD_SOURCE_ENGINE_REFRESH_V1
+ *
+ * Saved project metadata can outlive the actual imported source tree.
+ * The real source tree is authoritative for local builds.
+ *
+ * Refresh only technology/build-engine metadata. User-selected
+ * permissions, signing and output settings remain untouched.
+ */
+private fun refreshLocalSourceBuildMetadata(
+    draft: ProjectDraft
+): ProjectDraft {
+
+    if (
+        draft.sourceMode !=
+            SourceMode.LOCAL
+    ) {
+        return draft
+    }
+
+    val sourceDir =
+        draft.importedFolder
+            ?.let(::File)
+            ?.takeIf {
+                it.isDirectory
+            }
+            ?: return draft
+
+    val detected =
+        runCatching {
+            SourceCapabilityAnalyzer
+                .analyze(
+                    sourceDir
+                )
+        }.getOrNull()
+            ?: return draft
+
+    if (
+        detected.technologyId ==
+            "unknown" ||
+        detected.buildEngine ==
+            "unknown"
+    ) {
+        return draft
+    }
+
+    return draft.copy(
+        sourceTechnology =
+            detected.technologyId,
+
+        sourceTechnologyLabel =
+            detected.technologyLabel,
+
+        sourceBuildEngine =
+            detected.buildEngine,
+
+        sourceBuildReady =
+            detected.buildReady
+    )
+}
+
+
 @Composable
 private fun AppForgeApp() {
     val context = LocalContext.current
@@ -1196,9 +1258,55 @@ private fun AppForgeApp() {
      * Delegated aliases preserve all existing build code below while
      * allowing Builder-specific composition extraction in Phase 11.
      */
-    val buildRuntime =
+    val restoredBuildReference =
         remember {
+            BuildProgressService
+                .activeSingleBuild(
+                    context
+                )
+        }
+
+    val buildRuntime =
+        remember(
+            restoredBuildReference
+                ?.buildId
+        ) {
             BuildRuntimeState()
+                .also {
+                    runtime ->
+
+                    restoredBuildReference
+                        ?.let {
+                            reference ->
+
+                            runCatching {
+                                BuildApiClient(
+                                    context = context,
+                                    baseUrl =
+                                        reference.serverUrl,
+                                    apiKey =
+                                        reference.apiKey
+                                )
+                                    .getBuild(
+                                        reference.buildId
+                                    )
+                            }
+                                .getOrNull()
+                                ?.let {
+                                    snapshot ->
+
+                                    runtime
+                                        .restoreFromEngine(
+                                            snapshot =
+                                                snapshot,
+                                            projectKey =
+                                                reference.projectKey,
+                                            startedAtMs =
+                                                reference.startedAtMs
+                                        )
+                                }
+                        }
+                }
         }
 
     var status by
@@ -1215,6 +1323,9 @@ private fun AppForgeApp() {
 
     var buildTimerRunning by
         buildRuntime.buildTimerRunning
+
+    var buildBusy by
+        buildRuntime.buildBusy
 
     var logs by
         buildRuntime.logs
@@ -1254,6 +1365,111 @@ private fun AppForgeApp() {
 
     var queueEstimate by
         buildRuntime.queueEstimate
+
+    /*
+     * ACTIVE_DEVICE_BUILD_RESTORE_V1
+     *
+     * BuildProgressService persists only the identity needed to reconnect
+     * the UI to the real in-process DeviceBuildEngine job. The first
+     * snapshot is restored synchronously above so an active build never
+     * renders as Ready / 0 merely because Activity/Compose was recreated.
+     *
+     * Only a lifecycle-restored build gets this replacement polling loop;
+     * a build started by the current composition keeps its existing loop.
+     */
+    LaunchedEffect(
+        restoredBuildReference
+            ?.buildId
+    ) {
+        val reference =
+            restoredBuildReference
+                ?: return@LaunchedEffect
+
+        val client =
+            BuildApiClient(
+                context = context,
+                baseUrl =
+                    reference.serverUrl,
+                apiKey =
+                    reference.apiKey
+            )
+
+        while (true) {
+            val snapshot =
+                try {
+                    withContext(
+                        Dispatchers.IO
+                    ) {
+                        client.getBuild(
+                            reference.buildId
+                        )
+                    }
+                } catch (
+                    t: Throwable
+                ) {
+                    if (
+                        t is
+                            BuildApiException &&
+                        t.errorCode ==
+                            "LOCAL_BUILD_NOT_FOUND"
+                    ) {
+                        BuildProgressService
+                            .clear(
+                                context
+                            )
+
+                        buildRuntime
+                            .resetForProjectChange()
+                    } else {
+                        logs =
+                            (
+                                logs +
+                                    "Aktif cihaz build durumu geri yüklenemedi: ${t.message.orEmpty()}"
+                            ).takeLast(
+                                120
+                            )
+                    }
+
+                    return@LaunchedEffect
+                }
+
+            buildRuntime
+                .restoreFromEngine(
+                    snapshot =
+                        snapshot,
+                    projectKey =
+                        reference.projectKey,
+                    startedAtMs =
+                        reference.startedAtMs
+                )
+
+            val normalized =
+                snapshot.status
+                    .trim()
+                    .lowercase()
+
+            if (
+                normalized in
+                    setOf(
+                        "success",
+                        "failed",
+                        "cancelled",
+                        "canceled"
+                    )
+            ) {
+                BuildProgressService
+                    .clear(
+                        context
+                    )
+
+                break
+            }
+
+            delay(
+                1_000L
+            )
+        }
+    }
 
 
     /*
@@ -1632,14 +1848,95 @@ private fun AppForgeApp() {
     }
 
     /*
-     * Aynı anda yalnızca tek build oluşturulabilir/takip edilir.
-     * Birden fazla polling coroutine'in aynı UI state'ini
-     * değiştirmesini engeller.
+     * buildBusy now belongs to BuildRuntimeState so Activity/UI recreation
+     * can recover it from the real DeviceBuildEngine snapshot.
      */
-    var buildBusy by
-        remember {
-            mutableStateOf(false)
+
+    /*
+     * PROJECT_NAVIGATION_BUILD_RESET_V2
+     *
+     * Opening/creating another project is an explicit workspace
+     * boundary. A completed or failed build must never remain attached
+     * to the newly opened Builder screen.
+     *
+     * Active builds are protected: project navigation is rejected until
+     * the current build finishes or is cancelled.
+     */
+    fun prepareBuilderProjectNavigation(): Boolean {
+
+        if (
+            buildBusy
+        ) {
+            status =
+                "Derleme devam ederken proje değiştirilemez. " +
+                    "Önce derlemenin tamamlanmasını bekle veya iptal et."
+
+            screen =
+                AppScreen.BUILDER
+
+            step =
+                10
+
+            return false
         }
+
+        BuildProgressService
+            .clear(
+                context
+            )
+
+        buildRuntime
+            .resetForProjectChange()
+
+        return true
+    }
+
+    /*
+     * PROJECT_SWITCH_BUILD_STATE_RESET_V1
+     *
+     * BuildRuntimeState intentionally survives normal Compose
+     * recomposition, but a completed build must never follow the user
+     * into another project.
+     *
+     * The same project key used when starting a build is compared with
+     * the currently selected source. If they differ, clear only the
+     * transient build runtime state. Saved build history and canonical
+     * artifacts remain untouched.
+     *
+     * An active build is never reset midway. If the user changes project
+     * during a build, buildBusy becoming false retriggers this effect and
+     * clears the now-stale result.
+     */
+    LaunchedEffect(
+        draft.packageName,
+        draft.importedFolder,
+        draft.sourceUri,
+        buildProjectKey,
+        buildBusy
+    ) {
+        if (
+            buildBusy
+        ) {
+            return@LaunchedEffect
+        }
+
+        val previousBuildKey =
+            buildProjectKey
+                ?: return@LaunchedEffect
+
+        val currentProjectKey =
+            "${draft.packageName}|" +
+                "${draft.importedFolder.orEmpty()}|" +
+                draft.sourceUri.orEmpty()
+
+        if (
+            previousBuildKey !=
+                currentProjectKey
+        ) {
+            buildRuntime
+                .resetForProjectChange()
+        }
+    }
 
     val isAdminOpsAccount = terminalOwner
 
@@ -3058,14 +3355,30 @@ private fun AppForgeApp() {
             return@buildStart
         }
 
+        val verifiedBuildDraft =
+            refreshLocalSourceBuildMetadata(
+                buildDraft
+            )
+
+        val sourceEngineCorrected =
+            verifiedBuildDraft
+                .sourceBuildEngine !=
+                buildDraft
+                    .sourceBuildEngine ||
+            verifiedBuildDraft
+                .sourceTechnology !=
+                buildDraft
+                    .sourceTechnology
+
         buildBusy =
             true
+
         val storedVersionCode =
             ProjectLibrary
                 .load(context)
                 .firstOrNull {
                     it.packageName ==
-                        buildDraft.packageName
+                        verifiedBuildDraft.packageName
                 }
                 ?.let {
                     ProjectLibrary
@@ -3079,17 +3392,17 @@ private fun AppForgeApp() {
 
         val effectiveBuildDraft =
             if (
-                buildDraft.autoVersionCode
+                verifiedBuildDraft.autoVersionCode
             ) {
-                buildDraft.copy(
+                verifiedBuildDraft.copy(
                     versionCode =
                         maxOf(
-                            buildDraft.versionCode,
+                            verifiedBuildDraft.versionCode,
                             storedVersionCode
                         ) + 1
                 )
             } else {
-                buildDraft
+                verifiedBuildDraft
             }
 
         draft =
@@ -3107,7 +3420,20 @@ private fun AppForgeApp() {
 
             status = "Derleme hazırlanıyor..."
             progress = 2
-            logs = emptyList()
+            logs =
+                if (
+                    sourceEngineCorrected
+                ) {
+                    listOf(
+                        "🧭 Proje türü kaynak klasörden yeniden doğrulandı • " +
+                            effectiveBuildDraft.sourceTechnologyLabel +
+                            " • " +
+                            effectiveBuildDraft.sourceBuildEngine
+                    )
+                } else {
+                    emptyList()
+                }
+
             preflight = emptyList()
             buildProjectKey =
                 "${effectiveBuildDraft.packageName}|" +
@@ -3231,7 +3557,13 @@ private fun AppForgeApp() {
                     buildId = created.buildId,
                     serverUrl = serverUrl,
                     apiKey = apiKey,
-                    appName = effectiveBuildDraft.appName
+                    appName = effectiveBuildDraft.appName,
+                    projectKey =
+                        buildProjectKey
+                            .orEmpty(),
+                    startedAtMs =
+                        buildStartedAtMs
+                            ?: System.currentTimeMillis()
                 )
 
                 status =
@@ -3968,7 +4300,14 @@ private fun AppForgeApp() {
                         buildApiKey =
                             apiKey,
 
-                        onCreateQuick = {
+                        onCreateQuick = quickCreate@{
+
+                            if (
+                                !prepareBuilderProjectNavigation()
+                            ) {
+                                return@quickCreate
+                            }
+
                             val fresh =
                                 createQuickDraft(
                                     ProjectDraft()
@@ -3989,7 +4328,14 @@ private fun AppForgeApp() {
                                 AppScreen.QUICK
                         },
 
-                        onCreateAdvanced = {
+                        onCreateAdvanced = advancedCreate@{
+
+                            if (
+                                !prepareBuilderProjectNavigation()
+                            ) {
+                                return@advancedCreate
+                            }
+
                             val fresh =
                                 ProjectDraft()
 
@@ -4019,8 +4365,14 @@ private fun AppForgeApp() {
                             )
                         },
 
-                        onOpenProject = {
+                        onOpenProject = projectOpen@{
                             saved ->
+
+                            if (
+                                !prepareBuilderProjectNavigation()
+                            ) {
+                                return@projectOpen
+                            }
 
                             ProjectLibrary
                                 .restore(
@@ -4364,7 +4716,14 @@ onOpenPro = {
                     serverFreeProjectUsed =
                         projectQuota?.used,
                     onBack = { screen = AppScreen.HOME },
-                    onLoad = { saved ->
+                    onLoad = libraryLoad@{ saved ->
+
+                        if (
+                            !prepareBuilderProjectNavigation()
+                        ) {
+                            return@libraryLoad
+                        }
+
                         ProjectLibrary.restore(context, saved.id)?.let {
                             draft = it
                             sourceAnalysis =
@@ -5694,13 +6053,36 @@ onOpenPro = {
                             }
                         }
 
+                        val builderCurrentProjectKey =
+                            remember(
+                                draft.packageName,
+                                draft.importedFolder,
+                                draft.sourceUri
+                            ) {
+                                "${draft.packageName}|" +
+                                    "${draft.importedFolder.orEmpty()}|" +
+                                    draft.sourceUri.orEmpty()
+                            }
+
+                        val builderBuildMatchesCurrentProject =
+                            buildProjectKey !=
+                                null &&
+                            (
+                                buildBusy ||
+                                buildProjectKey ==
+                                    builderCurrentProjectKey
+                            )
+
                         val builderBuildOutputReady =
-                            !apkUrl
-                                .isNullOrBlank() ||
-                            !aabUrl
-                                .isNullOrBlank() ||
-                            !exeUrl
-                                .isNullOrBlank()
+                            builderBuildMatchesCurrentProject &&
+                                (
+                                    !apkUrl
+                                        .isNullOrBlank() ||
+                                    !aabUrl
+                                        .isNullOrBlank() ||
+                                    !exeUrl
+                                        .isNullOrBlank()
+                                )
 
                         if (
                             !(
@@ -5840,6 +6222,9 @@ private fun BuildRuntimeStep(
     val buildTimerRunning by
         runtime.buildTimerRunning
 
+    val buildBusy by
+        runtime.buildBusy
+
     val logs by
         runtime.logs
 
@@ -5894,6 +6279,8 @@ private fun BuildRuntimeStep(
             buildElapsedMs,
         buildTimerRunning =
             buildTimerRunning,
+        buildBusy =
+            buildBusy,
         logs =
             logs,
         preflight =
@@ -18182,6 +18569,7 @@ private fun BuildStep(
     progress: Int,
     buildElapsedMs: Long,
     buildTimerRunning: Boolean,
+    buildBusy: Boolean,
     logs: List<String>,
     preflight: List<String>,
     buildProjectKey: String?,
@@ -18559,9 +18947,12 @@ private fun BuildStep(
         }
 
     val buildMatchesCurrentProject =
-        buildProjectKey == null ||
-            buildProjectKey ==
-                currentProjectKey
+        buildProjectKey != null &&
+            (
+                buildBusy ||
+                buildProjectKey ==
+                    currentProjectKey
+            )
 
     val buildSucceeded =
         buildId != null &&

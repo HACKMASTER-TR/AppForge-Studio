@@ -26,6 +26,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.URLUtil;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -233,6 +234,9 @@ requestConfiguredPermissions();
                 sourceMode
             )
         ) {
+            if (config.optBoolean("assetHttpsEnabled", false)) {
+                return AppForgeLocalAssets.isLocalOrigin(origin);
+            }
             return origin.startsWith(
                 "file://"
             );
@@ -684,6 +688,17 @@ requestConfiguredPermissions();
 
         webView.setWebViewClient(
             new WebViewClient() {
+                @Override
+                public WebResourceResponse shouldInterceptRequest(
+                    WebView view,
+                    WebResourceRequest request
+                ) {
+                    if (!config.optBoolean("assetHttpsEnabled", false)) {
+                        return null;
+                    }
+                    return new AppForgeLocalAssets(getAssets()).intercept(request);
+                }
+
                 @Override
                 public void onPageFinished(
                     WebView view,
@@ -1139,6 +1154,9 @@ requestConfiguredPermissions();
                 mode
             )
         ) {
+            if (config.optBoolean("assetHttpsEnabled", false)) {
+                return AppForgeLocalAssets.isLocalPage(actual);
+            }
             return actual.startsWith(
                 "file://"
             );
@@ -2328,6 +2346,14 @@ requestConfiguredPermissions();
 
                 return;
             }
+        }
+
+        if (
+            "LOCAL".equalsIgnoreCase(sourceMode) &&
+            config.optBoolean("assetHttpsEnabled", false)
+        ) {
+            webView.loadUrl(AppForgeLocalAssets.START_URL);
+            return;
         }
 
         webView.loadUrl(

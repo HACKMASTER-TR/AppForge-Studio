@@ -3,8 +3,8 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-22
-last_verified: 2026-09-22
+updated: 2026-09-25
+last_verified: 2026-09-25
 confidence: high
 tags:
   - hot-context
@@ -13,59 +13,64 @@ tags:
 related:
   - "[[Index]]"
   - "[[Device_Build_Runtime_V3]]"
-  - "[[Pro_Code_Lifecycle_Staging]]"
+  - "[[Current_Status]]"
+  - "[[Bug_Index]]"
 source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
-  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt"
-  - "quality/tests/device_build_runtime_v3_contract.test.js"
-  - ".github/workflows/pro-staging-live-audit.yml"
-  - "cloudflare/control-plane/src/pro_redemption.mjs"
-  - "cloudflare/control-plane/tests/pro_reactivation_postcommit_contract.test.mjs"
+  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxShellEngine.kt"
+  - "android-app/app/src/main/assets/device-build/python-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt"
+  - "quality/tests/device_build_cancel_reader_contract.test.js"
+  - "quality/tests/device_build_active_state_restore_contract.test.js"
+  - "quality/tests/python_template_system_bars_contract.test.js"
 ---
 
 # Hot Context
 
 ## Current Focus
 
-- Pro staging; remote Build Service retired.
-- Finish Clean Device Build Runtime V3 and real Android APK/AAB validation.
-- Keep Terminal Linux separate from project-build Linux.
-- Preserve the current Studio Home and UI V2 design direction.
+- Device Build Runtime V3 physical offline acceptance is complete for the current React/Vite, native Android Java, native Android Kotlin and Python/Chaquopy fixtures.
+- Normal project compilation remains device-local and separate from Terminal Linux.
+- PR #56 remains Draft until an explicit merge decision.
+
+## Verified 2026-09-25
+
+- React/Vite node-web: offline APK+AAB and runtime launch passed.
+- Native Java: offline APK+AAB and APPFORGE_NATIVE_JAVA_PASS.
+- Native Kotlin: offline APK+AAB and APPFORGE_NATIVE_KOTLIN_PASS.
+- Python/Chaquopy: offline APK+AAB, Chaquopy 17.0.0, Python 3.12 and APPFORGE_PYTHON_CHAQUOPY_PASS.
+- Python system-bar safe-area correction passed physical re-test.
+- Device build cancellation no longer crashes AppForge.
+- Active-build restoration no longer falls back to Hazır / 0.
+- Project switching and source-engine refresh passed the current acceptance sequence.
+
+## Recent Important Changes
+
+- Physical offline acceptance is complete for the current React/Vite, native Java, native Kotlin and Python/Chaquopy fixtures.
+- Python generated runtime safe-area handling, safe build cancellation and active-build lifecycle restoration passed device re-test.
 
 ## Must Know
 
 - Source, tests, CI and observed runtime behavior override wiki claims.
-- Normal project builds are device-local and use a disposable build rootfs.
-- Railway, Render and Supabase are not AppForge project-build infrastructure.
-- GitHub is repository/CI infrastructure; Google Play/Cloud are distribution and billing infrastructure.
-- Windows generic-host CI, Android device packaging, physical Windows 11 smoke execution, normal Studio web-project EXE generation, Windows execution, and JavaScript runtime acceptance all passed. The offline pack may report Windows Portable EXE ready when the pinned host is installed.
-
-## Recent Important Changes
-
-- D1 staging schema 0002–0005 was applied manually and validated; `d1_migrations` is absent, so do not run migration apply until ledger reconciliation.
-- Existing DB binding and Google configuration are preserved.
-- Staging Worker deployment is live; curl HTTP Matrix and Live Audit passed health, D1 reachability and the read-only ownership route.
-- Android Kotlin CI and physical-device initial activation passed.
-- Restart auto-verification passed.
-- Admin revoke removed Pro and the active refresh path failed closed.
-- Keystore recovery preserved installation identity without restoring a revoked entitlement.
-- Reactivation committed successfully in D1 but returned a false-negative HTTP 409.
-- Root cause is the reactivation response path trusting exact D1 `meta.changes` values after a trigger-backed batch.
-- Current source fix keeps the atomic `receiptGuard` and post-verifies the committed activation code, active grant and redemption receipt.
-- The corrected staging Worker was deployed; same-device direct reactivation, restart verification, offline fail-closed and online recovery passed.
-- An isolated APK passed controlled interruption, ownership recovery and post-recovery restart checks. Live staging challenge replay passed: reused signed status challenge returned HTTP 409 and fresh verification passed. A second physical Android device passed initial activation and automatic verification after restart. An isolated `.prodeath` debug APK passed the device-observed process-termination, fail-closed restart, unchanged-key recovery, fresh HTTPS verification and subsequent automatic-verification sequence. Independent PID/log evidence was not collected; unrelated crash scenarios remain untested.
+- Acceptance applies to the exact tested fixtures and prepared offline caches; arbitrary dependency sets are not automatically accepted.
+- Railway, Render and Supabase are not normal AppForge project-build infrastructure.
+- GitHub remains repository and CI infrastructure.
 
 ## Current Risks / Open Questions
 
-- Physical-device AAB generation succeeded, but the first public-save acceptance exposed a local `file://` ticket being sent to Android `DownloadManager`, which only accepts HTTP/HTTPS. Source now routes AAB through the same MediaStore/SAF streaming path used for local artifacts; physical save re-acceptance is pending.
-- Never touch `main`, Play Production, `appforge-failover` or migrations during this staging sequence.
-- A signed device challenge authenticates the installation; HTTPS status has no separate application-level response signature.
-- Open-app revocation refresh is best-effort; protected server routes must enforce active grants independently.
-- Legacy Play entitlement is separate from admin-issued Pro.
-- APK/AAB real-device acceptance remains open. Windows Portable EXE acceptance is complete for the READY web engines (`webview-static` and `node-web`); the reserved standalone `windows-web` engine remains PLANNED.
+- Acceptance covers the exact tested fixtures and prepared offline caches; unprepared dependency versions can still fail offline.
+- PR #56 remains Draft and no production delivery step has started.
+
+## Safety Boundaries
+
+- Do not merge PR #56 without explicit approval.
+- Do not start Play Production.
+- Do not deploy Cloudflare or apply D1 migrations during this sequence.
+- Do not modify the verified Windows Host.
+- Preserve .appforge backups and device acceptance evidence.
 
 ## Read Next
 
-- [[Pro_Code_Lifecycle_Staging]]
 - [[Device_Build_Runtime_V3]]
 - [[Current_Status]]
+- [[Bug_Index]]

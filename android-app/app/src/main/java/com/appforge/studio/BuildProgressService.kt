@@ -19,6 +19,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 
+internal data class ActiveBuildReference(
+    val buildId: String,
+    val serverUrl: String,
+    val apiKey: String,
+    val appName: String,
+    val projectKey: String?,
+    val startedAtMs: Long?
+)
+
 /**
  * Normal build ve 5 Build Testi'ni uygulama arka plandayken
  * foreground service olarak izler.
@@ -642,6 +651,12 @@ class BuildProgressService : Service() {
         private const val EXTRA_APP_NAME =
             "app_name"
 
+        private const val EXTRA_PROJECT_KEY =
+            "project_key"
+
+        private const val EXTRA_STARTED_AT_MS =
+            "started_at_ms"
+
         private const val EXTRA_BATCH_IDS =
             "batch_ids"
 
@@ -661,7 +676,9 @@ class BuildProgressService : Service() {
             buildId: String,
             serverUrl: String,
             apiKey: String,
-            appName: String
+            appName: String,
+            projectKey: String,
+            startedAtMs: Long
         ) {
             context
                 .getSharedPreferences(
@@ -688,6 +705,14 @@ class BuildProgressService : Service() {
                 .putString(
                     EXTRA_APP_NAME,
                     appName
+                )
+                .putString(
+                    EXTRA_PROJECT_KEY,
+                    projectKey
+                )
+                .putLong(
+                    EXTRA_STARTED_AT_MS,
+                    startedAtMs
                 )
                 .remove(
                     EXTRA_BATCH_IDS
@@ -737,6 +762,12 @@ class BuildProgressService : Service() {
                 .remove(
                     EXTRA_BUILD_ID
                 )
+                .remove(
+                    EXTRA_PROJECT_KEY
+                )
+                .remove(
+                    EXTRA_STARTED_AT_MS
+                )
                 .apply()
         }
 
@@ -783,6 +814,71 @@ class BuildProgressService : Service() {
                     ).toString()
                 )
                 .apply()
+        }
+
+        internal fun activeSingleBuild(
+            context: Context
+        ): ActiveBuildReference? {
+            val prefs =
+                context.getSharedPreferences(
+                    PREFS,
+                    Context.MODE_PRIVATE
+                )
+
+            if (
+                prefs.getString(
+                    EXTRA_MODE,
+                    null
+                ) !=
+                MODE_SINGLE
+            ) {
+                return null
+            }
+
+            val buildId =
+                prefs.getString(
+                    EXTRA_BUILD_ID,
+                    null
+                )
+                    ?.takeIf {
+                        it.isNotBlank()
+                    }
+                    ?: return null
+
+            return ActiveBuildReference(
+                buildId = buildId,
+                serverUrl =
+                    prefs.getString(
+                        EXTRA_SERVER_URL,
+                        ""
+                    ).orEmpty(),
+                apiKey =
+                    prefs.getString(
+                        EXTRA_API_KEY,
+                        ""
+                    ).orEmpty(),
+                appName =
+                    prefs.getString(
+                        EXTRA_APP_NAME,
+                        "AppForge uygulaması"
+                    ).orEmpty(),
+                projectKey =
+                    prefs.getString(
+                        EXTRA_PROJECT_KEY,
+                        null
+                    )
+                        ?.takeIf {
+                            it.isNotBlank()
+                        },
+                startedAtMs =
+                    prefs.getLong(
+                        EXTRA_STARTED_AT_MS,
+                        0L
+                    )
+                        .takeIf {
+                            it > 0L
+                        }
+            )
         }
 
         fun startPending(

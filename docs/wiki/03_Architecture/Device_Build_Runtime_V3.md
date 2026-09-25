@@ -3,8 +3,8 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-09-19
-updated: 2026-09-23
-last_verified: 2026-09-23
+updated: 2026-09-25
+last_verified: 2026-09-25
 confidence: high
 tags:
   - device-build
@@ -23,11 +23,24 @@ source_files:
   - "windows-host/package.json"
   - "quality/tests/offline_build_pack_v1_contract.test.js"
   - "android-app/app/src/main/assets/device-build/prepare-offline-pack.sh"
+  - "android-app/app/src/main/assets/device-build/build-node.sh"
+  - "quality/tests/node_web_npm_cache_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/BuildRuntimeState.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxShellEngine.kt"
+  - "quality/tests/device_build_cancel_reader_contract.test.js"
+  - "quality/tests/device_build_active_state_restore_contract.test.js"
+  - "quality/tests/builder_source_engine_refresh_contract.test.js"
+  - "quality/tests/builder_project_switch_build_state_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+  - "android-app/app/src/main/assets/device-build/FastActivity.java"
+  - "android-app/app/src/main/assets/device-build/AppForgeLocalAssets.java"
+  - "quality/tests/node_web_https_assets_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/io/AppIconProcessor.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceProjectIcon.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPeIconPatcher.kt"
@@ -472,3 +485,190 @@ A landscape design cannot simultaneously occupy the complete square AND
 remain uncropped/undistorted. Real Android launcher and Windows Explorer
 large/small-icon screenshots, plus Windows EXE execution, are separate
 acceptance gates. The verified generic Windows Host is immutable.
+
+## node-web local HTTPS module loading (2026-09-24)
+
+A physical React/Vite APK packaged its JS and CSS correctly
+but displayed a blank WebView when loaded from file://.
+
+The node-web Android wrapper now opts in to framework-only,
+offline, same-origin HTTPS asset interception through
+appassets.androidplatform.net/assets/site/.
+
+Explicit MIME types and path traversal rejection are enforced.
+webview-static keeps its original file loading path.
+
+Native bridge and geolocation trust recognize the exact local
+origin when this node-web flag is enabled.
+
+No new AndroidX dependency or Windows Host revision is added.
+
+The earlier npm ENOENT remains a separate intermittent issue.
+No npm cache is purged by this patch.
+
+Static tests, CI and physical APK/AAB re-acceptance are required.
+
+
+### Persistent node-web npm cache (2026-09-25)
+
+Physical React/Vite builds repeatedly exposed npm ENOENT
+rename failures under the default `/root/.npm/_cacache/tmp`.
+
+node-web now uses the AppForge-owned persistent cache
+`/opt/appforge-device/npm-cache-v1` for both online cache
+priming and offline builds.
+
+An online build may perform one bounded retry only when the
+failure is the observed cacache temporary ENOENT pattern.
+That retry removes only the cache temporary directory; cached
+package content and the legacy `/root/.npm` tree are preserved.
+
+Offline builds never gain a network fallback from this recovery
+path. Project dependencies must already exist in the persistent
+cache.
+
+
+### node-web native optional dependencies (2026-09-25)
+
+Physical React/Vite acceptance showed that npm cache recovery
+could succeed while Vite still failed because the platform-specific
+`@esbuild/linux-arm64` package was absent.
+
+node-web now explicitly includes optional dependencies during both
+online and offline npm installs. Install scripts remain disabled.
+
+After installation, AppForge validates an available esbuild binary
+and Rollup runtime before starting the project build. This catches
+missing platform-native optional packages before Vite execution.
+
+Online cache priming and later offline installation continue to use
+the same persistent AppForge npm cache.
+
+
+## 2026-09-25 node-web physical offline acceptance
+
+React/Vite node-web acceptance passed on a physical Android
+device after the local HTTPS WebView, persistent npm cache and
+native optional-dependency corrections.
+
+A fresh React + Vite test project was built with Wi-Fi and
+mobile data disabled. Device-local APK and AAB generation
+completed, the generated APK launched successfully, and the
+runtime marker `APPFORGE_REACT_VITE_JS_PASS` was observed.
+
+The same fixture also passed online before the offline run.
+
+This closes physical APK/AAB offline acceptance for the
+current React/Vite node-web fixture. Arbitrary imported npm
+projects remain dependent on their exact package versions being
+available in the AppForge persistent npm cache.
+
+
+## 2026-09-25 Native Java offline acceptance and project-switch build state
+
+A fresh native Android Java Gradle fixture passed physical-device
+offline APK/AAB generation. The generated APK launched and the
+runtime marker `APPFORGE_NATIVE_JAVA_PASS` was observed.
+
+The same acceptance session exposed a separate Builder UI regression:
+after one project completed successfully, opening another project
+could retain the previous project's success/progress/artifact state
+until the AppForge process restarted.
+
+The root cause was the intentionally stable `BuildRuntimeState`
+outliving the selected project while the Builder bottom action
+considered any APK/AAB/EXE URL ready without confirming the
+`buildProjectKey`.
+
+The first source-level fix cleared transient runtime only when
+`buildProjectKey` differed from the selected source identity. Physical
+re-acceptance showed that this was insufficient: old build ID/progress
+could survive an explicit project open, and the new "Proje yüklendi"
+status made that stale build appear active again.
+
+Project Switch V2 resets completed/failed transient build runtime
+immediately on explicit project create/open/load actions. Active builds
+block project replacement until completion or cancellation. Saved build
+history and canonical artifacts remain preserved. Output readiness also
+requires a non-null matching `buildProjectKey`.
+
+
+## 2026-09-25 source-engine refresh after project switch
+
+During physical project-switch re-acceptance, stale build progress and
+cancel controls were still visible after another project was opened.
+
+A separate attempted build also exposed a metadata issue: the selected source
+tree did not contain `package.json`, but the saved draft still selected
+`node-web`, so the Node build script failed immediately.
+
+Local Builder builds now re-analyze the actual imported source tree at
+build start and refresh only technology/build-engine readiness metadata.
+User-selected permissions, signing and output settings are preserved.
+
+This makes the real project source authoritative when saved project
+metadata is stale. The correction is recorded in the build log when an
+engine change is detected.
+
+
+## 2026-09-25 safe device-build cancellation
+
+Physical-device logcat confirmed that cancelling an active native Android
+build could close the process output pipe while the dedicated
+`AppForgeLinux-*` reader thread was blocked in `Reader.read`. Android reported
+that expected cross-thread close as `InterruptedIOException`; the uncaught
+reader exception terminated the complete AppForge process.
+
+`LinuxShellEngine` now marks process-pipe closure as expected before explicit
+cancel, timeout and coroutine teardown. Expected close-time I/O terminates the
+reader without escaping its thread. Unexpected reader `IOException` is retained
+and rethrown after the reader joins, where normal build failure handling remains
+fail-closed.
+
+## 2026-09-25 active build lifecycle restoration
+
+`DeviceBuildEngine` remains the authoritative source for an active device build.
+Compose runtime state is only a projection.
+
+`BuildProgressService` persists the active build ID, project identity and build
+start time. If Activity/Compose is recreated while that device job still exists,
+Builder synchronously hydrates its status, build number, progress, outputs and
+busy state from the real `DeviceBuildEngine` snapshot before rendering. A
+replacement polling loop is started only for a lifecycle-restored build and
+continues until success, failure or cancellation.
+
+An active restored build is allowed to own the Builder view even while the
+project draft itself is being restored. Explicit project navigation remains
+blocked while `buildBusy` is true. Saved build history and canonical artifacts
+are not deleted.
+
+
+## 2026-09-25 physical offline acceptance matrix
+
+Physical Android acceptance now confirms the current proven Runtime V3 engine
+matrix:
+
+| Technology | Engine | Offline APK | Offline AAB | Runtime evidence |
+| --- | --- | --- | --- | --- |
+| React / Vite | `node-web` | PASS | PASS | `APPFORGE_REACT_VITE_JS_PASS` |
+| Native Android Java | `android-gradle` | PASS | PASS | `APPFORGE_NATIVE_JAVA_PASS` |
+| Native Android Kotlin | `android-gradle` | PASS | PASS | `APPFORGE_NATIVE_KOTLIN_PASS` |
+| Python / Chaquopy | `python-android` | PASS | PASS | `APPFORGE_PYTHON_CHAQUOPY_PASS`, Python 3.12 |
+
+The Python fixture additionally verified Chaquopy 17.0.0 and the generated
+runtime system-bar safe area on the physical device.
+
+Runtime reliability acceptance in the same sequence also confirmed:
+
+- active builds remain attached to their real `DeviceBuildEngine` job across
+  Builder lifecycle recreation instead of resetting to Ready / 0;
+- explicit cancellation safely closes the Linux build process without an
+  uncaught reader-thread `InterruptedIOException`;
+- project switching does not inherit inactive build progress/artifacts from the
+  previous selected project;
+- local build start refreshes source-engine metadata from the actual imported
+  source tree.
+
+These results apply to the exact accepted fixtures and cached/offline
+dependencies. A different imported project can still require dependencies that
+have not been prepared in the AppForge offline pack.
