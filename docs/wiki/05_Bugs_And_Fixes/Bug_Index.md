@@ -175,15 +175,16 @@ under `quality/tests`. Existing historical bug records are retained.
   can fill a square without crop or distortion. Windows host remains pinned.
 
 
-- Builder stale successful-build state after project switch — after a
-  successful device build, `BuildRuntimeState` retained the previous
-  project's progress and artifact URLs when another project was opened.
-  The bottom Builder action treated those stale URLs as outputs for the
-  new project, which could leave the old success screen visible and hide
-  the new build action until process restart. Project/source identity
-  changes now clear transient build runtime state after active work
-  finishes, and output readiness is gated by `buildProjectKey`. Saved
-  history and canonical build artifacts are not deleted.
+- Builder stale build state after project switch — physical re-test
+  showed the first project-key-only reset was insufficient. After a
+  completed/failed build, opening another project could overwrite the
+  status with `Proje yüklendi` while retaining the old build ID,
+  progress and timer. That stale state was then interpreted as active,
+  exposing old progress and `DERLEMEYİ İPTAL ET` until process restart.
+  Explicit project create/open/load actions now reset inactive transient
+  build state immediately. Active builds block project replacement.
+  Saved history and canonical artifacts are preserved, and output state
+  requires a non-null matching `buildProjectKey`.
 
 
 - Builder stale source-engine metadata after project restore/switch —

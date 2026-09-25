@@ -1704,6 +1704,45 @@ private fun AppForgeApp() {
         }
 
     /*
+     * PROJECT_NAVIGATION_BUILD_RESET_V2
+     *
+     * Opening/creating another project is an explicit workspace
+     * boundary. A completed or failed build must never remain attached
+     * to the newly opened Builder screen.
+     *
+     * Active builds are protected: project navigation is rejected until
+     * the current build finishes or is cancelled.
+     */
+    fun prepareBuilderProjectNavigation(): Boolean {
+
+        if (
+            buildBusy
+        ) {
+            status =
+                "Derleme devam ederken proje değiştirilemez. " +
+                    "Önce derlemenin tamamlanmasını bekle veya iptal et."
+
+            screen =
+                AppScreen.BUILDER
+
+            step =
+                10
+
+            return false
+        }
+
+        BuildProgressService
+            .clear(
+                context
+            )
+
+        buildRuntime
+            .resetForProjectChange()
+
+        return true
+    }
+
+    /*
      * PROJECT_SWITCH_BUILD_STATE_RESET_V1
      *
      * BuildRuntimeState intentionally survives normal Compose
@@ -4106,7 +4145,14 @@ private fun AppForgeApp() {
                         buildApiKey =
                             apiKey,
 
-                        onCreateQuick = {
+                        onCreateQuick = quickCreate@{
+
+                            if (
+                                !prepareBuilderProjectNavigation()
+                            ) {
+                                return@quickCreate
+                            }
+
                             val fresh =
                                 createQuickDraft(
                                     ProjectDraft()
@@ -4127,7 +4173,14 @@ private fun AppForgeApp() {
                                 AppScreen.QUICK
                         },
 
-                        onCreateAdvanced = {
+                        onCreateAdvanced = advancedCreate@{
+
+                            if (
+                                !prepareBuilderProjectNavigation()
+                            ) {
+                                return@advancedCreate
+                            }
+
                             val fresh =
                                 ProjectDraft()
 
@@ -4157,8 +4210,14 @@ private fun AppForgeApp() {
                             )
                         },
 
-                        onOpenProject = {
+                        onOpenProject = projectOpen@{
                             saved ->
+
+                            if (
+                                !prepareBuilderProjectNavigation()
+                            ) {
+                                return@projectOpen
+                            }
 
                             ProjectLibrary
                                 .restore(
@@ -4502,7 +4561,14 @@ onOpenPro = {
                     serverFreeProjectUsed =
                         projectQuota?.used,
                     onBack = { screen = AppScreen.HOME },
-                    onLoad = { saved ->
+                    onLoad = libraryLoad@{ saved ->
+
+                        if (
+                            !prepareBuilderProjectNavigation()
+                        ) {
+                            return@libraryLoad
+                        }
+
                         ProjectLibrary.restore(context, saved.id)?.let {
                             draft = it
                             sourceAnalysis =
@@ -5844,8 +5910,8 @@ onOpenPro = {
                             }
 
                         val builderBuildMatchesCurrentProject =
-                            buildProjectKey ==
-                                null ||
+                            buildProjectKey !=
+                                null &&
                             buildProjectKey ==
                                 builderCurrentProjectKey
 
@@ -18717,7 +18783,7 @@ private fun BuildStep(
         }
 
     val buildMatchesCurrentProject =
-        buildProjectKey == null ||
+        buildProjectKey != null &&
             buildProjectKey ==
                 currentProjectKey
 

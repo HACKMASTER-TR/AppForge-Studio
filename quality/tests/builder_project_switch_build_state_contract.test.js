@@ -105,3 +105,74 @@ test(
     );
   }
 );
+
+
+test(
+  "explicit project navigation resets inactive runtime immediately",
+  () => {
+    assert.match(
+      main,
+      /PROJECT_NAVIGATION_BUILD_RESET_V2/
+    );
+
+    assert.match(
+      main,
+      /fun prepareBuilderProjectNavigation\(\): Boolean/
+    );
+
+    assert.match(
+      main,
+      /BuildProgressService[\s\S]*\.clear\([\s\S]*context/
+    );
+
+    assert.match(
+      main,
+      /buildRuntime[\s\S]*\.resetForProjectChange\(\)/
+    );
+
+    assert.match(
+      main,
+      /onOpenProject = projectOpen@\{/
+    );
+
+    assert.match(
+      main,
+      /onLoad = libraryLoad@\{/
+    );
+
+    assert.match(
+      main,
+      /onCreateQuick = quickCreate@\{/
+    );
+
+    assert.match(
+      main,
+      /onCreateAdvanced = advancedCreate@\{/
+    );
+  }
+);
+
+test(
+  "active build blocks project replacement",
+  () => {
+    assert.match(
+      main,
+      /if \(\s*buildBusy\s*\)[\s\S]*Derleme devam ederken proje değiştirilemez/
+    );
+  }
+);
+
+test(
+  "null build identity is never treated as current project",
+  () => {
+    assert.match(
+      main,
+      /builderBuildMatchesCurrentProject\s*=\s*buildProjectKey !=\s*null\s*&&/
+    );
+
+    assert.match(
+      main,
+      /buildMatchesCurrentProject\s*=\s*buildProjectKey != null &&/
+    );
+  }
+);

@@ -27,7 +27,7 @@ source_files:
 
 ## Current Focus
 
-- Native Android Kotlin offline APK/AAB acceptance; Java/node-web and project-switch reset passed; source-engine refresh under device re-test.
+- Native Android Kotlin offline APK/AAB acceptance; Java/node-web passed; Project Switch V2 and source-engine refresh await device re-test.
 - Pro staging; remote Build Service retired.
 - Finish Clean Device Build Runtime V3 and real Android APK/AAB validation.
 - Keep Terminal Linux separate from project-build Linux.

@@ -575,18 +575,25 @@ outliving the selected project while the Builder bottom action
 considered any APK/AAB/EXE URL ready without confirming the
 `buildProjectKey`.
 
-Project/source identity changes now clear only transient runtime build
-state after an active build has finished. Saved build history and
-canonical artifacts are preserved. The bottom Build action also gates
-output readiness by project identity.
+The first source-level fix cleared transient runtime only when
+`buildProjectKey` differed from the selected source identity. Physical
+re-acceptance showed that this was insufficient: old build ID/progress
+could survive an explicit project open, and the new "Proje yüklendi"
+status made that stale build appear active again.
+
+Project Switch V2 resets completed/failed transient build runtime
+immediately on explicit project create/open/load actions. Active builds
+block project replacement until completion or cancellation. Saved build
+history and canonical artifacts remain preserved. Output readiness also
+requires a non-null matching `buildProjectKey`.
 
 
 ## 2026-09-25 source-engine refresh after project switch
 
-Physical re-acceptance confirmed that stale successful-build UI state
-no longer followed the user into another project.
+During physical project-switch re-acceptance, stale build progress and
+cancel controls were still visible after another project was opened.
 
-The next build exposed a separate metadata issue: the selected source
+A separate attempted build also exposed a metadata issue: the selected source
 tree did not contain `package.json`, but the saved draft still selected
 `node-web`, so the Node build script failed immediately.
 
