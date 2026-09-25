@@ -518,3 +518,20 @@ package content and the legacy `/root/.npm` tree are preserved.
 Offline builds never gain a network fallback from this recovery
 path. Project dependencies must already exist in the persistent
 cache.
+
+
+### node-web native optional dependencies (2026-09-25)
+
+Physical React/Vite acceptance showed that npm cache recovery
+could succeed while Vite still failed because the platform-specific
+`@esbuild/linux-arm64` package was absent.
+
+node-web now explicitly includes optional dependencies during both
+online and offline npm installs. Install scripts remain disabled.
+
+After installation, AppForge validates an available esbuild binary
+and Rollup runtime before starting the project build. This catches
+missing platform-native optional packages before Vite execution.
+
+Online cache priming and later offline installation continue to use
+the same persistent AppForge npm cache.

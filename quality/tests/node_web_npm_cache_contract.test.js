@@ -85,3 +85,49 @@ test(
     );
   }
 );
+
+
+test(
+  "node-web explicitly installs native optional packages",
+  () => {
+    const includes =
+      build.match(
+        /--include=optional/g
+      ) ?? [];
+
+    assert.equal(
+      includes.length,
+      4
+    );
+
+    assert.match(
+      build,
+      /APPFORGE_ESBUILD_BINARY=PASS/
+    );
+
+    assert.match(
+      build,
+      /APPFORGE_ROLLUP_BINARY=PASS/
+    );
+
+    assert.match(
+      build,
+      /APPFORGE_NODE_NATIVE_OPTIONALS=PASS/
+    );
+
+    assert.match(
+      build,
+      /esbuild\.transformSync/
+    );
+
+    assert.match(
+      build,
+      /await import\("rollup"\)/
+    );
+
+    assert.match(
+      build,
+      /--ignore-scripts/
+    );
+  }
+);

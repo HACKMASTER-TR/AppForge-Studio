@@ -36,12 +36,14 @@ npm_install() {
       npm ci \
         --offline \
         --include=dev \
+        --include=optional \
         --ignore-scripts \
         --no-audit \
         --no-fund
     else
       npm ci \
         --include=dev \
+        --include=optional \
         --ignore-scripts \
         --no-audit \
         --no-fund
@@ -53,12 +55,14 @@ npm_install() {
       npm install \
         --offline \
         --include=dev \
+        --include=optional \
         --ignore-scripts \
         --no-audit \
         --no-fund
     else
       npm install \
         --include=dev \
+        --include=optional \
         --ignore-scripts \
         --no-audit \
         --no-fund
@@ -117,6 +121,40 @@ else
   fi
 
 fi
+
+verify_native_optionals() {
+
+  if [ -f node_modules/esbuild/package.json ]; then
+
+    node -e '
+      const esbuild = require("esbuild");
+      esbuild.transformSync(
+        "const appforgeOptionalCheck = 1"
+      );
+      console.log(
+        "APPFORGE_ESBUILD_BINARY=PASS"
+      );
+    '
+
+  fi
+
+  if [ -f node_modules/rollup/package.json ]; then
+
+    node \
+      --input-type=module \
+      -e '
+        await import("rollup");
+        console.log(
+          "APPFORGE_ROLLUP_BINARY=PASS"
+        );
+      '
+
+  fi
+}
+
+verify_native_optionals
+
+echo "APPFORGE_NODE_NATIVE_OPTIONALS=PASS"
 
 if grep -Eq '"vite"[[:space:]]*:' package.json
 then
