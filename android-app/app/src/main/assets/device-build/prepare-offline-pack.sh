@@ -13,13 +13,15 @@ export PATH="$JAVA_HOME/bin:$PATH"
 export ANDROID_SDK_ROOT="$SDK"
 export ANDROID_HOME="$SDK"
 export GRADLE_USER_HOME="/root/.gradle-appforge"
+export NPM_CONFIG_CACHE="$ROOT/npm-cache-v1"
+export NPM_CONFIG_UPDATE_NOTIFIER=false
 
 test -x "$JAVA_HOME/bin/java"
 test -x "$GRADLE"
 test -f "$SDK/platforms/android-37.0/android.jar"
 test -x "$SDK/build-tools/36.0.0/aapt2"
 
-mkdir -p "$BASE"
+mkdir -p "$BASE" "$NPM_CONFIG_CACHE"
 
 write_gradle_properties() {
   target="$1"

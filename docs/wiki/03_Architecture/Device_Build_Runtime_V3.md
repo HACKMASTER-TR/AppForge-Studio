@@ -23,6 +23,8 @@ source_files:
   - "windows-host/package.json"
   - "quality/tests/offline_build_pack_v1_contract.test.js"
   - "android-app/app/src/main/assets/device-build/prepare-offline-pack.sh"
+  - "android-app/app/src/main/assets/device-build/build-node.sh"
+  - "quality/tests/node_web_npm_cache_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
@@ -497,3 +499,22 @@ The earlier npm ENOENT remains a separate intermittent issue.
 No npm cache is purged by this patch.
 
 Static tests, CI and physical APK/AAB re-acceptance are required.
+
+
+### Persistent node-web npm cache (2026-09-25)
+
+Physical React/Vite builds repeatedly exposed npm ENOENT
+rename failures under the default `/root/.npm/_cacache/tmp`.
+
+node-web now uses the AppForge-owned persistent cache
+`/opt/appforge-device/npm-cache-v1` for both online cache
+priming and offline builds.
+
+An online build may perform one bounded retry only when the
+failure is the observed cacache temporary ENOENT pattern.
+That retry removes only the cache temporary directory; cached
+package content and the legacy `/root/.npm` tree are preserved.
+
+Offline builds never gain a network fallback from this recovery
+path. Project dependencies must already exist in the persistent
+cache.
