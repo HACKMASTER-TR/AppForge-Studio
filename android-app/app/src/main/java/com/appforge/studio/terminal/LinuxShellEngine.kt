@@ -5,8 +5,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 internal data class LinuxShellResult(
     val exitCode: Int,
@@ -25,8 +28,14 @@ internal class LinuxShellEngine(
             applicationContext
         )
 
+    private data class ActiveProcess(
+        val process: Process,
+        val closeExpected: AtomicBoolean =
+            AtomicBoolean(false)
+    )
+
     private val activeProcesses =
-        ConcurrentHashMap<String, Process>()
+        ConcurrentHashMap<String, ActiveProcess>()
 
     suspend fun execute(
         sessionId: String,
@@ -137,18 +146,29 @@ internal class LinuxShellEngine(
                     }
                     .start()
 
+            val activeProcess =
+                ActiveProcess(
+                    process = process
+                )
+
             activeProcesses[
                 sessionId
             ] =
-                process
+                activeProcess
 
             try {
                 val output =
                     StringBuilder()
 
+                val readerFailure =
+                    AtomicReference<IOException?>(
+                        null
+                    )
+
                 val readerThread =
                     Thread {
-                        process
+                        try {
+                            process
                             .inputStream
                             .reader(
                                 Charsets.UTF_8
@@ -194,6 +214,30 @@ internal class LinuxShellEngine(
                                     }
                                 }
                             }
+                        } catch (
+                            io: IOException
+                        ) {
+                            /*
+                             * A normal cancel/timeout closes the process pipe
+                             * from another thread on Android. libcore reports
+                             * that expected close as InterruptedIOException.
+                             *
+                             * Expected teardown must never escape this reader
+                             * thread. Unexpected reader failures are retained
+                             * and rethrown on the build thread below.
+                             */
+                            if (
+                                !activeProcess
+                                    .closeExpected
+                                    .get()
+                            ) {
+                                readerFailure
+                                    .compareAndSet(
+                                        null,
+                                        io
+                                    )
+                            }
+                        }
                     }.apply {
                         name =
                             "AppForgeLinux-$sessionId"
@@ -211,6 +255,10 @@ internal class LinuxShellEngine(
                     )
 
                 if (!completed) {
+                    activeProcess
+                        .closeExpected
+                        .set(true)
+
                     process.destroy()
 
                     if (
@@ -227,6 +275,12 @@ internal class LinuxShellEngine(
                 readerThread.join(
                     1_000L
                 )
+
+                readerFailure
+                    .get()
+                    ?.let {
+                        throw it
+                    }
 
                 val captured =
                     synchronized(
@@ -255,6 +309,10 @@ internal class LinuxShellEngine(
                 cancelled:
                     CancellationException
             ) {
+                activeProcess
+                    .closeExpected
+                    .set(true)
+
                 process
                     .destroyForcibly()
 
@@ -263,7 +321,7 @@ internal class LinuxShellEngine(
                 activeProcesses
                     .remove(
                         sessionId,
-                        process
+                        activeProcess
                     )
             }
         }
@@ -271,14 +329,20 @@ internal class LinuxShellEngine(
     fun cancel(
         sessionId: String
     ): Boolean {
-        val process =
+        val activeProcess =
             activeProcesses
                 .remove(
                     sessionId
                 )
                 ?: return false
 
-        process.destroy()
+        activeProcess
+            .closeExpected
+            .set(true)
+
+        activeProcess
+            .process
+            .destroy()
 
         return true
     }

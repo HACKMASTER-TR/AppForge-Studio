@@ -3,8 +3,8 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-09-19
-updated: 2026-09-23
-last_verified: 2026-09-23
+updated: 2026-09-25
+last_verified: 2026-09-25
 confidence: high
 tags:
   - device-build
@@ -29,6 +29,11 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
   - "android-app/app/src/main/java/com/appforge/studio/BuildRuntimeState.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxShellEngine.kt"
+  - "quality/tests/device_build_cancel_reader_contract.test.js"
+  - "quality/tests/device_build_active_state_restore_contract.test.js"
   - "quality/tests/builder_source_engine_refresh_contract.test.js"
   - "quality/tests/builder_project_switch_build_state_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt"
@@ -604,3 +609,35 @@ User-selected permissions, signing and output settings are preserved.
 This makes the real project source authoritative when saved project
 metadata is stale. The correction is recorded in the build log when an
 engine change is detected.
+
+
+## 2026-09-25 safe device-build cancellation
+
+Physical-device logcat confirmed that cancelling an active native Android
+build could close the process output pipe while the dedicated
+`AppForgeLinux-*` reader thread was blocked in `Reader.read`. Android reported
+that expected cross-thread close as `InterruptedIOException`; the uncaught
+reader exception terminated the complete AppForge process.
+
+`LinuxShellEngine` now marks process-pipe closure as expected before explicit
+cancel, timeout and coroutine teardown. Expected close-time I/O terminates the
+reader without escaping its thread. Unexpected reader `IOException` is retained
+and rethrown after the reader joins, where normal build failure handling remains
+fail-closed.
+
+## 2026-09-25 active build lifecycle restoration
+
+`DeviceBuildEngine` remains the authoritative source for an active device build.
+Compose runtime state is only a projection.
+
+`BuildProgressService` persists the active build ID, project identity and build
+start time. If Activity/Compose is recreated while that device job still exists,
+Builder synchronously hydrates its status, build number, progress, outputs and
+busy state from the real `DeviceBuildEngine` snapshot before rendering. A
+replacement polling loop is started only for a lifecycle-restored build and
+continues until success, failure or cancellation.
+
+An active restored build is allowed to own the Builder view even while the
+project draft itself is being restored. Explicit project navigation remains
+blocked while `buildBusy` is true. Saved build history and canonical artifacts
+are not deleted.

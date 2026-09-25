@@ -1258,9 +1258,55 @@ private fun AppForgeApp() {
      * Delegated aliases preserve all existing build code below while
      * allowing Builder-specific composition extraction in Phase 11.
      */
-    val buildRuntime =
+    val restoredBuildReference =
         remember {
+            BuildProgressService
+                .activeSingleBuild(
+                    context
+                )
+        }
+
+    val buildRuntime =
+        remember(
+            restoredBuildReference
+                ?.buildId
+        ) {
             BuildRuntimeState()
+                .also {
+                    runtime ->
+
+                    restoredBuildReference
+                        ?.let {
+                            reference ->
+
+                            runCatching {
+                                BuildApiClient(
+                                    context = context,
+                                    baseUrl =
+                                        reference.serverUrl,
+                                    apiKey =
+                                        reference.apiKey
+                                )
+                                    .getBuild(
+                                        reference.buildId
+                                    )
+                            }
+                                .getOrNull()
+                                ?.let {
+                                    snapshot ->
+
+                                    runtime
+                                        .restoreFromEngine(
+                                            snapshot =
+                                                snapshot,
+                                            projectKey =
+                                                reference.projectKey,
+                                            startedAtMs =
+                                                reference.startedAtMs
+                                        )
+                                }
+                        }
+                }
         }
 
     var status by
@@ -1277,6 +1323,9 @@ private fun AppForgeApp() {
 
     var buildTimerRunning by
         buildRuntime.buildTimerRunning
+
+    var buildBusy by
+        buildRuntime.buildBusy
 
     var logs by
         buildRuntime.logs
@@ -1316,6 +1365,111 @@ private fun AppForgeApp() {
 
     var queueEstimate by
         buildRuntime.queueEstimate
+
+    /*
+     * ACTIVE_DEVICE_BUILD_RESTORE_V1
+     *
+     * BuildProgressService persists only the identity needed to reconnect
+     * the UI to the real in-process DeviceBuildEngine job. The first
+     * snapshot is restored synchronously above so an active build never
+     * renders as Ready / 0 merely because Activity/Compose was recreated.
+     *
+     * Only a lifecycle-restored build gets this replacement polling loop;
+     * a build started by the current composition keeps its existing loop.
+     */
+    LaunchedEffect(
+        restoredBuildReference
+            ?.buildId
+    ) {
+        val reference =
+            restoredBuildReference
+                ?: return@LaunchedEffect
+
+        val client =
+            BuildApiClient(
+                context = context,
+                baseUrl =
+                    reference.serverUrl,
+                apiKey =
+                    reference.apiKey
+            )
+
+        while (true) {
+            val snapshot =
+                try {
+                    withContext(
+                        Dispatchers.IO
+                    ) {
+                        client.getBuild(
+                            reference.buildId
+                        )
+                    }
+                } catch (
+                    t: Throwable
+                ) {
+                    if (
+                        t is
+                            BuildApiException &&
+                        t.errorCode ==
+                            "LOCAL_BUILD_NOT_FOUND"
+                    ) {
+                        BuildProgressService
+                            .clear(
+                                context
+                            )
+
+                        buildRuntime
+                            .resetForProjectChange()
+                    } else {
+                        logs =
+                            (
+                                logs +
+                                    "Aktif cihaz build durumu geri yüklenemedi: ${t.message.orEmpty()}"
+                            ).takeLast(
+                                120
+                            )
+                    }
+
+                    return@LaunchedEffect
+                }
+
+            buildRuntime
+                .restoreFromEngine(
+                    snapshot =
+                        snapshot,
+                    projectKey =
+                        reference.projectKey,
+                    startedAtMs =
+                        reference.startedAtMs
+                )
+
+            val normalized =
+                snapshot.status
+                    .trim()
+                    .lowercase()
+
+            if (
+                normalized in
+                    setOf(
+                        "success",
+                        "failed",
+                        "cancelled",
+                        "canceled"
+                    )
+            ) {
+                BuildProgressService
+                    .clear(
+                        context
+                    )
+
+                break
+            }
+
+            delay(
+                1_000L
+            )
+        }
+    }
 
 
     /*
@@ -1694,14 +1848,9 @@ private fun AppForgeApp() {
     }
 
     /*
-     * Aynı anda yalnızca tek build oluşturulabilir/takip edilir.
-     * Birden fazla polling coroutine'in aynı UI state'ini
-     * değiştirmesini engeller.
+     * buildBusy now belongs to BuildRuntimeState so Activity/UI recreation
+     * can recover it from the real DeviceBuildEngine snapshot.
      */
-    var buildBusy by
-        remember {
-            mutableStateOf(false)
-        }
 
     /*
      * PROJECT_NAVIGATION_BUILD_RESET_V2
@@ -3408,7 +3557,13 @@ private fun AppForgeApp() {
                     buildId = created.buildId,
                     serverUrl = serverUrl,
                     apiKey = apiKey,
-                    appName = effectiveBuildDraft.appName
+                    appName = effectiveBuildDraft.appName,
+                    projectKey =
+                        buildProjectKey
+                            .orEmpty(),
+                    startedAtMs =
+                        buildStartedAtMs
+                            ?: System.currentTimeMillis()
                 )
 
                 status =
@@ -5912,8 +6067,11 @@ onOpenPro = {
                         val builderBuildMatchesCurrentProject =
                             buildProjectKey !=
                                 null &&
-                            buildProjectKey ==
-                                builderCurrentProjectKey
+                            (
+                                buildBusy ||
+                                buildProjectKey ==
+                                    builderCurrentProjectKey
+                            )
 
                         val builderBuildOutputReady =
                             builderBuildMatchesCurrentProject &&
@@ -18784,8 +18942,11 @@ private fun BuildStep(
 
     val buildMatchesCurrentProject =
         buildProjectKey != null &&
-            buildProjectKey ==
-                currentProjectKey
+            (
+                buildBusy ||
+                buildProjectKey ==
+                    currentProjectKey
+            )
 
     val buildSucceeded =
         buildId != null &&

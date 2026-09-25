@@ -3,8 +3,8 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-22
-last_verified: 2026-09-22
+updated: 2026-09-25
+last_verified: 2026-09-25
 confidence: high
 tags:
   - hot-context
@@ -27,7 +27,7 @@ source_files:
 
 ## Current Focus
 
-- Native Android Kotlin offline APK/AAB acceptance; Java/node-web passed; Project Switch V2 and source-engine refresh await device re-test.
+- Native Android Kotlin offline APK/AAB acceptance; cancel safety and active-build lifecycle restore require local/CI/device re-acceptance.
 - Pro staging; remote Build Service retired.
 - Finish Clean Device Build Runtime V3 and real Android APK/AAB validation.
 - Keep Terminal Linux separate from project-build Linux.

@@ -3,8 +3,8 @@ type: bug
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-22
-last_verified: 2026-09-22
+updated: 2026-09-25
+last_verified: 2026-09-25
 confidence: high
 tags:
   - bugs
@@ -193,3 +193,21 @@ under `quality/tests`. Existing historical bug records are retained.
   then entered npm preparation and failed with `package.json bulunamadı`.
   Local Builder builds now refresh source technology and build engine
   from the actual imported folder immediately before build start.
+
+
+- Device build cancel reader-thread crash — physical-device logcat on
+  2026-09-25 confirmed `FATAL EXCEPTION: AppForgeLinux-device-...-android-build`
+  with `InterruptedIOException: read interrupted by close() on another thread`
+  at `LinuxShellEngine.kt`. Cancel/timeout teardown now marks pipe closure as
+  expected before destroying the process. Expected close-time reader I/O is
+  contained; unexpected reader I/O is propagated back to normal build error
+  handling instead of escaping an unmanaged thread. Physical cancel
+  re-acceptance remains required.
+
+- Active device build UI reset to Ready / 0 — `DeviceBuildEngine` jobs are
+  process-level, while Builder runtime state and `buildBusy` were only Compose
+  `remember` state. Activity/UI recreation could therefore show `Hazır • %0`
+  although the real local build continued. The foreground tracker now persists
+  the active build identity/project key/start time, Builder rehydrates from the
+  real engine snapshot before rendering, and lifecycle-restored polling resumes
+  until a terminal state. Physical lifecycle re-acceptance remains required.
