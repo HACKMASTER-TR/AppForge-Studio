@@ -535,3 +535,22 @@ missing platform-native optional packages before Vite execution.
 
 Online cache priming and later offline installation continue to use
 the same persistent AppForge npm cache.
+
+
+## 2026-09-25 node-web physical offline acceptance
+
+React/Vite node-web acceptance passed on a physical Android
+device after the local HTTPS WebView, persistent npm cache and
+native optional-dependency corrections.
+
+A fresh React + Vite test project was built with Wi-Fi and
+mobile data disabled. Device-local APK and AAB generation
+completed, the generated APK launched successfully, and the
+runtime marker `APPFORGE_REACT_VITE_JS_PASS` was observed.
+
+The same fixture also passed online before the offline run.
+
+This closes physical APK/AAB offline acceptance for the
+current React/Vite node-web fixture. Arbitrary imported npm
+projects remain dependent on their exact package versions being
+available in the AppForge persistent npm cache.

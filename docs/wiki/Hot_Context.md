@@ -27,7 +27,7 @@ source_files:
 
 ## Current Focus
 
-- node-web React/Vite offline APK runtime acceptance.
+- Native Android Gradle offline APK/AAB acceptance; node-web React/Vite passed.
 - Pro staging; remote Build Service retired.
 - Finish Clean Device Build Runtime V3 and real Android APK/AAB validation.
 - Keep Terminal Linux separate from project-build Linux.
@@ -44,7 +44,7 @@ source_files:
 ## Recent Important Changes
 
 - PR #55 merged to main at 15c608f18a3bc9fd50620d561e6b4049b4dd8b8f; main Stability and Android Debug CI passed.
-- React/Vite APK bundled JS/CSS but displayed a blank WebView. node-web local HTTPS loading awaits CI and physical-device acceptance.
+- React/Vite node-web passed online and fresh-project fully offline APK/AAB device acceptance; local HTTPS fixed the blank WebView.
 
 - D1 staging schema 0002–0005 was applied manually and validated; `d1_migrations` is absent, so do not run migration apply until ledger reconciliation.
 - Existing DB binding and Google configuration are preserved.
@@ -66,7 +66,7 @@ source_files:
 - A signed device challenge authenticates the installation; HTTPS status has no separate application-level response signature.
 - Open-app revocation refresh is best-effort; protected server routes must enforce active grants independently.
 - Legacy Play entitlement is separate from admin-issued Pro.
-- APK/AAB real-device acceptance remains open. Windows Portable EXE acceptance is complete for the READY web engines (`webview-static` and `node-web`); the reserved standalone `windows-web` engine remains PLANNED.
+- Native Android/Python APK/AAB device acceptance remains open; node-web React/Vite offline acceptance passed. Windows web EXE acceptance is complete.
 
 ## Read Next
 
