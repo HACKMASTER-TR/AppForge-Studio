@@ -328,21 +328,36 @@ test(
 );
 
 test(
-  "Expo acceptance verifies RN linking then bridges expo onto app compile classpath",
+  "Expo module resolver proves the expo Gradle project before app classpath bridge",
   () => {
     assert.match(
+      expo,
+      /APPFORGE_EXPO_GRADLE_PROJECT_EXPO=PASS/
+    );
+
+    assert.match(
+      expo,
+      /project\.name \|\| ""/
+    );
+
+    assert.match(
+      expo,
+      /=== "expo"/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_APP_CLASSPATH_AUTHORITY=EXPO_MODULE_RESOLVER/
+    );
+
+    assert.doesNotMatch(
       expo,
       /APPFORGE_EXPO_RN_AUTOLINK_VERIFY_V1/
     );
 
-    assert.match(
+    assert.doesNotMatch(
       expo,
-      /react-native-config[\s\S]{0,180}--platform android[\s\S]{0,120}--json/
-    );
-
-    assert.match(
-      expo,
-      /APPFORGE_EXPO_RN_AUTOLINK_EXPO=PASS/
+      /React Native autolinking did not expose Expo Android dependency/
     );
 
     assert.match(
@@ -362,16 +377,25 @@ test(
 
     const finalResolve =
       expo.indexOf(
-        'APPFORGE_EXPO_FINAL_AUTOLINK=PASS'
+        "APPFORGE_EXPO_FINAL_AUTOLINK=PASS"
+      );
+
+    const projectProof =
+      expo.indexOf(
+        "APPFORGE_EXPO_GRADLE_PROJECT_EXPO=PASS"
       );
 
     const bridge =
       expo.indexOf(
-        'APPFORGE_EXPO_APP_CLASSPATH_BRIDGE_V1'
+        "APPFORGE_EXPO_APP_CLASSPATH_BRIDGE_V1"
       );
 
     assert.ok(
-      finalResolve >= 0
+      projectProof >= 0
+    );
+
+    assert.ok(
+      finalResolve > projectProof
     );
 
     assert.ok(

@@ -461,6 +461,28 @@ const requireModule =
         .filter(Boolean);
 
     if (
+      packageName === "expo" &&
+      !projects.some(
+        project =>
+          String(
+            project.name || ""
+          ) === "expo"
+      )
+    ) {
+      throw new Error(
+        "Expo autolink did not expose Gradle project :expo."
+      );
+    }
+
+    if (
+      packageName === "expo"
+    ) {
+      console.log(
+        "APPFORGE_EXPO_GRADLE_PROJECT_EXPO=PASS"
+      );
+    }
+
+    if (
       sourceDirs.length ===
         0
     ) {
@@ -529,77 +551,14 @@ rm -f "$AUTOLINK_JSON"
 echo "APPFORGE_EXPO_FINAL_AUTOLINK=PASS"
 
 #
-# APPFORGE_EXPO_RN_AUTOLINK_VERIFY_V1
+# APPFORGE_EXPO_APP_CLASSPATH_AUTHORITY_V2
 #
-# Expo module discovery above proves that :expo can be linked by the
-# Expo settings plugin. React Native owns the second half: the app
-# compile dependency. Verify the RN config before adding our
-# acceptance-only deterministic bridge.
+# Expo SDK 54 has already resolved the native Expo Gradle projects
+# through useExpoModules(). That resolver is authoritative for Expo
+# modules. Do not require the React Native config command to expose
+# Expo a second time.
 #
-RN_CONFIG_JSON="$ROOT/expo-rn-config-final-$$.json"
-
-rm -f "$RN_CONFIG_JSON"
-
-(
-  cd "$SOURCE/android"
-
-  "$NODE_HOME/bin/node" \
-    "$SOURCE/node_modules/expo/bin/autolinking" \
-    react-native-config \
-    --platform android \
-    --json
-) > "$RN_CONFIG_JSON"
-
-test -s "$RN_CONFIG_JSON"
-
-RN_CONFIG_JSON="$RN_CONFIG_JSON" \
-"$NODE_HOME/bin/node" <<'NODE'
-const fs =
-  require("fs");
-
-const payload =
-  JSON.parse(
-    fs.readFileSync(
-      process.env.RN_CONFIG_JSON,
-      "utf8"
-    )
-  );
-
-const android =
-  payload &&
-  payload.dependencies &&
-  payload.dependencies.expo &&
-  payload.dependencies.expo.platforms &&
-  payload.dependencies.expo.platforms.android;
-
-if (!android) {
-  throw new Error(
-    "React Native autolinking did not expose Expo Android dependency."
-  );
-}
-
-const sourceDir =
-  String(
-    android.sourceDir || ""
-  );
-
-if (
-  !sourceDir.includes(
-    "/node_modules/expo/android"
-  )
-) {
-  throw new Error(
-    "Unexpected Expo React Native Android sourceDir: " +
-      sourceDir
-  );
-}
-
-console.log(
-  "APPFORGE_EXPO_RN_AUTOLINK_EXPO=PASS"
-);
-NODE
-
-rm -f "$RN_CONFIG_JSON"
+echo "APPFORGE_EXPO_APP_CLASSPATH_AUTHORITY=EXPO_MODULE_RESOLVER"
 
 #
 # APPFORGE_EXPO_APP_CLASSPATH_BRIDGE_V1
