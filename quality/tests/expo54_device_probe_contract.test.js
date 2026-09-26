@@ -259,17 +259,17 @@ test(
   () => {
     assert.match(
       expo,
-      /APPFORGE_EXPO_SEARCH_PATHS_V1/
+      /APPFORGE_EXPO_SEARCH_PATHS_V2/
     );
 
     assert.match(
       expo,
-      /expoAutolinking\.searchPaths = \[\\"..\/node_modules\\"\]/
+      /expoAutolinking\.searchPaths = \[\\"..\/node_modules\/expo\\", \\"..\/node_modules\/expo-modules-core\\"\]/
     );
 
     const searchPath =
       expo.indexOf(
-        'expoAutolinking.searchPaths = [\\"../node_modules\\"]'
+        'expoAutolinking.searchPaths = [\\"../node_modules/expo\\", \\"../node_modules/expo-modules-core\\"]'
       );
 
     const useExpoModules =
@@ -292,12 +292,12 @@ test(
   () => {
     assert.match(
       expo,
-      /APPFORGE_EXPO_FINAL_AUTOLINK_RESOLVE_V1/
+      /APPFORGE_EXPO_FINAL_AUTOLINK_RESOLVE_V2/
     );
 
     assert.match(
       expo,
-      /resolve[\s\S]{0,160}--platform android[\s\S]{0,160}--json[\s\S]{0,160}\.\.\/node_modules/
+      /resolve[\s\S]{0,240}--platform android[\s\S]{0,240}--json[\s\S]{0,240}\.\.\/node_modules\/expo[\s\S]{0,160}\.\.\/node_modules\/expo-modules-core/
     );
 
     assert.match(
@@ -338,6 +338,62 @@ test(
     assert.doesNotMatch(
       expo,
       /api\s+project\s*\(\s*["']:?expo["']\s*\)/
+    );
+  }
+);
+
+
+test(
+  "Expo avoids broad PRoot node_modules enumeration",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_AUTOLINK_SEARCH_MODE=EXACT_MODULES/
+    );
+
+    assert.match(
+      expo,
+      /\.\.\/node_modules\/expo/
+    );
+
+    assert.match(
+      expo,
+      /\.\.\/node_modules\/expo-modules-core/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /expoAutolinking\.searchPaths = \[\\"..\/node_modules\\"\]/
+    );
+  }
+);
+
+test(
+  "Expo npm and prebuild run explicitly with pinned Node 22",
+  () => {
+    assert.match(
+      expo,
+      /NPM_CLI="\$NODE_HOME\/lib\/node_modules\/npm\/bin\/npm-cli\.js"/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_NODE22_EXECUTION=PASS/
+    );
+
+    assert.match(
+      expo,
+      /"\$NODE_HOME\/bin\/node" "\$NPM_CLI" ci/
+    );
+
+    assert.match(
+      expo,
+      /"\$NODE_HOME\/bin\/node" "\$NPM_CLI" install/
+    );
+
+    assert.match(
+      expo,
+      /"\$NODE_HOME\/bin\/node"[\s\S]{0,160}"\$PREBUILD\/node_modules\/expo\/bin\/cli"[\s\S]{0,100}prebuild/
     );
   }
 );

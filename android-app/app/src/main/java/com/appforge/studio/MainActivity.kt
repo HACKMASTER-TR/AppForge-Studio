@@ -2005,6 +2005,16 @@ private fun AppForgeApp() {
 
             if (uri != null) {
                 /*
+                 * SOURCE_DOCUMENT_PERMISSION_V1
+                 *
+                 * Preserve original document access as a recovery path.
+                 */
+                persistReadUriPermission(
+                    context,
+                    uri
+                )
+
+                /*
                  * Snapshot project identity before leaving the UI
                  * dispatcher. A slow import must never overwrite a
                  * different project opened while it was running.
@@ -2015,16 +2025,53 @@ private fun AppForgeApp() {
                 val baseProjectId =
                     currentProjectId
 
-                val key =
+                /*
+                 * SOURCE_PROJECT_STORAGE_ISOLATION_V1
+                 *
+                 * Source storage must not depend only on packageName.
+                 */
+                val existingSourceKey =
                     baseDraft
-                        .packageName
-                        .replace(
-                            ".",
-                            "_"
-                        )
-                        .ifBlank {
-                            "project"
+                        .importedFolder
+                        ?.let(::File)
+                        ?.takeIf {
+                            file ->
+                            file.parentFile
+                                ?.name ==
+                                "projects"
                         }
+                        ?.name
+                        ?.takeIf {
+                            name ->
+                            name.startsWith(
+                                "saved_"
+                            ) ||
+                            name.startsWith(
+                                "draft_"
+                            )
+                        }
+
+                val key =
+                    existingSourceKey
+                        ?: baseProjectId
+                            ?.let {
+                                id ->
+                                "saved_" +
+                                    id.replace(
+                                        "-",
+                                        ""
+                                    )
+                            }
+                        ?: (
+                            "draft_" +
+                                java.util.UUID
+                                    .randomUUID()
+                                    .toString()
+                                    .replace(
+                                        "-",
+                                        ""
+                                    )
+                        )
 
                 status =
                     "Kaynak proje kuyruğa alındı..."
@@ -4530,8 +4577,15 @@ private fun AppForgeApp() {
                         },
 
                         onOpenAdmin = {
-                            screen =
-                                AppScreen.ADMIN_OPS
+                            if (
+                                OwnerAccessPolicy
+                                    .isActiveOwner(
+                                        context
+                                    )
+                            ) {
+                                screen =
+                                    AppScreen.ADMIN_OPS
+                            }
                         },
 
                         onOpenPro = {
@@ -13106,7 +13160,7 @@ private fun SourceStep(
                 "app$segment"
         }
 
-        return "com.example.$segment"
+        return "com.appforgestudio.$segment"
     }
 
     val packageRegex =
@@ -13122,11 +13176,32 @@ private fun SourceStep(
             d.packageName.trim()
         )
 
+    /*
+     * LOCAL_SOURCE_VALIDATION_V2
+     *
+     * Native Android / React Native / Expo projects do not require
+     * index.html. A preserved imported project directory is sufficient.
+     */
+    val importedSourceValid =
+        d.importedFolder
+            ?.let(::File)
+            ?.isDirectory ==
+            true
+
+    val restoredStartValid =
+        d.startPage
+            ?.let(::File)
+            ?.exists() ==
+            true
+
     val localSourceValid =
-        !d.startPage.isNullOrBlank() &&
+        importedSourceValid ||
         (
-            !d.sourceUri.isNullOrBlank() ||
-            !d.importedFolder.isNullOrBlank()
+            restoredStartValid &&
+            (
+                !d.sourceUri.isNullOrBlank() ||
+                !d.importedFolder.isNullOrBlank()
+            )
         )
 
     val webUrlValid =
@@ -13237,6 +13312,13 @@ private fun SourceStep(
                             d.appName
                         )
 
+                    val oldLegacyAutoPackage =
+                        oldAutoPackage
+                            .replace(
+                                "com.appforgestudio.",
+                                "com.example."
+                            )
+
                     val autoMode =
                         currentPackage.isBlank() ||
                         currentPackage ==
@@ -13244,13 +13326,24 @@ private fun SourceStep(
                         currentPackage ==
                             "com.appforgestudio.myapp" ||
                         currentPackage ==
-                            oldAutoPackage
+                            oldAutoPackage ||
+                        currentPackage ==
+                            oldLegacyAutoPackage
 
+                    /*
+                     * AUTO_PACKAGE_FROM_APP_NAME_V1
+                     *
+                     * expo test -> com.appforgestudio.expotest
+                     *
+                     * A manually edited package name remains untouched.
+                     */
                     val nextPackage =
                         if (
                             autoMode
                         ) {
-                            "com.appforgestudio.myapp"
+                            autoPackageName(
+                                appName
+                            )
                         } else {
                             d.packageName
                         }

@@ -91,6 +91,12 @@ fun StudioHomeV2(
                 ),
                 title = { HomeTopTitle() },
                 actions = {
+                    if (fullAdmin) {
+                        TextButton(onClick = onOpenAdmin) {
+                            Text("Yönetici")
+                        }
+                    }
+
                     TextButton(onClick = onOpenSettings) {
                         Text("Ayarlar")
                     }

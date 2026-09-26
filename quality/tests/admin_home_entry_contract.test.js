@@ -33,10 +33,22 @@ test(
       /val fullAdmin\s*=\s*OwnerAccessPolicy[\s\S]{0,300}?isActiveOwner/
     );
 
-    // Admin discovery is Settings-only, including on Play production builds.
-    assert.doesNotMatch(home, /TextButton\(onClick = onOpenAdmin\)/);
+    assert.match(
+      home,
+      /if\s*\(fullAdmin\)[\s\S]{0,180}?TextButton\(onClick = onOpenAdmin\)[\s\S]{0,120}?Yönetici/
+    );
+
+    assert.ok(
+      home.indexOf('Text("Yönetici")') <
+        home.indexOf('Text("Ayarlar")')
+    );
+
+    assert.match(
+      main,
+      /onOpenAdmin\s*=\s*\{[\s\S]{0,260}?OwnerAccessPolicy[\s\S]{0,160}?isActiveOwner[\s\S]{0,220}?AppScreen\.ADMIN_OPS/
+    );
+
     assert.doesNotMatch(home, /OwnerAdminCard\(/);
-    assert.match(main, /onOpenAdmin = \{ screen = AppScreen\.ADMIN_OPS \}/);
     assert.doesNotMatch(home, /GİRİŞ YAP/);
 
     assert.match(

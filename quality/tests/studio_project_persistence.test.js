@@ -93,3 +93,102 @@ test(
     );
   }
 );
+
+test(
+  "saved native or Expo source remains usable after reopening the project",
+  async () => {
+    const main =
+      await fs.readFile(
+        mainPath,
+        "utf8"
+      );
+
+    const library =
+      await fs.readFile(
+        libraryPath,
+        "utf8"
+      );
+
+    assert.ok(
+      library.includes(
+        'put("sourceUri", d.sourceUri)'
+      )
+    );
+
+    assert.match(
+      library,
+      /sourceUri\s*=\s*[\s\S]{0,180}?obj\.optString/
+    );
+
+    assert.match(
+      library,
+      /LOCAL_SOURCE_DIRECTORY_RESTORE_V1/
+    );
+
+    assert.match(
+      library,
+      /storedStartPage[\s\S]{0,340}?it\.exists\(\)/
+    );
+
+    assert.match(
+      library,
+      /restoredStartPage[\s\S]{0,220}?\?: restoredFolder/
+    );
+
+    assert.match(
+      main,
+      /LOCAL_SOURCE_VALIDATION_V2/
+    );
+
+    assert.match(
+      main,
+      /importedSourceValid[\s\S]{0,220}?isDirectory/
+    );
+
+    assert.match(
+      main,
+      /SOURCE_DOCUMENT_PERMISSION_V1/
+    );
+
+    assert.match(
+      main,
+      /SOURCE_PROJECT_STORAGE_ISOLATION_V1/
+    );
+  }
+);
+
+test(
+  "advanced app name updates an automatic package suffix",
+  async () => {
+    const main =
+      await fs.readFile(
+        mainPath,
+        "utf8"
+      );
+
+    assert.match(
+      main,
+      /return "com\.appforgestudio\.\$segment"/
+    );
+
+    assert.match(
+      main,
+      /AUTO_PACKAGE_FROM_APP_NAME_V1/
+    );
+
+    assert.match(
+      main,
+      /autoPackageName\(\s*appName\s*\)/
+    );
+
+    assert.match(
+      main,
+      /oldLegacyAutoPackage/
+    );
+
+    assert.doesNotMatch(
+      main,
+      /if\s*\(\s*autoMode\s*\)\s*\{\s*"com\.appforgestudio\.myapp"/
+    );
+  }
+);

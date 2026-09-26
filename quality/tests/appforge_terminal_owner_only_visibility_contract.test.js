@@ -12,7 +12,7 @@ const read = async (path) =>
   );
 
 test(
-  "public Home hides Terminal and Admin; Settings retains server-verified Admin route",
+  "public Home hides Terminal and exposes Admin only behind verified owner state",
   async () => {
     const home = await read(
       "android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
@@ -29,7 +29,11 @@ test(
 
     assert.doesNotMatch(home, /OwnerAdminCard\s*\(/);
     assert.doesNotMatch(home, /onClick = onOpenTerminal/);
-    assert.doesNotMatch(home, /TextButton\(onClick = onOpenAdmin\)/);
+    assert.match(
+      home,
+      /if\s*\(fullAdmin\)[\s\S]{0,180}?TextButton\(onClick = onOpenAdmin\)/
+    );
+    assert.match(home, /Text\("Yönetici"\)/);
     assert.doesNotMatch(home, /YÖNETİCİ GİRİŞİ/);
     assert.match(settings, /versionTapCount\s*>=\s*7/);
     assert.match(settings, /onOpenAdmin\(\)/);

@@ -5,6 +5,7 @@ ROOT="/opt/appforge-device"
 NODE_HOME="$ROOT/node-22.23.3"
 SOURCE="/workspace/source"
 CACHE="$ROOT/npm-cache-expo54-v1"
+NPM_CLI="$NODE_HOME/lib/node_modules/npm/bin/npm-cli.js"
 
 export PATH="$NODE_HOME/bin:$PATH"
 export NPM_CONFIG_CACHE="$CACHE"
@@ -14,23 +15,40 @@ export CI=1
 
 test -x "$NODE_HOME/bin/node"
 test -x "$NODE_HOME/bin/npm"
+test -f "$NPM_CLI"
 test -f "$SOURCE/package.json"
 
 cd "$SOURCE"
 
-node --version
-npm --version
+"$NODE_HOME/bin/node" --version
+"$NODE_HOME/bin/node" "$NPM_CLI" --version
+
+"$NODE_HOME/bin/node" -e '
+  const [major, minor] =
+    process.versions.node
+      .split(".")
+      .map(Number);
+
+  if (
+    major !== 22 ||
+    minor < 23
+  ) {
+    process.exit(1);
+  }
+'
+
+echo "APPFORGE_EXPO_NODE22_EXECUTION=PASS"
 
 if [ "${APPFORGE_DEVICE_OFFLINE:-0}" = "1" ]; then
   echo "APPFORGE_EXPO_NPM_MODE=OFFLINE"
 
   if [ -f package-lock.json ]; then
-    npm ci \
+    "$NODE_HOME/bin/node" "$NPM_CLI" ci \
       --offline \
       --no-audit \
       --no-fund
   else
-    npm install \
+    "$NODE_HOME/bin/node" "$NPM_CLI" install \
       --offline \
       --no-audit \
       --no-fund
@@ -39,11 +57,11 @@ else
   echo "APPFORGE_EXPO_NPM_MODE=ONLINE"
 
   if [ -f package-lock.json ]; then
-    npm ci \
+    "$NODE_HOME/bin/node" "$NPM_CLI" ci \
       --no-audit \
       --no-fund
   else
-    npm install \
+    "$NODE_HOME/bin/node" "$NPM_CLI" install \
       --no-audit \
       --no-fund
   fi
@@ -137,8 +155,9 @@ test -f app.json
 
 echo "APPFORGE_EXPO_PREBUILD_FS=NATIVE_ROOTFS"
 
-"$NODE_HOME/bin/npx" \
-  expo prebuild \
+"$NODE_HOME/bin/node" \
+  "$PREBUILD/node_modules/expo/bin/cli" \
+  prebuild \
   --platform android \
   --no-install \
   --clean
@@ -230,7 +249,7 @@ grep -q '^reactNativeArchitectures=arm64-v8a$' \
   "$PREBUILD/android/gradle.properties"
 
 #
-# APPFORGE_EXPO_SEARCH_PATHS_V1
+# APPFORGE_EXPO_SEARCH_PATHS_V2
 #
 # Expo prebuild runs on a rootfs-native staging directory while the
 # installed npm dependency tree remains under /workspace/source.
@@ -250,7 +269,7 @@ grep -q 'expo-autolinking-settings' \
 grep -q 'expoAutolinking.useExpoModules()' \
   "$SETTINGS_NATIVE"
 
-if ! grep -q 'APPFORGE_EXPO_SEARCH_PATHS_V1' \
+if ! grep -q 'APPFORGE_EXPO_SEARCH_PATHS_V2' \
   "$SETTINGS_NATIVE"
 then
   awk '
@@ -259,8 +278,8 @@ then
     }
 
     /expoAutolinking\.useExpoModules\(\)/ && !inserted {
-      print "// APPFORGE_EXPO_SEARCH_PATHS_V1"
-      print "expoAutolinking.searchPaths = [\"../node_modules\"]"
+      print "// APPFORGE_EXPO_SEARCH_PATHS_V2"
+      print "expoAutolinking.searchPaths = [\"../node_modules/expo\", \"../node_modules/expo-modules-core\"]"
       inserted = 1
     }
 
@@ -283,10 +302,10 @@ then
   rm -f "$SETTINGS_TMP"
 fi
 
-grep -q 'APPFORGE_EXPO_SEARCH_PATHS_V1' \
+grep -q 'APPFORGE_EXPO_SEARCH_PATHS_V2' \
   "$SETTINGS_NATIVE"
 
-grep -Fq 'expoAutolinking.searchPaths = ["../node_modules"]' \
+grep -Fq 'expoAutolinking.searchPaths = ["../node_modules/expo", "../node_modules/expo-modules-core"]' \
   "$SETTINGS_NATIVE"
 
 SEARCH_LINE="$(
@@ -308,6 +327,7 @@ test -n "$USE_LINE"
 test "$SEARCH_LINE" -lt "$USE_LINE"
 
 echo "APPFORGE_EXPO_NATIVE_AUTOLINK_SETTINGS=PASS"
+echo "APPFORGE_EXPO_AUTOLINK_SEARCH_MODE=EXACT_MODULES"
 
 echo "APPFORGE_EXPO_NATIVE_PROPERTIES=PASS"
 
@@ -342,16 +362,16 @@ grep -q '^hermesEnabled=false$' \
 grep -q '^reactNativeArchitectures=arm64-v8a$' \
   android/gradle.properties
 
-grep -q 'APPFORGE_EXPO_SEARCH_PATHS_V1' \
+grep -q 'APPFORGE_EXPO_SEARCH_PATHS_V2' \
   android/settings.gradle
 
-grep -Fq 'expoAutolinking.searchPaths = ["../node_modules"]' \
+grep -Fq 'expoAutolinking.searchPaths = ["../node_modules/expo", "../node_modules/expo-modules-core"]' \
   android/settings.gradle
 
 echo "APPFORGE_EXPO_ANDROID_COPYBACK=PASS"
 
 #
-# APPFORGE_EXPO_FINAL_AUTOLINK_RESOLVE_V1
+# APPFORGE_EXPO_FINAL_AUTOLINK_RESOLVE_V2
 #
 # Resolve from the exact final filesystem root that Gradle will use.
 # Fail before Kotlin compilation if Expo's own autolinker cannot see
@@ -369,7 +389,8 @@ rm -f "$AUTOLINK_JSON"
     resolve \
     --platform android \
     --json \
-    ../node_modules
+    ../node_modules/expo \
+    ../node_modules/expo-modules-core
 ) > "$AUTOLINK_JSON"
 
 test -s "$AUTOLINK_JSON"

@@ -601,7 +601,7 @@ object ProjectLibrary {
                     File(it)
                 }
                 ?.takeIf {
-                    it.isFile
+                    it.exists()
                 }
 
         val detectedStartPage =
@@ -628,13 +628,27 @@ object ProjectLibrary {
                             }
                 }
 
+        /*
+         * LOCAL_SOURCE_DIRECTORY_RESTORE_V1
+         *
+         * Native Android / React Native / Expo projects may use the
+         * imported project directory itself as the source root.
+         */
         val restoredStartPage =
             storedStartPage
                 ?: detectedStartPage
+                ?: restoredFolder
 
         return ProjectDraft(
             appName = obj.optString("appName"),
             packageName = restoredPackageName,
+            sourceUri =
+                obj.optString(
+                    "sourceUri"
+                ).takeIf {
+                    it.isNotBlank() &&
+                    it != "null"
+                },
             sourceLabel =
                 obj.optString(
                     "sourceLabel"
@@ -1344,6 +1358,7 @@ object ProjectLibrary {
             // LOCAL kaynak uygulamanın özel depolamasına kopyalandığı için
             // bu yollar uygulama yeniden açıldığında güvenle kullanılabilir.
             put("sourceLabel", d.sourceLabel)
+            put("sourceUri", d.sourceUri)
             put("importedFolder", d.importedFolder)
             put("startPage", d.startPage)
 

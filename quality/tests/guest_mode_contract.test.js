@@ -9,7 +9,7 @@ function text(path) {
   );
 }
 
-test("guest Home hides admin while Settings retains secure discovery", () => {
+test("guest Home hides admin unless verified owner state is active", () => {
     const home = text(
         "../../android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt"
     );
@@ -20,8 +20,26 @@ test("guest Home hides admin while Settings retains secure discovery", () => {
         "../../android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt"
     );
 
-    assert.doesNotMatch(home, /YÖNETİCİ GİRİŞİ|OwnerAdminCard\s*\(/);
-    assert.doesNotMatch(home, /TextButton\(onClick = onOpenAdmin\)/);
+    assert.doesNotMatch(
+        home,
+        /YÖNETİCİ GİRİŞİ|OwnerAdminCard\s*\(/
+    );
+
+    assert.match(
+        home,
+        /val fullAdmin[\s\S]{0,220}?OwnerAccessPolicy\.isActiveOwner/
+    );
+
+    assert.match(
+        home,
+        /if\s*\(fullAdmin\)[\s\S]{0,180}?TextButton\(onClick = onOpenAdmin\)/
+    );
+
+    assert.match(
+        home,
+        /Text\("Yönetici"\)/
+    );
+
     assert.match(settings, /versionTapCount\s*>=\s*7/);
     assert.match(settings, /onOpenAdmin\(\)/);
     assert.match(admin, /GoogleAdminIdentityClient\(host, serverUrl\)\.signIn\(\)/);
