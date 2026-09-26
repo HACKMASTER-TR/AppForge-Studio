@@ -170,3 +170,51 @@ test(
     );
   }
 );
+
+test(
+  "Expo properties are finalized on native staging before Android copyback",
+  () => {
+    assert.match(
+      expo,
+      /set_prop_native\(\)/
+    );
+
+    assert.match(
+      expo,
+      /file="\$PREBUILD\/android\/gradle\.properties"/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /^[ \t]*sed[ \t]+-i(?:[ \t]|$)/m
+    );
+
+    const nativeMarker =
+      expo.indexOf(
+        "APPFORGE_EXPO_NATIVE_PROPERTIES=PASS"
+      );
+
+    const copybackMarker =
+      expo.indexOf(
+        "APPFORGE_EXPO_ANDROID_COPYBACK=PASS"
+      );
+
+    assert.ok(nativeMarker >= 0);
+    assert.ok(copybackMarker > nativeMarker);
+
+    assert.match(
+      expo,
+      /newArchEnabled=false/
+    );
+
+    assert.match(
+      expo,
+      /hermesEnabled=false/
+    );
+
+    assert.match(
+      expo,
+      /reactNativeArchitectures=arm64-v8a/
+    );
+  }
+);

@@ -166,6 +166,71 @@ test -f "$MAIN_APPLICATION"
 echo "APPFORGE_EXPO_MAIN_APPLICATION=$MAIN_APPLICATION"
 echo "APPFORGE_EXPO_MAIN_APPLICATION=PASS"
 
+#
+# Change Gradle properties while the project is still on the
+# rootfs-native staging filesystem. Avoid sed -i / atomic rename
+# operations after the project returns to the PRoot bind mount.
+#
+set_prop_native() {
+  key="$1"
+  value="$2"
+  file="$PREBUILD/android/gradle.properties"
+  tmp="$PREBUILD/android/gradle.properties.appforge.$$"
+
+  awk \
+    -v key="$key" \
+    -v value="$value" \
+    '
+      BEGIN {
+        found = 0
+      }
+
+      index($0, key "=") == 1 {
+        print key "=" value
+        found = 1
+        next
+      }
+
+      {
+        print
+      }
+
+      END {
+        if (!found) {
+          print key "=" value
+        }
+      }
+    ' \
+    "$file" \
+    > "$tmp"
+
+  cat "$tmp" > "$file"
+  rm -f "$tmp"
+}
+
+set_prop_native \
+  newArchEnabled \
+  false
+
+set_prop_native \
+  hermesEnabled \
+  false
+
+set_prop_native \
+  reactNativeArchitectures \
+  arm64-v8a
+
+grep -q '^newArchEnabled=false$' \
+  "$PREBUILD/android/gradle.properties"
+
+grep -q '^hermesEnabled=false$' \
+  "$PREBUILD/android/gradle.properties"
+
+grep -q '^reactNativeArchitectures=arm64-v8a$' \
+  "$PREBUILD/android/gradle.properties"
+
+echo "APPFORGE_EXPO_NATIVE_PROPERTIES=PASS"
+
 rm -rf "$SOURCE/android"
 
 cp -a \
@@ -188,37 +253,6 @@ test -f android/gradle.properties
 test -f android/app/build.gradle
 test -f android/settings.gradle
 
-echo "APPFORGE_EXPO_ANDROID_COPYBACK=PASS"
-
-set_prop() {
-  key="$1"
-  value="$2"
-  file="android/gradle.properties"
-
-  if grep -q "^${key}=" "$file"; then
-    sed -i \
-      "s|^${key}=.*|${key}=${value}|" \
-      "$file"
-  else
-    printf '%s=%s\n' \
-      "$key" \
-      "$value" \
-      >> "$file"
-  fi
-}
-
-set_prop \
-  newArchEnabled \
-  false
-
-set_prop \
-  hermesEnabled \
-  false
-
-set_prop \
-  reactNativeArchitectures \
-  arm64-v8a
-
 grep -q '^newArchEnabled=false$' \
   android/gradle.properties
 
@@ -227,6 +261,8 @@ grep -q '^hermesEnabled=false$' \
 
 grep -q '^reactNativeArchitectures=arm64-v8a$' \
   android/gradle.properties
+
+echo "APPFORGE_EXPO_ANDROID_COPYBACK=PASS"
 
 echo "APPFORGE_EXPO54_PREBUILD=PASS"
 echo "APPFORGE_EXPO_NEW_ARCH=DISABLED"
