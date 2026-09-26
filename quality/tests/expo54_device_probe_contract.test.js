@@ -612,3 +612,34 @@ test(
     );
   }
 );
+
+test(
+  "Expo Prefab shell variables remain literal shell dollars in Kotlin",
+  () => {
+    const doubleSlashDollar =
+      String.fromCharCode(92, 92, 36) + "APPFORGE_";
+
+    const singleSlashNativeRoot =
+      String.fromCharCode(92, 36) +
+      "APPFORGE_EXPO_NATIVE_ROOT";
+
+    const singleSlashGradleRc =
+      String.fromCharCode(92, 36) +
+      "APPFORGE_GRADLE_RC";
+
+    assert.equal(
+      engine.includes(doubleSlashDollar),
+      false
+    );
+
+    assert.equal(
+      engine.includes(singleSlashNativeRoot),
+      true
+    );
+
+    assert.equal(
+      engine.includes(singleSlashGradleRc),
+      true
+    );
+  }
+);
