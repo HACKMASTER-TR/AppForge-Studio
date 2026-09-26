@@ -19057,9 +19057,92 @@ private fun BuildStep(
      */
     val visibleLocalBuildLogs =
         remember(logs) {
-            logs
-                .takeLast(80)
-                .map { line ->
+            /*
+             * COMPILER_DIAGNOSTIC_UI_PRESERVATION_V1
+             *
+             * DeviceBuildEngine intentionally places the earliest useful
+             * compiler diagnostics before the normal Gradle tail.
+             *
+             * Do not lose that diagnostic block when the normal UI keeps
+             * only the final log lines.
+             */
+            val diagnosticsBegin =
+                logs.indexOfFirst {
+                    line ->
+
+                    line.contains(
+                        "APPFORGE_COMPILER_DIAGNOSTICS_BEGIN"
+                    )
+                }
+
+            val compilerDiagnostics =
+                if (
+                    diagnosticsBegin >=
+                        0
+                ) {
+                    val relativeEnd =
+                        logs
+                            .drop(
+                                diagnosticsBegin +
+                                    1
+                            )
+                            .indexOfFirst {
+                                line ->
+
+                                line.contains(
+                                    "APPFORGE_COMPILER_DIAGNOSTICS_END"
+                                )
+                            }
+
+                    val diagnosticsEnd =
+                        if (
+                            relativeEnd >=
+                                0
+                        ) {
+                            diagnosticsBegin +
+                                1 +
+                                relativeEnd
+                        } else {
+                            -1
+                        }
+
+                    if (
+                        diagnosticsEnd >=
+                            diagnosticsBegin
+                    ) {
+                        logs.subList(
+                            diagnosticsBegin,
+                            diagnosticsEnd +
+                                1
+                        )
+                    } else {
+                        /*
+                         * Fail bounded if an interrupted build never emitted
+                         * the closing marker.
+                         */
+                        logs
+                            .drop(
+                                diagnosticsBegin
+                            )
+                            .take(
+                                82
+                            )
+                    }
+                } else {
+                    emptyList()
+                }
+
+            val visibleLogs =
+                (
+                    compilerDiagnostics +
+                        logs.takeLast(
+                            80
+                        )
+                ).distinct()
+
+            visibleLogs
+                .map {
+                    line ->
 
                     val sensitive =
                         listOf(
@@ -19080,10 +19163,14 @@ private fun BuildStep(
                             )
                         }
 
-                    if (sensitive) {
+                    if (
+                        sensitive
+                    ) {
                         "••• Hassas log satırı gizlendi •••"
                     } else {
-                        line.take(1400)
+                        line.take(
+                            1400
+                        )
                     }
                 }
         }
@@ -19092,19 +19179,59 @@ private fun BuildStep(
         remember(
             visibleLocalBuildLogs
         ) {
+            /*
+             * Prefer the exact Kotlin compiler diagnostic over Gradle's
+             * generic CompilationErrorException wrapper.
+             */
             visibleLocalBuildLogs
                 .firstOrNull {
                     line ->
 
-                    val lower =
-                        line.lowercase()
+                    val value =
+                        line.trimStart()
 
-                    lower.contains("error") ||
-                        lower.contains("exception") ||
-                        lower.contains("failed") ||
-                        lower.contains("hata") ||
-                        lower.startsWith("❌")
+                    value.startsWith(
+                        "DIAG e:",
+                        ignoreCase = true
+                    ) ||
+                        value.startsWith(
+                            "DIAG error:",
+                            ignoreCase = true
+                        )
                 }
+                ?: visibleLocalBuildLogs
+                    .firstOrNull {
+                        line ->
+
+                        val lower =
+                            line.lowercase()
+
+                        lower.contains(
+                            "unresolved reference"
+                        ) ||
+                            lower.contains(
+                                "type mismatch"
+                            ) ||
+                            lower.contains(
+                                "cannot access"
+                            ) ||
+                            lower.contains(
+                                "cannot infer type"
+                            )
+                    }
+                ?: visibleLocalBuildLogs
+                    .firstOrNull {
+                        line ->
+
+                        val lower =
+                            line.lowercase()
+
+                        lower.contains("error") ||
+                            lower.contains("exception") ||
+                            lower.contains("failed") ||
+                            lower.contains("hata") ||
+                            lower.startsWith("❌")
+                    }
                 ?: visibleLocalBuildLogs
                     .lastOrNull()
         }
