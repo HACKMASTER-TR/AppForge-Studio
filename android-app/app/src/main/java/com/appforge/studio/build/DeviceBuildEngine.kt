@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
+import com.appforge.studio.BuildConfig
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
@@ -276,6 +277,7 @@ object DeviceBuildEngine {
             when (sourceEngine) {
                 "node-web" -> buildNodeWeb(context, draft, workspace, rootfs, shell, state)
                 "android-gradle" -> buildAndroidProject(context, draft, workspace, rootfs, shell, state)
+                "expo" -> buildExpoProject(context, draft, workspace, rootfs, shell, state)
                 "python-android" -> buildPythonProject(context, draft, workspace, rootfs, shell, state)
                 "webview-static", "", "unknown" ->
                     buildStaticWeb(
@@ -378,10 +380,16 @@ object DeviceBuildEngine {
                     draft.sourceTechnology
                 )
 
+        val expoAcceptanceProbe =
+            BuildConfig.DEBUG &&
+                sourceEngine == "expo" &&
+                draft.sourceTechnology == "expo"
+
         if (
             technologyCapability != null &&
             technologyCapability.support !=
-                DeviceBuildSupport.READY
+                DeviceBuildSupport.READY &&
+            !expoAcceptanceProbe
         ) {
             error(
                 "${draft.sourceTechnologyLabel}: " +
@@ -401,7 +409,8 @@ object DeviceBuildEngine {
 
         require(
             capability.support ==
-                DeviceBuildSupport.READY
+                DeviceBuildSupport.READY ||
+                expoAcceptanceProbe
         ) {
             capability.note
         }
@@ -416,8 +425,20 @@ object DeviceBuildEngine {
             requestedOutputs -
                 capability.readyOutputs
 
+        if (expoAcceptanceProbe) {
+            require(
+                requestedOutputs.all {
+                    it == DeviceArtifactKind.APK ||
+                        it == DeviceArtifactKind.AAB
+                }
+            ) {
+                "Expo kabul motoru yalnız APK/AAB testine izin verir."
+            }
+        }
+
         require(
-            unavailable.isEmpty()
+            unavailable.isEmpty() ||
+                expoAcceptanceProbe
         ) {
             "Bu motor henüz şu cihaz-local çıktıları üretmiyor: " +
                 DeviceBuildCapabilities
@@ -726,6 +747,61 @@ object DeviceBuildEngine {
         buildGradleProject(context, draft, project, workspace, rootfs, shell, state, gradleVersion)
     }
 
+    private fun buildExpoProject(
+        context: Context,
+        draft: ProjectDraft,
+        workspace: File,
+        rootfs: File,
+        shell: LinuxShellEngine,
+        state: JobState
+    ) {
+        state.logs.add(
+            "🧪 Expo 54 / React Native 0.81 cihaz kabul motoru hazırlanıyor."
+        )
+
+        runShellBlocking(
+            shell = shell,
+            rootfs = rootfs,
+            workspace = workspace,
+            state = state,
+            command =
+                "APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} " +
+                    "/bin/sh /workspace/runtime/build-expo.sh",
+            suffix = "expo-prebuild"
+        )
+
+        val project =
+            File(
+                workspace,
+                "source/android"
+            )
+
+        require(
+            File(project, "settings.gradle").isFile
+        ) {
+            "Expo prebuild Android settings.gradle üretmedi."
+        }
+
+        writeSdkFiles(project)
+
+        state.logs.add(
+            "🧪 Expo native Android proje Gradle ile derleniyor."
+        )
+
+        buildGradleProject(
+            context = context,
+            draft = draft,
+            project = project,
+            workspace = workspace,
+            rootfs = rootfs,
+            shell = shell,
+            state = state,
+            gradleVersion = detectGradleVersion(project),
+            nodeRequired = true
+        )
+    }
+
+
     private fun buildPythonProject(
         context: Context,
         draft: ProjectDraft,
@@ -795,7 +871,8 @@ object DeviceBuildEngine {
         rootfs: File,
         shell: LinuxShellEngine,
         state: JobState,
-        gradleVersion: String
+        gradleVersion: String,
+        nodeRequired: Boolean = false
     ) {
         val relativeProject = project.relativeTo(workspace).invariantSeparatorsPath
         val gradlePath = runShellBlocking(
@@ -850,7 +927,11 @@ object DeviceBuildEngine {
 
         val command = buildString {
             append("export JAVA_HOME=/opt/appforge-device/jdk-17; ")
-            append("export PATH=/opt/appforge-device/jdk-17/bin:\$PATH; ")
+            if (nodeRequired) {
+                append("export PATH=/opt/appforge-device/node-22.23.3/bin:/opt/appforge-device/jdk-17/bin:\$PATH; ")
+            } else {
+                append("export PATH=/opt/appforge-device/jdk-17/bin:\$PATH; ")
+            }
             append("export ANDROID_SDK_ROOT=/opt/appforge-device/android-sdk; ")
             append("export ANDROID_HOME=/opt/appforge-device/android-sdk; ")
             append("export GRADLE_USER_HOME=/root/.gradle-appforge; ")

@@ -5,6 +5,8 @@ ROOT="/opt/appforge-device"
 SDK="$ROOT/android-sdk"
 READY="$ROOT/.ready-v5"
 JAVA_HOME="$ROOT/jdk-17"
+NODE_VERSION="22.23.3"
+NODE_HOME="$ROOT/node-$NODE_VERSION"
 ENGINE="${1:-webview-static}"
 OFFLINE="${APPFORGE_DEVICE_OFFLINE:-0}"
 SDK_LICENSE_ACCEPTED="${APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED:-0}"
@@ -95,6 +97,11 @@ if [ -f "$READY" ] \
    && { [ "$ENGINE" != "node-web" ] || {
         command -v node >/dev/null 2>&1 &&
         command -v npm >/dev/null 2>&1;
+      }; } \
+   && { [ "$ENGINE" != "expo" ] || {
+        [ -x "$NODE_HOME/bin/node" ] &&
+        [ -x "$NODE_HOME/bin/npm" ] &&
+        "$NODE_HOME/bin/node" -e 'const [maj]=process.versions.node.split(".").map(Number); process.exit(maj === 22 ? 0 : 1)';
       }; } \
    && { [ "$ENGINE" != "python-android" ] || {
         [ -x /usr/bin/python3.12 ] &&
@@ -250,6 +257,57 @@ download_sha256() {
   curl -fL --retry 4 --connect-timeout 20 "$url" -o "$out"
   echo "$sha  $out" | sha256sum -c -
 }
+
+ensure_node_22() {
+  if [ -x "$NODE_HOME/bin/node" ] &&
+     [ -x "$NODE_HOME/bin/npm" ]; then
+    "$NODE_HOME/bin/node" --version
+    return 0
+  fi
+
+  arch="$(uname -m)"
+
+  case "$arch" in
+    aarch64|arm64)
+      node_file="node-v22.23.3-linux-arm64.tar.xz"
+      node_sha="a44aeb94849a299b22df10b9e622ec2f605c2183501bc40590705131de7c740f"
+      ;;
+
+    x86_64|amd64)
+      node_file="node-v22.23.3-linux-x64.tar.xz"
+      node_sha="df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de"
+      ;;
+
+    *)
+      echo "Unsupported Node host architecture: $arch" >&2
+      exit 54
+      ;;
+  esac
+
+  archive="$ROOT/cache/$node_file"
+
+  download_sha256 \
+    "https://nodejs.org/dist/v22.23.3/$node_file" \
+    "$node_sha" \
+    "$archive"
+
+  rm -rf "$NODE_HOME"
+  mkdir -p "$NODE_HOME"
+
+  tar \
+    -xJf "$archive" \
+    -C "$NODE_HOME" \
+    --strip-components=1
+
+  test -x "$NODE_HOME/bin/node"
+  test -x "$NODE_HOME/bin/npm"
+
+  "$NODE_HOME/bin/node" --version
+  "$NODE_HOME/bin/npm" --version
+
+  echo "APPFORGE_NODE22_READY"
+}
+
 
 ensure_jdk() {
   [ -x "$JAVA_HOME/bin/java" ] \
@@ -506,6 +564,10 @@ EOF
 
 ensure_jdk
 
+if [ "$ENGINE" = "expo" ]; then
+  ensure_node_22
+fi
+
 export JAVA_HOME
 export PATH="$JAVA_HOME/bin:$PATH"
 
@@ -542,6 +604,11 @@ case "$ENGINE" in
   node-web)
     node --version
     npm --version
+    ;;
+  expo)
+    "$NODE_HOME/bin/node" --version
+    "$NODE_HOME/bin/npm" --version
+    echo "APPFORGE_EXPO_NODE_RUNTIME=22.23.3"
     ;;
   python-android)
     /usr/bin/python3.12 --version

@@ -75,7 +75,7 @@ class AppForgeAgentBuildProjectPreparerTest {
     }
 
     @Test
-    fun reactNativeGeneratedSourceUsesExpoAndroidEngine() {
+    fun reactNativeGeneratedSourceRemainsExperimentalExpoEngine() {
         val blueprint =
             blueprint(AppForgeAgentPlatform.REACT_NATIVE, "React Cep")
 
@@ -84,8 +84,9 @@ class AppForgeAgentBuildProjectPreparerTest {
                 SourceCapabilityAnalyzer.analyze(prepared.projectRoot)
 
             assertEquals("expo", analysis.technologyId)
-            assertEquals("expo-android", analysis.buildEngine)
-            assertTrue(analysis.buildReady)
+            assertEquals("expo", analysis.buildEngine)
+            assertFalse(analysis.buildReady)
+            assertEquals("expo", prepared.buildEngine)
             assertTrue(
                 File(prepared.projectRoot, "app.json").isFile
             )

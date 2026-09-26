@@ -174,9 +174,9 @@ object ProjectTechnologyDetector {
             return ProjectTechnologyInfo(
                 id = "expo",
                 label = "Expo / React Native",
-                buildEngine = "expo-android",
-                buildReady = true,
-                reason = "package.json içinde Expo bağımlılığı bulundu."
+                buildEngine = "expo",
+                buildReady = false,
+                reason = "package.json içinde Expo bağımlılığı bulundu. Algılama build kabulü değildir; cihaz-local native toolchain henüz fiziksel olarak doğrulanmadı."
             )
         }
 
@@ -184,9 +184,9 @@ object ProjectTechnologyDetector {
             return ProjectTechnologyInfo(
                 id = "react-native",
                 label = "React Native",
-                buildEngine = "react-native-android",
-                buildReady = true,
-                reason = "package.json içinde react-native bulundu."
+                buildEngine = "react-native",
+                buildReady = false,
+                reason = "package.json içinde react-native bulundu. Algılama build kabulü değildir; cihaz-local native toolchain henüz fiziksel olarak doğrulanmadı."
             )
         }
 

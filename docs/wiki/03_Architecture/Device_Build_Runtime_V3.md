@@ -672,3 +672,19 @@ Runtime reliability acceptance in the same sequence also confirmed:
 These results apply to the exact accepted fixtures and cached/offline
 dependencies. A different imported project can still require dependencies that
 have not been prepared in the AppForge offline pack.
+
+## React Native / Expo ARM64 host feasibility gate
+
+React Native and Expo source detection is not equivalent to device-build
+acceptance. Their detector engine names are normalized to `react-native` and
+`expo`, but both remain zero-output EXPERIMENTAL capabilities.
+
+The current Android-hosted Device Build Runtime runs on ARM64 Linux. Modern
+React Native Android uses the New Architecture native C++ path and therefore
+depends on NDK/CMake tooling. The official Android NDK Linux host path is not
+yet accepted for this ARM64 device-host runtime.
+
+AppForge must not advertise React Native or Expo APK/AAB support until a
+device-local native host path passes source tests, Android CI, fully offline
+build verification and physical launch acceptance. An emulated or reconstructed
+NDK host, if investigated, must remain experimental until those gates pass.

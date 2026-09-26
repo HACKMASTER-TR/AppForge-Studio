@@ -144,9 +144,9 @@ internal object DeviceBuildCapabilities {
                 readyOutputs =
                     emptySet(),
                 support =
-                    DeviceBuildSupport.PLANNED,
+                    DeviceBuildSupport.EXPERIMENTAL,
                 note =
-                    "React Native için Node + Android + NDK/Hermes katmanı ayrı V3 toolchain olarak hazırlanacak."
+                    "React Native native Android build için Node + Android + NDK/CMake/Hermes gerekir. Android-hosted ARM64 Linux üzerinde resmi NDK host kabulü bulunmadığından APK/AAB çıktıları fiziksel toolchain kabulüne kadar kapalıdır."
             ),
 
             DeviceBuildCapability(
@@ -159,9 +159,9 @@ internal object DeviceBuildCapabilities {
                 readyOutputs =
                     emptySet(),
                 support =
-                    DeviceBuildSupport.PLANNED,
+                    DeviceBuildSupport.EXPERIMENTAL,
                 note =
-                    "Expo prebuild/device-native pipeline doğrulanmadan yerel build açılmayacak."
+                    "Expo prebuild + React Native native Android pipeline gerektirir. ARM64 device-host NDK/CMake yolu fiziksel olarak doğrulanmadan APK/AAB çıktıları açılmayacak."
             ),
 
             DeviceBuildCapability(

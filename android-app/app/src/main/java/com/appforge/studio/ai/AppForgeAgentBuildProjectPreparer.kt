@@ -83,11 +83,31 @@ internal object AppForgeAgentBuildProjectPreparer {
             val expectedEngine = when (blueprint.platform) {
                 AppForgeAgentPlatform.ANDROID -> "android-gradle"
                 AppForgeAgentPlatform.FLUTTER -> "flutter"
-                AppForgeAgentPlatform.REACT_NATIVE -> "expo-android"
+                AppForgeAgentPlatform.REACT_NATIVE -> "expo"
                 AppForgeAgentPlatform.WEB -> "webview-static"
             }
 
-            require(analysis.buildReady) {
+            /*
+             * React Native/Expo source packaging and device-build
+             * acceptance are intentionally separate.
+             *
+             * The Unified Agent may prepare the generated Expo source
+             * for an experimental DEBUG acceptance build, but the
+             * detector must continue reporting buildReady=false and
+             * DeviceBuildEngine remains the authoritative release gate.
+             */
+            val experimentalExpoSource =
+                blueprint.platform ==
+                    AppForgeAgentPlatform.REACT_NATIVE &&
+                    analysis.technologyId ==
+                        "expo" &&
+                    analysis.buildEngine ==
+                        "expo"
+
+            require(
+                analysis.buildReady ||
+                    experimentalExpoSource
+            ) {
                 "Üretilen proje AppForge build için hazır değil: ${analysis.technologyReason.orEmpty()}"
             }
             require(analysis.buildEngine == expectedEngine) {
