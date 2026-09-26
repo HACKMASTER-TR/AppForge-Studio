@@ -935,6 +935,63 @@ object DeviceBuildEngine {
             append("export ANDROID_SDK_ROOT=/opt/appforge-device/android-sdk; ")
             append("export ANDROID_HOME=/opt/appforge-device/android-sdk; ")
             append("export GRADLE_USER_HOME=/root/.gradle-appforge; ")
+
+            if (nodeRequired) {
+                append(
+                    "APPFORGE_EXPO_NATIVE_ROOT=\\$(grep -o " +
+                        "'/opt/appforge-device/expo-native-gradle-work/[0-9][0-9]*' " +
+                        sh("/workspace/$relativeProject/build.gradle") +
+                        " | tail -n 1); "
+                )
+
+                append(
+                    "if [ -z \"\\$APPFORGE_EXPO_NATIVE_ROOT\" ]; then " +
+                        "echo APPFORGE_EXPO_NATIVE_ROOT_DISCOVERY=FAIL; " +
+                        "exit 88; " +
+                        "fi; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_NATIVE_ROOT=\\$APPFORGE_EXPO_NATIVE_ROOT\"; "
+                )
+
+                append(
+                    "APPFORGE_EXPO_EXEC_PROBE=" +
+                        "\"\\$APPFORGE_EXPO_NATIVE_ROOT/.appforge-exec-probe-\\$\\$\"; "
+                )
+
+                append(
+                    "printf '#!/bin/sh\\nexit 0\\n' > " +
+                        "\"\\$APPFORGE_EXPO_EXEC_PROBE\"; "
+                )
+
+                append(
+                    "chmod 0755 \"\\$APPFORGE_EXPO_EXEC_PROBE\"; "
+                )
+
+                append(
+                    "if \"\\$APPFORGE_EXPO_EXEC_PROBE\"; then " +
+                        "echo APPFORGE_EXPO_ROOTFS_EXEC_PROBE=PASS; " +
+                        "else " +
+                        "echo APPFORGE_EXPO_ROOTFS_EXEC_PROBE=FAIL; " +
+                        "stat -c 'APPFORGE_EXPO_ROOTFS_PROBE_MODE=%a' " +
+                        "\"\\$APPFORGE_EXPO_EXEC_PROBE\" 2>/dev/null || true; " +
+                        "rm -f \"\\$APPFORGE_EXPO_EXEC_PROBE\"; " +
+                        "exit 89; " +
+                        "fi; "
+                )
+
+                append(
+                    "rm -f \"\\$APPFORGE_EXPO_EXEC_PROBE\"; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_NATIVE_ROOT_MODE=\\$(stat -c '%a' \"\\$APPFORGE_EXPO_NATIVE_ROOT\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                append("set +e; ")
+            }
+
             append(sh(gradlePath))
             append(" -p ")
             append(sh("/workspace/$relativeProject"))
@@ -942,6 +999,81 @@ object DeviceBuildEngine {
             if (state.offline) append("--offline ")
             append(tasks.joinToString(" "))
             if (signingArgs.isNotBlank()) append(" $signingArgs")
+
+            if (nodeRequired) {
+                append("; APPFORGE_GRADLE_RC=\\$?; ")
+
+                append(
+                    "if [ \"\\$APPFORGE_GRADLE_RC\" -ne 0 ]; then "
+                )
+
+                append(
+                    "APPFORGE_EXPO_PREFAB_COMMAND=\\$(find " +
+                        "\"\\$APPFORGE_EXPO_NATIVE_ROOT\" " +
+                        "-type f -name prefab_command -print 2>/dev/null | head -n 1); "
+                )
+
+                append(
+                    "if [ -n \"\\$APPFORGE_EXPO_PREFAB_COMMAND\" ]; then "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_COMMAND_PATH=\\$APPFORGE_EXPO_PREFAB_COMMAND\"; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_MODE=\\$(stat -c '%a' \"\\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_MODE_LONG=\\$(stat -c '%A' \"\\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_OWNER=\\$(stat -c '%U:%G' \"\\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_PARENT_MODE=\\$(stat -c '%a' \"\\$(dirname \"\\$APPFORGE_EXPO_PREFAB_COMMAND\")\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                append(
+                    "if [ -x \"\\$APPFORGE_EXPO_PREFAB_COMMAND\" ]; then " +
+                        "echo APPFORGE_EXPO_PREFAB_EXECUTABLE=YES; " +
+                        "else " +
+                        "echo APPFORGE_EXPO_PREFAB_EXECUTABLE=NO; " +
+                        "fi; "
+                )
+
+                append(
+                    "if [ -r \"\\$APPFORGE_EXPO_PREFAB_COMMAND\" ]; then " +
+                        "echo APPFORGE_EXPO_PREFAB_READABLE=YES; " +
+                        "else " +
+                        "echo APPFORGE_EXPO_PREFAB_READABLE=NO; " +
+                        "fi; "
+                )
+
+                append(
+                    "if [ \"\\$(head -c 2 \"\\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null || true)\" = '#!' ]; then " +
+                        "echo APPFORGE_EXPO_PREFAB_SHEBANG=YES; " +
+                        "else " +
+                        "echo APPFORGE_EXPO_PREFAB_SHEBANG=NO; " +
+                        "fi; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_FILE_TYPE=\\$(file -b \"\\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                append(
+                    "else " +
+                        "echo APPFORGE_EXPO_PREFAB_COMMAND=NOT_FOUND; " +
+                        "fi; "
+                )
+
+                append("fi; ")
+                append("exit \"\\$APPFORGE_GRADLE_RC\"")
+            }
         }
 
         runShellBlocking(shell, rootfs, workspace, state, command, "android-build")

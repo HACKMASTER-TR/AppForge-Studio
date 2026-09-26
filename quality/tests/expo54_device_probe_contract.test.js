@@ -542,3 +542,73 @@ test(
     );
   }
 );
+
+test(
+  "Expo Gradle failure reports rootfs and Prefab executable semantics",
+  () => {
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_ROOTFS_EXEC_PROBE=PASS/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_NATIVE_ROOT_MODE/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_COMMAND_PATH/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_MODE=/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_MODE_LONG/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_OWNER/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_PARENT_MODE/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_EXECUTABLE=YES/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_EXECUTABLE=NO/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_SHEBANG=YES/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_SHEBANG=NO/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_FILE_TYPE/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_GRADLE_RC/
+    );
+  }
+);
