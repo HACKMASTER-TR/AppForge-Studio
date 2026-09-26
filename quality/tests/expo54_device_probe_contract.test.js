@@ -130,3 +130,43 @@ test(
     );
   }
 );
+
+test(
+  "Expo prebuild uses rootfs-native staging instead of the PRoot workspace bind",
+  () => {
+    assert.match(
+      expo,
+      /PREBUILD_ROOT="\$ROOT\/expo-prebuild-work"/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PREBUILD_FS=NATIVE_ROOTFS/
+    );
+
+    assert.match(
+      expo,
+      /--exclude='\.\/node_modules'/
+    );
+
+    assert.match(
+      expo,
+      /ln -s[\s\S]{0,120}SOURCE\/node_modules[\s\S]{0,120}PREBUILD\/node_modules/
+    );
+
+    assert.match(
+      expo,
+      /MainApplication\.kt/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_MAIN_APPLICATION=PASS/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_ANDROID_COPYBACK=PASS/
+    );
+  }
+);

@@ -89,7 +89,53 @@ fs.writeFileSync(
 );
 NODE
 
-rm -rf android
+#
+# Expo config-plugins locate MainApplication/MainActivity with glob.
+# /workspace is a PRoot bind mount. Keep npm/project ownership there,
+# but run CNG/prebuild on the rootfs-native filesystem so Expo's native
+# file discovery does not depend on bind-mount glob semantics.
+#
+PREBUILD_ROOT="$ROOT/expo-prebuild-work"
+PREBUILD="$PREBUILD_ROOT/$$"
+
+rm -rf "$PREBUILD"
+mkdir -p "$PREBUILD"
+
+cleanup_prebuild() {
+  rm -rf "$PREBUILD"
+}
+
+trap cleanup_prebuild EXIT INT TERM
+
+echo "APPFORGE_EXPO_PREBUILD_SOURCE=$SOURCE"
+echo "APPFORGE_EXPO_PREBUILD_STAGE=$PREBUILD"
+
+(
+  cd "$SOURCE"
+
+  tar \
+    --exclude='./node_modules' \
+    --exclude='./android' \
+    --exclude='./ios' \
+    --exclude='./.git' \
+    -cf - \
+    .
+) | (
+  cd "$PREBUILD"
+  tar -xf -
+)
+
+ln -s \
+  "$SOURCE/node_modules" \
+  "$PREBUILD/node_modules"
+
+cd "$PREBUILD"
+
+test -L node_modules
+test -f package.json
+test -f app.json
+
+echo "APPFORGE_EXPO_PREBUILD_FS=NATIVE_ROOTFS"
 
 "$NODE_HOME/bin/npx" \
   expo prebuild \
@@ -100,6 +146,49 @@ rm -rf android
 test -f android/gradle.properties
 test -f android/app/build.gradle
 test -f android/settings.gradle
+
+MAIN_APPLICATION="$(
+  find \
+    android/app/src/main/java \
+    -type f \
+    \( \
+      -name 'MainApplication.kt' \
+      -o \
+      -name 'MainApplication.java' \
+    \) \
+    -print \
+    | head -n 1
+)"
+
+test -n "$MAIN_APPLICATION"
+test -f "$MAIN_APPLICATION"
+
+echo "APPFORGE_EXPO_MAIN_APPLICATION=$MAIN_APPLICATION"
+echo "APPFORGE_EXPO_MAIN_APPLICATION=PASS"
+
+rm -rf "$SOURCE/android"
+
+cp -a \
+  "$PREBUILD/android" \
+  "$SOURCE/android"
+
+cp \
+  "$PREBUILD/package.json" \
+  "$SOURCE/package.json"
+
+if [ -f "$PREBUILD/app.json" ]; then
+  cp \
+    "$PREBUILD/app.json" \
+    "$SOURCE/app.json"
+fi
+
+cd "$SOURCE"
+
+test -f android/gradle.properties
+test -f android/app/build.gradle
+test -f android/settings.gradle
+
+echo "APPFORGE_EXPO_ANDROID_COPYBACK=PASS"
 
 set_prop() {
   key="$1"
