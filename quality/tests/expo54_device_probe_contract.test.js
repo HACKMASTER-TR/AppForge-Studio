@@ -239,6 +239,31 @@ test(
 
     assert.match(
       engine,
+      /CMake Error/
+    );
+
+    assert.match(
+      engine,
+      /\[CXX/
+    );
+
+    assert.match(
+      engine,
+      /Exec format error/
+    );
+
+    assert.match(
+      engine,
+      /A problem occurred starting process/
+    );
+
+    assert.match(
+      engine,
+      /value\.contains\("NDK"/
+    );
+
+    assert.match(
+      engine,
       /APPFORGE_COMPILER_DIAGNOSTICS_BEGIN/
     );
 

@@ -1242,7 +1242,17 @@ object DeviceBuildEngine {
                             value.contains("Overload resolution ambiguity") ||
                             value.contains("None of the following candidates") ||
                             value.contains("Execution failed for task") ||
-                            value.contains("Compilation error")
+                            value.contains("Compilation error") ||
+                            value.contains("CMake Error", ignoreCase = true) ||
+                            value.contains("[CXX", ignoreCase = true) ||
+                            value.startsWith("ninja:", ignoreCase = true) ||
+                            value.contains("NDK", ignoreCase = true) ||
+                            value.contains("cmake", ignoreCase = true) ||
+                            value.contains("Exec format error", ignoreCase = true) ||
+                            value.contains("No such file or directory", ignoreCase = true) ||
+                            value.contains("A problem occurred starting process", ignoreCase = true) ||
+                            value.contains("Process 'command", ignoreCase = true) ||
+                            value.startsWith("Caused by:")
                     }
                     .take(
                         80
