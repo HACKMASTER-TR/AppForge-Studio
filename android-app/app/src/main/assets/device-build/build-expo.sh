@@ -229,6 +229,86 @@ grep -q '^hermesEnabled=false$' \
 grep -q '^reactNativeArchitectures=arm64-v8a$' \
   "$PREBUILD/android/gradle.properties"
 
+#
+# APPFORGE_EXPO_SEARCH_PATHS_V1
+#
+# Expo prebuild runs on a rootfs-native staging directory while the
+# installed npm dependency tree remains under /workspace/source.
+#
+# Force Expo's supported Android autolinking search path to the final
+# project node_modules directory before useExpoModules() resolves the
+# native dependency graph.
+#
+SETTINGS_NATIVE="$PREBUILD/android/settings.gradle"
+SETTINGS_TMP="$PREBUILD/android/settings.gradle.appforge.$$"
+
+test -f "$SETTINGS_NATIVE"
+
+grep -q 'expo-autolinking-settings' \
+  "$SETTINGS_NATIVE"
+
+grep -q 'expoAutolinking.useExpoModules()' \
+  "$SETTINGS_NATIVE"
+
+if ! grep -q 'APPFORGE_EXPO_SEARCH_PATHS_V1' \
+  "$SETTINGS_NATIVE"
+then
+  awk '
+    BEGIN {
+      inserted = 0
+    }
+
+    /expoAutolinking\.useExpoModules\(\)/ && !inserted {
+      print "// APPFORGE_EXPO_SEARCH_PATHS_V1"
+      print "expoAutolinking.searchPaths = [\"../node_modules\"]"
+      inserted = 1
+    }
+
+    {
+      print
+    }
+
+    END {
+      if (!inserted) {
+        exit 42
+      }
+    }
+  ' \
+    "$SETTINGS_NATIVE" \
+    > "$SETTINGS_TMP"
+
+  cat "$SETTINGS_TMP" \
+    > "$SETTINGS_NATIVE"
+
+  rm -f "$SETTINGS_TMP"
+fi
+
+grep -q 'APPFORGE_EXPO_SEARCH_PATHS_V1' \
+  "$SETTINGS_NATIVE"
+
+grep -Fq 'expoAutolinking.searchPaths = ["../node_modules"]' \
+  "$SETTINGS_NATIVE"
+
+SEARCH_LINE="$(
+  grep -n -m1 \
+    'expoAutolinking.searchPaths' \
+    "$SETTINGS_NATIVE" \
+    | cut -d: -f1
+)"
+
+USE_LINE="$(
+  grep -n -m1 \
+    'expoAutolinking.useExpoModules()' \
+    "$SETTINGS_NATIVE" \
+    | cut -d: -f1
+)"
+
+test -n "$SEARCH_LINE"
+test -n "$USE_LINE"
+test "$SEARCH_LINE" -lt "$USE_LINE"
+
+echo "APPFORGE_EXPO_NATIVE_AUTOLINK_SETTINGS=PASS"
+
 echo "APPFORGE_EXPO_NATIVE_PROPERTIES=PASS"
 
 rm -rf "$SOURCE/android"
@@ -262,7 +342,176 @@ grep -q '^hermesEnabled=false$' \
 grep -q '^reactNativeArchitectures=arm64-v8a$' \
   android/gradle.properties
 
+grep -q 'APPFORGE_EXPO_SEARCH_PATHS_V1' \
+  android/settings.gradle
+
+grep -Fq 'expoAutolinking.searchPaths = ["../node_modules"]' \
+  android/settings.gradle
+
 echo "APPFORGE_EXPO_ANDROID_COPYBACK=PASS"
+
+#
+# APPFORGE_EXPO_FINAL_AUTOLINK_RESOLVE_V1
+#
+# Resolve from the exact final filesystem root that Gradle will use.
+# Fail before Kotlin compilation if Expo's own autolinker cannot see
+# the native Expo projects.
+#
+AUTOLINK_JSON="$ROOT/expo-autolinking-final-$$.json"
+
+rm -f "$AUTOLINK_JSON"
+
+(
+  cd "$SOURCE/android"
+
+  "$NODE_HOME/bin/node" \
+    "$SOURCE/node_modules/expo/bin/autolinking" \
+    resolve \
+    --platform android \
+    --json \
+    ../node_modules
+) > "$AUTOLINK_JSON"
+
+test -s "$AUTOLINK_JSON"
+
+AUTOLINK_JSON="$AUTOLINK_JSON" \
+PREBUILD_ROOT="$PREBUILD_ROOT" \
+"$NODE_HOME/bin/node" <<'NODE'
+const fs =
+  require("fs");
+
+const file =
+  process.env.AUTOLINK_JSON;
+
+const prebuildRoot =
+  process.env.PREBUILD_ROOT || "";
+
+const payload =
+  JSON.parse(
+    fs.readFileSync(
+      file,
+      "utf8"
+    )
+  );
+
+const modules =
+  Array.isArray(
+    payload.modules
+  )
+    ? payload.modules
+    : [];
+
+const requireModule =
+  (
+    packageName,
+    marker
+  ) => {
+    const module =
+      modules.find(
+        item =>
+          item &&
+          item.packageName ===
+            packageName
+      );
+
+    if (!module) {
+      throw new Error(
+        "Missing Expo autolink module: " +
+          packageName
+      );
+    }
+
+    const projects =
+      Array.isArray(
+        module.projects
+      )
+        ? module.projects
+        : [];
+
+    const sourceDirs =
+      projects
+        .map(
+          project =>
+            String(
+              project.sourceDir ||
+                ""
+            )
+        )
+        .filter(Boolean);
+
+    if (
+      sourceDirs.length ===
+        0
+    ) {
+      throw new Error(
+        "Expo autolink module has no Android project: " +
+          packageName
+      );
+    }
+
+    if (
+      sourceDirs.some(
+        sourceDir =>
+          prebuildRoot &&
+          sourceDir.includes(
+            prebuildRoot
+          )
+      )
+    ) {
+      throw new Error(
+        "Expo autolink retained deleted prebuild path: " +
+          packageName
+      );
+    }
+
+    if (
+      !sourceDirs.some(
+        sourceDir =>
+          sourceDir.includes(
+            "/node_modules/" +
+              packageName +
+              "/android"
+          )
+      )
+    ) {
+      throw new Error(
+        "Expo autolink resolved unexpected Android path for: " +
+          packageName +
+          " -> " +
+          sourceDirs.join(",")
+      );
+    }
+
+    console.log(
+      marker + "=PASS"
+    );
+  };
+
+requireModule(
+  "expo",
+  "APPFORGE_EXPO_AUTOLINK_EXPO"
+);
+
+requireModule(
+  "expo-modules-core",
+  "APPFORGE_EXPO_AUTOLINK_CORE"
+);
+
+console.log(
+  "APPFORGE_EXPO_AUTOLINK_MODULE_COUNT=" +
+    modules.length
+);
+NODE
+
+rm -f "$AUTOLINK_JSON"
+
+echo "APPFORGE_EXPO_FINAL_AUTOLINK=PASS"
+
+#
+# The copied project is disposable. Do not allow a project-local
+# Gradle state directory from prebuild to influence the real build.
+#
+rm -rf "$SOURCE/android/.gradle"
 
 echo "APPFORGE_EXPO54_PREBUILD=PASS"
 echo "APPFORGE_EXPO_NEW_ARCH=DISABLED"

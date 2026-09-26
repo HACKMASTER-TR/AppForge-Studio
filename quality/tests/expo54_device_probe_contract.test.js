@@ -253,3 +253,91 @@ test(
     );
   }
 );
+
+test(
+  "Expo final Android project forces the final node_modules autolinking root",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_SEARCH_PATHS_V1/
+    );
+
+    assert.match(
+      expo,
+      /expoAutolinking\.searchPaths = \[\\"..\/node_modules\\"\]/
+    );
+
+    const searchPath =
+      expo.indexOf(
+        'expoAutolinking.searchPaths = [\\"../node_modules\\"]'
+      );
+
+    const useExpoModules =
+      expo.indexOf(
+        "expoAutolinking.useExpoModules"
+      );
+
+    assert.ok(
+      searchPath >= 0
+    );
+
+    assert.ok(
+      useExpoModules >= 0
+    );
+  }
+);
+
+test(
+  "Expo final root must resolve expo and expo-modules-core before Gradle",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_FINAL_AUTOLINK_RESOLVE_V1/
+    );
+
+    assert.match(
+      expo,
+      /resolve[\s\S]{0,160}--platform android[\s\S]{0,160}--json[\s\S]{0,160}\.\.\/node_modules/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_AUTOLINK_EXPO/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_AUTOLINK_CORE/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_FINAL_AUTOLINK=PASS/
+    );
+
+    assert.match(
+      expo,
+      /Missing Expo autolink module/
+    );
+
+    assert.match(
+      expo,
+      /retained deleted prebuild path/
+    );
+  }
+);
+
+test(
+  "Expo autolinking repair does not hard-code a manual Gradle expo dependency",
+  () => {
+    assert.doesNotMatch(
+      expo,
+      /implementation\s+project\s*\(\s*["']:?expo["']\s*\)/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /api\s+project\s*\(\s*["']:?expo["']\s*\)/
+    );
+  }
+);
