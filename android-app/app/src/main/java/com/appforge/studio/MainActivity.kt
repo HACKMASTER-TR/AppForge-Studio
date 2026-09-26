@@ -19236,6 +19236,107 @@ private fun BuildStep(
                     .lastOrNull()
         }
 
+    /*
+     * ADMIN_BUILD_ERROR_COPY_V1
+     *
+     * OwnerAccessPolicy grants access only while the memory-only
+     * server-verified Google admin token is active.
+     *
+     * The UI visibility gate is convenience only. The click action
+     * revalidates OwnerAccessPolicy again before clipboard access.
+     */
+    val adminBuildErrorCopyVisible =
+        OwnerAccessPolicy
+            .isActiveOwner(
+                context
+            ) &&
+            !firstLocalBuildError
+                .isNullOrBlank()
+
+    var adminBuildErrorCopyMessage by
+        remember(
+            buildId
+        ) {
+            mutableStateOf(
+                ""
+            )
+        }
+
+    val adminBuildErrorCopyPayload =
+        remember(
+            adminBuildErrorCopyVisible,
+            buildId,
+            buildNo,
+            draft.sourceBuildEngine,
+            draft.sourceTechnologyLabel,
+            status,
+            firstLocalBuildError,
+            visibleLocalBuildLogs
+        ) {
+            if (
+                !adminBuildErrorCopyVisible
+            ) {
+                ""
+            } else {
+                buildString {
+                    appendLine(
+                        "=== APPFORGE BUILD ERROR ==="
+                    )
+
+                    appendLine(
+                        "BUILD_ID=${buildId.orEmpty()}"
+                    )
+
+                    appendLine(
+                        "BUILD_NO=${buildNo ?: 0L}"
+                    )
+
+                    appendLine(
+                        "ENGINE=${draft.sourceBuildEngine}"
+                    )
+
+                    appendLine(
+                        "TECHNOLOGY=${draft.sourceTechnologyLabel}"
+                    )
+
+                    appendLine(
+                        "STATUS=$status"
+                    )
+
+                    appendLine()
+
+                    appendLine(
+                        "=== ERROR SUMMARY ==="
+                    )
+
+                    appendLine(
+                        firstLocalBuildError.orEmpty()
+                    )
+
+                    appendLine()
+
+                    appendLine(
+                        "=== TECHNICAL DIAGNOSTICS ==="
+                    )
+
+                    /*
+                     * visibleLocalBuildLogs has already passed the
+                     * credential/token/password redaction layer.
+                     */
+                    visibleLocalBuildLogs
+                        .forEach {
+                            line ->
+
+                            appendLine(
+                                line
+                            )
+                        }
+                }.take(
+                    32_000
+                )
+            }
+        }
+
     val buildDiagnosis =
         remember(
             buildFailed,
@@ -20003,6 +20104,87 @@ private fun BuildStep(
                                 lineHeight =
                                     16.sp
                             )
+
+                            /*
+                             * ADMIN_BUILD_ERROR_COPY_BUTTON_V1
+                             *
+                             * Never render for ordinary users.
+                             * Revalidate the verified owner session again
+                             * immediately before touching the clipboard.
+                             */
+                            if (
+                                adminBuildErrorCopyVisible
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        val stillVerifiedOwner =
+                                            OwnerAccessPolicy
+                                                .isActiveOwner(
+                                                    context
+                                                )
+
+                                        when {
+                                            !stillVerifiedOwner -> {
+                                                adminBuildErrorCopyMessage =
+                                                    "Yönetici doğrulamasının süresi doldu."
+                                            }
+
+                                            adminBuildErrorCopyPayload
+                                                .isBlank() -> {
+                                                adminBuildErrorCopyMessage =
+                                                    "Kopyalanabilecek hata ayrıntısı bulunamadı."
+                                            }
+
+                                            else -> {
+                                                val clipboard =
+                                                    context
+                                                        .getSystemService(
+                                                            Context.CLIPBOARD_SERVICE
+                                                        ) as? ClipboardManager
+
+                                                if (
+                                                    clipboard ==
+                                                        null
+                                                ) {
+                                                    adminBuildErrorCopyMessage =
+                                                        "Pano servisine erişilemedi."
+                                                } else {
+                                                    clipboard
+                                                        .setPrimaryClip(
+                                                            ClipData
+                                                                .newPlainText(
+                                                                    "AppForge build error",
+                                                                    adminBuildErrorCopyPayload
+                                                                )
+                                                        )
+
+                                                    adminBuildErrorCopyMessage =
+                                                        "✅ Hata panoya kopyalandı."
+                                                }
+                                            }
+                                        }
+                                    },
+                                    modifier =
+                                        Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        "HATAYI KOPYALA"
+                                    )
+                                }
+
+                                if (
+                                    adminBuildErrorCopyMessage
+                                        .isNotBlank()
+                                ) {
+                                    Text(
+                                        adminBuildErrorCopyMessage,
+                                        color =
+                                            TextSecondary,
+                                        fontSize =
+                                            11.sp
+                                    )
+                                }
+                            }
                         }
 
                         if (
