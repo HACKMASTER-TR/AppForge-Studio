@@ -937,6 +937,25 @@ object DeviceBuildEngine {
             append("export GRADLE_USER_HOME=/root/.gradle-appforge; ")
 
             if (nodeRequired) {
+                // APPFORGE_EXPO_PREFAB_FORK_FALLBACK_V1
+                //
+                // AGP 8.8+ can emit executable Prefab command files
+                // without a shebang. Under the device PRoot runtime the
+                // default Java process launcher cannot execute that file
+                // directly. Scope the Linux FORK launcher to Expo only
+                // so OpenJDK can use its traditional shell fallback.
+                append(
+                    "export JAVA_TOOL_OPTIONS=-Djdk.lang.Process.launchMechanism=FORK; "
+                )
+                append(
+                    "echo APPFORGE_EXPO_PREFAB_LAUNCH_MECHANISM=FORK; "
+                )
+                append(
+                    "echo APPFORGE_EXPO_PREFAB_SHEBANG_SHIM=JDK_FORK_FALLBACK; "
+                )
+            }
+
+            if (nodeRequired) {
                 append(
                     "APPFORGE_EXPO_NATIVE_ROOT=\$(grep -o " +
                         "'/opt/appforge-device/expo-native-gradle-work/[0-9][0-9]*' " +

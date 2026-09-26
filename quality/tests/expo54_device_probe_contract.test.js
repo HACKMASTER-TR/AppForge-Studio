@@ -643,3 +643,57 @@ test(
     );
   }
 );
+
+test(
+  "Expo Prefab uses scoped JDK fork fallback for shebangless AGP commands",
+  () => {
+    const marker =
+      "APPFORGE_EXPO_PREFAB_FORK_FALLBACK_V1";
+
+    const property =
+      "-Djdk.lang.Process.launchMechanism=FORK";
+
+    const runtimeMarker =
+      "APPFORGE_EXPO_PREFAB_LAUNCH_MECHANISM=FORK";
+
+    const shimMarker =
+      "APPFORGE_EXPO_PREFAB_SHEBANG_SHIM=JDK_FORK_FALLBACK";
+
+    assert.equal(
+      engine.split(marker).length - 1,
+      1
+    );
+
+    assert.equal(
+      engine.split(property).length - 1,
+      1
+    );
+
+    assert.match(
+      engine,
+      /if \(nodeRequired\) \{[\s\S]*APPFORGE_EXPO_PREFAB_FORK_FALLBACK_V1[\s\S]*JAVA_TOOL_OPTIONS=-Djdk\.lang\.Process\.launchMechanism=FORK/
+    );
+
+    assert.match(
+      engine,
+      new RegExp(runtimeMarker)
+    );
+
+    assert.match(
+      engine,
+      new RegExp(shimMarker)
+    );
+
+    const forkIndex =
+      engine.indexOf(marker);
+
+    const nativeRootIndex =
+      engine.indexOf(
+        "APPFORGE_EXPO_NATIVE_ROOT=",
+        forkIndex
+      );
+
+    assert.ok(forkIndex >= 0);
+    assert.ok(nativeRootIndex > forkIndex);
+  }
+);
