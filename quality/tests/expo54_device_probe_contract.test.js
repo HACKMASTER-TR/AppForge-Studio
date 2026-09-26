@@ -328,16 +328,54 @@ test(
 );
 
 test(
-  "Expo autolinking repair does not hard-code a manual Gradle expo dependency",
+  "Expo acceptance verifies RN linking then bridges expo onto app compile classpath",
   () => {
-    assert.doesNotMatch(
+    assert.match(
       expo,
-      /implementation\s+project\s*\(\s*["']:?expo["']\s*\)/
+      /APPFORGE_EXPO_RN_AUTOLINK_VERIFY_V1/
     );
 
-    assert.doesNotMatch(
+    assert.match(
       expo,
-      /api\s+project\s*\(\s*["']:?expo["']\s*\)/
+      /react-native-config[\s\S]{0,180}--platform android[\s\S]{0,120}--json/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_RN_AUTOLINK_EXPO=PASS/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_APP_CLASSPATH_BRIDGE_V1/
+    );
+
+    assert.match(
+      expo,
+      /autolinkLibrariesWithApp\(\)/
+    );
+
+    assert.match(
+      expo,
+      /implementation\(project\(":expo"\)\)/
+    );
+
+    const finalResolve =
+      expo.indexOf(
+        'APPFORGE_EXPO_FINAL_AUTOLINK=PASS'
+      );
+
+    const bridge =
+      expo.indexOf(
+        'APPFORGE_EXPO_APP_CLASSPATH_BRIDGE_V1'
+      );
+
+    assert.ok(
+      finalResolve >= 0
+    );
+
+    assert.ok(
+      bridge > finalResolve
     );
   }
 );

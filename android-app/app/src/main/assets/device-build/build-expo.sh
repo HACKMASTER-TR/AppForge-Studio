@@ -529,6 +529,139 @@ rm -f "$AUTOLINK_JSON"
 echo "APPFORGE_EXPO_FINAL_AUTOLINK=PASS"
 
 #
+# APPFORGE_EXPO_RN_AUTOLINK_VERIFY_V1
+#
+# Expo module discovery above proves that :expo can be linked by the
+# Expo settings plugin. React Native owns the second half: the app
+# compile dependency. Verify the RN config before adding our
+# acceptance-only deterministic bridge.
+#
+RN_CONFIG_JSON="$ROOT/expo-rn-config-final-$$.json"
+
+rm -f "$RN_CONFIG_JSON"
+
+(
+  cd "$SOURCE/android"
+
+  "$NODE_HOME/bin/node" \
+    "$SOURCE/node_modules/expo/bin/autolinking" \
+    react-native-config \
+    --platform android \
+    --json
+) > "$RN_CONFIG_JSON"
+
+test -s "$RN_CONFIG_JSON"
+
+RN_CONFIG_JSON="$RN_CONFIG_JSON" \
+"$NODE_HOME/bin/node" <<'NODE'
+const fs =
+  require("fs");
+
+const payload =
+  JSON.parse(
+    fs.readFileSync(
+      process.env.RN_CONFIG_JSON,
+      "utf8"
+    )
+  );
+
+const android =
+  payload &&
+  payload.dependencies &&
+  payload.dependencies.expo &&
+  payload.dependencies.expo.platforms &&
+  payload.dependencies.expo.platforms.android;
+
+if (!android) {
+  throw new Error(
+    "React Native autolinking did not expose Expo Android dependency."
+  );
+}
+
+const sourceDir =
+  String(
+    android.sourceDir || ""
+  );
+
+if (
+  !sourceDir.includes(
+    "/node_modules/expo/android"
+  )
+) {
+  throw new Error(
+    "Unexpected Expo React Native Android sourceDir: " +
+      sourceDir
+  );
+}
+
+console.log(
+  "APPFORGE_EXPO_RN_AUTOLINK_EXPO=PASS"
+);
+NODE
+
+rm -f "$RN_CONFIG_JSON"
+
+#
+# APPFORGE_EXPO_APP_CLASSPATH_BRIDGE_V1
+#
+# Expo SDK 54 normally reaches the app through React Native
+# autolinkLibrariesWithApp(). On AppForge's PRoot workspace the Expo
+# project is discovered correctly but did not reach debugCompileClasspath
+# on the physical device. The generated Android tree is disposable, so
+# add the exact :expo project dependency as an acceptance-only fallback.
+#
+APP_GRADLE="$SOURCE/android/app/build.gradle"
+APP_GRADLE_TMP="$SOURCE/android/app/build.gradle.appforge.$$"
+
+test -f "$APP_GRADLE"
+
+grep -q 'autolinkLibrariesWithApp()' \
+  "$APP_GRADLE"
+
+if ! grep -q 'APPFORGE_EXPO_APP_CLASSPATH_BRIDGE_V1' \
+  "$APP_GRADLE"
+then
+  awk '
+    BEGIN {
+      inserted = 0
+    }
+
+    /^[[:space:]]*dependencies[[:space:]]*\{/ && !inserted {
+      print
+      print "    // APPFORGE_EXPO_APP_CLASSPATH_BRIDGE_V1"
+      print "    implementation(project(\":expo\"))"
+      inserted = 1
+      next
+    }
+
+    {
+      print
+    }
+
+    END {
+      if (!inserted) {
+        exit 43
+      }
+    }
+  ' \
+    "$APP_GRADLE" \
+    > "$APP_GRADLE_TMP"
+
+  cat "$APP_GRADLE_TMP" \
+    > "$APP_GRADLE"
+
+  rm -f "$APP_GRADLE_TMP"
+fi
+
+grep -q 'APPFORGE_EXPO_APP_CLASSPATH_BRIDGE_V1' \
+  "$APP_GRADLE"
+
+grep -Fq 'implementation(project(":expo"))' \
+  "$APP_GRADLE"
+
+echo "APPFORGE_EXPO_APP_CLASSPATH_BRIDGE=PASS"
+
+#
 # The copied project is disposable. Do not allow a project-local
 # Gradle state directory from prebuild to influence the real build.
 #
