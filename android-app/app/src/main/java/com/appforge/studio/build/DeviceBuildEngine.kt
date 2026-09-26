@@ -1209,13 +1209,81 @@ object DeviceBuildEngine {
         )
         state.shellSessionId = null
 
-        result.output.lineSequence()
-            .filter { it.isNotBlank() }
-            .toList()
-            .takeLast(120)
-            .forEach {
-            state.logs.add(it.take(700))
+        val outputLines =
+            result.output
+                .lineSequence()
+                .filter {
+                    it.isNotBlank()
+                }
+                .toList()
+
+        /*
+         * Long Gradle/Kotlin stack traces can push the original compiler
+         * diagnostics out of the normal 120-line UI tail. Preserve the
+         * earliest useful compiler errors before adding the regular tail.
+         */
+        val compilerDiagnostics =
+            if (
+                result.exitCode !=
+                    0
+            ) {
+                outputLines
+                    .filter {
+                        line ->
+                        val value =
+                            line.trim()
+
+                        value.startsWith("e:") ||
+                            value.startsWith("error:") ||
+                            value.contains("Unresolved reference") ||
+                            value.contains("Cannot access") ||
+                            value.contains("Type mismatch") ||
+                            value.contains("Cannot infer type") ||
+                            value.contains("Overload resolution ambiguity") ||
+                            value.contains("None of the following candidates") ||
+                            value.contains("Execution failed for task") ||
+                            value.contains("Compilation error")
+                    }
+                    .take(
+                        80
+                    )
+            } else {
+                emptyList()
+            }
+
+        if (
+            compilerDiagnostics
+                .isNotEmpty()
+        ) {
+            state.logs.add(
+                "🔎 APPFORGE_COMPILER_DIAGNOSTICS_BEGIN"
+            )
+
+            compilerDiagnostics
+                .forEach {
+                    line ->
+                    state.logs.add(
+                        "DIAG ${line.take(700)}"
+                    )
+                }
+
+            state.logs.add(
+                "🔎 APPFORGE_COMPILER_DIAGNOSTICS_END"
+            )
         }
+
+        outputLines
+            .takeLast(
+                120
+            )
+            .forEach {
+                line ->
+                state.logs.add(
+                    line.take(
+                        700
+                    )
+                )
+            }
 
         check(!result.timedOut) { "Cihaz build komutu zaman aşımına uğradı." }
         check(result.exitCode == 0) {

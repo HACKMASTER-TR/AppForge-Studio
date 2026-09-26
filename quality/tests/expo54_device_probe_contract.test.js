@@ -218,3 +218,38 @@ test(
     );
   }
 );
+
+test(
+  "failed Kotlin builds preserve compiler diagnostics before the normal log tail",
+  () => {
+    assert.match(
+      engine,
+      /val compilerDiagnostics/
+    );
+
+    assert.match(
+      engine,
+      /value\.startsWith\("e:"\)/
+    );
+
+    assert.match(
+      engine,
+      /value\.contains\("Unresolved reference"\)/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_COMPILER_DIAGNOSTICS_BEGIN/
+    );
+
+    assert.match(
+      engine,
+      /\.take\(\s*80\s*\)/
+    );
+
+    assert.match(
+      engine,
+      /\.takeLast\(\s*120\s*\)/
+    );
+  }
+);
