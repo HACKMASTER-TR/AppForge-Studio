@@ -484,3 +484,61 @@ test(
     );
   }
 );
+
+test(
+  "Expo native module intermediates use rootfs-native executable storage",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR_V1/
+    );
+
+    assert.match(
+      expo,
+      /expo-native-gradle-work/
+    );
+
+    assert.match(
+      expo,
+      /EXPO_NATIVE_BUILD_ROOT/
+    );
+
+    assert.match(
+      expo,
+      /subproject\.path != ":app"/
+    );
+
+    assert.match(
+      expo,
+      /subproject\.buildDir/
+    );
+
+    assert.match(
+      expo,
+      /new File/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR=PASS/
+    );
+
+    const classpathBridge =
+      expo.indexOf(
+        "APPFORGE_EXPO_APP_CLASSPATH_BRIDGE=PASS"
+      );
+
+    const nativeBuildDir =
+      expo.indexOf(
+        "APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR=PASS"
+      );
+
+    assert.ok(
+      classpathBridge >= 0
+    );
+
+    assert.ok(
+      nativeBuildDir > classpathBridge
+    );
+  }
+);

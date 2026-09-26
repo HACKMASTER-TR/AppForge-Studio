@@ -621,6 +621,75 @@ grep -Fq 'implementation(project(":expo"))' \
 echo "APPFORGE_EXPO_APP_CLASSPATH_BRIDGE=PASS"
 
 #
+# APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR_V1
+#
+# Keep :app on /workspace so the existing AppForge artifact collector
+# can still find APK/AAB output. Native Expo module intermediates are
+# redirected to the rootfs-native filesystem because AGP/Prefab creates
+# executable helper files there during CMake configuration.
+#
+EXPO_NATIVE_BUILD_PARENT="$ROOT/expo-native-gradle-work"
+EXPO_NATIVE_BUILD_ROOT="$EXPO_NATIVE_BUILD_PARENT/$$"
+
+mkdir -p "$EXPO_NATIVE_BUILD_PARENT"
+
+# Acceptance runs use unique process-owned directories. Clean only
+# abandoned older runs; never delete another fresh concurrent run.
+find "$EXPO_NATIVE_BUILD_PARENT" \
+  -mindepth 1 \
+  -maxdepth 1 \
+  -type d \
+  -mtime +1 \
+  -exec rm -rf {} + \
+  2>/dev/null \
+  || true
+
+rm -rf "$EXPO_NATIVE_BUILD_ROOT"
+mkdir -p "$EXPO_NATIVE_BUILD_ROOT"
+chmod 0755 "$EXPO_NATIVE_BUILD_ROOT"
+
+ROOT_GRADLE="$SOURCE/android/build.gradle"
+
+test -f "$ROOT_GRADLE"
+
+if ! grep -q \
+  'APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR_V1' \
+  "$ROOT_GRADLE"
+then
+  cat >> "$ROOT_GRADLE" <<EOF
+
+// APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR_V1
+subprojects { subproject ->
+    if (subproject.path != ":app") {
+        def appforgeSafeProjectPath =
+            subproject.path.replace(":", "_")
+
+        subproject.buildDir =
+            new File(
+                "${EXPO_NATIVE_BUILD_ROOT}/" +
+                appforgeSafeProjectPath
+            )
+    }
+}
+EOF
+fi
+
+grep -q \
+  'APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR_V1' \
+  "$ROOT_GRADLE"
+
+grep -Fq \
+  'subproject.path != ":app"' \
+  "$ROOT_GRADLE"
+
+grep -Fq \
+  'subproject.buildDir' \
+  "$ROOT_GRADLE"
+
+echo "APPFORGE_EXPO_NATIVE_BUILD_ROOT=$EXPO_NATIVE_BUILD_ROOT"
+echo "APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR=PASS"
+
+#
 # The copied project is disposable. Do not allow a project-local
 # Gradle state directory from prebuild to influence the real build.
 #
