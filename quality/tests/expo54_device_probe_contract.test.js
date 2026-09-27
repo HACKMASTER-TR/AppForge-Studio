@@ -486,7 +486,7 @@ test(
 );
 
 test(
-  "Expo native module intermediates use rootfs-native executable storage",
+  "Expo native module intermediates and CMake staging use rootfs-native storage",
   () => {
     assert.match(
       expo,
@@ -521,6 +521,31 @@ test(
     assert.match(
       expo,
       /APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR=PASS/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_NATIVE_CXX_STAGING_V2/
+    );
+
+    assert.match(
+      expo,
+      /buildStagingDirectory/
+    );
+
+    assert.match(
+      expo,
+      /EXPO_NATIVE_BUILD_ROOT.*\/cxx\//
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_CXX_STAGING=/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_NATIVE_CXX_STAGING=PASS/
     );
 
     const classpathBridge =

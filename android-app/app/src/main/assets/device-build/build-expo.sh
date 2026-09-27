@@ -1117,6 +1117,102 @@ echo "APPFORGE_EXPO_NATIVE_BUILD_ROOT=$EXPO_NATIVE_BUILD_ROOT"
 echo "APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR=PASS"
 
 #
+# APPFORGE_EXPO_NATIVE_CXX_STAGING_V2
+#
+# Gradle project buildDir and AGP externalNativeBuild staging are
+# separate locations. AGP otherwise keeps CMake state under
+# <module>/.cxx, which is still /workspace-backed in AppForge.
+#
+# Force CMake/Ninja configure state, try_compile scratch projects,
+# Prefab staging and native metadata onto the rootfs-native filesystem.
+#
+if ! grep -q \
+  'APPFORGE_EXPO_NATIVE_CXX_STAGING_V2' \
+  "$ROOT_GRADLE"
+then
+  cat >> "$ROOT_GRADLE" <<EOF
+
+// APPFORGE_EXPO_NATIVE_CXX_STAGING_V2
+subprojects { subproject ->
+    if (subproject.path != ":app") {
+        def appforgeCxxSafeProjectPath =
+            subproject.path.replace(":", "_")
+
+        def appforgeCxxRoot =
+            new File(
+                "${EXPO_NATIVE_BUILD_ROOT}/cxx/" +
+                appforgeCxxSafeProjectPath
+            )
+
+        def appforgeConfigureCxxStaging = {
+            appforgeCxxRoot.mkdirs()
+
+            def appforgeAndroid =
+                subproject.extensions.findByName(
+                    "android"
+                )
+
+            if (appforgeAndroid != null) {
+                def appforgeExternalNativeBuild =
+                    appforgeAndroid.externalNativeBuild
+
+                if (
+                    appforgeExternalNativeBuild != null &&
+                    appforgeExternalNativeBuild.cmake != null
+                ) {
+                    appforgeExternalNativeBuild
+                        .cmake
+                        .buildStagingDirectory =
+                            appforgeCxxRoot
+
+                    println(
+                        "APPFORGE_EXPO_CXX_STAGING=" +
+                        subproject.path +
+                        ":" +
+                        appforgeCxxRoot.absolutePath
+                    )
+                }
+            }
+        }
+
+        subproject.plugins.withId(
+            "com.android.library"
+        ) {
+            appforgeConfigureCxxStaging()
+        }
+
+        subproject.plugins.withId(
+            "com.android.application"
+        ) {
+            appforgeConfigureCxxStaging()
+        }
+    }
+}
+EOF
+fi
+
+grep -q \
+  'APPFORGE_EXPO_NATIVE_CXX_STAGING_V2' \
+  "$ROOT_GRADLE"
+
+grep -Fq \
+  'buildStagingDirectory' \
+  "$ROOT_GRADLE"
+
+grep -Fq \
+  "${EXPO_NATIVE_BUILD_ROOT}/cxx/" \
+  "$ROOT_GRADLE"
+
+mkdir -p \
+  "$EXPO_NATIVE_BUILD_ROOT/cxx"
+
+chmod 0755 \
+  "$EXPO_NATIVE_BUILD_ROOT/cxx"
+
+echo "APPFORGE_EXPO_NATIVE_CXX_ROOT=$EXPO_NATIVE_BUILD_ROOT/cxx"
+echo "APPFORGE_EXPO_NATIVE_CXX_STAGING=PASS"
+
+#
 # The copied project is disposable. Do not allow a project-local
 # Gradle state directory from prebuild to influence the real build.
 #
