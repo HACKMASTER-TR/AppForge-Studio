@@ -168,3 +168,24 @@ test("notification tap performs one snapshot rebind rather than a competing poll
   assert.doesNotMatch(block, /while\s*\(\s*true\s*\)/);
   assert.doesNotMatch(block, /cancelBuild/);
 });
+
+
+test("terminal notification seeds runtime before Builder renders Ready zero", () => {
+  assert.match(main, /TERMINAL_NOTIFICATION_SYNC_RESTORE_V21_1/);
+  assert.match(
+    main,
+    /val notificationBuildRestoreId =[\s\S]{0,500}buildIdFromNotification[\s\S]{0,400}openBuildFromNotification/
+  );
+  assert.match(
+    main,
+    /val initialBuildRestoreId =[\s\S]{0,300}restoredBuildReference[\s\S]{0,300}notificationBuildRestoreId/
+  );
+  assert.match(
+    main,
+    /remember\(\s*initialBuildRestoreId\s*\)[\s\S]{0,2500}getBuild\(\s*restoreId\s*\)[\s\S]{0,1200}restoreFromEngine/
+  );
+  assert.doesNotMatch(
+    main,
+    /TERMINAL_NOTIFICATION_SYNC_RESTORE_V21_1[\s\S]{0,3500}resetForProjectChange\(\)/
+  );
+});

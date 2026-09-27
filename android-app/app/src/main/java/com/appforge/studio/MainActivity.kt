@@ -1267,29 +1267,81 @@ private fun AppForgeApp() {
                 )
         }
 
+    /*
+     * TERMINAL_NOTIFICATION_SYNC_RESTORE_V21_1
+     *
+     * A completed foreground-service notification can outlive the
+     * SharedPreferences tracker entry. When the Activity is opened from
+     * that terminal notification, seed BuildRuntimeState synchronously
+     * from the notification Build ID before Builder step 10 is rendered.
+     *
+     * Without this seed the first frame used BuildRuntimeState defaults
+     * ("Hazır" / 0) and the later LaunchedEffect snapshot rebind corrected
+     * it only after the UI had already flashed the wrong state.
+     */
+    val notificationBuildRestoreId =
+        hostActivity
+            ?.buildIdFromNotification
+            ?.takeIf {
+                hostActivity.openBuildFromNotification &&
+                    it.isNotBlank()
+            }
+
+    val notificationBuildRestoreServerUrl =
+        hostActivity
+            ?.buildServerUrlFromNotification
+            ?.takeIf {
+                it.isNotBlank()
+            }
+
+    val initialBuildRestoreId =
+        restoredBuildReference
+            ?.buildId
+            ?: notificationBuildRestoreId
+
     val buildRuntime =
         remember(
-            restoredBuildReference
-                ?.buildId
+            initialBuildRestoreId
         ) {
             BuildRuntimeState()
                 .also {
                     runtime ->
 
-                    restoredBuildReference
+                    initialBuildRestoreId
                         ?.let {
-                            reference ->
+                            restoreId ->
+
+                            val trackedReference =
+                                restoredBuildReference
+                                    ?.takeIf {
+                                        it.buildId ==
+                                            restoreId
+                                    }
+
+                            val restoreServerUrl =
+                                trackedReference
+                                    ?.serverUrl
+                                    ?.takeIf {
+                                        it.isNotBlank()
+                                    }
+                                    ?: notificationBuildRestoreServerUrl
+                                    ?: serverUrl
+
+                            val restoreApiKey =
+                                trackedReference
+                                    ?.apiKey
+                                    ?: apiKey
 
                             runCatching {
                                 BuildApiClient(
                                     context = context,
                                     baseUrl =
-                                        reference.serverUrl,
+                                        restoreServerUrl,
                                     apiKey =
-                                        reference.apiKey
+                                        restoreApiKey
                                 )
                                     .getBuild(
-                                        reference.buildId
+                                        restoreId
                                     )
                             }
                                 .getOrNull()
@@ -1301,9 +1353,11 @@ private fun AppForgeApp() {
                                             snapshot =
                                                 snapshot,
                                             projectKey =
-                                                reference.projectKey,
+                                                trackedReference
+                                                    ?.projectKey,
                                             startedAtMs =
-                                                reference.startedAtMs
+                                                trackedReference
+                                                    ?.startedAtMs
                                         )
                                 }
                         }

@@ -250,3 +250,8 @@ under `quality/tests`. Existing historical bug records are retained.
 - **Build No FEATURE-E — V21 source/CI fix, physical retest pending.** A
   synchronous SharedPreferences allocator reserves numbers before job creation,
   starts at `AF-0000001000`, and never reuses a consumed number.
+
+
+## BUG-C V21.1 terminal notification Ready/0 flash
+
+- BUG-C V21.1 terminal notification Ready/0 flash: source fix pending CI/physical retest. The build itself survives; the UI must synchronously hydrate the notification Build ID before rendering Builder step 10.
