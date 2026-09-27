@@ -782,7 +782,10 @@ object DeviceBuildEngine {
             "Expo prebuild Android settings.gradle üretmedi."
         }
 
-        writeSdkFiles(project)
+        writeSdkFiles(
+            project = project,
+            sdkRoot = "/opt/appforge-device/expo-sdk-36"
+        )
 
         state.logs.add(
             "🧪 Expo native Android proje Gradle ile derleniyor."
@@ -790,6 +793,10 @@ object DeviceBuildEngine {
 
         state.logs.add(
             "APPFORGE_EXPO_STANDALONE_VARIANT=AppforgeAcceptance"
+        )
+
+        state.logs.add(
+            "APPFORGE_EXPO_GRADLE_SDK_ROOT=/opt/appforge-device/expo-sdk-36"
         )
 
         buildGradleProject(
@@ -933,6 +940,13 @@ object DeviceBuildEngine {
             ).joinToString(" ") { sh(it) }
         } else ""
 
+        val androidSdkRoot =
+            if (nodeRequired) {
+                "/opt/appforge-device/expo-sdk-36"
+            } else {
+                "/opt/appforge-device/android-sdk"
+            }
+
         state.progress = 65
 
         val command = buildString {
@@ -945,8 +959,8 @@ object DeviceBuildEngine {
             } else {
                 append("export PATH=/opt/appforge-device/jdk-17/bin:\$PATH; ")
             }
-            append("export ANDROID_SDK_ROOT=/opt/appforge-device/android-sdk; ")
-            append("export ANDROID_HOME=/opt/appforge-device/android-sdk; ")
+            append("export ANDROID_SDK_ROOT=${sh(androidSdkRoot)}; ")
+            append("export ANDROID_HOME=${sh(androidSdkRoot)}; ")
             append("export GRADLE_USER_HOME=/root/.gradle-appforge; ")
 
             if (nodeRequired) {
@@ -1301,8 +1315,11 @@ object DeviceBuildEngine {
         )
     }
 
-    private fun writeSdkFiles(project: File) {
-        File(project, "local.properties").writeText("sdk.dir=/opt/appforge-device/android-sdk\n")
+    private fun writeSdkFiles(
+        project: File,
+        sdkRoot: String = "/opt/appforge-device/android-sdk"
+    ) {
+        File(project, "local.properties").writeText("sdk.dir=$sdkRoot\n")
         val gradleProperties = File(project, "gradle.properties")
         val existing = if (gradleProperties.isFile) gradleProperties.readText() else ""
         val filtered = existing.lineSequence().filterNot {
@@ -1312,7 +1329,7 @@ object DeviceBuildEngine {
         }.joinToString("\n")
         gradleProperties.writeText(
             filtered.trimEnd() + "\n" +
-                "android.aapt2FromMavenOverride=/opt/appforge-device/android-sdk/build-tools/36.0.0/aapt2\n" +
+                "android.aapt2FromMavenOverride=$sdkRoot/build-tools/36.0.0/aapt2\n" +
                 "org.gradle.workers.max=2\n" +
                 "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\n"
         )

@@ -214,6 +214,71 @@ test(
 );
 
 test(
+  "Expo Gradle sees an isolated API 36 SDK and not the API 37 minor platform",
+  () => {
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_SDK36_VIEW_V1/
+    );
+
+    assert.match(
+      installer,
+      /EXPO_SDK="\$ROOT\/expo-sdk-36"/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_SDK_VIEW_PLATFORM=android-36/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_SDK_VIEW_PLATFORM_COUNT=1/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_SDK36_ISOLATION_SMOKE=PASS/
+    );
+
+    assert.match(
+      engine,
+      /sdkRoot: String = "\/opt\/appforge-device\/android-sdk"/
+    );
+
+    assert.match(
+      engine,
+      /sdk\.dir=\$sdkRoot/
+    );
+
+    assert.match(
+      engine,
+      /android\.aapt2FromMavenOverride=\$sdkRoot\/build-tools\/36\.0\.0\/aapt2/
+    );
+
+    assert.match(
+      engine,
+      /sdkRoot = "\/opt\/appforge-device\/expo-sdk-36"/
+    );
+
+    assert.match(
+      engine,
+      /val androidSdkRoot =[\s\S]{0,180}expo-sdk-36/
+    );
+
+    assert.match(
+      engine,
+      /export ANDROID_SDK_ROOT=\$\{sh\(androidSdkRoot\)\}/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_GRADLE_SDK_ROOT=\/opt\/appforge-device\/expo-sdk-36/
+    );
+  }
+);
+
+test(
   "Expo capability remains experimental with zero accepted outputs",
   () => {
     const start =

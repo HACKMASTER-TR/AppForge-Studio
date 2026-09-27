@@ -106,6 +106,10 @@ if [ -f "$READY" ] \
       }; } \
    && { [ "$ENGINE" != "expo" ] || {
         [ -f "$SDK/platforms/android-36/android.jar" ] &&
+        [ -f "$ROOT/expo-sdk-36/.appforge-expo-sdk36-view-v1" ] &&
+        [ -f "$ROOT/expo-sdk-36/platforms/android-36/android.jar" ] &&
+        [ ! -e "$ROOT/expo-sdk-36/platforms/android-37.0" ] &&
+        [ ! -e "$ROOT/expo-sdk-36/platforms/android-37.0-2" ] &&
         [ -x "$NODE_HOME/bin/node" ] &&
         [ -x "$NODE_HOME/bin/npm" ] &&
         "$NODE_HOME/bin/node" -e 'const [maj]=process.versions.node.split(".").map(Number); process.exit(maj === 22 ? 0 : 1)' &&
@@ -888,6 +892,130 @@ ensure_android_commandline_tools() {
   echo "APPFORGE_ANDROID_CMDLINE_TOOLS_READY"
 }
 
+#
+# APPFORGE_EXPO_SDK36_VIEW_V1
+#
+# AGP 8.11 / Android Lint used by Expo SDK 54 must not enumerate
+# AppForge's API 37 minor platform packages. Keep the normal AppForge
+# SDK untouched and expose a separate Expo-only SDK root containing
+# stable android-36 plus the already verified toolchain components.
+#
+ensure_expo_sdk36_view() {
+  [ "$ENGINE" = "expo" ] || return 0
+
+  EXPO_SDK="$ROOT/expo-sdk-36"
+  EXPO_SDK_STAGE="$ROOT/expo-sdk-36-stage-$$"
+
+  test -f \
+    "$SDK/platforms/android-36/android.jar"
+
+  test -d \
+    "$SDK/build-tools/36.0.0"
+
+  test -d \
+    "$SDK/ndk/$EXPO_ARM64_NDK_VERSION"
+
+  test -d \
+    "$SDK/cmake/3.22.1"
+
+  test -d \
+    "$SDK/licenses"
+
+  rm -rf \
+    "$EXPO_SDK_STAGE"
+
+  mkdir -p \
+    "$EXPO_SDK_STAGE/platforms"
+
+  ln -s \
+    "$SDK/platforms/android-36" \
+    "$EXPO_SDK_STAGE/platforms/android-36"
+
+  ln -s \
+    "$SDK/build-tools" \
+    "$EXPO_SDK_STAGE/build-tools"
+
+  ln -s \
+    "$SDK/ndk" \
+    "$EXPO_SDK_STAGE/ndk"
+
+  ln -s \
+    "$SDK/cmake" \
+    "$EXPO_SDK_STAGE/cmake"
+
+  ln -s \
+    "$SDK/licenses" \
+    "$EXPO_SDK_STAGE/licenses"
+
+  if [ -d "$SDK/platform-tools" ]; then
+    ln -s \
+      "$SDK/platform-tools" \
+      "$EXPO_SDK_STAGE/platform-tools"
+  fi
+
+  if [ -d "$SDK/cmdline-tools" ]; then
+    ln -s \
+      "$SDK/cmdline-tools" \
+      "$EXPO_SDK_STAGE/cmdline-tools"
+  fi
+
+  test -f \
+    "$EXPO_SDK_STAGE/platforms/android-36/android.jar"
+
+  test ! -e \
+    "$EXPO_SDK_STAGE/platforms/android-37.0"
+
+  test ! -e \
+    "$EXPO_SDK_STAGE/platforms/android-37.0-2"
+
+  PLATFORM_COUNT="$(
+    find "$EXPO_SDK_STAGE/platforms" \
+      -mindepth 1 \
+      -maxdepth 1 \
+      -print |
+    wc -l |
+    tr -d ' '
+  )"
+
+  test "$PLATFORM_COUNT" = "1"
+
+  printf '%s\n' \
+    'APPFORGE_EXPO_SDK36_VIEW_V1' \
+    > "$EXPO_SDK_STAGE/.appforge-expo-sdk36-view-v1"
+
+  if [ -e "$EXPO_SDK" ] ||
+     [ -L "$EXPO_SDK" ]; then
+    EXPO_SDK_PRESERVED="$ROOT/expo-sdk-36-preserved-$(date +%Y%m%d-%H%M%S)"
+
+    mv \
+      "$EXPO_SDK" \
+      "$EXPO_SDK_PRESERVED"
+
+    echo "APPFORGE_EXPO_OLD_SDK_VIEW_PRESERVED=$EXPO_SDK_PRESERVED"
+  fi
+
+  mv \
+    "$EXPO_SDK_STAGE" \
+    "$EXPO_SDK"
+
+  test -f \
+    "$EXPO_SDK/.appforge-expo-sdk36-view-v1"
+
+  test -f \
+    "$EXPO_SDK/platforms/android-36/android.jar"
+
+  test ! -e \
+    "$EXPO_SDK/platforms/android-37.0"
+
+  test ! -e \
+    "$EXPO_SDK/platforms/android-37.0-2"
+
+  echo "APPFORGE_EXPO_SDK_VIEW=$EXPO_SDK"
+  echo "APPFORGE_EXPO_SDK_VIEW_PLATFORM=android-36"
+  echo "APPFORGE_EXPO_SDK_VIEW_PLATFORM_COUNT=1"
+  echo "APPFORGE_EXPO_SDK36_VIEW=PASS"
+}
+
 accept_android_sdk_license() {
   if [ -f "$SDK_LICENSE_MARKER" ]; then
     echo "APPFORGE_ANDROID_SDK_LICENSE_ALREADY_ACCEPTED"
@@ -1118,6 +1246,7 @@ accept_android_sdk_license
 
 if [ "$ENGINE" = "expo" ]; then
   ensure_expo_arm64_ndk_host
+  ensure_expo_sdk36_view
 fi
 
 # SDK Manager may repair/create package metadata for API 37.0.
@@ -1160,6 +1289,16 @@ if [ "$ENGINE" = "expo" ]; then
     >/dev/null
 
   echo "APPFORGE_EXPO_ANDROID_36_AAPT2_SMOKE=PASS"
+
+  test -f     "$ROOT/expo-sdk-36/.appforge-expo-sdk36-view-v1"
+
+  test -f     "$ROOT/expo-sdk-36/platforms/android-36/android.jar"
+
+  test ! -e     "$ROOT/expo-sdk-36/platforms/android-37.0"
+
+  test ! -e     "$ROOT/expo-sdk-36/platforms/android-37.0-2"
+
+  echo "APPFORGE_EXPO_SDK36_ISOLATION_SMOKE=PASS"
 fi
 
 "$ROOT/gradle-9.3.1/bin/gradle" --version >/dev/null
