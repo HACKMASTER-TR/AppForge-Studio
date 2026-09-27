@@ -279,6 +279,61 @@ test(
 );
 
 test(
+  "Expo physical acceptance emits startup crash evidence to public Downloads",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_RUNTIME_CRASH_PROBE_V1/
+    );
+
+    assert.match(
+      expo,
+      /AppForgeExpoRuntimeProbe\.kt/
+    );
+
+    assert.match(
+      expo,
+      /AppForgeExpoRuntimeProbe\.install\(this\)/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_AFTER_SUPER/
+    );
+
+    assert.match(
+      expo,
+      /BUNDLE_ASSET=index\.android\.bundle/
+    );
+
+    assert.match(
+      expo,
+      /NATIVE_LIBS=/
+    );
+
+    assert.match(
+      expo,
+      /STACKTRACE_BEGIN/
+    );
+
+    assert.match(
+      expo,
+      /MediaStore\.Downloads\.EXTERNAL_CONTENT_URI/
+    );
+
+    assert.match(
+      expo,
+      /Downloads\/AppForgeStudio\/ExpoCrash/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_RUNTIME_CRASH_PROBE=PASS/
+    );
+  }
+);
+
+test(
   "Expo capability remains experimental with zero accepted outputs",
   () => {
     const start =

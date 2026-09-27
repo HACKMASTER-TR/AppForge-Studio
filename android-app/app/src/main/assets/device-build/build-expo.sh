@@ -186,6 +186,443 @@ echo "APPFORGE_EXPO_MAIN_APPLICATION=$MAIN_APPLICATION"
 echo "APPFORGE_EXPO_MAIN_APPLICATION=PASS"
 
 #
+# APPFORGE_EXPO_RUNTIME_CRASH_PROBE_V1
+#
+# Physical APK/AAB creation is now proven. The remaining acceptance
+# blocker is launch/runtime. Instrument only the disposable Expo
+# acceptance project so a startup crash produces real evidence instead
+# of another source-level hypothesis.
+#
+MAIN_ACTIVITY="$(
+  find \
+    android/app/src/main/java \
+    -type f \
+    \( \
+      -name 'MainActivity.kt' \
+      -o \
+      -name 'MainActivity.java' \
+    \) \
+    -print \
+    | head -n 1
+)"
+
+test -n "$MAIN_ACTIVITY"
+test -f "$MAIN_ACTIVITY"
+
+case "$MAIN_APPLICATION" in
+  *.kt)
+    ;;
+  *)
+    echo "APPFORGE_EXPO_RUNTIME_PROBE_REQUIRES_KOTLIN_MAIN_APPLICATION" >&2
+    exit 45
+    ;;
+esac
+
+case "$MAIN_ACTIVITY" in
+  *.kt)
+    ;;
+  *)
+    echo "APPFORGE_EXPO_RUNTIME_PROBE_REQUIRES_KOTLIN_MAIN_ACTIVITY" >&2
+    exit 46
+    ;;
+esac
+
+APPFORGE_EXPO_PACKAGE="$(
+  awk '
+    /^[[:space:]]*package[[:space:]]+/ {
+      print $2
+      exit
+    }
+  ' "$MAIN_APPLICATION" |
+  tr -d ';'
+)"
+
+test -n "$APPFORGE_EXPO_PACKAGE"
+
+APPFORGE_EXPO_PROBE_FILE="$(
+  dirname "$MAIN_APPLICATION"
+)/AppForgeExpoRuntimeProbe.kt"
+
+cat > "$APPFORGE_EXPO_PROBE_FILE" <<EOF
+package $APPFORGE_EXPO_PACKAGE
+
+object AppForgeExpoRuntimeProbe {
+    private const val TAG = "AppForgeExpoProbe"
+
+    @Volatile
+    private var installed = false
+
+    @Volatile
+    private var reportUri: android.net.Uri? = null
+
+    @Synchronized
+    fun install(app: android.app.Application) {
+        if (installed) {
+            return
+        }
+
+        installed = true
+
+        mark(app, "APPLICATION_AFTER_SUPER")
+
+        val bundleState =
+            try {
+                app.assets.open("index.android.bundle").use { input ->
+                    if (input.read() >= 0) {
+                        "PASS"
+                    } else {
+                        "EMPTY"
+                    }
+                }
+            } catch (error: Throwable) {
+                "FAIL:" +
+                    error.javaClass.name +
+                    ":" +
+                    (error.message ?: "")
+            }
+
+        write(
+            app,
+            "BUNDLE_ASSET=index.android.bundle:" + bundleState
+        )
+
+        val nativeLibraries =
+            try {
+                java.io.File(
+                    app.applicationInfo.nativeLibraryDir
+                )
+                    .listFiles()
+                    ?.filter { it.isFile }
+                    ?.map { it.name }
+                    ?.sorted()
+                    ?.joinToString(",")
+                    ?: "NONE"
+            } catch (error: Throwable) {
+                "ERROR:" +
+                    error.javaClass.name +
+                    ":" +
+                    (error.message ?: "")
+            }
+
+        write(
+            app,
+            "NATIVE_LIB_DIR=" +
+                app.applicationInfo.nativeLibraryDir
+        )
+
+        write(
+            app,
+            "NATIVE_LIBS=" + nativeLibraries
+        )
+
+        write(
+            app,
+            "ANDROID_SDK=" +
+                android.os.Build.VERSION.SDK_INT
+        )
+
+        write(
+            app,
+            "SUPPORTED_ABIS=" +
+                android.os.Build.SUPPORTED_ABIS.joinToString(",")
+        )
+
+        val previous =
+            Thread.getDefaultUncaughtExceptionHandler()
+
+        Thread.setDefaultUncaughtExceptionHandler {
+                thread,
+                throwable ->
+
+            try {
+                write(
+                    app,
+                    "UNCAUGHT_THREAD=" + thread.name
+                )
+
+                write(
+                    app,
+                    "UNCAUGHT_CLASS=" +
+                        throwable.javaClass.name
+                )
+
+                write(
+                    app,
+                    "UNCAUGHT_MESSAGE=" +
+                        (throwable.message ?: "")
+                )
+
+                write(
+                    app,
+                    "STACKTRACE_BEGIN\n" +
+                        android.util.Log.getStackTraceString(
+                            throwable
+                        ) +
+                        "\nSTACKTRACE_END"
+                )
+            } catch (_: Throwable) {
+            }
+
+            if (previous != null) {
+                previous.uncaughtException(
+                    thread,
+                    throwable
+                )
+            } else {
+                android.os.Process.killProcess(
+                    android.os.Process.myPid()
+                )
+            }
+        }
+
+        write(
+            app,
+            "UNCAUGHT_HANDLER=INSTALLED"
+        )
+    }
+
+    fun mark(
+        context: android.content.Context,
+        stage: String
+    ) {
+        write(
+            context.applicationContext,
+            "STAGE=" + stage
+        )
+    }
+
+    @Synchronized
+    private fun ensureReport(
+        context: android.content.Context
+    ): android.net.Uri? {
+        reportUri?.let {
+            return it
+        }
+
+        if (
+            android.os.Build.VERSION.SDK_INT <
+            android.os.Build.VERSION_CODES.Q
+        ) {
+            android.util.Log.e(
+                TAG,
+                "PUBLIC_REPORT_REQUIRES_API_29"
+            )
+
+            return null
+        }
+
+        return try {
+            val values =
+                android.content.ContentValues().apply {
+                    put(
+                        android.provider.MediaStore.MediaColumns.DISPLAY_NAME,
+                        "AppForgeExpoRuntime-" +
+                            System.currentTimeMillis() +
+                            ".txt"
+                    )
+
+                    put(
+                        android.provider.MediaStore.MediaColumns.MIME_TYPE,
+                        "text/plain"
+                    )
+
+                    put(
+                        android.provider.MediaStore.MediaColumns.RELATIVE_PATH,
+                        android.os.Environment.DIRECTORY_DOWNLOADS +
+                            "/AppForgeStudio/ExpoCrash"
+                    )
+                }
+
+            context.contentResolver.insert(
+                android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                values
+            )?.also {
+                reportUri = it
+            }
+        } catch (error: Throwable) {
+            android.util.Log.e(
+                TAG,
+                "REPORT_CREATE_FAILED",
+                error
+            )
+
+            null
+        }
+    }
+
+    @Synchronized
+    private fun write(
+        context: android.content.Context,
+        message: String
+    ) {
+        android.util.Log.e(
+            TAG,
+            message
+        )
+
+        try {
+            val uri =
+                ensureReport(context)
+                    ?: return
+
+            context.contentResolver
+                .openOutputStream(
+                    uri,
+                    "wa"
+                )
+                ?.bufferedWriter()
+                ?.use { writer ->
+                    writer.append(
+                        System.currentTimeMillis()
+                            .toString()
+                    )
+
+                    writer.append(" ")
+                    writer.append(message)
+                    writer.append("\n")
+                }
+        } catch (error: Throwable) {
+            android.util.Log.e(
+                TAG,
+                "REPORT_WRITE_FAILED",
+                error
+            )
+        }
+    }
+}
+EOF
+
+test -s "$APPFORGE_EXPO_PROBE_FILE"
+
+MAIN_APPLICATION="$MAIN_APPLICATION" \
+MAIN_ACTIVITY="$MAIN_ACTIVITY" \
+"$NODE_HOME/bin/node" <<'NODE'
+const fs = require("fs");
+
+const applicationPath =
+  process.env.MAIN_APPLICATION;
+
+const activityPath =
+  process.env.MAIN_ACTIVITY;
+
+let application =
+  fs.readFileSync(
+    applicationPath,
+    "utf8"
+  );
+
+if (
+  !application.includes(
+    "AppForgeExpoRuntimeProbe.install(this)"
+  )
+) {
+  const superPattern =
+    /^(\s*)super\.onCreate\(\)\s*$/m;
+
+  if (!superPattern.test(application)) {
+    throw new Error(
+      "MainApplication super.onCreate anchor missing"
+    );
+  }
+
+  application =
+    application.replace(
+      superPattern,
+      (line, indent) =>
+        line +
+        "\n" +
+        indent +
+        "AppForgeExpoRuntimeProbe.install(this)"
+    );
+}
+
+if (
+  application.includes(
+    "ApplicationLifecycleDispatcher.onApplicationCreate(this)"
+  ) &&
+  !application.includes(
+    'AppForgeExpoRuntimeProbe.mark(this, "APPLICATION_READY")'
+  )
+) {
+  const readyPattern =
+    /^(\s*)ApplicationLifecycleDispatcher\.onApplicationCreate\(this\)\s*$/m;
+
+  if (readyPattern.test(application)) {
+    application =
+      application.replace(
+        readyPattern,
+        (line, indent) =>
+          line +
+          "\n" +
+          indent +
+          'AppForgeExpoRuntimeProbe.mark(this, "APPLICATION_READY")'
+      );
+  }
+}
+
+fs.writeFileSync(
+  applicationPath,
+  application
+);
+
+let activity =
+  fs.readFileSync(
+    activityPath,
+    "utf8"
+  );
+
+if (
+  !activity.includes(
+    'AppForgeExpoRuntimeProbe.mark(this, "MAIN_ACTIVITY_AFTER_SUPER")'
+  )
+) {
+  const activitySuperPattern =
+    /^(\s*)super\.onCreate\([^)]*\)\s*$/m;
+
+  if (!activitySuperPattern.test(activity)) {
+    throw new Error(
+      "MainActivity super.onCreate anchor missing"
+    );
+  }
+
+  activity =
+    activity.replace(
+      activitySuperPattern,
+      (line, indent) =>
+        line +
+        "\n" +
+        indent +
+        'AppForgeExpoRuntimeProbe.mark(this, "MAIN_ACTIVITY_AFTER_SUPER")'
+    );
+}
+
+fs.writeFileSync(
+  activityPath,
+  activity
+);
+NODE
+
+grep -q \
+  'AppForgeExpoRuntimeProbe.install(this)' \
+  "$MAIN_APPLICATION"
+
+grep -q \
+  'MAIN_ACTIVITY_AFTER_SUPER' \
+  "$MAIN_ACTIVITY"
+
+grep -q \
+  'MediaStore.Downloads.EXTERNAL_CONTENT_URI' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -q \
+  'STACKTRACE_BEGIN' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+echo "APPFORGE_EXPO_RUNTIME_PROBE_FILE=$APPFORGE_EXPO_PROBE_FILE"
+echo "APPFORGE_EXPO_RUNTIME_PROBE_REPORT=Downloads/AppForgeStudio/ExpoCrash"
+echo "APPFORGE_EXPO_RUNTIME_CRASH_PROBE=PASS"
+
+#
 # Change Gradle properties while the project is still on the
 # rootfs-native staging filesystem. Avoid sed -i / atomic rename
 # operations after the project returns to the PRoot bind mount.
