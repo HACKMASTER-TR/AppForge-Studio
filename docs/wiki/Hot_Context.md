@@ -53,8 +53,9 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- V14.1.1 physical report proves `ACTIVITY_CALLBACKS_REGISTERED=PASS`, but no Activity lifecycle callback fires before Android records exit reason `4` (`crash`); bundle and Hermes remain PASS.
-- V15 installs an Expo-only `AppComponentFactory` probe that records the requested Activity class/component before framework instantiation and captures any class-load/constructor throwable before `onCreate()`.
+- V15 physical fixture APK contains `AppForgeExpoComponentFactory` and its probe strings, but runtime still reaches `APPLICATION_READY` / Hermes PASS and crashes before any ComponentFactory Activity or Activity lifecycle marker appears. Binary-manifest `strings` was inconclusive, and the general AppForge Terminal does not expose the device-build SDK/APK mount for `aapt2`.
+- V16 makes the runtime self-proving: the custom ComponentFactory records `instantiateApplication` before `Application.onCreate()` into an in-memory buffer that is flushed to the public report, and the Java uncaught handler is checked/re-armed at `APPLICATION_READY`.
+- Expo native builds also show a repeatable intermittent pattern: one build may pass while the next fails in `expo-modules-core` PCH with Ubuntu clang 18.1.3 exit 139. Treat this as a separate native-build stability bug from the launch crash.
 - Expo remains experimental until the installed fixture renders and stays open.
 - SDK XML/platform warnings are secondary unless they become build-blocking.
 

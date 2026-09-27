@@ -423,6 +423,31 @@ test(
 
     assert.match(
       expo,
+      /APPFORGE_EXPO_STARTUP_CAPTURE_V16/
+    );
+
+    assert.match(
+      expo,
+      /COMPONENT_FACTORY_APPLICATION_BEFORE/
+    );
+
+    assert.match(
+      expo,
+      /COMPONENT_FACTORY_EARLY_FLUSH_COUNT=/
+    );
+
+    assert.match(
+      expo,
+      /UNCAUGHT_HANDLER_READY_VERIFY=/
+    );
+
+    assert.match(
+      expo,
+      /installCrashHandler/
+    );
+
+    assert.match(
+      expo,
       /ACTIVITY_CALLBACKS_REGISTERED=PASS/
     );
 

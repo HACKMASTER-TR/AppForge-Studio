@@ -258,6 +258,14 @@ object AppForgeExpoRuntimeProbe {
     @Volatile
     private var applicationRef: android.app.Application? = null
 
+    // APPFORGE_EXPO_STARTUP_CAPTURE_V16
+    private val earlyFactoryEvents =
+        java.util.concurrent.CopyOnWriteArrayList<String>()
+
+    @Volatile
+    private var crashHandler:
+        Thread.UncaughtExceptionHandler? = null
+
     fun early(stage: String) {
         val app = applicationRef
 
@@ -283,6 +291,7 @@ object AppForgeExpoRuntimeProbe {
         installed = true
         applicationRef = app
 
+        flushEarlyFactoryEvents(app)
         installActivityLifecycleProbe(app)
         recordPreviousExit(app)
 
@@ -350,57 +359,167 @@ object AppForgeExpoRuntimeProbe {
                 android.os.Build.SUPPORTED_ABIS.joinToString(",")
         )
 
-        val previous =
+        installCrashHandler(
+            app,
+            "INSTALL"
+        )
+    }
+
+    @Synchronized
+    private fun installCrashHandler(
+        context: android.content.Context,
+        phase: String
+    ) {
+        val current =
             Thread.getDefaultUncaughtExceptionHandler()
 
-        Thread.setDefaultUncaughtExceptionHandler {
-                thread,
-                throwable ->
-
-            try {
-                write(
-                    app,
-                    "UNCAUGHT_THREAD=" + thread.name
+        write(
+            context,
+            "UNCAUGHT_HANDLER_" +
+                phase +
+                "_CURRENT=" +
+                (
+                    current
+                        ?.javaClass
+                        ?.name
+                        ?: "NONE"
                 )
+        )
 
-                write(
-                    app,
-                    "UNCAUGHT_CLASS=" +
-                        throwable.javaClass.name
-                )
+        if (current === crashHandler) {
+            write(
+                context,
+                "UNCAUGHT_HANDLER_" +
+                    phase +
+                    "_STATE=UNCHANGED"
+            )
+            return
+        }
 
-                write(
-                    app,
-                    "UNCAUGHT_MESSAGE=" +
-                        (throwable.message ?: "")
-                )
+        val previous = current
 
-                write(
-                    app,
-                    "STACKTRACE_BEGIN\n" +
-                        android.util.Log.getStackTraceString(
+        val handler =
+            object :
+                Thread.UncaughtExceptionHandler {
+                override fun uncaughtException(
+                    thread: Thread,
+                    throwable: Throwable
+                ) {
+                    try {
+                        write(
+                            context,
+                            "UNCAUGHT_THREAD=" +
+                                thread.name
+                        )
+
+                        write(
+                            context,
+                            "UNCAUGHT_CLASS=" +
+                                throwable.javaClass.name
+                        )
+
+                        write(
+                            context,
+                            "UNCAUGHT_MESSAGE=" +
+                                (throwable.message ?: "")
+                        )
+
+                        write(
+                            context,
+                            "STACKTRACE_BEGIN\n" +
+                                android.util.Log
+                                    .getStackTraceString(
+                                        throwable
+                                    ) +
+                                "\nSTACKTRACE_END"
+                        )
+                    } catch (_: Throwable) {
+                    }
+
+                    if (previous != null) {
+                        previous.uncaughtException(
+                            thread,
                             throwable
-                        ) +
-                        "\nSTACKTRACE_END"
-                )
-            } catch (_: Throwable) {
+                        )
+                    } else {
+                        android.os.Process.killProcess(
+                            android.os.Process.myPid()
+                        )
+                    }
+                }
             }
 
-            if (previous != null) {
-                previous.uncaughtException(
-                    thread,
-                    throwable
+        crashHandler = handler
+        Thread.setDefaultUncaughtExceptionHandler(
+            handler
+        )
+
+        write(
+            context,
+            "UNCAUGHT_HANDLER_" +
+                phase +
+                "_PREVIOUS=" +
+                (
+                    previous
+                        ?.javaClass
+                        ?.name
+                        ?: "NONE"
                 )
-            } else {
-                android.os.Process.killProcess(
-                    android.os.Process.myPid()
-                )
-            }
+        )
+
+        write(
+            context,
+            "UNCAUGHT_HANDLER_" +
+                phase +
+                "_STATE=INSTALLED"
+        )
+    }
+
+    @Synchronized
+    private fun flushEarlyFactoryEvents(
+        app: android.app.Application
+    ) {
+        val pending =
+            earlyFactoryEvents.toList()
+
+        earlyFactoryEvents.clear()
+
+        write(
+            app,
+            "COMPONENT_FACTORY_EARLY_FLUSH_COUNT=" +
+                pending.size
+        )
+
+        pending.forEach { message ->
+            write(
+                app,
+                message
+            )
+        }
+    }
+
+    private fun componentFactoryRecord(
+        message: String
+    ) {
+        val app = applicationRef
+
+        if (app == null) {
+            earlyFactoryEvents.add(
+                message
+            )
+
+            android.util.Log.e(
+                TAG,
+                "EARLY_FACTORY_BUFFER=" +
+                    message
+            )
+
+            return
         }
 
         write(
             app,
-            "UNCAUGHT_HANDLER=INSTALLED"
+            message
         )
     }
 
@@ -493,19 +612,6 @@ object AppForgeExpoRuntimeProbe {
         className: String,
         intent: android.content.Intent?
     ) {
-        val app = applicationRef
-
-        if (app == null) {
-            android.util.Log.e(
-                TAG,
-                "COMPONENT_FACTORY_NO_APPLICATION:" +
-                    stage +
-                    ":" +
-                    className
-            )
-            return
-        }
-
         val component =
             try {
                 intent
@@ -517,18 +623,15 @@ object AppForgeExpoRuntimeProbe {
                     error.javaClass.name
             }
 
-        write(
-            app,
+        componentFactoryRecord(
             "STAGE=" + stage
         )
 
-        write(
-            app,
+        componentFactoryRecord(
             stage + "_CLASS=" + className
         )
 
-        write(
-            app,
+        componentFactoryRecord(
             stage + "_COMPONENT=" + component
         )
     }
@@ -537,38 +640,22 @@ object AppForgeExpoRuntimeProbe {
         className: String,
         error: Throwable
     ) {
-        val app = applicationRef
-
-        if (app == null) {
-            android.util.Log.e(
-                TAG,
-                "COMPONENT_FACTORY_THROWABLE_NO_APPLICATION:" +
-                    className,
-                error
-            )
-            return
-        }
-
-        write(
-            app,
+        componentFactoryRecord(
             "COMPONENT_FACTORY_THROWABLE_CLASS_NAME=" +
                 className
         )
 
-        write(
-            app,
+        componentFactoryRecord(
             "COMPONENT_FACTORY_THROWABLE_CLASS=" +
                 error.javaClass.name
         )
 
-        write(
-            app,
+        componentFactoryRecord(
             "COMPONENT_FACTORY_THROWABLE_MESSAGE=" +
                 (error.message ?: "")
         )
 
-        write(
-            app,
+        componentFactoryRecord(
             "COMPONENT_FACTORY_THROWABLE_STACK_BEGIN\n" +
                 android.util.Log.getStackTraceString(error) +
                 "\nCOMPONENT_FACTORY_THROWABLE_STACK_END"
@@ -736,6 +823,24 @@ object AppForgeExpoRuntimeProbe {
         )
 
         if (stage == "APPLICATION_READY") {
+            installCrashHandler(
+                appContext,
+                "READY"
+            )
+
+            write(
+                appContext,
+                "UNCAUGHT_HANDLER_READY_VERIFY=" +
+                    if (
+                        Thread.getDefaultUncaughtExceptionHandler() ===
+                        crashHandler
+                    ) {
+                        "PASS"
+                    } else {
+                        "FAIL"
+                    }
+            )
+
             val hermesFactoryState =
                 try {
                     Class.forName(
@@ -919,6 +1024,36 @@ package $APPFORGE_EXPO_PACKAGE
 class AppForgeExpoComponentFactory :
     androidx.core.app.CoreComponentFactory() {
 
+    override fun instantiateApplication(
+        cl: ClassLoader,
+        className: String
+    ): android.app.Application {
+        AppForgeExpoRuntimeProbe.componentFactoryStage(
+            "COMPONENT_FACTORY_APPLICATION_BEFORE",
+            className,
+            null
+        )
+
+        return try {
+            super.instantiateApplication(
+                cl,
+                className
+            ).also { application ->
+                AppForgeExpoRuntimeProbe.componentFactoryStage(
+                    "COMPONENT_FACTORY_APPLICATION_AFTER",
+                    application.javaClass.name,
+                    null
+                )
+            }
+        } catch (error: Throwable) {
+            AppForgeExpoRuntimeProbe.componentFactoryThrowable(
+                className,
+                error
+            )
+            throw error
+        }
+    }
+
     override fun instantiateActivity(
         cl: ClassLoader,
         className: String,
@@ -1073,6 +1208,14 @@ grep -Fq \
 
 grep -Fq \
   'componentFactoryThrowable' \
+  "$APPFORGE_EXPO_COMPONENT_FACTORY_FILE"
+
+grep -Fq \
+  'COMPONENT_FACTORY_APPLICATION_BEFORE' \
+  "$APPFORGE_EXPO_COMPONENT_FACTORY_FILE"
+
+grep -Fq \
+  'instantiateApplication' \
   "$APPFORGE_EXPO_COMPONENT_FACTORY_FILE"
 
 grep -Fq \
@@ -1636,6 +1779,18 @@ grep -Fq \
   'APPFORGE_EXPO_COMPONENT_FACTORY_V15=PASS' \
   "$0"
 
+grep -Fq \
+  'COMPONENT_FACTORY_EARLY_FLUSH_COUNT=' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -Fq \
+  'UNCAUGHT_HANDLER_READY_VERIFY=' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -Fq \
+  'APPFORGE_EXPO_STARTUP_CAPTURE_V16' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
 echo "APPFORGE_EXPO_RUNTIME_PROBE_FILE=$APPFORGE_EXPO_PROBE_FILE"
 echo "APPFORGE_EXPO_RUNTIME_PROBE_REPORT=Downloads/AppForgeStudio/ExpoCrash"
 echo "APPFORGE_EXPO_RUNTIME_CRASH_PROBE=PASS"
@@ -1644,6 +1799,7 @@ echo "APPFORGE_EXPO_FULL_ONCREATE_CAPTURE_V13=PASS"
 echo "APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14=PASS"
 echo "APPFORGE_EXPO_ACTIVITY_IDENTITY_V14_1=PASS"
 echo "APPFORGE_EXPO_COMPONENT_FACTORY_CAPTURE_V15=PASS"
+echo "APPFORGE_EXPO_STARTUP_CAPTURE_V16=PASS"
 
 #
 # Change Gradle properties while the project is still on the
