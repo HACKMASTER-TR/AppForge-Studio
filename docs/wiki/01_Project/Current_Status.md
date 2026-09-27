@@ -283,3 +283,18 @@ offline pack/cache.
 
 PR #56 remains Draft. No merge, Play Production publication, Cloudflare
 deployment, D1 migration or Windows Host modification is part of this closure.
+
+
+## 2026-09-27 Expo physical acceptance and V21 build lifecycle
+
+Expo SDK 54 / React Native 0.81.4 completed the device-local acceptance gate:
+V20.3 produced four consecutive APK+AAB builds on the physical ARM64 device,
+and the final APK installed, launched directly and rendered
+`APPFORGE_EXPO54_DEVICE_PASS`. BUG-A runtime launch and BUG-B intermittent
+clang/PCH exit 139 are closed for this scoped version family.
+
+V21 promotes only Expo SDK54/RN0.81 to READY APK+AAB. Standalone React Native
+remains EXPERIMENTAL. The same source change hardens active-build notification
+return, unifies Builder/notification percentage through the real engine stage,
+and introduces persistent Build No allocation beginning at `AF-0000001000`.
+BUG-C, BUG-D and Build No persistence still require physical re-acceptance.

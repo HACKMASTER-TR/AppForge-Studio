@@ -10,6 +10,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.appforge.studio.build.BuildApiClient
+import com.appforge.studio.build.DeviceBuildEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -135,13 +136,21 @@ class BuildProgressService : Service() {
                         return START_NOT_STICKY
                     }
 
+            val initialSnapshot = DeviceBuildEngine.snapshot(buildId)
+            val initialProgress = initialSnapshot?.let {
+                AppForgeBuildProgress.visible(it.status, it.progress)
+            } ?: 0
+
             startForeground(
                 NOTIFICATION_ID,
                 notification(
                     appName = appName,
-                    text =
-                        "Derleme arka planda hazırlanıyor",
-                    progress = 0,
+                    text = if (initialSnapshot != null) {
+                        "Derleme devam ediyor • %$initialProgress"
+                    } else {
+                        "Derleme arka planda hazırlanıyor"
+                    },
+                    progress = initialProgress,
                     ongoing = true,
                     buildId = buildId,
                     serverUrl = serverUrl
@@ -200,86 +209,55 @@ class BuildProgressService : Service() {
         buildId: String,
         serverUrl: String
     ) {
+        var lastVisibleProgress = DeviceBuildEngine.snapshot(buildId)?.let {
+            AppForgeBuildProgress.visible(it.status, it.progress)
+        } ?: 0
+
         while (true) {
             try {
-                val status =
-                    client.getBuild(
-                        buildId
-                    )
+                val status = client.getBuild(buildId)
+                val normalized = status.status.trim().lowercase()
+                val active = normalized !in TERMINAL_STATES
+                val visibleProgress =
+                    AppForgeBuildProgress.visible(status.status, status.progress)
+                lastVisibleProgress = visibleProgress
 
-                val normalized =
-                    status.status
-                        .trim()
-                        .lowercase()
-
-                val active =
-                    normalized !in
-                        TERMINAL_STATES
-
-                val text =
-                    if (active) {
-                        "Derleme devam ediyor • %${status.progress}"
-                    } else {
-                        when (normalized) {
-                            "success" ->
-                                "Derleme hazır. Çıktıyı AppForge Studio'dan indirebilirsin."
-
-                            "cancelled",
-                            "canceled" ->
-                                "Derleme iptal edildi."
-
-                            else ->
-                                "Derleme tamamlanamadı. Ayrıntılar için AppForge Studio'yu aç."
-                        }
+                val text = if (active) {
+                    "Derleme devam ediyor • %$visibleProgress"
+                } else {
+                    when (normalized) {
+                        "success" -> "Derleme hazır. Çıktıyı AppForge Studio'dan indirebilirsin."
+                        "cancelled", "canceled" -> "Derleme iptal edildi • %$visibleProgress"
+                        else -> "Derleme tamamlanamadı • %$visibleProgress • ayrıntılar için AppForge Studio'yu aç."
                     }
+                }
 
                 showNotification(
                     appName = appName,
                     text = text,
-                    progress =
-                        if (
-                            normalized ==
-                            "success"
-                        ) {
-                            100
-                        } else {
-                            status.progress
-                        },
+                    progress = visibleProgress,
                     ongoing = active,
                     buildId = buildId,
                     serverUrl = serverUrl
                 )
 
                 if (!active) {
-                    clear(
-                        this@BuildProgressService
-                    )
-
-                    stopForeground(
-                        STOP_FOREGROUND_DETACH
-                    )
-
-                    stopSelf(
-                        startId
-                    )
-
+                    clear(this@BuildProgressService)
+                    stopForeground(STOP_FOREGROUND_DETACH)
+                    stopSelf(startId)
                     return
                 }
             } catch (_: Throwable) {
                 showNotification(
                     appName = appName,
-                    text =
-                        "Derleme sunucuda devam ediyor • bağlantı yeniden denenecek",
-                    progress = 0,
+                    text = "Derleme cihazda devam ediyor • %$lastVisibleProgress • durum yeniden okunacak",
+                    progress = lastVisibleProgress,
                     ongoing = true,
                     buildId = buildId,
                     serverUrl = serverUrl
                 )
             }
-
-            delay(
-                5_000L
-            )
+            delay(1_000L)
         }
     }
 
@@ -367,11 +345,10 @@ class BuildProgressService : Service() {
                         ) {
                             100
                         } else {
-                            status.progress
-                                .coerceIn(
-                                    0,
-                                    100
-                                )
+                            AppForgeBuildProgress.visible(
+                                status.status,
+                                status.progress
+                            )
                         }
 
                     when (normalized) {
@@ -571,8 +548,9 @@ class BuildProgressService : Service() {
                         serverUrl
                     )
 
+                    // ACTIVE_BUILD_NOTIFICATION_RETURN_V2
                     addFlags(
-                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
                             Intent.FLAG_ACTIVITY_SINGLE_TOP
                     )
                 },
@@ -953,6 +931,24 @@ class BuildProgressService : Service() {
                         )
                     }
                 )
+        }
+
+        /* ACTIVE_BUILD_HOST_RESUME_GUARD_V2 */
+        fun onHostResumed(context: Context) {
+            val reference = activeSingleBuild(context) ?: run {
+                stop(context)
+                return
+            }
+            val snapshot = DeviceBuildEngine.snapshot(reference.buildId) ?: run {
+                clear(context)
+                stop(context)
+                return
+            }
+            if (snapshot.status.trim().lowercase() in TERMINAL_STATES) {
+                clear(context)
+                stop(context)
+            }
+            // Active build intentionally keeps the existing tracker alive.
         }
 
         fun stop(

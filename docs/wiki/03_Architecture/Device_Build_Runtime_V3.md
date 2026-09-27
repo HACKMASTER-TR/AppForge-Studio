@@ -673,18 +673,28 @@ These results apply to the exact accepted fixtures and cached/offline
 dependencies. A different imported project can still require dependencies that
 have not been prepared in the AppForge offline pack.
 
-## React Native / Expo ARM64 host feasibility gate
+## React Native / Expo ARM64 host acceptance gate
 
-React Native and Expo source detection is not equivalent to device-build
-acceptance. Their detector engine names are normalized to `react-native` and
-`expo`, but both remain zero-output EXPERIMENTAL capabilities.
+Source detection is not by itself device-build acceptance. Standalone
+`react-native` remains zero-output EXPERIMENTAL.
 
-The current Android-hosted Device Build Runtime runs on ARM64 Linux. Modern
-React Native Android uses the New Architecture native C++ path and therefore
-depends on NDK/CMake tooling. The official Android NDK Linux host path is not
-yet accepted for this ARM64 device-host runtime.
+The scoped Expo SDK 54 / React Native 0.81.4 path crossed the physical gate:
+V19 proved install/direct-launch, Activity lifecycle, Hermes, JS, Expo native
+modules and rendered UI. V20.3 then produced four consecutive physical APK+AAB
+builds without the earlier PCH / clang exit 139 failure, and the final APK
+again installed and launched successfully.
 
-AppForge must not advertise React Native or Expo APK/AAB support until a
-device-local native host path passes source tests, Android CI, fully offline
-build verification and physical launch acceptance. An emulated or reconstructed
-NDK host, if investigated, must remain experimental until those gates pass.
+V21 exposes APK+AAB as READY only when detection confirms Expo 54 / RN 0.81.
+Other Expo versions and standalone React Native are not implied.
+
+### Build lifecycle truth
+
+`DeviceBuildEngine` owns status and stage progress. Progress changes only at
+observable milestones; long native work holds its stage rather than advancing
+on a timer. Builder and `BuildProgressService` share `AppForgeBuildProgress`:
+only success may display 100, while failure/cancel retain the last real stage.
+
+The foreground notification returns to the existing task and performs one
+snapshot rebind. It does not cancel the engine job or start a competing poll.
+Build No allocation is synchronously persisted before job creation, begins at
+`AF-0000001000`, and failed/cancelled builds consume their number.

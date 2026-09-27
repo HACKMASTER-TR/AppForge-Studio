@@ -148,3 +148,23 @@ test(
     );
   }
 );
+
+
+test("active-build notification return does not stop or recreate the build", () => {
+  assert.match(service, /ACTIVE_BUILD_NOTIFICATION_RETURN_V2/);
+  assert.match(service, /Intent\.FLAG_ACTIVITY_REORDER_TO_FRONT/);
+  assert.match(service, /Intent\.FLAG_ACTIVITY_SINGLE_TOP/);
+  assert.doesNotMatch(service, /Intent\.FLAG_ACTIVITY_CLEAR_TOP/);
+  assert.match(service, /fun onHostResumed\(/);
+  assert.match(main, /BuildProgressService\.onHostResumed\(this\)/);
+  assert.doesNotMatch(main, /override fun onResume\(\)[\s\S]{0,200}BuildProgressService\.stop\(this\)/);
+});
+
+test("notification tap performs one snapshot rebind rather than a competing poll loop", () => {
+  const start = main.indexOf("ACTIVE_BUILD_NOTIFICATION_REBIND_V2");
+  assert.ok(start >= 0);
+  const block = main.slice(start, start + 3600);
+  assert.match(block, /restoreFromEngine/);
+  assert.doesNotMatch(block, /while\s*\(\s*true\s*\)/);
+  assert.doesNotMatch(block, /cancelBuild/);
+});

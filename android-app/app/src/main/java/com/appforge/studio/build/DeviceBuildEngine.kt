@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
-import com.appforge.studio.BuildConfig
+import com.appforge.studio.AppForgeBuildNumberStore
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
@@ -17,7 +17,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 
 internal data class DeviceBuildStart(
     val id: String,
@@ -70,9 +69,14 @@ object DeviceBuildEngine {
     )
 
     private val jobs = ConcurrentHashMap<String, JobState>()
-    private val buildNumbers = AtomicLong(System.currentTimeMillis() / 1000L)
     private val executor = Executors.newFixedThreadPool(2) { runnable ->
         Thread(runnable, "AppForgeDeviceBuild").apply { isDaemon = true }
+    }
+
+    /* APPFORGE_EVENT_DRIVEN_BUILD_PROGRESS_V1 */
+    private fun advanceProgress(state: JobState, value: Int, status: String? = null) {
+        state.progress = maxOf(state.progress, value.coerceIn(0, 99))
+        if (status != null) state.status = status
     }
 
     internal fun start(
@@ -81,7 +85,8 @@ object DeviceBuildEngine {
         projectZip: File?
     ): DeviceBuildStart {
         val id = "local-" + UUID.randomUUID().toString().replace("-", "").take(20)
-        val buildNo = buildNumbers.incrementAndGet()
+        val buildNo =
+            AppForgeBuildNumberStore.next(context.applicationContext)
         val state = JobState(id = id, buildNo = buildNo)
         jobs[id] = state
 
@@ -240,8 +245,8 @@ object DeviceBuildEngine {
             }
 
             checkCancelled(state)
-            state.progress = 8
-            state.status = "Hazırlanıyor"
+            advanceProgress(state, 8, "Kaynak hazır")
+            advanceProgress(state, 10, "Runtime hazırlanıyor")
 
             val rootfs =
                 runBlocking {
@@ -255,11 +260,13 @@ object DeviceBuildEngine {
                         }
                 }
 
+            advanceProgress(state, 12, "Araçlar hazırlanıyor")
             val shell =
                 LinuxShellEngine(
                     context
                 )
             state.shell = shell
+            advanceProgress(state, 15, "Toolchain hazırlanıyor")
 
             runShellBlocking(
                 shell = shell,
@@ -271,8 +278,7 @@ object DeviceBuildEngine {
             )
 
             checkCancelled(state)
-            state.progress = 25
-            state.status = "Derleniyor"
+            advanceProgress(state, 25, "Derleniyor")
 
             when (sourceEngine) {
                 "node-web" -> buildNodeWeb(context, draft, workspace, rootfs, shell, state)
@@ -292,8 +298,7 @@ object DeviceBuildEngine {
             }
 
             checkCancelled(state)
-            state.status = "Çıktılar doğrulanıyor"
-            state.progress = 94
+            advanceProgress(state, 96, "Çıktılar doğrulanıyor")
 
             val missingOutputs =
                 requestedOutputs
@@ -329,7 +334,6 @@ object DeviceBuildEngine {
         } catch (t: Throwable) {
             if (state.cancelled.get()) {
                 state.status = "cancelled"
-                state.progress = 0
             } else {
                 state.status = "failed"
                 state.logs.add("❌ ${t.message ?: t.javaClass.simpleName}")
@@ -380,74 +384,35 @@ object DeviceBuildEngine {
                     draft.sourceTechnology
                 )
 
-        val expoAcceptanceProbe =
-            BuildConfig.DEBUG &&
-                sourceEngine == "expo" &&
-                draft.sourceTechnology == "expo"
-
-        if (
-            technologyCapability != null &&
-            technologyCapability.support !=
-                DeviceBuildSupport.READY &&
-            !expoAcceptanceProbe
-        ) {
-            error(
-                "${draft.sourceTechnologyLabel}: " +
-                    technologyCapability.note
-            )
-        }
-
-        val capability =
-            technologyCapability
-                ?: DeviceBuildCapabilities
-                    .forEngine(
-                        sourceEngine
-                    )
-                ?: error(
-                    "${draft.sourceTechnologyLabel} için cihaz-build capability kaydı yok."
-                )
-
-        require(
-            capability.support ==
-                DeviceBuildSupport.READY ||
-                expoAcceptanceProbe
-        ) {
-            capability.note
-        }
-
-        val requestedOutputs =
-            DeviceBuildCapabilities
-                .requestedOutputs(
-                    draft.buildOutput
-                )
-
-        val unavailable =
-            requestedOutputs -
-                capability.readyOutputs
-
-        if (expoAcceptanceProbe) {
-            require(
-                requestedOutputs.all {
-                    it == DeviceArtifactKind.APK ||
-                        it == DeviceArtifactKind.AAB
-                }
-            ) {
-                "Expo kabul motoru yalnız APK/AAB testine izin verir."
+        if (sourceEngine == "expo") {
+            require(draft.sourceBuildReady) {
+                "Expo cihaz-local READY yolu yalnız fiziksel kabulü geçen Expo SDK 54 / React Native 0.81 kaynakları için açıktır."
             }
         }
 
-        require(
-            unavailable.isEmpty() ||
-                expoAcceptanceProbe
+        if (
+            technologyCapability != null &&
+            technologyCapability.support != DeviceBuildSupport.READY
         ) {
-            "Bu motor henüz şu cihaz-local çıktıları üretmiyor: " +
-                DeviceBuildCapabilities
-                    .outputLabels(
-                        unavailable
-                    ) +
-                ". " +
-                capability.note
+            error("${draft.sourceTechnologyLabel}: " + technologyCapability.note)
         }
+
+        val capability =
+            technologyCapability ?: DeviceBuildCapabilities.forEngine(sourceEngine)
+            ?: error("${draft.sourceTechnologyLabel} için cihaz-build capability kaydı yok.")
+
+        require(capability.support == DeviceBuildSupport.READY) {
+            capability.note
+        }
+
+        val requestedOutputs = DeviceBuildCapabilities.requestedOutputs(draft.buildOutput)
+        val unavailable = requestedOutputs - capability.readyOutputs
+
+        require(unavailable.isEmpty()) {
+            "Bu motor henüz şu cihaz-local çıktıları üretmiyor: " +
+                DeviceBuildCapabilities.outputLabels(unavailable) + ". " + capability.note
+        }
+
     }
 
 
@@ -756,8 +721,9 @@ object DeviceBuildEngine {
         state: JobState
     ) {
         state.logs.add(
-            "🧪 Expo 54 / React Native 0.81 cihaz kabul motoru hazırlanıyor."
+            "🧪 Expo 54 / React Native 0.81 cihaz motoru hazırlanıyor."
         )
+        advanceProgress(state, 32, "Expo kaynakları hazırlanıyor")
 
         runShellBlocking(
             shell = shell,
@@ -769,6 +735,7 @@ object DeviceBuildEngine {
                     "/bin/sh /workspace/runtime/build-expo.sh",
             suffix = "expo-prebuild"
         )
+        advanceProgress(state, 52, "Expo Android projesi hazır")
 
         val project =
             File(
@@ -888,6 +855,7 @@ object DeviceBuildEngine {
         variantOverride: String? = null
     ) {
         val relativeProject = project.relativeTo(workspace).invariantSeparatorsPath
+        advanceProgress(state, 56, "Gradle hazırlanıyor")
         val gradlePath = runShellBlocking(
             shell,
             rootfs,
@@ -897,6 +865,7 @@ object DeviceBuildEngine {
             "gradle-$gradleVersion"
         ).lineSequence().lastOrNull { it.isNotBlank() }?.trim()
             ?: error("Gradle hazırlanamadı.")
+        advanceProgress(state, 60, "Gradle hazır")
 
         val variant =
             variantOverride
@@ -947,7 +916,7 @@ object DeviceBuildEngine {
                 "/opt/appforge-device/android-sdk"
             }
 
-        state.progress = 65
+        advanceProgress(state, 65, "Native derleme çalışıyor")
 
         val command = buildString {
             append("export JAVA_HOME=/opt/appforge-device/jdk-17; ")
@@ -1229,7 +1198,7 @@ object DeviceBuildEngine {
         }
 
         runShellBlocking(shell, rootfs, workspace, state, command, "android-build")
-        state.progress = 90
+        advanceProgress(state, 90, "Gradle tamamlandı")
 
         val artifactFiles = project.walkTopDown().maxDepth(14).filter {
             it.isFile && (it.extension.equals("apk", true) || it.extension.equals("aab", true))
@@ -1268,6 +1237,7 @@ object DeviceBuildEngine {
                 "Gradle tamamlandı ancak AAB bulunamadı."
             }
         }
+        advanceProgress(state, 93, "Artefaktlar hazır")
     }
 
     private fun copyKeystore(context: Context, draft: ProjectDraft, workspace: File): File {

@@ -41,7 +41,8 @@ test(
         '"webview-static"',
         '"node-web"',
         '"android-gradle"',
-        '"python-android"'
+        '"python-android"',
+        '"expo"'
       ]
     ) {
       assert.match(
@@ -165,3 +166,13 @@ test(
     );
   }
 );
+
+
+test("physically accepted Expo SDK54 path exposes APK and AAB only", () => {
+  const start = capabilities.indexOf('engine =\n                    "expo"');
+  const block = capabilities.slice(start, start + 1200);
+  assert.match(block, /DeviceArtifactKind\.APK/);
+  assert.match(block, /DeviceArtifactKind\.AAB/);
+  assert.match(block, /DeviceBuildSupport\.READY/);
+  assert.doesNotMatch(block, /WINDOWS_EXE/);
+});

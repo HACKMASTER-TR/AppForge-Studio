@@ -231,3 +231,22 @@ under `quality/tests`. Existing historical bug records are retained.
   returned. The screen now owns an explicit `LazyListState` and keeps the
   current list visible during non-initial refreshes, so save/trash refreshes
   preserve the user's scroll position.
+
+
+## 2026-09-27 Expo PCH stability and build lifecycle
+
+- **Expo runtime BUG-A — closed physically.** SDK54/RN0.81.4 reaches Activity
+  lifecycle, Hermes/JS, Expo native bootstrap and rendered UI after duplicate-safe
+  `ExpoModulesPackage()` registration.
+- **Expo native build BUG-B — closed physically.** V20.3 removes only
+  `expo-modules-core` PCH commands in the disposable workspace. Four consecutive
+  physical APK+AAB builds passed and the final APK launched.
+- **Notification return BUG-C — V21 source/CI fix, physical retest pending.**
+  The content intent reorders the existing task; resume keeps the exact active
+  engine tracker; notification navigation performs one snapshot rebind.
+- **Progress BUG-D — V21 source/CI fix, physical retest pending.** Progress is
+  event-driven from `DeviceBuildEngine`; Builder and notification share one
+  visible-progress rule; only success reaches 100.
+- **Build No FEATURE-E — V21 source/CI fix, physical retest pending.** A
+  synchronous SharedPreferences allocator reserves numbers before job creation,
+  starts at `AF-0000001000`, and never reuses a consumed number.

@@ -157,11 +157,14 @@ internal object DeviceBuildCapabilities {
                         "expo"
                     ),
                 readyOutputs =
-                    emptySet(),
+                    setOf(
+                        DeviceArtifactKind.APK,
+                        DeviceArtifactKind.AAB
+                    ),
                 support =
-                    DeviceBuildSupport.EXPERIMENTAL,
+                    DeviceBuildSupport.READY,
                 note =
-                    "Expo prebuild + React Native native Android pipeline gerektirir. ARM64 device-host NDK/CMake yolu fiziksel olarak doğrulanmadan APK/AAB çıktıları açılmayacak."
+                    "Expo SDK 54 / React Native 0.81.4 yolu ARM64 cihazda 4/4 ardışık APK+AAB build ve final install/launch/UI kabulünü geçti. READY kapsamı yalnız bu sürüm ailesidir."
             ),
 
             DeviceBuildCapability(

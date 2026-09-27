@@ -19,16 +19,17 @@ related:
 source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
-  - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
+  - "android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/AppForgeBuildNumbers.kt"
   - "android-app/app/src/main/assets/device-build/build-expo.sh"
-  - "quality/tests/expo54_device_probe_contract.test.js"
 ---
 # Hot Context
 
 ## Current Focus
 
-- Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, and Python/Chaquopy.
-- Expo SDK 54 / React Native 0.81 remains `EXPERIMENTAL`; V19 physical launch/UI acceptance PASS, but `READY_OUTPUTS=ZERO` until intermittent native build BUG-B is stabilized.
+- Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, Python/Chaquopy, and the scoped Expo SDK 54 / React Native 0.81 Android path.
+- Expo V20.3 produced 4/4 consecutive physical APK+AAB builds; the final APK installed, launched directly, rendered `APPFORGE_EXPO54_DEVICE_PASS`, and remained stable.
+- V21 promotes only that proven Expo SDK54/RN0.81 family to READY APK+AAB. Standalone React Native remains EXPERIMENTAL with zero accepted outputs.
 - `main` remains untouched.
 
 ## Must Know
@@ -40,21 +41,22 @@ source_files:
 
 ## Recent Important Changes
 
-- V11.1 physically proved Hermes Java/native packaging while host Hermes AOT stays skipped and AppForge embeds the production Expo bundle.
-- V16 physically proves `AppForgeExpoComponentFactory` is active: Application instantiation BEFORE/AFTER is captured, `APPLICATION_READY` is reached, Hermes class/native load PASS, and the AppForge uncaught handler is still active at READY.
-- V17 physical evidence shows the sampled process remains alive past 3 seconds with both AppForge uncaught handlers intact, yet no Activity factory/lifecycle marker appears. Main Looper messages `164` and repeated `131` are observed, but no ActivityThread `EXECUTE_TRANSACTION=159`.
-- V18 direct-launch physically reaches `MainActivity`, ReactInstanceManager, and `EXECUTE_TRANSACTION=159`, then crashes on `mqt_native_modules` with `JavascriptException: Cannot read property 'EventEmitter' of undefined`.
-- V19 physical acceptance PASS: `MainActivity` reaches RESUMED, Hermes and JS run, Expo UI renders, and the prior `globalThis.expo.EventEmitter` crash is gone after duplicate-safe `ExpoModulesPackage()` registration.
-- V20 targets BUG-B by disabling only `expo-modules-core` CMake PCH commands in the disposable workspace. V20.1 fixed sequencing after npm install. V20.2 physical evidence corrected the next assumption: the package directory is shell-visible, but Node `readdirSync()` over the `/workspace` PRoot bind returns ENOENT. V20.3 uses a shell-generated explicit CMake file manifest and Node direct file I/O, avoiding bind-mount directory enumeration.
+- BUG-A is closed: V19 duplicate-safe `ExpoModulesPackage()` registration removed the `globalThis.expo.EventEmitter` runtime crash; Hermes, JS, Activity lifecycle and UI render physically passed.
+- BUG-B is closed: V20.3 disables only `expo-modules-core` PCH in the disposable workspace; clang/PCH exit 139 did not recur across 4/4 consecutive physical builds.
+- V21 makes active-build notification return navigation/rebind-only, uses one shared engine progress rule for UI + notification, and adds event-driven build milestones.
+- V21 replaces epoch Build No values with a synchronously persisted sequence beginning at `AF-0000001000`.
+
+## Physical Re-acceptance Still Required
+
+- BUG-C: background an active build, tap its notification, verify the same Build ID continues and is not cancelled.
+- BUG-D: verify Builder and notification show the same percentage, long stages hold steady, failure/cancel keep the last real stage, and only success reaches 100.
+- FEATURE-E: verify new builds show `AF-0000001000`, `AF-0000001001`, then after app close/reopen `AF-0000001002`.
 
 ## Current Risks / Open Questions
 
-- BUG-A Expo runtime launch crash is closed by V19 physical evidence.
-- BUG-B remains open until V20 produces at least four consecutive identical physical Expo builds without the prior `expo-modules-core` PCH / clang exit `139` failure. PCH disabling is a scoped stabilization workaround, not accepted as fixed before that run.
-- Returning through the active-build notification can cancel the build; active build identity/session must survive background-to-foreground return.
-- Build progress is not authoritative yet. App UI and notification must share one real `DeviceBuildEngine` progress source and reach 100 only on success.
-- Build numbers must start at `AF-0000001000`, increment persistently, and never be reused.
-- Expo remains experimental until physical launch acceptance passes.
+- BUG-C notification return, BUG-D progress synchronization and persistent Build No still require the combined V21 physical device acceptance after the new APK is installed.
+- Expo READY is intentionally scoped to Expo SDK 54 / React Native 0.81; broader Expo versions and standalone React Native remain outside the accepted surface.
+- D1 migration work remains blocked until migration history is reconciled.
 
 ## Read Next
 

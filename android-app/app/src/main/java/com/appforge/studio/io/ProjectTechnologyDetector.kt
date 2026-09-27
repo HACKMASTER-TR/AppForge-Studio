@@ -171,12 +171,30 @@ object ProjectTechnologyDetector {
         }
 
         if (packageJson.contains("\"expo\"")) {
+            fun dependencySpec(name: String): String =
+                Regex("\\\"${Regex.escape(name.lowercase())}\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"")
+                    .find(packageJson)?.groupValues?.getOrNull(1).orEmpty()
+
+            fun hasMajorMinor(spec: String, major: Int, minor: Int): Boolean =
+                Regex("(?<!\\d)$major\\.$minor(?:\\.|[^\\d]|$)")
+                    .containsMatchIn(spec)
+
+            val expoSpec = dependencySpec("expo")
+            val reactNativeSpec = dependencySpec("react-native")
+            val acceptedExpo =
+                hasMajorMinor(expoSpec, 54, 0) &&
+                    hasMajorMinor(reactNativeSpec, 0, 81)
+
             return ProjectTechnologyInfo(
                 id = "expo",
                 label = "Expo / React Native",
                 buildEngine = "expo",
-                buildReady = false,
-                reason = "package.json içinde Expo bağımlılığı bulundu. Algılama build kabulü değildir; cihaz-local native toolchain henüz fiziksel olarak doğrulanmadı."
+                buildReady = acceptedExpo,
+                reason = if (acceptedExpo) {
+                    "Expo SDK 54 / React Native 0.81 cihaz-local APK+AAB yolu fiziksel kabulü geçti."
+                } else {
+                    "Expo bulundu; READY cihaz yolu yalnız Expo SDK 54 / React Native 0.81 sürüm ailesi için doğrulandı."
+                }
             )
         }
 

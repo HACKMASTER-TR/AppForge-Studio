@@ -285,7 +285,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        BuildProgressService.stop(this)
+        // ACTIVE_BUILD_NOTIFICATION_RETURN_V2
+        BuildProgressService.onHostResumed(this)
 
         /*
          * APK yükleme izni ekranından döndüğünde
@@ -1655,25 +1656,18 @@ private fun AppForgeApp() {
             projectId to draft
     }
 
+    /* ACTIVE_BUILD_NOTIFICATION_REBIND_V2 */
     LaunchedEffect(hostActivity?.buildNotificationSequence) {
-        val activity =
-            hostActivity
-                ?: return@LaunchedEffect
-
-        if (activity.buildNotificationSequence <= 0) {
-            return@LaunchedEffect
-        }
+        val activity = hostActivity ?: return@LaunchedEffect
+        if (activity.buildNotificationSequence <= 0) return@LaunchedEffect
 
         val notificationBuildId =
-            activity
-                .buildIdFromNotification
-                ?.takeIf { it.isNotBlank() }
+            activity.buildIdFromNotification?.takeIf { it.isNotBlank() }
                 ?: return@LaunchedEffect
-
+        val reference = BuildProgressService.activeSingleBuild(context)
         val notificationServerUrl =
-            activity
-                .buildServerUrlFromNotification
-                ?.takeIf { it.isNotBlank() }
+            activity.buildServerUrlFromNotification?.takeIf { it.isNotBlank() }
+                ?: reference?.serverUrl
                 ?: serverUrl
 
         if (notificationServerUrl.isBlank()) {
@@ -1682,85 +1676,32 @@ private fun AppForgeApp() {
         }
 
         serverUrl = notificationServerUrl
-        buildId = notificationBuildId
-        status = "Derleme durumu yükleniyor..."
-
-        val notificationClient =
-            BuildApiClient(
-                context,
-                notificationServerUrl,
-                apiKey
-            )
-
-        while (true) {
-            try {
-                val s =
-                    withContext(Dispatchers.IO) {
-                        notificationClient.getBuild(
-                            notificationBuildId
-                        )
-                    }
-
-                buildId = s.buildId
-                buildNo = s.buildNo
-                status = s.status
-                progress = if (s.status == "success") 100 else s.progress
-                logs = s.logs
-                preflight = s.preflight
-
-                queuePosition =
-                    s.queuePosition
-
-                queueAhead =
-                    s.queueAhead
-
-                queueWorkerSlots =
-                    s.queueCompatibleWorkerSlots
-
-                queueEtaSeconds =
-                    s.queueEstimatedWaitSeconds
-
-                queueEstimate =
-                    s.queueEstimate
-
-                apkUrl =
-                    if (s.apkAvailable) {
-                        "available"
-                    } else {
-                        null
-                    }
-
-                aabUrl =
-                    if (s.aabAvailable) {
-                        "available"
-                    } else {
-                        null
-                    }
-
-                exeUrl =
-                    if (s.exeAvailable) {
-                        "available"
-                    } else {
-                        null
-                    }
-
-                val active =
-                    s.status == "queued" ||
-                        s.status == "building"
-
-                if (!active) {
-                    BuildProgressService.clear(context)
-                    break
-                }
-
-                delay(1_000L)
-            } catch (t: Throwable) {
-                status = "Derleme durumu alınamadı"
-                logs =
-                    logs +
-                        "Bildirimden build yeniden yüklenemedi: ${t.message.orEmpty()}"
-                break
+        val snapshot = try {
+            withContext(Dispatchers.IO) {
+                BuildApiClient(
+                    context,
+                    notificationServerUrl,
+                    reference?.apiKey ?: apiKey
+                ).getBuild(notificationBuildId)
             }
+        } catch (t: Throwable) {
+            status = "Derleme durumu alınamadı"
+            logs = (logs + "Bildirimden aktif build yeniden bağlanamadı: ${t.message.orEmpty()}")
+                .takeLast(120)
+            return@LaunchedEffect
+        }
+
+        buildRuntime.restoreFromEngine(
+            snapshot = snapshot,
+            projectKey = reference?.projectKey ?: buildProjectKey,
+            startedAtMs = reference?.startedAtMs ?: buildStartedAtMs
+        )
+
+        if (
+            snapshot.status.trim().lowercase() in
+                setOf("success", "failed", "cancelled", "canceled")
+        ) {
+            BuildProgressService.clear(context)
         }
     }
 
@@ -3719,7 +3660,11 @@ private fun AppForgeApp() {
                     status =
                         s.status
 
-                    progress = if (s.status == "success") 100 else s.progress
+                    progress =
+                        AppForgeBuildProgress.visible(
+                            s.status,
+                            s.progress
+                        )
                     buildNo =
                         s.buildNo
                             ?: buildNo
@@ -3907,8 +3852,9 @@ private fun AppForgeApp() {
                         status =
                             "Hata: ${t.message}"
 
-                        progress =
-                            0
+                        if (buildId == null) {
+                            progress = 0
+                        }
 
                         screen =
                             AppScreen.BUILDER
@@ -18882,12 +18828,6 @@ private fun BuildStep(
             mutableStateOf("")
         }
 
-    val backendProgress =
-        progress.coerceIn(
-            0,
-            100
-        )
-
     val normalizedStatus =
         status
             .trim()
@@ -18905,14 +18845,12 @@ private fun BuildStep(
                 "hata:"
             )
 
-    // UI animations must never invent build progress.
-    // The device build engine is the source of truth.
+    // UI and notification share the exact engine-progress rule.
     val safeProgress =
-        if (normalizedStatus == "success") {
-            100
-        } else {
-            backendProgress.coerceAtMost(99)
-        }
+        AppForgeBuildProgress.visible(
+            status,
+            progress
+        )
 
     val queueWaitLabel =
         when {

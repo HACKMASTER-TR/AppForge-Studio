@@ -39,11 +39,21 @@ const capabilities =
   );
 
 test(
-  "Expo acceptance engine stays debug-only",
+  "Expo SDK54 uses the normal READY engine gate after physical acceptance",
   () => {
-    assert.match(
+    assert.doesNotMatch(
       engine,
       /BuildConfig\.DEBUG[\s\S]{0,180}sourceEngine == "expo"/
+    );
+
+    assert.doesNotMatch(
+      engine,
+      /expoAcceptanceProbe/
+    );
+
+    assert.match(
+      engine,
+      /draft\.sourceBuildReady/
     );
 
     assert.match(
@@ -760,30 +770,15 @@ test(
 );
 
 test(
-  "Expo capability remains experimental with zero accepted outputs",
+  "Expo SDK54 capability is physically accepted APK AAB READY",
   () => {
-    const start =
-      capabilities.indexOf(
-        'engine =\n                    "expo"'
-      );
-
+    const start = capabilities.indexOf('engine =\n                    "expo"');
     assert.ok(start >= 0);
-
-    const block =
-      capabilities.slice(
-        start,
-        start + 1000
-      );
-
-    assert.match(
-      block,
-      /readyOutputs\s*=\s*\n\s*emptySet\(\)/
-    );
-
-    assert.match(
-      block,
-      /DeviceBuildSupport\.EXPERIMENTAL/
-    );
+    const block = capabilities.slice(start, start + 1200);
+    assert.match(block, /DeviceArtifactKind\.APK/);
+    assert.match(block, /DeviceArtifactKind\.AAB/);
+    assert.match(block, /DeviceBuildSupport\.READY/);
+    assert.match(block, /4\/4 ardışık APK\+AAB build/);
   }
 );
 
