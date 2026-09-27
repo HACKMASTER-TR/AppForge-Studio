@@ -793,3 +793,66 @@ test(
     );
   }
 );
+
+test(
+  "Expo ARM64 uses executable host CMake and Ninja instead of the x86 SDK payload",
+  () => {
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_CMAKE_HOST_V2/
+    );
+
+    assert.match(
+      installer,
+      /EXPO_ARM64_CMAKE_MARKER/
+    );
+
+    assert.match(
+      installer,
+      /cmake[\s\S]{0,160}ninja-build/
+    );
+
+    assert.match(
+      installer,
+      /\/usr\/bin\/cmake/
+    );
+
+    assert.match(
+      installer,
+      /\/usr\/bin\/ninja/
+    );
+
+    assert.match(
+      installer,
+      /\$SDK\/cmake\/3\.22\.1\/bin\/cmake/
+    );
+
+    assert.match(
+      installer,
+      /\$SDK\/cmake\/3\.22\.1\/bin\/ninja/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_CMAKE_HOST=PASS/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_CMAKE_SMOKE=PASS/
+    );
+
+    const ready =
+      installer.indexOf(
+        'EXPO_ARM64_CMAKE_MARKER'
+      );
+
+    const installerMarker =
+      installer.indexOf(
+        'APPFORGE_EXPO_ARM64_CMAKE_HOST_V2'
+      );
+
+    assert.ok(ready >= 0);
+    assert.ok(installerMarker >= 0);
+  }
+);

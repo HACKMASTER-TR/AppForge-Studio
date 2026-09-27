@@ -11,6 +11,8 @@ ENGINE="${1:-webview-static}"
 OFFLINE="${APPFORGE_DEVICE_OFFLINE:-0}"
 SDK_LICENSE_ACCEPTED="${APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED:-0}"
 SDK_LICENSE_MARKER="$ROOT/.android-sdk-license-20260428"
+HOST_ARCH="$(uname -m)"
+EXPO_ARM64_CMAKE_MARKER="$ROOT/.expo-arm64-cmake-host-v2"
 
 CMDLINE_TOOLS_VERSION="15859902"
 CMDLINE_TOOLS_SHA256="4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
@@ -101,7 +103,21 @@ if [ -f "$READY" ] \
    && { [ "$ENGINE" != "expo" ] || {
         [ -x "$NODE_HOME/bin/node" ] &&
         [ -x "$NODE_HOME/bin/npm" ] &&
-        "$NODE_HOME/bin/node" -e 'const [maj]=process.versions.node.split(".").map(Number); process.exit(maj === 22 ? 0 : 1)';
+        "$NODE_HOME/bin/node" -e 'const [maj]=process.versions.node.split(".").map(Number); process.exit(maj === 22 ? 0 : 1)' &&
+        {
+          case "$HOST_ARCH" in
+            aarch64|arm64)
+              [ -f "$EXPO_ARM64_CMAKE_MARKER" ] &&
+              [ -x "$SDK/cmake/3.22.1/bin/cmake" ] &&
+              [ -x "$SDK/cmake/3.22.1/bin/ninja" ] &&
+              "$SDK/cmake/3.22.1/bin/cmake" --version >/dev/null 2>&1 &&
+              "$SDK/cmake/3.22.1/bin/ninja" --version >/dev/null 2>&1
+              ;;
+            *)
+              true
+              ;;
+          esac
+        };
       }; } \
    && { [ "$ENGINE" != "python-android" ] || {
         [ -x /usr/bin/python3.12 ] &&
@@ -224,6 +240,16 @@ apt-get install -y --no-install-recommends \
   git file \
   libstdc++6 zlib1g libpng16-16 \
   fontconfig libfreetype6
+
+if [ "$ENGINE" = "expo" ]; then
+  case "$HOST_ARCH" in
+    aarch64|arm64)
+      apt-get install -y --no-install-recommends \
+        cmake \
+        ninja-build
+      ;;
+  esac
+fi
 
 case "$ENGINE" in
   node-web)
@@ -367,6 +393,79 @@ ensure_gradle() {
   test -x "$dest/bin/gradle"
 }
 
+
+#
+# APPFORGE_EXPO_ARM64_CMAKE_HOST_V2
+#
+# Google's SDK Linux CMake payload is not usable as an ARM64 Linux-host
+# executable in the AppForge device rootfs. Keep AGP's expected SDK path
+# while delegating execution to verified ARM64 Ubuntu CMake and Ninja.
+#
+ensure_expo_arm64_cmake_host() {
+  [ "$ENGINE" = "expo" ] || return 0
+
+  case "$HOST_ARCH" in
+    aarch64|arm64)
+
+      test -x /usr/bin/cmake
+      test -x /usr/bin/ninja
+
+      file /usr/bin/cmake |
+        grep -Eqi 'aarch64|ARM aarch64' || {
+          echo "APPFORGE_EXPO_CMAKE_HOST_ABI_MISMATCH" >&2
+          file /usr/bin/cmake >&2 || true
+          exit 61
+        }
+
+      file /usr/bin/ninja |
+        grep -Eqi 'aarch64|ARM aarch64' || {
+          echo "APPFORGE_EXPO_NINJA_HOST_ABI_MISMATCH" >&2
+          file /usr/bin/ninja >&2 || true
+          exit 62
+        }
+
+      cmake_dir="$SDK/cmake/3.22.1"
+      cmake_bin="$cmake_dir/bin"
+
+      mkdir -p "$cmake_bin"
+
+      cat > "$cmake_bin/cmake" <<'EOF'
+#!/bin/sh
+exec /usr/bin/cmake "$@"
+EOF
+
+      cat > "$cmake_bin/ninja" <<'EOF'
+#!/bin/sh
+exec /usr/bin/ninja "$@"
+EOF
+
+      chmod 0755 \
+        "$cmake_bin/cmake" \
+        "$cmake_bin/ninja"
+
+      cat > "$cmake_dir/source.properties" <<'EOF'
+Pkg.Desc=AppForge ARM64 Host CMake Compatibility
+Pkg.Revision=3.22.1
+EOF
+
+      test -x "$cmake_bin/cmake"
+      test -x "$cmake_bin/ninja"
+
+      "$cmake_bin/cmake" --version
+      "$cmake_bin/ninja" --version
+
+      touch "$EXPO_ARM64_CMAKE_MARKER"
+
+      echo "APPFORGE_EXPO_ARM64_CMAKE_HOST=PASS"
+      echo "APPFORGE_EXPO_ARM64_CMAKE_PATH=$cmake_bin/cmake"
+      echo "APPFORGE_EXPO_ARM64_NINJA_PATH=$cmake_bin/ninja"
+      ;;
+
+    *)
+      echo "APPFORGE_EXPO_ARM64_CMAKE_HOST=NOT_REQUIRED:$HOST_ARCH"
+      ;;
+  esac
+}
 
 ensure_android_commandline_tools() {
   sdkmanager="$SDK/cmdline-tools/latest/bin/sdkmanager"
@@ -566,6 +665,7 @@ ensure_jdk
 
 if [ "$ENGINE" = "expo" ]; then
   ensure_node_22
+  ensure_expo_arm64_cmake_host
 fi
 
 export JAVA_HOME
@@ -609,6 +709,21 @@ case "$ENGINE" in
     "$NODE_HOME/bin/node" --version
     "$NODE_HOME/bin/npm" --version
     echo "APPFORGE_EXPO_NODE_RUNTIME=22.23.3"
+
+    case "$HOST_ARCH" in
+      aarch64|arm64)
+        "$SDK/cmake/3.22.1/bin/cmake" --version
+        "$SDK/cmake/3.22.1/bin/ninja" --version
+
+        file /usr/bin/cmake |
+          grep -Eqi 'aarch64|ARM aarch64'
+
+        file /usr/bin/ninja |
+          grep -Eqi 'aarch64|ARM aarch64'
+
+        echo "APPFORGE_EXPO_ARM64_CMAKE_SMOKE=PASS"
+        ;;
+    esac
     ;;
   python-android)
     /usr/bin/python3.12 --version

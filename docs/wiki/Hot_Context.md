@@ -34,23 +34,20 @@ source_files:
 
 ## Recent Important Changes
 
-- Physical proof confirmed actual AGP `8.11.0`: Java direct execution of the generated `prefab_command` fails, while explicit `/bin/sh` execution succeeds.
-- The current local change applies a narrowly scoped Prefab execution shim and requires fresh physical acceptance.
+- The Prefab execution shim passed physical execution: generated `prefab_command` now has a shebang, Java direct execution returns `0`, and `/bin/sh` execution returns `0`.
+- The build progressed to the next native boundary and exposed ARM64-host CMake incompatibility: SDK CMake `3.22.1` is rejected as `bad machine`.
+- Current experiment maps AGP's expected CMake/Ninja paths to verified ARM64 Ubuntu host binaries.
+
 
 ## Expo SDK 54 Physical Evidence — 2026-09-27
 
-- Expo reaches `:expo-modules-core:configureCMakeDebug[arm64-v8a]`.
-- NDK `27.1.12297006` is present.
-- The generated `prefab_command` is mode `700`, readable, executable, root-owned, plain ASCII text, and has no shebang.
-- Moving native module intermediates from `/workspace` to rootfs-native storage did not fix execution.
-- JDK `FORK` launch mode did not fix execution.
-- The attempted source-level AGP 8.7.3 pin did not control the actual runtime AGP and is removed.
-- Physical proof on commit `0ecf2c7` reported actual AGP `8.11.0`.
-- Exact `prefab_command` first line begins with the AppForge JDK Java executable.
-- Java `ProcessBuilder` direct execution of that exact file fails with `java.io.IOException`, `error=13`.
-- Explicit `/bin/sh prefab_command` succeeds with exit code `0`.
-- Therefore the current blocker is the shebang-less direct-exec boundary under the AppForge PRoot/JVM environment, not file permissions or Prefab command contents.
-- Current local experiment adds a narrowly scoped pre-exec shim for the generated AGP Prefab command. Physical re-test is required before this fix is accepted.
+- Expo SDK 54 / React Native 0.81 remains EXPERIMENTAL with zero accepted outputs.
+- Runtime AGP is `8.11.0`; NDK `27.1.12297006` is present.
+- The Prefab direct-exec blocker is physically cleared: `prefab_command` is now `#!/bin/sh`, Java start PASS/RC `0`, shell probe PASS/RC `0`.
+- The next failure is `[CXX1429]`: `/opt/appforge-device/android-sdk/cmake/3.22.1/bin/cmake` is rejected as `bad machine` on the ARM64 device host.
+- The current fix uses ARM64 Ubuntu CMake/Ninja through AGP's expected SDK paths and adds toolchain readiness/smoke gates.
+- A fresh physical Expo build is required. If CMake passes, the NDK host-tool boundary may become the next acceptance check.
+
 
 ## Must Know
 
@@ -62,8 +59,10 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- Prefab execution shim has not yet passed physical Expo APK acceptance.
-- SDK XML/platform-layout warnings remain secondary until the direct-exec blocker is cleared.
+- ARM64 CMake/Ninja compatibility has not yet passed physical Expo acceptance.
+- Official Android host tooling may expose another architecture boundary inside NDK host executables after CMake starts.
+- SDK XML/platform-layout warnings remain secondary until native configuration advances past host-tool execution.
+
 
 ## Safety Boundaries
 
