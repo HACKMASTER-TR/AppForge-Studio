@@ -13,6 +13,8 @@ SDK_LICENSE_ACCEPTED="${APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED:-0}"
 SDK_LICENSE_MARKER="$ROOT/.android-sdk-license-20260428"
 HOST_ARCH="$(uname -m)"
 EXPO_ARM64_CMAKE_MARKER="$ROOT/.expo-arm64-cmake-host-v2"
+EXPO_ARM64_NDK_VERSION="27.1.12297006"
+EXPO_ARM64_NDK_MARKER="$ROOT/.expo-arm64-ndk-host-v1"
 
 CMDLINE_TOOLS_VERSION="15859902"
 CMDLINE_TOOLS_SHA256="4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
@@ -108,6 +110,9 @@ if [ -f "$READY" ] \
           case "$HOST_ARCH" in
             aarch64|arm64)
               [ -f "$EXPO_ARM64_CMAKE_MARKER" ] &&
+              [ -f "$EXPO_ARM64_NDK_MARKER" ] &&
+              [ -x "$SDK/ndk/$EXPO_ARM64_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ] &&
+              [ -x "$SDK/ndk/$EXPO_ARM64_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++" ] &&
               [ -x "$SDK/cmake/3.22.1/bin/cmake" ] &&
               [ -x "$SDK/cmake/3.22.1/bin/ninja" ] &&
               "$SDK/cmake/3.22.1/bin/cmake" --version >/dev/null 2>&1 &&
@@ -246,7 +251,10 @@ if [ "$ENGINE" = "expo" ]; then
     aarch64|arm64)
       apt-get install -y --no-install-recommends \
         cmake \
-        ninja-build
+        ninja-build \
+        clang \
+        lld \
+        llvm
       ;;
   esac
 fi
@@ -467,6 +475,212 @@ EOF
   esac
 }
 
+
+#
+# APPFORGE_EXPO_ARM64_NDK_HOST_V1
+#
+# Official Android NDK Linux host executables are linux-x86_64.
+# On the ARM64 AppForge Ubuntu rootfs, retain the official NDK
+# sysroot/headers/libraries while replacing only host-executed LLVM
+# entry points with verified ARM64 Ubuntu LLVM wrappers.
+#
+ensure_expo_arm64_ndk_host() {
+  [ "$ENGINE" = "expo" ] || return 0
+
+  case "$HOST_ARCH" in
+    aarch64|arm64)
+
+      command -v clang >/dev/null 2>&1
+      command -v clang++ >/dev/null 2>&1
+      command -v ld.lld >/dev/null 2>&1
+      command -v llvm-ar >/dev/null 2>&1
+      command -v llvm-ranlib >/dev/null 2>&1
+      command -v llvm-strip >/dev/null 2>&1
+
+      file -L "$(command -v clang)" |
+        grep -Eqi 'aarch64|ARM aarch64' || {
+          echo "APPFORGE_EXPO_HOST_CLANG_ABI_MISMATCH" >&2
+          file -L "$(command -v clang)" >&2 || true
+          exit 63
+        }
+
+      ensure_android_commandline_tools
+
+      echo "APPFORGE_EXPO_NDK_INSTALL_START=$EXPO_ARM64_NDK_VERSION"
+
+      yes |
+        "$SDK/cmdline-tools/latest/bin/sdkmanager" \
+          --sdk_root="$SDK" \
+          "ndk;$EXPO_ARM64_NDK_VERSION"
+
+      ndk="$SDK/ndk/$EXPO_ARM64_NDK_VERSION"
+      host="$ndk/toolchains/llvm/prebuilt/linux-x86_64"
+      bin="$host/bin"
+
+      test -d "$ndk"
+      test -d "$host"
+      test -d "$host/sysroot"
+      test -x "$bin/clang"
+
+      resource_dir="$(
+        find "$host/lib/clang" \
+          -mindepth 1 \
+          -maxdepth 1 \
+          -type d \
+          -print |
+        sort -V |
+        tail -n 1
+      )"
+
+      test -n "$resource_dir"
+      test -d "$resource_dir"
+
+      backup="$ROOT/expo-ndk-host-originals/$EXPO_ARM64_NDK_VERSION/bin"
+
+      mkdir -p "$backup"
+
+      backup_tool() {
+        tool="$1"
+        source="$bin/$tool"
+        target="$backup/$tool"
+
+        if [ ! -e "$target" ] &&
+           [ ! -L "$target" ]; then
+          cp -a "$source" "$target"
+        fi
+      }
+
+      backup_tool clang
+      backup_tool clang++
+      backup_tool ld.lld
+      backup_tool llvm-ar
+      backup_tool llvm-ranlib
+      backup_tool llvm-strip
+
+      rm -f \
+        "$bin/clang" \
+        "$bin/clang++" \
+        "$bin/ld.lld" \
+        "$bin/llvm-ar" \
+        "$bin/llvm-ranlib" \
+        "$bin/llvm-strip"
+
+      cat > "$bin/clang" <<EOF
+#!/bin/sh
+# APPFORGE_EXPO_ARM64_NDK_CLANG_WRAPPER_V1
+exec /usr/bin/clang -resource-dir="$resource_dir" "\$@"
+EOF
+
+      cat > "$bin/clang++" <<EOF
+#!/bin/sh
+# APPFORGE_EXPO_ARM64_NDK_CLANGXX_WRAPPER_V1
+exec /usr/bin/clang++ -resource-dir="$resource_dir" "\$@"
+EOF
+
+      cat > "$bin/ld.lld" <<'EOF'
+#!/bin/sh
+# APPFORGE_EXPO_ARM64_NDK_LLD_WRAPPER_V1
+exec /usr/bin/ld.lld "$@"
+EOF
+
+      cat > "$bin/llvm-ar" <<'EOF'
+#!/bin/sh
+# APPFORGE_EXPO_ARM64_NDK_AR_WRAPPER_V1
+exec /usr/bin/llvm-ar "$@"
+EOF
+
+      cat > "$bin/llvm-ranlib" <<'EOF'
+#!/bin/sh
+# APPFORGE_EXPO_ARM64_NDK_RANLIB_WRAPPER_V1
+exec /usr/bin/llvm-ranlib "$@"
+EOF
+
+      cat > "$bin/llvm-strip" <<'EOF'
+#!/bin/sh
+# APPFORGE_EXPO_ARM64_NDK_STRIP_WRAPPER_V1
+exec /usr/bin/llvm-strip "$@"
+EOF
+
+      chmod 0755 \
+        "$bin/clang" \
+        "$bin/clang++" \
+        "$bin/ld.lld" \
+        "$bin/llvm-ar" \
+        "$bin/llvm-ranlib" \
+        "$bin/llvm-strip"
+
+      probe="$ROOT/expo-ndk-arm64-probe"
+
+      rm -rf "$probe"
+      mkdir -p "$probe"
+
+      cat > "$probe/probe.c" <<'EOF'
+int main(void) {
+  return 0;
+}
+EOF
+
+      "$bin/clang" \
+        --target=aarch64-linux-android24 \
+        --sysroot="$host/sysroot" \
+        -fuse-ld=lld \
+        "$probe/probe.c" \
+        -o "$probe/probe"
+
+      file "$probe/probe" |
+        grep -Eqi 'aarch64|ARM aarch64' || {
+          echo "APPFORGE_EXPO_NDK_C_PROBE_ABI_FAIL" >&2
+          file "$probe/probe" >&2 || true
+          exit 64
+        }
+
+      cat > "$probe/probe.cpp" <<'EOF'
+#include <cstddef>
+
+extern "C" int appforge_cpp_probe() {
+  return sizeof(void*) == 8 ? 0 : 1;
+}
+EOF
+
+      "$bin/clang++" \
+        --target=aarch64-linux-android24 \
+        --sysroot="$host/sysroot" \
+        -stdlib=libc++ \
+        -fPIC \
+        -c \
+        "$probe/probe.cpp" \
+        -o "$probe/probe.o"
+
+      file "$probe/probe.o" |
+        grep -Eqi 'aarch64|ARM aarch64' || {
+          echo "APPFORGE_EXPO_NDK_CPP_PROBE_ABI_FAIL" >&2
+          file "$probe/probe.o" >&2 || true
+          exit 65
+        }
+
+      "$bin/llvm-ar" \
+        rcs \
+        "$probe/libappforge-probe.a" \
+        "$probe/probe.o"
+
+      test -s "$probe/libappforge-probe.a"
+
+      touch "$EXPO_ARM64_NDK_MARKER"
+
+      echo "APPFORGE_EXPO_ARM64_NDK_HOST=PASS"
+      echo "APPFORGE_EXPO_ARM64_NDK_VERSION=$EXPO_ARM64_NDK_VERSION"
+      echo "APPFORGE_EXPO_ARM64_NDK_RESOURCE_DIR=$resource_dir"
+      echo "APPFORGE_EXPO_ARM64_NDK_C_LINK=PASS"
+      echo "APPFORGE_EXPO_ARM64_NDK_CPP_COMPILE=PASS"
+      echo "APPFORGE_EXPO_ARM64_NDK_AR=PASS"
+      ;;
+
+    *)
+      echo "APPFORGE_EXPO_ARM64_NDK_HOST=NOT_REQUIRED:$HOST_ARCH"
+      ;;
+  esac
+}
+
 ensure_android_commandline_tools() {
   sdkmanager="$SDK/cmdline-tools/latest/bin/sdkmanager"
 
@@ -673,6 +887,10 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 accept_android_sdk_license
 
+if [ "$ENGINE" = "expo" ]; then
+  ensure_expo_arm64_ndk_host
+fi
+
 # SDK Manager may repair/create package metadata for API 37.0.
 # Re-overlay the already SHA1-pinned r02 platform payload without
 # deleting package.xml so the actual platform files remain pinned.
@@ -722,6 +940,12 @@ case "$ENGINE" in
           grep -Eqi 'aarch64|ARM aarch64'
 
         echo "APPFORGE_EXPO_ARM64_CMAKE_SMOKE=PASS"
+
+        test -f "$EXPO_ARM64_NDK_MARKER"
+
+        "$SDK/ndk/$EXPO_ARM64_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"           --version
+
+        echo "APPFORGE_EXPO_ARM64_NDK_HOST_SMOKE=PASS"
         ;;
     esac
     ;;

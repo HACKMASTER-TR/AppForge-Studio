@@ -856,3 +856,44 @@ test(
     assert.ok(installerMarker >= 0);
   }
 );
+
+
+test(
+  "Expo ARM64 NDK host LLVM wrappers are required",
+  () => {
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_HOST_V1/
+    );
+
+    assert.match(
+      installer,
+      /EXPO_ARM64_NDK_VERSION="27\.1\.12297006"/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_CLANG_WRAPPER_V1/
+    );
+
+    assert.match(
+      installer,
+      /aarch64-linux-android24/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_C_LINK=PASS/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_CPP_COMPILE=PASS/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_HOST_SMOKE=PASS/
+    );
+  }
+);

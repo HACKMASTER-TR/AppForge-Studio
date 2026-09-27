@@ -15,61 +15,58 @@ related:
   - "[[Device_Build_Runtime_V3]]"
   - "[[Current_Status]]"
   - "[[Bug_Index]]"
+  - "[[Standing_Delivery_Authorization]]"
 source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
-  - "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxShellEngine.kt"
-  - "android-app/app/src/main/assets/device-build/python-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt"
-  - "quality/tests/device_build_cancel_reader_contract.test.js"
-  - "quality/tests/device_build_active_state_restore_contract.test.js"
-  - "quality/tests/python_template_system_bars_contract.test.js"
+  - "android-app/app/src/main/assets/device-build/install-toolchain.sh"
+  - "android-app/app/src/main/assets/device-build/build-expo.sh"
+  - "quality/tests/expo54_device_probe_contract.test.js"
 ---
 # Hot Context
 
 ## Current Focus
 
 - Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, and Python/Chaquopy.
-- Normal project compilation is device-local and separate from Terminal Linux.
-- Expo SDK 54 / React Native 0.81 remains experimental with zero accepted outputs.
+- Expo SDK 54 / React Native 0.81 remains EXPERIMENTAL with zero accepted outputs.
+- Current physical blocker is the Android NDK Linux host compiler boundary on ARM64.
 
 ## Recent Important Changes
 
-- The Prefab execution shim passed physical execution: generated `prefab_command` now has a shebang, Java direct execution returns `0`, and `/bin/sh` execution returns `0`.
-- The build progressed to the next native boundary and exposed ARM64-host CMake incompatibility: SDK CMake `3.22.1` is rejected as `bad machine`.
-- Current experiment maps AGP's expected CMake/Ninja paths to verified ARM64 Ubuntu host binaries.
+- Prefab direct execution is physically cleared.
+- ARM64 CMake/Ninja now executes successfully far enough to reach NDK compiler detection.
+- Current patch targets only the ARM64 NDK host LLVM execution boundary while preserving official Android target files.
 
+## Expo Physical Evidence — 2026-09-27
 
-## Expo SDK 54 Physical Evidence — 2026-09-27
-
-- Expo SDK 54 / React Native 0.81 remains EXPERIMENTAL with zero accepted outputs.
-- Runtime AGP is `8.11.0`; NDK `27.1.12297006` is present.
-- The Prefab direct-exec blocker is physically cleared: `prefab_command` is now `#!/bin/sh`, Java start PASS/RC `0`, shell probe PASS/RC `0`.
-- The next failure is `[CXX1429]`: `/opt/appforge-device/android-sdk/cmake/3.22.1/bin/cmake` is rejected as `bad machine` on the ARM64 device host.
-- The current fix uses ARM64 Ubuntu CMake/Ninja through AGP's expected SDK paths and adds toolchain readiness/smoke gates.
-- A fresh physical Expo build is required. If CMake passes, the NDK host-tool boundary may become the next acceptance check.
-
+- Runtime AGP is `8.11.0`; NDK is `27.1.12297006`.
+- Prefab direct execution is physically cleared: generated `prefab_command` has `#!/bin/sh`; Java direct start/RC and shell probe all pass with RC `0`.
+- ARM64 CMake/Ninja host compatibility is physically confirmed: CMake now runs instead of failing `bad machine`.
+- CMake reaches compiler detection and selects `/opt/appforge-device/android-sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/bin/clang`.
+- That official Linux NDK host executable cannot run natively on the ARM64 AppForge Ubuntu host.
+- Current experiment preserves the official NDK sysroot, target libraries, headers, CMake toolchain files, and Android target triple while bridging only host-executed LLVM tools to verified ARM64 Ubuntu LLVM binaries.
+- Installer acceptance requires an `aarch64-linux-android24` C link probe, C++ compile probe, and LLVM archive probe before the ARM64 NDK readiness marker is written.
+- After the next AppForge APK is installed, rerun the same Expo 54 fixture. Expo is not READY until an APK is produced and the installed runtime acceptance marker passes.
 
 ## Must Know
 
 - Source, tests, CI, and observed runtime behavior override wiki claims.
-- Acceptance applies only to tested fixtures and prepared caches.
-- Railway, Render, and Supabase are not normal AppForge project-build infrastructure.
-- GitHub remains repository and CI infrastructure.
+- GitHub remains repository and CI infrastructure; Railway, Render, and Supabase are not normal AppForge project-build infrastructure.
 - Standing fail-stop delivery authorization is recorded in [[Standing_Delivery_Authorization]].
+- D1 migrations remain blocked until migration history is reconciled.
 
 ## Current Risks / Open Questions
 
-- ARM64 CMake/Ninja compatibility has not yet passed physical Expo acceptance.
-- Official Android host tooling may expose another architecture boundary inside NDK host executables after CMake starts.
-- SDK XML/platform-layout warnings remain secondary until native configuration advances past host-tool execution.
-
+- ARM64 Ubuntu LLVM compatibility with the official NDK sysroot still requires physical Expo fixture proof.
+- Additional NDK host executables may become visible after Clang advances.
+- SDK XML/platform-location warnings remain secondary unless they become build-blocking.
 
 ## Safety Boundaries
 
 - Never continue past a failed mandatory local, CI, device, security, migration, release, or production gate.
-- D1 migrations remain blocked until migration history is reconciled.
-- Preserve `.appforge/` backups and physical acceptance evidence.
-- Do not mark Expo READY until APK build and installed runtime acceptance both pass.
+- Preserve `.appforge/` state, `appforge-*backup-*` directories, and physical acceptance evidence.
+- Do not use reset/clean/checkout to discard local work.
+- Do not mark Expo READY until physical APK build and installed runtime acceptance both pass.
 
 ## Read Next
 
