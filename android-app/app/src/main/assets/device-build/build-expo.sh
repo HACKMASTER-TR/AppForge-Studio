@@ -775,7 +775,7 @@ set_prop_native \
 
 set_prop_native \
   hermesEnabled \
-  false
+  true
 
 set_prop_native \
   reactNativeArchitectures \
@@ -784,7 +784,7 @@ set_prop_native \
 grep -q '^newArchEnabled=false$' \
   "$PREBUILD/android/gradle.properties"
 
-grep -q '^hermesEnabled=false$' \
+grep -q '^hermesEnabled=true$' \
   "$PREBUILD/android/gradle.properties"
 
 grep -q '^reactNativeArchitectures=arm64-v8a$' \
@@ -899,7 +899,7 @@ test -f android/settings.gradle
 grep -q '^newArchEnabled=false$' \
   android/gradle.properties
 
-grep -q '^hermesEnabled=false$' \
+grep -q '^hermesEnabled=true$' \
   android/gradle.properties
 
 grep -q '^reactNativeArchitectures=arm64-v8a$' \
@@ -1192,7 +1192,7 @@ grep -Fq \
   'implementation("com.facebook.react:hermes-android")' \
   "$APP_GRADLE"
 
-grep -q '^hermesEnabled=false$' \
+grep -q '^hermesEnabled=true$' \
   "$SOURCE/android/gradle.properties"
 
 grep -q \
@@ -1206,6 +1206,8 @@ grep -Fq \
 echo "APPFORGE_EXPO_HERMES_BUILD_AOT=DISABLED"
 echo "APPFORGE_EXPO_HERMES_RUNTIME=ENABLED"
 echo "APPFORGE_EXPO_HERMES_RUNTIME_DEPENDENCY=PASS"
+echo "APPFORGE_EXPO_HERMES_NATIVE_PACKAGE_V11=ENABLED"
+echo "APPFORGE_EXPO_HERMES_GRADLE_PROPERTY=TRUE"
 
 #
 # APPFORGE_EXPO_STANDALONE_ACCEPTANCE_V1
@@ -1241,7 +1243,13 @@ android {
 }
 
 react {
-    debuggableVariants = ["debug"]
+    // APPFORGE_EXPO_MANUAL_HERMES_BUNDLE_V2
+    //
+    // RN treats this variant as bundle-task-debuggable only so its
+    // Gradle plugin does not invoke the host hermesc executable.
+    // Android itself remains debuggable=false. AppForge embeds the
+    // production JS bundle explicitly below.
+    debuggableVariants = ["debug", "appforgeAcceptance"]
     nodeExecutableAndArgs = ["/opt/appforge-device/node-22.23.3/bin/node"]
 }
 EOF
@@ -1267,16 +1275,16 @@ grep -Fq \
   'debuggableVariants = ["debug"]' \
   "$APP_GRADLE"
 
-if grep -E \
-  'debuggableVariants.*appforgeAcceptance' \
+grep -Fq \
+  'debuggableVariants = ["debug", "appforgeAcceptance"]' \
   "$APP_GRADLE"
-then
-  echo "APPFORGE_EXPO_ACCEPTANCE_WRONGLY_DEBUGGABLE" >&2
-  exit 44
-fi
+
+echo "APPFORGE_EXPO_ACCEPTANCE_ANDROID_DEBUGGABLE=FALSE"
+echo "APPFORGE_EXPO_ACCEPTANCE_RN_BUNDLE_TASK=SKIPPED"
+echo "APPFORGE_EXPO_HERMES_HOST_AOT=SKIPPED"
 
 echo "APPFORGE_EXPO_STANDALONE_BUILD_TYPE=appforgeAcceptance"
-echo "APPFORGE_EXPO_STANDALONE_BUNDLE=EMBEDDED"
+echo "APPFORGE_EXPO_STANDALONE_BUNDLE=MANUAL_EMBED"
 echo "APPFORGE_EXPO_STANDALONE_ACCEPTANCE=PASS"
 
 #
@@ -1373,6 +1381,51 @@ echo "APPFORGE_EXPO_BUNDLE_SIZE=$(
 )"
 
 echo "APPFORGE_EXPO_BUNDLE_PREFLIGHT=PASS"
+
+#
+# APPFORGE_EXPO_MANUAL_BUNDLE_EMBED_V2
+#
+# hermesEnabled=true is required so the Android Hermes runtime and
+# libhermes.so are packaged. The acceptance variant is deliberately
+# listed in React Native debuggableVariants only to suppress the
+# Gradle host-hermesc/AOT task on the ARM64 Android host.
+#
+# The production JS generated above is therefore copied explicitly
+# into the Android application before Gradle packaging.
+#
+APPFORGE_EXPO_MANUAL_ASSETS_DIR="$SOURCE/android/app/src/main/assets"
+APPFORGE_EXPO_MANUAL_RES_DIR="$SOURCE/android/app/src/main/res"
+
+mkdir -p "$APPFORGE_EXPO_MANUAL_ASSETS_DIR"
+mkdir -p "$APPFORGE_EXPO_MANUAL_RES_DIR"
+
+cp \
+  "$APPFORGE_EXPO_BUNDLE_PROBE/index.android.bundle" \
+  "$APPFORGE_EXPO_MANUAL_ASSETS_DIR/index.android.bundle"
+
+test -s \
+  "$APPFORGE_EXPO_MANUAL_ASSETS_DIR/index.android.bundle"
+
+if find \
+  "$APPFORGE_EXPO_BUNDLE_PROBE/assets" \
+  -mindepth 1 \
+  -print -quit \
+  | grep -q .
+then
+  cp -a \
+    "$APPFORGE_EXPO_BUNDLE_PROBE/assets/." \
+    "$APPFORGE_EXPO_MANUAL_RES_DIR/"
+fi
+
+echo "APPFORGE_EXPO_MANUAL_BUNDLE_PATH=android/app/src/main/assets/index.android.bundle"
+
+echo "APPFORGE_EXPO_MANUAL_BUNDLE_SIZE=$(
+  wc -c \
+    < "$APPFORGE_EXPO_MANUAL_ASSETS_DIR/index.android.bundle" \
+  | tr -d ' '
+)"
+
+echo "APPFORGE_EXPO_MANUAL_BUNDLE_EMBED_V2=PASS"
 
 rm -rf "$APPFORGE_EXPO_BUNDLE_PROBE"
 

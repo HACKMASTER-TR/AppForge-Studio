@@ -88,7 +88,7 @@ test(
 
     assert.match(
       expo,
-      /debuggableVariants = \["debug"\]/
+      /debuggableVariants = \["debug", "appforgeAcceptance"\]/
     );
 
     assert.match(
@@ -106,9 +106,24 @@ test(
       /APPFORGE_EXPO_STANDALONE_VARIANT=AppforgeAcceptance/
     );
 
-    assert.doesNotMatch(
+    assert.match(
       expo,
-      /debuggableVariants\s*=\s*\[[^\]]*appforgeAcceptance[^\]]*\]/i
+      /APPFORGE_EXPO_MANUAL_HERMES_BUNDLE_V2/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_MANUAL_BUNDLE_EMBED_V2=PASS/
+    );
+
+    assert.match(
+      expo,
+      /android\/app\/src\/main\/assets\/index\.android\.bundle/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_HOST_AOT=SKIPPED/
     );
   }
 );
@@ -378,7 +393,7 @@ test(
 
     assert.match(
       expo,
-      /set_prop_native\s+\\?\n?\s*hermesEnabled\s+\\?\n?\s*false/
+      /set_prop_native\s+\\?\n?\s*hermesEnabled\s+\\?\n?\s*true/
     );
 
     assert.match(
@@ -389,6 +404,21 @@ test(
     assert.match(
       expo,
       /APPFORGE_EXPO_HERMES_RUNTIME=ENABLED/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_NATIVE_PACKAGE_V11=ENABLED/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_GRADLE_PROPERTY=TRUE/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_MANUAL_BUNDLE_EMBED_V2/
     );
 
     assert.match(
