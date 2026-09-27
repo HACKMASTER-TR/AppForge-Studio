@@ -523,7 +523,27 @@ test(
 
     assert.match(
       expo,
-      /APPFORGE_EXPO_PCH_ROOT_DISCOVERY_V20_2/
+      /APPFORGE_EXPO_PCH_FILE_MANIFEST_V20_3/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PCH_FILE_MANIFEST=/
+    );
+
+    assert.match(
+      expo,
+      /grep -RIl/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PCH_FILE_COUNT=/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /fs\.readdirSync/
     );
 
     assert.match(

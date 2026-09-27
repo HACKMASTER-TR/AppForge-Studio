@@ -120,13 +120,18 @@ NODE
 # workspace. Headers still compile normally. This trades build speed for
 # deterministic native compilation and never edits the user's original project.
 #
-# APPFORGE_EXPO_PCH_ROOT_DISCOVERY_V20_2
+# APPFORGE_EXPO_PCH_FILE_MANIFEST_V20_3
 #
-# SDK 54's installed expo-modules-core package does not guarantee that
-# PCH-bearing CMake sources live under android/cmake. Scan the package's
-# complete Android source tree recursively instead of assuming that subpath.
+# Physical V20.2 evidence proved the package directory is visible to the shell
+# (`test -d` passed), while Node directory enumeration on the /workspace PRoot bind
+# returned ENOENT. Avoid Node directory enumeration on the bind mount.
+#
+# Let GNU grep enumerate the exact CMake files containing
+# target_precompile_headers, write that path list to rootfs-native storage,
+# then let Node read/write only those explicit file paths.
 #
 APPFORGE_EXPO_CORE_ANDROID="$SOURCE/node_modules/expo-modules-core/android"
+APPFORGE_EXPO_PCH_FILE_LIST="$ROOT/expo-pch-files-v20-3-$$.txt"
 
 test -f "$SOURCE/node_modules/expo/package.json"
 test -f "$SOURCE/node_modules/react-native/package.json"
@@ -135,7 +140,29 @@ test -d "$APPFORGE_EXPO_CORE_ANDROID"
 echo "APPFORGE_EXPO_PCH_POST_NPM_V20_1=PASS"
 echo "APPFORGE_EXPO_PCH_SCAN_ROOT=$APPFORGE_EXPO_CORE_ANDROID"
 
+rm -f "$APPFORGE_EXPO_PCH_FILE_LIST"
+
+grep -RIl \
+  --include='*.cmake' \
+  --include='CMakeLists.txt' \
+  'target_precompile_headers' \
+  "$APPFORGE_EXPO_CORE_ANDROID" \
+  > "$APPFORGE_EXPO_PCH_FILE_LIST" \
+  || true
+
+test -s "$APPFORGE_EXPO_PCH_FILE_LIST"
+
+APPFORGE_EXPO_PCH_FILE_COUNT="$(
+  wc -l \
+    < "$APPFORGE_EXPO_PCH_FILE_LIST" \
+    | tr -d ' '
+)"
+
+echo "APPFORGE_EXPO_PCH_FILE_MANIFEST=$APPFORGE_EXPO_PCH_FILE_LIST"
+echo "APPFORGE_EXPO_PCH_FILE_COUNT=$APPFORGE_EXPO_PCH_FILE_COUNT"
+
 APPFORGE_EXPO_CORE_ANDROID="$APPFORGE_EXPO_CORE_ANDROID" \
+APPFORGE_EXPO_PCH_FILE_LIST="$APPFORGE_EXPO_PCH_FILE_LIST" \
 "$NODE_HOME/bin/node" <<'NODE'
 const fs = require("fs");
 const path = require("path");
@@ -143,47 +170,33 @@ const path = require("path");
 const root =
   process.env.APPFORGE_EXPO_CORE_ANDROID;
 
-if (!root || !fs.statSync(root).isDirectory()) {
+const manifest =
+  process.env.APPFORGE_EXPO_PCH_FILE_LIST;
+
+if (
+  !root ||
+  !manifest ||
+  !fs.statSync(root).isDirectory() ||
+  !fs.statSync(manifest).isFile()
+) {
   throw new Error(
-    "expo-modules-core CMake root missing"
+    "Expo PCH explicit file manifest missing"
   );
 }
 
-function listFiles(directory) {
-  const result = [];
+const files =
+  fs.readFileSync(
+    manifest,
+    "utf8"
+  )
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
 
-  for (
-    const entry of
-      fs.readdirSync(
-        directory,
-        { withFileTypes: true }
-      )
-  ) {
-    const target =
-      path.join(
-        directory,
-        entry.name
-      );
-
-    if (entry.isDirectory()) {
-      result.push(
-        ...listFiles(target)
-      );
-      continue;
-    }
-
-    if (
-      entry.isFile() &&
-      (
-        entry.name.endsWith(".cmake") ||
-        entry.name === "CMakeLists.txt"
-      )
-    ) {
-      result.push(target);
-    }
-  }
-
-  return result;
+if (files.length < 1) {
+  throw new Error(
+    "Expo PCH explicit file manifest is empty"
+  );
 }
 
 function removeCommand(
@@ -245,7 +258,8 @@ function removeCommand(
       throw new Error(
         "Unbalanced " +
           commandName +
-          " call"
+          " call in " +
+          source
       );
     }
 
@@ -262,13 +276,21 @@ function removeCommand(
   };
 }
 
-const files =
-  listFiles(root);
-
 let removedTotal = 0;
 let touchedFiles = 0;
 
 for (const file of files) {
+  if (
+    !file.startsWith(
+      root + path.sep
+    )
+  ) {
+    throw new Error(
+      "PCH manifest path escaped expo-modules-core Android root: " +
+        file
+    );
+  }
+
   const original =
     fs.readFileSync(
       file,
@@ -281,51 +303,37 @@ for (const file of files) {
       "target_precompile_headers"
     );
 
-  if (result.removed > 0) {
-    fs.writeFileSync(
-      file,
-      result.text
-    );
-
-    removedTotal +=
-      result.removed;
-
-    touchedFiles += 1;
-
-    console.log(
-      "APPFORGE_EXPO_PCH_PATCH_FILE=" +
-        path.relative(
-          root,
-          file
-        ) +
-        ":" +
-        result.removed
+  if (result.removed < 1) {
+    throw new Error(
+      "Manifest file no longer contains PCH command: " +
+        file
     );
   }
+
+  fs.writeFileSync(
+    file,
+    result.text
+  );
+
+  removedTotal +=
+    result.removed;
+
+  touchedFiles += 1;
+
+  console.log(
+    "APPFORGE_EXPO_PCH_PATCH_FILE=" +
+      path.relative(
+        root,
+        file
+      ) +
+      ":" +
+      result.removed
+  );
 }
 
 if (removedTotal < 1) {
   throw new Error(
-    "No expo-modules-core PCH commands found under Android source tree"
-  );
-}
-
-const remaining =
-  listFiles(root)
-    .filter(
-      file =>
-        fs.readFileSync(
-          file,
-          "utf8"
-        ).includes(
-          "target_precompile_headers"
-        )
-    );
-
-if (remaining.length !== 0) {
-  throw new Error(
-    "Expo PCH commands remain: " +
-      remaining.join(",")
+    "No expo-modules-core PCH commands removed"
   );
 }
 
@@ -338,11 +346,9 @@ console.log(
   "APPFORGE_EXPO_PCH_PATCHED_FILE_COUNT=" +
     touchedFiles
 );
-
-console.log(
-  "APPFORGE_EXPO_PCH_REMAINING=0"
-);
 NODE
+
+rm -f "$APPFORGE_EXPO_PCH_FILE_LIST"
 
 if grep -R -Fq \
   'target_precompile_headers' \
@@ -352,8 +358,9 @@ then
   exit 47
 fi
 
+echo "APPFORGE_EXPO_PCH_REMAINING=0"
 echo "APPFORGE_EXPO_PCH_MODE=DISABLED_ARM64_HOST"
-echo "APPFORGE_EXPO_PCH_ROOT_DISCOVERY_V20_2=PASS"
+echo "APPFORGE_EXPO_PCH_FILE_MANIFEST_V20_3=PASS"
 echo "APPFORGE_EXPO_DISABLE_PCH_V20=PASS"
 
 #
@@ -2656,7 +2663,7 @@ echo "APPFORGE_EXPO_LAUNCH_TRANSACTION_V18=PASS"
 echo "APPFORGE_EXPO_NATIVE_PACKAGE_REGISTRATION_V19=PASS"
 echo "APPFORGE_EXPO_DISABLE_PCH_V20=PASS"
 echo "APPFORGE_EXPO_PCH_POST_NPM_V20_1=PASS"
-echo "APPFORGE_EXPO_PCH_ROOT_DISCOVERY_V20_2=PASS"
+echo "APPFORGE_EXPO_PCH_FILE_MANIFEST_V20_3=PASS"
 
 #
 # Change Gradle properties while the project is still on the
