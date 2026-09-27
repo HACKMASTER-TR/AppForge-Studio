@@ -39,6 +39,244 @@ cd "$SOURCE"
 
 echo "APPFORGE_EXPO_NODE22_EXECUTION=PASS"
 
+#
+# APPFORGE_EXPO_DISABLE_PCH_V20
+#
+# BUG-B physical evidence:
+# identical Expo builds can alternate PASS/FAIL while Ubuntu ARM64 clang 18.1.3
+# crashes with exit 139 compiling expo-modules-core's CMake-generated
+# cmake_pch.hxx.pch. The AppForge Android host uses the native Ubuntu clang
+# bridge because the NDK compiler payload is not an ARM64 Linux host binary.
+#
+# Disable only expo-modules-core PCH commands inside this disposable build
+# workspace. Headers still compile normally. This trades build speed for
+# deterministic native compilation and never edits the user's original project.
+#
+APPFORGE_EXPO_CORE_CMAKE="$SOURCE/node_modules/expo-modules-core/android/cmake"
+
+test -d "$APPFORGE_EXPO_CORE_CMAKE"
+
+APPFORGE_EXPO_CORE_CMAKE="$APPFORGE_EXPO_CORE_CMAKE" \
+"$NODE_HOME/bin/node" <<'NODE'
+const fs = require("fs");
+const path = require("path");
+
+const root =
+  process.env.APPFORGE_EXPO_CORE_CMAKE;
+
+if (!root || !fs.statSync(root).isDirectory()) {
+  throw new Error(
+    "expo-modules-core CMake root missing"
+  );
+}
+
+function listFiles(directory) {
+  const result = [];
+
+  for (
+    const entry of
+      fs.readdirSync(
+        directory,
+        { withFileTypes: true }
+      )
+  ) {
+    const target =
+      path.join(
+        directory,
+        entry.name
+      );
+
+    if (entry.isDirectory()) {
+      result.push(
+        ...listFiles(target)
+      );
+      continue;
+    }
+
+    if (
+      entry.isFile() &&
+      (
+        entry.name.endsWith(".cmake") ||
+        entry.name === "CMakeLists.txt"
+      )
+    ) {
+      result.push(target);
+    }
+  }
+
+  return result;
+}
+
+function removeCommand(
+  source,
+  commandName
+) {
+  const token =
+    commandName + "(";
+
+  let cursor = 0;
+  let output = "";
+  let removed = 0;
+
+  while (true) {
+    const start =
+      source.indexOf(
+        token,
+        cursor
+      );
+
+    if (start < 0) {
+      output +=
+        source.slice(cursor);
+      break;
+    }
+
+    output +=
+      source.slice(
+        cursor,
+        start
+      );
+
+    let depth = 0;
+    let end = -1;
+
+    for (
+      let index =
+        start +
+        commandName.length;
+      index < source.length;
+      index += 1
+    ) {
+      const char =
+        source[index];
+
+      if (char === "(") {
+        depth += 1;
+      } else if (char === ")") {
+        depth -= 1;
+
+        if (depth === 0) {
+          end = index + 1;
+          break;
+        }
+      }
+    }
+
+    if (end < 0) {
+      throw new Error(
+        "Unbalanced " +
+          commandName +
+          " call"
+      );
+    }
+
+    output +=
+      "# APPFORGE_EXPO_PCH_DISABLED_V20";
+
+    cursor = end;
+    removed += 1;
+  }
+
+  return {
+    text: output,
+    removed
+  };
+}
+
+const files =
+  listFiles(root);
+
+let removedTotal = 0;
+let touchedFiles = 0;
+
+for (const file of files) {
+  const original =
+    fs.readFileSync(
+      file,
+      "utf8"
+    );
+
+  const result =
+    removeCommand(
+      original,
+      "target_precompile_headers"
+    );
+
+  if (result.removed > 0) {
+    fs.writeFileSync(
+      file,
+      result.text
+    );
+
+    removedTotal +=
+      result.removed;
+
+    touchedFiles += 1;
+
+    console.log(
+      "APPFORGE_EXPO_PCH_PATCH_FILE=" +
+        path.relative(
+          root,
+          file
+        ) +
+        ":" +
+        result.removed
+    );
+  }
+}
+
+if (removedTotal < 3) {
+  throw new Error(
+    "Unexpected expo-modules-core PCH command count: " +
+      removedTotal
+  );
+}
+
+const remaining =
+  listFiles(root)
+    .filter(
+      file =>
+        fs.readFileSync(
+          file,
+          "utf8"
+        ).includes(
+          "target_precompile_headers"
+        )
+    );
+
+if (remaining.length !== 0) {
+  throw new Error(
+    "Expo PCH commands remain: " +
+      remaining.join(",")
+  );
+}
+
+console.log(
+  "APPFORGE_EXPO_PCH_REMOVED_COUNT=" +
+    removedTotal
+);
+
+console.log(
+  "APPFORGE_EXPO_PCH_PATCHED_FILE_COUNT=" +
+    touchedFiles
+);
+
+console.log(
+  "APPFORGE_EXPO_PCH_REMAINING=0"
+);
+NODE
+
+if grep -R -Fq \
+  'target_precompile_headers' \
+  "$APPFORGE_EXPO_CORE_CMAKE"
+then
+  echo "APPFORGE_EXPO_PCH_DISABLE=FAIL"
+  exit 47
+fi
+
+echo "APPFORGE_EXPO_PCH_MODE=DISABLED_ARM64_HOST"
+echo "APPFORGE_EXPO_DISABLE_PCH_V20=PASS"
+
 if [ "${APPFORGE_DEVICE_OFFLINE:-0}" = "1" ]; then
   echo "APPFORGE_EXPO_NPM_MODE=OFFLINE"
 
@@ -2405,6 +2643,7 @@ echo "APPFORGE_EXPO_STARTUP_CAPTURE_V16=PASS"
 echo "APPFORGE_EXPO_JAVA_CRASH_CAPTURE_V17=PASS"
 echo "APPFORGE_EXPO_LAUNCH_TRANSACTION_V18=PASS"
 echo "APPFORGE_EXPO_NATIVE_PACKAGE_REGISTRATION_V19=PASS"
+echo "APPFORGE_EXPO_DISABLE_PCH_V20=PASS"
 
 #
 # Change Gradle properties while the project is still on the

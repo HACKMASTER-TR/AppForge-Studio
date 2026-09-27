@@ -513,6 +513,31 @@ test(
 
     assert.match(
       expo,
+      /APPFORGE_EXPO_DISABLE_PCH_V20/
+    );
+
+    assert.match(
+      expo,
+      /expo-modules-core\/android\/cmake/
+    );
+
+    assert.match(
+      expo,
+      /target_precompile_headers/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PCH_REMAINING=0/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PCH_MODE=DISABLED_ARM64_HOST/
+    );
+
+    assert.match(
+      expo,
       /ACTIVITY_CALLBACKS_REGISTERED=PASS/
     );
 

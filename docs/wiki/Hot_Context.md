@@ -28,7 +28,7 @@ source_files:
 ## Current Focus
 
 - Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, and Python/Chaquopy.
-- Expo SDK 54 / React Native 0.81 remains `EXPERIMENTAL`; `READY_OUTPUTS=ZERO` until an AppForge-built fixture installs and stays open.
+- Expo SDK 54 / React Native 0.81 remains `EXPERIMENTAL`; V19 physical launch/UI acceptance PASS, but `READY_OUTPUTS=ZERO` until intermittent native build BUG-B is stabilized.
 - `main` remains untouched.
 
 ## Must Know
@@ -44,12 +44,13 @@ source_files:
 - V16 physically proves `AppForgeExpoComponentFactory` is active: Application instantiation BEFORE/AFTER is captured, `APPLICATION_READY` is reached, Hermes class/native load PASS, and the AppForge uncaught handler is still active at READY.
 - V17 physical evidence shows the sampled process remains alive past 3 seconds with both AppForge uncaught handlers intact, yet no Activity factory/lifecycle marker appears. Main Looper messages `164` and repeated `131` are observed, but no ActivityThread `EXECUTE_TRANSACTION=159`.
 - V18 direct-launch physically reaches `MainActivity`, ReactInstanceManager, and `EXECUTE_TRANSACTION=159`, then crashes on `mqt_native_modules` with `JavascriptException: Cannot read property 'EventEmitter' of undefined`.
-- Expo SDK 54 `expo-modules-core` reads `globalThis.expo.EventEmitter`; V19 addresses the missing native Expo registration by adding a duplicate-safe `ExpoModulesPackage()` fallback to generated `MainApplication`. The existing `implementation(project(":expo"))` classpath bridge is preserved but no longer treated as package registration.
+- V19 physical acceptance PASS: `MainActivity` reaches RESUMED, Hermes and JS run, Expo UI renders, and the prior `globalThis.expo.EventEmitter` crash is gone after duplicate-safe `ExpoModulesPackage()` registration.
+- V20 targets BUG-B directly: `expo-modules-core` CMake PCH commands are disabled only in the disposable build workspace because the intermittent clang 18.1.3 exit `139` occurs while compiling `cmake_pch.hxx.pch`.
 
 ## Current Risks / Open Questions
 
-- Expo launch path is now proven through Activity resume. The active blocker is Expo Modules JSI bootstrap/package registration; V19 physical acceptance must prove the JS bundle no longer fails on `globalThis.expo.EventEmitter`.
-- Expo native compilation is intermittently unstable: identical builds can alternate PASS/FAIL in `expo-modules-core` PCH with Ubuntu clang 18.1.3 exit `139`.
+- BUG-A Expo runtime launch crash is closed by V19 physical evidence.
+- BUG-B remains open until V20 produces at least four consecutive identical physical Expo builds without the prior `expo-modules-core` PCH / clang exit `139` failure. PCH disabling is a scoped stabilization workaround, not accepted as fixed before that run.
 - Returning through the active-build notification can cancel the build; active build identity/session must survive background-to-foreground return.
 - Build progress is not authoritative yet. App UI and notification must share one real `DeviceBuildEngine` progress source and reach 100 only on success.
 - Build numbers must start at `AF-0000001000`, increment persistently, and never be reused.
