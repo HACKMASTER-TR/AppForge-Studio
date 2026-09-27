@@ -263,6 +263,8 @@ object AppForgeExpoRuntimeProbe {
 
         installed = true
 
+        recordPreviousExit(app)
+
         mark(app, "APPLICATION_AFTER_SUPER")
 
         val bundleState =
@@ -378,6 +380,117 @@ object AppForgeExpoRuntimeProbe {
         write(
             app,
             "UNCAUGHT_HANDLER=INSTALLED"
+        )
+    }
+
+    private fun recordPreviousExit(
+        app: android.app.Application
+    ) {
+        if (
+            android.os.Build.VERSION.SDK_INT <
+            android.os.Build.VERSION_CODES.R
+        ) {
+            write(
+                app,
+                "PREVIOUS_EXIT=UNAVAILABLE_API"
+            )
+            return
+        }
+
+        try {
+            val manager =
+                app.getSystemService(
+                    android.app.ActivityManager::class.java
+                )
+
+            val exits =
+                manager.getHistoricalProcessExitReasons(
+                    app.packageName,
+                    0,
+                    5
+                )
+
+            write(
+                app,
+                "PREVIOUS_EXIT_COUNT=" + exits.size
+            )
+
+            exits.take(5).forEachIndexed {
+                    index,
+                    info ->
+
+                val prefix =
+                    "PREVIOUS_EXIT_" +
+                        index +
+                        "_"
+
+                write(
+                    app,
+                    prefix + "REASON=" + info.reason
+                )
+
+                write(
+                    app,
+                    prefix + "STATUS=" + info.status
+                )
+
+                write(
+                    app,
+                    prefix + "IMPORTANCE=" + info.importance
+                )
+
+                write(
+                    app,
+                    prefix + "TIMESTAMP=" + info.timestamp
+                )
+
+                write(
+                    app,
+                    prefix + "PROCESS=" + info.processName
+                )
+
+                write(
+                    app,
+                    prefix +
+                        "DESCRIPTION=" +
+                        (info.description ?: "")
+                )
+            }
+        } catch (error: Throwable) {
+            write(
+                app,
+                "PREVIOUS_EXIT_ERROR=" +
+                    error.javaClass.name +
+                    ":" +
+                    (error.message ?: "")
+            )
+        }
+    }
+
+    fun activityThrowable(
+        context: android.content.Context,
+        error: Throwable
+    ) {
+        val appContext =
+            context.applicationContext
+
+        write(
+            appContext,
+            "MAIN_ACTIVITY_THROWABLE_CLASS=" +
+                error.javaClass.name
+        )
+
+        write(
+            appContext,
+            "MAIN_ACTIVITY_THROWABLE_MESSAGE=" +
+                (error.message ?: "")
+        )
+
+        write(
+            appContext,
+            "MAIN_ACTIVITY_THROWABLE_STACK_BEGIN\n" +
+                android.util.Log.getStackTraceString(error) +
+                "\nMAIN_ACTIVITY_THROWABLE_STACK_END"
         )
     }
 
@@ -678,11 +791,11 @@ let activity =
 
 if (
   !activity.includes(
-    'AppForgeExpoRuntimeProbe.mark(this, "MAIN_ACTIVITY_AFTER_SUPER")'
+    "APPFORGE_EXPO_ACTIVITY_GUARD_V12"
   )
 ) {
   const activitySuperPattern =
-    /^(\s*)super\.onCreate\([^)]*\)\s*$/m;
+    /^(\s*)super\.onCreate\(([^)]*)\)\s*$/m;
 
   if (!activitySuperPattern.test(activity)) {
     throw new Error(
@@ -693,9 +806,25 @@ if (
   activity =
     activity.replace(
       activitySuperPattern,
-      (line, indent) =>
-        line +
-        "\n" +
+      (line, indent, args) =>
+        indent +
+        "// APPFORGE_EXPO_ACTIVITY_GUARD_V12\n" +
+        indent +
+        'AppForgeExpoRuntimeProbe.mark(this, "MAIN_ACTIVITY_BEFORE_SUPER")\n' +
+        indent +
+        "try {\n" +
+        indent +
+        "    super.onCreate(" +
+        args +
+        ")\n" +
+        indent +
+        "} catch (error: Throwable) {\n" +
+        indent +
+        "    AppForgeExpoRuntimeProbe.activityThrowable(this, error)\n" +
+        indent +
+        "    throw error\n" +
+        indent +
+        "}\n" +
         indent +
         'AppForgeExpoRuntimeProbe.mark(this, "MAIN_ACTIVITY_AFTER_SUPER")'
     );
@@ -712,8 +841,28 @@ grep -q \
   "$MAIN_APPLICATION"
 
 grep -q \
+  'APPFORGE_EXPO_ACTIVITY_GUARD_V12' \
+  "$MAIN_ACTIVITY"
+
+grep -q \
+  'MAIN_ACTIVITY_BEFORE_SUPER' \
+  "$MAIN_ACTIVITY"
+
+grep -q \
   'MAIN_ACTIVITY_AFTER_SUPER' \
   "$MAIN_ACTIVITY"
+
+grep -q \
+  'PREVIOUS_EXIT_COUNT=' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -q \
+  'getHistoricalProcessExitReasons' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -q \
+  'MAIN_ACTIVITY_THROWABLE_CLASS=' \
+  "$APPFORGE_EXPO_PROBE_FILE"
 
 grep -q \
   'MediaStore.Downloads.EXTERNAL_CONTENT_URI' \
@@ -726,6 +875,7 @@ grep -q \
 echo "APPFORGE_EXPO_RUNTIME_PROBE_FILE=$APPFORGE_EXPO_PROBE_FILE"
 echo "APPFORGE_EXPO_RUNTIME_PROBE_REPORT=Downloads/AppForgeStudio/ExpoCrash"
 echo "APPFORGE_EXPO_RUNTIME_CRASH_PROBE=PASS"
+echo "APPFORGE_EXPO_RUNTIME_EXIT_PROBE_V12=PASS"
 
 #
 # Change Gradle properties while the project is still on the

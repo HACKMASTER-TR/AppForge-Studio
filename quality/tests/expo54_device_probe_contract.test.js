@@ -328,7 +328,37 @@ test(
 
     assert.match(
       expo,
+      /MAIN_ACTIVITY_BEFORE_SUPER/
+    );
+
+    assert.match(
+      expo,
       /MAIN_ACTIVITY_AFTER_SUPER/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_ACTIVITY_GUARD_V12/
+    );
+
+    assert.match(
+      expo,
+      /getHistoricalProcessExitReasons/
+    );
+
+    assert.match(
+      expo,
+      /PREVIOUS_EXIT_COUNT=/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_THROWABLE_CLASS=/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_RUNTIME_EXIT_PROBE_V12=PASS/
     );
 
     assert.match(

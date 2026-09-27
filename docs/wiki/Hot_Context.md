@@ -53,9 +53,9 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- V11.1 still requires a fresh physical fixture rebuild and launch.
+- V11.1 physical rebuild produces APK+AAB and reports `BUNDLE_ASSET=PASS`, `HERMES_FACTORY_CLASS=PASS`, and `HERMES_NATIVE_LOAD=PASS`, but the fixture still exits before `MAIN_ACTIVITY_AFTER_SUPER`.
+- V12 adds `MAIN_ACTIVITY_BEFORE_SUPER`, synchronous Java throwable capture around `super.onCreate`, and Android `ApplicationExitInfo` history so native crash/signal/process-exit causes can be distinguished on the next launch.
 - Expo remains experimental until the installed fixture renders and stays open.
-- If launch still fails, use the V9 runtime crash report instead of guessing.
 - SDK XML/platform warnings are secondary unless they become build-blocking.
 
 ## Safety Boundaries
