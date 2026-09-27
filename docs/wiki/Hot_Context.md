@@ -54,7 +54,7 @@ source_files:
 ## Current Risks / Open Questions
 
 - V14 fixture audit proves the APK contains MainActivity init/attach/onCreate markers, bundle, and Hermes, while runtime reports still show no Activity marker and exit reason `4` (`crash`).
-- The V14 lifecycle probe filtered callbacks to `MainActivity`, so absence of lifecycle markers did not prove that no other launcher Activity was created. V14.1 removes that filter and records every Activity class and resolved component.
+- V14.1 removes the MainActivity-only lifecycle filter and records every Activity class/component. Its first physical rebuild exposed a fail-fast verification bug: the script searched for generated runtime values (`ACTIVITY_PRE_CREATED_CLASS=` / `COMPONENT=`) that cannot exist literally in source because they are constructed from `stage`. V14.1.1 verifies the real source expressions instead.
 - Expo remains experimental until the installed fixture renders and stays open.
 - SDK XML/platform warnings are secondary unless they become build-blocking.
 

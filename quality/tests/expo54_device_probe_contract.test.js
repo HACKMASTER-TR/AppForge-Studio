@@ -378,12 +378,17 @@ test(
 
     assert.match(
       expo,
-      /ACTIVITY_PRE_CREATED_CLASS=/
+      /stage \+ "_CLASS="/
     );
 
     assert.match(
       expo,
-      /ACTIVITY_PRE_CREATED_COMPONENT=/
+      /stage \+ "_COMPONENT="/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_ACTIVITY_IDENTITY_VERIFY_V14_1_1=PASS/
     );
 
     assert.match(
