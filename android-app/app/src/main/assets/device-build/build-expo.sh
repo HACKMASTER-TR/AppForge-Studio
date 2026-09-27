@@ -1168,8 +1168,8 @@ echo "APPFORGE_EXPO_APP_CLASSPATH_BRIDGE=PASS"
 #
 # React Native 0.81 no longer provides the previous first-party JSC
 # runtime path used by older legacy-architecture builds. AppForge keeps
-# Gradle hermesEnabled=false to avoid executing the host hermesc binary
-# on ARM64 Android, but explicitly packages the Hermes Android runtime.
+# Gradle hermesEnabled=true packages the Hermes Android runtime.
+# AppForge separately suppresses host hermesc/AOT for the acceptance variant.
 #
 if ! grep -q \
   'APPFORGE_EXPO_HERMES_RUNTIME_DEPENDENCY_V1' \
@@ -1271,13 +1271,28 @@ grep -Fq \
   'signingConfig signingConfigs.debug' \
   "$APP_GRADLE"
 
-grep -Fq \
-  'debuggableVariants = ["debug"]' \
+#
+# APPFORGE_EXPO_ACCEPTANCE_VARIANT_GUARD_V11_1
+#
+# V11 deliberately marks appforgeAcceptance as RN-debuggable so the
+# React Native Gradle plugin skips host hermesc/AOT execution. Android
+# itself remains debuggable=false and AppForge embeds the production
+# bundle manually. A second active debug-only assignment would conflict
+# with that contract.
+#
+if grep -Eq \
+  '^[[:space:]]*debuggableVariants[[:space:]]*=[[:space:]]*\["debug"\][[:space:]]*$' \
+  "$APP_GRADLE"
+then
+  echo "APPFORGE_EXPO_ACCEPTANCE_RN_VARIANT_CONFLICT=FAIL"
+  exit 44
+fi
+
+grep -Eq \
+  '^[[:space:]]*debuggableVariants[[:space:]]*=[[:space:]]*\["debug",[[:space:]]*"appforgeAcceptance"\][[:space:]]*$' \
   "$APP_GRADLE"
 
-grep -Fq \
-  'debuggableVariants = ["debug", "appforgeAcceptance"]' \
-  "$APP_GRADLE"
+echo "APPFORGE_EXPO_ACCEPTANCE_RN_VARIANT_GUARD=PASS"
 
 echo "APPFORGE_EXPO_ACCEPTANCE_ANDROID_DEBUGGABLE=FALSE"
 echo "APPFORGE_EXPO_ACCEPTANCE_RN_BUNDLE_TASK=SKIPPED"

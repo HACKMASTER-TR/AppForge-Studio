@@ -28,46 +28,42 @@ source_files:
 ## Current Focus
 
 - Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, and Python/Chaquopy.
-- Expo SDK 54 / React Native 0.81 remains EXPERIMENTAL until the installed standalone APK opens successfully.
-- V8 physically clears the build pipeline: the Expo fixture reaches 100% and produces both APK and AAB.
+- Expo SDK 54 / React Native 0.81 remains `EXPERIMENTAL`; `READY_OUTPUTS=ZERO` until an AppForge-built fixture installs and launches successfully.
+- V8 physically proved the Expo build pipeline can produce APK and AAB on device.
 
 ## Recent Important Changes
 
-- Prefab direct execution is physically cleared.
-- ARM64 CMake/Ninja now executes successfully far enough to reach NDK compiler detection.
-- V4 cleared rootfs CMake staging and the physical fixture now produces both APK and AAB.
+- V11.1 finalizes the Expo Hermes acceptance contract while keeping the physical READY gate unchanged.
 
-## Expo Physical Evidence — 2026-09-27
+## Expo Evidence — 2026-09-27
 
-- Runtime AGP is `8.11.0`; NDK is `27.1.12297006`.
-- Prefab direct execution is physically cleared: generated `prefab_command` has `#!/bin/sh`; Java direct start/RC and shell probe all pass with RC `0`.
-- ARM64 CMake/Ninja host compatibility is physically confirmed: CMake now runs instead of failing `bad machine`.
-- CMake reaches compiler detection and selects `/opt/appforge-device/android-sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/bin/clang`.
-- That official Linux NDK host executable cannot run natively on the ARM64 AppForge Ubuntu host.
-- V3 physically cleared the `-lgcc` runtime blocker; CMake now identifies Clang 18.1.3 and reaches its real compiler `try_compile` stage.
-- Installer acceptance requires an `aarch64-linux-android24` C link probe, C++ compile probe, and LLVM archive probe before the ARM64 NDK readiness marker is written.
-- V9 physical crash evidence proves `index.android.bundle` exists and Application startup completes before React Native context creation fails.
+- Runtime AGP `8.11.0`, NDK `27.1.12297006`, native ARM64 CMake/Ninja, compiler-rt, rootfs CMake staging, API 36 SDK isolation, and Prefab execution are preserved.
+- V9 proved `assets/index.android.bundle` is embedded and startup reaches `APPLICATION_READY`; React context creation then failed.
+- V10.1 proved the Hermes Java executor factory exists but physical APK audit showed `lib/arm64-v8a/libhermes.so` missing, causing SoLoader to fall through to `/vendor/lib64/libhermes.so`.
+- V11 changes the acceptance packaging contract to `hermesEnabled=true` so Android Hermes native runtime is packaged. Host Hermes AOT remains skipped; AppForge manually embeds the Expo JS bundle generated with pinned Node 22.
+- V11.1 keeps `appforgeAcceptance` in React Native `debuggableVariants` only to suppress unsupported host `hermesc` work. The Android build type itself remains `debuggable=false`.
+- V11.1 contract tests require `hermesEnabled=true`; the stale `hermesEnabled=false` assertion is removed.
 
 ## Must Know
 
-- Source, tests, CI, and observed runtime behavior override wiki claims.
-- GitHub remains repository and CI infrastructure; Railway, Render, and Supabase are not normal AppForge project-build infrastructure.
+- Source, tests, CI, and observed device behavior override wiki claims.
+- GitHub remains repository and CI infrastructure; retired remote project-build backends stay retired.
 - Standing fail-stop delivery authorization is recorded in [[Standing_Delivery_Authorization]].
 - D1 migrations remain blocked until migration history is reconciled.
 
 ## Current Risks / Open Questions
 
-- V10.1 physical APK audit proves `assets/index.android.bundle` is embedded and the Hermes Java executor factory is present, but `lib/arm64-v8a/libhermes.so` is absent from the produced APK. Runtime evidence consequently fails Hermes native loading and falls through to `/vendor/lib64/libhermes.so`.
-- V11 changes the acceptance packaging contract: `hermesEnabled=true` supplies the Android Hermes native runtime, while `appforgeAcceptance` is listed in React Native `debuggableVariants` only to suppress the unsupported host `hermesc` AOT task. Android `debuggable=false` remains intact, and AppForge manually embeds the production Expo JS bundle generated with pinned Node 22.
-- Additional NDK host executables may become visible after Clang advances.
-- SDK XML/platform-location warnings remain secondary unless they become build-blocking.
+- V11.1 still requires a fresh physical fixture rebuild and launch.
+- Expo remains experimental until the installed fixture renders and stays open.
+- If launch still fails, use the V9 runtime crash report instead of guessing.
+- SDK XML/platform warnings are secondary unless they become build-blocking.
 
 ## Safety Boundaries
 
-- Never continue past a failed mandatory local, CI, device, security, migration, release, or production gate.
-- Preserve `.appforge/` state, `appforge-*backup-*` directories, and physical acceptance evidence.
-- Do not use reset/clean/checkout to discard local work.
-- Do not mark Expo READY until physical APK build and installed runtime acceptance both pass.
+- Stop at any failed mandatory local, CI, device, security, migration, release, or production gate.
+- Preserve `.appforge/`, all `appforge-*backup-*` directories, and physical acceptance evidence.
+- Never use reset/clean/checkout to discard local work.
+- Keep `main` untouched during this acceptance branch.
 
 ## Read Next
 

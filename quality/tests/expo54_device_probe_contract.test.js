@@ -92,6 +92,21 @@ test(
     );
 
     assert.match(
+      expo,
+      /APPFORGE_EXPO_ACCEPTANCE_VARIANT_GUARD_V11_1/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_ACCEPTANCE_RN_VARIANT_GUARD=PASS/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /grep -Fq[\s\S]{0,120}'debuggableVariants = \["debug"\]'/
+    );
+
+    assert.match(
       engine,
       /variantOverride\s*=\s*"AppforgeAcceptance"/
     );
@@ -589,7 +604,12 @@ test(
 
     assert.match(
       expo,
-      /hermesEnabled=false/
+      /hermesEnabled=true/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /set_prop_native\\s*\\\\\\n\\s*hermesEnabled\\s*\\\\\\n\\s*false/
     );
 
     assert.match(
