@@ -105,6 +105,7 @@ if [ -f "$READY" ] \
         command -v npm >/dev/null 2>&1;
       }; } \
    && { [ "$ENGINE" != "expo" ] || {
+        [ -f "$SDK/platforms/android-36/android.jar" ] &&
         [ -x "$NODE_HOME/bin/node" ] &&
         [ -x "$NODE_HOME/bin/npm" ] &&
         "$NODE_HOME/bin/node" -e 'const [maj]=process.versions.node.split(".").map(Number); process.exit(maj === 22 ? 0 : 1)' &&
@@ -919,6 +920,75 @@ accept_android_sdk_license() {
   echo "APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED"
 }
 
+#
+# APPFORGE_EXPO_STABLE_API36_PLATFORM_V1
+#
+# Expo SDK 54 / React Native 0.81 compiles against stable Android API 36.
+#
+# AppForge's AGP 9 toolchain also carries android-37.0 for newer native
+# projects. Do not replace or delete it. Keep stable android-36 beside it
+# so AGP 8.11 / Android Lint can resolve Expo's exact compile target
+# without falling back to the minor-API "37.0" platform identifier.
+#
+if [ "$ENGINE" = "expo" ]; then
+  EXPO_PLATFORM_36_ZIP="$ROOT/cache/platform-36_r02.zip"
+  EXPO_PLATFORM_36_STAGE="$ROOT/platform-36-unpack"
+  EXPO_PLATFORM_36="$SDK/platforms/android-36"
+
+  download_sha1 \
+    "https://dl.google.com/android/repository/platform-36_r02.zip" \
+    "2c1a80dd4d9f7d0e6dd336ec603d9b5c55a6f576" \
+    "$EXPO_PLATFORM_36_ZIP"
+
+  rm -rf \
+    "$EXPO_PLATFORM_36_STAGE"
+
+  mkdir -p \
+    "$EXPO_PLATFORM_36_STAGE" \
+    "$EXPO_PLATFORM_36"
+
+  unzip -q \
+    "$EXPO_PLATFORM_36_ZIP" \
+    -d "$EXPO_PLATFORM_36_STAGE"
+
+  EXPO_PLATFORM_36_JAR="$(
+    find "$EXPO_PLATFORM_36_STAGE" \
+      -type f \
+      -name android.jar \
+      -print |
+    head -n 1
+  )"
+
+  test -n "$EXPO_PLATFORM_36_JAR"
+  test -f "$EXPO_PLATFORM_36_JAR"
+
+  EXPO_PLATFORM_36_SOURCE="$(
+    dirname "$EXPO_PLATFORM_36_JAR"
+  )"
+
+  cp -a \
+    "$EXPO_PLATFORM_36_SOURCE"/. \
+    "$EXPO_PLATFORM_36/"
+
+  test -f \
+    "$EXPO_PLATFORM_36/android.jar"
+
+  if [ ! -f "$EXPO_PLATFORM_36/source.properties" ]; then
+    cat > "$EXPO_PLATFORM_36/source.properties" <<'EOF'
+Pkg.Desc=Android SDK Platform 36
+Pkg.Revision=2
+AndroidVersion.ApiLevel=36
+EOF
+  fi
+
+  grep -q \
+    '^AndroidVersion.ApiLevel=36$' \
+    "$EXPO_PLATFORM_36/source.properties"
+
+  echo "APPFORGE_EXPO_ANDROID_36_PLATFORM_PATH=$EXPO_PLATFORM_36"
+  echo "APPFORGE_EXPO_ANDROID_36_PLATFORM=PASS"
+fi
+
 PLATFORM_ZIP="$ROOT/cache/platform-37.0_r02.zip"
 download_sha1 \
   "https://dl.google.com/android/repository/platform-37.0_r02.zip" \
@@ -1073,6 +1143,24 @@ echo "APPFORGE_AAPT2_PLATFORM_37_SMOKE_START"
 "$SDK/build-tools/36.0.0/aapt2"   dump resources   "$SDK/platforms/android-37.0/android.jar"   >/dev/null
 
 echo "APPFORGE_AAPT2_PLATFORM_37_SMOKE_PASS"
+
+if [ "$ENGINE" = "expo" ]; then
+  test -f \
+    "$SDK/platforms/android-36/android.jar"
+
+  grep -q \
+    '^AndroidVersion.ApiLevel=36$' \
+    "$SDK/platforms/android-36/source.properties"
+
+  echo "APPFORGE_EXPO_ANDROID_36_AAPT2_SMOKE_START"
+
+  "$SDK/build-tools/36.0.0/aapt2" \
+    dump resources \
+    "$SDK/platforms/android-36/android.jar" \
+    >/dev/null
+
+  echo "APPFORGE_EXPO_ANDROID_36_AAPT2_SMOKE=PASS"
+fi
 
 "$ROOT/gradle-9.3.1/bin/gradle" --version >/dev/null
 java -version

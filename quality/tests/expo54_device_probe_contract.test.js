@@ -169,6 +169,51 @@ test(
 );
 
 test(
+  "Expo SDK 54 carries stable Android API 36 beside the API 37 minor platform",
+  () => {
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_STABLE_API36_PLATFORM_V1/
+    );
+
+    assert.match(
+      installer,
+      /platform-36_r02\.zip/
+    );
+
+    assert.match(
+      installer,
+      /2c1a80dd4d9f7d0e6dd336ec603d9b5c55a6f576/
+    );
+
+    assert.match(
+      installer,
+      /platforms\/android-36\/android\.jar/
+    );
+
+    assert.match(
+      installer,
+      /AndroidVersion\.ApiLevel=36/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ANDROID_36_PLATFORM=PASS/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ANDROID_36_AAPT2_SMOKE=PASS/
+    );
+
+    assert.match(
+      installer,
+      /platforms\/android-37\.0\/android\.jar/
+    );
+  }
+);
+
+test(
   "Expo capability remains experimental with zero accepted outputs",
   () => {
     const start =

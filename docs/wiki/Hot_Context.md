@@ -29,7 +29,7 @@ source_files:
 
 - Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, and Python/Chaquopy.
 - Expo SDK 54 / React Native 0.81 remains EXPERIMENTAL until the installed standalone APK opens successfully.
-- V4 produced APK/AAB physically; V5 then reached the standalone JS bundle task, which currently exits from Node with code 1.
+- V6 moved past the previous standalone Node bundle failure; the current physical blocker is Android Lint resolving the `37.0` minor-API platform while Expo SDK 54 expects stable API 36.
 
 ## Recent Important Changes
 
@@ -46,7 +46,7 @@ source_files:
 - That official Linux NDK host executable cannot run natively on the ARM64 AppForge Ubuntu host.
 - V3 physically cleared the `-lgcc` runtime blocker; CMake now identifies Clang 18.1.3 and reaches its real compiler `try_compile` stage.
 - Installer acceptance requires an `aarch64-linux-android24` C link probe, C++ compile probe, and LLVM archive probe before the ARM64 NDK readiness marker is written.
-- V5 correctly creates `createBundleAppforgeAcceptanceJsAndAssets`; the current failure is inside its Node/Expo bundling process rather than CMake/NDK.
+- V5/V6 standalone bundling is active. The latest build reaches `:expo:lintVitalAnalyzeDebug` after native CMake work and fails with `NumberFormatException` on `37.0`.
 
 ## Must Know
 
@@ -57,7 +57,7 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- Current blocker is the standalone Expo JS bundle command. V6 pins Node/environment and runs a fail-fast `export:embed` probe so the real Metro/Expo error is preserved.
+- Current blocker is SDK target resolution in AGP 8.11 lint. V7 keeps the existing `android-37.0` platform and adds stable `android-36` side-by-side for Expo SDK 54.
 - Additional NDK host executables may become visible after Clang advances.
 - SDK XML/platform-location warnings remain secondary unless they become build-blocking.
 
