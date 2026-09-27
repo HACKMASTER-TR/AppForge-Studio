@@ -939,6 +939,9 @@ object DeviceBuildEngine {
             append("export JAVA_HOME=/opt/appforge-device/jdk-17; ")
             if (nodeRequired) {
                 append("export PATH=/opt/appforge-device/node-22.23.3/bin:/opt/appforge-device/jdk-17/bin:\$PATH; ")
+                append("export NODE_ENV=production; ")
+                append("export CI=1; ")
+                append("export EXPO_NO_TELEMETRY=1; ")
             } else {
                 append("export PATH=/opt/appforge-device/jdk-17/bin:\$PATH; ")
             }

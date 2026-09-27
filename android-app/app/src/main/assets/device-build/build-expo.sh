@@ -656,6 +656,7 @@ android {
 
 react {
     debuggableVariants = ["debug"]
+    nodeExecutableAndArgs = ["/opt/appforge-device/node-22.23.3/bin/node"]
 }
 EOF
 fi
@@ -691,6 +692,103 @@ fi
 echo "APPFORGE_EXPO_STANDALONE_BUILD_TYPE=appforgeAcceptance"
 echo "APPFORGE_EXPO_STANDALONE_BUNDLE=EMBEDDED"
 echo "APPFORGE_EXPO_STANDALONE_ACCEPTANCE=PASS"
+
+#
+# APPFORGE_EXPO_BUNDLE_PREFLIGHT_V1
+#
+# Run the same Expo production bundler explicitly before Gradle.
+# This proves entry resolution, Expo CLI resolution, Metro traversal,
+# JS transformation and asset export while preserving the real error
+# output if Node exits non-zero.
+#
+APPFORGE_EXPO_BUNDLE_PROBE_ROOT="$ROOT/expo-bundle-probe"
+APPFORGE_EXPO_BUNDLE_PROBE="$APPFORGE_EXPO_BUNDLE_PROBE_ROOT/$$"
+APPFORGE_EXPO_BUNDLE_LOG="$APPFORGE_EXPO_BUNDLE_PROBE/export-embed.log"
+
+rm -rf "$APPFORGE_EXPO_BUNDLE_PROBE"
+mkdir -p "$APPFORGE_EXPO_BUNDLE_PROBE/assets"
+
+APPFORGE_EXPO_BUNDLE_ENTRY="$(
+  cd "$SOURCE"
+
+  "$NODE_HOME/bin/node" \
+    -e "require('expo/scripts/resolveAppEntry')" \
+    "$SOURCE" \
+    android \
+    absolute |
+  tail -n 1
+)"
+
+APPFORGE_EXPO_BUNDLE_CLI="$(
+  cd "$SOURCE"
+
+  "$NODE_HOME/bin/node" \
+    --print \
+    "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })" |
+  tail -n 1
+)"
+
+test -n "$APPFORGE_EXPO_BUNDLE_ENTRY"
+test -f "$APPFORGE_EXPO_BUNDLE_ENTRY"
+
+test -n "$APPFORGE_EXPO_BUNDLE_CLI"
+test -f "$APPFORGE_EXPO_BUNDLE_CLI"
+
+echo "APPFORGE_EXPO_BUNDLE_ENTRY=$APPFORGE_EXPO_BUNDLE_ENTRY"
+echo "APPFORGE_EXPO_BUNDLE_CLI=$APPFORGE_EXPO_BUNDLE_CLI"
+echo "APPFORGE_EXPO_BUNDLE_NODE=$NODE_HOME/bin/node"
+echo "APPFORGE_EXPO_BUNDLE_NODE_ENV=production"
+
+set +e
+
+(
+  cd "$SOURCE"
+
+  NODE_ENV=production \
+  CI=1 \
+  EXPO_NO_TELEMETRY=1 \
+  "$NODE_HOME/bin/node" \
+    "$APPFORGE_EXPO_BUNDLE_CLI" \
+    export:embed \
+    --platform android \
+    --dev false \
+    --reset-cache \
+    --entry-file "$APPFORGE_EXPO_BUNDLE_ENTRY" \
+    --bundle-output "$APPFORGE_EXPO_BUNDLE_PROBE/index.android.bundle" \
+    --assets-dest "$APPFORGE_EXPO_BUNDLE_PROBE/assets" \
+    --minify false
+) > "$APPFORGE_EXPO_BUNDLE_LOG" 2>&1
+
+APPFORGE_EXPO_BUNDLE_RC=$?
+
+set -e
+
+echo "APPFORGE_EXPO_BUNDLE_PROBE_RC=$APPFORGE_EXPO_BUNDLE_RC"
+
+if [ "$APPFORGE_EXPO_BUNDLE_RC" -ne 0 ]; then
+  echo "APPFORGE_EXPO_BUNDLE_PREFLIGHT=FAIL"
+  echo "APPFORGE_EXPO_BUNDLE_LOG_BEGIN"
+
+  sed \
+    's#/opt/appforge-device#[DEVICE]#g; s#/workspace/source#[SOURCE]#g' \
+    "$APPFORGE_EXPO_BUNDLE_LOG" |
+  tail -n 160
+
+  echo "APPFORGE_EXPO_BUNDLE_LOG_END"
+  exit 45
+fi
+
+test -s \
+  "$APPFORGE_EXPO_BUNDLE_PROBE/index.android.bundle"
+
+echo "APPFORGE_EXPO_BUNDLE_SIZE=$(
+  wc -c < "$APPFORGE_EXPO_BUNDLE_PROBE/index.android.bundle" |
+  tr -d ' '
+)"
+
+echo "APPFORGE_EXPO_BUNDLE_PREFLIGHT=PASS"
+
+rm -rf "$APPFORGE_EXPO_BUNDLE_PROBE"
 
 #
 # APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR_V1

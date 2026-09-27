@@ -114,6 +114,61 @@ test(
 );
 
 test(
+  "Expo standalone bundler uses pinned Node and a fail-fast export embed probe",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_BUNDLE_PREFLIGHT_V1/
+    );
+
+    assert.match(
+      expo,
+      /nodeExecutableAndArgs = \["\/opt\/appforge-device\/node-22\.23\.3\/bin\/node"\]/
+    );
+
+    assert.match(
+      expo,
+      /export:embed/
+    );
+
+    assert.match(
+      expo,
+      /expo\/scripts\/resolveAppEntry/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_BUNDLE_PREFLIGHT=PASS/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_BUNDLE_LOG_BEGIN/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_BUNDLE_LOG_END/
+    );
+
+    assert.match(
+      engine,
+      /export NODE_ENV=production/
+    );
+
+    assert.match(
+      engine,
+      /export CI=1/
+    );
+
+    assert.match(
+      engine,
+      /export EXPO_NO_TELEMETRY=1/
+    );
+  }
+);
+
+test(
   "Expo capability remains experimental with zero accepted outputs",
   () => {
     const start =
