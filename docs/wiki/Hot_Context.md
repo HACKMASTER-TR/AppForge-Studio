@@ -28,43 +28,30 @@ source_files:
 ## Current Focus
 
 - Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, and Python/Chaquopy.
-- Expo SDK 54 / React Native 0.81 remains `EXPERIMENTAL`; `READY_OUTPUTS=ZERO` until an AppForge-built fixture installs and launches successfully.
-- V8 physically proved the Expo build pipeline can produce APK and AAB on device.
-
-## Recent Important Changes
-
-- V11.1 finalizes the Expo Hermes acceptance contract while keeping the physical READY gate unchanged.
-
-## Expo Evidence — 2026-09-27
-
-- Runtime AGP `8.11.0`, NDK `27.1.12297006`, native ARM64 CMake/Ninja, compiler-rt, rootfs CMake staging, API 36 SDK isolation, and Prefab execution are preserved.
-- V9 proved `assets/index.android.bundle` is embedded and startup reaches `APPLICATION_READY`; React context creation then failed.
-- V10.1 proved the Hermes Java executor factory exists but physical APK audit showed `lib/arm64-v8a/libhermes.so` missing, causing SoLoader to fall through to `/vendor/lib64/libhermes.so`.
-- V11 changes the acceptance packaging contract to `hermesEnabled=true` so Android Hermes native runtime is packaged. Host Hermes AOT remains skipped; AppForge manually embeds the Expo JS bundle generated with pinned Node 22.
-- V11.1 keeps `appforgeAcceptance` in React Native `debuggableVariants` only to suppress unsupported host `hermesc` work. The Android build type itself remains `debuggable=false`.
-- V11.1 contract tests require `hermesEnabled=true`; the stale `hermesEnabled=false` assertion is removed.
+- Expo SDK 54 / React Native 0.81 remains `EXPERIMENTAL`; `READY_OUTPUTS=ZERO` until an AppForge-built fixture installs and stays open.
+- `main` remains untouched.
 
 ## Must Know
 
 - Source, tests, CI, and observed device behavior override wiki claims.
-- GitHub remains repository and CI infrastructure; retired remote project-build backends stay retired.
-- Standing fail-stop delivery authorization is recorded in [[Standing_Delivery_Authorization]].
+- GitHub remains repository/CI infrastructure; retired remote build backends stay retired.
 - D1 migrations remain blocked until migration history is reconciled.
+- Standing fail-stop authorization is recorded in [[Standing_Delivery_Authorization]].
+
+## Recent Important Changes
+
+- V11.1 physically proved Hermes Java/native packaging while host Hermes AOT stays skipped and AppForge embeds the production Expo bundle.
+- V16 physically proves `AppForgeExpoComponentFactory` is active: Application instantiation BEFORE/AFTER is captured, `APPLICATION_READY` is reached, Hermes class/native load PASS, and the AppForge uncaught handler is still active at READY.
+- V17 adds explicit main-thread uncaught handling plus bounded Main Looper dispatch capture to expose the remaining Java startup crash before Activity creation.
 
 ## Current Risks / Open Questions
 
-- V15 physical fixture APK contains `AppForgeExpoComponentFactory` and its probe strings, but runtime still reaches `APPLICATION_READY` / Hermes PASS and crashes before any ComponentFactory Activity or Activity lifecycle marker appears. Binary-manifest `strings` was inconclusive, and the general AppForge Terminal does not expose the device-build SDK/APK mount for `aapt2`.
-- V16 makes the runtime self-proving: the custom ComponentFactory records `instantiateApplication` before `Application.onCreate()` into an in-memory buffer that is flushed to the public report, and the Java uncaught handler is checked/re-armed at `APPLICATION_READY`.
-- Expo native builds also show a repeatable intermittent pattern: one build may pass while the next fails in `expo-modules-core` PCH with Ubuntu clang 18.1.3 exit 139. Treat this as a separate native-build stability bug from the launch crash.
-- Expo remains experimental until the installed fixture renders and stays open.
-- SDK XML/platform warnings are secondary unless they become build-blocking.
-
-## Safety Boundaries
-
-- Stop at any failed mandatory local, CI, device, security, migration, release, or production gate.
-- Preserve `.appforge/`, all `appforge-*backup-*` directories, and physical acceptance evidence.
-- Never use reset/clean/checkout to discard local work.
-- Keep `main` untouched during this acceptance branch.
+- Android repeatedly records Expo exit reason `4`; no Activity factory/lifecycle marker appears before process death.
+- Expo native compilation is intermittently unstable: identical builds can alternate PASS/FAIL in `expo-modules-core` PCH with Ubuntu clang 18.1.3 exit `139`.
+- Returning through the active-build notification can cancel the build; active build identity/session must survive background-to-foreground return.
+- Build progress is not authoritative yet. App UI and notification must share one real `DeviceBuildEngine` progress source and reach 100 only on success.
+- Build numbers must start at `AF-0000001000`, increment persistently, and never be reused.
+- Expo remains experimental until physical launch acceptance passes.
 
 ## Read Next
 

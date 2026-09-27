@@ -448,6 +448,26 @@ test(
 
     assert.match(
       expo,
+      /APPFORGE_EXPO_JAVA_CRASH_CAPTURE_V17/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_LOOPER_PROBE=INSTALLED/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_LOOPER_FRONT_QUEUE=PASS/
+    );
+
+    assert.match(
+      expo,
+      /uncaughtExceptionHandler =/
+    );
+
+    assert.match(
+      expo,
       /ACTIVITY_CALLBACKS_REGISTERED=PASS/
     );
 

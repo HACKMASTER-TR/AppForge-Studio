@@ -266,6 +266,17 @@ object AppForgeExpoRuntimeProbe {
     private var crashHandler:
         Thread.UncaughtExceptionHandler? = null
 
+    // APPFORGE_EXPO_JAVA_CRASH_CAPTURE_V17
+    @Volatile
+    private var crashDelegate:
+        Thread.UncaughtExceptionHandler? = null
+
+    @Volatile
+    private var mainLooperProbeInstalled = false
+
+    private val mainLooperEventCount =
+        java.util.concurrent.atomic.AtomicInteger(0)
+
     fun early(stage: String) {
         val app = applicationRef
 
@@ -363,6 +374,8 @@ object AppForgeExpoRuntimeProbe {
             app,
             "INSTALL"
         )
+
+        installMainLooperProbe(app)
     }
 
     @Synchronized
@@ -370,33 +383,79 @@ object AppForgeExpoRuntimeProbe {
         context: android.content.Context,
         phase: String
     ) {
-        val current =
+        val mainThread =
+            android.os.Looper.getMainLooper().thread
+
+        val currentDefault =
             Thread.getDefaultUncaughtExceptionHandler()
+
+        val currentMain =
+            mainThread.uncaughtExceptionHandler
 
         write(
             context,
             "UNCAUGHT_HANDLER_" +
                 phase +
-                "_CURRENT=" +
+                "_DEFAULT_CURRENT=" +
                 (
-                    current
+                    currentDefault
                         ?.javaClass
                         ?.name
                         ?: "NONE"
                 )
         )
 
-        if (current === crashHandler) {
+        write(
+            context,
+            "UNCAUGHT_HANDLER_" +
+                phase +
+                "_MAIN_CURRENT=" +
+                (
+                    currentMain
+                        ?.javaClass
+                        ?.name
+                        ?: "NONE"
+                )
+        )
+
+        val active =
+            crashHandler
+
+        if (
+            active != null &&
+            currentDefault === active &&
+            currentMain === active
+        ) {
             write(
                 context,
                 "UNCAUGHT_HANDLER_" +
                     phase +
                     "_STATE=UNCHANGED"
             )
+
+            write(
+                context,
+                "UNCAUGHT_HANDLER_" +
+                    phase +
+                    "_VERIFY=PASS"
+            )
+
             return
         }
 
-        val previous = current
+        if (crashDelegate == null) {
+            crashDelegate =
+                if (
+                    currentDefault !== active
+                ) {
+                    currentDefault
+                } else {
+                    null
+                }
+        }
+
+        val delegate =
+            crashDelegate
 
         val handler =
             object :
@@ -410,6 +469,24 @@ object AppForgeExpoRuntimeProbe {
                             context,
                             "UNCAUGHT_THREAD=" +
                                 thread.name
+                        )
+
+                        write(
+                            context,
+                            "UNCAUGHT_THREAD_ID=" +
+                                thread.id
+                        )
+
+                        write(
+                            context,
+                            "UNCAUGHT_THREAD_HANDLER=" +
+                                (
+                                    thread
+                                        .uncaughtExceptionHandler
+                                        ?.javaClass
+                                        ?.name
+                                        ?: "NONE"
+                                )
                         )
 
                         write(
@@ -436,8 +513,11 @@ object AppForgeExpoRuntimeProbe {
                     } catch (_: Throwable) {
                     }
 
-                    if (previous != null) {
-                        previous.uncaughtException(
+                    if (
+                        delegate != null &&
+                        delegate !== this
+                    ) {
+                        delegate.uncaughtException(
                             thread,
                             throwable
                         )
@@ -450,17 +530,29 @@ object AppForgeExpoRuntimeProbe {
             }
 
         crashHandler = handler
+
         Thread.setDefaultUncaughtExceptionHandler(
             handler
         )
+
+        mainThread.uncaughtExceptionHandler =
+            handler
+
+        val defaultPass =
+            Thread.getDefaultUncaughtExceptionHandler() ===
+                handler
+
+        val mainPass =
+            mainThread.uncaughtExceptionHandler ===
+                handler
 
         write(
             context,
             "UNCAUGHT_HANDLER_" +
                 phase +
-                "_PREVIOUS=" +
+                "_DELEGATE=" +
                 (
-                    previous
+                    delegate
                         ?.javaClass
                         ?.name
                         ?: "NONE"
@@ -472,6 +564,100 @@ object AppForgeExpoRuntimeProbe {
             "UNCAUGHT_HANDLER_" +
                 phase +
                 "_STATE=INSTALLED"
+        )
+
+        write(
+            context,
+            "UNCAUGHT_HANDLER_" +
+                phase +
+                "_VERIFY=" +
+                if (
+                    defaultPass &&
+                    mainPass
+                ) {
+                    "PASS"
+                } else {
+                    "FAIL"
+                }
+        )
+    }
+
+    @Synchronized
+    private fun installMainLooperProbe(
+        app: android.app.Application
+    ) {
+        if (mainLooperProbeInstalled) {
+            return
+        }
+
+        mainLooperProbeInstalled = true
+
+        val looper =
+            android.os.Looper.getMainLooper()
+
+        looper.setMessageLogging(
+            android.util.Printer { raw ->
+                val index =
+                    mainLooperEventCount
+                        .incrementAndGet()
+
+                if (index <= 64) {
+                    val safe =
+                        raw
+                            .replace(
+                                "\\n",
+                                " "
+                            )
+                            .replace(
+                                "\\r",
+                                " "
+                            )
+                            .take(1200)
+
+                    write(
+                        app,
+                        "MAIN_LOOPER_EVENT_" +
+                            index +
+                            "=" +
+                            safe
+                    )
+                }
+            }
+        )
+
+        write(
+            app,
+            "MAIN_LOOPER_PROBE=INSTALLED"
+        )
+
+        val handler =
+            android.os.Handler(looper)
+
+        handler.postAtFrontOfQueue {
+            write(
+                app,
+                "MAIN_LOOPER_FRONT_QUEUE=PASS"
+            )
+
+            installCrashHandler(
+                app,
+                "FRONT_QUEUE"
+            )
+        }
+
+        handler.postDelayed(
+            {
+                write(
+                    app,
+                    "MAIN_LOOPER_DELAYED_100MS=PASS"
+                )
+
+                installCrashHandler(
+                    app,
+                    "DELAYED_100MS"
+                )
+            },
+            100L
         )
     }
 
@@ -833,7 +1019,12 @@ object AppForgeExpoRuntimeProbe {
                 "UNCAUGHT_HANDLER_READY_VERIFY=" +
                     if (
                         Thread.getDefaultUncaughtExceptionHandler() ===
-                        crashHandler
+                            crashHandler &&
+                        android.os.Looper
+                            .getMainLooper()
+                            .thread
+                            .uncaughtExceptionHandler ===
+                            crashHandler
                     ) {
                         "PASS"
                     } else {
@@ -1791,6 +1982,22 @@ grep -Fq \
   'APPFORGE_EXPO_STARTUP_CAPTURE_V16' \
   "$APPFORGE_EXPO_PROBE_FILE"
 
+grep -Fq \
+  'APPFORGE_EXPO_JAVA_CRASH_CAPTURE_V17' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -Fq \
+  'MAIN_LOOPER_PROBE=INSTALLED' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -Fq \
+  'MAIN_LOOPER_FRONT_QUEUE=PASS' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -Fq \
+  'uncaughtExceptionHandler =' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
 echo "APPFORGE_EXPO_RUNTIME_PROBE_FILE=$APPFORGE_EXPO_PROBE_FILE"
 echo "APPFORGE_EXPO_RUNTIME_PROBE_REPORT=Downloads/AppForgeStudio/ExpoCrash"
 echo "APPFORGE_EXPO_RUNTIME_CRASH_PROBE=PASS"
@@ -1800,6 +2007,7 @@ echo "APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14=PASS"
 echo "APPFORGE_EXPO_ACTIVITY_IDENTITY_V14_1=PASS"
 echo "APPFORGE_EXPO_COMPONENT_FACTORY_CAPTURE_V15=PASS"
 echo "APPFORGE_EXPO_STARTUP_CAPTURE_V16=PASS"
+echo "APPFORGE_EXPO_JAVA_CRASH_CAPTURE_V17=PASS"
 
 #
 # Change Gradle properties while the project is still on the
