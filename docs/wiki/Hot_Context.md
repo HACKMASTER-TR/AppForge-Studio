@@ -53,8 +53,8 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- V12 physical evidence reports `PREVIOUS_EXIT_0_REASON=4` (`crash`) while bundle and Hermes remain PASS; the fixture still exits before the V12 `MAIN_ACTIVITY_BEFORE_SUPER` marker.
-- V13 wraps the complete generated `MainActivity.onCreate()` body from its first statement, recording enter/catch/return plus the existing throwable stack so pre-`super.onCreate()` failures become visible.
+- V13 APK audit proves the installed `(6)` fixture contains the V13 markers, yet physical reports still contain no `MAIN_ACTIVITY_ONCREATE_ENTER`; Android exit history continues to report reason `4` (`crash`) while bundle and Hermes remain PASS.
+- V14 traces the earlier activity-creation boundary: MainActivity init, `attachBaseContext` enter/return, and Application lifecycle `ACTIVITY_PRE_CREATED/CREATED`.
 - Expo remains experimental until the installed fixture renders and stays open.
 - SDK XML/platform warnings are secondary unless they become build-blocking.
 

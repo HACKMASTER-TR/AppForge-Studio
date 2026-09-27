@@ -343,6 +343,41 @@ test(
 
     assert.match(
       expo,
+      /APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_INIT/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_ATTACH_ENTER/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_ATTACH_RETURN/
+    );
+
+    assert.match(
+      expo,
+      /ACTIVITY_PRE_CREATED/
+    );
+
+    assert.match(
+      expo,
+      /ACTIVITY_CREATED/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14=PASS/
+    );
+
+    assert.match(
+      expo,
       /APPFORGE_EXPO_FULL_ONCREATE_GUARD_V13/
     );
 

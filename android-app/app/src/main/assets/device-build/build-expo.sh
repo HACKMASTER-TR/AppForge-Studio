@@ -255,6 +255,25 @@ object AppForgeExpoRuntimeProbe {
     @Volatile
     private var reportUri: android.net.Uri? = null
 
+    @Volatile
+    private var applicationRef: android.app.Application? = null
+
+    fun early(stage: String) {
+        val app = applicationRef
+
+        if (app != null) {
+            write(
+                app,
+                "STAGE=" + stage
+            )
+        } else {
+            android.util.Log.e(
+                TAG,
+                "EARLY_STAGE_NO_APPLICATION=" + stage
+            )
+        }
+    }
+
     @Synchronized
     fun install(app: android.app.Application) {
         if (installed) {
@@ -262,7 +281,9 @@ object AppForgeExpoRuntimeProbe {
         }
 
         installed = true
+        applicationRef = app
 
+        installActivityLifecycleProbe(app)
         recordPreviousExit(app)
 
         mark(app, "APPLICATION_AFTER_SUPER")
@@ -491,6 +512,89 @@ object AppForgeExpoRuntimeProbe {
             "MAIN_ACTIVITY_THROWABLE_STACK_BEGIN\n" +
                 android.util.Log.getStackTraceString(error) +
                 "\nMAIN_ACTIVITY_THROWABLE_STACK_END"
+        )
+    }
+
+    private fun installActivityLifecycleProbe(
+        app: android.app.Application
+    ) {
+        app.registerActivityLifecycleCallbacks(
+            object :
+                android.app.Application.ActivityLifecycleCallbacks {
+
+                private fun isMain(
+                    activity: android.app.Activity
+                ): Boolean =
+                    activity.javaClass.simpleName ==
+                        "MainActivity"
+
+                override fun onActivityPreCreated(
+                    activity: android.app.Activity,
+                    savedInstanceState: android.os.Bundle?
+                ) {
+                    if (isMain(activity)) {
+                        write(
+                            app,
+                            "STAGE=ACTIVITY_PRE_CREATED"
+                        )
+                    }
+                }
+
+                override fun onActivityCreated(
+                    activity: android.app.Activity,
+                    savedInstanceState: android.os.Bundle?
+                ) {
+                    if (isMain(activity)) {
+                        write(
+                            app,
+                            "STAGE=ACTIVITY_CREATED"
+                        )
+                    }
+                }
+
+                override fun onActivityStarted(
+                    activity: android.app.Activity
+                ) {
+                    if (isMain(activity)) {
+                        write(
+                            app,
+                            "STAGE=ACTIVITY_STARTED"
+                        )
+                    }
+                }
+
+                override fun onActivityResumed(
+                    activity: android.app.Activity
+                ) {
+                    if (isMain(activity)) {
+                        write(
+                            app,
+                            "STAGE=ACTIVITY_RESUMED"
+                        )
+                    }
+                }
+
+                override fun onActivityPaused(
+                    activity: android.app.Activity
+                ) {
+                }
+
+                override fun onActivityStopped(
+                    activity: android.app.Activity
+                ) {
+                }
+
+                override fun onActivitySaveInstanceState(
+                    activity: android.app.Activity,
+                    outState: android.os.Bundle
+                ) {
+                }
+
+                override fun onActivityDestroyed(
+                    activity: android.app.Activity
+                ) {
+                }
+            }
         )
     }
 
@@ -791,6 +895,66 @@ let activity =
 
 if (
   !activity.includes(
+    "APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14"
+  )
+) {
+  if (
+    /override\s+fun\s+attachBaseContext\s*\(/m
+      .test(activity)
+  ) {
+    throw new Error(
+      "MainActivity already overrides attachBaseContext"
+    );
+  }
+
+  const classPattern =
+    /(class\s+MainActivity\s*:\s*ReactActivity\s*\(\s*\)\s*\{)/m;
+
+  if (!classPattern.test(activity)) {
+    throw new Error(
+      "MainActivity class anchor missing"
+    );
+  }
+
+  const injected =
+    [
+      "",
+      "  // APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14",
+      "  init {",
+      '    AppForgeExpoRuntimeProbe.early("MAIN_ACTIVITY_INIT")',
+      "  }",
+      "",
+      "  override fun attachBaseContext(",
+      "    newBase: android.content.Context",
+      "  ) {",
+      '    AppForgeExpoRuntimeProbe.mark(newBase, "MAIN_ACTIVITY_ATTACH_ENTER")',
+      "",
+      "    try {",
+      "      super.attachBaseContext(newBase)",
+      "    } catch (error: Throwable) {",
+      "      AppForgeExpoRuntimeProbe.activityThrowable(",
+      "        newBase,",
+      "        error",
+      "      )",
+      "      throw error",
+      "    }",
+      "",
+      '    AppForgeExpoRuntimeProbe.mark(newBase, "MAIN_ACTIVITY_ATTACH_RETURN")',
+      "  }",
+      ""
+    ].join("\n");
+
+  activity =
+    activity.replace(
+      classPattern,
+      (line) =>
+        line +
+        injected
+    );
+}
+
+if (
+  !activity.includes(
     "APPFORGE_EXPO_ACTIVITY_GUARD_V12"
   )
 ) {
@@ -1062,6 +1226,30 @@ grep -q \
   "$MAIN_APPLICATION"
 
 grep -q \
+  'APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14' \
+  "$MAIN_ACTIVITY"
+
+grep -q \
+  'MAIN_ACTIVITY_INIT' \
+  "$MAIN_ACTIVITY"
+
+grep -q \
+  'MAIN_ACTIVITY_ATTACH_ENTER' \
+  "$MAIN_ACTIVITY"
+
+grep -q \
+  'MAIN_ACTIVITY_ATTACH_RETURN' \
+  "$MAIN_ACTIVITY"
+
+grep -q \
+  'ACTIVITY_PRE_CREATED' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -q \
+  'ACTIVITY_CREATED' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -q \
   'APPFORGE_EXPO_ACTIVITY_GUARD_V12' \
   "$MAIN_ACTIVITY"
 
@@ -1114,6 +1302,7 @@ echo "APPFORGE_EXPO_RUNTIME_PROBE_REPORT=Downloads/AppForgeStudio/ExpoCrash"
 echo "APPFORGE_EXPO_RUNTIME_CRASH_PROBE=PASS"
 echo "APPFORGE_EXPO_RUNTIME_EXIT_PROBE_V12=PASS"
 echo "APPFORGE_EXPO_FULL_ONCREATE_CAPTURE_V13=PASS"
+echo "APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14=PASS"
 
 #
 # Change Gradle properties while the project is still on the
