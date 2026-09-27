@@ -956,6 +956,10 @@ object DeviceBuildEngine {
                 )
 
                 append(
+                    "export APPFORGE_EXPO_NATIVE_ROOT; "
+                )
+
+                append(
                     "APPFORGE_EXPO_EXEC_PROBE=" +
                         "\"\$APPFORGE_EXPO_NATIVE_ROOT/.appforge-exec-probe-\$\$\"; "
                 )
@@ -1002,6 +1006,12 @@ object DeviceBuildEngine {
                 append(
                     "--init-script " +
                         "\"\$APPFORGE_EXPO_NATIVE_ROOT/appforge-agp-runtime.init.gradle\" "
+                )
+
+                // APPFORGE_EXPO_PREFAB_EXEC_SECURITY_SHIM_V1
+                append(
+                    "--init-script " +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT/appforge-prefab-exec-shim.init.gradle\" "
                 )
             }
 

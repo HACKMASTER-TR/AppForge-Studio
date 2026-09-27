@@ -645,50 +645,77 @@ test(
 );
 
 test(
-  "Expo pins pre-8.8 AGP while the Prefab shebang regression is unresolved",
+  "Expo applies a scoped pre-exec shebang shim to the proven AGP Prefab command",
   () => {
-    assert.match(
+    assert.doesNotMatch(
       expo,
       /APPFORGE_EXPO_AGP_87_COMPAT_V1/
     );
 
-    assert.match(
+    assert.doesNotMatch(
       expo,
       /AGP_COMPAT_VERSION="8\.7\.3"/
     );
 
     assert.match(
       expo,
-      /APPFORGE_EXPO_AGP_COMPAT_PIN/
+      /APPFORGE_EXPO_PREFAB_EXEC_SECURITY_SHIM_V1/
     );
 
     assert.match(
       expo,
-      /PREFAB_SHEBANG_REGRESSION_8_8_PLUS/
+      /appforge-prefab-exec-shim\.init\.gradle/
     );
 
-    assert.doesNotMatch(
+    assert.match(
+      expo,
+      /class AppForgePrefabExecSecurityManager extends SecurityManager/
+    );
+
+    assert.match(
+      expo,
+      /void checkExec/
+    );
+
+    assert.match(
+      expo,
+      /target\.name !=[\s\S]*"prefab_command"/
+    );
+
+    assert.match(
+      expo,
+      /#!\/bin\/sh/
+    );
+
+    assert.match(
+      expo,
+      /\/opt\/appforge-device\/jdk-17\/bin\/java/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PREFAB_EXEC_SHIM=ARMED/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PREFAB_EXEC_SHIM=PATCHED/
+    );
+
+    assert.match(
       engine,
-      /APPFORGE_EXPO_PREFAB_FORK_FALLBACK_V1/
+      /export APPFORGE_EXPO_NATIVE_ROOT/
     );
 
-    assert.doesNotMatch(
+    assert.match(
       engine,
-      /jdk\.lang\.Process\.launchMechanism=FORK/
+      /APPFORGE_EXPO_PREFAB_EXEC_SECURITY_SHIM_V1/
     );
 
-    const pin =
-      expo.indexOf(
-        "APPFORGE_EXPO_AGP_COMPAT_PIN"
-      );
-
-    const copyback =
-      expo.indexOf(
-        "APPFORGE_EXPO_ANDROID_COPYBACK=PASS"
-      );
-
-    assert.ok(pin >= 0);
-    assert.ok(copyback > pin);
+    assert.match(
+      engine,
+      /appforge-prefab-exec-shim\.init\.gradle/
+    );
   }
 );
 

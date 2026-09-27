@@ -330,71 +330,6 @@ echo "APPFORGE_EXPO_NATIVE_AUTOLINK_SETTINGS=PASS"
 echo "APPFORGE_EXPO_AUTOLINK_SEARCH_MODE=EXACT_MODULES"
 
 #
-# APPFORGE_EXPO_AGP_87_COMPAT_V1
-#
-# AGP 8.8+ can generate Linux Prefab command files which are executable
-# but have no shebang. Android/PRoot cannot direct-exec those files.
-#
-# Expo SDK 54 / RN 0.81 acceptance therefore uses a temporary pre-8.8
-# AGP compatibility pin while the upstream Prefab launcher regression
-# remains unresolved.
-#
-AGP_COMPAT_VERSION="8.7.3"
-ROOT_GRADLE_NATIVE="$PREBUILD/android/build.gradle"
-
-test -f "$ROOT_GRADLE_NATIVE"
-
-ROOT_GRADLE_NATIVE="$ROOT_GRADLE_NATIVE" \
-AGP_COMPAT_VERSION="$AGP_COMPAT_VERSION" \
-"$NODE_HOME/bin/node" <<'NODE'
-const fs = require("fs");
-
-const file =
-  process.env.ROOT_GRADLE_NATIVE;
-
-const pin =
-  process.env.AGP_COMPAT_VERSION;
-
-let text =
-  fs.readFileSync(
-    file,
-    "utf8"
-  );
-
-const matcher =
-  /classpath\((["'])com\.android\.tools\.build:gradle(?::[^"']+)?\1\)/;
-
-const match =
-  text.match(matcher);
-
-if (!match) {
-  throw new Error(
-    "Android Gradle Plugin classpath declaration was not found."
-  );
-}
-
-const quote =
-  match[1];
-
-text =
-  text.replace(
-    matcher,
-    `classpath(${quote}com.android.tools.build:gradle:${pin}${quote})`
-  );
-
-fs.writeFileSync(
-  file,
-  text
-);
-NODE
-
-grep -Eq \
-  'com\.android\.tools\.build:gradle:8\.7\.3' \
-  "$ROOT_GRADLE_NATIVE"
-
-echo "APPFORGE_EXPO_AGP_COMPAT_PIN=$AGP_COMPAT_VERSION"
-echo "APPFORGE_EXPO_AGP_COMPAT_REASON=PREFAB_SHEBANG_REGRESSION_8_8_PLUS"
-
 echo "APPFORGE_EXPO_NATIVE_PROPERTIES=PASS"
 
 rm -rf "$SOURCE/android"
@@ -880,6 +815,265 @@ test -s "$JAVA_PROCESS_PROBE"
 
 echo "APPFORGE_EXPO_AGP_RUNTIME_PROBE=READY"
 echo "APPFORGE_EXPO_JAVA_PROCESS_PROBE=READY"
+
+#
+# APPFORGE_EXPO_PREFAB_EXEC_SECURITY_SHIM_V1
+#
+# Physical proof established:
+# - actual AGP is 8.11.0
+# - Java direct execution of prefab_command fails
+# - /bin/sh prefab_command succeeds with rc=0
+#
+# Install a narrowly scoped Java 17 SecurityManager hook inside the
+# Gradle JVM. ProcessBuilder calls checkExec immediately before native
+# process launch. For the exact AGP-generated prefab_command under the
+# AppForge-owned native build root, prepend a POSIX shell shebang.
+#
+PREFAB_EXEC_SHIM="$EXPO_NATIVE_BUILD_ROOT/appforge-prefab-exec-shim.init.gradle"
+
+cat > "$PREFAB_EXEC_SHIM" <<'GROOVY'
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.security.Permission
+
+class AppForgePrefabExecSecurityManager extends SecurityManager {
+    private final SecurityManager delegateManager
+    private final String allowedRoot
+
+    AppForgePrefabExecSecurityManager(
+        SecurityManager delegateManager,
+        String allowedRoot
+    ) {
+        this.delegateManager =
+            delegateManager
+
+        this.allowedRoot =
+            new File(
+                allowedRoot
+            ).canonicalPath
+    }
+
+    @Override
+    void checkPermission(
+        Permission permission
+    ) {
+        if (
+            delegateManager !=
+                null
+        ) {
+            delegateManager
+                .checkPermission(
+                    permission
+                )
+        }
+    }
+
+    @Override
+    void checkPermission(
+        Permission permission,
+        Object context
+    ) {
+        if (
+            delegateManager !=
+                null
+        ) {
+            delegateManager
+                .checkPermission(
+                    permission,
+                    context
+                )
+        }
+    }
+
+    @Override
+    void checkExec(
+        String command
+    ) {
+        patchPrefabCommand(
+            command
+        )
+
+        if (
+            delegateManager !=
+                null
+        ) {
+            delegateManager
+                .checkExec(
+                    command
+                )
+        }
+    }
+
+    private void patchPrefabCommand(
+        String command
+    ) {
+        if (
+            command ==
+                null
+        ) {
+            return
+        }
+
+        File target =
+            new File(
+                command
+            )
+
+        if (
+            target.name !=
+                "prefab_command"
+        ) {
+            return
+        }
+
+        String canonical =
+            target.canonicalPath
+
+        String rootPrefix =
+            allowedRoot +
+            File.separator
+
+        if (
+            !canonical.startsWith(
+                rootPrefix
+            )
+        ) {
+            return
+        }
+
+        if (
+            !target.isFile()
+        ) {
+            throw new SecurityException(
+                "AppForge Prefab command disappeared before execution."
+            )
+        }
+
+        byte[] original =
+            Files.readAllBytes(
+                target.toPath()
+            )
+
+        if (
+            original.length >= 2 &&
+            original[0] == (byte) '#' &&
+            original[1] == (byte) '!'
+        ) {
+            println(
+                "APPFORGE_EXPO_PREFAB_EXEC_SHIM=ALREADY_PATCHED"
+            )
+
+            return
+        }
+
+        String prefix =
+            new String(
+                original,
+                0,
+                Math.min(
+                    original.length,
+                    256
+                ),
+                StandardCharsets.UTF_8
+            )
+
+        if (
+            !prefix.startsWith(
+                "/opt/appforge-device/jdk-17/bin/java"
+            )
+        ) {
+            throw new SecurityException(
+                "AppForge refused unexpected prefab_command content."
+            )
+        }
+
+        byte[] shebang =
+            "#!/bin/sh\n"
+                .getBytes(
+                    StandardCharsets.UTF_8
+                )
+
+        byte[] patched =
+            new byte[
+                shebang.length +
+                original.length
+            ]
+
+        System.arraycopy(
+            shebang,
+            0,
+            patched,
+            0,
+            shebang.length
+        )
+
+        System.arraycopy(
+            original,
+            0,
+            patched,
+            shebang.length,
+            original.length
+        )
+
+        Files.write(
+            target.toPath(),
+            patched
+        )
+
+        println(
+            "APPFORGE_EXPO_PREFAB_EXEC_SHIM=PATCHED"
+        )
+
+        println(
+            "APPFORGE_EXPO_PREFAB_EXEC_SHIM_PATH=" +
+            canonical
+        )
+    }
+}
+
+def appforgePrefabRoot =
+    System.getenv(
+        "APPFORGE_EXPO_NATIVE_ROOT"
+    )
+
+if (
+    appforgePrefabRoot ==
+        null ||
+    appforgePrefabRoot
+        .trim()
+        .isEmpty()
+) {
+    throw new GradleException(
+        "APPFORGE_EXPO_NATIVE_ROOT is missing."
+    )
+}
+
+def previousSecurityManager =
+    System.getSecurityManager()
+
+if (
+    !(
+        previousSecurityManager
+            instanceof
+        AppForgePrefabExecSecurityManager
+    )
+) {
+    System.setSecurityManager(
+        new AppForgePrefabExecSecurityManager(
+            previousSecurityManager,
+            appforgePrefabRoot
+        )
+    )
+}
+
+println(
+    "APPFORGE_EXPO_PREFAB_EXEC_SHIM=ARMED"
+)
+GROOVY
+
+test -s "$PREFAB_EXEC_SHIM"
+
+echo "APPFORGE_EXPO_PREFAB_EXEC_SHIM_FILE=READY"
 
 ROOT_GRADLE="$SOURCE/android/build.gradle"
 
