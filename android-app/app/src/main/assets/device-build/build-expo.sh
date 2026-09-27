@@ -830,6 +830,227 @@ if (
     );
 }
 
+if (
+  !activity.includes(
+    "APPFORGE_EXPO_FULL_ONCREATE_GUARD_V13"
+  )
+) {
+  const onCreatePattern =
+    /override\s+fun\s+onCreate\s*\([^)]*\)\s*\{/m;
+
+  const onCreateMatch =
+    onCreatePattern.exec(activity);
+
+  if (!onCreateMatch) {
+    throw new Error(
+      "MainActivity onCreate function anchor missing"
+    );
+  }
+
+  const lineStart =
+    activity.lastIndexOf(
+      "\n",
+      onCreateMatch.index
+    ) + 1;
+
+  const methodIndent =
+    activity
+      .slice(
+        lineStart,
+        onCreateMatch.index
+      )
+      .match(/^[ \t]*/)[0];
+
+  const openIndex =
+    onCreateMatch.index +
+    onCreateMatch[0].lastIndexOf("{");
+
+  let depth = 0;
+  let closeIndex = -1;
+  let quote = null;
+  let escaped = false;
+  let lineComment = false;
+  let blockComment = false;
+
+  for (
+    let index = openIndex;
+    index < activity.length;
+    index += 1
+  ) {
+    const current = activity[index];
+    const next = activity[index + 1];
+
+    if (lineComment) {
+      if (current === "\n") {
+        lineComment = false;
+      }
+
+      continue;
+    }
+
+    if (blockComment) {
+      if (
+        current === "*" &&
+        next === "/"
+      ) {
+        blockComment = false;
+        index += 1;
+      }
+
+      continue;
+    }
+
+    if (quote !== null) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (current === "\\") {
+        escaped = true;
+        continue;
+      }
+
+      if (current === quote) {
+        quote = null;
+      }
+
+      continue;
+    }
+
+    if (
+      current === "/" &&
+      next === "/"
+    ) {
+      lineComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (
+      current === "/" &&
+      next === "*"
+    ) {
+      blockComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (
+      current === '"' ||
+      current === "'"
+    ) {
+      quote = current;
+      continue;
+    }
+
+    if (current === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (current === "}") {
+      depth -= 1;
+
+      if (depth === 0) {
+        closeIndex = index;
+        break;
+      }
+    }
+  }
+
+  if (closeIndex < 0) {
+    throw new Error(
+      "MainActivity onCreate closing brace missing"
+    );
+  }
+
+  const originalBody =
+    activity
+      .slice(
+        openIndex + 1,
+        closeIndex
+      )
+      .replace(/^\s*\n/, "")
+      .replace(/\s*$/, "");
+
+  const originalLines =
+    originalBody.length === 0
+      ? []
+      : originalBody.split("\n");
+
+  const nonBlankIndents =
+    originalLines
+      .filter(
+        (line) =>
+          line.trim().length > 0
+      )
+      .map(
+        (line) =>
+          (line.match(/^[ \t]*/) || [""])[0]
+            .length
+      );
+
+  const commonIndent =
+    nonBlankIndents.length > 0
+      ? Math.min(...nonBlankIndents)
+      : 0;
+
+  const bodyIndent =
+    methodIndent + "  ";
+
+  const nestedIndent =
+    bodyIndent + "  ";
+
+  const nestedBody =
+    originalLines
+      .map(
+        (line) => {
+          if (line.trim().length === 0) {
+            return "";
+          }
+
+          return (
+            nestedIndent +
+            line.slice(commonIndent)
+          );
+        }
+      )
+      .join("\n");
+
+  const wrappedBody =
+    "\n" +
+    bodyIndent +
+    "// APPFORGE_EXPO_FULL_ONCREATE_GUARD_V13\n" +
+    bodyIndent +
+    'AppForgeExpoRuntimeProbe.mark(this, "MAIN_ACTIVITY_ONCREATE_ENTER")\n' +
+    bodyIndent +
+    "try {\n" +
+    nestedBody +
+    "\n" +
+    bodyIndent +
+    "} catch (error: Throwable) {\n" +
+    nestedIndent +
+    'AppForgeExpoRuntimeProbe.mark(this, "MAIN_ACTIVITY_ONCREATE_CATCH")\n' +
+    nestedIndent +
+    "AppForgeExpoRuntimeProbe.activityThrowable(this, error)\n" +
+    nestedIndent +
+    "throw error\n" +
+    bodyIndent +
+    "}\n" +
+    bodyIndent +
+    'AppForgeExpoRuntimeProbe.mark(this, "MAIN_ACTIVITY_ONCREATE_RETURN")\n' +
+    methodIndent;
+
+  activity =
+    activity.slice(
+      0,
+      openIndex + 1
+    ) +
+    wrappedBody +
+    activity.slice(closeIndex);
+}
+
 fs.writeFileSync(
   activityPath,
   activity
@@ -842,6 +1063,22 @@ grep -q \
 
 grep -q \
   'APPFORGE_EXPO_ACTIVITY_GUARD_V12' \
+  "$MAIN_ACTIVITY"
+
+grep -q \
+  'APPFORGE_EXPO_FULL_ONCREATE_GUARD_V13' \
+  "$MAIN_ACTIVITY"
+
+grep -q \
+  'MAIN_ACTIVITY_ONCREATE_ENTER' \
+  "$MAIN_ACTIVITY"
+
+grep -q \
+  'MAIN_ACTIVITY_ONCREATE_CATCH' \
+  "$MAIN_ACTIVITY"
+
+grep -q \
+  'MAIN_ACTIVITY_ONCREATE_RETURN' \
   "$MAIN_ACTIVITY"
 
 grep -q \
@@ -876,6 +1113,7 @@ echo "APPFORGE_EXPO_RUNTIME_PROBE_FILE=$APPFORGE_EXPO_PROBE_FILE"
 echo "APPFORGE_EXPO_RUNTIME_PROBE_REPORT=Downloads/AppForgeStudio/ExpoCrash"
 echo "APPFORGE_EXPO_RUNTIME_CRASH_PROBE=PASS"
 echo "APPFORGE_EXPO_RUNTIME_EXIT_PROBE_V12=PASS"
+echo "APPFORGE_EXPO_FULL_ONCREATE_CAPTURE_V13=PASS"
 
 #
 # Change Gradle properties while the project is still on the

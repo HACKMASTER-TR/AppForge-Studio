@@ -343,6 +343,31 @@ test(
 
     assert.match(
       expo,
+      /APPFORGE_EXPO_FULL_ONCREATE_GUARD_V13/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_ONCREATE_ENTER/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_ONCREATE_CATCH/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_ONCREATE_RETURN/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_FULL_ONCREATE_CAPTURE_V13=PASS/
+    );
+
+    assert.match(
+      expo,
       /getHistoricalProcessExitReasons/
     );
 
