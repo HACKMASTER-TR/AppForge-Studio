@@ -373,6 +373,26 @@ test(
 
     assert.match(
       expo,
+      /APPFORGE_EXPO_ACTIVITY_IDENTITY_V14_1/
+    );
+
+    assert.match(
+      expo,
+      /ACTIVITY_PRE_CREATED_CLASS=/
+    );
+
+    assert.match(
+      expo,
+      /ACTIVITY_PRE_CREATED_COMPONENT=/
+    );
+
+    assert.match(
+      expo,
+      /ACTIVITY_CALLBACKS_REGISTERED=PASS/
+    );
+
+    assert.match(
+      expo,
       /APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14=PASS/
     );
 

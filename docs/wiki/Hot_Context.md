@@ -53,8 +53,8 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- V13 APK audit proves the installed `(6)` fixture contains the V13 markers, yet physical reports still contain no `MAIN_ACTIVITY_ONCREATE_ENTER`; Android exit history continues to report reason `4` (`crash`) while bundle and Hermes remain PASS.
-- V14 traces the earlier activity-creation boundary: MainActivity init, `attachBaseContext` enter/return, and Application lifecycle `ACTIVITY_PRE_CREATED/CREATED`.
+- V14 fixture audit proves the APK contains MainActivity init/attach/onCreate markers, bundle, and Hermes, while runtime reports still show no Activity marker and exit reason `4` (`crash`).
+- The V14 lifecycle probe filtered callbacks to `MainActivity`, so absence of lifecycle markers did not prove that no other launcher Activity was created. V14.1 removes that filter and records every Activity class and resolved component.
 - Expo remains experimental until the installed fixture renders and stays open.
 - SDK XML/platform warnings are secondary unless they become build-blocking.
 

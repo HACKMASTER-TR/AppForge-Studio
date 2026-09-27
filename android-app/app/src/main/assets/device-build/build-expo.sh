@@ -518,70 +518,99 @@ object AppForgeExpoRuntimeProbe {
     private fun installActivityLifecycleProbe(
         app: android.app.Application
     ) {
+        // APPFORGE_EXPO_ACTIVITY_IDENTITY_V14_1
+        fun record(
+            stage: String,
+            activity: android.app.Activity
+        ) {
+            val className =
+                activity.javaClass.name
+
+            val component =
+                try {
+                    activity.intent
+                        ?.component
+                        ?.flattenToShortString()
+                        ?: "NONE"
+                } catch (error: Throwable) {
+                    "ERROR:" +
+                        error.javaClass.name
+                }
+
+            write(
+                app,
+                "STAGE=" + stage
+            )
+
+            write(
+                app,
+                stage + "_CLASS=" + className
+            )
+
+            write(
+                app,
+                stage + "_COMPONENT=" + component
+            )
+        }
+
         app.registerActivityLifecycleCallbacks(
             object :
                 android.app.Application.ActivityLifecycleCallbacks {
-
-                private fun isMain(
-                    activity: android.app.Activity
-                ): Boolean =
-                    activity.javaClass.simpleName ==
-                        "MainActivity"
 
                 override fun onActivityPreCreated(
                     activity: android.app.Activity,
                     savedInstanceState: android.os.Bundle?
                 ) {
-                    if (isMain(activity)) {
-                        write(
-                            app,
-                            "STAGE=ACTIVITY_PRE_CREATED"
-                        )
-                    }
+                    record(
+                        "ACTIVITY_PRE_CREATED",
+                        activity
+                    )
                 }
 
                 override fun onActivityCreated(
                     activity: android.app.Activity,
                     savedInstanceState: android.os.Bundle?
                 ) {
-                    if (isMain(activity)) {
-                        write(
-                            app,
-                            "STAGE=ACTIVITY_CREATED"
-                        )
-                    }
+                    record(
+                        "ACTIVITY_CREATED",
+                        activity
+                    )
                 }
 
                 override fun onActivityStarted(
                     activity: android.app.Activity
                 ) {
-                    if (isMain(activity)) {
-                        write(
-                            app,
-                            "STAGE=ACTIVITY_STARTED"
-                        )
-                    }
+                    record(
+                        "ACTIVITY_STARTED",
+                        activity
+                    )
                 }
 
                 override fun onActivityResumed(
                     activity: android.app.Activity
                 ) {
-                    if (isMain(activity)) {
-                        write(
-                            app,
-                            "STAGE=ACTIVITY_RESUMED"
-                        )
-                    }
+                    record(
+                        "ACTIVITY_RESUMED",
+                        activity
+                    )
                 }
 
                 override fun onActivityPaused(
                     activity: android.app.Activity
                 ) {
+                    record(
+                        "ACTIVITY_PAUSED",
+                        activity
+                    )
                 }
 
                 override fun onActivityStopped(
                     activity: android.app.Activity
                 ) {
+                    record(
+                        "ACTIVITY_STOPPED",
+                        activity
+                    )
                 }
 
                 override fun onActivitySaveInstanceState(
@@ -593,8 +622,17 @@ object AppForgeExpoRuntimeProbe {
                 override fun onActivityDestroyed(
                     activity: android.app.Activity
                 ) {
+                    record(
+                        "ACTIVITY_DESTROYED",
+                        activity
+                    )
                 }
             }
+        )
+
+        write(
+            app,
+            "ACTIVITY_CALLBACKS_REGISTERED=PASS"
         )
     }
 
@@ -1250,6 +1288,22 @@ grep -q \
   "$APPFORGE_EXPO_PROBE_FILE"
 
 grep -q \
+  'APPFORGE_EXPO_ACTIVITY_IDENTITY_V14_1' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -q \
+  'ACTIVITY_PRE_CREATED_CLASS=' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -q \
+  'ACTIVITY_PRE_CREATED_COMPONENT=' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -q \
+  'ACTIVITY_CALLBACKS_REGISTERED=PASS' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -q \
   'APPFORGE_EXPO_ACTIVITY_GUARD_V12' \
   "$MAIN_ACTIVITY"
 
@@ -1303,6 +1357,7 @@ echo "APPFORGE_EXPO_RUNTIME_CRASH_PROBE=PASS"
 echo "APPFORGE_EXPO_RUNTIME_EXIT_PROBE_V12=PASS"
 echo "APPFORGE_EXPO_FULL_ONCREATE_CAPTURE_V13=PASS"
 echo "APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14=PASS"
+echo "APPFORGE_EXPO_ACTIVITY_IDENTITY_V14_1=PASS"
 
 #
 # Change Gradle properties while the project is still on the
