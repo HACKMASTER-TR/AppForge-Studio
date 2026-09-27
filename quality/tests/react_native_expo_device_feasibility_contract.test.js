@@ -37,3 +37,11 @@ test("Unified Agent keeps canonical Expo engine naming", () => {
   assert.doesNotMatch(agentPreparer, /expo-android/);
   assert.match(agentPreparer, /AppForgeAgentPlatform\.REACT_NATIVE\s*->\s*"expo"/);
 });
+
+test("Unified Agent generated Expo source uses the accepted SDK54 RN0.81 READY gate", () => {
+  assert.match(agentPreparer, /"expo": "~54\.0\.0"/);
+  assert.match(agentPreparer, /"react-native": "0\.81\.4"/);
+  assert.match(agentPreparer, /require\(analysis\.buildReady\)/);
+  assert.doesNotMatch(agentPreparer, /experimentalExpoSource/);
+  assert.doesNotMatch(agentPreparer, /buildReady=false/);
+});

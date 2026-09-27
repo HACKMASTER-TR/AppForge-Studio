@@ -46,6 +46,7 @@ source_files:
 - V21 makes active-build notification return navigation/rebind-only, uses one shared engine progress rule for UI + notification, and adds event-driven build milestones.
 - V21 replaces epoch Build No values with a synchronously persisted sequence beginning at `AF-0000001000`.
 - V21 CI compile follow-up replaces six stale Builder `backendProgress` stage-label references with the shared `safeProgress` value; the first V21 CI run failed only on those unresolved references.
+- The next V21 CI run compiled successfully and reached all 259 Android/JVM unit tests; one stale Unified Agent test still expected accepted Expo SDK54/RN0.81 to report `buildReady=false`. This follow-up aligns that unit test and removes the obsolete experimental bypass from the preparer.
 
 ## Physical Re-acceptance Still Required
 

@@ -88,26 +88,13 @@ internal object AppForgeAgentBuildProjectPreparer {
             }
 
             /*
-             * React Native/Expo source packaging and device-build
-             * acceptance are intentionally separate.
-             *
-             * The Unified Agent may prepare the generated Expo source
-             * for an experimental DEBUG acceptance build, but the
-             * detector must continue reporting buildReady=false and
-             * DeviceBuildEngine remains the authoritative release gate.
+             * Unified Agent generated React Native source is the pinned
+             * Expo SDK 54 / React Native 0.81 family. That exact family
+             * is physically accepted and must pass the normal READY gate.
+             * Standalone react-native remains experimental and is not
+             * emitted by this preparer path.
              */
-            val experimentalExpoSource =
-                blueprint.platform ==
-                    AppForgeAgentPlatform.REACT_NATIVE &&
-                    analysis.technologyId ==
-                        "expo" &&
-                    analysis.buildEngine ==
-                        "expo"
-
-            require(
-                analysis.buildReady ||
-                    experimentalExpoSource
-            ) {
+            require(analysis.buildReady) {
                 "Üretilen proje AppForge build için hazır değil: ${analysis.technologyReason.orEmpty()}"
             }
             require(analysis.buildEngine == expectedEngine) {
