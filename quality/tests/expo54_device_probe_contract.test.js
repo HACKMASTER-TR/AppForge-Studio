@@ -645,55 +645,49 @@ test(
 );
 
 test(
-  "Expo Prefab uses scoped JDK fork fallback for shebangless AGP commands",
+  "Expo pins pre-8.8 AGP while the Prefab shebang regression is unresolved",
   () => {
-    const marker =
-      "APPFORGE_EXPO_PREFAB_FORK_FALLBACK_V1";
-
-    const property =
-      "-Djdk.lang.Process.launchMechanism=FORK";
-
-    const runtimeMarker =
-      "APPFORGE_EXPO_PREFAB_LAUNCH_MECHANISM=FORK";
-
-    const shimMarker =
-      "APPFORGE_EXPO_PREFAB_SHEBANG_SHIM=JDK_FORK_FALLBACK";
-
-    assert.equal(
-      engine.split(marker).length - 1,
-      1
-    );
-
-    assert.equal(
-      engine.split(property).length - 1,
-      1
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_AGP_87_COMPAT_V1/
     );
 
     assert.match(
-      engine,
-      /if \(nodeRequired\) \{[\s\S]*APPFORGE_EXPO_PREFAB_FORK_FALLBACK_V1[\s\S]*JAVA_TOOL_OPTIONS=-Djdk\.lang\.Process\.launchMechanism=FORK/
+      expo,
+      /AGP_COMPAT_VERSION="8\.7\.3"/
     );
 
     assert.match(
-      engine,
-      new RegExp(runtimeMarker)
+      expo,
+      /APPFORGE_EXPO_AGP_COMPAT_PIN/
     );
 
     assert.match(
-      engine,
-      new RegExp(shimMarker)
+      expo,
+      /PREFAB_SHEBANG_REGRESSION_8_8_PLUS/
     );
 
-    const forkIndex =
-      engine.indexOf(marker);
+    assert.doesNotMatch(
+      engine,
+      /APPFORGE_EXPO_PREFAB_FORK_FALLBACK_V1/
+    );
 
-    const nativeRootIndex =
-      engine.indexOf(
-        "APPFORGE_EXPO_NATIVE_ROOT=",
-        forkIndex
+    assert.doesNotMatch(
+      engine,
+      /jdk\.lang\.Process\.launchMechanism=FORK/
+    );
+
+    const pin =
+      expo.indexOf(
+        "APPFORGE_EXPO_AGP_COMPAT_PIN"
       );
 
-    assert.ok(forkIndex >= 0);
-    assert.ok(nativeRootIndex > forkIndex);
+    const copyback =
+      expo.indexOf(
+        "APPFORGE_EXPO_ANDROID_COPYBACK=PASS"
+      );
+
+    assert.ok(pin >= 0);
+    assert.ok(copyback > pin);
   }
 );

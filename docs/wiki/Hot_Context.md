@@ -3,8 +3,8 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-25
-last_verified: 2026-09-25
+updated: 2026-09-27
+last_verified: 2026-09-27
 confidence: high
 tags:
   - hot-context
@@ -49,6 +49,17 @@ source_files:
 - Physical offline acceptance is complete for the current React/Vite, native Java, native Kotlin and Python/Chaquopy fixtures.
 - Python generated runtime safe-area handling, safe build cancellation and active-build lifecycle restoration passed device re-test.
 
+## Expo SDK 54 Experimental Acceptance — 2026-09-27
+
+- Expo SDK 54 / React Native 0.81 remains EXPERIMENTAL with zero accepted outputs.
+- Commit `ccad35f` passed Android Debug CI and produced a verified AppForge Studio APK.
+- Physical Expo build still failed in `:expo-modules-core:configureCMakeDebug[arm64-v8a]`.
+- The generated `prefab_command` was mode 700, readable and executable, owned by root, and had no shebang.
+- Moving native intermediates to rootfs-native storage did not remove the failure.
+- The scoped JDK `FORK` launch-mechanism experiment also did not remove the failure and is superseded.
+- The next controlled experiment pins Expo SDK 54 acceptance to AGP 8.7.3, before the reported AGP 8.8+ Prefab shebang regression.
+- Physical-device APK build and runtime acceptance remain mandatory before Expo can become READY.
+
 ## Must Know
 
 - Source, tests, CI and observed runtime behavior override wiki claims.
@@ -63,11 +74,11 @@ source_files:
 
 ## Safety Boundaries
 
-- Do not merge PR #56 without explicit approval.
-- Do not start Play Production.
-- Do not deploy Cloudflare or apply D1 migrations during this sequence.
-- Do not modify the verified Windows Host.
-- Preserve .appforge backups and device acceptance evidence.
+- A standing owner authorization for the full fail-stop delivery chain is recorded in [[Standing_Delivery_Authorization]].
+- Do not continue past a failed mandatory local, CI, physical-device, security, migration, release, or production gate.
+- D1 migration execution remains technically blocked until migration history is reconciled and verified.
+- Do not modify the verified Windows Host without a technically justified change.
+- Preserve `.appforge/` backups and device acceptance evidence.
 
 ## Read Next
 

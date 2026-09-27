@@ -3,8 +3,8 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-09-27
+last_verified: 2026-09-27
 confidence: high
 tags:
   - index
@@ -19,6 +19,7 @@ source_files: []
 ## Start Here
 
 - [[Hot_Context]]
+- [[Standing_Delivery_Authorization]]
 - [[Current_Status]]
 - [[Project_Overview]]
 - [[Open_Questions]]

@@ -329,6 +329,72 @@ test "$SEARCH_LINE" -lt "$USE_LINE"
 echo "APPFORGE_EXPO_NATIVE_AUTOLINK_SETTINGS=PASS"
 echo "APPFORGE_EXPO_AUTOLINK_SEARCH_MODE=EXACT_MODULES"
 
+#
+# APPFORGE_EXPO_AGP_87_COMPAT_V1
+#
+# AGP 8.8+ can generate Linux Prefab command files which are executable
+# but have no shebang. Android/PRoot cannot direct-exec those files.
+#
+# Expo SDK 54 / RN 0.81 acceptance therefore uses a temporary pre-8.8
+# AGP compatibility pin while the upstream Prefab launcher regression
+# remains unresolved.
+#
+AGP_COMPAT_VERSION="8.7.3"
+ROOT_GRADLE_NATIVE="$PREBUILD/android/build.gradle"
+
+test -f "$ROOT_GRADLE_NATIVE"
+
+ROOT_GRADLE_NATIVE="$ROOT_GRADLE_NATIVE" \
+AGP_COMPAT_VERSION="$AGP_COMPAT_VERSION" \
+"$NODE_HOME/bin/node" <<'NODE'
+const fs = require("fs");
+
+const file =
+  process.env.ROOT_GRADLE_NATIVE;
+
+const pin =
+  process.env.AGP_COMPAT_VERSION;
+
+let text =
+  fs.readFileSync(
+    file,
+    "utf8"
+  );
+
+const matcher =
+  /classpath\((["'])com\.android\.tools\.build:gradle(?::[^"']+)?\1\)/;
+
+const match =
+  text.match(matcher);
+
+if (!match) {
+  throw new Error(
+    "Android Gradle Plugin classpath declaration was not found."
+  );
+}
+
+const quote =
+  match[1];
+
+text =
+  text.replace(
+    matcher,
+    `classpath(${quote}com.android.tools.build:gradle:${pin}${quote})`
+  );
+
+fs.writeFileSync(
+  file,
+  text
+);
+NODE
+
+grep -Eq \
+  'com\.android\.tools\.build:gradle:8\.7\.3' \
+  "$ROOT_GRADLE_NATIVE"
+
+echo "APPFORGE_EXPO_AGP_COMPAT_PIN=$AGP_COMPAT_VERSION"
+echo "APPFORGE_EXPO_AGP_COMPAT_REASON=PREFAB_SHEBANG_REGRESSION_8_8_PLUS"
+
 echo "APPFORGE_EXPO_NATIVE_PROPERTIES=PASS"
 
 rm -rf "$SOURCE/android"

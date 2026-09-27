@@ -3,8 +3,8 @@ type: prompt
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-09-27
+last_verified: 2026-09-27
 confidence: high
 tags:
   - agent-rules
@@ -31,7 +31,8 @@ source_files:
 - Use focused, existing project-relative `source_files` and follow relevant dependencies only when needed.
 - Keep prompts reusable and do not create IDE-specific files by default.
 - Preserve ADRs and significant problem history. Supersede or archive; do not silently delete.
-- Do not commit, push, deploy, or publish without explicit user authorization.
+- Commit, push, deploy, release, merge, and publishing require explicit user authorization. A currently active standing authorization recorded in [[Standing_Delivery_Authorization]] counts as that explicit authorization within its documented scope until the owner revokes or replaces it.
+- Standing authorization never bypasses fail-stop tests, CI, physical acceptance, security checks, migration preconditions, or production gates.
 
 ## Memory Quality and Token Budget
 
