@@ -53,8 +53,8 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- V14 fixture audit proves the APK contains MainActivity init/attach/onCreate markers, bundle, and Hermes, while runtime reports still show no Activity marker and exit reason `4` (`crash`).
-- V14.1 removes the MainActivity-only lifecycle filter and records every Activity class/component. Its first physical rebuild exposed a fail-fast verification bug: the script searched for generated runtime values (`ACTIVITY_PRE_CREATED_CLASS=` / `COMPONENT=`) that cannot exist literally in source because they are constructed from `stage`. V14.1.1 verifies the real source expressions instead.
+- V14.1.1 physical report proves `ACTIVITY_CALLBACKS_REGISTERED=PASS`, but no Activity lifecycle callback fires before Android records exit reason `4` (`crash`); bundle and Hermes remain PASS.
+- V15 installs an Expo-only `AppComponentFactory` probe that records the requested Activity class/component before framework instantiation and captures any class-load/constructor throwable before `onCreate()`.
 - Expo remains experimental until the installed fixture renders and stays open.
 - SDK XML/platform warnings are secondary unless they become build-blocking.
 

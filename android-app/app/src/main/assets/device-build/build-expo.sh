@@ -488,6 +488,93 @@ object AppForgeExpoRuntimeProbe {
         }
     }
 
+    fun componentFactoryStage(
+        stage: String,
+        className: String,
+        intent: android.content.Intent?
+    ) {
+        val app = applicationRef
+
+        if (app == null) {
+            android.util.Log.e(
+                TAG,
+                "COMPONENT_FACTORY_NO_APPLICATION:" +
+                    stage +
+                    ":" +
+                    className
+            )
+            return
+        }
+
+        val component =
+            try {
+                intent
+                    ?.component
+                    ?.flattenToShortString()
+                    ?: "NONE"
+            } catch (error: Throwable) {
+                "ERROR:" +
+                    error.javaClass.name
+            }
+
+        write(
+            app,
+            "STAGE=" + stage
+        )
+
+        write(
+            app,
+            stage + "_CLASS=" + className
+        )
+
+        write(
+            app,
+            stage + "_COMPONENT=" + component
+        )
+    }
+
+    fun componentFactoryThrowable(
+        className: String,
+        error: Throwable
+    ) {
+        val app = applicationRef
+
+        if (app == null) {
+            android.util.Log.e(
+                TAG,
+                "COMPONENT_FACTORY_THROWABLE_NO_APPLICATION:" +
+                    className,
+                error
+            )
+            return
+        }
+
+        write(
+            app,
+            "COMPONENT_FACTORY_THROWABLE_CLASS_NAME=" +
+                className
+        )
+
+        write(
+            app,
+            "COMPONENT_FACTORY_THROWABLE_CLASS=" +
+                error.javaClass.name
+        )
+
+        write(
+            app,
+            "COMPONENT_FACTORY_THROWABLE_MESSAGE=" +
+                (error.message ?: "")
+        )
+
+        write(
+            app,
+            "COMPONENT_FACTORY_THROWABLE_STACK_BEGIN\n" +
+                android.util.Log.getStackTraceString(error) +
+                "\nCOMPONENT_FACTORY_THROWABLE_STACK_END"
+        )
+    }
+
     fun activityThrowable(
         context: android.content.Context,
         error: Throwable
@@ -813,6 +900,190 @@ object AppForgeExpoRuntimeProbe {
 EOF
 
 test -s "$APPFORGE_EXPO_PROBE_FILE"
+
+#
+# APPFORGE_EXPO_COMPONENT_FACTORY_V15
+#
+# ActivityLifecycleCallbacks begin only after an Activity instance exists.
+# V14.1 physically proved the callbacks were registered but never received
+# an Activity. Intercept the framework's Activity instantiation boundary so
+# class loading / constructor failures are captured before onCreate().
+#
+APPFORGE_EXPO_COMPONENT_FACTORY_FILE="$(
+  dirname "$MAIN_APPLICATION"
+)/AppForgeExpoComponentFactory.kt"
+
+cat > "$APPFORGE_EXPO_COMPONENT_FACTORY_FILE" <<EOF
+package $APPFORGE_EXPO_PACKAGE
+
+class AppForgeExpoComponentFactory :
+    androidx.core.app.CoreComponentFactory() {
+
+    override fun instantiateActivity(
+        cl: ClassLoader,
+        className: String,
+        intent: android.content.Intent?
+    ): android.app.Activity {
+        AppForgeExpoRuntimeProbe.componentFactoryStage(
+            "COMPONENT_FACTORY_BEFORE",
+            className,
+            intent
+        )
+
+        return try {
+            super.instantiateActivity(
+                cl,
+                className,
+                intent
+            ).also { activity ->
+                AppForgeExpoRuntimeProbe.componentFactoryStage(
+                    "COMPONENT_FACTORY_AFTER",
+                    activity.javaClass.name,
+                    intent
+                )
+            }
+        } catch (error: Throwable) {
+            AppForgeExpoRuntimeProbe.componentFactoryThrowable(
+                className,
+                error
+            )
+            throw error
+        }
+    }
+}
+EOF
+
+test -s "$APPFORGE_EXPO_COMPONENT_FACTORY_FILE"
+
+APPFORGE_EXPO_MANIFEST="android/app/src/main/AndroidManifest.xml"
+test -f "$APPFORGE_EXPO_MANIFEST"
+
+MANIFEST_PATH="$APPFORGE_EXPO_MANIFEST" \
+"$NODE_HOME/bin/node" <<'NODE'
+const fs = require("fs");
+
+const manifestPath =
+  process.env.MANIFEST_PATH;
+
+let xml =
+  fs.readFileSync(
+    manifestPath,
+    "utf8"
+  );
+
+if (
+  !xml.includes(
+    'xmlns:tools="http://schemas.android.com/tools"'
+  )
+) {
+  xml =
+    xml.replace(
+      /<manifest\b/,
+      '<manifest xmlns:tools="http://schemas.android.com/tools"'
+    );
+}
+
+const applicationMatch =
+  /<application\b[^>]*>/m.exec(xml);
+
+if (!applicationMatch) {
+  throw new Error(
+    "Expo AndroidManifest application tag missing"
+  );
+}
+
+let applicationTag =
+  applicationMatch[0];
+
+if (
+  !applicationTag.includes(
+    'android:appComponentFactory=".AppForgeExpoComponentFactory"'
+  )
+) {
+  applicationTag =
+    applicationTag.replace(
+      />$/,
+      '\n    android:appComponentFactory=".AppForgeExpoComponentFactory">'
+    );
+}
+
+const toolsReplace =
+  /tools:replace="([^"]*)"/;
+
+if (toolsReplace.test(applicationTag)) {
+  applicationTag =
+    applicationTag.replace(
+      toolsReplace,
+      (full, value) => {
+        const parts =
+          value
+            .split(",")
+            .map((part) => part.trim())
+            .filter(Boolean);
+
+        if (
+          !parts.includes(
+            "android:appComponentFactory"
+          )
+        ) {
+          parts.push(
+            "android:appComponentFactory"
+          );
+        }
+
+        return (
+          'tools:replace="' +
+          parts.join(",") +
+          '"'
+        );
+      }
+    );
+} else {
+  applicationTag =
+    applicationTag.replace(
+      />$/,
+      '\n    tools:replace="android:appComponentFactory">'
+    );
+}
+
+xml =
+  xml.slice(
+    0,
+    applicationMatch.index
+  ) +
+  applicationTag +
+  xml.slice(
+    applicationMatch.index +
+      applicationMatch[0].length
+  );
+
+fs.writeFileSync(
+  manifestPath,
+  xml
+);
+NODE
+
+grep -Fq \
+  'class AppForgeExpoComponentFactory' \
+  "$APPFORGE_EXPO_COMPONENT_FACTORY_FILE"
+
+grep -Fq \
+  'COMPONENT_FACTORY_BEFORE' \
+  "$APPFORGE_EXPO_COMPONENT_FACTORY_FILE"
+
+grep -Fq \
+  'componentFactoryThrowable' \
+  "$APPFORGE_EXPO_COMPONENT_FACTORY_FILE"
+
+grep -Fq \
+  'android:appComponentFactory=".AppForgeExpoComponentFactory"' \
+  "$APPFORGE_EXPO_MANIFEST"
+
+grep -Fq \
+  'tools:replace="' \
+  "$APPFORGE_EXPO_MANIFEST"
+
+echo "APPFORGE_EXPO_COMPONENT_FACTORY_V15=PASS"
 
 MAIN_APPLICATION="$MAIN_APPLICATION" \
 MAIN_ACTIVITY="$MAIN_ACTIVITY" \
@@ -1353,6 +1624,18 @@ grep -q \
   'STACKTRACE_BEGIN' \
   "$APPFORGE_EXPO_PROBE_FILE"
 
+grep -Fq \
+  'COMPONENT_FACTORY_THROWABLE_STACK_BEGIN' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -Fq \
+  'stage + "_CLASS="' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -Fq \
+  'APPFORGE_EXPO_COMPONENT_FACTORY_V15=PASS' \
+  "$0"
+
 echo "APPFORGE_EXPO_RUNTIME_PROBE_FILE=$APPFORGE_EXPO_PROBE_FILE"
 echo "APPFORGE_EXPO_RUNTIME_PROBE_REPORT=Downloads/AppForgeStudio/ExpoCrash"
 echo "APPFORGE_EXPO_RUNTIME_CRASH_PROBE=PASS"
@@ -1360,6 +1643,7 @@ echo "APPFORGE_EXPO_RUNTIME_EXIT_PROBE_V12=PASS"
 echo "APPFORGE_EXPO_FULL_ONCREATE_CAPTURE_V13=PASS"
 echo "APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14=PASS"
 echo "APPFORGE_EXPO_ACTIVITY_IDENTITY_V14_1=PASS"
+echo "APPFORGE_EXPO_COMPONENT_FACTORY_CAPTURE_V15=PASS"
 
 #
 # Change Gradle properties while the project is still on the

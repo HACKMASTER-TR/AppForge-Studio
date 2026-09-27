@@ -393,6 +393,36 @@ test(
 
     assert.match(
       expo,
+      /APPFORGE_EXPO_COMPONENT_FACTORY_V15/
+    );
+
+    assert.match(
+      expo,
+      /AppForgeExpoComponentFactory/
+    );
+
+    assert.match(
+      expo,
+      /COMPONENT_FACTORY_BEFORE/
+    );
+
+    assert.match(
+      expo,
+      /COMPONENT_FACTORY_THROWABLE_STACK_BEGIN/
+    );
+
+    assert.match(
+      expo,
+      /android:appComponentFactory/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_COMPONENT_FACTORY_CAPTURE_V15=PASS/
+    );
+
+    assert.match(
+      expo,
       /ACTIVITY_CALLBACKS_REGISTERED=PASS/
     );
 
