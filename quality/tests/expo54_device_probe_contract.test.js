@@ -348,6 +348,26 @@ test(
 
     assert.match(
       expo,
+      /const newArchProperty\s*=/
+    );
+
+    assert.match(
+      expo,
+      /isNewArchEnabled/
+    );
+
+    assert.match(
+      expo,
+      /else if \(newArchProperty\.test\(application\)\)/
+    );
+
+    assert.match(
+      expo,
+      /MainApplication Hermes\/new-arch anchor missing/
+    );
+
+    assert.match(
+      expo,
       /APPFORGE_EXPO_HERMES_RUNTIME_DEPENDENCY_V1/
     );
 

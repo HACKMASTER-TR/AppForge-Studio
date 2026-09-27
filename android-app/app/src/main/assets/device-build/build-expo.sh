@@ -609,21 +609,36 @@ if (
   const hermesProperty =
     /^(\s*)override\s+val\s+isHermesEnabled\s*:\s*Boolean\s*=\s*BuildConfig\.IS_HERMES_ENABLED\s*$/m;
 
-  if (!hermesProperty.test(application)) {
+  const newArchProperty =
+    /^(\s*)override\s+val\s+isNewArchEnabled\s*:\s*Boolean\s*=\s*BuildConfig\.IS_NEW_ARCHITECTURE_ENABLED\s*$/m;
+
+  if (hermesProperty.test(application)) {
+    application =
+      application.replace(
+        hermesProperty,
+        (line, indent) =>
+          indent +
+          "// APPFORGE_EXPO_HERMES_RUNTIME_NO_HOST_AOT_V1\n" +
+          indent +
+          "override val isHermesEnabled: Boolean = true"
+      );
+  } else if (newArchProperty.test(application)) {
+    application =
+      application.replace(
+        newArchProperty,
+        (line, indent) =>
+          line +
+          "\n" +
+          indent +
+          "// APPFORGE_EXPO_HERMES_RUNTIME_NO_HOST_AOT_V1\n" +
+          indent +
+          "override val isHermesEnabled: Boolean = true"
+      );
+  } else {
     throw new Error(
-      "MainApplication Hermes property anchor missing"
+      "MainApplication Hermes/new-arch anchor missing"
     );
   }
-
-  application =
-    application.replace(
-      hermesProperty,
-      (line, indent) =>
-        indent +
-        "// APPFORGE_EXPO_HERMES_RUNTIME_NO_HOST_AOT_V1\n" +
-        indent +
-        "override val isHermesEnabled: Boolean = true"
-    );
 }
 
 if (

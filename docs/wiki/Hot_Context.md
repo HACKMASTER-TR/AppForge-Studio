@@ -57,6 +57,8 @@ source_files:
 
 ## Current Risks / Open Questions
 
+- V9 runtime evidence reaches `ReactContextInitParams` with a missing JS executor while AppForge has `hermesEnabled=false`. V10 packages the Hermes runtime without host AOT. The first V10 physical rebuild fail-stopped before Gradle because Expo SDK 54 no longer emits an explicit `isHermesEnabled` override in MainApplication. V10.1 supports both the older Hermes-property shape and SDK 54's `isNewArchEnabled` anchor.
+
 - V9 root cause is the legacy React Native JS executor path: RN 0.81 runtime reaches `ReactContextInitParams` with a missing executor while AppForge intentionally has `hermesEnabled=false`. V10 keeps host Hermes AOT disabled, explicitly packages `hermes-android`, forces runtime Hermes in the generated MainApplication, and preserves crash evidence.
 - Additional NDK host executables may become visible after Clang advances.
 - SDK XML/platform-location warnings remain secondary unless they become build-blocking.
