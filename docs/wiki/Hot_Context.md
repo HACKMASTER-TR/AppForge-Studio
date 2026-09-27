@@ -45,7 +45,7 @@ source_files:
 - V17 physical evidence shows the sampled process remains alive past 3 seconds with both AppForge uncaught handlers intact, yet no Activity factory/lifecycle marker appears. Main Looper messages `164` and repeated `131` are observed, but no ActivityThread `EXECUTE_TRANSACTION=159`.
 - V18 direct-launch physically reaches `MainActivity`, ReactInstanceManager, and `EXECUTE_TRANSACTION=159`, then crashes on `mqt_native_modules` with `JavascriptException: Cannot read property 'EventEmitter' of undefined`.
 - V19 physical acceptance PASS: `MainActivity` reaches RESUMED, Hermes and JS run, Expo UI renders, and the prior `globalThis.expo.EventEmitter` crash is gone after duplicate-safe `ExpoModulesPackage()` registration.
-- V20 targets BUG-B directly: `expo-modules-core` CMake PCH commands are disabled only in the disposable build workspace because the intermittent clang 18.1.3 exit `139` occurs while compiling `cmake_pch.hxx.pch`.
+- V20 targets BUG-B by disabling only `expo-modules-core` CMake PCH commands in the disposable workspace. The first V20 physical attempt failed before npm install because the patch ran too early; V20.1 moves the same scoped PCH patch after dependency installation/version verification.
 
 ## Current Risks / Open Questions
 

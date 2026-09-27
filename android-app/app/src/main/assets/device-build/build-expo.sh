@@ -39,6 +39,74 @@ cd "$SOURCE"
 
 echo "APPFORGE_EXPO_NODE22_EXECUTION=PASS"
 
+if [ "${APPFORGE_DEVICE_OFFLINE:-0}" = "1" ]; then
+  echo "APPFORGE_EXPO_NPM_MODE=OFFLINE"
+
+  if [ -f package-lock.json ]; then
+    "$NODE_HOME/bin/node" "$NPM_CLI" ci \
+      --offline \
+      --no-audit \
+      --no-fund
+  else
+    "$NODE_HOME/bin/node" "$NPM_CLI" install \
+      --offline \
+      --no-audit \
+      --no-fund
+  fi
+else
+  echo "APPFORGE_EXPO_NPM_MODE=ONLINE"
+
+  if [ -f package-lock.json ]; then
+    "$NODE_HOME/bin/node" "$NPM_CLI" ci \
+      --no-audit \
+      --no-fund
+  else
+    "$NODE_HOME/bin/node" "$NPM_CLI" install \
+      --no-audit \
+      --no-fund
+  fi
+fi
+
+node <<'NODE'
+const fs = require("fs");
+
+const expo =
+  require("./node_modules/expo/package.json").version;
+
+const rn =
+  require("./node_modules/react-native/package.json").version;
+
+console.log("APPFORGE_EXPO_VERSION=" + expo);
+console.log("APPFORGE_REACT_NATIVE_VERSION=" + rn);
+
+if (!expo.startsWith("54.")) {
+  throw new Error(
+    "Experimental device engine accepts Expo SDK 54 only."
+  );
+}
+
+if (!rn.startsWith("0.81.")) {
+  throw new Error(
+    "Experimental device engine accepts React Native 0.81 only."
+  );
+}
+
+const path = "app.json";
+
+const app =
+  JSON.parse(
+    fs.readFileSync(path, "utf8")
+  );
+
+app.expo = app.expo || {};
+app.expo.newArchEnabled = false;
+
+fs.writeFileSync(
+  path,
+  JSON.stringify(app, null, 2) + "\n"
+);
+NODE
+
 #
 # APPFORGE_EXPO_DISABLE_PCH_V20
 #
@@ -54,7 +122,11 @@ echo "APPFORGE_EXPO_NODE22_EXECUTION=PASS"
 #
 APPFORGE_EXPO_CORE_CMAKE="$SOURCE/node_modules/expo-modules-core/android/cmake"
 
+test -f "$SOURCE/node_modules/expo/package.json"
+test -f "$SOURCE/node_modules/react-native/package.json"
 test -d "$APPFORGE_EXPO_CORE_CMAKE"
+
+echo "APPFORGE_EXPO_PCH_POST_NPM_V20_1=PASS"
 
 APPFORGE_EXPO_CORE_CMAKE="$APPFORGE_EXPO_CORE_CMAKE" \
 "$NODE_HOME/bin/node" <<'NODE'
@@ -276,74 +348,6 @@ fi
 
 echo "APPFORGE_EXPO_PCH_MODE=DISABLED_ARM64_HOST"
 echo "APPFORGE_EXPO_DISABLE_PCH_V20=PASS"
-
-if [ "${APPFORGE_DEVICE_OFFLINE:-0}" = "1" ]; then
-  echo "APPFORGE_EXPO_NPM_MODE=OFFLINE"
-
-  if [ -f package-lock.json ]; then
-    "$NODE_HOME/bin/node" "$NPM_CLI" ci \
-      --offline \
-      --no-audit \
-      --no-fund
-  else
-    "$NODE_HOME/bin/node" "$NPM_CLI" install \
-      --offline \
-      --no-audit \
-      --no-fund
-  fi
-else
-  echo "APPFORGE_EXPO_NPM_MODE=ONLINE"
-
-  if [ -f package-lock.json ]; then
-    "$NODE_HOME/bin/node" "$NPM_CLI" ci \
-      --no-audit \
-      --no-fund
-  else
-    "$NODE_HOME/bin/node" "$NPM_CLI" install \
-      --no-audit \
-      --no-fund
-  fi
-fi
-
-node <<'NODE'
-const fs = require("fs");
-
-const expo =
-  require("./node_modules/expo/package.json").version;
-
-const rn =
-  require("./node_modules/react-native/package.json").version;
-
-console.log("APPFORGE_EXPO_VERSION=" + expo);
-console.log("APPFORGE_REACT_NATIVE_VERSION=" + rn);
-
-if (!expo.startsWith("54.")) {
-  throw new Error(
-    "Experimental device engine accepts Expo SDK 54 only."
-  );
-}
-
-if (!rn.startsWith("0.81.")) {
-  throw new Error(
-    "Experimental device engine accepts React Native 0.81 only."
-  );
-}
-
-const path = "app.json";
-
-const app =
-  JSON.parse(
-    fs.readFileSync(path, "utf8")
-  );
-
-app.expo = app.expo || {};
-app.expo.newArchEnabled = false;
-
-fs.writeFileSync(
-  path,
-  JSON.stringify(app, null, 2) + "\n"
-);
-NODE
 
 #
 # Expo config-plugins locate MainApplication/MainActivity with glob.
@@ -2644,6 +2648,7 @@ echo "APPFORGE_EXPO_JAVA_CRASH_CAPTURE_V17=PASS"
 echo "APPFORGE_EXPO_LAUNCH_TRANSACTION_V18=PASS"
 echo "APPFORGE_EXPO_NATIVE_PACKAGE_REGISTRATION_V19=PASS"
 echo "APPFORGE_EXPO_DISABLE_PCH_V20=PASS"
+echo "APPFORGE_EXPO_PCH_POST_NPM_V20_1=PASS"
 
 #
 # Change Gradle properties while the project is still on the

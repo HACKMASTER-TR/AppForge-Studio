@@ -538,6 +538,27 @@ test(
 
     assert.match(
       expo,
+      /APPFORGE_EXPO_PCH_POST_NPM_V20_1=PASS/
+    );
+
+    const expoVersionProbe =
+      expo.indexOf(
+        'APPFORGE_EXPO_VERSION='
+      );
+
+    const pchPatch =
+      expo.indexOf(
+        '# APPFORGE_EXPO_DISABLE_PCH_V20'
+      );
+
+    assert.ok(
+      expoVersionProbe >= 0 &&
+        pchPatch > expoVersionProbe,
+      "Expo PCH patch must run after npm install/version verification"
+    );
+
+    assert.match(
+      expo,
       /ACTIVITY_CALLBACKS_REGISTERED=PASS/
     );
 
