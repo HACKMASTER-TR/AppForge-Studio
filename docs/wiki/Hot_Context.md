@@ -20,6 +20,7 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
   - "android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
   - "android-app/app/src/main/java/com/appforge/studio/AppForgeBuildNumbers.kt"
   - "android-app/app/src/main/assets/device-build/build-expo.sh"
 ---
@@ -47,17 +48,19 @@ source_files:
 - V21 replaces epoch Build No values with a synchronously persisted sequence beginning at `AF-0000001000`.
 - V21 CI compile follow-up replaces six stale Builder `backendProgress` stage-label references with the shared `safeProgress` value; the first V21 CI run failed only on those unresolved references.
 - The next V21 CI run compiled successfully and reached all 259 Android/JVM unit tests; one stale Unified Agent test still expected accepted Expo SDK54/RN0.81 to report `buildReady=false`. This follow-up aligns that unit test and removes the obsolete experimental bypass from the preparer.
-- V21 physical acceptance: progress synchronization, cancel stability, success-only 100%, and persistent Build No sequence passed. BUG-C still showed a terminal-notification UI flash (`Hazır / %0`) before a second notification tap restored `Başarılı / %100`. V21.1 seeds the terminal notification Build ID synchronously into `BuildRuntimeState` before Builder step 10 renders.
+- V21 physical acceptance: progress synchronization, cancel stability, success-only 100%, persistent Build No sequence, and build survival passed.
+- V21.1 physical BUG-C retest failed: notification return still rendered `Hazır / %0`, and the ongoing build notification remained visible after Studio returned to foreground.
+- V21.2 keeps the notification Build ID stable until snapshot hydration completes, consumes notification navigation only after `restoreFromEngine`, and stops only foreground notification tracking while preserving the active build reference for the next background transition.
 
 ## Physical Re-acceptance Still Required
 
-- BUG-C: background an active build, tap its notification, verify the same Build ID continues and is not cancelled.
-- BUG-D: verify Builder and notification show the same percentage, long stages hold steady, failure/cancel keep the last real stage, and only success reaches 100.
-- FEATURE-E: verify new builds show `AF-0000001000`, `AF-0000001001`, then after app close/reopen `AF-0000001002`.
+- BUG-C only: background an active build, tap its notification, verify Builder opens directly on the real snapshot with no `Hazır / %0` flash, the foreground notification disappears, and the same Build ID continues without cancellation.
+- BUG-D progress synchronization/cancel/success-only-100 is physically accepted and preserved.
+- FEATURE-E persistent Build No sequence is physically accepted and preserved.
 
 ## Current Risks / Open Questions
 
-- BUG-C notification return, BUG-D progress synchronization and persistent Build No still require the combined V21 physical device acceptance after the new APK is installed.
+- BUG-C V21.2 still requires the focused notification-return physical retest; BUG-D and persistent Build No are already physically accepted and must remain preserved.
 - Expo READY is intentionally scoped to Expo SDK 54 / React Native 0.81; broader Expo versions and standalone React Native remain outside the accepted surface.
 - D1 migration work remains blocked until migration history is reconciled.
 

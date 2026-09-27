@@ -933,7 +933,7 @@ class BuildProgressService : Service() {
                 )
         }
 
-        /* ACTIVE_BUILD_HOST_RESUME_GUARD_V2 */
+        /* ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_2 */
         fun onHostResumed(context: Context) {
             val reference = activeSingleBuild(context) ?: run {
                 stop(context)
@@ -944,11 +944,18 @@ class BuildProgressService : Service() {
                 stop(context)
                 return
             }
+
             if (snapshot.status.trim().lowercase() in TERMINAL_STATES) {
                 clear(context)
-                stop(context)
             }
-            // Active build intentionally keeps the existing tracker alive.
+
+            /*
+             * DeviceBuildEngine owns the actual build. While Studio is in the
+             * foreground, stop only the notification tracker. For an active
+             * build the SharedPreferences identity is intentionally preserved,
+             * so MainActivity.onStop() can restart tracking for the same job.
+             */
+            stop(context)
         }
 
         fun stop(

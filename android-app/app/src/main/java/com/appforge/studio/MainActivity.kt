@@ -890,8 +890,15 @@ private fun AppForgeApp() {
         }
     }
 
+    /*
+     * NOTIFICATION_NAVIGATION_DEFERRED_CONSUME_V21_2
+     *
+     * Keep the notification payload alive through the composition that
+     * hydrates BuildRuntimeState. Consuming it here could invalidate the
+     * restore key before the snapshot rebind has completed.
+     */
     LaunchedEffect(hostActivity?.buildNotificationSequence) {
-        if (hostActivity?.consumeBuildNotificationNavigation() == true) {
+        if (hostActivity?.openBuildFromNotification == true) {
             screen = AppScreen.BUILDER
             step = 10
         }
@@ -1279,12 +1286,12 @@ private fun AppForgeApp() {
      * ("Hazır" / 0) and the later LaunchedEffect snapshot rebind corrected
      * it only after the UI had already flashed the wrong state.
      */
+    /* NOTIFICATION_BUILD_ID_STABLE_RESTORE_V21_2 */
     val notificationBuildRestoreId =
         hostActivity
             ?.buildIdFromNotification
             ?.takeIf {
-                hostActivity.openBuildFromNotification &&
-                    it.isNotBlank()
+                it.isNotBlank()
             }
 
     val notificationBuildRestoreServerUrl =
@@ -1750,6 +1757,17 @@ private fun AppForgeApp() {
             projectKey = reference?.projectKey ?: buildProjectKey,
             startedAtMs = reference?.startedAtMs ?: buildStartedAtMs
         )
+
+        /*
+         * NOTIFICATION_RETURN_ATOMIC_HANDOFF_V21_2
+         *
+         * The real engine snapshot is now visible. Only after hydration may
+         * navigation consume the notification event. Stopping the foreground
+         * tracker removes the ongoing notification but does not cancel the
+         * DeviceBuildEngine job or erase an active build reference.
+         */
+        BuildProgressService.stop(context)
+        activity.consumeBuildNotificationNavigation()
 
         if (
             snapshot.status.trim().lowercase() in

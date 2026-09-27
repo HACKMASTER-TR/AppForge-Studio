@@ -241,17 +241,25 @@ under `quality/tests`. Existing historical bug records are retained.
 - **Expo native build BUG-B — closed physically.** V20.3 removes only
   `expo-modules-core` PCH commands in the disposable workspace. Four consecutive
   physical APK+AAB builds passed and the final APK launched.
-- **Notification return BUG-C — V21 source/CI fix, physical retest pending.**
-  The content intent reorders the existing task; resume keeps the exact active
-  engine tracker; notification navigation performs one snapshot rebind.
-- **Progress BUG-D — V21 source/CI fix, physical retest pending.** Progress is
-  event-driven from `DeviceBuildEngine`; Builder and notification share one
-  visible-progress rule; only success reaches 100.
-- **Build No FEATURE-E — V21 source/CI fix, physical retest pending.** A
-  synchronous SharedPreferences allocator reserves numbers before job creation,
-  starts at `AF-0000001000`, and never reuses a consumed number.
+- **Notification return BUG-C — V21.2 source fix, focused physical retest pending.**
+  V21.1 preserved the build but still flashed `Hazır / %0` on notification
+  return and left the ongoing notification visible in foreground. V21.2 keeps
+  the notification Build ID stable until snapshot hydration, consumes navigation
+  after rebind, and stops only foreground notification tracking.
+- **Progress BUG-D — physically accepted.** Progress is event-driven from
+  `DeviceBuildEngine`; Builder and notification share one visible-progress rule;
+  cancel does not crash and only success reaches 100.
+- **Build No FEATURE-E — physically accepted.** A synchronous SharedPreferences
+  allocator reserves numbers before job creation, starts at `AF-0000001000`,
+  persists across reopen, and never reuses a consumed number.
 
 
 ## BUG-C V21.1 terminal notification Ready/0 flash
 
-- BUG-C V21.1 terminal notification Ready/0 flash: source fix pending CI/physical retest. The build itself survives; the UI must synchronously hydrate the notification Build ID before rendering Builder step 10.
+- V21.1 physical retest failed: the build itself survived, but notification
+  return still showed `Hazır / %0` and the ongoing foreground-service
+  notification remained visible after Studio opened.
+- V21.2 makes notification return an atomic handoff: the Build ID is not gated
+  by an early-consumed navigation flag, `BuildRuntimeState` is hydrated before
+  the event is consumed, and foreground resume stops notification tracking
+  without cancelling the `DeviceBuildEngine` job or erasing its active identity.

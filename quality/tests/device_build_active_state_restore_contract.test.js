@@ -150,32 +150,59 @@ test(
 );
 
 
-test("active-build notification return does not stop or recreate the build", () => {
-  assert.match(service, /ACTIVE_BUILD_NOTIFICATION_RETURN_V2/);
+test("foreground return removes notification tracking without cancelling the active engine job", () => {
+  const start = service.indexOf(
+    "ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_2"
+  );
+  assert.ok(start >= 0);
+
+  const block = service.slice(start, start + 2200);
+
+  assert.match(block, /fun onHostResumed\(/);
+  assert.match(block, /activeSingleBuild\(context\)/);
+  assert.match(block, /DeviceBuildEngine\.snapshot\(reference\.buildId\)/);
+  assert.match(block, /stop\(context\)/);
+  assert.doesNotMatch(block, /DeviceBuildEngine\.cancel/);
+
   assert.match(service, /Intent\.FLAG_ACTIVITY_REORDER_TO_FRONT/);
   assert.match(service, /Intent\.FLAG_ACTIVITY_SINGLE_TOP/);
   assert.doesNotMatch(service, /Intent\.FLAG_ACTIVITY_CLEAR_TOP/);
-  assert.match(service, /fun onHostResumed\(/);
   assert.match(main, /BuildProgressService\.onHostResumed\(this\)/);
-  assert.doesNotMatch(main, /override fun onResume\(\)[\s\S]{0,200}BuildProgressService\.stop\(this\)/);
 });
 
-test("notification tap performs one snapshot rebind rather than a competing poll loop", () => {
+test("notification tap hydrates snapshot before consuming navigation and hides the tracker", () => {
   const start = main.indexOf("ACTIVE_BUILD_NOTIFICATION_REBIND_V2");
   assert.ok(start >= 0);
-  const block = main.slice(start, start + 3600);
-  assert.match(block, /restoreFromEngine/);
+
+  const block = main.slice(start, start + 4300);
+  const restoreIndex = block.indexOf("restoreFromEngine");
+  const stopIndex = block.indexOf("BuildProgressService.stop(context)");
+  const consumeIndex = block.indexOf("consumeBuildNotificationNavigation");
+
+  assert.ok(restoreIndex >= 0);
+  assert.ok(stopIndex > restoreIndex);
+  assert.ok(consumeIndex > restoreIndex);
   assert.doesNotMatch(block, /while\s*\(\s*true\s*\)/);
   assert.doesNotMatch(block, /cancelBuild/);
 });
 
 
-test("terminal notification seeds runtime before Builder renders Ready zero", () => {
-  assert.match(main, /TERMINAL_NOTIFICATION_SYNC_RESTORE_V21_1/);
-  assert.match(
-    main,
-    /val notificationBuildRestoreId =[\s\S]{0,500}buildIdFromNotification[\s\S]{0,400}openBuildFromNotification/
+test("notification Build ID stays stable until the snapshot rebind completes", () => {
+  const seedStart = main.indexOf(
+    "NOTIFICATION_BUILD_ID_STABLE_RESTORE_V21_2"
   );
+  assert.ok(seedStart >= 0);
+
+  const seedEnd = main.indexOf(
+    "val notificationBuildRestoreServerUrl",
+    seedStart
+  );
+  assert.ok(seedEnd > seedStart);
+
+  const seedBlock = main.slice(seedStart, seedEnd);
+  assert.match(seedBlock, /buildIdFromNotification/);
+  assert.doesNotMatch(seedBlock, /openBuildFromNotification/);
+
   assert.match(
     main,
     /val initialBuildRestoreId =[\s\S]{0,300}restoredBuildReference[\s\S]{0,300}notificationBuildRestoreId/
@@ -184,8 +211,26 @@ test("terminal notification seeds runtime before Builder renders Ready zero", ()
     main,
     /remember\(\s*initialBuildRestoreId\s*\)[\s\S]{0,2500}getBuild\(\s*restoreId\s*\)[\s\S]{0,1200}restoreFromEngine/
   );
+
+  const navStart = main.indexOf(
+    "NOTIFICATION_NAVIGATION_DEFERRED_CONSUME_V21_2"
+  );
+  const navEnd = main.indexOf(
+    "hostActivity?.accountActionSequence",
+    navStart
+  );
+  assert.ok(navStart >= 0 && navEnd > navStart);
   assert.doesNotMatch(
-    main,
-    /TERMINAL_NOTIFICATION_SYNC_RESTORE_V21_1[\s\S]{0,3500}resetForProjectChange\(\)/
+    main.slice(navStart, navEnd),
+    /consumeBuildNotificationNavigation/
+  );
+
+  const rebindStart = main.indexOf(
+    "NOTIFICATION_RETURN_ATOMIC_HANDOFF_V21_2"
+  );
+  assert.ok(rebindStart >= 0);
+  assert.match(
+    main.slice(rebindStart, rebindStart + 1200),
+    /consumeBuildNotificationNavigation/
   );
 });
