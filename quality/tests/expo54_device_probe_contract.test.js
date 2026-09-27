@@ -498,6 +498,21 @@ test(
 
     assert.match(
       expo,
+      /APPFORGE_EXPO_NATIVE_PACKAGE_REGISTRATION_V19/
+    );
+
+    assert.match(
+      expo,
+      /expo\.modules\.ExpoModulesPackage\(\)/
+    );
+
+    assert.match(
+      expo,
+      /none \{ it\.javaClass\.name == "expo\.modules\.ExpoModulesPackage" \}/
+    );
+
+    assert.match(
+      expo,
       /ACTIVITY_CALLBACKS_REGISTERED=PASS/
     );
 

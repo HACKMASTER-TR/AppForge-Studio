@@ -1773,6 +1773,34 @@ let application =
     "utf8"
   );
 
+// APPFORGE_EXPO_NATIVE_PACKAGE_REGISTRATION_V19
+if (
+  !application.includes(
+    "APPFORGE_EXPO_NATIVE_PACKAGE_REGISTRATION_V19"
+  )
+) {
+  const packagesApplyPattern =
+    /(PackageList\(this\)\.packages\.apply\s*\{)/m;
+
+  if (!packagesApplyPattern.test(application)) {
+    throw new Error(
+      "MainApplication PackageList apply anchor missing"
+    );
+  }
+
+  application =
+    application.replace(
+      packagesApplyPattern,
+      (line) =>
+        line +
+        "\n" +
+        "              // APPFORGE_EXPO_NATIVE_PACKAGE_REGISTRATION_V19\n" +
+        "              if (none { it.javaClass.name == \"expo.modules.ExpoModulesPackage\" }) {\n" +
+        "                add(expo.modules.ExpoModulesPackage())\n" +
+        "              }"
+    );
+}
+
 if (
   !application.includes(
     "AppForgeExpoRuntimeProbe.install(this)"
@@ -2206,6 +2234,20 @@ grep -q \
   "$MAIN_APPLICATION"
 
 grep -q \
+  'APPFORGE_EXPO_NATIVE_PACKAGE_REGISTRATION_V19' \
+  "$MAIN_APPLICATION"
+
+grep -Fq \
+  'expo.modules.ExpoModulesPackage()' \
+  "$MAIN_APPLICATION"
+
+grep -Fq \
+  'none { it.javaClass.name == "expo.modules.ExpoModulesPackage" }' \
+  "$MAIN_APPLICATION"
+
+echo "APPFORGE_EXPO_NATIVE_PACKAGE_REGISTRATION_V19=PASS"
+
+grep -q \
   'APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14' \
   "$MAIN_ACTIVITY"
 
@@ -2362,6 +2404,7 @@ echo "APPFORGE_EXPO_COMPONENT_FACTORY_CAPTURE_V15=PASS"
 echo "APPFORGE_EXPO_STARTUP_CAPTURE_V16=PASS"
 echo "APPFORGE_EXPO_JAVA_CRASH_CAPTURE_V17=PASS"
 echo "APPFORGE_EXPO_LAUNCH_TRANSACTION_V18=PASS"
+echo "APPFORGE_EXPO_NATIVE_PACKAGE_REGISTRATION_V19=PASS"
 
 #
 # Change Gradle properties while the project is still on the
@@ -2747,6 +2790,10 @@ echo "APPFORGE_EXPO_APP_CLASSPATH_AUTHORITY=EXPO_MODULE_RESOLVER"
 # project is discovered correctly but did not reach debugCompileClasspath
 # on the physical device. The generated Android tree is disposable, so
 # add the exact :expo project dependency as an acceptance-only fallback.
+#
+# V19 NOTE: this Gradle dependency provides Expo classes but does NOT by
+# itself register ExpoModulesPackage with React Native. MainApplication
+# therefore has a separate duplicate-safe package registration fallback.
 #
 APP_GRADLE="$SOURCE/android/app/build.gradle"
 APP_GRADLE_TMP="$SOURCE/android/app/build.gradle.appforge.$$"

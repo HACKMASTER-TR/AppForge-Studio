@@ -43,11 +43,12 @@ source_files:
 - V11.1 physically proved Hermes Java/native packaging while host Hermes AOT stays skipped and AppForge embeds the production Expo bundle.
 - V16 physically proves `AppForgeExpoComponentFactory` is active: Application instantiation BEFORE/AFTER is captured, `APPLICATION_READY` is reached, Hermes class/native load PASS, and the AppForge uncaught handler is still active at READY.
 - V17 physical evidence shows the sampled process remains alive past 3 seconds with both AppForge uncaught handlers intact, yet no Activity factory/lifecycle marker appears. Main Looper messages `164` and repeated `131` are observed, but no ActivityThread `EXECUTE_TRANSACTION=159`.
-- V18 records installed launcher resolution, enabled/exported Activity state, process importance, lifecycle count, and whether ActivityThread `EXECUTE_TRANSACTION=159` ever appears.
+- V18 direct-launch physically reaches `MainActivity`, ReactInstanceManager, and `EXECUTE_TRANSACTION=159`, then crashes on `mqt_native_modules` with `JavascriptException: Cannot read property 'EventEmitter' of undefined`.
+- Expo SDK 54 `expo-modules-core` reads `globalThis.expo.EventEmitter`; V19 addresses the missing native Expo registration by adding a duplicate-safe `ExpoModulesPackage()` fallback to generated `MainApplication`. The existing `implementation(project(":expo"))` classpath bridge is preserved but no longer treated as package registration.
 
 ## Current Risks / Open Questions
 
-- Earlier runs record Android exit reason `4`, but the sampled V17 run does not capture a current Java crash; it stays alive while no Activity launch transaction appears. V18 must distinguish launcher-resolution failure from a later crash.
+- Expo launch path is now proven through Activity resume. The active blocker is Expo Modules JSI bootstrap/package registration; V19 physical acceptance must prove the JS bundle no longer fails on `globalThis.expo.EventEmitter`.
 - Expo native compilation is intermittently unstable: identical builds can alternate PASS/FAIL in `expo-modules-core` PCH with Ubuntu clang 18.1.3 exit `139`.
 - Returning through the active-build notification can cancel the build; active build identity/session must survive background-to-foreground return.
 - Build progress is not authoritative yet. App UI and notification must share one real `DeviceBuildEngine` progress source and reach 100 only on success.
