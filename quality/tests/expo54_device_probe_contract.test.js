@@ -859,11 +859,11 @@ test(
 
 
 test(
-  "Expo ARM64 NDK uses pinned payload and host LLVM wrappers",
+  "Expo ARM64 NDK forces compiler-rt on Ubuntu ARM64 host",
   () => {
     assert.match(
       installer,
-      /APPFORGE_EXPO_ARM64_NDK_HOST_V2/
+      /APPFORGE_EXPO_ARM64_NDK_HOST_V3/
     );
 
     assert.match(
@@ -873,12 +873,12 @@ test(
 
     assert.match(
       installer,
-      /APPFORGE_EXPO_ARM64_NDK_CLANG_WRAPPER_V2/
+      /APPFORGE_EXPO_ARM64_NDK_CLANG_WRAPPER_V3/
     );
 
     assert.match(
       installer,
-      /APPFORGE_EXPO_ARM64_NDK_CLANG18_WRAPPER_V2/
+      /APPFORGE_EXPO_ARM64_NDK_CLANG18_WRAPPER_V3/
     );
 
     assert.match(
@@ -898,6 +898,36 @@ test(
 
     assert.match(
       installer,
+      /--rtlib=compiler-rt/
+    );
+
+    assert.match(
+      installer,
+      /--unwindlib=libunwind/
+    );
+
+    assert.match(
+      installer,
+      /libclang_rt\.builtins-aarch64-android\.a/
+    );
+
+    assert.match(
+      installer,
+      /lib\/linux\/aarch64\/libunwind\.a/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_COMPILER_RT_LINK=PASS/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_CXX_LINK=PASS/
+    );
+
+    assert.match(
+      installer,
       /aarch64-linux-android24/
     );
 
@@ -913,7 +943,7 @@ test(
 
     assert.match(
       installer,
-      /APPFORGE_EXPO_ARM64_NDK_HOST_V2_SMOKE=PASS/
+      /APPFORGE_EXPO_ARM64_NDK_HOST_V3_SMOKE=PASS/
     );
   }
 );

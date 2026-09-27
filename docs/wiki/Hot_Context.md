@@ -35,7 +35,7 @@ source_files:
 
 - Prefab direct execution is physically cleared.
 - ARM64 CMake/Ninja now executes successfully far enough to reach NDK compiler detection.
-- Physical V1 showed `sdkmanager` can reach the NDK x86_64 `clang-18` before wrappers are installed; V2 bypasses NDK sdkmanager on ARM64.
+- V2 physically cleared the x86_64 `clang-18` execution boundary; the next failure was Ubuntu Clang linking Android with `-lgcc`.
 
 ## Expo Physical Evidence — 2026-09-27
 
@@ -44,7 +44,7 @@ source_files:
 - ARM64 CMake/Ninja host compatibility is physically confirmed: CMake now runs instead of failing `bad machine`.
 - CMake reaches compiler detection and selects `/opt/appforge-device/android-sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/bin/clang`.
 - That official Linux NDK host executable cannot run natively on the ARM64 AppForge Ubuntu host.
-- V2 reuses a valid r27b payload or installs the checksum-pinned official archive directly, then bridges `clang`, `clang-18`, linker and LLVM host tools to ARM64 Ubuntu binaries while preserving Android target data.
+- V3 keeps the verified r27b payload and ARM64 host wrappers, while forcing Android link steps to NDK `compiler-rt` and `libunwind` instead of Ubuntu Clang's host `libgcc` default.
 - Installer acceptance requires an `aarch64-linux-android24` C link probe, C++ compile probe, and LLVM archive probe before the ARM64 NDK readiness marker is written.
 - After the next AppForge APK is installed, rerun the same Expo 54 fixture. Expo is not READY until an APK is produced and the installed runtime acceptance marker passes.
 

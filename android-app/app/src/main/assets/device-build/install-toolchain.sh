@@ -16,7 +16,7 @@ EXPO_ARM64_CMAKE_MARKER="$ROOT/.expo-arm64-cmake-host-v2"
 EXPO_ARM64_NDK_VERSION="27.1.12297006"
 EXPO_ARM64_NDK_RELEASE="r27b"
 EXPO_ARM64_NDK_SHA1="6fc476b2e57d7c01ac0c95817746b927035b9749"
-EXPO_ARM64_NDK_MARKER="$ROOT/.expo-arm64-ndk-host-v2"
+EXPO_ARM64_NDK_MARKER="$ROOT/.expo-arm64-ndk-host-v3"
 
 CMDLINE_TOOLS_VERSION="15859902"
 CMDLINE_TOOLS_SHA256="4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
@@ -116,7 +116,7 @@ if [ -f "$READY" ] \
               [ -x "$SDK/ndk/$EXPO_ARM64_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" ] &&
               [ -x "$SDK/ndk/$EXPO_ARM64_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++" ] &&
               [ -x "$SDK/ndk/$EXPO_ARM64_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/clang-18" ] &&
-              grep -q 'APPFORGE_EXPO_ARM64_NDK_CLANG18_WRAPPER_V2'                 "$SDK/ndk/$EXPO_ARM64_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/clang-18" &&
+              grep -q 'APPFORGE_EXPO_ARM64_NDK_CLANG18_WRAPPER_V3'                 "$SDK/ndk/$EXPO_ARM64_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/clang-18" &&
               "$SDK/ndk/$EXPO_ARM64_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"                 --version >/dev/null 2>&1 &&
               [ -x "$SDK/cmake/3.22.1/bin/cmake" ] &&
               [ -x "$SDK/cmake/3.22.1/bin/ninja" ] &&
@@ -482,7 +482,7 @@ EOF
 
 
 #
-# APPFORGE_EXPO_ARM64_NDK_HOST_V2
+# APPFORGE_EXPO_ARM64_NDK_HOST_V3
 #
 # Google's official Linux NDK payload is an x86_64-host package.
 # AppForge keeps its official sysroot, target libraries, headers,
@@ -599,6 +599,13 @@ ensure_expo_arm64_ndk_host() {
       test -n "$resource_dir"
       test -d "$resource_dir"
 
+      test -f         "$resource_dir/lib/linux/libclang_rt.builtins-aarch64-android.a"
+
+      test -f         "$resource_dir/lib/linux/aarch64/libunwind.a"
+
+      echo "APPFORGE_EXPO_ARM64_NDK_COMPILER_RT_FILE=PASS"
+      echo "APPFORGE_EXPO_ARM64_NDK_LIBUNWIND_FILE=PASS"
+
       backup="$ROOT/expo-ndk-host-originals/$EXPO_ARM64_NDK_VERSION-v2/bin"
 
       mkdir -p "$backup"
@@ -638,7 +645,34 @@ ensure_expo_arm64_ndk_host() {
         cat > "$bin/$name" <<EOF
 #!/bin/sh
 # $marker
-exec $executable -resource-dir="$resource_dir" "\$@"
+
+appforge_linking=1
+appforge_runtime=1
+
+for appforge_arg in "\$@"; do
+  case "\$appforge_arg" in
+    -c|-S|-E|-M|-MM|-fsyntax-only|--version|-dumpversion|-dumpmachine|-print-*|-###)
+      appforge_linking=0
+      ;;
+    -nostdlib|-nodefaultlibs)
+      appforge_runtime=0
+      ;;
+  esac
+done
+
+if [ "\$appforge_linking" -eq 1 ] &&
+   [ "\$appforge_runtime" -eq 1 ]; then
+  exec $executable \
+    -resource-dir="$resource_dir" \
+    --rtlib=compiler-rt \
+    --unwindlib=libunwind \
+    -L"$resource_dir/lib/linux/aarch64" \
+    "\$@"
+fi
+
+exec $executable \
+  -resource-dir="$resource_dir" \
+  "\$@"
 EOF
 
         chmod 0755 "$bin/$name"
@@ -663,17 +697,17 @@ EOF
       write_clang_wrapper \
         clang-18 \
         /usr/bin/clang \
-        APPFORGE_EXPO_ARM64_NDK_CLANG18_WRAPPER_V2
+        APPFORGE_EXPO_ARM64_NDK_CLANG18_WRAPPER_V3
 
       write_clang_wrapper \
         clang \
         /usr/bin/clang \
-        APPFORGE_EXPO_ARM64_NDK_CLANG_WRAPPER_V2
+        APPFORGE_EXPO_ARM64_NDK_CLANG_WRAPPER_V3
 
       write_clang_wrapper \
         clang++ \
         /usr/bin/clang++ \
-        APPFORGE_EXPO_ARM64_NDK_CLANGXX_WRAPPER_V2
+        APPFORGE_EXPO_ARM64_NDK_CLANGXX_WRAPPER_V3
 
       write_tool_wrapper \
         ld.lld \
@@ -711,7 +745,7 @@ EOF
         APPFORGE_EXPO_ARM64_NDK_READELF_WRAPPER_V2
 
       grep -q \
-        'APPFORGE_EXPO_ARM64_NDK_CLANG18_WRAPPER_V2' \
+        'APPFORGE_EXPO_ARM64_NDK_CLANG18_WRAPPER_V3' \
         "$bin/clang-18"
 
       "$bin/clang" --version
@@ -748,6 +782,10 @@ EOF
 extern "C" int appforge_cpp_probe() {
   return sizeof(void*) == 8 ? 0 : 1;
 }
+
+int main() {
+  return appforge_cpp_probe();
+}
 EOF
 
       "$bin/clang++" \
@@ -772,6 +810,18 @@ EOF
         "$probe/probe.o"
 
       test -s "$probe/libappforge-probe.a"
+
+      "$bin/clang++"         --target=aarch64-linux-android24         --sysroot="$host/sysroot"         -stdlib=libc++         -fuse-ld=lld         "$probe/probe.cpp"         -o "$probe/probe-cpp"
+
+      file "$probe/probe-cpp" |
+        grep -Eqi 'aarch64|ARM aarch64' || {
+          echo "APPFORGE_EXPO_NDK_CPP_LINK_ABI_FAIL" >&2
+          file "$probe/probe-cpp" >&2 || true
+          exit 69
+        }
+
+      echo "APPFORGE_EXPO_ARM64_NDK_COMPILER_RT_LINK=PASS"
+      echo "APPFORGE_EXPO_ARM64_NDK_CXX_LINK=PASS"
 
       touch "$EXPO_ARM64_NDK_MARKER"
 
@@ -1054,7 +1104,7 @@ case "$ENGINE" in
 
         "$SDK/ndk/$EXPO_ARM64_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"           --version
 
-        echo "APPFORGE_EXPO_ARM64_NDK_HOST_V2_SMOKE=PASS"
+        echo "APPFORGE_EXPO_ARM64_NDK_HOST_V3_SMOKE=PASS"
         ;;
     esac
     ;;
