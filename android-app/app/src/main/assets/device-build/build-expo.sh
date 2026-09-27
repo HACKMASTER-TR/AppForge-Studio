@@ -277,6 +277,13 @@ object AppForgeExpoRuntimeProbe {
     private val mainLooperEventCount =
         java.util.concurrent.atomic.AtomicInteger(0)
 
+    // APPFORGE_EXPO_LAUNCH_TRANSACTION_V18
+    private val activityEventCount =
+        java.util.concurrent.atomic.AtomicInteger(0)
+
+    private val executeTransactionSeen =
+        java.util.concurrent.atomic.AtomicBoolean(false)
+
     fun early(stage: String) {
         val app = applicationRef
 
@@ -376,6 +383,10 @@ object AppForgeExpoRuntimeProbe {
         )
 
         installMainLooperProbe(app)
+        recordLaunchState(
+            app,
+            "INSTALL"
+        )
     }
 
     @Synchronized
@@ -601,6 +612,26 @@ object AppForgeExpoRuntimeProbe {
                     mainLooperEventCount
                         .incrementAndGet()
 
+                if (
+                    raw.contains(
+                        "android.app.ActivityThread"
+                    ) &&
+                    raw.contains(": 159")
+                ) {
+                    if (
+                        executeTransactionSeen
+                            .compareAndSet(
+                                false,
+                                true
+                            )
+                    ) {
+                        write(
+                            app,
+                            "MAIN_LOOPER_EXECUTE_TRANSACTION_SEEN=PASS"
+                        )
+                    }
+                }
+
                 if (index <= 64) {
                     val safe =
                         raw
@@ -656,9 +687,307 @@ object AppForgeExpoRuntimeProbe {
                     app,
                     "DELAYED_100MS"
                 )
+
+                recordLaunchState(
+                    app,
+                    "DELAYED_100MS"
+                )
             },
             100L
         )
+
+        handler.postDelayed(
+            {
+                write(
+                    app,
+                    "PROCESS_ALIVE_1500MS=PASS"
+                )
+
+                write(
+                    app,
+                    "ACTIVITY_EVENT_COUNT_1500MS=" +
+                        activityEventCount.get()
+                )
+
+                write(
+                    app,
+                    "EXECUTE_TRANSACTION_SEEN_1500MS=" +
+                        if (
+                            executeTransactionSeen.get()
+                        ) {
+                            "PASS"
+                        } else {
+                            "NO"
+                        }
+                )
+
+                recordLaunchState(
+                    app,
+                    "DELAYED_1500MS"
+                )
+            },
+            1500L
+        )
+
+        handler.postDelayed(
+            {
+                write(
+                    app,
+                    "PROCESS_ALIVE_3000MS=PASS"
+                )
+
+                write(
+                    app,
+                    "ACTIVITY_EVENT_COUNT_3000MS=" +
+                        activityEventCount.get()
+                )
+
+                write(
+                    app,
+                    "EXECUTE_TRANSACTION_SEEN_3000MS=" +
+                        if (
+                            executeTransactionSeen.get()
+                        ) {
+                            "PASS"
+                        } else {
+                            "NO"
+                        }
+                )
+
+                recordLaunchState(
+                    app,
+                    "DELAYED_3000MS"
+                )
+            },
+            3000L
+        )
+    }
+
+    private fun recordLaunchState(
+        context: android.content.Context,
+        phase: String
+    ) {
+        try {
+            val packageManager =
+                context.packageManager
+
+            val packageName =
+                context.packageName
+
+            val launchIntent =
+                packageManager
+                    .getLaunchIntentForPackage(
+                        packageName
+                    )
+
+            val component =
+                launchIntent
+                    ?.component
+
+            write(
+                context,
+                "LAUNCH_" +
+                    phase +
+                    "_PACKAGE=" +
+                    packageName
+            )
+
+            write(
+                context,
+                "LAUNCH_" +
+                    phase +
+                    "_COMPONENT=" +
+                    (
+                        component
+                            ?.flattenToShortString()
+                            ?: "NONE"
+                    )
+            )
+
+            write(
+                context,
+                "LAUNCH_" +
+                    phase +
+                    "_ACTION=" +
+                    (
+                        launchIntent
+                            ?.action
+                            ?: "NONE"
+                    )
+            )
+
+            write(
+                context,
+                "LAUNCH_" +
+                    phase +
+                    "_CATEGORIES=" +
+                    (
+                        launchIntent
+                            ?.categories
+                            ?.sorted()
+                            ?.joinToString(",")
+                            ?: "NONE"
+                    )
+            )
+
+            write(
+                context,
+                "LAUNCH_" +
+                    phase +
+                    "_FLAGS=" +
+                    (
+                        launchIntent
+                            ?.flags
+                            ?.toString()
+                            ?: "NONE"
+                    )
+            )
+
+            if (component != null) {
+                val info =
+                    packageManager.getActivityInfo(
+                        component,
+                        0
+                    )
+
+                write(
+                    context,
+                    "LAUNCH_" +
+                        phase +
+                        "_ACTIVITY_ENABLED=" +
+                        info.enabled
+                )
+
+                write(
+                    context,
+                    "LAUNCH_" +
+                        phase +
+                        "_ACTIVITY_EXPORTED=" +
+                        info.exported
+                )
+
+                write(
+                    context,
+                    "LAUNCH_" +
+                        phase +
+                        "_APP_ENABLED=" +
+                        info.applicationInfo.enabled
+                )
+
+                write(
+                    context,
+                    "LAUNCH_" +
+                        phase +
+                        "_COMPONENT_SETTING=" +
+                        packageManager
+                            .getComponentEnabledSetting(
+                                component
+                            )
+                )
+            }
+
+            val launcherQuery =
+                android.content.Intent(
+                    android.content.Intent.ACTION_MAIN
+                ).apply {
+                    addCategory(
+                        android.content.Intent.CATEGORY_LAUNCHER
+                    )
+
+                    setPackage(
+                        packageName
+                    )
+                }
+
+            val matches =
+                packageManager.queryIntentActivities(
+                    launcherQuery,
+                    android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
+                )
+
+            write(
+                context,
+                "LAUNCH_" +
+                    phase +
+                    "_MATCH_COUNT=" +
+                    matches.size
+            )
+
+            matches
+                .take(8)
+                .forEachIndexed {
+                        index,
+                        resolve ->
+
+                    val activityInfo =
+                        resolve.activityInfo
+
+                    write(
+                        context,
+                        "LAUNCH_" +
+                            phase +
+                            "_MATCH_" +
+                            index +
+                            "=" +
+                            activityInfo.packageName +
+                            "/" +
+                            activityInfo.name +
+                            "|enabled=" +
+                            activityInfo.enabled +
+                            "|exported=" +
+                            activityInfo.exported
+                    )
+                }
+
+            val process =
+                android.app.ActivityManager
+                    .RunningAppProcessInfo()
+
+            android.app.ActivityManager
+                .getMyMemoryState(
+                    process
+                )
+
+            write(
+                context,
+                "LAUNCH_" +
+                    phase +
+                    "_PROCESS_IMPORTANCE=" +
+                    process.importance
+            )
+
+            write(
+                context,
+                "LAUNCH_" +
+                    phase +
+                    "_ACTIVITY_EVENT_COUNT=" +
+                    activityEventCount.get()
+            )
+
+            write(
+                context,
+                "LAUNCH_" +
+                    phase +
+                    "_EXECUTE_TRANSACTION_SEEN=" +
+                    if (
+                        executeTransactionSeen.get()
+                    ) {
+                        "PASS"
+                    } else {
+                        "NO"
+                    }
+            )
+        } catch (error: Throwable) {
+            write(
+                context,
+                "LAUNCH_" +
+                    phase +
+                    "_ERROR=" +
+                    error.javaClass.name +
+                    ":" +
+                    (error.message ?: "")
+            )
+        }
     }
 
     @Synchronized
@@ -883,6 +1212,9 @@ object AppForgeExpoRuntimeProbe {
             stage: String,
             activity: android.app.Activity
         ) {
+            activityEventCount
+                .incrementAndGet()
+
             val className =
                 activity.javaClass.name
 
@@ -1009,6 +1341,11 @@ object AppForgeExpoRuntimeProbe {
         )
 
         if (stage == "APPLICATION_READY") {
+            recordLaunchState(
+                appContext,
+                "READY"
+            )
+
             installCrashHandler(
                 appContext,
                 "READY"
@@ -1995,6 +2332,22 @@ grep -Fq \
   "$APPFORGE_EXPO_PROBE_FILE"
 
 grep -Fq \
+  'APPFORGE_EXPO_LAUNCH_TRANSACTION_V18' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -Fq \
+  'MAIN_LOOPER_EXECUTE_TRANSACTION_SEEN=PASS' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -Fq \
+  'LAUNCH_' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -Fq \
+  'PROCESS_ALIVE_3000MS=PASS' \
+  "$APPFORGE_EXPO_PROBE_FILE"
+
+grep -Fq \
   'uncaughtExceptionHandler =' \
   "$APPFORGE_EXPO_PROBE_FILE"
 
@@ -2008,6 +2361,7 @@ echo "APPFORGE_EXPO_ACTIVITY_IDENTITY_V14_1=PASS"
 echo "APPFORGE_EXPO_COMPONENT_FACTORY_CAPTURE_V15=PASS"
 echo "APPFORGE_EXPO_STARTUP_CAPTURE_V16=PASS"
 echo "APPFORGE_EXPO_JAVA_CRASH_CAPTURE_V17=PASS"
+echo "APPFORGE_EXPO_LAUNCH_TRANSACTION_V18=PASS"
 
 #
 # Change Gradle properties while the project is still on the

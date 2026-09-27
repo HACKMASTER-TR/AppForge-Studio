@@ -468,6 +468,36 @@ test(
 
     assert.match(
       expo,
+      /APPFORGE_EXPO_LAUNCH_TRANSACTION_V18/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_LOOPER_EXECUTE_TRANSACTION_SEEN=PASS/
+    );
+
+    assert.match(
+      expo,
+      /PROCESS_ALIVE_3000MS=PASS/
+    );
+
+    assert.match(
+      expo,
+      /getLaunchIntentForPackage/
+    );
+
+    assert.match(
+      expo,
+      /queryIntentActivities/
+    );
+
+    assert.match(
+      expo,
+      /ACTIVITY_EVENT_COUNT_3000MS=/
+    );
+
+    assert.match(
+      expo,
       /ACTIVITY_CALLBACKS_REGISTERED=PASS/
     );
 
