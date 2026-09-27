@@ -714,6 +714,173 @@ rm -rf "$EXPO_NATIVE_BUILD_ROOT"
 mkdir -p "$EXPO_NATIVE_BUILD_ROOT"
 chmod 0755 "$EXPO_NATIVE_BUILD_ROOT"
 
+#
+# APPFORGE_EXPO_PREFAB_EXECUTION_PROOF_V1
+#
+# Record the AGP version actually loaded by Gradle and create a tiny
+# Java ProcessBuilder probe. After a failed native configure task the
+# exact generated prefab_command is tested with Java direct execution
+# and explicit /bin/sh interpretation.
+#
+AGP_RUNTIME_PROBE="$EXPO_NATIVE_BUILD_ROOT/appforge-agp-runtime.init.gradle"
+AGP_RUNTIME_VERSION_FILE="$EXPO_NATIVE_BUILD_ROOT/appforge-agp-runtime-version.txt"
+JAVA_PROCESS_PROBE="$EXPO_NATIVE_BUILD_ROOT/AppForgeProcessProbe.java"
+
+cat > "$AGP_RUNTIME_PROBE" <<EOF
+gradle.projectsEvaluated {
+    def result =
+        "UNKNOWN"
+
+    gradle.rootProject.allprojects.each { project ->
+        if (result == "UNKNOWN") {
+            def plugin =
+                project.plugins.findPlugin(
+                    "com.android.application"
+                )
+
+            if (plugin == null) {
+                plugin =
+                    project.plugins.findPlugin(
+                        "com.android.library"
+                    )
+            }
+
+            if (plugin != null) {
+                try {
+                    def versionClass =
+                        plugin.class.classLoader.loadClass(
+                            "com.android.Version"
+                        )
+
+                    def value =
+                        versionClass
+                            .getField(
+                                "ANDROID_GRADLE_PLUGIN_VERSION"
+                            )
+                            .get(null)
+
+                    if (value != null) {
+                        result =
+                            value.toString()
+                    }
+                } catch (Throwable ignored) {
+                    def fallback =
+                        plugin.class
+                            .package
+                            ?.implementationVersion
+
+                    if (fallback != null) {
+                        result =
+                            fallback.toString()
+                    }
+                }
+            }
+        }
+    }
+
+    println(
+        "APPFORGE_EXPO_AGP_RUNTIME_VERSION=" +
+        result
+    )
+
+    new File(
+        "${AGP_RUNTIME_VERSION_FILE}"
+    ).text =
+        result +
+        System.lineSeparator()
+}
+EOF
+
+cat > "$JAVA_PROCESS_PROBE" <<'JAVA'
+import java.io.File;
+
+public final class AppForgeProcessProbe {
+    public static void main(String[] args) {
+        if (args.length != 2) {
+            System.out.println(
+                "APPFORGE_EXPO_JAVA_PREFAB_START=INVALID_ARGS"
+            );
+            System.exit(64);
+        }
+
+        try {
+            ProcessBuilder builder =
+                new ProcessBuilder(
+                    args[0]
+                );
+
+            builder.directory(
+                new File(
+                    args[1]
+                )
+            );
+
+            builder.redirectOutput(
+                ProcessBuilder.Redirect.DISCARD
+            );
+
+            builder.redirectError(
+                ProcessBuilder.Redirect.DISCARD
+            );
+
+            Process process =
+                builder.start();
+
+            int rc =
+                process.waitFor();
+
+            System.out.println(
+                "APPFORGE_EXPO_JAVA_PREFAB_START=PASS"
+            );
+
+            System.out.println(
+                "APPFORGE_EXPO_JAVA_PREFAB_RC=" +
+                rc
+            );
+
+            System.exit(0);
+        } catch (Throwable error) {
+            String message =
+                String.valueOf(
+                    error.getMessage()
+                )
+                .replace('\n', ' ')
+                .replace('\r', ' ');
+
+            if (message.length() > 240) {
+                message =
+                    message.substring(
+                        0,
+                        240
+                    );
+            }
+
+            System.out.println(
+                "APPFORGE_EXPO_JAVA_PREFAB_START=FAIL"
+            );
+
+            System.out.println(
+                "APPFORGE_EXPO_JAVA_PREFAB_EXCEPTION=" +
+                error.getClass().getName()
+            );
+
+            System.out.println(
+                "APPFORGE_EXPO_JAVA_PREFAB_MESSAGE=" +
+                message
+            );
+
+            System.exit(66);
+        }
+    }
+}
+JAVA
+
+test -s "$AGP_RUNTIME_PROBE"
+test -s "$JAVA_PROCESS_PROBE"
+
+echo "APPFORGE_EXPO_AGP_RUNTIME_PROBE=READY"
+echo "APPFORGE_EXPO_JAVA_PROCESS_PROBE=READY"
+
 ROOT_GRADLE="$SOURCE/android/build.gradle"
 
 test -f "$ROOT_GRADLE"

@@ -996,6 +996,15 @@ object DeviceBuildEngine {
             append(" -p ")
             append(sh("/workspace/$relativeProject"))
             append(" --no-daemon --stacktrace ")
+
+            if (nodeRequired) {
+                // APPFORGE_EXPO_AGP_RUNTIME_INIT_V1
+                append(
+                    "--init-script " +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT/appforge-agp-runtime.init.gradle\" "
+                )
+            }
+
             if (state.offline) append("--offline ")
             append(tasks.joinToString(" "))
             if (signingArgs.isNotBlank()) append(" $signingArgs")
@@ -1063,6 +1072,112 @@ object DeviceBuildEngine {
 
                 append(
                     "echo \"APPFORGE_EXPO_PREFAB_FILE_TYPE=\$(file -b \"\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                // APPFORGE_EXPO_PREFAB_EXECUTION_DIAGNOSTICS_V1
+
+                append(
+                    "APPFORGE_EXPO_AGP_VERSION_FILE=" +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT/appforge-agp-runtime-version.txt\"; "
+                )
+
+                append(
+                    "if [ -s \"\$APPFORGE_EXPO_AGP_VERSION_FILE\" ]; then " +
+                        "echo \"APPFORGE_EXPO_AGP_RUNTIME_VERSION=\$(tr -d '\\r\\n' < \"\$APPFORGE_EXPO_AGP_VERSION_FILE\")\"; " +
+                        "else " +
+                        "echo APPFORGE_EXPO_AGP_RUNTIME_VERSION=UNKNOWN; " +
+                        "fi; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_LINE_COUNT=\$(wc -l < \"\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_SHA256=\$(sha256sum \"\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null | cut -d ' ' -f 1)\"; "
+                )
+
+                append(
+                    "APPFORGE_EXPO_PREFAB_FIRST_LINE=\$(head -n 1 " +
+                        "\"\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null | " +
+                        "sed 's#/opt/appforge-device#[DEVICE]#g; " +
+                        "s#/workspace/source#[SOURCE]#g' | cut -c 1-240); "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_FIRST_LINE=\$APPFORGE_EXPO_PREFAB_FIRST_LINE\"; "
+                )
+
+                append(
+                    "APPFORGE_EXPO_PREFAB_CWD=" +
+                        "/workspace/source/node_modules/expo-modules-core/android; "
+                )
+
+                append(
+                    "APPFORGE_EXPO_JAVA_PROBE=" +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT/AppForgeProcessProbe.java\"; "
+                )
+
+                append(
+                    "APPFORGE_EXPO_JAVA_PROBE_LOG=" +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT/appforge-java-prefab-probe.log\"; "
+                )
+
+                append(
+                    "set +e; " +
+                        "\"\$JAVA_HOME/bin/java\" " +
+                        "\"\$APPFORGE_EXPO_JAVA_PROBE\" " +
+                        "\"\$APPFORGE_EXPO_PREFAB_COMMAND\" " +
+                        "\"\$APPFORGE_EXPO_PREFAB_CWD\" " +
+                        "> \"\$APPFORGE_EXPO_JAVA_PROBE_LOG\" 2>&1; " +
+                        "APPFORGE_EXPO_JAVA_PROBE_RC=\$?; "
+                )
+
+                append(
+                    "grep '^APPFORGE_EXPO_JAVA_PREFAB_' " +
+                        "\"\$APPFORGE_EXPO_JAVA_PROBE_LOG\" 2>/dev/null || true; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_JAVA_PREFAB_PROBE_RC=\$APPFORGE_EXPO_JAVA_PROBE_RC\"; "
+                )
+
+                append(
+                    "rm -f \"\$APPFORGE_EXPO_JAVA_PROBE_LOG\"; "
+                )
+
+                append(
+                    "APPFORGE_EXPO_SH_PROBE_LOG=" +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT/appforge-sh-prefab-probe.log\"; "
+                )
+
+                append(
+                    "(cd \"\$APPFORGE_EXPO_PREFAB_CWD\" && " +
+                        "/bin/sh \"\$APPFORGE_EXPO_PREFAB_COMMAND\") " +
+                        "> \"\$APPFORGE_EXPO_SH_PROBE_LOG\" 2>&1; " +
+                        "APPFORGE_EXPO_SH_PROBE_RC=\$?; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_SH_PREFAB_PROBE_RC=\$APPFORGE_EXPO_SH_PROBE_RC\"; "
+                )
+
+                append(
+                    "if [ \"\$APPFORGE_EXPO_SH_PROBE_RC\" -eq 0 ]; then " +
+                        "echo APPFORGE_EXPO_SH_PREFAB_PROBE=PASS; " +
+                        "else " +
+                        "echo APPFORGE_EXPO_SH_PREFAB_PROBE=FAIL; " +
+                        "echo APPFORGE_EXPO_SH_PREFAB_LOG_BEGIN; " +
+                        "sed 's#/opt/appforge-device#[DEVICE]#g; " +
+                        "s#/workspace/source#[SOURCE]#g' " +
+                        "\"\$APPFORGE_EXPO_SH_PROBE_LOG\" 2>/dev/null | " +
+                        "head -n 20 || true; " +
+                        "echo APPFORGE_EXPO_SH_PREFAB_LOG_END; " +
+                        "fi; "
+                )
+
+                append(
+                    "rm -f \"\$APPFORGE_EXPO_SH_PROBE_LOG\"; "
                 )
 
                 append(

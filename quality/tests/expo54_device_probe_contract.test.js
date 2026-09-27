@@ -691,3 +691,78 @@ test(
     assert.ok(copyback > pin);
   }
 );
+
+test(
+  "Expo records actual AGP and compares Java direct Prefab launch with shell interpretation",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PREFAB_EXECUTION_PROOF_V1/
+    );
+
+    assert.match(
+      expo,
+      /appforge-agp-runtime\.init\.gradle/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_AGP_RUNTIME_VERSION/
+    );
+
+    assert.match(
+      expo,
+      /AppForgeProcessProbe/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_AGP_RUNTIME_INIT_V1/
+    );
+
+    assert.match(
+      engine,
+      /--init-script/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_EXECUTION_DIAGNOSTICS_V1/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_LINE_COUNT/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_SHA256/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_FIRST_LINE/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_JAVA_PREFAB_PROBE_RC/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_SH_PREFAB_PROBE_RC/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_SH_PREFAB_PROBE=PASS/
+    );
+
+    assert.match(
+      engine,
+      /\/bin\/sh/
+    );
+  }
+);

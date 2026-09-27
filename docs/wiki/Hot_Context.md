@@ -57,8 +57,7 @@ source_files:
 - The generated `prefab_command` was mode 700, readable and executable, owned by root, and had no shebang.
 - Moving native intermediates to rootfs-native storage did not remove the failure.
 - The scoped JDK `FORK` launch-mechanism experiment also did not remove the failure and is superseded.
-- The next controlled experiment pins Expo SDK 54 acceptance to AGP 8.7.3, before the reported AGP 8.8+ Prefab shebang regression.
-- Physical-device APK build and runtime acceptance remain mandatory before Expo can become READY.
+- Commit `a4ea644` also failed physically with the same `prefab_command` error=13 result; the AGP 8.7.3 compatibility pin did not produce physical acceptance.\n- The current proof build records the AGP version actually loaded by Gradle and compares Java ProcessBuilder execution of the exact generated `prefab_command` with explicit `/bin/sh` interpretation.\n- No further permission, AGP-version, or shebang workaround is considered verified until this execution-boundary probe is observed on-device.\n- Physical-device APK build and runtime acceptance remain mandatory before Expo can become READY.
 
 ## Must Know
 
