@@ -125,9 +125,25 @@ class MainActivity : ComponentActivity() {
         AppVisibility.activityStarted()
     }
 
+    /* ACTIVE_BUILD_NOTIFICATION_IMMEDIATE_BACKGROUND_V21_3 */
+    override fun onPause() {
+        /*
+         * onStop can be delayed by Android/OEM task transitions. Start the
+         * tracker at the first real foreground-loss callback so the build
+         * notification is not delayed by that lifecycle gap.
+         */
+        BuildProgressService.startPending(this)
+        super.onPause()
+    }
+
     override fun onStop() {
         AppVisibility.activityStopped()
         com.appforge.studio.terminal.LocalPtySessionRegistry.persistNow()
+
+        /*
+         * Race-safe fallback: if the build identity was persisted after
+         * onPause, onStop gets one more chance to start the same tracker.
+         */
         BuildProgressService.startPending(this)
         super.onStop()
     }
@@ -199,6 +215,8 @@ class MainActivity : ComponentActivity() {
             intent?.getStringExtra("appforge_build_server_url")
 
         if (openBuildFromNotification) {
+            // NOTIFICATION_CREATE_EAGER_DISMISS_V21_3
+            BuildProgressService.stop(this)
             buildNotificationSequence += 1
         }
 
@@ -268,6 +286,8 @@ class MainActivity : ComponentActivity() {
                 false
             )
         ) {
+            // NOTIFICATION_TAP_EAGER_DISMISS_V21_3
+            BuildProgressService.stop(this)
             buildIdFromNotification =
                 intent.getStringExtra(
                     "appforge_build_id"

@@ -152,17 +152,23 @@ test(
 
 test("foreground return removes notification tracking without cancelling the active engine job", () => {
   const start = service.indexOf(
-    "ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_2"
+    "ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_3"
   );
   assert.ok(start >= 0);
 
-  const block = service.slice(start, start + 2200);
+  const end = service.indexOf(
+    "fun stop(",
+    start
+  );
+  assert.ok(end > start);
+
+  const block = service.slice(start, end);
 
   assert.match(block, /fun onHostResumed\(/);
-  assert.match(block, /activeSingleBuild\(context\)/);
-  assert.match(block, /DeviceBuildEngine\.snapshot\(reference\.buildId\)/);
-  assert.match(block, /stop\(context\)/);
+  assert.match(block, /stop\(\s*context\s*\)/);
   assert.doesNotMatch(block, /DeviceBuildEngine\.cancel/);
+  assert.doesNotMatch(block, /DeviceBuildEngine\.snapshot/);
+  assert.doesNotMatch(block, /clear\(context\)/);
 
   assert.match(service, /Intent\.FLAG_ACTIVITY_REORDER_TO_FRONT/);
   assert.match(service, /Intent\.FLAG_ACTIVITY_SINGLE_TOP/);
@@ -233,4 +239,69 @@ test("notification Build ID stays stable until the snapshot rebind completes", (
     main.slice(rebindStart, rebindStart + 1200),
     /consumeBuildNotificationNavigation/
   );
+});
+
+
+test("notification background handoff starts at pause and closes the late-track race", () => {
+  assert.match(
+    main,
+    /ACTIVE_BUILD_NOTIFICATION_IMMEDIATE_BACKGROUND_V21_3[\s\S]*override fun onPause\(\)[\s\S]*BuildProgressService\.startPending\(this\)/
+  );
+
+  assert.match(
+    main,
+    /override fun onStop\(\)[\s\S]*BuildProgressService\.startPending\(this\)/
+  );
+
+  assert.match(
+    service,
+    /ACTIVE_BUILD_LATE_TRACK_BACKGROUND_START_V21_3[\s\S]*!AppVisibility\.isForeground[\s\S]*startPending/
+  );
+});
+
+test("notification tap uses an explicit foreground-service handoff and cannot resurrect", () => {
+  assert.match(service, /ACTION_HANDOFF_TO_FOREGROUND/);
+  assert.match(
+    service,
+    /ACTIVE_BUILD_NOTIFICATION_SERVICE_HANDOFF_V21_3[\s\S]*foregroundSuppressed[\s\S]*stopForeground\([\s\S]*Service\.STOP_FOREGROUND_REMOVE/
+  );
+  assert.match(
+    service,
+    /private fun showNotification\([\s\S]*foregroundSuppressed[\s\S]*return/
+  );
+  assert.match(
+    service,
+    /override fun onDestroy\(\)[\s\S]*stopForeground\([\s\S]*Service\.STOP_FOREGROUND_REMOVE/
+  );
+  assert.match(
+    main,
+    /NOTIFICATION_TAP_EAGER_DISMISS_V21_3[\s\S]*BuildProgressService\.stop\(this\)/
+  );
+});
+
+test("foreground resume never clears active build identity on a transient snapshot miss", () => {
+  const start = service.indexOf(
+    "ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_3"
+  );
+  assert.ok(start >= 0);
+
+  const end = service.indexOf(
+    "fun stop(",
+    start
+  );
+  assert.ok(end > start);
+
+  const block = service.slice(start, end);
+
+  assert.match(block, /stop\(\s*context\s*\)/);
+  assert.doesNotMatch(block, /clear\(context\)/);
+  assert.doesNotMatch(block, /DeviceBuildEngine\.snapshot/);
+});
+
+test("compact build notification exposes numeric progress without expansion", () => {
+  assert.match(
+    service,
+    /\$appName • %\$\{progress\.coerceIn\(0, 100\)\}/
+  );
+  assert.match(service, /\.setProgress\(\s*100,/);
 });

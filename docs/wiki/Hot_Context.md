@@ -3,8 +3,8 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-27
-last_verified: 2026-09-27
+updated: 2026-09-28
+last_verified: 2026-09-28
 confidence: high
 tags:
   - hot-context
@@ -28,41 +28,38 @@ source_files:
 
 ## Current Focus
 
-- Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, Python/Chaquopy, and the scoped Expo SDK 54 / React Native 0.81 Android path.
-- Expo V20.3 produced 4/4 consecutive physical APK+AAB builds; the final APK installed, launched directly, rendered `APPFORGE_EXPO54_DEVICE_PASS`, and remained stable.
-- V21 promotes only that proven Expo SDK54/RN0.81 family to READY APK+AAB. Standalone React Native remains EXPERIMENTAL with zero accepted outputs.
-- `main` remains untouched.
+- Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, Python/Chaquopy, and scoped Expo SDK 54 / React Native 0.81.
+- Expo V20.3 passed 4/4 consecutive physical APK+AAB builds plus final direct-launch UI acceptance. V21 promotes only this Expo family to READY; standalone React Native remains EXPERIMENTAL.
+- Current work is BUG-C notification return behavior. `main` and Play Production remain untouched.
 
 ## Must Know
 
-- Source, tests, CI, and observed device behavior override wiki claims.
-- GitHub remains repository/CI infrastructure; retired remote build backends stay retired.
-- D1 migrations remain blocked until migration history is reconciled.
-- Standing fail-stop authorization is recorded in [[Standing_Delivery_Authorization]].
+- Source, tests, CI, and physical-device evidence override wiki claims.
+- Remote build backends remain retired; project builds stay device-local.
+- D1 migrations remain blocked pending migration-history reconciliation.
+- Standing fail-stop authorization is in [[Standing_Delivery_Authorization]].
 
 ## Recent Important Changes
 
-- BUG-A is closed: V19 duplicate-safe `ExpoModulesPackage()` registration removed the `globalThis.expo.EventEmitter` runtime crash; Hermes, JS, Activity lifecycle and UI render physically passed.
-- BUG-B is closed: V20.3 disables only `expo-modules-core` PCH in the disposable workspace; clang/PCH exit 139 did not recur across 4/4 consecutive physical builds.
-- V21 makes active-build notification return navigation/rebind-only, uses one shared engine progress rule for UI + notification, and adds event-driven build milestones.
-- V21 replaces epoch Build No values with a synchronously persisted sequence beginning at `AF-0000001000`.
-- V21 CI compile follow-up replaces six stale Builder `backendProgress` stage-label references with the shared `safeProgress` value; the first V21 CI run failed only on those unresolved references.
-- The next V21 CI run compiled successfully and reached all 259 Android/JVM unit tests; one stale Unified Agent test still expected accepted Expo SDK54/RN0.81 to report `buildReady=false`. This follow-up aligns that unit test and removes the obsolete experimental bypass from the preparer.
-- V21 physical acceptance: progress synchronization, cancel stability, success-only 100%, persistent Build No sequence, and build survival passed.
-- V21.1 physical BUG-C retest failed: notification return still rendered `Hazır / %0`, and the ongoing build notification remained visible after Studio returned to foreground.
-- V21.2 keeps the notification Build ID stable until snapshot hydration completes, consumes notification navigation only after `restoreFromEngine`, and stops only foreground notification tracking while preserving the active build reference for the next background transition.
+- BUG-A closed in V19 with duplicate-safe `ExpoModulesPackage()` registration.
+- BUG-B closed in V20.3 by disabling only `expo-modules-core` PCH in the disposable Expo workspace; clang/PCH exit 139 did not recur in 4/4 acceptance.
+- V21 added shared event-driven progress, non-crashing cancel flow, and persistent Build No values beginning at `AF-0000001000`.
+- V21 physical acceptance passed progress synchronization, cancel stability, success-only 100%, Build No sequence/persistence, and active-build survival.
+- V21.1 and V21.2 still failed BUG-C physically: notification return could show `Hazır / %0`; notification dismissal/foreground handoff also remained incorrect.
+- V21.3 source patch moves notification handoff to immediate background/foreground lifecycle handling, keeps Build ID stable, prevents transient snapshot misses from clearing active identity, and exposes compact numeric progress. Source contracts pass; physical retest is still required.
 
 ## Physical Re-acceptance Still Required
 
-- BUG-C only: background an active build, tap its notification, verify Builder opens directly on the real snapshot with no `Hazır / %0` flash, the foreground notification disappears, and the same Build ID continues without cancellation.
-- BUG-D progress synchronization/cancel/success-only-100 is physically accepted and preserved.
-- FEATURE-E persistent Build No sequence is physically accepted and preserved.
+- Start one active build, background Studio, confirm notification appears promptly, then tap it.
+- Builder must restore the same Build ID and real progress with no `Hazır / %0` flash.
+- Notification must disappear after foreground handoff without cancelling the build.
+- Compact notification must show numeric progress without requiring a second expansion gesture.
 
 ## Current Risks / Open Questions
 
-- BUG-C V21.2 still requires the focused notification-return physical retest; BUG-D and persistent Build No are already physically accepted and must remain preserved.
-- Expo READY is intentionally scoped to Expo SDK 54 / React Native 0.81; broader Expo versions and standalone React Native remain outside the accepted surface.
-- D1 migration work remains blocked until migration history is reconciled.
+- BUG-C V21.3 is not closed until the focused physical retest passes.
+- Expo READY remains limited to SDK54/RN0.81; broader Expo and standalone React Native stay outside the accepted surface.
+- D1 migration history remains unresolved.
 
 ## Read Next
 
