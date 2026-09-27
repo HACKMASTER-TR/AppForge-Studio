@@ -385,10 +385,75 @@ object AppForgeExpoRuntimeProbe {
         context: android.content.Context,
         stage: String
     ) {
+        val appContext =
+            context.applicationContext
+
         write(
-            context.applicationContext,
+            appContext,
             "STAGE=" + stage
         )
+
+        if (stage == "APPLICATION_READY") {
+            val hermesFactoryState =
+                try {
+                    Class.forName(
+                        "com.facebook.hermes.reactexecutor.HermesExecutorFactory"
+                    )
+
+                    "PASS"
+                } catch (error: Throwable) {
+                    "FAIL:" +
+                        error.javaClass.name +
+                        ":" +
+                        (error.message ?: "")
+                }
+
+            write(
+                appContext,
+                "HERMES_FACTORY_CLASS=" +
+                    hermesFactoryState
+            )
+
+            val hermesNativeState =
+                try {
+                    val clazz =
+                        Class.forName(
+                            "com.facebook.hermes.reactexecutor.HermesExecutor"
+                        )
+
+                    val method =
+                        clazz.getDeclaredMethod(
+                            "loadLibrary"
+                        )
+
+                    method.isAccessible = true
+                    method.invoke(null)
+
+                    "PASS"
+                } catch (error: Throwable) {
+                    val root =
+                        if (
+                            error is
+                                java.lang.reflect.InvocationTargetException &&
+                            error.targetException != null
+                        ) {
+                            error.targetException
+                        } else {
+                            error
+                        }
+
+                    "FAIL:" +
+                        root.javaClass.name +
+                        ":" +
+                        (root.message ?: "")
+                }
+
+            write(
+                appContext,
+                "HERMES_NATIVE_LOAD=" +
+                    hermesNativeState
+            )
+        }
     }
 
     @Synchronized
@@ -533,6 +598,31 @@ if (
         "\n" +
         indent +
         "AppForgeExpoRuntimeProbe.install(this)"
+    );
+}
+
+if (
+  !application.includes(
+    "APPFORGE_EXPO_HERMES_RUNTIME_NO_HOST_AOT_V1"
+  )
+) {
+  const hermesProperty =
+    /^(\s*)override\s+val\s+isHermesEnabled\s*:\s*Boolean\s*=\s*BuildConfig\.IS_HERMES_ENABLED\s*$/m;
+
+  if (!hermesProperty.test(application)) {
+    throw new Error(
+      "MainApplication Hermes property anchor missing"
+    );
+  }
+
+  application =
+    application.replace(
+      hermesProperty,
+      (line, indent) =>
+        indent +
+        "// APPFORGE_EXPO_HERMES_RUNTIME_NO_HOST_AOT_V1\n" +
+        indent +
+        "override val isHermesEnabled: Boolean = true"
     );
 }
 
@@ -1057,6 +1147,50 @@ grep -Fq 'implementation(project(":expo"))' \
   "$APP_GRADLE"
 
 echo "APPFORGE_EXPO_APP_CLASSPATH_BRIDGE=PASS"
+
+#
+# APPFORGE_EXPO_HERMES_RUNTIME_DEPENDENCY_V1
+#
+# React Native 0.81 no longer provides the previous first-party JSC
+# runtime path used by older legacy-architecture builds. AppForge keeps
+# Gradle hermesEnabled=false to avoid executing the host hermesc binary
+# on ARM64 Android, but explicitly packages the Hermes Android runtime.
+#
+if ! grep -q \
+  'APPFORGE_EXPO_HERMES_RUNTIME_DEPENDENCY_V1' \
+  "$APP_GRADLE"
+then
+  cat >> "$APP_GRADLE" <<'EOF'
+
+// APPFORGE_EXPO_HERMES_RUNTIME_DEPENDENCY_V1
+dependencies {
+    implementation("com.facebook.react:hermes-android")
+}
+EOF
+fi
+
+grep -q \
+  'APPFORGE_EXPO_HERMES_RUNTIME_DEPENDENCY_V1' \
+  "$APP_GRADLE"
+
+grep -Fq \
+  'implementation("com.facebook.react:hermes-android")' \
+  "$APP_GRADLE"
+
+grep -q '^hermesEnabled=false$' \
+  "$SOURCE/android/gradle.properties"
+
+grep -q \
+  'APPFORGE_EXPO_HERMES_RUNTIME_NO_HOST_AOT_V1' \
+  "$MAIN_APPLICATION"
+
+grep -Fq \
+  'override val isHermesEnabled: Boolean = true' \
+  "$MAIN_APPLICATION"
+
+echo "APPFORGE_EXPO_HERMES_BUILD_AOT=DISABLED"
+echo "APPFORGE_EXPO_HERMES_RUNTIME=ENABLED"
+echo "APPFORGE_EXPO_HERMES_RUNTIME_DEPENDENCY=PASS"
 
 #
 # APPFORGE_EXPO_STANDALONE_ACCEPTANCE_V1

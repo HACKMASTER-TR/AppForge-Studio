@@ -29,7 +29,7 @@ source_files:
 
 - Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, and Python/Chaquopy.
 - Expo SDK 54 / React Native 0.81 remains EXPERIMENTAL until the installed standalone APK opens successfully.
-- V8 physically clears the build pipeline: the Expo fixture now reaches 100% and produces both APK and AAB.
+- V8 physically clears the build pipeline: the Expo fixture reaches 100% and produces both APK and AAB.
 
 ## Recent Important Changes
 
@@ -46,7 +46,7 @@ source_files:
 - That official Linux NDK host executable cannot run natively on the ARM64 AppForge Ubuntu host.
 - V3 physically cleared the `-lgcc` runtime blocker; CMake now identifies Clang 18.1.3 and reaches its real compiler `try_compile` stage.
 - Installer acceptance requires an `aarch64-linux-android24` C link probe, C++ compile probe, and LLVM archive probe before the ARM64 NDK readiness marker is written.
-- The V8-produced APK installs but still exits during launch, so build-time SDK/Lint/CMake/NDK issues are no longer the active blocker.
+- V9 physical crash evidence proves `index.android.bundle` exists and Application startup completes before React Native context creation fails.
 
 ## Must Know
 
@@ -57,7 +57,7 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- Current blocker is runtime startup. V9 adds acceptance-only startup evidence for bundle presence, native libraries, lifecycle stages, and uncaught Java/Kotlin stack traces in public Downloads.
+- V9 root cause is the legacy React Native JS executor path: RN 0.81 runtime reaches `ReactContextInitParams` with a missing executor while AppForge intentionally has `hermesEnabled=false`. V10 keeps host Hermes AOT disabled, explicitly packages `hermes-android`, forces runtime Hermes in the generated MainApplication, and preserves crash evidence.
 - Additional NDK host executables may become visible after Clang advances.
 - SDK XML/platform-location warnings remain secondary unless they become build-blocking.
 

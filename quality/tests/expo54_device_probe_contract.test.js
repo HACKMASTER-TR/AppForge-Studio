@@ -334,6 +334,56 @@ test(
 );
 
 test(
+  "Expo acceptance packages Hermes runtime without invoking host Hermes AOT",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_RUNTIME_NO_HOST_AOT_V1/
+    );
+
+    assert.match(
+      expo,
+      /override val isHermesEnabled: Boolean = true/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_RUNTIME_DEPENDENCY_V1/
+    );
+
+    assert.match(
+      expo,
+      /implementation\("com\.facebook\.react:hermes-android"\)/
+    );
+
+    assert.match(
+      expo,
+      /set_prop_native\s+\\?\n?\s*hermesEnabled\s+\\?\n?\s*false/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_BUILD_AOT=DISABLED/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_RUNTIME=ENABLED/
+    );
+
+    assert.match(
+      expo,
+      /HERMES_FACTORY_CLASS=/
+    );
+
+    assert.match(
+      expo,
+      /HERMES_NATIVE_LOAD=/
+    );
+  }
+);
+
+test(
   "Expo capability remains experimental with zero accepted outputs",
   () => {
     const start =
