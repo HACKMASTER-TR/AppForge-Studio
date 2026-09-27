@@ -54,6 +54,66 @@ test(
 );
 
 test(
+  "Expo acceptance artifact embeds JS and runs without Metro",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_STANDALONE_ACCEPTANCE_V1/
+    );
+
+    assert.match(
+      expo,
+      /appforgeAcceptance/
+    );
+
+    assert.match(
+      expo,
+      /initWith debug/
+    );
+
+    assert.match(
+      expo,
+      /debuggable false/
+    );
+
+    assert.match(
+      expo,
+      /signingConfig signingConfigs\.debug/
+    );
+
+    assert.match(
+      expo,
+      /matchingFallbacks/
+    );
+
+    assert.match(
+      expo,
+      /debuggableVariants = \["debug"\]/
+    );
+
+    assert.match(
+      engine,
+      /variantOverride\s*=\s*"AppforgeAcceptance"/
+    );
+
+    assert.match(
+      engine,
+      /variantOverride[\s\S]{0,120}\?:/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_STANDALONE_VARIANT=AppforgeAcceptance/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /debuggableVariants\s*=\s*\[[^\]]*appforgeAcceptance[^\]]*\]/i
+    );
+  }
+);
+
+test(
   "Expo capability remains experimental with zero accepted outputs",
   () => {
     const start =

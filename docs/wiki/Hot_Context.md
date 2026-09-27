@@ -28,14 +28,14 @@ source_files:
 ## Current Focus
 
 - Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, and Python/Chaquopy.
-- Expo SDK 54 / React Native 0.81 remains EXPERIMENTAL with zero accepted outputs.
-- Current physical blocker is the Android NDK Linux host compiler boundary on ARM64.
+- Expo SDK 54 / React Native 0.81 remains EXPERIMENTAL until the installed standalone APK opens successfully.
+- Physical APK/AAB production now succeeds; the installed APK currently fails at application launch.
 
 ## Recent Important Changes
 
 - Prefab direct execution is physically cleared.
 - ARM64 CMake/Ninja now executes successfully far enough to reach NDK compiler detection.
-- V2 physically cleared the x86_64 `clang-18` execution boundary; the next failure was Ubuntu Clang linking Android with `-lgcc`.
+- V4 cleared rootfs CMake staging and the physical fixture now produces both APK and AAB.
 
 ## Expo Physical Evidence — 2026-09-27
 
@@ -46,7 +46,7 @@ source_files:
 - That official Linux NDK host executable cannot run natively on the ARM64 AppForge Ubuntu host.
 - V3 physically cleared the `-lgcc` runtime blocker; CMake now identifies Clang 18.1.3 and reaches its real compiler `try_compile` stage.
 - Installer acceptance requires an `aarch64-linux-android24` C link probe, C++ compile probe, and LLVM archive probe before the ARM64 NDK readiness marker is written.
-- After the next AppForge APK is installed, rerun the same Expo 54 fixture. Expo is not READY until an APK is produced and the installed runtime acceptance marker passes.
+- The first produced APK installs but crashes at launch. V5 switches Expo acceptance from the normal Metro-dependent Debug variant to a standalone bundled `appforgeAcceptance` variant.
 
 ## Must Know
 
@@ -57,7 +57,7 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- Current blocker is AGP's default `<module>/.cxx` staging remaining on `/workspace`; V4 redirects CMake staging to rootfs-native storage.
+- Current blocker is standalone runtime launch: React Native Debug does not ship its JS bundle and expects Metro; V5 embeds JS/assets in a non-debuggable acceptance variant.
 - Additional NDK host executables may become visible after Clang advances.
 - SDK XML/platform-location warnings remain secondary unless they become build-blocking.
 

@@ -788,6 +788,10 @@ object DeviceBuildEngine {
             "🧪 Expo native Android proje Gradle ile derleniyor."
         )
 
+        state.logs.add(
+            "APPFORGE_EXPO_STANDALONE_VARIANT=AppforgeAcceptance"
+        )
+
         buildGradleProject(
             context = context,
             draft = draft,
@@ -797,7 +801,8 @@ object DeviceBuildEngine {
             shell = shell,
             state = state,
             gradleVersion = detectGradleVersion(project),
-            nodeRequired = true
+            nodeRequired = true,
+            variantOverride = "AppforgeAcceptance"
         )
     }
 
@@ -872,7 +877,8 @@ object DeviceBuildEngine {
         shell: LinuxShellEngine,
         state: JobState,
         gradleVersion: String,
-        nodeRequired: Boolean = false
+        nodeRequired: Boolean = false,
+        variantOverride: String? = null
     ) {
         val relativeProject = project.relativeTo(workspace).invariantSeparatorsPath
         val gradlePath = runShellBlocking(
@@ -885,7 +891,11 @@ object DeviceBuildEngine {
         ).lineSequence().lastOrNull { it.isNotBlank() }?.trim()
             ?: error("Gradle hazırlanamadı.")
 
-        val variant = if (draft.signingMode == SigningMode.CUSTOM) "Release" else "Debug"
+        val variant =
+            variantOverride
+                ?: if (
+                    draft.signingMode == SigningMode.CUSTOM
+                ) "Release" else "Debug"
 
         val requestedArtifacts =
             requestedOutputs(

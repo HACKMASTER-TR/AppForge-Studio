@@ -622,6 +622,77 @@ grep -Fq 'implementation(project(":expo"))' \
 echo "APPFORGE_EXPO_APP_CLASSPATH_BRIDGE=PASS"
 
 #
+# APPFORGE_EXPO_STANDALONE_ACCEPTANCE_V1
+#
+# React Native treats normal Debug as a Metro/developer variant and
+# does not package the JS bundle into it. AppForge physical acceptance
+# must run after installation with no Metro server.
+#
+# Create a disposable non-debuggable acceptance build type which:
+# - inherits the already-proven Debug native configuration
+# - uses the generated debug signing key
+# - keeps minification disabled
+# - is NOT in React Native debuggableVariants
+# - therefore receives an embedded JS/assets bundle.
+#
+if ! grep -q \
+  'APPFORGE_EXPO_STANDALONE_ACCEPTANCE_V1' \
+  "$APP_GRADLE"
+then
+  cat >> "$APP_GRADLE" <<'EOF'
+
+// APPFORGE_EXPO_STANDALONE_ACCEPTANCE_V1
+android {
+    buildTypes {
+        appforgeAcceptance {
+            initWith debug
+            debuggable false
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+            matchingFallbacks = ["debug", "release"]
+        }
+    }
+}
+
+react {
+    debuggableVariants = ["debug"]
+}
+EOF
+fi
+
+grep -q \
+  'APPFORGE_EXPO_STANDALONE_ACCEPTANCE_V1' \
+  "$APP_GRADLE"
+
+grep -Fq \
+  'appforgeAcceptance {' \
+  "$APP_GRADLE"
+
+grep -Fq \
+  'debuggable false' \
+  "$APP_GRADLE"
+
+grep -Fq \
+  'signingConfig signingConfigs.debug' \
+  "$APP_GRADLE"
+
+grep -Fq \
+  'debuggableVariants = ["debug"]' \
+  "$APP_GRADLE"
+
+if grep -E \
+  'debuggableVariants.*appforgeAcceptance' \
+  "$APP_GRADLE"
+then
+  echo "APPFORGE_EXPO_ACCEPTANCE_WRONGLY_DEBUGGABLE" >&2
+  exit 44
+fi
+
+echo "APPFORGE_EXPO_STANDALONE_BUILD_TYPE=appforgeAcceptance"
+echo "APPFORGE_EXPO_STANDALONE_BUNDLE=EMBEDDED"
+echo "APPFORGE_EXPO_STANDALONE_ACCEPTANCE=PASS"
+
+#
 # APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR_V1
 #
 # Keep :app on /workspace so the existing AppForge artifact collector
