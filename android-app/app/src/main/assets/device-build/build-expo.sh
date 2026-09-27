@@ -120,21 +120,28 @@ NODE
 # workspace. Headers still compile normally. This trades build speed for
 # deterministic native compilation and never edits the user's original project.
 #
-APPFORGE_EXPO_CORE_CMAKE="$SOURCE/node_modules/expo-modules-core/android/cmake"
+# APPFORGE_EXPO_PCH_ROOT_DISCOVERY_V20_2
+#
+# SDK 54's installed expo-modules-core package does not guarantee that
+# PCH-bearing CMake sources live under android/cmake. Scan the package's
+# complete Android source tree recursively instead of assuming that subpath.
+#
+APPFORGE_EXPO_CORE_ANDROID="$SOURCE/node_modules/expo-modules-core/android"
 
 test -f "$SOURCE/node_modules/expo/package.json"
 test -f "$SOURCE/node_modules/react-native/package.json"
-test -d "$APPFORGE_EXPO_CORE_CMAKE"
+test -d "$APPFORGE_EXPO_CORE_ANDROID"
 
 echo "APPFORGE_EXPO_PCH_POST_NPM_V20_1=PASS"
+echo "APPFORGE_EXPO_PCH_SCAN_ROOT=$APPFORGE_EXPO_CORE_ANDROID"
 
-APPFORGE_EXPO_CORE_CMAKE="$APPFORGE_EXPO_CORE_CMAKE" \
+APPFORGE_EXPO_CORE_ANDROID="$APPFORGE_EXPO_CORE_ANDROID" \
 "$NODE_HOME/bin/node" <<'NODE'
 const fs = require("fs");
 const path = require("path");
 
 const root =
-  process.env.APPFORGE_EXPO_CORE_CMAKE;
+  process.env.APPFORGE_EXPO_CORE_ANDROID;
 
 if (!root || !fs.statSync(root).isDirectory()) {
   throw new Error(
@@ -297,10 +304,9 @@ for (const file of files) {
   }
 }
 
-if (removedTotal < 3) {
+if (removedTotal < 1) {
   throw new Error(
-    "Unexpected expo-modules-core PCH command count: " +
-      removedTotal
+    "No expo-modules-core PCH commands found under Android source tree"
   );
 }
 
@@ -340,13 +346,14 @@ NODE
 
 if grep -R -Fq \
   'target_precompile_headers' \
-  "$APPFORGE_EXPO_CORE_CMAKE"
+  "$APPFORGE_EXPO_CORE_ANDROID"
 then
   echo "APPFORGE_EXPO_PCH_DISABLE=FAIL"
   exit 47
 fi
 
 echo "APPFORGE_EXPO_PCH_MODE=DISABLED_ARM64_HOST"
+echo "APPFORGE_EXPO_PCH_ROOT_DISCOVERY_V20_2=PASS"
 echo "APPFORGE_EXPO_DISABLE_PCH_V20=PASS"
 
 #
@@ -2649,6 +2656,7 @@ echo "APPFORGE_EXPO_LAUNCH_TRANSACTION_V18=PASS"
 echo "APPFORGE_EXPO_NATIVE_PACKAGE_REGISTRATION_V19=PASS"
 echo "APPFORGE_EXPO_DISABLE_PCH_V20=PASS"
 echo "APPFORGE_EXPO_PCH_POST_NPM_V20_1=PASS"
+echo "APPFORGE_EXPO_PCH_ROOT_DISCOVERY_V20_2=PASS"
 
 #
 # Change Gradle properties while the project is still on the

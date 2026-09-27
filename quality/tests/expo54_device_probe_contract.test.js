@@ -518,7 +518,12 @@ test(
 
     assert.match(
       expo,
-      /expo-modules-core\/android\/cmake/
+      /APPFORGE_EXPO_CORE_ANDROID="\$SOURCE\/node_modules\/expo-modules-core\/android"/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PCH_ROOT_DISCOVERY_V20_2/
     );
 
     assert.match(
@@ -539,6 +544,11 @@ test(
     assert.match(
       expo,
       /APPFORGE_EXPO_PCH_POST_NPM_V20_1=PASS/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PCH_SCAN_ROOT=/
     );
 
     const expoVersionProbe =
