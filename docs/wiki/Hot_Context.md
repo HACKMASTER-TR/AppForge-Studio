@@ -45,6 +45,7 @@ source_files:
 - BUG-B is closed: V20.3 disables only `expo-modules-core` PCH in the disposable workspace; clang/PCH exit 139 did not recur across 4/4 consecutive physical builds.
 - V21 makes active-build notification return navigation/rebind-only, uses one shared engine progress rule for UI + notification, and adds event-driven build milestones.
 - V21 replaces epoch Build No values with a synchronously persisted sequence beginning at `AF-0000001000`.
+- V21 CI compile follow-up replaces six stale Builder `backendProgress` stage-label references with the shared `safeProgress` value; the first V21 CI run failed only on those unresolved references.
 
 ## Physical Re-acceptance Still Required
 

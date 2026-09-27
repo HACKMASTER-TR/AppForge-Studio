@@ -18944,22 +18944,22 @@ private fun BuildStep(
                 "success" ->
                 "Tamamlandı"
 
-            backendProgress >= 100 ->
+            safeProgress >= 100 ->
                 "Tamamlandı"
 
-            backendProgress >= 90 ->
+            safeProgress >= 90 ->
                 "Çıktılar hazırlanıyor"
 
-            backendProgress >= 70 ->
+            safeProgress >= 70 ->
                 "Uygulama paketleniyor"
 
-            backendProgress >= 40 ->
+            safeProgress >= 40 ->
                 "Kaynaklar derleniyor"
 
-            backendProgress >= 15 ->
+            safeProgress >= 15 ->
                 "Proje hazırlanıyor"
 
-            backendProgress > 0 ->
+            safeProgress > 0 ->
                 "Build başlatılıyor"
 
             else ->

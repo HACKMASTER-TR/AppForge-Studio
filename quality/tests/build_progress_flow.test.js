@@ -10,6 +10,11 @@ test("Studio and notification share exact engine progress", () => {
   assert.match(main, /AppForgeBuildProgress\.visible/);
   assert.match(service, /AppForgeBuildProgress\.visible/);
   assert.match(service, /lastVisibleProgress/);
+  assert.doesNotMatch(main, /\bbackendProgress\b/);
+  assert.match(
+    main,
+    /val stageLabel =[\s\S]{0,1800}safeProgress >= 90[\s\S]{0,500}safeProgress > 0/
+  );
 });
 
 test("progress is milestone driven, never timer interpolated", () => {
