@@ -859,11 +859,11 @@ test(
 
 
 test(
-  "Expo ARM64 NDK host LLVM wrappers are required",
+  "Expo ARM64 NDK uses pinned payload and host LLVM wrappers",
   () => {
     assert.match(
       installer,
-      /APPFORGE_EXPO_ARM64_NDK_HOST_V1/
+      /APPFORGE_EXPO_ARM64_NDK_HOST_V2/
     );
 
     assert.match(
@@ -873,7 +873,27 @@ test(
 
     assert.match(
       installer,
-      /APPFORGE_EXPO_ARM64_NDK_CLANG_WRAPPER_V1/
+      /APPFORGE_EXPO_ARM64_NDK_CLANG_WRAPPER_V2/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_CLANG18_WRAPPER_V2/
+    );
+
+    assert.match(
+      installer,
+      /android-ndk-\$EXPO_ARM64_NDK_RELEASE-linux\.zip/
+    );
+
+    assert.match(
+      installer,
+      /6fc476b2e57d7c01ac0c95817746b927035b9749/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_NDK_PAYLOAD_REUSE=PASS/
     );
 
     assert.match(
@@ -893,7 +913,7 @@ test(
 
     assert.match(
       installer,
-      /APPFORGE_EXPO_ARM64_NDK_HOST_SMOKE=PASS/
+      /APPFORGE_EXPO_ARM64_NDK_HOST_V2_SMOKE=PASS/
     );
   }
 );
