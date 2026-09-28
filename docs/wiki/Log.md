@@ -47,3 +47,10 @@ source_files: []
   failover change was part of the audit.
 - Remaining gates: `d1_migrations` reconciliation and
   real-device Pro lifecycle acceptance.
+
+<!--
+V24 temporary branch-protection acceptance probe.
+PR: #58
+Purpose: prove required CI blocks/allows merge.
+This marker exists only on the disposable test branch and will never be merged.
+-->
