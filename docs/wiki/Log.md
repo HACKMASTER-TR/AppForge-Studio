@@ -47,3 +47,7 @@ source_files: []
   failover change was part of the audit.
 - Remaining gates: `d1_migrations` reconciliation and
   real-device Pro lifecycle acceptance.
+
+- 2026-09-28: Temporary V25 CI hygiene acceptance probe. Stability Gate uses
+  pinned Ubuntu 24.04 runners and setup-python v7. This disposable PR must not
+  be merged.
