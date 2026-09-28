@@ -346,8 +346,48 @@ variant:
 
 V22 is closed for the tested scope.
 
-The next hardening target is Windows Portable persistent application data.
-The current host places Electron `userData` below the temporary runtime
-directory and deletes that runtime directory during `will-quit`, so browser
-profile data such as LocalStorage/IndexedDB is not guaranteed to survive
-relaunch.
+## 2026-09-28 V23 Windows Portable persistence
+
+V23 separates disposable Windows host runtime files from persistent Electron
+browser-profile data.
+
+- Persistent `userData` is scoped by manifest `appId` below Windows
+  `LOCALAPPDATA`.
+- Temporary payload/runtime files remain disposable.
+- Same `appId` resolves to the same persistent profile; different app IDs are
+  isolated.
+- Local tests and the complete doctor passed with 719/719 tests.
+- Windows Portable CI run `36388524930` passed for commit
+  `45cc598ac95e7e05ee9ca9a35f3c12015a5f829d`.
+- CI launched the real portable EXE twice and proved LocalStorage survived the
+  relaunch while temporary runtime cleanup remained active.
+- Physical Windows relaunch and same-app EXE-update persistence acceptance are
+  still pending.
+
+V23 is source/CI accepted but is not physically closed.
+
+## 2026-09-28 V24 protected-main acceptance
+
+GitHub `main` protection is enabled and was accepted against temporary PR #58.
+
+- Pull requests are required for `main`.
+- `AppForge Stability Summary` is the required status check.
+- Required checks use strict/up-to-date branch enforcement.
+- Admin enforcement is enabled.
+- Force-push and `main` deletion are disabled.
+- Unresolved conversations block merge.
+- Required approving review count remains zero for the current solo workflow.
+- PR #58 was `BLOCKED` while required CI was pending.
+- Stability Gate run `36390385875` passed all five jobs.
+- After the required check passed, GitHub reported the PR `CLEAN`.
+- PR #58 was then closed without merge and its temporary branch/worktree were
+  deleted.
+- `main` content remained unchanged throughout acceptance.
+
+V24 server-side branch-protection acceptance is closed.
+
+During the negative-path acceptance run, the stability script exposed a
+failure-only shell bug: its final command contained literal `exit 1\n`, which
+was interpreted as invalid status `1n`. V24.1 replaces it with numeric
+`exit 1` and adds a permanent regression contract plus an isolated runtime
+failure-path probe.

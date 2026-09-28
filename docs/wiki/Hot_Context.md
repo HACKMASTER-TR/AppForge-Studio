@@ -31,7 +31,7 @@ source_files:
 
 - Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, Python/Chaquopy, and scoped Expo SDK 54 / React Native 0.81.
 - Expo V20.3 passed 4/4 consecutive physical APK+AAB builds plus final direct-launch UI acceptance. V21 promotes only this Expo family to READY; standalone React Native remains EXPERIMENTAL.
-- V22 deterministic Android APK/AAB artifact selection is physically accepted. Current work is V23 Windows Portable persistent user data; `main` and Play Production remain untouched.
+- V24 main protection is server-accepted on PR #58; V23 Windows persistence is source/CI accepted with physical Windows relaunch still pending. Play Production remains untouched.
 
 ## Must Know
 
@@ -61,7 +61,7 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- Windows Portable currently places Electron `userData` inside the temporary runtime tree that is deleted on quit; V23 must separate persistent profile data from disposable payload/runtime files.
+- V23 Windows persistence is source/CI accepted; physical relaunch and EXE-update persistence acceptance remain pending.
 - Expo READY remains limited to SDK54/RN0.81; broader Expo and standalone React Native stay outside the accepted surface.
 - D1 migration history remains unresolved.
 

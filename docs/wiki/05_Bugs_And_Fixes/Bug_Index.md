@@ -262,6 +262,18 @@ under `quality/tests`. Existing historical bug records are retained.
   Project-wide newest-file selection is removed. APK uses AGP variant metadata,
   AAB stays inside the exact `:app` bundle variant, and ambiguous outputs fail
   closed. Native Android and Expo SDK54 both passed APK+AAB device acceptance.
+- **Windows Portable persistence V23 — source/CI accepted, physical pending.**
+  Electron `userData` is now app-ID-scoped outside disposable runtime storage.
+  Windows CI proved LocalStorage survives real EXE relaunch; physical Windows
+  relaunch/update acceptance remains pending.
+- **Protected main V24 — server acceptance passed.**
+  PR #58 proved required CI blocks merge while pending and permits eligibility
+  only after `AppForge Stability Summary` succeeds. The test PR was closed
+  without merge and temporary resources were removed.
+- **Stability Gate failure exit V24.1 — fixed.**
+  A literal `exit 1\\n` caused `Illegal number: 1n` only when the gate was
+  already failing. The failure path now returns numeric status 1 and has a
+  regression contract.
 
 
 ## BUG-C V21.1 terminal notification Ready/0 flash
