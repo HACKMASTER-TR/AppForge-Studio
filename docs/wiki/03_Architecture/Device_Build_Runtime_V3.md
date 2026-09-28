@@ -657,12 +657,26 @@ AppForge offline pack/cache.
 | Native Android Java | `android-gradle` | PASS | PASS | N/A | `APPFORGE_NATIVE_JAVA_PASS` |
 | Native Android Kotlin | `android-gradle` | PASS | PASS | N/A | `APPFORGE_NATIVE_KOTLIN_PASS` |
 | Python / Chaquopy | `python-android` | PASS | PASS | N/A | `APPFORGE_PYTHON_CHAQUOPY_PASS`, Chaquopy 17.0.0, Python 3.12 |
-| Expo SDK54 / RN0.81.4 | `expo` | PASS | PENDING | N/A | `APPFORGE_EXPO54_DEVICE_PASS`; separate internet-off reacceptance not yet recorded |
+| Expo SDK54 / RN0.81.4 | `expo` | PASS | PASS | N/A | `APPFORGE_EXPO54_OFFLINE_PASS`; online prime `AF-0000001018`, internet-off APK+AAB `AF-0000001019` |
 
 Windows Portable packaging for `webview-static` and `node-web` is accepted for
 device-local offline packaging and physical Windows execution. V23's CI
 relaunch persistence test is PASS, but the physical Windows persistent-profile
 relaunch and same-app updated-EXE persistence checks remain PENDING.
+
+Expo SDK54 / React Native 0.81.4 internet-off reacceptance is now physically
+closed for the exact prepared fixture. Online build `AF-0000001018` primed the
+existing cache. With device internet disabled, build `AF-0000001019` completed
+in 03:07 and produced both APK and AAB. The APK installed and launched while
+offline and rendered `APPFORGE_EXPO54_OFFLINE_PASS`, `Expo SDK 54` and
+`React Native 0.81.4`. Fixture SHA-256:
+`0804ac6f58d9419f211e24e1f812eb95a05910fa70b261e98792718fb1916833`.
+
+Successful builds do not expose the error-only Technical Details surface, so
+the physical gate is based on the controlled internet-off condition, successful
+APK+AAB production, installation and the fixture runtime marker. This does not
+claim that a cold device with arbitrary uncached Expo dependencies is already
+prepared by the one-click Offline Build Pack.
 
 Standalone React Native and Android NDK remain EXPERIMENTAL. Flutter,
 .NET Android, .NET MAUI and the legacy `windows-web` alias remain PLANNED.

@@ -391,3 +391,29 @@ failure-only shell bug: its final command contained literal `exit 1\n`, which
 was interpreted as invalid status `1n`. V24.1 replaces it with numeric
 `exit 1` and adds a permanent regression contract plus an isolated runtime
 failure-path probe.
+
+## 2026-09-28 V25 Expo SDK54 internet-off physical acceptance
+
+The formal offline matrix is now physically closed for the scoped
+Expo SDK 54 / React Native 0.81.4 fixture.
+
+- Online cache-prime build: `AF-0000001018`, APK+AAB PASS.
+- Controlled internet-off build: `AF-0000001019`, 03:07, APK+AAB PASS.
+- The internet-off APK installed and launched successfully.
+- Runtime rendered `APPFORGE_EXPO54_OFFLINE_PASS`, `Expo SDK 54` and
+  `React Native 0.81.4`.
+- Fixture SHA-256:
+  `0804ac6f58d9419f211e24e1f812eb95a05910fa70b261e98792718fb1916833`.
+- The PASS is intentionally scoped to the prepared fixture/cache. It does not
+  claim arbitrary cold Expo dependency sets are offline-ready.
+- Successful builds do not expose the error-only Technical Details panel, so
+  that panel is not an acceptance requirement.
+
+V23 Windows persistent-profile physical relaunch/update acceptance remains
+PENDING.
+
+During this Expo acceptance run a separate Builder lifecycle regression was
+observed: navigating away from an active build and returning to step 10 can
+show `Hazır / %0` and the normal build button while the actual engine job
+continues. V25.1 must restore the active build identity/state on Builder
+re-entry and must prevent a duplicate build action while that job is active.

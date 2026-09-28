@@ -288,3 +288,12 @@ under `quality/tests`. Existing historical bug records are retained.
 - V21.3 still failed the physical handoff; V21.4 fixed prompt notification
   behavior but notification tap exposed the UpdateGate route regression.
 - V21.5 passed the focused physical retest and closes BUG-C.
+
+- **Builder active-build re-entry regression V25.1 — OPEN.**
+  During the 2026-09-28 Expo offline acceptance run, an active build continued
+  in the engine but Builder step 10 could return as `Hazır / %0` with the
+  normal `UYGULAMAYI DERLE` action visible after navigation away and back.
+  The existing V21 lifecycle acceptance therefore has a newly observed
+  navigation re-entry regression. V25.1 must reconnect the persisted active
+  build reference, restore the same Build ID/progress and keep duplicate build
+  start disabled until the real job reaches a terminal state.

@@ -29,8 +29,8 @@ source_files:
 
 ## Current Focus
 
-- Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, Python/Chaquopy, and scoped Expo SDK 54 / React Native 0.81.
-- Expo V20.3 passed 4/4 consecutive physical APK+AAB builds plus final direct-launch UI acceptance. V21 promotes only this Expo family to READY; standalone React Native remains EXPERIMENTAL.
+- Expo SDK54/RN0.81.4 offline acceptance PASS: `AF-0000001019` produced APK+AAB and launched `APPFORGE_EXPO54_OFFLINE_PASS`.
+- V25 offline matrix closed. V25.1 OPEN: Builder re-entry can show `Hazır / %0` during an active build.
 - V24 main protection is server-accepted on PR #58; V23 Windows persistence is source/CI accepted with physical Windows relaunch still pending. Play Production remains untouched.
 
 ## Must Know
@@ -62,6 +62,7 @@ source_files:
 ## Current Risks / Open Questions
 
 - V23 Windows persistence is source/CI accepted; physical relaunch and EXE-update persistence acceptance remain pending.
+- V25.1 must preserve Build ID/progress across Builder re-entry and block duplicate build starts.
 - Expo READY remains limited to SDK54/RN0.81; broader Expo and standalone React Native stay outside the accepted surface.
 - D1 migration history remains unresolved.
 
