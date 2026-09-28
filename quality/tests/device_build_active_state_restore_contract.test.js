@@ -146,13 +146,32 @@ test(
 test(
   "restored active build remains the visible Builder job",
   () => {
-    const matches =
-      main.match(
-        /buildProjectKey !=\s*null\s*&&\s*\(\s*buildBusy\s*\|\|/g
-      ) || [];
+    /*
+     * V25.1 strengthens the old buildBusy-only visibility rule.
+     *
+     * BuildStep uses effectiveBuildBusy so a persisted active build
+     * remains visible while its first real snapshot is being rebound.
+     * The Builder bottom action independently uses
+     * builderEffectiveBuildBusy to prevent a duplicate build start.
+     */
+    assert.match(
+      main,
+      /buildMatchesCurrentProject\s*=\s*buildProjectKey != null &&[\s\S]*effectiveBuildBusy \|\|/
+    );
 
-    assert.ok(
-      matches.length >= 2
+    assert.match(
+      main,
+      /builderBuildMatchesCurrentProject\s*=\s*buildProjectKey !=[\s\S]*builderEffectiveBuildBusy \|\|/
+    );
+
+    assert.match(
+      main,
+      /effectiveBuildBusy\s*=\s*buildBusy\s*\|\|\s*reentryPending/
+    );
+
+    assert.match(
+      main,
+      /builderEffectiveBuildBusy\s*=\s*buildBusy\s*\|\|\s*builderReentryUiGuard/
     );
   }
 );

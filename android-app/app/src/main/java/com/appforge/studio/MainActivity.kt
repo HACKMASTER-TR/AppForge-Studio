@@ -1429,6 +1429,83 @@ private fun AppForgeApp() {
         buildRuntime.queueEstimate
 
     /*
+     * BUILDER_ACTIVE_BUILD_REENTRY_GUARD_V25_1
+     *
+     * Activity recreation was already covered by V21 lifecycle restore,
+     * but normal Builder navigation can happen without recreating
+     * AppForgeApp. Never trust only the in-memory buildBusy flag when
+     * entering step 10. BuildProgressService owns a persisted reference to
+     * the real active build and is the fail-safe source for re-entry.
+     *
+     * The synchronous reference read protects the very first Builder frame:
+     * while the real snapshot is being restored the UI must not render
+     * "Hazır / %0" as an idle state or expose another build action.
+     */
+    var builderReentryPendingBuildId by
+        remember {
+            mutableStateOf<String?>(
+                null
+            )
+        }
+
+    val builderRuntimeProjectKey =
+        remember(
+            draft.packageName,
+            draft.importedFolder,
+            draft.sourceUri
+        ) {
+            "${draft.packageName}|" +
+                "${draft.importedFolder.orEmpty()}|" +
+                draft.sourceUri.orEmpty()
+        }
+
+    val builderActiveBuildReference =
+        remember(
+            screen,
+            step,
+            buildBusy,
+            buildId,
+            builderRuntimeProjectKey
+        ) {
+            if (
+                screen ==
+                    AppScreen.BUILDER &&
+                step == 10
+            ) {
+                BuildProgressService
+                    .activeSingleBuild(
+                        context
+                    )
+                    ?.takeIf {
+                        reference ->
+
+                        reference.projectKey
+                            .isNullOrBlank() ||
+                        reference.projectKey ==
+                            builderRuntimeProjectKey ||
+                        buildBusy
+                    }
+            } else {
+                null
+            }
+        }
+
+    val builderActiveBuildReentryGuard =
+        builderActiveBuildReference !=
+            null &&
+        (
+            !buildBusy ||
+            buildId !=
+                builderActiveBuildReference
+                    .buildId
+        )
+
+    val builderReentryUiGuard =
+        builderActiveBuildReentryGuard ||
+        builderReentryPendingBuildId !=
+            null
+
+    /*
      * ACTIVE_DEVICE_BUILD_RESTORE_V1
      *
      * BuildProgressService persists only the identity needed to reconnect
@@ -1530,6 +1607,220 @@ private fun AppForgeApp() {
             delay(
                 1_000L
             )
+        }
+    }
+
+
+    /*
+     * BUILDER_ACTIVE_BUILD_REENTRY_V25_1
+     *
+     * Normal navigation away from and back to Builder step 10 gets its own
+     * rebind path. It always reconnects to the persisted Build ID; it never
+     * creates a replacement build.
+     *
+     * The pending guard remains active until the first real engine snapshot
+     * arrives, so the UI never advertises an idle build state during the
+     * rebind window.
+     */
+    LaunchedEffect(
+        screen,
+        step,
+        builderActiveBuildReference
+            ?.buildId
+    ) {
+        if (
+            screen !=
+                AppScreen.BUILDER ||
+            step != 10
+        ) {
+            return@LaunchedEffect
+        }
+
+        val reference =
+            builderActiveBuildReference
+                ?: return@LaunchedEffect
+
+        if (
+            buildBusy &&
+            buildId ==
+                reference.buildId
+        ) {
+            return@LaunchedEffect
+        }
+
+        builderReentryPendingBuildId =
+            reference.buildId
+
+        try {
+            val reentryServerUrl =
+                reference.serverUrl
+                    .takeIf {
+                        it.isNotBlank()
+                    }
+                    ?: serverUrl
+
+            if (
+                reentryServerUrl
+                    .isBlank()
+            ) {
+                logs =
+                    (
+                        logs +
+                            "Aktif build bağlantı bilgisi bulunamadı."
+                    ).takeLast(
+                        120
+                    )
+
+                return@LaunchedEffect
+            }
+
+            serverUrl =
+                reentryServerUrl
+
+            /*
+             * Seed only identity/busy state here.
+             * Progress is intentionally not invented; the first real
+             * DeviceBuildEngine snapshot replaces it below.
+             */
+            buildId =
+                reference.buildId
+
+            buildProjectKey =
+                reference.projectKey
+                    ?: buildProjectKey
+
+            buildStartedAtMs =
+                reference.startedAtMs
+                    ?: buildStartedAtMs
+
+            buildTimerRunning =
+                true
+
+            buildBusy =
+                true
+
+            status =
+                "running"
+
+            val client =
+                BuildApiClient(
+                    context = context,
+                    baseUrl =
+                        reentryServerUrl,
+                    apiKey =
+                        reference.apiKey
+                            .ifBlank {
+                                apiKey
+                            }
+                )
+
+            while (true) {
+                val snapshot =
+                    try {
+                        withContext(
+                            Dispatchers.IO
+                        ) {
+                            client.getBuild(
+                                reference.buildId
+                            )
+                        }
+                    } catch (
+                        t: Throwable
+                    ) {
+                        if (
+                            t is
+                                BuildApiException &&
+                            t.errorCode ==
+                                "LOCAL_BUILD_NOT_FOUND"
+                        ) {
+                            BuildProgressService
+                                .clear(
+                                    context
+                                )
+
+                            buildRuntime
+                                .resetForProjectChange()
+
+                            return@LaunchedEffect
+                        }
+
+                        status =
+                            "running"
+
+                        logs =
+                            (
+                                logs +
+                                    "Aktif build yeniden bağlanmayı bekliyor: ${t.message.orEmpty()}"
+                            ).takeLast(
+                                120
+                            )
+
+                        delay(
+                            1_000L
+                        )
+
+                        continue
+                    }
+
+                val normalized =
+                    snapshot.status
+                        .trim()
+                        .lowercase()
+
+                val terminal =
+                    normalized in
+                        setOf(
+                            "success",
+                            "failed",
+                            "cancelled",
+                            "canceled"
+                        )
+
+                /*
+                 * Clear the persisted tracker before restoring a terminal
+                 * snapshot. This prevents a terminal build from briefly
+                 * becoming a new re-entry guard during recomposition.
+                 */
+                if (
+                    terminal
+                ) {
+                    BuildProgressService
+                        .clear(
+                            context
+                        )
+                }
+
+                buildRuntime
+                    .restoreFromEngine(
+                        snapshot =
+                            snapshot,
+                        projectKey =
+                            reference.projectKey,
+                        startedAtMs =
+                            reference.startedAtMs
+                    )
+
+                builderReentryPendingBuildId =
+                    null
+
+                if (
+                    terminal
+                ) {
+                    return@LaunchedEffect
+                }
+
+                delay(
+                    1_500L
+                )
+            }
+        } finally {
+            if (
+                builderReentryPendingBuildId ==
+                    reference.buildId
+            ) {
+                builderReentryPendingBuildId =
+                    null
+            }
         }
     }
 
@@ -1877,7 +2168,8 @@ private fun AppForgeApp() {
     fun prepareBuilderProjectNavigation(): Boolean {
 
         if (
-            buildBusy
+            buildBusy ||
+            builderReentryUiGuard
         ) {
             status =
                 "Derleme devam ederken proje değiştirilemez. " +
@@ -3401,7 +3693,8 @@ private fun AppForgeApp() {
         buildStart@{ buildDraft ->
 
         if (
-            buildBusy
+            buildBusy ||
+            builderReentryUiGuard
         ) {
             status =
                 "Bir derleme zaten devam ediyor."
@@ -5967,6 +6260,8 @@ onOpenPro = {
                                         retryDraft
                                     )
                                 },
+                                reentryPending =
+                                    builderReentryUiGuard,
                                 serverUrl =
                                     serverUrl,
                                 apiKey =
@@ -6124,6 +6419,10 @@ onOpenPro = {
                             }
                         }
 
+                        val builderEffectiveBuildBusy =
+                            buildBusy ||
+                                builderReentryUiGuard
+
                         val builderCurrentProjectKey =
                             remember(
                                 draft.packageName,
@@ -6139,7 +6438,7 @@ onOpenPro = {
                             buildProjectKey !=
                                 null &&
                             (
-                                buildBusy ||
+                                builderEffectiveBuildBusy ||
                                 buildProjectKey ==
                                     builderCurrentProjectKey
                             )
@@ -6165,7 +6464,7 @@ onOpenPro = {
                                                         enabled =
                                                             !(
                                                                 step == 10 &&
-                                                                buildBusy
+                                                                builderEffectiveBuildBusy
                                                             ),
                                                         onClick = {
                                                             if (step < 10) {
@@ -6192,7 +6491,7 @@ onOpenPro = {
                                                                 step < 10 ->
                                                                     "Devam"
 
-                                                                buildBusy ->
+                                                                builderEffectiveBuildBusy ->
                                                                     if (builderCompact) {
                                                                         "DERLENİYOR"
                                                                     } else {
@@ -6278,6 +6577,7 @@ private fun BuildRuntimeStep(
     draft: ProjectDraft,
     onDraftChange: (ProjectDraft) -> Unit,
     onRetryBuild: (ProjectDraft) -> Unit,
+    reentryPending: Boolean,
     serverUrl: String,
     apiKey: String
 ) {
@@ -6352,6 +6652,8 @@ private fun BuildRuntimeStep(
             buildTimerRunning,
         buildBusy =
             buildBusy,
+        reentryPending =
+            reentryPending,
         logs =
             logs,
         preflight =
@@ -18680,6 +18982,7 @@ private fun BuildStep(
     buildElapsedMs: Long,
     buildTimerRunning: Boolean,
     buildBusy: Boolean,
+    reentryPending: Boolean,
     logs: List<String>,
     preflight: List<String>,
     buildProjectKey: String?,
@@ -18899,8 +19202,21 @@ private fun BuildStep(
             mutableStateOf("")
         }
 
+    val effectiveBuildBusy =
+        buildBusy ||
+            reentryPending
+
+    val effectiveStatus =
+        if (
+            reentryPending
+        ) {
+            "running"
+        } else {
+            status
+        }
+
     val normalizedStatus =
-        status
+        effectiveStatus
             .trim()
             .lowercase()
 
@@ -18919,7 +19235,7 @@ private fun BuildStep(
     // Raw progress remains the exact engine milestone shared with notification.
     val safeProgress =
         AppForgeBuildProgress.visible(
-            status,
+            effectiveStatus,
             progress
         )
 
@@ -19090,6 +19406,9 @@ private fun BuildStep(
                 "success" ->
                 "Tamamlandı"
 
+            reentryPending ->
+                "Aktif derleme geri yükleniyor"
+
             safeProgress >= 100 ->
                 "Tamamlandı"
 
@@ -19126,7 +19445,7 @@ private fun BuildStep(
     val buildMatchesCurrentProject =
         buildProjectKey != null &&
             (
-                buildBusy ||
+                effectiveBuildBusy ||
                 buildProjectKey ==
                     currentProjectKey
             )
@@ -19758,7 +20077,13 @@ private fun BuildStep(
                     )
 
                     Text(
-                        "$stageLabel • %$displayProgress",
+                        if (
+                            reentryPending
+                        ) {
+                            stageLabel
+                        } else {
+                            "$stageLabel • %$displayProgress"
+                        },
                         color =
                             TextSecondary,
                         fontSize =
