@@ -161,7 +161,7 @@ test(
 
 
 test(
-  "Expo device acceptance does not silently become offline acceptance",
+  "Expo SDK54 controlled internet-off APK AAB and runtime acceptance is closed",
   () => {
     const expo =
       matrix
@@ -184,17 +184,47 @@ test(
 
     assert.equal(
       expo.offlineApk,
-      "PENDING"
+      "PASS"
     );
 
     assert.equal(
       expo.offlineAab,
-      "PENDING"
+      "PASS"
+    );
+
+    assert.equal(
+      expo.deviceRuntimeEvidence,
+      "APPFORGE_EXPO54_DEVICE_PASS"
     );
 
     assert.equal(
       expo.runtimeEvidence,
-      "APPFORGE_EXPO54_DEVICE_PASS"
+      "APPFORGE_EXPO54_OFFLINE_PASS"
+    );
+
+    assert.equal(
+      expo.onlinePrimeBuildNo,
+      "AF-0000001018"
+    );
+
+    assert.equal(
+      expo.offlineBuildNo,
+      "AF-0000001019"
+    );
+
+    assert.equal(
+      expo.offlineBuildDuration,
+      "03:07"
+    );
+
+    assert.equal(
+      expo.fixtureSha256,
+      "0804ac6f58d9419f211e24e1f812eb95a05910fa70b261e98792718fb1916833"
+    );
+
+    assert.match(
+      expo.note,
+      /does not imply arbitrary cold dependency sets/
     );
   }
 );

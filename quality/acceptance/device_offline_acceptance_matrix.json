@@ -65,10 +65,15 @@
       "support": "READY",
       "deviceApk": "PASS",
       "deviceAab": "PASS",
-      "offlineApk": "PENDING",
-      "offlineAab": "PENDING",
-      "runtimeEvidence": "APPFORGE_EXPO54_DEVICE_PASS",
-      "note": "Device-local APK/AAB physical acceptance is complete; a separately controlled internet-off reacceptance has not yet been recorded."
+      "offlineApk": "PASS",
+      "offlineAab": "PASS",
+      "runtimeEvidence": "APPFORGE_EXPO54_OFFLINE_PASS",
+      "note": "Controlled internet-off physical acceptance passed after one online cache-prime build. The offline run produced APK+AAB and the installed APK rendered APPFORGE_EXPO54_OFFLINE_PASS. Acceptance remains scoped to this prepared Expo SDK54/RN0.81.4 fixture/cache and does not imply arbitrary cold dependency sets.",
+      "deviceRuntimeEvidence": "APPFORGE_EXPO54_DEVICE_PASS",
+      "onlinePrimeBuildNo": "AF-0000001018",
+      "offlineBuildNo": "AF-0000001019",
+      "offlineBuildDuration": "03:07",
+      "fixtureSha256": "0804ac6f58d9419f211e24e1f812eb95a05910fa70b261e98792718fb1916833"
     }
   ],
   "windowsPortable": {
