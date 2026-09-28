@@ -258,6 +258,10 @@ under `quality/tests`. Existing historical bug records are retained.
 - **Duplicate artifact filename ordering V21.7 — physically accepted.**
   Repeated APK/AAB/EXE saves place `(1)`, `(2)` before the file extension and
   do not rename existing artifacts.
+- **Android Gradle artifact selection V22 — physically accepted.**
+  Project-wide newest-file selection is removed. APK uses AGP variant metadata,
+  AAB stays inside the exact `:app` bundle variant, and ambiguous outputs fail
+  closed. Native Android and Expo SDK54 both passed APK+AAB device acceptance.
 
 
 ## BUG-C V21.1 terminal notification Ready/0 flash

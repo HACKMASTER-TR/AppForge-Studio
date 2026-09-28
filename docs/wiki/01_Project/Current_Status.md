@@ -322,5 +322,32 @@ The post-V21 acceptance sequence is now closed for the tested scope:
   Debug CI passed on commit
   `251aa3ab13d7ed7b820310e8d54e5f6a4ed81190`.
 
-The next device-build hardening target is deterministic APK/AAB artifact
-selection for multi-module and multi-variant Android Gradle projects.
+## 2026-09-28 V22 deterministic Android artifact selection closure
+
+V22 removes project-wide `lastModified()` APK/AAB discovery from
+`DeviceBuildEngine`.
+
+Artifact selection is now fail-closed and scoped to the requested `:app`
+variant:
+
+- APK selection uses AGP `output-metadata.json`, the requested variant and
+  declared output file. Equivalent ambiguous outputs stop the build instead of
+  selecting an arbitrary file.
+- AAB selection is limited to
+  `app/build/outputs/bundle/<variant>`.
+- Old or unrelated APK/AAB files elsewhere in the project tree are not
+  candidates.
+- Full local doctor/stability verification passed with 715/715 tests.
+- Android Debug CI run `36385823570` passed for commit
+  `d7639bb8283e57ce26938b36527a2fdc8e3becae`.
+- Native Android physical APK+AAB acceptance passed.
+- Expo SDK54 / React Native 0.81.4 physical APK+AAB acceptance passed and the
+  produced APK launched to `APPFORGE_EXPO54_DEVICE_PASS`.
+
+V22 is closed for the tested scope.
+
+The next hardening target is Windows Portable persistent application data.
+The current host places Electron `userData` below the temporary runtime
+directory and deletes that runtime directory during `will-quit`, so browser
+profile data such as LocalStorage/IndexedDB is not guaranteed to survive
+relaunch.

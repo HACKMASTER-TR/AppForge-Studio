@@ -31,7 +31,7 @@ source_files:
 
 - Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, Python/Chaquopy, and scoped Expo SDK 54 / React Native 0.81.
 - Expo V20.3 passed 4/4 consecutive physical APK+AAB builds plus final direct-launch UI acceptance. V21 promotes only this Expo family to READY; standalone React Native remains EXPERIMENTAL.
-- V21.7 duplicate artifact filename ordering is physically accepted. Current work is V22 deterministic Android APK/AAB artifact selection; `main` and Play Production remain untouched.
+- V22 deterministic Android APK/AAB artifact selection is physically accepted. Current work is V23 Windows Portable persistent user data; `main` and Play Production remain untouched.
 
 ## Must Know
 
@@ -52,6 +52,7 @@ source_files:
 - V21.5 physical retest passed notification tap return, same-build continuation, dismissal, background reappearance, and final-result retention; BUG-C is closed.
 - V21.6 physically passed soft Builder percentage/bar movement while preserving V21.5 notification and build lifecycle behavior.
 - V21.7 physically passed repeated APK/AAB/EXE saves; duplicate suffixes remain before `.apk`, `.aab`, and `.exe`, and existing files stay untouched.
+- V22 removed project-wide mtime artifact selection. Native Android and Expo SDK54 both physically passed APK+AAB build/output acceptance.
 
 ## V21.7 Physical Acceptance
 
@@ -60,7 +61,7 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- V22 replaces project-wide `lastModified()` APK/AAB discovery with `:app` variant-scoped Gradle output selection; source/CI and focused device re-acceptance are required before closure.
+- Windows Portable currently places Electron `userData` inside the temporary runtime tree that is deleted on quit; V23 must separate persistent profile data from disposable payload/runtime files.
 - Expo READY remains limited to SDK54/RN0.81; broader Expo and standalone React Native stay outside the accepted surface.
 - D1 migration history remains unresolved.
 
