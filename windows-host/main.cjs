@@ -31,10 +31,19 @@ const crypto =
   );
 
 const {
-  materializeAppForgePayload
+  materializeAppForgePayload,
+  readPayloadMetadata
 } =
   require(
     "./payload.cjs"
+  );
+
+const {
+  persistentUserDataPath,
+  runtimeDirectoryName
+} =
+  require(
+    "./storage.cjs"
   );
 
 
@@ -64,29 +73,8 @@ function portableExecutable() {
 const portableFile =
   portableExecutable();
 
-const runtimeId =
-  crypto
-    .createHash(
-      "sha256"
-    )
-    .update(
-      portableFile,
-      "utf8"
-    )
-    .digest(
-      "hex"
-    )
-    .slice(
-      0,
-      16
-    );
-
-const runtimeRoot =
-  path.join(
-    os.tmpdir(),
-    "AppForgePortableHost",
-    `${runtimeId}-${process.pid}`
-  );
+let runtimeRoot =
+  null;
 
 let payload =
   null;
@@ -94,24 +82,72 @@ let payload =
 let startupError =
   null;
 
+let ownsSingleInstance =
+  false;
+
 try {
-  payload =
-    materializeAppForgePayload(
-      portableFile,
-      runtimeRoot
+  /*
+   * APPFORGE_WINDOWS_PERSISTENT_USERDATA_V23
+   *
+   * Payload/site extraction remains disposable.
+   * Browser profile data survives relaunch and EXE updates
+   * for the same manifest appId.
+   */
+  const metadata =
+    readPayloadMetadata(
+      portableFile
     );
+
+  const appId =
+    metadata
+      .manifest
+      .appId;
+
+  const userDataRoot =
+    persistentUserDataPath(
+      appId
+    );
+
+  fs.mkdirSync(
+    userDataRoot,
+    {
+      recursive:
+        true
+    }
+  );
 
   app.setPath(
     "userData",
-    path.join(
-      runtimeRoot,
-      "user-data"
-    )
+    userDataRoot
   );
 
   app.setAppUserModelId(
-    payload.manifest.appId
+    appId
   );
+
+  ownsSingleInstance =
+    app.requestSingleInstanceLock();
+
+  if (
+    ownsSingleInstance
+  ) {
+    runtimeRoot =
+      path.join(
+        os.tmpdir(),
+        "AppForgePortableHost",
+        runtimeDirectoryName(
+          appId
+        )
+      );
+
+    payload =
+      materializeAppForgePayload(
+        portableFile,
+        runtimeRoot
+      );
+  } else {
+    app.quit();
+  }
 
 } catch (
   error
@@ -122,6 +158,12 @@ try {
 
 
 function cleanRuntime() {
+  if (
+    !runtimeRoot
+  ) {
+    return;
+  }
+
   try {
     fs.rmSync(
       runtimeRoot,
@@ -136,7 +178,48 @@ function cleanRuntime() {
 }
 
 
-function writeSmokeResult(
+async function smokeStorageValue(
+  window
+) {
+  const key =
+    "appforge-v23-persistent-smoke";
+
+  const writeValue =
+    String(
+      process.env
+        .APPFORGE_HOST_SMOKE_WRITE_VALUE ||
+      ""
+    );
+
+  const expression =
+    writeValue
+      ? (
+          `localStorage.setItem(${JSON.stringify(key)}, ` +
+          `${JSON.stringify(writeValue)}); ` +
+          `localStorage.getItem(${JSON.stringify(key)});`
+        )
+      : (
+          `localStorage.getItem(${JSON.stringify(key)});`
+        );
+
+  const value =
+    await window
+      .webContents
+      .executeJavaScript(
+        expression,
+        true
+      );
+
+  window
+    .webContents
+    .session
+    .flushStorageData();
+
+  return value;
+}
+
+
+async function writeSmokeResult(
   window
 ) {
   const smokeFile =
@@ -151,6 +234,11 @@ function writeSmokeResult(
   ) {
     return;
   }
+
+  const storageValue =
+    await smokeStorageValue(
+      window
+    );
 
   const result = {
     payloadLoaded:
@@ -172,7 +260,16 @@ function writeSmokeResult(
     loadedUrl:
       window
         .webContents
-        .getURL()
+        .getURL(),
+
+    userDataPath:
+      app.getPath(
+        "userData"
+      ),
+
+    runtimeRoot,
+
+    storageValue
   };
 
   fs.writeFileSync(
@@ -194,9 +291,51 @@ function writeSmokeResult(
       () => {
         app.quit();
       },
-      250
+      300
     );
   }
+}
+
+
+function writeSmokeFailure(
+  error
+) {
+  const smokeFile =
+    String(
+      process.env
+        .APPFORGE_HOST_SMOKE_FILE ||
+      ""
+    ).trim();
+
+  if (
+    smokeFile
+  ) {
+    try {
+      fs.writeFileSync(
+        smokeFile,
+        JSON.stringify(
+          {
+            payloadLoaded:
+              false,
+
+            error:
+              String(
+                error?.message ||
+                error
+              )
+          },
+          null,
+          2
+        ),
+        "utf8"
+      );
+    } catch {}
+  }
+
+  process.exitCode =
+    1;
+
+  app.quit();
 }
 
 
@@ -329,8 +468,10 @@ function createWindow() {
   window.webContents.once(
     "did-finish-load",
     () => {
-      writeSmokeResult(
+      void writeSmokeResult(
         window
+      ).catch(
+        writeSmokeFailure
       );
     }
   );
@@ -353,10 +494,43 @@ function createWindow() {
 }
 
 
+app.on(
+  "second-instance",
+  () => {
+    const window =
+      BrowserWindow
+        .getAllWindows()
+        [0];
+
+    if (
+      !window
+    ) {
+      return;
+    }
+
+    if (
+      window.isMinimized()
+    ) {
+      window.restore();
+    }
+
+    window.show();
+    window.focus();
+  }
+);
+
+
 app
   .whenReady()
   .then(
     () => {
+      if (
+        !ownsSingleInstance &&
+        !startupError
+      ) {
+        return;
+      }
+
       if (
         startupError
       ) {

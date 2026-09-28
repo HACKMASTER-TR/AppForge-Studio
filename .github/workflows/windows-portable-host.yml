@@ -75,12 +75,14 @@ jobs:
           Write-Host "BASE_HOST=$($exe.FullName)"
           Write-Host "BASE_HOST_SIZE=$($exe.Length)"
 
-      - name: Verify appended payload on real portable EXE
+      - name: Verify payload and persistent browser data across relaunch
         shell: pwsh
         run: |
           $base = "${{ steps.host.outputs.path }}"
           $smoke = Join-Path $pwd "windows-host/dist/AppForge-Windows-Host-smoke.exe"
-          $result = Join-Path $pwd "windows-host/dist/smoke-result.json"
+          $result1 = Join-Path $pwd "windows-host/dist/smoke-result-1.json"
+          $result2 = Join-Path $pwd "windows-host/dist/smoke-result-2.json"
+          $persistValue = "APPFORGE_V23_${{ github.sha }}"
 
           Copy-Item `
             -LiteralPath $base `
@@ -91,49 +93,169 @@ jobs:
             windows-host/scripts/append-smoke-payload.cjs `
             $smoke
 
-          $env:APPFORGE_HOST_SMOKE_FILE = $result
-          $env:APPFORGE_HOST_SMOKE_EXIT = "1"
+          function Invoke-AppForgeSmoke(
+            [string] $result,
+            [string] $writeValue
+          ) {
+            $env:APPFORGE_HOST_SMOKE_FILE = $result
+            $env:APPFORGE_HOST_SMOKE_EXIT = "1"
 
-          $process = Start-Process `
-            -FilePath $smoke `
-            -PassThru
+            if (
+              [string]::IsNullOrWhiteSpace(
+                $writeValue
+              )
+            ) {
+              Remove-Item `
+                Env:APPFORGE_HOST_SMOKE_WRITE_VALUE `
+                -ErrorAction SilentlyContinue
+            } else {
+              $env:APPFORGE_HOST_SMOKE_WRITE_VALUE = $writeValue
+            }
 
-          if (-not $process.WaitForExit(60000)) {
-            $process.Kill()
-            throw "Portable host smoke test timed out."
+            $process = Start-Process `
+              -FilePath $smoke `
+              -PassThru
+
+            if (
+              -not $process.WaitForExit(
+                60000
+              )
+            ) {
+              $process.Kill()
+              throw "Portable host smoke test timed out."
+            }
+
+            if (
+              $process.ExitCode -ne 0
+            ) {
+              throw "Portable host exited with code $($process.ExitCode)."
+            }
+
+            if (
+              -not (
+                Test-Path `
+                  -LiteralPath $result
+              )
+            ) {
+              throw "Portable host did not write smoke result."
+            }
+
+            return (
+              Get-Content `
+                -LiteralPath $result `
+                -Raw |
+              ConvertFrom-Json
+            )
           }
 
-          if (-not (Test-Path -LiteralPath $result)) {
-            throw "Portable host did not write smoke result."
+          $first = Invoke-AppForgeSmoke `
+            $result1 `
+            $persistValue
+
+          if (
+            $first.payloadLoaded -ne $true
+          ) {
+            throw "First portable host launch failed."
           }
 
-          $data = Get-Content `
-            -LiteralPath $result `
-            -Raw |
-            ConvertFrom-Json
-
-          if ($data.payloadLoaded -ne $true) {
-            throw "Portable host did not load appended payload."
-          }
-
-          if ($data.appId -ne "com.appforge.windows.smoke") {
-            throw "Portable host loaded wrong manifest."
-          }
-
-          if ($data.sourceMode -ne "LOCAL") {
-            throw "Portable host source mode mismatch."
+          if (
+            $first.storageValue -ne $persistValue
+          ) {
+            throw "First launch did not persist LocalStorage value."
           }
 
           if (
             [string]::IsNullOrWhiteSpace(
-              $data.portableExecutableFile
+              $first.userDataPath
             )
           ) {
-            throw "PORTABLE_EXECUTABLE_FILE was not available."
+            throw "Persistent userData path is missing."
+          }
+
+          if (
+            $first.userDataPath -like
+              "*AppForgePortableHost*"
+          ) {
+            throw "userData still lives inside disposable runtime."
+          }
+
+          if (
+            -not (
+              Test-Path `
+                -LiteralPath $first.userDataPath
+            )
+          ) {
+            throw "Persistent userData directory disappeared after quit."
+          }
+
+          if (
+            Test-Path `
+              -LiteralPath $first.runtimeRoot
+          ) {
+            throw "Disposable runtime was not cleaned after first quit."
+          }
+
+          $second = Invoke-AppForgeSmoke `
+            $result2 `
+            ""
+
+          if (
+            $second.payloadLoaded -ne $true
+          ) {
+            throw "Second portable host launch failed."
+          }
+
+          if (
+            $second.storageValue -ne $persistValue
+          ) {
+            throw "LocalStorage did not survive portable EXE relaunch."
+          }
+
+          if (
+            $second.userDataPath -ne
+              $first.userDataPath
+          ) {
+            throw "Same appId changed persistent userData directory."
+          }
+
+          if (
+            $second.runtimeRoot -ne
+              $first.runtimeRoot
+          ) {
+            throw "Same appId changed stable disposable runtime identity."
+          }
+
+          if (
+            Test-Path `
+              -LiteralPath $second.runtimeRoot
+          ) {
+            throw "Disposable runtime was not cleaned after second quit."
+          }
+
+          if (
+            $second.appId -ne
+              "com.appforge.windows.smoke"
+          ) {
+            throw "Portable host loaded wrong manifest."
+          }
+
+          if (
+            $second.sourceMode -ne
+              "LOCAL"
+          ) {
+            throw "Portable host source mode mismatch."
           }
 
           Write-Host "WINDOWS_PORTABLE_PAYLOAD_SMOKE=PASS"
-          Write-Host "PORTABLE_EXECUTABLE_FILE=$($data.portableExecutableFile)"
+          Write-Host "WINDOWS_PERSISTENT_USERDATA=PASS"
+          Write-Host "WINDOWS_LOCALSTORAGE_RELAUNCH=PASS"
+          Write-Host "USER_DATA_PATH=$($second.userDataPath)"
+
+          Remove-Item `
+            -LiteralPath $second.userDataPath `
+            -Recurse `
+            -Force `
+            -ErrorAction SilentlyContinue
 
       - name: Create host manifest
         shell: pwsh
