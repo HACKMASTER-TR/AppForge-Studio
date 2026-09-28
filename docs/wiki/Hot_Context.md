@@ -21,6 +21,7 @@ source_files:
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
   - "android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt"
   - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/AppForgeApplication.kt"
   - "android-app/app/src/main/java/com/appforge/studio/AppForgeBuildNumbers.kt"
   - "android-app/app/src/main/assets/device-build/build-expo.sh"
 ---
@@ -47,7 +48,8 @@ source_files:
 - V21 physical acceptance passed progress synchronization, cancel stability, success-only 100%, Build No sequence/persistence, and active-build survival.
 - V21.1 and V21.2 still failed BUG-C physically: notification return could show `Hazır / %0`; notification dismissal/foreground handoff also remained incorrect.
 - V21.3 physical retest failed BUG-C: notification still arrived about 10 seconds late, dismissal failed, and Builder eventually returned to `Hazır / %0` while tracking was lost.
-- V21.4 source patch makes `BuildRuntimeState` a single lifetime owner, navigates only after snapshot hydration, adds a host foreground guard, directly stops foreground notification tracking on return, and requests immediate foreground-service notification display. Physical retest is required.
+- V21.4 physical retest passed prompt notification display and compact progress, but tapping the notification caused MainActivity to be redirected/finished by the application update gate; build survival and background reappearance therefore failed.
+- V21.5 fixes that exact route: an already-approved in-process Studio session now bypasses UpdateGateActivity on notification return, while a cold/recreated process still goes through the normal update gate with notification extras preserved. Physical retest is required.
 
 ## Physical Re-acceptance Still Required
 
@@ -58,7 +60,7 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- BUG-C V21.4 is not closed until the focused physical retest passes.
+- BUG-C V21.5 is not closed until the focused physical retest passes.
 - Expo READY remains limited to SDK54/RN0.81; broader Expo and standalone React Native stay outside the accepted surface.
 - D1 migration history remains unresolved.
 

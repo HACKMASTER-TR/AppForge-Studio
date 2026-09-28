@@ -20,6 +20,14 @@ const main = read(
   "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
 );
 
+const application = read(
+  "android-app/app/src/main/java/com/appforge/studio/AppForgeApplication.kt"
+);
+
+const updateGate = read(
+  "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
+);
+
 test(
   "foreground tracker persists active build identity for lifecycle restore",
   () => {
@@ -260,4 +268,55 @@ test("compact build notification exposes numeric progress without expansion", ()
   assert.match(service, /\$appName • %\$\{progress\.coerceIn\(0, 100\)\}/);
   assert.match(service, /\.setProgress\(\s*100,/);
   assert.match(service, /BUILD_NOTIFICATION_IMMEDIATE_DISPLAY_V21_4[\s\S]*FOREGROUND_SERVICE_IMMEDIATE/);
+});
+
+
+test("approved notification return bypasses the update gate without finishing MainActivity", () => {
+  const marker = application.indexOf(
+    "BUILD_NOTIFICATION_GATE_SESSION_BYPASS_V21_5"
+  );
+  assert.ok(marker >= 0);
+
+  const block = application.slice(
+    marker,
+    marker + 2200
+  );
+
+  const approvedIndex = block.indexOf(
+    "UpdateGateSession.isApproved()"
+  );
+  const returnIndex = block.indexOf("return", approvedIndex);
+  const redirectIndex = block.indexOf(
+    "activity.startActivity(gate)"
+  );
+  const finishIndex = block.indexOf(
+    "activity.finish()"
+  );
+
+  assert.ok(approvedIndex >= 0);
+  assert.ok(returnIndex > approvedIndex);
+  assert.ok(redirectIndex > returnIndex);
+  assert.ok(finishIndex > redirectIndex);
+
+  assert.doesNotMatch(
+    block,
+    /notificationEntry/
+  );
+});
+
+test("cold notification entry still passes through the update gate and preserves extras", () => {
+  assert.match(
+    application,
+    /val gate = Intent\([\s\S]*UpdateGateActivity::class\.java[\s\S]*original\?\.extras\?\.let\(::putExtras\)/
+  );
+
+  assert.match(
+    updateGate,
+    /UpdateGateSession\.approve\(\)[\s\S]*putExtra\("appforge_gate_checked", true\)/
+  );
+
+  assert.match(
+    updateGate,
+    /original\?\.extras\?\.let\(::putExtras\)/
+  );
 });
