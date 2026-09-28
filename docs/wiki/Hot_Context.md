@@ -31,7 +31,7 @@ source_files:
 
 - Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, Python/Chaquopy, and scoped Expo SDK 54 / React Native 0.81.
 - Expo V20.3 passed 4/4 consecutive physical APK+AAB builds plus final direct-launch UI acceptance. V21 promotes only this Expo family to READY; standalone React Native remains EXPERIMENTAL.
-- Current work is BUG-C notification return behavior. `main` and Play Production remain untouched.
+- BUG-C notification return is physically closed on V21.5. Current work is V21.6 soft visual progress; `main` and Play Production remain untouched.
 
 ## Must Know
 
@@ -49,18 +49,17 @@ source_files:
 - V21.1 and V21.2 still failed BUG-C physically: notification return could show `Hazır / %0`; notification dismissal/foreground handoff also remained incorrect.
 - V21.3 physical retest failed BUG-C: notification still arrived about 10 seconds late, dismissal failed, and Builder eventually returned to `Hazır / %0` while tracking was lost.
 - V21.4 physical retest passed prompt notification display and compact progress, but tapping the notification caused MainActivity to be redirected/finished by the application update gate; build survival and background reappearance therefore failed.
-- V21.5 fixes that exact route: an already-approved in-process Studio session now bypasses UpdateGateActivity on notification return, while a cold/recreated process still goes through the normal update gate with notification extras preserved. Physical retest is required.
+- V21.5 physical retest passed notification tap return, same-build continuation, dismissal, background reappearance, and final-result retention; BUG-C is closed.
+- V21.6 keeps raw engine/notification milestones unchanged and adds only a bounded eased visual transition in Builder so the percentage and bars no longer jump abruptly.
 
-## Physical Re-acceptance Still Required
+## V21.6 Visual Re-acceptance Still Required
 
-- Start one active build, background Studio, confirm notification appears promptly, then tap it.
-- Builder must restore the same Build ID and real progress with no `Hazır / %0` flash.
-- Notification must disappear after foreground handoff without cancelling the build.
-- Compact notification must show numeric progress without requiring a second expansion gesture.
+- Start one build and confirm Builder percentage/bars ease smoothly between proven milestones instead of jumping.
+- Background notification remains milestone-driven; build lifecycle behavior from V21.5 must remain unchanged.
 
 ## Current Risks / Open Questions
 
-- BUG-C V21.5 is not closed until the focused physical retest passes.
+- V21.6 visual smoothing is not accepted until one focused physical build confirms it does not affect runtime state.
 - Expo READY remains limited to SDK54/RN0.81; broader Expo and standalone React Native stay outside the accepted surface.
 - D1 migration history remains unresolved.
 

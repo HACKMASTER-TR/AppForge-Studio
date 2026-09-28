@@ -31,3 +31,45 @@ test("failure and cancel retain last real stage; only success writes 100", () =>
   assert.match(engine, /state\.status = "success"\s*\n\s*state\.progress = 100/);
   assert.match(main, /if \(buildId == null\) \{\s*progress = 0/);
 });
+
+test("visual progress eases only toward a proven engine milestone", () => {
+  assert.match(
+    main,
+    /BUILD_PROGRESS_SOFT_VISUAL_V21_6/
+  );
+
+  assert.match(
+    main,
+    /Animatable\(\s*safeProgress\.toFloat\(\)\s*\)/
+  );
+
+  assert.match(
+    main,
+    /targetProgress <=\s*visualProgress\.value[\s\S]{0,500}visualProgress\.snapTo\(\s*targetProgress\s*\)/
+  );
+
+  assert.match(
+    main,
+    /visualProgress\.animateTo\([\s\S]{0,700}targetValue =\s*targetProgress[\s\S]{0,700}FastOutSlowInEasing/
+  );
+
+  assert.match(
+    main,
+    /val displayProgress =[\s\S]{0,300}visualProgress[\s\S]{0,300}roundToInt/
+  );
+
+  assert.match(
+    main,
+    /\$stageLabel • %\$displayProgress/
+  );
+
+  assert.doesNotMatch(
+    main,
+    /displayProgress\s*\+=/
+  );
+
+  assert.doesNotMatch(
+    main,
+    /flowingProgress/
+  );
+});

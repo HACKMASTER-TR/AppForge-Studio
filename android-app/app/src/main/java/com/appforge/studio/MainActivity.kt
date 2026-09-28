@@ -29,6 +29,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
 import androidx.core.content.FileProvider
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
@@ -117,6 +120,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.DateFormat
 import java.util.Date
+import kotlin.math.roundToInt
 import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
@@ -18912,12 +18916,87 @@ private fun BuildStep(
                 "hata:"
             )
 
-    // UI and notification share the exact engine-progress rule.
+    // Raw progress remains the exact engine milestone shared with notification.
     val safeProgress =
         AppForgeBuildProgress.visible(
             status,
             progress
         )
+
+    /*
+     * BUILD_PROGRESS_SOFT_VISUAL_V21_6
+     *
+     * Never invent build progress ahead of DeviceBuildEngine. The visual
+     * layer only eases from the last rendered value up to a newly proven
+     * milestone. A reset/decrease snaps immediately so a new build never
+     * animates backwards from an old result.
+     */
+    val visualProgress =
+        remember(buildId) {
+            Animatable(
+                safeProgress.toFloat()
+            )
+        }
+
+    LaunchedEffect(
+        buildId,
+        safeProgress
+    ) {
+        val targetProgress =
+            safeProgress
+                .toFloat()
+                .coerceIn(
+                    0f,
+                    100f
+                )
+
+        if (
+            buildId == null ||
+            targetProgress <=
+                visualProgress.value
+        ) {
+            visualProgress.snapTo(
+                targetProgress
+            )
+        } else {
+            val distance =
+                targetProgress -
+                    visualProgress.value
+
+            val durationMs =
+                (
+                    240f +
+                        distance *
+                            12f
+                )
+                    .roundToInt()
+                    .coerceIn(
+                        260,
+                        850
+                    )
+
+            visualProgress.animateTo(
+                targetValue =
+                    targetProgress,
+                animationSpec =
+                    tween(
+                        durationMillis =
+                            durationMs,
+                        easing =
+                            FastOutSlowInEasing
+                    )
+            )
+        }
+    }
+
+    val displayProgress =
+        visualProgress
+            .value
+            .roundToInt()
+            .coerceIn(
+                0,
+                100
+            )
 
     val queueWaitLabel =
         when {
@@ -19679,7 +19758,7 @@ private fun BuildStep(
                     )
 
                     Text(
-                        "$stageLabel • %$safeProgress",
+                        "$stageLabel • %$displayProgress",
                         color =
                             TextSecondary,
                         fontSize =
@@ -19693,7 +19772,7 @@ private fun BuildStep(
                     ) {
                         LinearProgressIndicator(
                             progress = {
-                                (safeProgress / 25f)
+                                (displayProgress / 25f)
                                     .coerceIn(0f, 1f)
                             },
                             modifier = Modifier.weight(25f),
@@ -19705,7 +19784,7 @@ private fun BuildStep(
 
                         LinearProgressIndicator(
                             progress = {
-                                ((safeProgress - 25) / 65f)
+                                ((displayProgress - 25) / 65f)
                                     .coerceIn(0f, 1f)
                             },
                             modifier = Modifier.weight(65f),
@@ -19717,7 +19796,7 @@ private fun BuildStep(
 
                         LinearProgressIndicator(
                             progress = {
-                                ((safeProgress - 90) / 10f)
+                                ((displayProgress - 90) / 10f)
                                     .coerceIn(0f, 1f)
                             },
                             modifier = Modifier.weight(10f),
