@@ -3,8 +3,8 @@ type: codebase
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-23
-last_verified: 2026-09-23
+updated: 2026-09-28
+last_verified: 2026-09-28
 confidence: high
 tags:
   - tests
@@ -44,3 +44,14 @@ Cloudflare, Windows and Terminal target assertions. Retired-backend-only
 contracts were removed with their targets. Historical failure records remain.
 The authoritative acceptance after this migration is the local Node
 contract suite, GitHub Android Debug CI and physical device where relevant.
+
+## 2026-09-28 CI and offline acceptance contracts
+
+Linux workflow runner selection is contract-tested: active Linux jobs are
+pinned to Ubuntu 24.04 and Stability Gate uses setup-python v7.
+
+The device/offline acceptance state is also machine-readable at
+`quality/acceptance/device_offline_acceptance_matrix.json`. Its contract
+separates device-local physical acceptance from explicit internet-off
+acceptance and prevents pending Expo/V23 evidence from being silently promoted
+to PASS.

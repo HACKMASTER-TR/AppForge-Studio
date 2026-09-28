@@ -3,8 +3,8 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-09-19
-updated: 2026-09-25
-last_verified: 2026-09-25
+updated: 2026-09-28
+last_verified: 2026-09-28
 confidence: high
 tags:
   - device-build
@@ -643,17 +643,30 @@ blocked while `buildBusy` is true. Saved build history and canonical artifacts
 are not deleted.
 
 
-## 2026-09-25 physical offline acceptance matrix
+## 2026-09-28 formal device/offline acceptance matrix
 
-Physical Android acceptance now confirms the current proven Runtime V3 engine
-matrix:
+The machine-readable source of truth is
+`quality/acceptance/device_offline_acceptance_matrix.json`. PASS applies only
+to the exact accepted fixture and dependencies already prepared in the
+AppForge offline pack/cache.
 
-| Technology | Engine | Offline APK | Offline AAB | Runtime evidence |
-| --- | --- | --- | --- | --- |
-| React / Vite | `node-web` | PASS | PASS | `APPFORGE_REACT_VITE_JS_PASS` |
-| Native Android Java | `android-gradle` | PASS | PASS | `APPFORGE_NATIVE_JAVA_PASS` |
-| Native Android Kotlin | `android-gradle` | PASS | PASS | `APPFORGE_NATIVE_KOTLIN_PASS` |
-| Python / Chaquopy | `python-android` | PASS | PASS | `APPFORGE_PYTHON_CHAQUOPY_PASS`, Python 3.12 |
+| Technology | Engine | Device APK/AAB | Internet-off APK/AAB | Windows EXE | Evidence / boundary |
+| --- | --- | --- | --- | --- | --- |
+| Static HTML/CSS/JS | `webview-static` | PASS | PASS | PASS | Physical offline Android acceptance; Windows `JAVASCRIPT_OK` |
+| React / Vite | `node-web` | PASS | PASS | PASS | `APPFORGE_REACT_VITE_JS_PASS`; prepared npm cache required |
+| Native Android Java | `android-gradle` | PASS | PASS | N/A | `APPFORGE_NATIVE_JAVA_PASS` |
+| Native Android Kotlin | `android-gradle` | PASS | PASS | N/A | `APPFORGE_NATIVE_KOTLIN_PASS` |
+| Python / Chaquopy | `python-android` | PASS | PASS | N/A | `APPFORGE_PYTHON_CHAQUOPY_PASS`, Chaquopy 17.0.0, Python 3.12 |
+| Expo SDK54 / RN0.81.4 | `expo` | PASS | PENDING | N/A | `APPFORGE_EXPO54_DEVICE_PASS`; separate internet-off reacceptance not yet recorded |
+
+Windows Portable packaging for `webview-static` and `node-web` is accepted for
+device-local offline packaging and physical Windows execution. V23's CI
+relaunch persistence test is PASS, but the physical Windows persistent-profile
+relaunch and same-app updated-EXE persistence checks remain PENDING.
+
+Standalone React Native and Android NDK remain EXPERIMENTAL. Flutter,
+.NET Android, .NET MAUI and the legacy `windows-web` alias remain PLANNED.
+Unity remains EXTERNAL_TOOL_REQUIRED.
 
 The Python fixture additionally verified Chaquopy 17.0.0 and the generated
 runtime system-bar safe area on the physical device.
