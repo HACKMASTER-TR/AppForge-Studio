@@ -316,4 +316,4 @@ fi
 
 echo "APPFORGE STABILITY GATE: BLOCKED"
 echo "fail $FAIL"
-exit 1\n
+exit 1
