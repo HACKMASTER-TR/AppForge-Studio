@@ -25,7 +25,7 @@ jobs:
 
   cleanup-github:
     name: Keep last 5 GitHub runs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
