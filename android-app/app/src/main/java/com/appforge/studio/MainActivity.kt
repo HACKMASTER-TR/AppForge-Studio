@@ -21345,6 +21345,182 @@ private fun downloadArtifactToOwnerVault(
 }
 
 
+/*
+ * ARTIFACT_DUPLICATE_EXTENSION_ORDER_V21_7
+ *
+ * MediaStore aynı isimli artifact için dosya adını
+ * kendi değiştirmeden önce AppForge collision'ı çözer.
+ *
+ * app.apk -> app (1).apk -> app (2).apk
+ * app.aab -> app (1).aab -> app (2).aab
+ * app.exe -> app (1).exe -> app (2).exe
+ *
+ * Mevcut dosyalar yeniden adlandırılmaz.
+ */
+@androidx.annotation.RequiresApi(
+    Build.VERSION_CODES.Q
+)
+private fun uniqueArtifactDownloadName(
+    context: Context,
+    requestedFileName: String
+): String {
+
+    val safeName =
+        File(
+            requestedFileName
+        ).name
+
+    require(
+        safeName.isNotBlank() &&
+            safeName ==
+                requestedFileName
+    ) {
+        "Artifact filename invalid."
+    }
+
+    val relativePath =
+        "${Environment.DIRECTORY_DOWNLOADS}/" +
+            "$APPFORGE_DOWNLOAD_FOLDER/"
+
+    val selection =
+        if (
+            Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.R
+        ) {
+            "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ? AND " +
+                "${MediaStore.MediaColumns.IS_TRASHED}=0"
+        } else {
+            "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
+        }
+
+    val existingNames =
+        mutableSetOf<String>()
+
+    context
+        .contentResolver
+        .query(
+            MediaStore.Downloads
+                .EXTERNAL_CONTENT_URI,
+            arrayOf(
+                MediaStore.MediaColumns
+                    .DISPLAY_NAME
+            ),
+            selection,
+            arrayOf(
+                "$relativePath%"
+            ),
+            null
+        )
+        ?.use {
+            cursor ->
+
+            val nameIndex =
+                cursor
+                    .getColumnIndexOrThrow(
+                        MediaStore.MediaColumns
+                            .DISPLAY_NAME
+                    )
+
+            while (
+                cursor.moveToNext()
+            ) {
+                cursor
+                    .getString(
+                        nameIndex
+                    )
+                    ?.trim()
+                    ?.takeIf {
+                        it.isNotBlank()
+                    }
+                    ?.lowercase(
+                        java.util.Locale.ROOT
+                    )
+                    ?.let {
+                        existingNames.add(
+                            it
+                        )
+                    }
+            }
+        }
+
+    fun isAvailable(
+        candidate: String
+    ): Boolean =
+        candidate
+            .lowercase(
+                java.util.Locale.ROOT
+            ) !in existingNames
+
+    if (
+        isAvailable(
+            safeName
+        )
+    ) {
+        return safeName
+    }
+
+    val extensionIndex =
+        safeName
+            .lastIndexOf(
+                '.'
+            )
+
+    val hasExtension =
+        extensionIndex > 0 &&
+            extensionIndex <
+                safeName.lastIndex
+
+    val stem =
+        if (
+            hasExtension
+        ) {
+            safeName.substring(
+                0,
+                extensionIndex
+            )
+        } else {
+            safeName
+        }
+
+    val extension =
+        if (
+            hasExtension
+        ) {
+            safeName.substring(
+                extensionIndex
+            )
+        } else {
+            ""
+        }
+
+    var index =
+        1
+
+    while (
+        index <=
+            9999
+    ) {
+        val candidate =
+            "$stem ($index)$extension"
+
+        if (
+            isAvailable(
+                candidate
+            )
+        ) {
+            return candidate
+        }
+
+        index +=
+            1
+    }
+
+    error(
+        "Artifact için boş dosya adı bulunamadı."
+    )
+}
+
+
 @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
 private fun downloadArtifactToDownloads(
     context: Context,
@@ -21362,11 +21538,19 @@ private fun downloadArtifactToDownloads(
     val resolver =
         context.contentResolver
 
+    val displayName =
+        uniqueArtifactDownloadName(
+            context =
+                context,
+            requestedFileName =
+                fileName
+        )
+
     val values =
         ContentValues().apply {
             put(
                 MediaStore.MediaColumns.DISPLAY_NAME,
-                fileName
+                displayName
             )
 
             put(
@@ -21820,6 +22004,14 @@ private fun publishApkToDownloads(
     val resolver =
         context.contentResolver
 
+    val displayName =
+        uniqueArtifactDownloadName(
+            context =
+                context,
+            requestedFileName =
+                fileName
+        )
+
     val values =
         android.content.ContentValues()
             .apply {
@@ -21827,7 +22019,7 @@ private fun publishApkToDownloads(
                     android.provider.MediaStore
                         .MediaColumns
                         .DISPLAY_NAME,
-                    fileName
+                    displayName
                 )
 
                 put(
