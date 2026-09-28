@@ -1200,22 +1200,101 @@ object DeviceBuildEngine {
         runShellBlocking(shell, rootfs, workspace, state, command, "android-build")
         advanceProgress(state, 90, "Gradle tamamlandı")
 
-        val artifactFiles = project.walkTopDown().maxDepth(14).filter {
-            it.isFile && (it.extension.equals("apk", true) || it.extension.equals("aab", true))
-        }.toList()
+        /*
+         * APPFORGE_DETERMINISTIC_GRADLE_ARTIFACT_SELECTION_V22
+         *
+         * Gradle was previously followed by a project-wide APK/AAB scan
+         * and max(lastModified). That could select a stale artifact from
+         * another module or variant.
+         *
+         * Selection is now scoped to the exact :app Gradle outputs and
+         * requested variant.
+         */
+        val artifactRoot =
+            File(
+                context.filesDir,
+                "device-build/artifacts/${state.id}"
+            )
+                .apply {
+                    mkdirs()
+                }
 
-        val artifactRoot = File(context.filesDir, "device-build/artifacts/${state.id}").apply { mkdirs() }
+        if (
+            DeviceArtifactKind.APK in
+                requestedArtifacts
+        ) {
+            GradleArtifactSelector
+                .selectApk(
+                    project =
+                        project,
+                    variant =
+                        variant
+                )
+                ?.let {
+                    source ->
 
-        artifactFiles.filter { it.extension.equals("apk", true) }.maxByOrNull { it.lastModified() }?.let { source ->
-            val target = File(artifactRoot, "${safeName(draft.appName)}-${state.buildNo}.apk")
-            source.copyTo(target, overwrite = true)
-            state.apk = target
+                    state.logs.add(
+                        "📦 Deterministik APK • " +
+                            source
+                                .relativeTo(
+                                    project
+                                )
+                                .invariantSeparatorsPath
+                    )
+
+                    val target =
+                        File(
+                            artifactRoot,
+                            "${safeName(draft.appName)}-${state.buildNo}.apk"
+                        )
+
+                    source.copyTo(
+                        target,
+                        overwrite = true
+                    )
+
+                    state.apk =
+                        target
+                }
         }
 
-        artifactFiles.filter { it.extension.equals("aab", true) }.maxByOrNull { it.lastModified() }?.let { source ->
-            val target = File(artifactRoot, "${safeName(draft.appName)}-${state.buildNo}.aab")
-            source.copyTo(target, overwrite = true)
-            state.aab = target
+        if (
+            DeviceArtifactKind.AAB in
+                requestedArtifacts
+        ) {
+            GradleArtifactSelector
+                .selectAab(
+                    project =
+                        project,
+                    variant =
+                        variant
+                )
+                ?.let {
+                    source ->
+
+                    state.logs.add(
+                        "📦 Deterministik AAB • " +
+                            source
+                                .relativeTo(
+                                    project
+                                )
+                                .invariantSeparatorsPath
+                    )
+
+                    val target =
+                        File(
+                            artifactRoot,
+                            "${safeName(draft.appName)}-${state.buildNo}.aab"
+                        )
+
+                    source.copyTo(
+                        target,
+                        overwrite = true
+                    )
+
+                    state.aab =
+                        target
+                }
         }
 
         if (

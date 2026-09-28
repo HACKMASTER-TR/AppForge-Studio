@@ -154,7 +154,12 @@ test(
 
     assert.match(
       block,
-      /val artifactFiles\s*=\s*project\.walkTopDown/
+      /GradleArtifactSelector[\s\S]*selectApk/
+    );
+
+    assert.match(
+      block,
+      /GradleArtifactSelector[\s\S]*selectAab/
     );
 
     assert.match(
@@ -167,9 +172,14 @@ test(
       /DeviceArtifactKind\.AAB in requestedArtifacts/
     );
 
-    assert.match(
+    assert.doesNotMatch(
       block,
-      /artifactFiles\.filter/
+      /project\.walkTopDown\(\)/
+    );
+
+    assert.doesNotMatch(
+      block,
+      /lastModified\(\)/
     );
 
     assert.doesNotMatch(

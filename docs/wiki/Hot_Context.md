@@ -31,7 +31,7 @@ source_files:
 
 - Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, Python/Chaquopy, and scoped Expo SDK 54 / React Native 0.81.
 - Expo V20.3 passed 4/4 consecutive physical APK+AAB builds plus final direct-launch UI acceptance. V21 promotes only this Expo family to READY; standalone React Native remains EXPERIMENTAL.
-- V21.7 duplicate artifact filename ordering is physically accepted. Next focus is deterministic Android APK/AAB artifact selection; `main` and Play Production remain untouched.
+- V21.7 duplicate artifact filename ordering is physically accepted. Current work is V22 deterministic Android APK/AAB artifact selection; `main` and Play Production remain untouched.
 
 ## Must Know
 
@@ -60,7 +60,7 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- Android Gradle artifact discovery can still select the newest APK/AAB in the project tree; multi-module and multi-variant projects need deterministic output selection.
+- V22 replaces project-wide `lastModified()` APK/AAB discovery with `:app` variant-scoped Gradle output selection; source/CI and focused device re-acceptance are required before closure.
 - Expo READY remains limited to SDK54/RN0.81; broader Expo and standalone React Native stay outside the accepted surface.
 - D1 migration history remains unresolved.
 
