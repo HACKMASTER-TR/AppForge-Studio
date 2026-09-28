@@ -281,8 +281,10 @@ This closes the current device-offline-engine acceptance sequence. It does not
 generalize acceptance to arbitrary dependency sets which are not present in the
 offline pack/cache.
 
-PR #56 remains Draft. No merge, Play Production publication, Cloudflare
-deployment, D1 migration or Windows Host modification is part of this closure.
+PR #56 was merged into `main` on 2026-09-25 as merge commit
+`176ba5b8161af87521c07317837deb28a2dbf2d4`. No Play Production publication,
+Cloudflare deployment, D1 migration or Windows Host modification was part of
+that acceptance closure.
 
 
 ## 2026-09-27 Expo physical acceptance and V21 build lifecycle
@@ -297,4 +299,28 @@ V21 promotes only Expo SDK54/RN0.81 to READY APK+AAB. Standalone React Native
 remains EXPERIMENTAL. The same source change hardens active-build notification
 return, unifies Builder/notification percentage through the real engine stage,
 and introduces persistent Build No allocation beginning at `AF-0000001000`.
-BUG-C, BUG-D and Build No persistence still require physical re-acceptance.
+BUG-D progress behavior and Build No persistence are physically accepted.
+BUG-C was subsequently closed physically in V21.5 after notification tap return,
+same-build continuation, dismissal, background reappearance and final-result
+retention all passed.
+
+
+## 2026-09-28 V21.5-V21.7 physical closure
+
+The post-V21 acceptance sequence is now closed for the tested scope:
+
+- V21.5 closed BUG-C physically. Notification tap returns to the same active
+  build, foreground handoff dismisses tracking correctly, background tracking
+  can reappear, and the final result remains stable.
+- V21.6 physically accepted bounded soft visual progress. Builder percentage
+  and bars ease toward proven engine milestones without inventing future
+  progress; notification progress remains milestone-driven.
+- V21.7 physically accepted duplicate artifact naming for APK, AAB and EXE.
+  Repeated saves use `name (1).apk`, `name (1).aab`, `name (1).exe` and further
+  numeric suffixes before the extension. Existing files are not renamed.
+- V21.7 source contracts, the complete local doctor/stability gate and Android
+  Debug CI passed on commit
+  `251aa3ab13d7ed7b820310e8d54e5f6a4ed81190`.
+
+The next device-build hardening target is deterministic APK/AAB artifact
+selection for multi-module and multi-variant Android Gradle projects.

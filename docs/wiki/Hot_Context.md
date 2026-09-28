@@ -31,7 +31,7 @@ source_files:
 
 - Device Build Runtime V3 is physically accepted for React/Vite, native Android Java/Kotlin, Python/Chaquopy, and scoped Expo SDK 54 / React Native 0.81.
 - Expo V20.3 passed 4/4 consecutive physical APK+AAB builds plus final direct-launch UI acceptance. V21 promotes only this Expo family to READY; standalone React Native remains EXPERIMENTAL.
-- V21.6 soft visual progress is physically accepted. Current work is V21.7 duplicate artifact filename ordering; `main` and Play Production remain untouched.
+- V21.7 duplicate artifact filename ordering is physically accepted. Next focus is deterministic Android APK/AAB artifact selection; `main` and Play Production remain untouched.
 
 ## Must Know
 
@@ -51,16 +51,16 @@ source_files:
 - V21.4 physical retest passed prompt notification display and compact progress, but tapping the notification caused MainActivity to be redirected/finished by the application update gate; build survival and background reappearance therefore failed.
 - V21.5 physical retest passed notification tap return, same-build continuation, dismissal, background reappearance, and final-result retention; BUG-C is closed.
 - V21.6 physically passed soft Builder percentage/bar movement while preserving V21.5 notification and build lifecycle behavior.
-- V21.7 resolves Downloads artifact collisions before MediaStore insert so `(1)`, `(2)` suffixes stay before `.apk`, `.aab`, and `.exe` extensions.
+- V21.7 physically passed repeated APK/AAB/EXE saves; duplicate suffixes remain before `.apk`, `.aab`, and `.exe`, and existing files stay untouched.
 
-## V21.7 Physical Re-acceptance Still Required
+## V21.7 Physical Acceptance
 
-- Save the same APK repeatedly and confirm `name.apk`, `name (1).apk`, `name (2).apk`.
-- Repeat for AAB and EXE; existing files must remain untouched.
+- Repeated APK, AAB and EXE saves passed with `(1)`, `(2)` inserted before the extension.
+- Existing artifacts remained untouched; V21.7 source, tests, Android Debug CI and physical acceptance are closed.
 
 ## Current Risks / Open Questions
 
-- V21.7 duplicate-name ordering is not accepted until repeated APK/AAB/EXE saves pass physically.
+- Android Gradle artifact discovery can still select the newest APK/AAB in the project tree; multi-module and multi-variant projects need deterministic output selection.
 - Expo READY remains limited to SDK54/RN0.81; broader Expo and standalone React Native stay outside the accepted surface.
 - D1 migration history remains unresolved.
 

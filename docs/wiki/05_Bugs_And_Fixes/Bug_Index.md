@@ -241,17 +241,23 @@ under `quality/tests`. Existing historical bug records are retained.
 - **Expo native build BUG-B — closed physically.** V20.3 removes only
   `expo-modules-core` PCH commands in the disposable workspace. Four consecutive
   physical APK+AAB builds passed and the final APK launched.
-- **Notification return BUG-C — V21.2 source fix, focused physical retest pending.**
-  V21.1 preserved the build but still flashed `Hazır / %0` on notification
-  return and left the ongoing notification visible in foreground. V21.2 keeps
-  the notification Build ID stable until snapshot hydration, consumes navigation
-  after rebind, and stops only foreground notification tracking.
+- **Notification return BUG-C — closed physically in V21.5.**
+  V21.1-V21.3 still showed notification-return/state handoff regressions and
+  V21.4 exposed an UpdateGate return-path failure. V21.5 physically passed
+  notification tap return, same-build continuation, foreground dismissal,
+  background reappearance and final-result retention.
 - **Progress BUG-D — physically accepted.** Progress is event-driven from
   `DeviceBuildEngine`; Builder and notification share one visible-progress rule;
   cancel does not crash and only success reaches 100.
 - **Build No FEATURE-E — physically accepted.** A synchronous SharedPreferences
   allocator reserves numbers before job creation, starts at `AF-0000001000`,
   persists across reopen, and never reuses a consumed number.
+- **Soft visual progress V21.6 — physically accepted.** Builder percentage and
+  segmented bars ease only toward proven engine milestones; raw engine and
+  notification progress remain truthful.
+- **Duplicate artifact filename ordering V21.7 — physically accepted.**
+  Repeated APK/AAB/EXE saves place `(1)`, `(2)` before the file extension and
+  do not rename existing artifacts.
 
 
 ## BUG-C V21.1 terminal notification Ready/0 flash
@@ -263,3 +269,6 @@ under `quality/tests`. Existing historical bug records are retained.
   by an early-consumed navigation flag, `BuildRuntimeState` is hydrated before
   the event is consumed, and foreground resume stops notification tracking
   without cancelling the `DeviceBuildEngine` job or erasing its active identity.
+- V21.3 still failed the physical handoff; V21.4 fixed prompt notification
+  behavior but notification tap exposed the UpdateGate route regression.
+- V21.5 passed the focused physical retest and closes BUG-C.
