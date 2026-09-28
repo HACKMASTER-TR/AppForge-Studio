@@ -11,7 +11,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.appforge.studio.build.BuildApiClient
 import com.appforge.studio.build.DeviceBuildEngine
-import com.hackmaster.videoforge.AppVisibility
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -55,38 +54,22 @@ class BuildProgressService : Service() {
         startId: Int
     ): Int {
 
-        /* ACTIVE_BUILD_NOTIFICATION_SERVICE_HANDOFF_V21_3 */
+        /* BUILD_NOTIFICATION_FOREGROUND_GUARD_V21_4 */
         if (
-            intent?.action ==
-                ACTION_HANDOFF_TO_FOREGROUND
+            hostForeground
         ) {
-            foregroundSuppressed =
-                true
-
+            foregroundSuppressed = true
             monitorJob?.cancel()
-
             runCatching {
-                stopForeground(
-                    Service.STOP_FOREGROUND_REMOVE
-                )
+                stopForeground(Service.STOP_FOREGROUND_REMOVE)
             }
-
-            getSystemService(
-                NotificationManager::class.java
-            )
-                .cancel(
-                    NOTIFICATION_ID
-                )
-
-            stopSelf(
-                startId
-            )
-
+            getSystemService(NotificationManager::class.java)
+                .cancel(NOTIFICATION_ID)
+            stopSelf(startId)
             return START_NOT_STICKY
         }
 
-        foregroundSuppressed =
-            false
+        foregroundSuppressed = false
 
         val prefs =
             getSharedPreferences(
@@ -548,7 +531,8 @@ class BuildProgressService : Service() {
         serverUrl: String
     ) {
         if (
-            foregroundSuppressed
+            foregroundSuppressed ||
+            hostForeground
         ) {
             return
         }
@@ -645,6 +629,10 @@ class BuildProgressService : Service() {
             .setOnlyAlertOnce(
                 true
             )
+            /* BUILD_NOTIFICATION_IMMEDIATE_DISPLAY_V21_4 */
+            .setForegroundServiceBehavior(
+                NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE
+            )
             .setOngoing(
                 ongoing
             )
@@ -668,9 +656,6 @@ class BuildProgressService : Service() {
 
         private const val CHANNEL_ID =
             "appforge_build_progress"
-
-        private const val ACTION_HANDOFF_TO_FOREGROUND =
-            "com.appforge.studio.action.BUILD_NOTIFICATION_FOREGROUND_HANDOFF"
 
         private const val NOTIFICATION_ID =
             7412
@@ -718,6 +703,10 @@ class BuildProgressService : Service() {
                 "cancelled",
                 "canceled"
             )
+
+        /* BUILD_NOTIFICATION_HOST_VISIBILITY_V21_4 */
+        @Volatile
+        private var hostForeground = false
 
         fun track(
             context: Context,
@@ -770,13 +759,11 @@ class BuildProgressService : Service() {
                 )
                 .apply()
 
-            /* ACTIVE_BUILD_LATE_TRACK_BACKGROUND_START_V21_3 */
+            /* ACTIVE_BUILD_LATE_TRACK_BACKGROUND_START_V21_4 */
             if (
-                !AppVisibility.isForeground
+                !hostForeground
             ) {
-                startPending(
-                    context
-                )
+                startPending(context)
             }
         }
 
@@ -941,6 +928,9 @@ class BuildProgressService : Service() {
         fun startPending(
             context: Context
         ) {
+            /* BUILD_NOTIFICATION_START_GUARD_V21_4 */
+            if (hostForeground) return
+
             val prefs =
                 context.getSharedPreferences(
                     PREFS,
@@ -1012,58 +1002,26 @@ class BuildProgressService : Service() {
                 )
         }
 
-        /* ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_3 */
-        fun onHostResumed(
-            context: Context
-        ) {
-            /*
-             * Foreground return only hands off the notification. It must not
-             * clear SharedPreferences or infer build death from a momentary
-             * snapshot miss; the Builder rebind owns that decision.
-             */
-            stop(
-                context
-            )
+        /* ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_4 */
+        fun onHostResumed(context: Context) {
+            hostForeground = true
+            stop(context)
+        }
+
+        fun onHostPaused(context: Context) {
+            hostForeground = false
+            startPending(context)
         }
 
         fun stop(
             context: Context
         ) {
-            val handoff =
-                Intent(
-                    context,
-                    BuildProgressService::class.java
-                )
-                    .setAction(
-                        ACTION_HANDOFF_TO_FOREGROUND
-                    )
-
-            val delivered =
-                runCatching {
-                    context.startService(
-                        handoff
-                    )
-                }
-                    .isSuccess
-
-            if (
-                !delivered
-            ) {
-                context.stopService(
-                    Intent(
-                        context,
-                        BuildProgressService::class.java
-                    )
-                )
-            }
-
-            context
-                .getSystemService(
-                    NotificationManager::class.java
-                )
-                .cancel(
-                    NOTIFICATION_ID
-                )
+            hostForeground = true
+            context.stopService(
+                Intent(context, BuildProgressService::class.java)
+            )
+            context.getSystemService(NotificationManager::class.java)
+                .cancel(NOTIFICATION_ID)
         }
 
         fun clear(

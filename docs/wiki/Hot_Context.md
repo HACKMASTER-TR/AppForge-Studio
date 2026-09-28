@@ -46,7 +46,8 @@ source_files:
 - V21 added shared event-driven progress, non-crashing cancel flow, and persistent Build No values beginning at `AF-0000001000`.
 - V21 physical acceptance passed progress synchronization, cancel stability, success-only 100%, Build No sequence/persistence, and active-build survival.
 - V21.1 and V21.2 still failed BUG-C physically: notification return could show `Hazır / %0`; notification dismissal/foreground handoff also remained incorrect.
-- V21.3 source patch moves notification handoff to immediate background/foreground lifecycle handling, keeps Build ID stable, prevents transient snapshot misses from clearing active identity, and exposes compact numeric progress. Source contracts pass; physical retest is still required.
+- V21.3 physical retest failed BUG-C: notification still arrived about 10 seconds late, dismissal failed, and Builder eventually returned to `Hazır / %0` while tracking was lost.
+- V21.4 source patch makes `BuildRuntimeState` a single lifetime owner, navigates only after snapshot hydration, adds a host foreground guard, directly stops foreground notification tracking on return, and requests immediate foreground-service notification display. Physical retest is required.
 
 ## Physical Re-acceptance Still Required
 
@@ -57,7 +58,7 @@ source_files:
 
 ## Current Risks / Open Questions
 
-- BUG-C V21.3 is not closed until the focused physical retest passes.
+- BUG-C V21.4 is not closed until the focused physical retest passes.
 - Expo READY remains limited to SDK54/RN0.81; broader Expo and standalone React Native stay outside the accepted surface.
 - D1 migration history remains unresolved.
 

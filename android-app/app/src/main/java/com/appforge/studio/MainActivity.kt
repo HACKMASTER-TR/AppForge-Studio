@@ -125,26 +125,15 @@ class MainActivity : ComponentActivity() {
         AppVisibility.activityStarted()
     }
 
-    /* ACTIVE_BUILD_NOTIFICATION_IMMEDIATE_BACKGROUND_V21_3 */
+    /* BUILD_NOTIFICATION_HOST_OWNERSHIP_V21_4 */
     override fun onPause() {
-        /*
-         * onStop can be delayed by Android/OEM task transitions. Start the
-         * tracker at the first real foreground-loss callback so the build
-         * notification is not delayed by that lifecycle gap.
-         */
-        BuildProgressService.startPending(this)
+        BuildProgressService.onHostPaused(this)
         super.onPause()
     }
 
     override fun onStop() {
         AppVisibility.activityStopped()
         com.appforge.studio.terminal.LocalPtySessionRegistry.persistNow()
-
-        /*
-         * Race-safe fallback: if the build identity was persisted after
-         * onPause, onStop gets one more chance to start the same tracker.
-         */
-        BuildProgressService.startPending(this)
         super.onStop()
     }
 
@@ -910,19 +899,7 @@ private fun AppForgeApp() {
         }
     }
 
-    /*
-     * NOTIFICATION_NAVIGATION_DEFERRED_CONSUME_V21_2
-     *
-     * Keep the notification payload alive through the composition that
-     * hydrates BuildRuntimeState. Consuming it here could invalidate the
-     * restore key before the snapshot rebind has completed.
-     */
-    LaunchedEffect(hostActivity?.buildNotificationSequence) {
-        if (hostActivity?.openBuildFromNotification == true) {
-            screen = AppScreen.BUILDER
-            step = 10
-        }
-    }
+    /* NOTIFICATION_NAVIGATION_AFTER_HYDRATE_V21_4 */
 
     LaunchedEffect(
         hostActivity?.accountActionSequence
@@ -1326,10 +1303,9 @@ private fun AppForgeApp() {
             ?.buildId
             ?: notificationBuildRestoreId
 
+    /* BUILD_RUNTIME_SINGLE_OWNER_V21_4 */
     val buildRuntime =
-        remember(
-            initialBuildRestoreId
-        ) {
+        remember {
             BuildRuntimeState()
                 .also {
                     runtime ->
@@ -1769,6 +1745,10 @@ private fun AppForgeApp() {
             status = "Derleme durumu alınamadı"
             logs = (logs + "Bildirimden aktif build yeniden bağlanamadı: ${t.message.orEmpty()}")
                 .takeLast(120)
+            screen = AppScreen.BUILDER
+            step = 10
+            BuildProgressService.stop(context)
+            activity.consumeBuildNotificationNavigation()
             return@LaunchedEffect
         }
 
@@ -1778,14 +1758,9 @@ private fun AppForgeApp() {
             startedAtMs = reference?.startedAtMs ?: buildStartedAtMs
         )
 
-        /*
-         * NOTIFICATION_RETURN_ATOMIC_HANDOFF_V21_2
-         *
-         * The real engine snapshot is now visible. Only after hydration may
-         * navigation consume the notification event. Stopping the foreground
-         * tracker removes the ongoing notification but does not cancel the
-         * DeviceBuildEngine job or erase an active build reference.
-         */
+        /* NOTIFICATION_RETURN_ATOMIC_HANDOFF_V21_4 */
+        screen = AppScreen.BUILDER
+        step = 10
         BuildProgressService.stop(context)
         activity.consumeBuildNotificationNavigation()
 

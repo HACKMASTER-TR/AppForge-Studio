@@ -152,12 +152,12 @@ test(
 
 test("foreground return removes notification tracking without cancelling the active engine job", () => {
   const start = service.indexOf(
-    "ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_3"
+    "ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_4"
   );
   assert.ok(start >= 0);
 
   const end = service.indexOf(
-    "fun stop(",
+    "fun onHostPaused(",
     start
   );
   assert.ok(end > start);
@@ -165,6 +165,7 @@ test("foreground return removes notification tracking without cancelling the act
   const block = service.slice(start, end);
 
   assert.match(block, /fun onHostResumed\(/);
+  assert.match(block, /hostForeground\s*=\s*true/);
   assert.match(block, /stop\(\s*context\s*\)/);
   assert.doesNotMatch(block, /DeviceBuildEngine\.cancel/);
   assert.doesNotMatch(block, /DeviceBuildEngine\.snapshot/);
@@ -176,132 +177,87 @@ test("foreground return removes notification tracking without cancelling the act
   assert.match(main, /BuildProgressService\.onHostResumed\(this\)/);
 });
 
-test("notification tap hydrates snapshot before consuming navigation and hides the tracker", () => {
-  const start = main.indexOf("ACTIVE_BUILD_NOTIFICATION_REBIND_V2");
-  assert.ok(start >= 0);
+test("notification tap hydrates snapshot before navigation and hides the tracker", () => {
+  const effectStart = main.indexOf(
+    "ACTIVE_BUILD_NOTIFICATION_REBIND_V2"
+  );
+  assert.ok(effectStart >= 0);
 
-  const block = main.slice(start, start + 4300);
-  const restoreIndex = block.indexOf("restoreFromEngine");
-  const stopIndex = block.indexOf("BuildProgressService.stop(context)");
-  const consumeIndex = block.indexOf("consumeBuildNotificationNavigation");
+  const effectEnd = main.indexOf(
+    "var conversionApkUri",
+    effectStart
+  );
+  assert.ok(effectEnd > effectStart);
 
-  assert.ok(restoreIndex >= 0);
-  assert.ok(stopIndex > restoreIndex);
-  assert.ok(consumeIndex > restoreIndex);
-  assert.doesNotMatch(block, /while\s*\(\s*true\s*\)/);
-  assert.doesNotMatch(block, /cancelBuild/);
+  const restoreIndex = main.indexOf(
+    "buildRuntime.restoreFromEngine(",
+    effectStart
+  );
+  const handoffMarkerIndex = main.indexOf(
+    "NOTIFICATION_RETURN_ATOMIC_HANDOFF_V21_4",
+    restoreIndex
+  );
+  const screenIndex = main.indexOf(
+    "screen = AppScreen.BUILDER",
+    handoffMarkerIndex
+  );
+  const stopIndex = main.indexOf(
+    "BuildProgressService.stop(context)",
+    handoffMarkerIndex
+  );
+  const consumeIndex = main.indexOf(
+    "activity.consumeBuildNotificationNavigation()",
+    handoffMarkerIndex
+  );
+
+  assert.ok(restoreIndex > effectStart && restoreIndex < effectEnd);
+  assert.ok(handoffMarkerIndex > restoreIndex && handoffMarkerIndex < effectEnd);
+  assert.ok(screenIndex > handoffMarkerIndex && screenIndex < effectEnd);
+  assert.ok(stopIndex > screenIndex && stopIndex < effectEnd);
+  assert.ok(consumeIndex > stopIndex && consumeIndex < effectEnd);
+
+  const effectBlock = main.slice(effectStart, effectEnd);
+  assert.doesNotMatch(effectBlock, /while\s*\(\s*true\s*\)/);
+  assert.doesNotMatch(effectBlock, /cancelBuild/);
 });
 
-
-test("notification Build ID stays stable until the snapshot rebind completes", () => {
-  const seedStart = main.indexOf(
-    "NOTIFICATION_BUILD_ID_STABLE_RESTORE_V21_2"
-  );
-  assert.ok(seedStart >= 0);
-
-  const seedEnd = main.indexOf(
-    "val notificationBuildRestoreServerUrl",
-    seedStart
-  );
-  assert.ok(seedEnd > seedStart);
-
-  const seedBlock = main.slice(seedStart, seedEnd);
-  assert.match(seedBlock, /buildIdFromNotification/);
-  assert.doesNotMatch(seedBlock, /openBuildFromNotification/);
-
-  assert.match(
-    main,
-    /val initialBuildRestoreId =[\s\S]{0,300}restoredBuildReference[\s\S]{0,300}notificationBuildRestoreId/
-  );
-  assert.match(
-    main,
-    /remember\(\s*initialBuildRestoreId\s*\)[\s\S]{0,2500}getBuild\(\s*restoreId\s*\)[\s\S]{0,1200}restoreFromEngine/
-  );
-
-  const navStart = main.indexOf(
-    "NOTIFICATION_NAVIGATION_DEFERRED_CONSUME_V21_2"
-  );
-  const navEnd = main.indexOf(
-    "hostActivity?.accountActionSequence",
-    navStart
-  );
-  assert.ok(navStart >= 0 && navEnd > navStart);
-  assert.doesNotMatch(
-    main.slice(navStart, navEnd),
-    /consumeBuildNotificationNavigation/
-  );
-
-  const rebindStart = main.indexOf(
-    "NOTIFICATION_RETURN_ATOMIC_HANDOFF_V21_2"
-  );
-  assert.ok(rebindStart >= 0);
-  assert.match(
-    main.slice(rebindStart, rebindStart + 1200),
-    /consumeBuildNotificationNavigation/
-  );
+test("BuildRuntimeState is a single owner and notification ID only hydrates it", () => {
+  assert.match(main, /BUILD_RUNTIME_SINGLE_OWNER_V21_4/);
+  assert.match(main, /val buildRuntime =\s*remember\s*\{\s*BuildRuntimeState\(\)/);
+  assert.doesNotMatch(main, /remember\(\s*initialBuildRestoreId\s*\)\s*\{\s*BuildRuntimeState\(\)/);
+  assert.match(main, /NOTIFICATION_NAVIGATION_AFTER_HYDRATE_V21_4/);
+  const rebind = main.indexOf("NOTIFICATION_RETURN_ATOMIC_HANDOFF_V21_4");
+  assert.ok(rebind >= 0);
+  assert.match(main.slice(rebind, rebind + 1000), /screen\s*=\s*AppScreen\.BUILDER[\s\S]*BuildProgressService\.stop\(context\)[\s\S]*consumeBuildNotificationNavigation/);
 });
-
 
 test("notification background handoff starts at pause and closes the late-track race", () => {
-  assert.match(
-    main,
-    /ACTIVE_BUILD_NOTIFICATION_IMMEDIATE_BACKGROUND_V21_3[\s\S]*override fun onPause\(\)[\s\S]*BuildProgressService\.startPending\(this\)/
-  );
-
-  assert.match(
-    main,
-    /override fun onStop\(\)[\s\S]*BuildProgressService\.startPending\(this\)/
-  );
-
-  assert.match(
-    service,
-    /ACTIVE_BUILD_LATE_TRACK_BACKGROUND_START_V21_3[\s\S]*!AppVisibility\.isForeground[\s\S]*startPending/
-  );
+  assert.match(main, /BUILD_NOTIFICATION_HOST_OWNERSHIP_V21_4[\s\S]*override fun onPause\(\)[\s\S]*BuildProgressService\.onHostPaused\(this\)/);
+  assert.match(service, /ACTIVE_BUILD_LATE_TRACK_BACKGROUND_START_V21_4[\s\S]*!hostForeground[\s\S]*startPending/);
+  assert.match(service, /BUILD_NOTIFICATION_START_GUARD_V21_4[\s\S]*hostForeground[\s\S]*return/);
 });
 
-test("notification tap uses an explicit foreground-service handoff and cannot resurrect", () => {
-  assert.match(service, /ACTION_HANDOFF_TO_FOREGROUND/);
-  assert.match(
-    service,
-    /ACTIVE_BUILD_NOTIFICATION_SERVICE_HANDOFF_V21_3[\s\S]*foregroundSuppressed[\s\S]*stopForeground\([\s\S]*Service\.STOP_FOREGROUND_REMOVE/
-  );
-  assert.match(
-    service,
-    /private fun showNotification\([\s\S]*foregroundSuppressed[\s\S]*return/
-  );
-  assert.match(
-    service,
-    /override fun onDestroy\(\)[\s\S]*stopForeground\([\s\S]*Service\.STOP_FOREGROUND_REMOVE/
-  );
-  assert.match(
-    main,
-    /NOTIFICATION_TAP_EAGER_DISMISS_V21_3[\s\S]*BuildProgressService\.stop\(this\)/
-  );
+test("notification tap directly stops foreground tracking and cannot resurrect", () => {
+  assert.match(service, /ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_4[\s\S]*hostForeground\s*=\s*true[\s\S]*stop\(context\)/);
+  assert.match(service, /fun stop\([\s\S]*hostForeground\s*=\s*true[\s\S]*context\.stopService/);
+  assert.match(service, /private fun showNotification\([\s\S]*foregroundSuppressed\s*\|\|[\s\S]*hostForeground/);
+  assert.doesNotMatch(service, /ACTION_HANDOFF_TO_FOREGROUND/);
 });
 
-test("foreground resume never clears active build identity on a transient snapshot miss", () => {
-  const start = service.indexOf(
-    "ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_3"
-  );
+test("foreground resume preserves active build identity and suppresses notification publishing", () => {
+  const start = service.indexOf("ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_4");
   assert.ok(start >= 0);
-
-  const end = service.indexOf(
-    "fun stop(",
-    start
-  );
+  const end = service.indexOf("fun clear(", start);
   assert.ok(end > start);
-
   const block = service.slice(start, end);
-
-  assert.match(block, /stop\(\s*context\s*\)/);
+  assert.match(block, /hostForeground\s*=\s*true/);
+  assert.match(block, /context\.stopService/);
   assert.doesNotMatch(block, /clear\(context\)/);
   assert.doesNotMatch(block, /DeviceBuildEngine\.snapshot/);
 });
 
 test("compact build notification exposes numeric progress without expansion", () => {
-  assert.match(
-    service,
-    /\$appName • %\$\{progress\.coerceIn\(0, 100\)\}/
-  );
+  assert.match(service, /\$appName • %\$\{progress\.coerceIn\(0, 100\)\}/);
   assert.match(service, /\.setProgress\(\s*100,/);
+  assert.match(service, /BUILD_NOTIFICATION_IMMEDIATE_DISPLAY_V21_4[\s\S]*FOREGROUND_SERVICE_IMMEDIATE/);
 });
