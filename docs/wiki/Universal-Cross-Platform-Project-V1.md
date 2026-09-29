@@ -29,3 +29,11 @@ source_files:
 AppForge `universal-cross-platform` motorunda APK, AAB ve WINDOWS_EXE çıktılarını aynı build kaydında üretebilir. Android kaynak kodu Windows'a dönüştürülmez; iki hedef tek proje kontratında orkestre edilir.
 
 Güvenlik: hedef yolları proje kökü altında kalmak zorundadır; `..`, mutlak yollar ve sürücü yolları reddedilir.
+
+## Universal Output UI V1.1
+
+- Universal proje içe aktarıldığında varsayılan çıktı `all` olur.
+- Derleme ekranında Universal projeler için `TÜMÜ` seçeneği görünür.
+- `TÜMÜ`, aynı Build ID altında APK + AAB + Windows Portable EXE ister.
+- Native Android projelerde Windows EXE yanlışlıkla etkinleştirilmez; Universal motor kendi Windows hedefi nedeniyle EXE uyumlu kabul edilir.
+- Çıktı seçimi proje kaydıyla birlikte kalıcıdır.
