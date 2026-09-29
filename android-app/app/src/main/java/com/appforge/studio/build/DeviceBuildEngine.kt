@@ -204,6 +204,23 @@ object DeviceBuildEngine {
                 DeviceArtifactKind.WINDOWS_EXE in
                     requestedOutputs
 
+            val toolchainEngine =
+                if (
+                    sourceEngine ==
+                        "universal-cross-platform"
+                ) {
+                    if (
+                        DeviceArtifactKind.APK in requestedOutputs ||
+                        DeviceArtifactKind.AAB in requestedOutputs
+                    ) {
+                        "android-gradle"
+                    } else {
+                        "webview-static"
+                    }
+                } else {
+                    sourceEngine
+                }
+
             if (
                 wantsWindowsExe
             ) {
@@ -273,7 +290,7 @@ object DeviceBuildEngine {
                 rootfs = rootfs,
                 workspace = workspace,
                 state = state,
-                command = "chmod +x /workspace/runtime/install-toolchain.sh /workspace/runtime/build-node.sh && APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} /bin/sh /workspace/runtime/install-toolchain.sh ${sh(sourceEngine)}",
+                command = "chmod +x /workspace/runtime/install-toolchain.sh /workspace/runtime/build-node.sh && APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} /bin/sh /workspace/runtime/install-toolchain.sh ${sh(toolchainEngine)}",
                 suffix = "toolchain"
             )
 
@@ -282,6 +299,15 @@ object DeviceBuildEngine {
 
             when (sourceEngine) {
                 "node-web" -> buildNodeWeb(context, draft, workspace, rootfs, shell, state)
+                "universal-cross-platform" ->
+                    buildUniversalProject(
+                        context,
+                        draft,
+                        workspace,
+                        rootfs,
+                        shell,
+                        state
+                    )
                 "android-gradle" -> buildAndroidProject(context, draft, workspace, rootfs, shell, state)
                 "expo" -> buildExpoProject(context, draft, workspace, rootfs, shell, state)
                 "python-android" -> buildPythonProject(context, draft, workspace, rootfs, shell, state)
@@ -435,6 +461,233 @@ object DeviceBuildEngine {
         return DeviceArtifactKind.APK in outputs ||
             DeviceArtifactKind.AAB in outputs
     }
+
+    private fun buildUniversalProject(
+        context: Context,
+        draft: ProjectDraft,
+        workspace: File,
+        rootfs: File,
+        shell: LinuxShellEngine,
+        state: JobState
+    ) {
+        val sourceRoot =
+            File(
+                workspace,
+                "source"
+            ).canonicalFile
+
+        val manifestFile =
+            File(
+                sourceRoot,
+                "appforge.universal.json"
+            ).canonicalFile
+
+        require(
+            manifestFile.isFile &&
+                manifestFile.parentFile ==
+                    sourceRoot
+        ) {
+            "appforge.universal.json bulunamadı."
+        }
+
+        val manifest =
+            JSONObject(
+                manifestFile.readText(
+                    Charsets.UTF_8
+                )
+            )
+
+        require(
+            manifest.optString(
+                "format"
+            ) ==
+                "appforge-universal" &&
+            manifest.optInt(
+                "formatVersion",
+                0
+            ) ==
+                1
+        ) {
+            "AppForge Universal proje manifesti geçersiz."
+        }
+
+        val targets =
+            manifest.optJSONObject(
+                "targets"
+            )
+                ?: error(
+                    "Universal hedef tanımları bulunamadı."
+                )
+
+        fun targetRoot(
+            targetName: String
+        ): File {
+            val target =
+                targets.optJSONObject(
+                    targetName
+                )
+                    ?: error(
+                        "Universal $targetName hedefi bulunamadı."
+                    )
+
+            val relative =
+                target.optString(
+                    "root",
+                    ""
+                )
+                    .replace(
+                        '\\',
+                        '/'
+                    )
+                    .trim()
+
+            require(
+                relative.isNotBlank() &&
+                    !relative.startsWith(
+                        "/"
+                    ) &&
+                    !Regex(
+                        """^[A-Za-z]:"""
+                    ).containsMatchIn(
+                        relative
+                    )
+            ) {
+                "Universal $targetName hedef yolu geçersiz."
+            }
+
+            val parts =
+                relative
+                    .split(
+                        '/'
+                    )
+                    .filter {
+                        it.isNotBlank()
+                    }
+
+            require(
+                parts.isNotEmpty() &&
+                    parts.none {
+                        it ==
+                            "." ||
+                        it ==
+                            ".."
+                    }
+            ) {
+                "Universal $targetName hedefinde path traversal engellendi."
+            }
+
+            val resolved =
+                File(
+                    sourceRoot,
+                    parts.joinToString(
+                        File.separator
+                    )
+                ).canonicalFile
+
+            require(
+                resolved.isDirectory &&
+                    resolved.path.startsWith(
+                        sourceRoot.path +
+                            File.separator
+                    )
+            ) {
+                "Universal $targetName hedef klasörü bulunamadı."
+            }
+
+            return resolved
+        }
+
+        if (
+            wantsAndroidOutputs(
+                draft
+            )
+        ) {
+            val androidProject =
+                targetRoot(
+                    "android"
+                )
+
+            require(
+                File(
+                    androidProject,
+                    "settings.gradle"
+                ).isFile ||
+                File(
+                    androidProject,
+                    "settings.gradle.kts"
+                ).isFile
+            ) {
+                "Universal Android hedefinde settings.gradle(.kts) bulunamadı."
+            }
+
+            DeviceProjectIcon.install(
+                context,
+                draft,
+                androidProject
+            )
+
+            writeSdkFiles(
+                androidProject
+            )
+
+            val gradleVersion =
+                detectGradleVersion(
+                    androidProject
+                )
+
+            state.logs.add(
+                "🌐 Universal proje • Android native hedefi • Gradle $gradleVersion"
+            )
+
+            buildGradleProject(
+                context,
+                draft,
+                androidProject,
+                workspace,
+                rootfs,
+                shell,
+                state,
+                gradleVersion
+            )
+        }
+
+        if (
+            DeviceArtifactKind.WINDOWS_EXE in
+                requestedOutputs(
+                    draft
+                )
+        ) {
+            val windowsSite =
+                targetRoot(
+                    "windows"
+                )
+
+            require(
+                File(
+                    windowsSite,
+                    "index.html"
+                ).isFile
+            ) {
+                "Universal Windows hedefinde index.html bulunamadı."
+            }
+
+            state.logs.add(
+                "🌐 Universal proje • Windows Portable EXE hedefi"
+            )
+
+            buildWindowsIfRequested(
+                context =
+                    context,
+                draft =
+                    draft,
+                siteRoot =
+                    windowsSite,
+                state =
+                    state
+            )
+        }
+    }
+
 
     private fun buildStaticWeb(
         context: Context,
