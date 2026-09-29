@@ -37,3 +37,13 @@ Güvenlik: hedef yolları proje kökü altında kalmak zorundadır; `..`, mutlak
 - `TÜMÜ`, aynı Build ID altında APK + AAB + Windows Portable EXE ister.
 - Native Android projelerde Windows EXE yanlışlıkla etkinleştirilmez; Universal motor kendi Windows hedefi nedeniyle EXE uyumlu kabul edilir.
 - Çıktı seçimi proje kaydıyla birlikte kalıcıdır.
+
+## Universal V1.2 — Gradle project CWD fix
+
+Universal Android targets are nested under the universal source root.
+DeviceBuildEngine now validates the exact Android target directory,
+changes into that directory before Gradle starts, and invokes Gradle
+with `-p .`. This prevents PRoot builds from accidentally resolving
+the Gradle root as `/`.
+
+Physical CAMForge universal APK/AAB/EXE acceptance remains pending.

@@ -1245,10 +1245,39 @@ object DeviceBuildEngine {
                 append("set +e; ")
             }
 
+            append("APPFORGE_GRADLE_PROJECT_DIR=")
+            append(
+                sh(
+                    "/workspace/$relativeProject"
+                )
+            )
+            append("; ")
+
+            append(
+                "test -d \"\$APPFORGE_GRADLE_PROJECT_DIR\" || { " +
+                    "echo APPFORGE_GRADLE_PROJECT_DIR_MISSING; " +
+                    "exit 90; " +
+                    "}; "
+            )
+
+            append(
+                "if [ ! -f \"\$APPFORGE_GRADLE_PROJECT_DIR/settings.gradle\" ] && " +
+                    "[ ! -f \"\$APPFORGE_GRADLE_PROJECT_DIR/settings.gradle.kts\" ]; then " +
+                    "echo APPFORGE_GRADLE_SETTINGS_MISSING; " +
+                    "exit 91; " +
+                    "fi; "
+            )
+
+            append(
+                "cd \"\$APPFORGE_GRADLE_PROJECT_DIR\"; "
+            )
+
+            append(
+                "echo \"APPFORGE_GRADLE_PROJECT_CWD=\$(pwd)\"; "
+            )
+
             append(sh(gradlePath))
-            append(" -p ")
-            append(sh("/workspace/$relativeProject"))
-            append(" --no-daemon --stacktrace ")
+            append(" -p . --no-daemon --stacktrace ")
 
             if (nodeRequired) {
                 // APPFORGE_EXPO_AGP_RUNTIME_INIT_V1
