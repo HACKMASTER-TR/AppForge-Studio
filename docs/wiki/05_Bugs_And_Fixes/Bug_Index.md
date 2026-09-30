@@ -304,3 +304,11 @@ under `quality/tests`. Existing historical bug records are retained.
   Ninja, `CMakeScratch` and intermediate output now remain in the Device Build
   Runtime rootfs `/tmp`; only the final verified PE32+ x64 executable is
   exported through `/workspace/windows-native-out`.
+
+- Windows Native MinGW ar PRoot crash — after moving CMake scratch into
+  rootfs `/tmp`, physical testing proved `x86_64-w64-mingw32-g++-posix`
+  can compile successfully but CMake's forced `STATIC_LIBRARY` compiler
+  probe invokes `x86_64-w64-mingw32-ar`, which aborts under PRoot with
+  allocator corruption/SIGSEGV. The cross toolchain now uses an EXECUTABLE
+  `try_compile` probe. Windows cross-compilation only needs the probe to
+  link; it does not execute the produced Windows binary.

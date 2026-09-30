@@ -158,3 +158,27 @@ test(
     );
   }
 );
+
+test(
+  "Windows native CMake compiler probe links an executable instead of invoking MinGW ar",
+  () => {
+    const builder = read(
+      "android-app/app/src/main/assets/device-build/build-windows-native.sh"
+    );
+
+    assert.match(
+      builder,
+      /CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE/
+    );
+
+    assert.doesNotMatch(
+      builder,
+      /CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY/
+    );
+
+    assert.match(
+      builder,
+      /APPFORGE_WINDOWS_NATIVE_TRY_COMPILE=EXECUTABLE/
+    );
+  }
+);
