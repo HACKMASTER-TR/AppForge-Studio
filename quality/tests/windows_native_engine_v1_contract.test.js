@@ -89,3 +89,38 @@ test("offline pack tracks native toolchain without declaring native product READ
   assert.match(screen, /Windows Native EXE Toolchain/);
   assert.match(screen, /EXPERIMENTAL/);
 });
+
+test("native source path canonicalizes Android cache alias before workspace mapping", () => {
+  const engine = read(
+    "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+  );
+
+  const builder = read(
+    "android-app/app/src/main/assets/device-build/build-windows-native.sh"
+  );
+
+  assert.match(
+    engine,
+    /val canonicalWorkspace\s*=\s*[\s\S]{0,120}workspace[\s\S]{0,120}\.canonicalFile/
+  );
+
+  assert.match(
+    engine,
+    /sourceRoot[\s\S]{0,180}\.relativeTo\(\s*canonicalWorkspace\s*\)/
+  );
+
+  assert.match(
+    engine,
+    /relative\s*==\s*"source"[\s\S]{0,160}relative\.startsWith\([\s\S]{0,80}"source\/"/
+  );
+
+  assert.match(
+    builder,
+    /APPFORGE_WINDOWS_NATIVE_SOURCE_TRAVERSAL/
+  );
+
+  assert.match(
+    builder,
+    /\*"\/\.\.\/"\*/
+  );
+});

@@ -634,9 +634,13 @@ object DeviceBuildEngine {
             "Windows Native EXE yalnız yerel kaynak için kullanılabilir."
         }
 
+        val canonicalWorkspace =
+            workspace
+                .canonicalFile
+
         val copiedSource =
             File(
-                workspace,
+                canonicalWorkspace,
                 "source"
             ).canonicalFile
 
@@ -674,9 +678,19 @@ object DeviceBuildEngine {
         val relative =
             sourceRoot
                 .relativeTo(
-                    workspace
+                    canonicalWorkspace
                 )
                 .invariantSeparatorsPath
+
+        require(
+            relative ==
+                "source" ||
+                relative.startsWith(
+                    "source/"
+                )
+        ) {
+            "Windows Native kaynak yolu /workspace/source altında değil."
+        }
 
         state.logs.add(
             "🪟 Windows Native EXE • CMake/MinGW-w64 x64 derleme başlıyor."
@@ -735,12 +749,9 @@ object DeviceBuildEngine {
 
         val sourceExe =
             File(
-                workspace,
+                canonicalWorkspace,
                 relativeOutput
             ).canonicalFile
-
-        val canonicalWorkspace =
-            workspace.canonicalFile
 
         require(
             sourceExe.path.startsWith(

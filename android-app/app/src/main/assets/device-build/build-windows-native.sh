@@ -8,8 +8,18 @@ MARKER="/workspace/.appforge-windows-native-output"
 TOOLCHAIN="/workspace/runtime/windows-native-mingw-x64.cmake"
 
 case "$SOURCE" in
-  /workspace/*|/workspace) ;;
-  *) echo "APPFORGE_WINDOWS_NATIVE_SOURCE_ESCAPE" >&2; exit 71 ;;
+  /workspace|/workspace/*) ;;
+  *)
+    echo "APPFORGE_WINDOWS_NATIVE_SOURCE_ESCAPE" >&2
+    exit 71
+    ;;
+esac
+
+case "$SOURCE" in
+  *"/../"*|*/..|*"/./"*|*/.)
+    echo "APPFORGE_WINDOWS_NATIVE_SOURCE_TRAVERSAL" >&2
+    exit 71
+    ;;
 esac
 
 test -f "$SOURCE/CMakeLists.txt" || {

@@ -241,3 +241,13 @@ under `quality/tests`. Existing historical bug records are retained.
   resuming an interrupted `dpkg --configure -a`. Existing valid package
   files are never overwritten. Physical Windows execution acceptance
   remains pending until the repaired APK produces and runs the native EXE.
+
+- Windows Native Android cache canonical-path alias — physical device testing
+  exposed that Android may expose the build workspace as `/data/data/...`
+  while `File.canonicalFile` resolves descendants through `/data/user/0/...`.
+  Native source discovery canonicalized the CMake source but calculated
+  `relativeTo()` against the non-canonical workspace, producing a
+  `/workspace/../../.../source` path inside PRoot. The native builder now
+  canonicalizes the workspace first, derives source/output paths from that
+  same root, requires the CMake source to remain under `source/`, and rejects
+  explicit `/../` or `/./` traversal in the shell-side source contract.
