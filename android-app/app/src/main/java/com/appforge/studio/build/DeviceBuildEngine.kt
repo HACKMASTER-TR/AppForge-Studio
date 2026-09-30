@@ -640,14 +640,14 @@ object DeviceBuildEngine {
             )
 
             buildGradleProject(
-                context,
-                draft,
-                androidProject,
-                workspace,
-                rootfs,
-                shell,
-                state,
-                gradleVersion
+                context = context,
+                draft = draft,
+                project = androidProject,
+                workspace = androidProject,
+                rootfs = rootfs,
+                shell = shell,
+                state = state,
+                gradleVersion = gradleVersion
             )
         }
 
@@ -1107,12 +1107,55 @@ object DeviceBuildEngine {
         nodeRequired: Boolean = false,
         variantOverride: String? = null
     ) {
-        val relativeProject = project.relativeTo(workspace).invariantSeparatorsPath
+        val safeWorkspace =
+            workspace
+                .canonicalFile
+
+        val safeProject =
+            project
+                .canonicalFile
+
+        require(
+            safeProject == safeWorkspace ||
+                safeProject.path.startsWith(
+                    safeWorkspace.path +
+                        File.separator
+                )
+        ) {
+            "Gradle proje kökü çalışma alanı dışında."
+        }
+
+        val relativeProject =
+            safeProject
+                .relativeTo(
+                    safeWorkspace
+                )
+                .invariantSeparatorsPath
+                .ifBlank {
+                    "."
+                }
+
+        state.logs.add(
+            "APPFORGE_GRADLE_MOUNT_SCOPE=" +
+                if (
+                    safeProject ==
+                        safeWorkspace
+                ) {
+                    "PROJECT_ROOT"
+                } else {
+                    "WORKSPACE_ROOT"
+                }
+        )
+
+        state.logs.add(
+            "APPFORGE_GRADLE_PROJECT_REL=" +
+                relativeProject
+        )
         advanceProgress(state, 56, "Gradle hazırlanıyor")
         val gradlePath = runShellBlocking(
             shell,
             rootfs,
-            workspace,
+            safeWorkspace,
             state,
             "APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} /opt/appforge-device/ensure-gradle ${sh(gradleVersion)}",
             "gradle-$gradleVersion"
@@ -1153,7 +1196,7 @@ object DeviceBuildEngine {
         }
 
         val signingArgs = if (draft.signingMode == SigningMode.CUSTOM) {
-            val key = copyKeystore(context, draft, workspace)
+            val key = copyKeystore(context, draft, safeWorkspace)
             listOf(
                 "-Pandroid.injected.signing.store.file=/workspace/${key.name}",
                 "-Pandroid.injected.signing.store.password=${draft.storePassword}",
@@ -1244,6 +1287,10 @@ object DeviceBuildEngine {
 
                 append("set +e; ")
             }
+
+            append(
+                "echo APPFORGE_GRADLE_WORKSPACE_MOUNT=/workspace; "
+            )
 
             append("APPFORGE_GRADLE_PROJECT_DIR=")
             append(
@@ -1479,7 +1526,7 @@ object DeviceBuildEngine {
             }
         }
 
-        runShellBlocking(shell, rootfs, workspace, state, command, "android-build")
+        runShellBlocking(shell, rootfs, safeWorkspace, state, command, "android-build")
         advanceProgress(state, 90, "Gradle tamamlandı")
 
         /*

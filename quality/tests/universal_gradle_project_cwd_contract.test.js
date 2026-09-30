@@ -13,16 +13,66 @@ const source = fs.readFileSync(
 );
 
 test(
-  "Gradle builds anchor execution to the selected project directory",
+  "Gradle canonicalizes project and workspace before guest path calculation",
   () => {
     assert.match(
       source,
-      /val relativeProject = project\.relativeTo\(workspace\)\.invariantSeparatorsPath/
+      /val safeWorkspace =\s*workspace\s*\.canonicalFile/
     );
 
     assert.match(
       source,
-      /APPFORGE_GRADLE_PROJECT_DIR/
+      /val safeProject =\s*project\s*\.canonicalFile/
+    );
+
+    assert.match(
+      source,
+      /safeProject\s*\.relativeTo\(\s*safeWorkspace\s*\)/
+    );
+
+    assert.match(
+      source,
+      /\.ifBlank\s*\{\s*"\."\s*\}/
+    );
+  }
+);
+
+test(
+  "Universal Android mounts exact Android project as PRoot workspace",
+  () => {
+    assert.match(
+      source,
+      /project = androidProject,\s*workspace = androidProject,/
+    );
+
+    assert.match(
+      source,
+      /APPFORGE_GRADLE_MOUNT_SCOPE/
+    );
+
+    assert.match(
+      source,
+      /PROJECT_ROOT/
+    );
+  }
+);
+
+test(
+  "Gradle validates mounted project before execution",
+  () => {
+    assert.match(
+      source,
+      /APPFORGE_GRADLE_WORKSPACE_MOUNT=\/workspace/
+    );
+
+    assert.match(
+      source,
+      /APPFORGE_GRADLE_PROJECT_DIR_MISSING/
+    );
+
+    assert.match(
+      source,
+      /APPFORGE_GRADLE_SETTINGS_MISSING/
     );
 
     assert.match(
@@ -38,32 +88,7 @@ test(
 );
 
 test(
-  "Gradle project root is validated before execution",
-  () => {
-    assert.match(
-      source,
-      /APPFORGE_GRADLE_PROJECT_DIR_MISSING/
-    );
-
-    assert.match(
-      source,
-      /APPFORGE_GRADLE_SETTINGS_MISSING/
-    );
-
-    assert.match(
-      source,
-      /settings\.gradle/
-    );
-
-    assert.match(
-      source,
-      /settings\.gradle\.kts/
-    );
-  }
-);
-
-test(
-  "contract resolves DeviceBuildEngine independently from process cwd",
+  "contract remains independent from process cwd",
   () => {
     assert.equal(
       engineUrl.protocol,

@@ -47,3 +47,24 @@ with `-p .`. This prevents PRoot builds from accidentally resolving
 the Gradle root as `/`.
 
 Physical CAMForge universal APK/AAB/EXE acceptance remains pending.
+
+## Universal V1.3 — exact Android project mount
+
+CAMForge fiziksel kabulünde host tarafında Universal Android hedefi ve
+`settings.gradle.kts` doğrulanmasına rağmen PRoot içinde
+`APPFORGE_GRADLE_PROJECT_DIR_MISSING` görüldü.
+
+V1.3, Universal Android Gradle hedefini parent build workspace yerine
+doğrudan PRoot `/workspace` köküne bind eder.
+
+`buildGradleProject` ayrıca project ve workspace yollarını canonical
+biçimde doğrular ve relative yolu canonical köklerden üretir.
+
+Beklenen fiziksel kabul logları:
+
+- `APPFORGE_GRADLE_MOUNT_SCOPE=PROJECT_ROOT`
+- `APPFORGE_GRADLE_PROJECT_REL=.`
+- `APPFORGE_GRADLE_WORKSPACE_MOUNT=/workspace`
+- `APPFORGE_GRADLE_PROJECT_CWD=/workspace`
+
+CAMForge tarafındaki NC/G-code çıktısı ve makine transferi kapalı kalır.
