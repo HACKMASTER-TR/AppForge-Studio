@@ -725,3 +725,27 @@ The foreground notification returns to the existing task and performs one
 snapshot rebind. It does not cancel the engine job or start a competing poll.
 Build No allocation is synchronously persisted before job creation, begins at
 `AF-0000001000`, and failed/cancelled builds consume their number.
+
+
+## Windows Native EXE V1
+
+AppForge preserves the accepted Windows Portable EXE route and adds a separate
+experimental `windows-native` route for local C/C++ CMake projects.
+
+The current Universal Cross-Platform, Expo, Android build progress/re-entry and
+Portable EXE behavior remain the base implementation. Native EXE is additive.
+
+Windows Native builds use Device Build Runtime V3 with CMake, Ninja and
+MinGW-w64 x86-64. The CMake configure/build scratch area lives in the rootfs
+under `/tmp/appforge-windows-native-*`; only the final verified PE32+ x64
+artifact is exported to `/workspace/windows-native-out`.
+
+This avoids Android bind-mount limitations encountered by CMake
+`CMakeScratch/TryCompile`.
+
+Native output remains EXPERIMENTAL until a device-built artifact executes on a
+physical Windows x64 machine.
+
+Windows publisher signing is a final-artifact operation shared by Portable and
+Native EXE. Both UI and engine access are server-verified owner/admin-only and
+remain fail-closed until the secure certificate provider is configured.

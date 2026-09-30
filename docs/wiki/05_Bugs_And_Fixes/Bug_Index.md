@@ -297,3 +297,10 @@ under `quality/tests`. Existing historical bug records are retained.
   navigation re-entry regression. V25.1 must reconnect the persisted active
   build reference, restore the same Build ID/progress and keep duplicate build
   start disabled until the real job reaches a terminal state.
+
+- Windows Native CMakeScratch bind-mount failure — physical-device testing
+  reached GNU MinGW 13 successfully, but CMake could not create/write its
+  `TryCompile` source under the Android `/workspace` bind mount. Native CMake,
+  Ninja, `CMakeScratch` and intermediate output now remain in the Device Build
+  Runtime rootfs `/tmp`; only the final verified PE32+ x64 executable is
+  exported through `/workspace/windows-native-out`.

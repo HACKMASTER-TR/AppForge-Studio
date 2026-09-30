@@ -465,3 +465,21 @@ The reserved standalone `windows-web` engine remains PLANNED.
 Remote build server, Worker pool, queues, monthly backend quota and obsolete
 backend-only contracts are retired together. Device builds, Windows Portable
 Host and Cloudflare Pro remain separate; retained contracts move to quality.
+
+
+## 2026-09-30 — Windows Native EXE Coexists With Portable EXE
+
+### Decision
+
+Preserve the accepted `webview-static` / `node-web` Windows Portable EXE route
+and add a separate `windows-native` C/C++ CMake route. Native builds use a
+Device Build Runtime V3 isolated CMake/Ninja/MinGW-w64 x64 cross toolchain and
+produce PE32+ x64 output without the AppForge Electron/WebView host.
+
+Portable and Native outputs are separate user choices. Native stays
+EXPERIMENTAL until real Windows acceptance passes.
+
+Windows publisher signing is a final-artifact operation available only to a
+server-verified owner/admin session. The build engine must deny requested
+signing when owner verification is absent and must never embed real signing
+material in source, logs, wiki or project payloads.

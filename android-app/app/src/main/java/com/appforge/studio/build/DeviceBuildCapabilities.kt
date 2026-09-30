@@ -5,7 +5,8 @@ internal enum class DeviceArtifactKind(
 ) {
     APK("Android APK"),
     AAB("Android AAB"),
-    WINDOWS_EXE("Windows Portable EXE")
+    WINDOWS_EXE("Windows Portable EXE"),
+    WINDOWS_NATIVE_EXE("Windows Native EXE")
 }
 
 internal enum class DeviceBuildSupport {
@@ -155,6 +156,24 @@ internal object DeviceBuildCapabilities {
                     DeviceBuildSupport.EXPERIMENTAL,
                 note =
                     "C/C++ Android NDK katmanı V3 mimarisinde ayrıldı; NDK/CMake device acceptance tamamlanmadan READY olmayacak."
+            ),
+
+            DeviceBuildCapability(
+                engine =
+                    "windows-native",
+                technologies =
+                    setOf(
+                        "windows-native",
+                        "windows-native-cpp"
+                    ),
+                readyOutputs =
+                    setOf(
+                        DeviceArtifactKind.WINDOWS_NATIVE_EXE
+                    ),
+                support =
+                    DeviceBuildSupport.EXPERIMENTAL,
+                note =
+                    "Native Windows C/C++ CMake motoru cihaz-local MinGW-w64 ile x64 PE üretir. Kaynak/CI doğrulaması tamamlanmadan ve gerçek Windows kabulü geçmeden READY ilan edilmez."
             ),
 
             DeviceBuildCapability(
@@ -342,9 +361,17 @@ internal object DeviceBuildCapabilities {
                 )
 
             "exe",
-            "windows-exe" ->
+            "windows-exe",
+            "portable-exe",
+            "windows-portable-exe" ->
                 setOf(
                     DeviceArtifactKind.WINDOWS_EXE
+                )
+
+            "native-exe",
+            "windows-native-exe" ->
+                setOf(
+                    DeviceArtifactKind.WINDOWS_NATIVE_EXE
                 )
 
             "all",

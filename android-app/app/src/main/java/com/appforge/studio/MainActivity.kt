@@ -18401,6 +18401,15 @@ private fun BuildSettingsStep(
     val apiKeyReady =
         apiKey.isNotBlank()
 
+    val context =
+        LocalContext.current
+
+    val windowsSigningAdmin =
+        OwnerAccessPolicy
+            .isActiveOwner(
+                context
+            )
+
     val releaseSigning =
         draft.signingMode ==
             SigningMode.CUSTOM
@@ -18410,7 +18419,10 @@ private fun BuildSettingsStep(
             draft.buildOutput
         ) {
             "exe" ->
-                "Windows EXE"
+                "Windows Portable EXE"
+
+            "native-exe" ->
+                "Windows Native EXE"
 
             "aab" ->
                 "AAB"
@@ -18431,7 +18443,10 @@ private fun BuildSettingsStep(
             draft.buildOutput
         ) {
             "exe" ->
-                "EXE • Windows x64 • Electron Portable"
+                "PORTABLE EXE • Windows x64 • AppForge Generic Host"
+
+            "native-exe" ->
+                "NATIVE EXE • Windows x64 • CMake + MinGW-w64"
 
             "aab" ->
                 "AAB • Gradle bundleRelease"
@@ -18665,12 +18680,32 @@ private fun BuildSettingsStep(
                             "universal-cross-platform"
                         )
 
+                val windowsNativeCompatible =
+                    draft.sourceMode ==
+                        SourceMode.LOCAL &&
+                    (
+                        draft.sourceTechnology
+                            .trim()
+                            .lowercase() in
+                            setOf(
+                                "cpp",
+                                "c",
+                                "cmake"
+                            ) ||
+                        normalizedEngine in
+                            setOf(
+                                "android-ndk",
+                                "windows-native"
+                            )
+                    )
+
                 val outputOptions =
                     buildList {
                         add("apk")
                         add("aab")
                         add("both")
                         add("exe")
+                        add("native-exe")
 
                         if (
                             universalProject
@@ -18688,6 +18723,9 @@ private fun BuildSettingsStep(
                             "exe" ->
                                 windowsExeCompatible
 
+                            "native-exe" ->
+                                windowsNativeCompatible
+
                             "all" ->
                                 universalProject
 
@@ -18699,6 +18737,12 @@ private fun BuildSettingsStep(
                         when (
                             output
                         ) {
+                            "exe" ->
+                                "PORTABLE EXE"
+
+                            "native-exe" ->
+                                "NATIVE EXE"
+
                             "both" ->
                                 "APK+AAB"
 
@@ -18815,6 +18859,30 @@ private fun BuildSettingsStep(
                             )
                         }
 
+                        "native-exe" -> {
+                            Text(
+                                "Windows Native EXE",
+                                fontWeight =
+                                    FontWeight.Medium
+                            )
+
+                            Text(
+                                "C/C++ CMake projesini Windows x64 PE olarak doğrudan derler; WebView/Electron host kullanmaz.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "EXPERIMENTAL • Gerçek Windows fiziksel kabulü tamamlanana kadar READY sayılmaz.",
+                                color =
+                                    Accent,
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+
                         "aab" -> {
                             Text(
                                 "AAB",
@@ -18902,10 +18970,100 @@ private fun BuildSettingsStep(
         ) {
             item {
                 NoteCard(
-                    "Windows EXE bu proje türüyle uyumlu değil. " +
-                    "Native Android/Flutter/React Native kaynakları için APK/AAB kullan. " +
-                    "EXE için web tabanlı veya HTTPS URL kaynağı seç."
+                    "Windows Portable EXE bu proje türüyle uyumlu değil. " +
+                    "C/C++ CMake projelerinde Native EXE seçeneğini kullanabilirsin. " +
+                    "Portable EXE için web tabanlı, Universal veya HTTPS URL kaynağı seç."
                 )
+            }
+        }
+
+        if (
+            draft.buildOutput ==
+                "native-exe" &&
+            !(
+                draft.sourceMode ==
+                    SourceMode.LOCAL &&
+                (
+                    draft.sourceTechnology
+                        .trim()
+                        .lowercase() in
+                        setOf(
+                            "cpp",
+                            "c",
+                            "cmake"
+                        ) ||
+                    draft.sourceBuildEngine
+                        .trim()
+                        .lowercase() in
+                        setOf(
+                            "android-ndk",
+                            "windows-native"
+                        )
+                )
+            )
+        ) {
+            item {
+                NoteCard(
+                    "Windows Native EXE için yerel C/C++ CMake projesi gerekli."
+                )
+            }
+        }
+
+        if (
+            windowsSigningAdmin &&
+            draft.buildOutput in
+                setOf(
+                    "exe",
+                    "native-exe"
+                )
+        ) {
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                if (formCompact) 12.dp else 16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                6.dp
+                            )
+                    ) {
+                        Text(
+                            "Windows Yayıncı İmzası • Yönetici",
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            "Bu bölüm yalnız doğrulanmış yönetici oturumunda görünür. İmza final EXE üretildikten sonra uygulanır.",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+
+                        Text(
+                            "Durum: Sertifika sağlayıcısı yapılandırılana kadar KAPALI • private key/PFX kaynak koda veya proje payload'ına gömülmez.",
+                            color =
+                                Accent,
+                            fontSize =
+                                11.sp
+                        )
+                    }
+                }
             }
         }
 
