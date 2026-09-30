@@ -19,9 +19,27 @@ test("Portable EXE remains accepted while Native EXE is a distinct target", () =
 
 test("native toolchain is isolated from Android SDK license flow", () => {
   const installer = read("android-app/app/src/main/assets/device-build/install-windows-native-toolchain.sh");
-  for (const marker of ["cmake", "ninja", "x86_64-w64-mingw32-g++", "PE32+ executable"]) {
+  for (const marker of [
+    "cmake",
+    "ninja",
+    "x86_64-w64-mingw32-g++-posix",
+    "gcc-mingw-w64-x86-64-posix",
+    "g++-mingw-w64-x86-64-posix",
+    "APPFORGE_WINDOWS_NATIVE_DPKG_REPAIR=PASS",
+    "PE32+ executable"
+  ]) {
     assert.ok(installer.includes(marker), `missing native toolchain marker ${marker}`);
   }
+
+  assert.doesNotMatch(
+    installer,
+    /\n\s+gcc-mingw-w64-x86-64\s+\\/
+  );
+
+  assert.doesNotMatch(
+    installer,
+    /\n\s+g\+\+-mingw-w64-x86-64\s+\\/
+  );
   assert.doesNotMatch(installer, /APPFORGE_ANDROID_SDK_LICENSE/);
   assert.doesNotMatch(installer, /sdkmanager/);
 });
@@ -30,7 +48,8 @@ test("native builder cross-compiles one Windows x64 PE through CMake", () => {
   const builder = read("android-app/app/src/main/assets/device-build/build-windows-native.sh");
   assert.match(builder, /CMAKE_SYSTEM_NAME Windows/);
   assert.match(builder, /CMAKE_SYSTEM_PROCESSOR x86_64/);
-  assert.match(builder, /x86_64-w64-mingw32-g\+\+/);
+  assert.match(builder, /x86_64-w64-mingw32-gcc-posix/);
+  assert.match(builder, /x86_64-w64-mingw32-g\+\+-posix/);
   assert.match(builder, /CMAKE_RUNTIME_OUTPUT_DIRECTORY/);
   assert.match(builder, /PE32\+ executable/);
   assert.match(builder, /APPFORGE_WINDOWS_NATIVE_EXE_AMBIGUOUS/);

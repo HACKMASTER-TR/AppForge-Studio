@@ -19,7 +19,7 @@ test -f "$SOURCE/CMakeLists.txt" || {
 
 command -v cmake >/dev/null
 command -v ninja >/dev/null
-command -v x86_64-w64-mingw32-g++ >/dev/null
+command -v x86_64-w64-mingw32-g++-posix >/dev/null
 command -v x86_64-w64-mingw32-windres >/dev/null
 
 rm -rf "$BUILD" "$OUT" "$MARKER"
@@ -28,8 +28,8 @@ mkdir -p "$BUILD" "$OUT"
 cat > "$TOOLCHAIN" <<'EOF'
 set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_SYSTEM_PROCESSOR x86_64)
-set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc)
-set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
+set(CMAKE_C_COMPILER x86_64-w64-mingw32-gcc-posix)
+set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++-posix)
 set(CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 EOF

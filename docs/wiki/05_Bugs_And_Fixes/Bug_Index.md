@@ -231,3 +231,13 @@ under `quality/tests`. Existing historical bug records are retained.
   returned. The screen now owns an explicit `LazyListState` and keeps the
   current list visible during non-initial refreshes, so save/trash refreshes
   preserve the user's scroll position.
+
+- Windows Native V1 MinGW package configure failure — physical Android
+  offline-pack acceptance exposed an Ubuntu/PRoot `update-alternatives`
+  failure while configuring the broad `gcc/g++-mingw-w64-x86-64` meta
+  packages. AppForge now installs only the required x86-64 POSIX MinGW
+  compiler packages, uses explicit `*-posix` drivers in the CMake
+  toolchain, and repairs only missing/broken MinGW driver links before
+  resuming an interrupted `dpkg --configure -a`. Existing valid package
+  files are never overwritten. Physical Windows execution acceptance
+  remains pending until the repaired APK produces and runs the native EXE.
