@@ -17,6 +17,7 @@ internal data class OfflineBuildPackStatus(
     val androidCoreReady: Boolean,
     val nodeToolchainReady: Boolean,
     val pythonAndroidReady: Boolean,
+    val windowsNativeToolchainReady: Boolean,
     val windowsHostReady: Boolean,
     val windowsExeReady: Boolean
 ) {
@@ -83,6 +84,7 @@ internal object OfflineBuildPackManager {
                 androidCoreReady = false,
                 nodeToolchainReady = false,
                 pythonAndroidReady = false,
+                windowsNativeToolchainReady = false,
                 windowsHostReady =
                     windowsHostReady,
                 windowsExeReady =
@@ -119,6 +121,14 @@ internal object OfflineBuildPackManager {
                     File(
                         pack,
                         "python.ready"
+                    )
+                ),
+
+            windowsNativeToolchainReady =
+                markerReady(
+                    File(
+                        pack,
+                        "windows-native.ready"
                     )
                 ),
 
@@ -210,7 +220,7 @@ internal object OfflineBuildPackManager {
                     }
 
                 onProgress(
-                    "1/4 • Android SDK, JDK ve Gradle hazırlanıyor..."
+                    "1/5 • Android SDK, JDK ve Gradle hazırlanıyor..."
                 )
 
                 execute(
@@ -251,7 +261,7 @@ internal object OfflineBuildPackManager {
                 )
 
                 onProgress(
-                    "2/4 • Node.js ve npm hazırlanıyor..."
+                    "2/5 • Node.js ve npm hazırlanıyor..."
                 )
 
                 execute(
@@ -284,7 +294,7 @@ internal object OfflineBuildPackManager {
                 )
 
                 onProgress(
-                    "3/4 • Python ve Chaquopy hazırlanıyor..."
+                    "3/5 • Python ve Chaquopy hazırlanıyor..."
                 )
 
                 execute(
@@ -317,7 +327,29 @@ internal object OfflineBuildPackManager {
                 )
 
                 onProgress(
-                    "4/4 • Windows Portable Host hazırlanıyor..."
+                    "4/5 • Windows Native C/C++ toolchain hazırlanıyor..."
+                )
+
+                execute(
+                    shell = shell,
+                    rootfs = rootfs,
+                    workspace = workspace,
+                    suffix = "windows-native-toolchain",
+                    command =
+                        "chmod +x /workspace/runtime/install-windows-native-toolchain.sh && " +
+                            "APPFORGE_DEVICE_OFFLINE=0 " +
+                            "/bin/sh /workspace/runtime/install-windows-native-toolchain.sh"
+                )
+
+                writeMarker(
+                    File(
+                        packDirectory,
+                        "windows-native.ready"
+                    )
+                )
+
+                onProgress(
+                    "5/5 • Windows Portable Host hazırlanıyor..."
                 )
 
                 WindowsPortableHostStore
@@ -340,8 +372,8 @@ internal object OfflineBuildPackManager {
                 )
 
                 onProgress(
-                    "Android, Node, Python ve Windows Portable EXE " +
-                        "tam çevrimdışı kullanım için hazır."
+                    "Android, Node, Python, Windows Native toolchain ve Windows Portable EXE " +
+                        "cihazda hazır. Native EXE fiziksel Windows kabulü tamamlanana kadar EXPERIMENTAL kalır."
                 )
 
                 status(

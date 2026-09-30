@@ -493,13 +493,13 @@ internal fun OfflineBuildPackScreen(
 
                         Text(
                             "Hedef paket; Android SDK, JDK, Gradle, " +
-                                "Node.js/npm, Python/Chaquopy ve Portable EXE " +
+                                "Node.js/npm, Python/Chaquopy, Windows Native C/C++ ve Portable EXE " +
                                 "araçlarını cihazda tutacak."
                         )
 
                         Text(
-                            "Tahmini indirme: 1,5–2,3 GB • " +
-                                "hedef cihaz kullanımı: yaklaşık 4–6 GB"
+                            "Tahmini indirme: yaklaşık 2–3,2 GB • " +
+                                "hedef cihaz kullanımı: yaklaşık 5–8 GB"
                         )
 
                         Text(
@@ -601,6 +601,23 @@ internal fun OfflineBuildPackScreen(
 
                     ready =
                         status.pythonAndroidReady
+                )
+            }
+
+            item {
+                OfflinePackComponentCard(
+                    title =
+                        "Windows Native EXE Toolchain",
+
+                    subtitle =
+                        "CMake + Ninja + MinGW-w64 x64 • C/C++ native PE üretimi. " +
+                            "Kaynak/CI ve gerçek Windows kabulü tamamlanana kadar EXPERIMENTAL.",
+
+                    ready =
+                        status.windowsNativeToolchainReady,
+
+                    pendingText =
+                        "KURULMADI"
                 )
             }
 

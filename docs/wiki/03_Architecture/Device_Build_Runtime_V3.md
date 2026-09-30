@@ -672,3 +672,31 @@ Runtime reliability acceptance in the same sequence also confirmed:
 These results apply to the exact accepted fixtures and cached/offline
 dependencies. A different imported project can still require dependencies that
 have not been prepared in the AppForge offline pack.
+
+
+## Windows Native EXE V1
+
+AppForge keeps the accepted Windows Portable EXE path unchanged and adds a
+separate experimental `windows-native` device build engine for local C/C++
+CMake projects.
+
+The native engine runs inside Device Build Runtime V3, never inside the
+persistent Terminal Linux workspace. A dedicated Ubuntu-hosted CMake + Ninja +
+MinGW-w64 x86-64 cross toolchain produces a real Windows PE32+ x64 executable.
+It does not use the Electron/WebView generic host and does not require the
+Android SDK license merely to install the Windows-native compiler.
+
+`WINDOWS_EXE` continues to mean the accepted AppForge Portable EXE. The new
+`WINDOWS_NATIVE_EXE` is a separate artifact request but reuses the existing
+single EXE artifact/history/save transport after the build, because one build
+selects one Windows EXE mode at a time.
+
+Native output remains EXPERIMENTAL until source tests, Android device build,
+and execution on a physical Windows machine all pass. Toolchain installation
+alone is not product acceptance.
+
+Windows publisher signing is a post-build layer shared by final Portable and
+Native EXE artifacts. Its UI and engine path are owner/admin-only and fail
+closed. No certificate, private key or password is embedded in source or a
+project payload. V1 establishes the admin guard; a secure certificate provider
+must be configured before signing can be enabled.

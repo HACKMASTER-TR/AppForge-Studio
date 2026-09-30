@@ -17979,6 +17979,15 @@ private fun BuildSettingsStep(
     val apiKeyReady =
         apiKey.isNotBlank()
 
+    val context =
+        LocalContext.current
+
+    val windowsSigningAdmin =
+        OwnerAccessPolicy
+            .isActiveOwner(
+                context
+            )
+
     val releaseSigning =
         draft.signingMode ==
             SigningMode.CUSTOM
@@ -17988,7 +17997,10 @@ private fun BuildSettingsStep(
             draft.buildOutput
         ) {
             "exe" ->
-                "Windows EXE"
+                "Windows Portable EXE"
+
+            "native-exe" ->
+                "Windows Native EXE"
 
             "aab" ->
                 "AAB"
@@ -18005,7 +18017,10 @@ private fun BuildSettingsStep(
             draft.buildOutput
         ) {
             "exe" ->
-                "EXE • Windows x64 • Electron Portable"
+                "PORTABLE EXE • Windows x64 • AppForge Generic Host"
+
+            "native-exe" ->
+                "NATIVE EXE • Windows x64 • CMake + MinGW-w64"
 
             "aab" ->
                 "AAB • Gradle bundleRelease"
@@ -18206,62 +18221,134 @@ private fun BuildSettingsStep(
         }
 
         item {
-            Row(
-                horizontalArrangement =
-                    Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp),
-                modifier =
-                    Modifier.fillMaxWidth()
+            Column(
+                verticalArrangement =
+                    Arrangement.spacedBy(
+                        if (formCompact) 6.dp else 8.dp
+                    )
             ) {
                 listOf(
-                    "apk",
-                    "aab",
-                    "both",
-                    "exe"
-                ).forEach {
-                    output ->
-                    val windowsExeCompatible =
-                        draft.sourceMode ==
-                            SourceMode.URL ||
-                        draft.sourceBuildEngine
-                            .trim()
-                            .lowercase() in
-                            setOf(
-                                "webview-static",
-                                "node-web"
-                            )
-
-                    val outputEnabled =
-                        output != "exe" ||
-                            windowsExeCompatible
-
-                    FilterChip(
-                        selected =
-                            draft.buildOutput ==
-                                output,
-                        enabled =
-                            outputEnabled,
-                        onClick = {
-                            if (
-                                outputEnabled
-                            ) {
-                                update(
-                                    draft.copy(
-                                        buildOutput =
-                                            output
-                                    )
-                                )
-                            }
-                        },
-                        label = {
-                            Text(
-                                output.uppercase()
-                            )
-                        },
-                        modifier =
-                            Modifier.weight(
-                                1f
-                            )
+                    listOf(
+                        "apk",
+                        "aab",
+                        "both"
+                    ),
+                    listOf(
+                        "exe",
+                        "native-exe"
                     )
+                ).forEach {
+                    outputRow ->
+
+                    Row(
+                        horizontalArrangement =
+                            Arrangement.spacedBy(
+                                if (formCompact) 6.dp else 8.dp
+                            ),
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        outputRow.forEach {
+                            output ->
+
+                            val windowsExeCompatible =
+                                draft.sourceMode ==
+                                    SourceMode.URL ||
+                                    draft.sourceBuildEngine
+                                        .trim()
+                                        .lowercase() in
+                                        setOf(
+                                            "webview-static",
+                                            "node-web"
+                                        )
+
+                            val windowsNativeCompatible =
+                                draft.sourceMode ==
+                                    SourceMode.LOCAL &&
+                                    (
+                                        draft.sourceTechnology
+                                            .trim()
+                                            .lowercase() in
+                                            setOf(
+                                                "cpp",
+                                                "c",
+                                                "cmake"
+                                            ) ||
+                                        draft.sourceBuildEngine
+                                            .trim()
+                                            .lowercase() in
+                                            setOf(
+                                                "android-ndk",
+                                                "windows-native"
+                                            )
+                                    )
+
+                            val outputEnabled =
+                                when (
+                                    output
+                                ) {
+                                    "exe" ->
+                                        windowsExeCompatible
+
+                                    "native-exe" ->
+                                        windowsNativeCompatible
+
+                                    else ->
+                                        true
+                                }
+
+                            FilterChip(
+                                selected =
+                                    draft.buildOutput ==
+                                        output,
+                                enabled =
+                                    outputEnabled,
+                                onClick = {
+                                    if (
+                                        outputEnabled
+                                    ) {
+                                        update(
+                                            draft.copy(
+                                                buildOutput =
+                                                    output
+                                            )
+                                        )
+                                    }
+                                },
+                                label = {
+                                    Text(
+                                        when (
+                                            output
+                                        ) {
+                                            "exe" ->
+                                                "PORTABLE EXE"
+
+                                            "native-exe" ->
+                                                "NATIVE EXE"
+
+                                            else ->
+                                                output.uppercase()
+                                        }
+                                    )
+                                },
+                                modifier =
+                                    Modifier.weight(
+                                        1f
+                                    )
+                            )
+                        }
+
+                        if (
+                            outputRow.size ==
+                                2
+                        ) {
+                            Spacer(
+                                Modifier.weight(
+                                    1f
+                                )
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -18312,6 +18399,30 @@ private fun BuildSettingsStep(
 
                             Text(
                                 "Windows 10/11 x64 için taşınabilir çıktı hazırlanır.",
+                                color =
+                                    Accent,
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+
+                        "native-exe" -> {
+                            Text(
+                                "Windows Native EXE",
+                                fontWeight =
+                                    FontWeight.Medium
+                            )
+
+                            Text(
+                                "C/C++ CMake projesini Windows x64 PE olarak doğrudan derler; WebView/Electron host kullanmaz.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "EXPERIMENTAL • Kaynak/CI ve fiziksel Windows kabulü tamamlanmadan READY sayılmaz.",
                                 color =
                                     Accent,
                                 fontSize =
@@ -18405,6 +18516,96 @@ private fun BuildSettingsStep(
                     "Native Android/Flutter/React Native kaynakları için APK/AAB kullan. " +
                     "EXE için web tabanlı veya HTTPS URL kaynağı seç."
                 )
+            }
+        }
+
+        if (
+            draft.buildOutput ==
+                "native-exe" &&
+            !(
+                draft.sourceMode ==
+                    SourceMode.LOCAL &&
+                (
+                    draft.sourceTechnology
+                        .trim()
+                        .lowercase() in
+                        setOf(
+                            "cpp",
+                            "c",
+                            "cmake"
+                        ) ||
+                    draft.sourceBuildEngine
+                        .trim()
+                        .lowercase() in
+                        setOf(
+                            "android-ndk",
+                            "windows-native"
+                        )
+                )
+            )
+        ) {
+            item {
+                NoteCard(
+                    "Windows Native EXE için yerel C/C++ CMake projesi gerekli."
+                )
+            }
+        }
+
+        if (
+            windowsSigningAdmin &&
+            draft.buildOutput in
+                setOf(
+                    "exe",
+                    "native-exe"
+                )
+        ) {
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                if (formCompact) 12.dp else 16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                6.dp
+                            )
+                    ) {
+                        Text(
+                            "Windows Yayıncı İmzası • Yönetici",
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            "Bu bölüm yalnız doğrulanmış yönetici oturumunda görünür. İmza her zaman final EXE üretildikten sonra uygulanır.",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+
+                        Text(
+                            "Durum: Sertifika sağlayıcısı yapılandırılana kadar KAPALI • private key/PFX kaynak koda veya proje payload'ına gömülmez.",
+                            color =
+                                Accent,
+                            fontSize =
+                                11.sp
+                        )
+                    }
+                }
             }
         }
 

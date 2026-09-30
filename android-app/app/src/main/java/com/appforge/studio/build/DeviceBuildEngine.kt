@@ -11,6 +11,7 @@ import com.appforge.studio.terminal.LinuxShellEngine
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import java.io.File
+import java.io.RandomAccessFile
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
@@ -180,13 +181,9 @@ object DeviceBuildEngine {
             validateCapabilities(draft)
 
             val sourceEngine =
-                draft
-                    .sourceBuildEngine
-                    .trim()
-                    .lowercase()
-                    .ifBlank {
-                        "webview-static"
-                    }
+                effectiveSourceEngine(
+                    draft
+                )
 
             val requestedOutputs =
                 DeviceBuildCapabilities
@@ -198,6 +195,11 @@ object DeviceBuildEngine {
                 DeviceArtifactKind.WINDOWS_EXE in
                     requestedOutputs
 
+            /*
+             * Portable EXE and Native EXE are independent Windows targets.
+             * Only the accepted Portable EXE path requires the pinned
+             * WindowsPortableHostStore.
+             */
             if (
                 wantsWindowsExe
             ) {
@@ -212,6 +214,10 @@ object DeviceBuildEngine {
                 }
             }
 
+            val wantsWindowsNativeExe =
+                DeviceArtifactKind.WINDOWS_NATIVE_EXE in
+                    requestedOutputs
+
             state.preflight.add("✅ Build cihaz üzerinde çalışacak.")
             state.preflight.add("✅ Worker / queue / cloud build kullanılmıyor.")
             state.preflight.add("✅ Clean Device Build Runtime V3 • Terminal Linux ortamından izole.")
@@ -221,6 +227,14 @@ object DeviceBuildEngine {
             ) {
                 state.preflight.add(
                     "✅ Windows Portable EXE • doğrulanmış generic host ile cihaz-local paketleme."
+                )
+            }
+
+            if (
+                wantsWindowsNativeExe
+            ) {
+                state.preflight.add(
+                    "🧪 Windows Native EXE • CMake + MinGW-w64 x64 • EXPERIMENTAL kabul hattı."
                 )
             }
 
@@ -260,13 +274,36 @@ object DeviceBuildEngine {
                 )
             state.shell = shell
 
+            val toolchainCommand =
+                if (
+                    sourceEngine ==
+                        "windows-native"
+                ) {
+                    "chmod +x /workspace/runtime/install-windows-native-toolchain.sh " +
+                        "/workspace/runtime/build-windows-native.sh && " +
+                        "APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} " +
+                        "/bin/sh /workspace/runtime/install-windows-native-toolchain.sh"
+                } else {
+                    "chmod +x /workspace/runtime/install-toolchain.sh /workspace/runtime/build-node.sh && " +
+                        "APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} " +
+                        "/bin/sh /workspace/runtime/install-toolchain.sh ${sh(sourceEngine)}"
+                }
+
             runShellBlocking(
                 shell = shell,
                 rootfs = rootfs,
                 workspace = workspace,
                 state = state,
-                command = "chmod +x /workspace/runtime/install-toolchain.sh /workspace/runtime/build-node.sh && APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} /bin/sh /workspace/runtime/install-toolchain.sh ${sh(sourceEngine)}",
-                suffix = "toolchain"
+                command = toolchainCommand,
+                suffix =
+                    if (
+                        sourceEngine ==
+                            "windows-native"
+                    ) {
+                        "windows-native-toolchain"
+                    } else {
+                        "toolchain"
+                    }
             )
 
             checkCancelled(state)
@@ -277,6 +314,7 @@ object DeviceBuildEngine {
                 "node-web" -> buildNodeWeb(context, draft, workspace, rootfs, shell, state)
                 "android-gradle" -> buildAndroidProject(context, draft, workspace, rootfs, shell, state)
                 "python-android" -> buildPythonProject(context, draft, workspace, rootfs, shell, state)
+                "windows-native" -> buildWindowsNative(context, draft, workspace, rootfs, shell, state)
                 "webview-static", "", "unknown" ->
                     buildStaticWeb(
                         context,
@@ -307,6 +345,9 @@ object DeviceBuildEngine {
                                 state.aab == null
 
                             DeviceArtifactKind.WINDOWS_EXE ->
+                                state.exe == null
+
+                            DeviceArtifactKind.WINDOWS_NATIVE_EXE ->
                                 state.exe == null
                         }
                     }
@@ -364,19 +405,22 @@ object DeviceBuildEngine {
         }
 
         val sourceEngine =
-            draft
-                .sourceBuildEngine
-                .trim()
-                .lowercase()
-                .ifBlank {
-                    "webview-static"
-                }
+            effectiveSourceEngine(
+                draft
+            )
 
         val technologyCapability =
-            DeviceBuildCapabilities
-                .forTechnology(
-                    draft.sourceTechnology
-                )
+            if (
+                sourceEngine ==
+                    "windows-native"
+            ) {
+                null
+            } else {
+                DeviceBuildCapabilities
+                    .forTechnology(
+                        draft.sourceTechnology
+                    )
+            }
 
         if (
             technologyCapability != null &&
@@ -390,18 +434,37 @@ object DeviceBuildEngine {
         }
 
         val capability =
-            technologyCapability
-                ?: DeviceBuildCapabilities
+            if (
+                sourceEngine ==
+                    "windows-native"
+            ) {
+                DeviceBuildCapabilities
                     .forEngine(
                         sourceEngine
                     )
+            } else {
+                technologyCapability
+                    ?: DeviceBuildCapabilities
+                        .forEngine(
+                            sourceEngine
+                        )
+            }
                 ?: error(
                     "${draft.sourceTechnologyLabel} için cihaz-build capability kaydı yok."
                 )
 
-        require(
+        val sourceExecutable =
             capability.support ==
-                DeviceBuildSupport.READY
+                DeviceBuildSupport.READY ||
+                (
+                    sourceEngine ==
+                        "windows-native" &&
+                    capability.support ==
+                        DeviceBuildSupport.EXPERIMENTAL
+                )
+
+        require(
+            sourceExecutable
         ) {
             capability.note
         }
@@ -427,6 +490,65 @@ object DeviceBuildEngine {
                 ". " +
                 capability.note
         }
+    }
+
+
+    private fun effectiveSourceEngine(
+        draft: ProjectDraft
+    ): String {
+        val outputs =
+            DeviceBuildCapabilities
+                .requestedOutputs(
+                    draft.buildOutput
+                )
+
+        if (
+            DeviceArtifactKind.WINDOWS_NATIVE_EXE in
+                outputs
+        ) {
+            require(
+                draft.sourceMode ==
+                    SourceMode.LOCAL
+            ) {
+                "Windows Native EXE yalnız yerel C/C++ kaynak projelerinden üretilebilir."
+            }
+
+            val technology =
+                draft.sourceTechnology
+                    .trim()
+                    .lowercase()
+
+            val declaredEngine =
+                draft.sourceBuildEngine
+                    .trim()
+                    .lowercase()
+
+            require(
+                technology in
+                    setOf(
+                        "cpp",
+                        "c",
+                        "cmake"
+                    ) ||
+                    declaredEngine in
+                        setOf(
+                            "android-ndk",
+                            "windows-native"
+                        )
+            ) {
+                "Windows Native EXE için C/C++ CMake projesi gerekli."
+            }
+
+            return "windows-native"
+        }
+
+        return draft
+            .sourceBuildEngine
+            .trim()
+            .lowercase()
+            .ifBlank {
+                "webview-static"
+            }
     }
 
 
@@ -487,6 +609,296 @@ object DeviceBuildEngine {
             state = state
         )
     }
+
+    private fun buildWindowsNative(
+        context: Context,
+        draft: ProjectDraft,
+        workspace: File,
+        rootfs: File,
+        shell: LinuxShellEngine,
+        state: JobState
+    ) {
+        require(
+            DeviceArtifactKind.WINDOWS_NATIVE_EXE in
+                requestedOutputs(
+                    draft
+                )
+        ) {
+            "Windows Native build çağrıldı ancak Native EXE çıktısı seçilmedi."
+        }
+
+        require(
+            draft.sourceMode ==
+                SourceMode.LOCAL
+        ) {
+            "Windows Native EXE yalnız yerel kaynak için kullanılabilir."
+        }
+
+        val copiedSource =
+            File(
+                workspace,
+                "source"
+            ).canonicalFile
+
+        val cmakeLists =
+            copiedSource
+                .walkTopDown()
+                .maxDepth(8)
+                .firstOrNull {
+                    it.isFile &&
+                        it.name.equals(
+                            "CMakeLists.txt",
+                            ignoreCase = true
+                        )
+                }
+                ?: error(
+                    "Windows Native EXE için CMakeLists.txt bulunamadı."
+                )
+
+        val sourceRoot =
+            cmakeLists
+                .parentFile
+                .canonicalFile
+
+        require(
+            sourceRoot.path ==
+                copiedSource.path ||
+                sourceRoot.path.startsWith(
+                    copiedSource.path +
+                        File.separator
+                )
+        ) {
+            "Windows Native kaynak kökü çalışma alanı dışına çıktı."
+        }
+
+        val relative =
+            sourceRoot
+                .relativeTo(
+                    workspace
+                )
+                .invariantSeparatorsPath
+
+        state.logs.add(
+            "🪟 Windows Native EXE • CMake/MinGW-w64 x64 derleme başlıyor."
+        )
+
+        state.progress =
+            maxOf(
+                state.progress,
+                40
+            )
+
+        runShellBlocking(
+            shell = shell,
+            rootfs = rootfs,
+            workspace = workspace,
+            state = state,
+            command =
+                "APPFORGE_WINDOWS_NATIVE_SOURCE=${sh("/workspace/$relative")} " +
+                    "/bin/sh /workspace/runtime/build-windows-native.sh",
+            suffix =
+                "windows-native-build"
+        )
+
+        val marker =
+            File(
+                workspace,
+                ".appforge-windows-native-output"
+            )
+
+        require(
+            marker.isFile &&
+                marker.length() in
+                    1L..4096L
+        ) {
+            "Windows Native çıktı işaretçisi bulunamadı."
+        }
+
+        val relativeOutput =
+            marker
+                .readText(
+                    Charsets.UTF_8
+                )
+                .trim()
+
+        require(
+            relativeOutput.isNotBlank() &&
+                !relativeOutput.startsWith(
+                    "/"
+                ) &&
+                !relativeOutput.contains(
+                    ".."
+                )
+        ) {
+            "Windows Native çıktı yolu geçersiz."
+        }
+
+        val sourceExe =
+            File(
+                workspace,
+                relativeOutput
+            ).canonicalFile
+
+        val canonicalWorkspace =
+            workspace.canonicalFile
+
+        require(
+            sourceExe.path.startsWith(
+                canonicalWorkspace.path +
+                    File.separator
+            ) &&
+                sourceExe.isFile &&
+                sourceExe.length() >
+                    0L
+        ) {
+            "Windows Native EXE çalışma alanında bulunamadı."
+        }
+
+        verifyWindowsX64Pe(
+            sourceExe
+        )
+
+        val artifactRoot =
+            File(
+                context.filesDir,
+                "device-build/artifacts/${state.id}"
+            ).apply {
+                mkdirs()
+            }
+
+        val target =
+            File(
+                artifactRoot,
+                "${safeName(draft.appName)}-${state.buildNo}.exe"
+            )
+
+        sourceExe.copyTo(
+            target,
+            overwrite = true
+        )
+
+        verifyWindowsX64Pe(
+            target
+        )
+
+        WindowsPublisherSigningPolicy
+            .applyIfRequested(
+                context = context,
+                target = target
+            ) {
+                detail ->
+                state.logs.add(
+                    detail
+                )
+            }
+
+        state.exe =
+            target
+
+        state.progress =
+            maxOf(
+                state.progress,
+                90
+            )
+
+        state.logs.add(
+            "✅ Windows Native x64 EXE hazır • fiziksel Windows kabulü ayrıca yapılmalı."
+        )
+    }
+
+
+    private fun verifyWindowsX64Pe(
+        file: File
+    ) {
+        require(
+            file.isFile &&
+                file.length() >=
+                    256L
+        ) {
+            "Windows Native EXE boş veya eksik."
+        }
+
+        RandomAccessFile(
+            file,
+            "r"
+        ).use {
+            pe ->
+
+            fun u16(
+                at: Long
+            ): Int {
+                pe.seek(
+                    at
+                )
+
+                val lo =
+                    pe.readUnsignedByte()
+
+                val hi =
+                    pe.readUnsignedByte()
+
+                return lo or
+                    (hi shl 8)
+            }
+
+            fun u32(
+                at: Long
+            ): Long =
+                u16(
+                    at
+                ).toLong() or
+                    (
+                        u16(
+                            at +
+                                2L
+                        ).toLong() shl
+                            16
+                    )
+
+            require(
+                u16(
+                    0L
+                ) ==
+                    0x5A4D
+            ) {
+                "Windows Native MZ başlığı geçersiz."
+            }
+
+            val nt =
+                u32(
+                    0x3cL
+                )
+
+            require(
+                nt in
+                    64L..
+                    (file.length() -
+                        24L)
+            ) {
+                "Windows Native PE offset geçersiz."
+            }
+
+            require(
+                u32(
+                    nt
+                ) ==
+                    0x00004550L
+            ) {
+                "Windows Native PE imzası geçersiz."
+            }
+
+            require(
+                u16(
+                    nt +
+                        4L
+                ) ==
+                    0x8664
+            ) {
+                "Windows Native çıktı x86-64 PE değil."
+            }
+        }
+    }
+
 
     private fun buildWindowsIfRequested(
         context: Context,
@@ -558,6 +970,17 @@ object DeviceBuildEngine {
         ) {
             "Windows Portable EXE çıktısı oluşturulamadı."
         }
+
+        WindowsPublisherSigningPolicy
+            .applyIfRequested(
+                context = context,
+                target = target
+            ) {
+                detail ->
+                state.logs.add(
+                    detail
+                )
+            }
 
         state.exe = target
         state.progress =

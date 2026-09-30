@@ -116,10 +116,28 @@ object AppForgeProjectAdvisor {
             )
         }
 
+        val windowsNativeTarget =
+            draft.buildOutput
+                .trim()
+                .lowercase() in
+                setOf(
+                    "native-exe",
+                    "windows-native-exe"
+                ) &&
+                draft.sourceTechnology
+                    .trim()
+                    .lowercase() in
+                    setOf(
+                        "cpp",
+                        "c",
+                        "cmake"
+                    )
+
         if (
             draft.sourceMode ==
                 SourceMode.LOCAL &&
-            !draft.sourceBuildReady
+            !draft.sourceBuildReady &&
+            !windowsNativeTarget
         ) {
             error(
                 "Build motoru henüz hazır değil",
