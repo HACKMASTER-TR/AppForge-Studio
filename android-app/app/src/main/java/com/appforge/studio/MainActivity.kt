@@ -2497,6 +2497,16 @@ private fun AppForgeApp() {
                                         analysis
                                             .buildReady,
 
+                                    buildOutput =
+                                        if (
+                                            analysis.buildEngine ==
+                                                "universal-cross-platform"
+                                        ) {
+                                            "all"
+                                        } else {
+                                            baseDraft.buildOutput
+                                        },
+
                                     camera =
                                         analysis.camera,
 
@@ -18408,6 +18418,10 @@ private fun BuildSettingsStep(
             "both" ->
                 "APK + AAB"
 
+            "all",
+            "apk+aab+exe" ->
+                "APK + AAB + Windows EXE"
+
             else ->
                 "APK"
         }
@@ -18424,6 +18438,10 @@ private fun BuildSettingsStep(
 
             "both" ->
                 "BOTH • FAST APK uygunsa Hybrid + AAB"
+
+            "all",
+            "apk+aab+exe" ->
+                "TÜMÜ • APK + AAB + Windows Portable EXE"
 
             else ->
                 "APK • Uygunsa FAST BUILD"
@@ -18622,29 +18640,74 @@ private fun BuildSettingsStep(
                 horizontalArrangement =
                     Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp),
                 modifier =
-                    Modifier.fillMaxWidth()
+                    Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(
+                            rememberScrollState()
+                        )
             ) {
-                listOf(
-                    "apk",
-                    "aab",
-                    "both",
-                    "exe"
-                ).forEach {
-                    output ->
-                    val windowsExeCompatible =
-                        draft.sourceMode ==
-                            SourceMode.URL ||
-                        draft.sourceBuildEngine
-                            .trim()
-                            .lowercase() in
-                            setOf(
-                                "webview-static",
-                                "node-web"
-                            )
+                val normalizedEngine =
+                    draft.sourceBuildEngine
+                        .trim()
+                        .lowercase()
 
+                val universalProject =
+                    normalizedEngine ==
+                        "universal-cross-platform"
+
+                val windowsExeCompatible =
+                    draft.sourceMode ==
+                        SourceMode.URL ||
+                    normalizedEngine in
+                        setOf(
+                            "webview-static",
+                            "node-web",
+                            "universal-cross-platform"
+                        )
+
+                val outputOptions =
+                    buildList {
+                        add("apk")
+                        add("aab")
+                        add("both")
+                        add("exe")
+
+                        if (
+                            universalProject
+                        ) {
+                            add("all")
+                        }
+                    }
+
+                outputOptions.forEach {
+                    output ->
                     val outputEnabled =
-                        output != "exe" ||
-                            windowsExeCompatible
+                        when (
+                            output
+                        ) {
+                            "exe" ->
+                                windowsExeCompatible
+
+                            "all" ->
+                                universalProject
+
+                            else ->
+                                true
+                        }
+
+                    val outputText =
+                        when (
+                            output
+                        ) {
+                            "both" ->
+                                "APK+AAB"
+
+                            "all" ->
+                                "TÜMÜ"
+
+                            else ->
+                                output.uppercase()
+                        }
 
                     FilterChip(
                         selected =
@@ -18666,13 +18729,9 @@ private fun BuildSettingsStep(
                         },
                         label = {
                             Text(
-                                output.uppercase()
+                                outputText
                             )
-                        },
-                        modifier =
-                            Modifier.weight(
-                                1f
-                            )
+                        }
                     )
                 }
             }
@@ -18707,6 +18766,31 @@ private fun BuildSettingsStep(
                     when (
                         draft.buildOutput
                     ) {
+                        "all",
+                        "apk+aab+exe" -> {
+                            Text(
+                                "APK + AAB + Windows EXE",
+                                fontWeight =
+                                    FontWeight.Medium
+                            )
+
+                            Text(
+                                "Universal projede Android APK/AAB ve Windows Portable EXE aynı kaynak paketinden birlikte oluşturulur.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "Tek proje • üç çıktı • cihaz üzerinde derleme/paketleme",
+                                color =
+                                    Accent,
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+
                         "exe" -> {
                             Text(
                                 "Windows EXE",
@@ -18800,7 +18884,11 @@ private fun BuildSettingsStep(
         }
 
         if (
-            draft.buildOutput == "exe" &&
+            (
+                draft.buildOutput == "exe" ||
+                draft.buildOutput == "all" ||
+                draft.buildOutput == "apk+aab+exe"
+            ) &&
             draft.sourceMode !=
                 SourceMode.URL &&
             draft.sourceBuildEngine
@@ -18808,7 +18896,8 @@ private fun BuildSettingsStep(
                 .lowercase() !in
                 setOf(
                     "webview-static",
-                    "node-web"
+                    "node-web",
+                    "universal-cross-platform"
                 )
         ) {
             item {
@@ -18931,7 +19020,11 @@ private fun BuildSettingsStep(
                 draft.buildOutput ==
                     "aab" ||
                 draft.buildOutput ==
-                    "both"
+                    "both" ||
+                draft.buildOutput ==
+                    "all" ||
+                draft.buildOutput ==
+                    "apk+aab+exe"
             )
         ) {
             item {

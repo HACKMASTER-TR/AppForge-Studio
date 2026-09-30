@@ -29,6 +29,29 @@ internal object DeviceBuildCapabilities {
         List<DeviceBuildCapability> =
         listOf(
 
+
+            DeviceBuildCapability(
+                engine =
+                    "universal-cross-platform",
+                technologies =
+                    setOf(
+                        "appforge-universal",
+                        "universal-cross-platform",
+                        "multi-target"
+                    ),
+                readyOutputs =
+                    setOf(
+                        DeviceArtifactKind.APK,
+                        DeviceArtifactKind.AAB,
+                        DeviceArtifactKind.WINDOWS_EXE
+                    ),
+                support =
+                    DeviceBuildSupport.READY,
+                note =
+                    "Tek AppForge Universal proje paketi, native Android alt projesinden APK/AAB ve statik Windows alt projesinden Portable EXE üretebilir."
+            ),
+
+
             DeviceBuildCapability(
                 engine =
                     "webview-static",

@@ -1,6 +1,7 @@
 package com.appforge.studio.io
 
 import java.io.File
+import org.json.JSONObject
 
 data class ProjectTechnologyInfo(
     val id: String,
@@ -39,6 +40,89 @@ object ProjectTechnologyDetector {
         if (!root.exists() || !root.isDirectory) {
             return unknown("Proje klasörü bulunamadı.")
         }
+
+        val universalManifest =
+            File(
+                root,
+                "appforge.universal.json"
+            )
+
+        if (universalManifest.isFile) {
+            val manifest =
+                runCatching {
+                    JSONObject(
+                        universalManifest.readText(
+                            Charsets.UTF_8
+                        )
+                    )
+                }.getOrNull()
+
+            if (
+                manifest?.optString(
+                    "format"
+                ) != "appforge-universal" ||
+                manifest.optInt(
+                    "formatVersion",
+                    0
+                ) != 1
+            ) {
+                return unknown(
+                    "appforge.universal.json biçimi geçersiz."
+                )
+            }
+
+            val targets =
+                manifest.optJSONObject(
+                    "targets"
+                )
+
+            val androidRoot =
+                targets
+                    ?.optJSONObject(
+                        "android"
+                    )
+                    ?.optString(
+                        "root",
+                        ""
+                    )
+                    .orEmpty()
+                    .trim()
+
+            val windowsRoot =
+                targets
+                    ?.optJSONObject(
+                        "windows"
+                    )
+                    ?.optString(
+                        "root",
+                        ""
+                    )
+                    .orEmpty()
+                    .trim()
+
+            if (
+                androidRoot.isBlank() ||
+                windowsRoot.isBlank()
+            ) {
+                return unknown(
+                    "Universal proje Android ve Windows hedef köklerini tanımlamalı."
+                )
+            }
+
+            return ProjectTechnologyInfo(
+                id =
+                    "appforge-universal",
+                label =
+                    "AppForge Universal • Android + Windows",
+                buildEngine =
+                    "universal-cross-platform",
+                buildReady =
+                    true,
+                reason =
+                    "appforge.universal.json bulundu; Android native ve Windows Portable EXE hedefleri tek proje içinde tanımlı."
+            )
+        }
+
 
         val all = files(root)
         val byName = all.groupBy { it.name.lowercase() }
