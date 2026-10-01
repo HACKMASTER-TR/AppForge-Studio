@@ -60,6 +60,24 @@ internal object WindowsPublisherSigningPolicy {
                 null
             )
 
+    fun providerConfigured(
+        context: Context
+    ): Boolean {
+        val provider =
+            WindowsPublisherSigningProviders
+                .resolve(
+                    configuredProvider(
+                        context
+                    )
+                )
+
+        return provider != null &&
+            provider.isConfigured(
+                context
+            )
+    }
+
+
     fun configureLocalPkcs12(
         context: Context,
         pkcs12Bytes: ByteArray,

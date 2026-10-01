@@ -4,9 +4,12 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.appforge.studio.security.OwnerAccessPolicy
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.security.KeyStore
 import java.security.MessageDigest
+import java.security.PrivateKey
+import java.security.cert.X509Certificate
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -63,6 +66,94 @@ internal object WindowsPublisherSigningStore {
             "metadata.txt"
         )
 
+    private fun validatePkcs12(
+        pkcs12Bytes: ByteArray,
+        password: CharArray
+    ) {
+        val keyStore =
+            KeyStore
+                .getInstance(
+                    "PKCS12"
+                )
+
+        ByteArrayInputStream(
+            pkcs12Bytes
+        ).use {
+            input ->
+
+            keyStore.load(
+                input,
+                password
+            )
+        }
+
+        val aliases =
+            keyStore.aliases()
+
+        var signingAlias:
+            String? =
+            null
+
+        while (
+            aliases.hasMoreElements()
+        ) {
+            val alias =
+                aliases.nextElement()
+
+            if (
+                keyStore.isKeyEntry(
+                    alias
+                )
+            ) {
+                signingAlias =
+                    alias
+
+                break
+            }
+        }
+
+        val alias =
+            signingAlias
+                ?: error(
+                    "PKCS#12 içinde private key bulunamadı."
+                )
+
+        val privateKey =
+            keyStore.getKey(
+                alias,
+                password
+            )
+
+        check(
+            privateKey is
+                PrivateKey
+        ) {
+            "PKCS#12 signing private key doğrulanamadı."
+        }
+
+        val certificate =
+            keyStore.getCertificate(
+                alias
+            ) as?
+                X509Certificate
+                ?: error(
+                    "PKCS#12 içinde X.509 sertifikası bulunamadı."
+                )
+
+        certificate.checkValidity()
+
+        val chain =
+            keyStore.getCertificateChain(
+                alias
+            )
+
+        check(
+            !chain.isNullOrEmpty()
+        ) {
+            "PKCS#12 sertifika zinciri bulunamadı."
+        }
+    }
+
     fun isConfigured(
         context: Context
     ): Boolean =
@@ -102,6 +193,13 @@ internal object WindowsPublisherSigningStore {
         ) {
             "PKCS#12 parolası boş veya geçersiz."
         }
+
+        validatePkcs12(
+            pkcs12Bytes =
+                pkcs12Bytes,
+            password =
+                password
+        )
 
         val destination =
             root(
