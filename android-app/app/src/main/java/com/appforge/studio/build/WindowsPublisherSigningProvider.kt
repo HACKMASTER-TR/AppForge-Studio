@@ -134,18 +134,25 @@ internal object LocalPkcs12WindowsPublisherSigningProvider :
                 "signed.exe"
             )
 
-        target.copyTo(
-            unsigned,
-            overwrite = true
-        )
-
-        WindowsPublisherSigningStore
-            .materializeInto(
-                context = context,
-                destination = signingWorkspace
+        /*
+         * PUBLISHER_SIGNING_WORKSPACE_FAIL_CLOSED_V1
+         *
+         * Everything after workspace creation belongs inside the
+         * cleanup boundary. A decrypt/materialize/copy failure must
+         * never leave unsigned.exe, signer.pfx or pass.txt behind.
+         */
+        try {
+            target.copyTo(
+                unsigned,
+                overwrite = true
             )
 
-        try {
+            WindowsPublisherSigningStore
+                .materializeInto(
+                    context = context,
+                    destination = signingWorkspace
+                )
+
             val command =
                 """
                 set -eu
@@ -232,6 +239,19 @@ internal object LocalPkcs12WindowsPublisherSigningProvider :
                     .ifBlank {
                         "Windows publisher signing başarısız."
                     }
+            }
+
+            check(
+                result
+                    .output
+                    .lineSequence()
+                    .any {
+                        line ->
+                        line.trim() ==
+                            "APPFORGE_WINDOWS_PUBLISHER_SIGNING=PASS"
+                    }
+            ) {
+                "Windows publisher signing doğrulama işareti alınamadı."
             }
 
             check(

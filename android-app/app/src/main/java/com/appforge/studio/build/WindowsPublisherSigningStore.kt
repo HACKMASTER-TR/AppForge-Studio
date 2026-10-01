@@ -293,7 +293,33 @@ internal object WindowsPublisherSigningStore {
                 ).readBytes()
             )
 
+        val passwordChars =
+            String(
+                password,
+                Charsets.UTF_8
+            ).toCharArray()
+
         try {
+            /*
+             * PUBLISHER_SIGNING_REVALIDATION_V1
+             *
+             * Import-time validation is not enough:
+             * a previously valid certificate can expire before a later
+             * build. Re-parse the decrypted PKCS#12 immediately before
+             * exposing signing material to the isolated workspace.
+             *
+             * AES-GCM already detects encrypted-at-rest tampering.
+             * This second validation also proves that the decrypted
+             * material still contains a usable private key, X.509
+             * certificate and certificate chain.
+             */
+            validatePkcs12(
+                pkcs12Bytes =
+                    pkcs12,
+                password =
+                    passwordChars
+            )
+
             File(
                 destination,
                 "signer.pfx"
@@ -308,6 +334,10 @@ internal object WindowsPublisherSigningStore {
                 password
             )
         } finally {
+            passwordChars.fill(
+                '\u0000'
+            )
+
             pkcs12.fill(
                 0
             )
