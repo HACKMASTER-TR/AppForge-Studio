@@ -20313,6 +20313,22 @@ private fun BuildStep(
         normalizedStatus ==
             "success"
 
+    /*
+     * ARTIFACT_PUBLICATION_GATE_V1
+     *
+     * Artifact availability is not publication readiness.
+     *
+     * DeviceBuildEngine may expose APK/AAB/EXE availability while the
+     * final verification/signing stage is still running. Never expose
+     * user download actions until the exact build has reached terminal
+     * success, proven 100% progress and the active build coroutine has
+     * fully left its busy state.
+     */
+    val artifactPublicationReady =
+        buildSucceeded &&
+        safeProgress == 100 &&
+        !effectiveBuildBusy
+
     val buildFailed =
         buildId != null &&
         buildMatchesCurrentProject &&
@@ -21684,6 +21700,7 @@ private fun BuildStep(
         }
 
         if (
+            artifactPublicationReady &&
             apkUrl != null
         ) {
             item {
@@ -21956,6 +21973,7 @@ private fun BuildStep(
         }
 
         if (
+            artifactPublicationReady &&
             aabUrl != null
         ) {
             item {
@@ -22070,6 +22088,7 @@ private fun BuildStep(
         }
 
         if (
+            artifactPublicationReady &&
             exeUrl != null
         ) {
             item {

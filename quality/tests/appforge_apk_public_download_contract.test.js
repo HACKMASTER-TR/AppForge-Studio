@@ -124,13 +124,13 @@ test(
 
     const aabStart =
       main.lastIndexOf(
-        "if (\n            aabUrl != null",
+        "if (\n            artifactPublicationReady &&\n            aabUrl != null",
         aabButton
       );
 
     const exeStart =
       main.lastIndexOf(
-        "if (\n            exeUrl != null",
+        "if (\n            artifactPublicationReady &&\n            exeUrl != null",
         exeButton
       );
 
