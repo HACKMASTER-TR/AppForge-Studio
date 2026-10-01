@@ -1,0 +1,488 @@
+name: AppForge D1 Ledger Read-Only Audit
+
+on:
+  push:
+    branches:
+      - audit/d1-ledger-readonly-20261001
+    paths:
+      - .github/workflows/pro-d1-ledger-readonly-audit.yml
+
+permissions:
+  contents: read
+
+jobs:
+  d1-ledger-readonly-audit:
+    name: D1 Ledger Read-Only Audit
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/audit/d1-ledger-readonly-20261001'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout exact audit source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Verify audit branch and migration source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test "$GITHUB_REF" = \
+            "refs/heads/audit/d1-ledger-readonly-20261001"
+
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+          test -d cloudflare/control-plane/migrations
+
+          EXPECTED="$(
+            printf '%s\n' \
+              0001_accountless_control_plane.sql \
+              0002_admin_pro_codes.sql \
+              0003_pro_grants.sql \
+              0004_pro_grant_revocation.sql \
+              0005_pro_lifecycle.sql
+          )"
+
+          ACTUAL="$(
+            find cloudflare/control-plane/migrations \
+              -maxdepth 1 \
+              -type f \
+              -name '*.sql' \
+              -printf '%f\n' |
+            sort
+          )"
+
+          test "$ACTUAL" = "$EXPECTED"
+
+          echo "LOCAL_MIGRATION_SEQUENCE=PASS"
+          echo "AUDIT_MODE=READ_ONLY"
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Verify Cloudflare target read-only preflight
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          python3 \
+            .github/scripts/pro_cloudflare_auth_preflight.py
+
+          echo "CLOUDFLARE_PREFLIGHT=PASS"
+
+      - name: Read D1 ledger and schema without writes
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+
+          REPORT="$RUNNER_TEMP/appforge-d1-audit-report.txt"
+          LEDGER="$RUNNER_TEMP/d1-ledger.json"
+          SCHEMA="$RUNNER_TEMP/d1-schema.json"
+          GRANTS="$RUNNER_TEMP/d1-grants-columns.json"
+          CHALLENGES="$RUNNER_TEMP/d1-challenges-columns.json"
+          LEDGER_STATUS="$RUNNER_TEMP/d1-ledger-status.txt"
+          LOCAL="$RUNNER_TEMP/local-migrations.txt"
+
+          CONFIG="$(
+            mktemp \
+              "$RUNNER_TEMP/appforge-d1-audit-XXXXXXXX.toml"
+          )"
+
+          trap 'rm -f "$CONFIG"' EXIT
+
+          cat > "$CONFIG" <<TOML
+          name = "appforge-control-plane"
+          main = "src/index.mjs"
+          compatibility_date = "2026-09-19"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "appforge-control-plane-db"
+          database_id = "$CLOUDFLARE_D1_DATABASE_ID"
+          migrations_dir = "migrations"
+          TOML
+
+          cd cloudflare/control-plane
+
+          find migrations \
+            -maxdepth 1 \
+            -type f \
+            -name '*.sql' \
+            -printf '%f\n' |
+            sort > "$LOCAL"
+
+          run_read_query() {
+            local sql="$1"
+            local output="$2"
+            local error_file="$RUNNER_TEMP/d1-read-error.txt"
+
+            : > "$error_file"
+
+            if npx --yes wrangler@4 \
+              d1 execute \
+              appforge-control-plane-db \
+              --remote \
+              --config "$CONFIG" \
+              --command "$sql" \
+              --json \
+              > "$output" \
+              2> "$error_file"
+            then
+              rm -f "$error_file"
+              return 0
+            fi
+
+            rm -f "$error_file"
+            return 1
+          }
+
+          run_read_query \
+            "SELECT name, type FROM sqlite_schema WHERE name IN ('d1_migrations','installations','play_purchase_records','admin_identities','quota_events','audit_events','pro_activation_codes','idx_pro_codes_created','idx_pro_codes_state','pro_admin_grants','pro_installation_keys','installation_challenges','idx_pro_grants_state','idx_installation_challenges','idx_pro_grants_revoked_at','idx_installation_challenge_consumption','pro_admin_grant_history','idx_pro_grant_history_installation','pro_redemption_receipts','trg_archive_reactivated_pro_grant') ORDER BY name;" \
+            "$SCHEMA"
+
+          echo "SCHEMA_QUERY=PASS"
+
+          if run_read_query \
+            "SELECT id, name, applied_at FROM d1_migrations ORDER BY id;" \
+            "$LEDGER"
+          then
+            echo "OK" > "$LEDGER_STATUS"
+            echo "LEDGER_QUERY=PASS"
+          else
+            printf '[]\n' > "$LEDGER"
+            echo "FAILED" > "$LEDGER_STATUS"
+            echo "LEDGER_QUERY=UNREADABLE_OR_TABLE_MISSING"
+          fi
+
+          run_read_query \
+            "PRAGMA table_info(pro_admin_grants);" \
+            "$GRANTS"
+
+          echo "PRO_GRANTS_COLUMNS_QUERY=PASS"
+
+          run_read_query \
+            "PRAGMA table_info(installation_challenges);" \
+            "$CHALLENGES"
+
+          echo "CHALLENGE_COLUMNS_QUERY=PASS"
+
+          python3 - \
+            "$LOCAL" \
+            "$LEDGER" \
+            "$LEDGER_STATUS" \
+            "$SCHEMA" \
+            "$GRANTS" \
+            "$CHALLENGES" \
+            "$REPORT" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          (
+              local_path,
+              ledger_path,
+              ledger_status_path,
+              schema_path,
+              grants_path,
+              challenges_path,
+              report_path,
+          ) = map(Path, sys.argv[1:])
+
+          expected = [
+              "0001_accountless_control_plane.sql",
+              "0002_admin_pro_codes.sql",
+              "0003_pro_grants.sql",
+              "0004_pro_grant_revocation.sql",
+              "0005_pro_lifecycle.sql",
+          ]
+
+          local = [
+              line.strip()
+              for line in local_path.read_text(
+                  encoding="utf-8"
+              ).splitlines()
+              if line.strip()
+          ]
+
+          def result_rows(path):
+              try:
+                  data = json.loads(
+                      path.read_text(
+                          encoding="utf-8"
+                      )
+                  )
+              except Exception:
+                  return []
+
+              rows = []
+
+              def walk(value):
+                  if isinstance(value, dict):
+                      results = value.get("results")
+
+                      if isinstance(results, list):
+                          for row in results:
+                              if isinstance(row, dict):
+                                  rows.append(row)
+                          return
+
+                      for child in value.values():
+                          walk(child)
+
+                  elif isinstance(value, list):
+                      for child in value:
+                          walk(child)
+
+              walk(data)
+              return rows
+
+          ledger_ok = (
+              ledger_status_path.read_text(
+                  encoding="utf-8"
+              ).strip()
+              == "OK"
+          )
+
+          ledger_rows = result_rows(
+              ledger_path
+          )
+
+          ledger_rows.sort(
+              key=lambda row: (
+                  int(row.get("id", 0) or 0),
+                  str(row.get("name", "")),
+              )
+          )
+
+          ledger = [
+              str(row.get("name", ""))
+              for row in ledger_rows
+              if row.get("name") is not None
+          ]
+
+          schema_rows = result_rows(
+              schema_path
+          )
+
+          objects = {
+              str(row.get("name")):
+              str(row.get("type"))
+              for row in schema_rows
+              if row.get("name")
+          }
+
+          grants_columns = {
+              str(row.get("name"))
+              for row in result_rows(
+                  grants_path
+              )
+              if row.get("name")
+          }
+
+          challenge_columns = {
+              str(row.get("name"))
+              for row in result_rows(
+                  challenges_path
+              )
+              if row.get("name")
+          }
+
+          m1 = {
+              "installations",
+              "play_purchase_records",
+              "admin_identities",
+              "quota_events",
+              "audit_events",
+          }
+
+          m2 = {
+              "pro_activation_codes",
+              "idx_pro_codes_created",
+              "idx_pro_codes_state",
+          }
+
+          m3 = {
+              "pro_admin_grants",
+              "pro_installation_keys",
+              "installation_challenges",
+              "idx_pro_grants_state",
+              "idx_installation_challenges",
+          }
+
+          m4_objects = {
+              "idx_pro_grants_revoked_at",
+          }
+
+          m5_objects = {
+              "idx_installation_challenge_consumption",
+              "pro_admin_grant_history",
+              "idx_pro_grant_history_installation",
+              "pro_redemption_receipts",
+              "trg_archive_reactivated_pro_grant",
+          }
+
+          names = set(objects)
+
+          m1_ok = m1 <= names
+          m2_ok = m2 <= names
+          m3_ok = m3 <= names
+          m4_ok = (
+              m4_objects <= names
+              and "revoked_by_hash"
+              in grants_columns
+          )
+          m5_ok = (
+              m5_objects <= names
+              and "consumption_id"
+              in challenge_columns
+          )
+
+          schema_all = all(
+              [
+                  m1_ok,
+                  m2_ok,
+                  m3_ok,
+                  m4_ok,
+                  m5_ok,
+              ]
+          )
+
+          ledger_exact = (
+              ledger_ok
+              and ledger == expected
+          )
+
+          missing_ledger = [
+              name
+              for name in expected
+              if name not in ledger
+          ]
+
+          unknown_ledger = [
+              name
+              for name in ledger
+              if name not in expected
+          ]
+
+          obsolete_accounts = any(
+              "0001_accounts" in name
+              for name in ledger
+          )
+
+          if ledger_exact and schema_all:
+              result = "EXACT_PASS"
+          elif schema_all and not ledger_exact:
+              result = (
+                  "LEDGER_SCHEMA_MISMATCH_"
+                  "REVIEW_REQUIRED"
+              )
+          elif ledger_exact and not schema_all:
+              result = (
+                  "LEDGER_AHEAD_OF_SCHEMA_"
+                  "REVIEW_REQUIRED"
+              )
+          else:
+              result = "REVIEW_REQUIRED"
+
+          lines = [
+              "APPFORGE_D1_AUDIT_REPORT_BEGIN",
+              f"LOCAL_COUNT={len(local)}",
+              "LOCAL_SEQUENCE="
+              + ",".join(local),
+              "LEDGER_QUERY_OK="
+              + ("YES" if ledger_ok else "NO"),
+              f"REMOTE_LEDGER_COUNT={len(ledger)}",
+              "REMOTE_LEDGER="
+              + ",".join(ledger),
+              "MISSING_LEDGER="
+              + (
+                  ",".join(missing_ledger)
+                  if missing_ledger
+                  else "NONE"
+              ),
+              "UNKNOWN_LEDGER="
+              + (
+                  ",".join(unknown_ledger)
+                  if unknown_ledger
+                  else "NONE"
+              ),
+              "OBSOLETE_0001_ACCOUNTS_LEDGER="
+              + (
+                  "YES"
+                  if obsolete_accounts
+                  else "NO"
+              ),
+              "SCHEMA_0001="
+              + ("PASS" if m1_ok else "FAIL"),
+              "SCHEMA_0002="
+              + ("PASS" if m2_ok else "FAIL"),
+              "SCHEMA_0003="
+              + ("PASS" if m3_ok else "FAIL"),
+              "SCHEMA_0004="
+              + ("PASS" if m4_ok else "FAIL"),
+              "SCHEMA_0005="
+              + ("PASS" if m5_ok else "FAIL"),
+              "REVOKED_BY_HASH_COLUMN="
+              + (
+                  "PASS"
+                  if "revoked_by_hash"
+                  in grants_columns
+                  else "FAIL"
+              ),
+              "CONSUMPTION_ID_COLUMN="
+              + (
+                  "PASS"
+                  if "consumption_id"
+                  in challenge_columns
+                  else "FAIL"
+              ),
+              "LEDGER_EXACT="
+              + (
+                  "PASS"
+                  if ledger_exact
+                  else "FAIL"
+              ),
+              "SCHEMA_ALL="
+              + (
+                  "PASS"
+                  if schema_all
+                  else "FAIL"
+              ),
+              f"AUDIT_RESULT={result}",
+              "DATABASE_WRITES=NONE",
+              "MIGRATIONS_APPLIED=NO",
+              "MIGRATIONS_MODIFIED=NO",
+              "APPFORGE_D1_AUDIT_REPORT_END",
+          ]
+
+          report = "\n".join(lines) + "\n"
+
+          report_path.write_text(
+              report,
+              encoding="utf-8"
+          )
+
+          print(report, end="")
+          PY
+
+          cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "REMOTE_D1_READ_ONLY_AUDIT=PASS"
+          echo "DATABASE_WRITES=NONE"
+          echo "MIGRATIONS_APPLIED=NO"
