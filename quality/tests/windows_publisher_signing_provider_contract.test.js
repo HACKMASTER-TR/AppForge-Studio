@@ -82,6 +82,10 @@ test("osslsigncode password is file-fed and signature is verified", () => {
   assert.match(provider, /osslsigncode verify/);
   assert.match(
     provider,
+    /\.lineSequence\(\)[\s\S]*\.toList\(\)[\s\S]*\.takeLast\(/
+  );
+  assert.match(
+    provider,
     /APPFORGE_WINDOWS_PUBLISHER_SIGNING=PASS/
   );
 });

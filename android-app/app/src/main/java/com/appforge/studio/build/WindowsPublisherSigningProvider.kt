@@ -211,6 +211,7 @@ internal object LocalPkcs12WindowsPublisherSigningProvider :
                 .filter {
                     it.isNotBlank()
                 }
+                .toList()
                 .takeLast(
                     40
                 )
