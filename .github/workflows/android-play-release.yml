@@ -24,6 +24,143 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve fail-closed Play track
+        id: play-production-gate
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || '' }}
+          RELEASE_DRAFT: ${{ github.event.release.draft || false }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease || false }}
+        run: |
+          set -euo pipefail
+
+          fail_gate() {
+            echo "PLAY_PRODUCTION_GATE=FAIL"
+            echo "Reason: $1"
+            exit 1
+          }
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "APPFORGE_PLAY_TRACK=internal" >> "$GITHUB_ENV"
+            echo "PLAY_PRODUCTION_GATE=MANUAL_INTERNAL_ONLY"
+            exit 0
+          fi
+
+          [ "$EVENT_NAME" = "release" ] ||             fail_gate "Unsupported event."
+
+          [ "$RELEASE_DRAFT" = "false" ] ||             fail_gate "Draft release cannot publish to Production."
+
+          [ "$RELEASE_PRERELEASE" = "false" ] ||             fail_gate "Prerelease cannot publish to Production."
+
+          if [[ ! "$RELEASE_TAG" =~ ^appforge-v([0-9]+)\.([0-9]+)\.([0-9]+)-([0-9]+)$ ]]; then
+            fail_gate "Release tag is not an AppForge production version tag."
+          fi
+
+          git fetch             --force             --no-tags             origin             "+refs/heads/main:refs/remotes/origin/main"
+
+          git fetch             --force             origin             "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+
+          MAIN_SHA="$(
+            git rev-parse               "refs/remotes/origin/main^{commit}"
+          )"
+
+          TAG_SHA="$(
+            git rev-parse               "refs/tags/$RELEASE_TAG^{commit}"
+          )"
+
+          echo "PLAY_MAIN_SHA=$MAIN_SHA"
+          echo "PLAY_TAG_SHA=$TAG_SHA"
+
+          [ "$TAG_SHA" = "$MAIN_SHA" ] ||             fail_gate "Release tag does not point to current protected main."
+
+          python3 - "$RELEASE_TAG" <<'PY_VERSION'
+          import re
+          import sys
+          from pathlib import Path
+
+          tag = sys.argv[1]
+
+          tag_match = re.fullmatch(
+              r"appforge-v(\d+)\.(\d+)\.(\d+)-(\d+)",
+              tag,
+          )
+
+          if not tag_match:
+              raise SystemExit(
+                  "PLAY_VERSION_TAG_VERIFY=FAIL"
+              )
+
+          expected_name = ".".join(
+              tag_match.groups()[:3]
+          )
+
+          expected_code = int(
+              tag_match.group(4)
+          )
+
+          source = Path(
+              "android-app/app/build.gradle.kts"
+          ).read_text(
+              encoding="utf-8"
+          )
+
+          code_match = re.search(
+              r"\bversionCode\s*=\s*(\d+)",
+              source,
+          )
+
+          name_match = re.search(
+              r'\bversionName\s*=\s*"([^"]+)"',
+              source,
+          )
+
+          if not code_match or not name_match:
+              raise SystemExit(
+                  "PLAY_VERSION_SOURCE_VERIFY=FAIL"
+              )
+
+          actual_name = name_match.group(1)
+          actual_code = int(
+              code_match.group(1)
+          )
+
+          print(
+              f"TAG_VERSION={expected_name}"
+          )
+          print(
+              f"TAG_VERSION_CODE={expected_code}"
+          )
+          print(
+              f"SOURCE_VERSION={actual_name}"
+          )
+          print(
+              f"SOURCE_VERSION_CODE={actual_code}"
+          )
+
+          if actual_name != expected_name:
+              raise SystemExit(
+                  "PLAY_VERSION_NAME_MATCH=FAIL"
+              )
+
+          if actual_code != expected_code:
+              raise SystemExit(
+                  "PLAY_VERSION_CODE_MATCH=FAIL"
+              )
+
+          print(
+              "PLAY_VERSION_NAME_MATCH=PASS"
+          )
+          print(
+              "PLAY_VERSION_CODE_MATCH=PASS"
+          )
+          PY_VERSION
+
+          echo "APPFORGE_PLAY_TRACK=production" >> "$GITHUB_ENV"
+          echo "PLAY_PRODUCTION_GATE=PASS"
 
       - name: Authenticate to Google Cloud with GitHub OIDC
         id: google-auth
@@ -345,5 +482,5 @@ jobs:
           serviceAccountJson: ${{ steps.google-auth.outputs.credentials_file_path }}
           packageName: com.appforge.studio
           releaseFiles: ${{ env.APPFORGE_PLAY_AAB_NAME }}
-          track: ${{ github.event_name == 'release' && 'production' || vars.APPFORGE_PLAY_TRACK || 'internal' }}
+          track: ${{ env.APPFORGE_PLAY_TRACK }}
           status: completed
