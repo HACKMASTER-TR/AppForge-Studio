@@ -57,6 +57,7 @@ import com.appforge.studio.build.BuildApiClient
 import com.appforge.studio.build.BuildApiException
 import com.appforge.studio.build.BuildCompareResult
 import com.appforge.studio.build.TestLabResult
+import com.appforge.studio.build.WindowsPublisherSigningPolicy
 import com.appforge.studio.ai.AppForgeKnowledgeBase
 import com.appforge.studio.ai.AppForgeProjectAdvisor
 import com.appforge.studio.ai.AppForgeBuildErrorAdvisor
@@ -454,6 +455,99 @@ private fun formatDownloadedArtifactSize(
  */
 private const val BUILD_TIMER_UI_TICK_MS =
     1_000L
+
+
+private const val WINDOWS_PUBLISHER_CERT_MAX_BYTES =
+    10 * 1024 * 1024
+
+private fun readBoundedDocumentBytes(
+    context: Context,
+    uri: Uri,
+    maxBytes: Int =
+        WINDOWS_PUBLISHER_CERT_MAX_BYTES
+): ByteArray {
+    require(
+        maxBytes > 0
+    ) {
+        "Dosya boyutu sınırı geçersiz."
+    }
+
+    val input =
+        context
+            .contentResolver
+            .openInputStream(
+                uri
+            )
+            ?: error(
+                "Sertifika dosyası açılamadı."
+            )
+
+    val temporary =
+        ByteArray(
+            maxBytes + 1
+        )
+
+    var total =
+        0
+
+    try {
+        input.use {
+            stream ->
+
+            while (
+                total <
+                    temporary.size
+            ) {
+                val read =
+                    stream.read(
+                        temporary,
+                        total,
+                        temporary.size -
+                            total
+                    )
+
+                if (
+                    read <
+                        0
+                ) {
+                    break
+                }
+
+                if (
+                    read ==
+                        0
+                ) {
+                    continue
+                }
+
+                total +=
+                    read
+            }
+        }
+
+        require(
+            total >
+                0
+        ) {
+            "Sertifika dosyası boş."
+        }
+
+        require(
+            total <=
+                maxBytes
+        ) {
+            "PFX/P12 dosyası 10 MB sınırını aşıyor."
+        }
+
+        return temporary.copyOf(
+            total
+        )
+    } finally {
+        temporary.fill(
+            0
+        )
+    }
+}
 
 private fun persistReadUriPermission(
     context: Context,
@@ -18383,6 +18477,560 @@ private fun SigningStep(
     }
 }
 
+
+@Composable
+private fun WindowsPublisherSigningAdminCard(
+    formCompact: Boolean
+) {
+    val context =
+        LocalContext.current
+
+    val scope =
+        rememberCoroutineScope()
+
+    var refresh by
+        remember {
+            mutableIntStateOf(
+                0
+            )
+        }
+
+    var pendingCertificateUri by
+        remember {
+            mutableStateOf<Uri?>(
+                null
+            )
+        }
+
+    var pendingCertificateName by
+        remember {
+            mutableStateOf(
+                ""
+            )
+        }
+
+    var certificatePassword by
+        remember {
+            mutableStateOf(
+                ""
+            )
+        }
+
+    var signingMessage by
+        remember {
+            mutableStateOf(
+                ""
+            )
+        }
+
+    var showRemoveConfirmation by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+    /*
+     * refresh is intentionally observed so a successful import,
+     * enable/disable or removal recomposes the status immediately.
+     */
+    @Suppress("UNUSED_VARIABLE")
+    val refreshSnapshot =
+        refresh
+
+    val configured =
+        WindowsPublisherSigningPolicy
+            .providerConfigured(
+                context
+            )
+
+    val provider =
+        WindowsPublisherSigningPolicy
+            .configuredProvider(
+                context
+            )
+
+    val enabled =
+        WindowsPublisherSigningPolicy
+            .signingRequested(
+                context
+            )
+
+    val certificatePicker =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts
+                    .OpenDocument()
+        ) {
+            uri: Uri? ->
+
+            if (
+                uri != null
+            ) {
+                pendingCertificateUri =
+                    uri
+
+                pendingCertificateName =
+                    uri.lastPathSegment
+                        ?.substringAfterLast(
+                            "/"
+                        )
+                        ?.take(
+                            120
+                        )
+                        ?: "publisher.pfx"
+
+                certificatePassword =
+                    ""
+
+                signingMessage =
+                    "PFX/P12 seçildi • parola gerekli."
+            }
+        }
+
+    if (
+        pendingCertificateUri !=
+            null
+    ) {
+        AlertDialog(
+            onDismissRequest = {
+                certificatePassword =
+                    ""
+
+                pendingCertificateUri =
+                    null
+            },
+            title = {
+                Text(
+                    if (
+                        configured
+                    ) {
+                        "Yayıncı sertifikasını değiştir"
+                    } else {
+                        "Yayıncı sertifikasını içe aktar"
+                    }
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            10.dp
+                        )
+                ) {
+                    Text(
+                        pendingCertificateName,
+                        fontSize =
+                            12.sp,
+                        color =
+                            TextSecondary
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            certificatePassword,
+                        onValueChange = {
+                            certificatePassword =
+                                it
+                        },
+                        label = {
+                            Text(
+                                "PFX / P12 parolası"
+                            )
+                        },
+                        visualTransformation =
+                            PasswordVisualTransformation(),
+                        singleLine =
+                            true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    Text(
+                        "Sertifika ve private key doğrulanır; başarılı olursa Android Keystore korumalı kasaya alınır.",
+                        fontSize =
+                            11.sp,
+                        color =
+                            TextSecondary
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled =
+                        certificatePassword
+                            .isNotEmpty(),
+                    onClick = {
+                        val uri =
+                            pendingCertificateUri
+                                ?: return@TextButton
+
+                        val passwordChars =
+                            certificatePassword
+                                .toCharArray()
+
+                        certificatePassword =
+                            ""
+
+                        pendingCertificateUri =
+                            null
+
+                        signingMessage =
+                            "Yayıncı sertifikası doğrulanıyor..."
+
+                        scope.launch {
+                            var certificateBytes:
+                                ByteArray? =
+                                null
+
+                            try {
+                                val loadedBytes =
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        readBoundedDocumentBytes(
+                                            context =
+                                                context,
+                                            uri =
+                                                uri
+                                        )
+                                    }
+
+                                certificateBytes =
+                                    loadedBytes
+
+                                withContext(
+                                    Dispatchers.IO
+                                ) {
+                                    WindowsPublisherSigningPolicy
+                                        .configureLocalPkcs12(
+                                            context =
+                                                context,
+                                            pkcs12Bytes =
+                                                loadedBytes,
+                                            password =
+                                                passwordChars
+                                        )
+                                }
+
+                                refresh +=
+                                    1
+
+                                signingMessage =
+                                    "Yayıncı sertifikası güvenli kasaya alındı • imzalama AÇIK."
+                            } catch (
+                                error: Throwable
+                            ) {
+                                signingMessage =
+                                    "Sertifika içe aktarılamadı: ${error.message}"
+                            } finally {
+                                certificateBytes
+                                    ?.fill(
+                                        0
+                                    )
+
+                                passwordChars.fill(
+                                    '\u0000'
+                                )
+                            }
+                        }
+                    }
+                ) {
+                    Text(
+                        if (
+                            configured
+                        ) {
+                            "DEĞİŞTİR"
+                        } else {
+                            "İÇE AKTAR"
+                        }
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        certificatePassword =
+                            ""
+
+                        pendingCertificateUri =
+                            null
+                    }
+                ) {
+                    Text(
+                        "İPTAL"
+                    )
+                }
+            }
+        )
+    }
+
+    if (
+        showRemoveConfirmation
+    ) {
+        AlertDialog(
+            onDismissRequest = {
+                showRemoveConfirmation =
+                    false
+            },
+            title = {
+                Text(
+                    "Yayıncı sertifikası kaldırılsın mı?"
+                )
+            },
+            text = {
+                Text(
+                    "Şifreli PFX/P12, kayıtlı parola ve bu sertifikaya ait Android Keystore anahtarı cihazdan kaldırılacak. Bu işlem projeleri veya üretilmiş EXE dosyalarını silmez."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showRemoveConfirmation =
+                            false
+
+                        runCatching {
+                            WindowsPublisherSigningPolicy
+                                .clearConfiguration(
+                                    context
+                                )
+                        }.onSuccess {
+                            refresh +=
+                                1
+
+                            signingMessage =
+                                "Yayıncı sertifikası kaldırıldı • imzalama KAPALI."
+                        }.onFailure {
+                            error ->
+
+                            signingMessage =
+                                "Sertifika kaldırılamadı: ${error.message}"
+                        }
+                    }
+                ) {
+                    Text(
+                        "KALDIR"
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showRemoveConfirmation =
+                            false
+                    }
+                ) {
+                    Text(
+                        "VAZGEÇ"
+                    )
+                }
+            }
+        )
+    }
+
+    Card(
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    Card2
+            ),
+        shape =
+            RoundedCornerShape(
+                18.dp
+            ),
+        modifier =
+            Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier =
+                Modifier.padding(
+                    if (
+                        formCompact
+                    ) {
+                        12.dp
+                    } else {
+                        16.dp
+                    }
+                ),
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    10.dp
+                )
+        ) {
+            Text(
+                "Windows Yayıncı İmzası • Yönetici",
+                fontWeight =
+                    FontWeight.Bold
+            )
+
+            Text(
+                "Yalnız doğrulanmış owner/admin oturumu sertifika ekleyebilir, kaldırabilir veya EXE imzalamayı değiştirebilir.",
+                color =
+                    TextSecondary,
+                fontSize =
+                    12.sp
+            )
+
+            HorizontalDivider()
+
+            Text(
+                if (
+                    configured
+                ) {
+                    "Sertifika: HAZIR • ${provider ?: "local-pkcs12-v1"}"
+                } else {
+                    "Sertifika: YAPILANDIRILMADI"
+                },
+                color =
+                    if (
+                        configured
+                    ) {
+                        Color(0xFF4CAF50)
+                    } else {
+                        Accent
+                    },
+                fontSize =
+                    12.sp,
+                fontWeight =
+                    FontWeight.Medium
+            )
+
+            Row(
+                modifier =
+                    Modifier.fillMaxWidth(),
+                verticalAlignment =
+                    Alignment.CenterVertically,
+                horizontalArrangement =
+                    Arrangement.SpaceBetween
+            ) {
+                Column(
+                    modifier =
+                        Modifier.weight(
+                            1f
+                        )
+                ) {
+                    Text(
+                        "EXE'leri yayıncı olarak imzala",
+                        fontWeight =
+                            FontWeight.Medium
+                    )
+
+                    Text(
+                        if (
+                            enabled
+                        ) {
+                            "AÇIK • final EXE imzasız bırakılamaz."
+                        } else {
+                            "KAPALI"
+                        },
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            11.sp
+                    )
+                }
+
+                Switch(
+                    checked =
+                        enabled,
+                    enabled =
+                        configured ||
+                            enabled,
+                    onCheckedChange = {
+                        checked ->
+
+                        runCatching {
+                            WindowsPublisherSigningPolicy
+                                .setSigningEnabled(
+                                    context =
+                                        context,
+                                    enabled =
+                                        checked
+                                )
+                        }.onSuccess {
+                            refresh +=
+                                1
+
+                            signingMessage =
+                                if (
+                                    checked
+                                ) {
+                                    "Windows yayıncı imzası AÇIK."
+                                } else {
+                                    "Windows yayıncı imzası KAPALI."
+                                }
+                        }.onFailure {
+                            error ->
+
+                            signingMessage =
+                                "İmzalama durumu değiştirilemedi: ${error.message}"
+                        }
+                    }
+                )
+            }
+
+            Button(
+                onClick = {
+                    certificatePicker.launch(
+                        arrayOf(
+                            "*/*"
+                        )
+                    )
+                },
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    if (
+                        configured
+                    ) {
+                        "PFX / P12 SERTİFİKASINI DEĞİŞTİR"
+                    } else {
+                        "PFX / P12 İÇE AKTAR"
+                    }
+                )
+            }
+
+            if (
+                configured
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        showRemoveConfirmation =
+                            true
+                    },
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "SERTİFİKAYI KALDIR"
+                    )
+                }
+            }
+
+            Text(
+                "Private key/PFX kaynak koda, GitHub'a, proje ZIP'ine veya build loglarına yazılmaz.",
+                color =
+                    TextSecondary,
+                fontSize =
+                    11.sp
+            )
+
+            if (
+                signingMessage.isNotBlank()
+            ) {
+                Text(
+                    signingMessage,
+                    color =
+                        Accent,
+                    fontSize =
+                        11.sp
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun BuildSettingsStep(
     draft: ProjectDraft,
@@ -18401,6 +19049,15 @@ private fun BuildSettingsStep(
     val apiKeyReady =
         apiKey.isNotBlank()
 
+    val context =
+        LocalContext.current
+
+    val windowsSigningAdmin =
+        OwnerAccessPolicy
+            .isActiveOwner(
+                context
+            )
+
     val releaseSigning =
         draft.signingMode ==
             SigningMode.CUSTOM
@@ -18410,7 +19067,10 @@ private fun BuildSettingsStep(
             draft.buildOutput
         ) {
             "exe" ->
-                "Windows EXE"
+                "Windows Portable EXE"
+
+            "native-exe" ->
+                "Windows Native EXE"
 
             "aab" ->
                 "AAB"
@@ -18431,7 +19091,10 @@ private fun BuildSettingsStep(
             draft.buildOutput
         ) {
             "exe" ->
-                "EXE • Windows x64 • Electron Portable"
+                "PORTABLE EXE • Windows x64 • AppForge Generic Host"
+
+            "native-exe" ->
+                "NATIVE EXE • Windows x64 • CMake + MinGW-w64"
 
             "aab" ->
                 "AAB • Gradle bundleRelease"
@@ -18665,12 +19328,32 @@ private fun BuildSettingsStep(
                             "universal-cross-platform"
                         )
 
+                val windowsNativeCompatible =
+                    draft.sourceMode ==
+                        SourceMode.LOCAL &&
+                    (
+                        draft.sourceTechnology
+                            .trim()
+                            .lowercase() in
+                            setOf(
+                                "cpp",
+                                "c",
+                                "cmake"
+                            ) ||
+                        normalizedEngine in
+                            setOf(
+                                "android-ndk",
+                                "windows-native"
+                            )
+                    )
+
                 val outputOptions =
                     buildList {
                         add("apk")
                         add("aab")
                         add("both")
                         add("exe")
+                        add("native-exe")
 
                         if (
                             universalProject
@@ -18688,6 +19371,9 @@ private fun BuildSettingsStep(
                             "exe" ->
                                 windowsExeCompatible
 
+                            "native-exe" ->
+                                windowsNativeCompatible
+
                             "all" ->
                                 universalProject
 
@@ -18699,6 +19385,12 @@ private fun BuildSettingsStep(
                         when (
                             output
                         ) {
+                            "exe" ->
+                                "PORTABLE EXE"
+
+                            "native-exe" ->
+                                "NATIVE EXE"
+
                             "both" ->
                                 "APK+AAB"
 
@@ -18815,6 +19507,30 @@ private fun BuildSettingsStep(
                             )
                         }
 
+                        "native-exe" -> {
+                            Text(
+                                "Windows Native EXE",
+                                fontWeight =
+                                    FontWeight.Medium
+                            )
+
+                            Text(
+                                "C/C++ CMake projesini Windows x64 PE olarak doğrudan derler; WebView/Electron host kullanmaz.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "EXPERIMENTAL • Gerçek Windows fiziksel kabulü tamamlanana kadar READY sayılmaz.",
+                                color =
+                                    Accent,
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+
                         "aab" -> {
                             Text(
                                 "AAB",
@@ -18902,9 +19618,57 @@ private fun BuildSettingsStep(
         ) {
             item {
                 NoteCard(
-                    "Windows EXE bu proje türüyle uyumlu değil. " +
-                    "Native Android/Flutter/React Native kaynakları için APK/AAB kullan. " +
-                    "EXE için web tabanlı veya HTTPS URL kaynağı seç."
+                    "Windows Portable EXE bu proje türüyle uyumlu değil. " +
+                    "C/C++ CMake projelerinde Native EXE seçeneğini kullanabilirsin. " +
+                    "Portable EXE için web tabanlı, Universal veya HTTPS URL kaynağı seç."
+                )
+            }
+        }
+
+        if (
+            draft.buildOutput ==
+                "native-exe" &&
+            !(
+                draft.sourceMode ==
+                    SourceMode.LOCAL &&
+                (
+                    draft.sourceTechnology
+                        .trim()
+                        .lowercase() in
+                        setOf(
+                            "cpp",
+                            "c",
+                            "cmake"
+                        ) ||
+                    draft.sourceBuildEngine
+                        .trim()
+                        .lowercase() in
+                        setOf(
+                            "android-ndk",
+                            "windows-native"
+                        )
+                )
+            )
+        ) {
+            item {
+                NoteCard(
+                    "Windows Native EXE için yerel C/C++ CMake projesi gerekli."
+                )
+            }
+        }
+
+        if (
+            windowsSigningAdmin &&
+            draft.buildOutput in
+                setOf(
+                    "exe",
+                    "native-exe"
+                )
+        ) {
+            item {
+                WindowsPublisherSigningAdminCard(
+                    formCompact =
+                        formCompact
                 )
             }
         }
@@ -19548,6 +20312,22 @@ private fun BuildStep(
         buildMatchesCurrentProject &&
         normalizedStatus ==
             "success"
+
+    /*
+     * ARTIFACT_PUBLICATION_GATE_V1
+     *
+     * Artifact availability is not publication readiness.
+     *
+     * DeviceBuildEngine may expose APK/AAB/EXE availability while the
+     * final verification/signing stage is still running. Never expose
+     * user download actions until the exact build has reached terminal
+     * success, proven 100% progress and the active build coroutine has
+     * fully left its busy state.
+     */
+    val artifactPublicationReady =
+        buildSucceeded &&
+        safeProgress == 100 &&
+        !effectiveBuildBusy
 
     val buildFailed =
         buildId != null &&
@@ -20920,6 +21700,7 @@ private fun BuildStep(
         }
 
         if (
+            artifactPublicationReady &&
             apkUrl != null
         ) {
             item {
@@ -21192,6 +21973,7 @@ private fun BuildStep(
         }
 
         if (
+            artifactPublicationReady &&
             aabUrl != null
         ) {
             item {
@@ -21306,6 +22088,7 @@ private fun BuildStep(
         }
 
         if (
+            artifactPublicationReady &&
             exeUrl != null
         ) {
             item {

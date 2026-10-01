@@ -69,6 +69,7 @@ test(
     for (
       const marker of [
         "android-ndk",
+        "windows-native",
         "react-native",
         "expo",
         "flutter",
@@ -97,7 +98,8 @@ test(
       const marker of [
         "APK",
         "AAB",
-        "WINDOWS_EXE"
+        "WINDOWS_EXE",
+        "WINDOWS_NATIVE_EXE"
       ]
     ) {
       assert.match(
