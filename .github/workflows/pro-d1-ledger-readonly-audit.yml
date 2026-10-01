@@ -65,7 +65,7 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Verify Cloudflare target read-only preflight
+      - name: Verify Cloudflare token read-only
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -75,10 +75,199 @@ jobs:
           set -euo pipefail
           set +x
 
-          python3 \
-            .github/scripts/pro_cloudflare_auth_preflight.py
+          python3 - <<'PY_AUTH'
+          import json
+          import os
+          import re
+          import urllib.error
+          import urllib.request
 
-          echo "CLOUDFLARE_PREFLIGHT=PASS"
+          token = os.environ.get(
+              "CLOUDFLARE_API_TOKEN",
+              "",
+          )
+
+          account = os.environ.get(
+              "CLOUDFLARE_ACCOUNT_ID",
+              "",
+          )
+
+          database = os.environ.get(
+              "CLOUDFLARE_D1_DATABASE_ID",
+              "",
+          )
+
+          if not token or not account or not database:
+              print(
+                  "CLOUDFLARE_SECRETS_PRESENT=FAIL"
+              )
+              raise SystemExit(1)
+
+          print(
+              "CLOUDFLARE_SECRETS_PRESENT=PASS"
+          )
+
+          if not re.fullmatch(
+              r"[0-9a-fA-F]{32}",
+              account,
+          ):
+              print(
+                  "ACCOUNT_ID_FORMAT=FAIL"
+              )
+              raise SystemExit(1)
+
+          if not re.fullmatch(
+              r"[0-9a-fA-F]{8}-"
+              r"[0-9a-fA-F]{4}-"
+              r"[0-9a-fA-F]{4}-"
+              r"[0-9a-fA-F]{4}-"
+              r"[0-9a-fA-F]{12}",
+              database,
+          ):
+              print(
+                  "D1_DATABASE_ID_FORMAT=FAIL"
+              )
+              raise SystemExit(1)
+
+          print(
+              "IDENTIFIER_FORMATS=PASS"
+          )
+
+          base = (
+              "https://api.cloudflare.com/"
+              "client/v4/"
+          )
+
+          def verify(path):
+              req = urllib.request.Request(
+                  base + path,
+                  headers={
+                      "Authorization":
+                          "Bearer " + token,
+                      "Accept":
+                          "application/json",
+                  },
+                  method="GET",
+              )
+
+              try:
+                  with urllib.request.urlopen(
+                      req,
+                      timeout=20,
+                  ) as response:
+                      payload = json.load(
+                          response
+                      )
+              except urllib.error.HTTPError as exc:
+                  return {
+                      "http": exc.code,
+                      "status": "unavailable",
+                  }
+              except Exception:
+                  return {
+                      "http": 0,
+                      "status": "unavailable",
+                  }
+
+              result = (
+                  payload.get("result")
+                  if isinstance(
+                      payload,
+                      dict,
+                  )
+                  else None
+              )
+
+              status = (
+                  result.get("status")
+                  if isinstance(
+                      result,
+                      dict,
+                  )
+                  else "unavailable"
+              )
+
+              return {
+                  "http": 200,
+                  "status": status,
+              }
+
+          account_result = verify(
+              "accounts/"
+              + account
+              + "/tokens/verify"
+          )
+
+          user_result = verify(
+              "user/tokens/verify"
+          )
+
+          print(
+              "ACCOUNT_TOKEN_HTTP="
+              + str(
+                  account_result["http"]
+              )
+          )
+
+          print(
+              "ACCOUNT_TOKEN_STATUS="
+              + str(
+                  account_result["status"]
+              )
+          )
+
+          print(
+              "USER_TOKEN_HTTP="
+              + str(
+                  user_result["http"]
+              )
+          )
+
+          print(
+              "USER_TOKEN_STATUS="
+              + str(
+                  user_result["status"]
+              )
+          )
+
+          active_mode = None
+
+          if (
+              account_result["status"]
+              == "active"
+          ):
+              active_mode = "ACCOUNT"
+
+          elif (
+              user_result["status"]
+              == "active"
+          ):
+              active_mode = "USER"
+
+          if active_mode is None:
+              print(
+                  "CLOUDFLARE_TOKEN_ACTIVE=FAIL"
+              )
+              print(
+                  "CLOUDFLARE_TOKEN_REPLACEMENT_REQUIRED=YES"
+              )
+              raise SystemExit(1)
+
+          print(
+              "CLOUDFLARE_TOKEN_ACTIVE=PASS"
+          )
+
+          print(
+              "CLOUDFLARE_TOKEN_MODE="
+              + active_mode
+          )
+
+          print(
+              "SECRET_VALUES=NOT_PRINTED"
+          )
+          PY_AUTH
+
+          echo "CLOUDFLARE_AUTH_DIAGNOSTIC=PASS"
 
       - name: Read D1 ledger and schema without writes
         shell: bash
