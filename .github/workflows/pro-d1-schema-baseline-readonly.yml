@@ -1,0 +1,1106 @@
+name: AppForge D1 Exact Schema Baseline Audit
+
+on:
+  push:
+    branches:
+      - audit/d1-ledger-readonly-20261001
+    paths:
+      - .github/workflows/pro-d1-schema-baseline-readonly.yml
+
+permissions:
+  contents: read
+
+jobs:
+  exact-schema-baseline:
+    name: D1 Exact Schema Baseline
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/audit/d1-ledger-readonly-20261001'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout exact audit source
+        uses: actions/checkout@v7
+
+      - name: Verify audit source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test "$GITHUB_REF" = \
+            "refs/heads/audit/d1-ledger-readonly-20261001"
+
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+          EXPECTED="$(
+            printf '%s\n' \
+              0001_accountless_control_plane.sql \
+              0002_admin_pro_codes.sql \
+              0003_pro_grants.sql \
+              0004_pro_grant_revocation.sql \
+              0005_pro_lifecycle.sql
+          )"
+
+          ACTUAL="$(
+            find cloudflare/control-plane/migrations \
+              -maxdepth 1 \
+              -type f \
+              -name '*.sql' \
+              -printf '%f\n' |
+            sort
+          )"
+
+          test "$ACTUAL" = "$EXPECTED"
+
+          echo "SOURCE_VERIFY=PASS"
+          echo "LOCAL_MIGRATION_SEQUENCE=PASS"
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Verify Cloudflare account token
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import urllib.request
+
+          token = os.environ.get(
+              "CLOUDFLARE_API_TOKEN",
+              "",
+          )
+          account = os.environ.get(
+              "CLOUDFLARE_ACCOUNT_ID",
+              "",
+          )
+          database = os.environ.get(
+              "CLOUDFLARE_D1_DATABASE_ID",
+              "",
+          )
+
+          if not token or not account or not database:
+              raise SystemExit(
+                  "TOKEN_INPUT=FAIL"
+              )
+
+          if not re.fullmatch(
+              r"[0-9a-fA-F]{32}",
+              account,
+          ):
+              raise SystemExit(
+                  "ACCOUNT_ID_FORMAT=FAIL"
+              )
+
+          if not re.fullmatch(
+              r"[0-9a-fA-F]{8}-"
+              r"[0-9a-fA-F]{4}-"
+              r"[0-9a-fA-F]{4}-"
+              r"[0-9a-fA-F]{4}-"
+              r"[0-9a-fA-F]{12}",
+              database,
+          ):
+              raise SystemExit(
+                  "DATABASE_ID_FORMAT=FAIL"
+              )
+
+          url = (
+              "https://api.cloudflare.com/"
+              "client/v4/accounts/"
+              + account
+              + "/tokens/verify"
+          )
+
+          request = urllib.request.Request(
+              url,
+              headers={
+                  "Authorization":
+                      "Bearer " + token,
+                  "Accept":
+                      "application/json",
+              },
+          )
+
+          with urllib.request.urlopen(
+              request,
+              timeout=20,
+          ) as response:
+              payload = json.load(response)
+
+          result = payload.get("result", {})
+
+          status = result.get("status")
+
+          print(
+              "ACCOUNT_TOKEN_STATUS="
+              + str(status)
+          )
+
+          if status != "active":
+              raise SystemExit(
+                  "ACCOUNT_TOKEN_ACTIVE=FAIL"
+              )
+
+          print(
+              "ACCOUNT_TOKEN_ACTIVE=PASS"
+          )
+          print(
+              "SECRET_VALUES=NOT_PRINTED"
+          )
+          PY
+
+      - name: Build expected schema locally
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EXPECTED_JSON="$RUNNER_TEMP/expected-schema.json"
+          EXPECTED_DB="$RUNNER_TEMP/expected-schema.sqlite"
+          COLUMN_SQL="$RUNNER_TEMP/remote-columns.sql"
+          FK_SQL="$RUNNER_TEMP/remote-fks.sql"
+
+          export EXPECTED_JSON
+          export EXPECTED_DB
+          export COLUMN_SQL
+          export FK_SQL
+
+          python3 - <<'PY'
+          import json
+          import os
+          import sqlite3
+          from pathlib import Path
+
+          root = Path(
+              "cloudflare/control-plane/migrations"
+          )
+
+          files = sorted(
+              root.glob("*.sql")
+          )
+
+          expected_names = [
+              "0001_accountless_control_plane.sql",
+              "0002_admin_pro_codes.sql",
+              "0003_pro_grants.sql",
+              "0004_pro_grant_revocation.sql",
+              "0005_pro_lifecycle.sql",
+          ]
+
+          if [
+              path.name
+              for path in files
+          ] != expected_names:
+              raise SystemExit(
+                  "EXPECTED_MIGRATION_INPUT=FAIL"
+              )
+
+          db_path = Path(
+              os.environ["EXPECTED_DB"]
+          )
+
+          if db_path.exists():
+              db_path.unlink()
+
+          con = sqlite3.connect(
+              db_path
+          )
+
+          con.execute(
+              "PRAGMA foreign_keys = ON"
+          )
+
+          for path in files:
+              sql = path.read_text(
+                  encoding="utf-8"
+              )
+
+              con.executescript(sql)
+
+              print(
+                  "LOCAL_APPLY="
+                  + path.name
+                  + "=PASS"
+              )
+
+          con.commit()
+
+          objects = []
+
+          for row in con.execute(
+              """
+              SELECT
+                type,
+                name,
+                tbl_name,
+                sql
+              FROM sqlite_schema
+              WHERE sql IS NOT NULL
+                AND name NOT LIKE 'sqlite_%'
+                AND name <> 'd1_migrations'
+                AND name NOT LIKE '_cf_%'
+              ORDER BY type, name
+              """
+          ):
+              objects.append({
+                  "type": row[0],
+                  "name": row[1],
+                  "tbl_name": row[2],
+                  "sql": row[3],
+              })
+
+          tables = sorted(
+              row["name"]
+              for row in objects
+              if row["type"] == "table"
+          )
+
+          columns = []
+
+          for table in tables:
+              quoted = table.replace(
+                  '"',
+                  '""',
+              )
+
+              for row in con.execute(
+                  f'PRAGMA table_info("{quoted}")'
+              ):
+                  columns.append({
+                      "table_name": table,
+                      "cid": row[0],
+                      "name": row[1],
+                      "type": row[2],
+                      "notnull": row[3],
+                      "dflt_value": row[4],
+                      "pk": row[5],
+                  })
+
+          foreign_keys = []
+
+          for table in tables:
+              quoted = table.replace(
+                  '"',
+                  '""',
+              )
+
+              for row in con.execute(
+                  f'PRAGMA foreign_key_list("{quoted}")'
+              ):
+                  foreign_keys.append({
+                      "table_name": table,
+                      "id": row[0],
+                      "seq": row[1],
+                      "ref_table": row[2],
+                      "from_col": row[3],
+                      "to_col": row[4],
+                      "on_update": row[5],
+                      "on_delete": row[6],
+                      "match": row[7],
+                  })
+
+          payload = {
+              "objects": objects,
+              "tables": tables,
+              "columns": columns,
+              "foreign_keys": foreign_keys,
+          }
+
+          Path(
+              os.environ["EXPECTED_JSON"]
+          ).write_text(
+              json.dumps(
+                  payload,
+                  indent=2,
+                  sort_keys=True,
+              ),
+              encoding="utf-8",
+          )
+
+          def sq(value):
+              return (
+                  "'"
+                  + value.replace(
+                      "'",
+                      "''",
+                  )
+                  + "'"
+              )
+
+          column_parts = []
+
+          for table in tables:
+              literal = sq(table)
+
+              column_parts.append(
+                  "SELECT "
+                  + literal
+                  + " AS table_name,"
+                  + " cid,"
+                  + " name,"
+                  + " type,"
+                  + ' "notnull" AS notnull,'
+                  + " dflt_value,"
+                  + " pk"
+                  + " FROM pragma_table_info("
+                  + literal
+                  + ")"
+              )
+
+          column_sql = (
+              "\nUNION ALL\n".join(
+                  column_parts
+              )
+              + "\nORDER BY table_name, cid;"
+          )
+
+          Path(
+              os.environ["COLUMN_SQL"]
+          ).write_text(
+              column_sql,
+              encoding="utf-8",
+          )
+
+          fk_parts = []
+
+          for table in tables:
+              literal = sq(table)
+
+              fk_parts.append(
+                  "SELECT "
+                  + literal
+                  + " AS table_name,"
+                  + " id,"
+                  + " seq,"
+                  + ' "table" AS ref_table,'
+                  + ' "from" AS from_col,'
+                  + ' "to" AS to_col,'
+                  + " on_update,"
+                  + " on_delete,"
+                  + " match"
+                  + " FROM pragma_foreign_key_list("
+                  + literal
+                  + ")"
+              )
+
+          fk_sql = (
+              "\nUNION ALL\n".join(
+                  fk_parts
+              )
+              + "\nORDER BY table_name, id, seq;"
+          )
+
+          Path(
+              os.environ["FK_SQL"]
+          ).write_text(
+              fk_sql,
+              encoding="utf-8",
+          )
+
+          print(
+              "EXPECTED_TABLE_COUNT="
+              + str(len(tables))
+          )
+          print(
+              "EXPECTED_OBJECT_COUNT="
+              + str(len(objects))
+          )
+          print(
+              "EXPECTED_COLUMN_COUNT="
+              + str(len(columns))
+          )
+          print(
+              "EXPECTED_FOREIGN_KEY_COUNT="
+              + str(len(foreign_keys))
+          )
+          print(
+              "EXPECTED_SCHEMA_BUILD=PASS"
+          )
+
+          con.close()
+          PY
+
+      - name: Read live D1 schema only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+
+          CONFIG="$(
+            mktemp \
+              "$RUNNER_TEMP/appforge-d1-schema-XXXXXXXX.toml"
+          )"
+
+          trap 'rm -f "$CONFIG"' EXIT
+
+          cat > "$CONFIG" <<TOML
+          name = "appforge-control-plane"
+          main = "src/index.mjs"
+          compatibility_date = "2026-09-19"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "appforge-control-plane-db"
+          database_id = "$CLOUDFLARE_D1_DATABASE_ID"
+          migrations_dir = "migrations"
+          TOML
+
+          cd cloudflare/control-plane
+
+          REMOTE_OBJECTS="$RUNNER_TEMP/remote-objects.json"
+          REMOTE_COLUMNS="$RUNNER_TEMP/remote-columns.json"
+          REMOTE_FKS="$RUNNER_TEMP/remote-fks.json"
+
+          OBJECT_SQL="
+          SELECT
+            type,
+            name,
+            tbl_name,
+            sql
+          FROM sqlite_schema
+          WHERE sql IS NOT NULL
+            AND name NOT LIKE 'sqlite_%'
+            AND name <> 'd1_migrations'
+            AND name NOT LIKE '_cf_%'
+          ORDER BY type, name;
+          "
+
+          COLUMN_SQL="$(
+            cat "$RUNNER_TEMP/remote-columns.sql"
+          )"
+
+          FK_SQL="$(
+            cat "$RUNNER_TEMP/remote-fks.sql"
+          )"
+
+          case "$OBJECT_SQL" in
+            *SELECT*) ;;
+            *)
+              echo "REMOTE_OBJECT_SQL_GUARD=FAIL"
+              exit 1
+              ;;
+          esac
+
+          case "$COLUMN_SQL" in
+            SELECT*) ;;
+            *)
+              echo "REMOTE_COLUMN_SQL_GUARD=FAIL"
+              exit 1
+              ;;
+          esac
+
+          case "$FK_SQL" in
+            SELECT*) ;;
+            *)
+              echo "REMOTE_FK_SQL_GUARD=FAIL"
+              exit 1
+              ;;
+          esac
+
+          echo "REMOTE_SQL_READ_ONLY_GUARD=PASS"
+
+          npx --yes wrangler@4 \
+            d1 execute \
+            appforge-control-plane-db \
+            --remote \
+            --config "$CONFIG" \
+            --command "$OBJECT_SQL" \
+            --json \
+            > "$REMOTE_OBJECTS"
+
+          echo "REMOTE_OBJECTS_QUERY=PASS"
+
+          npx --yes wrangler@4 \
+            d1 execute \
+            appforge-control-plane-db \
+            --remote \
+            --config "$CONFIG" \
+            --command "$COLUMN_SQL" \
+            --json \
+            > "$REMOTE_COLUMNS"
+
+          echo "REMOTE_COLUMNS_QUERY=PASS"
+
+          npx --yes wrangler@4 \
+            d1 execute \
+            appforge-control-plane-db \
+            --remote \
+            --config "$CONFIG" \
+            --command "$FK_SQL" \
+            --json \
+            > "$REMOTE_FKS"
+
+          echo "REMOTE_FOREIGN_KEYS_QUERY=PASS"
+
+          echo "REMOTE_DATABASE_WRITES=NONE"
+          echo "MIGRATIONS_APPLIED=NO"
+
+      - name: Compare expected and live schema
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          root = Path(
+              str(
+                  Path(
+                      __import__("os").environ[
+                          "RUNNER_TEMP"
+                      ]
+                  )
+              )
+          )
+
+          expected = json.loads(
+              (
+                  root
+                  / "expected-schema.json"
+              ).read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          def result_rows(path):
+              data = json.loads(
+                  path.read_text(
+                      encoding="utf-8"
+                  )
+              )
+
+              rows = []
+
+              def walk(value):
+                  if isinstance(
+                      value,
+                      dict,
+                  ):
+                      results = value.get(
+                          "results"
+                      )
+
+                      if isinstance(
+                          results,
+                          list,
+                      ):
+                          for row in results:
+                              if isinstance(
+                                  row,
+                                  dict,
+                              ):
+                                  rows.append(
+                                      row
+                                  )
+
+                          return
+
+                      for child in value.values():
+                          walk(child)
+
+                  elif isinstance(
+                      value,
+                      list,
+                  ):
+                      for child in value:
+                          walk(child)
+
+              walk(data)
+
+              return rows
+
+          remote_objects = result_rows(
+              root / "remote-objects.json"
+          )
+
+          remote_columns = result_rows(
+              root / "remote-columns.json"
+          )
+
+          remote_fks = result_rows(
+              root / "remote-fks.json"
+          )
+
+          def canon_sql(sql):
+              if sql is None:
+                  return ""
+
+              value = str(sql)
+
+              value = re.sub(
+                  r"--[^\n]*",
+                  " ",
+                  value,
+              )
+
+              value = re.sub(
+                  r"/\*.*?\*/",
+                  " ",
+                  value,
+                  flags=re.S,
+              )
+
+              value = re.sub(
+                  r"\bIF\s+NOT\s+EXISTS\b",
+                  " ",
+                  value,
+                  flags=re.I,
+              )
+
+              value = value.strip().rstrip(
+                  ";"
+              )
+
+              value = re.sub(
+                  r"\s+",
+                  " ",
+                  value,
+              )
+
+              value = re.sub(
+                  r"\s*([(),=])\s*",
+                  r"\1",
+                  value,
+              )
+
+              return value.lower()
+
+          def object_map(rows):
+              result = {}
+
+              for row in rows:
+                  key = (
+                      str(row.get("type", "")),
+                      str(row.get("name", "")),
+                  )
+
+                  result[key] = {
+                      "tbl_name":
+                          str(
+                              row.get(
+                                  "tbl_name",
+                                  "",
+                              )
+                          ),
+                      "sql":
+                          canon_sql(
+                              row.get("sql")
+                          ),
+                  }
+
+              return result
+
+          expected_objects = object_map(
+              expected["objects"]
+          )
+
+          actual_objects = object_map(
+              remote_objects
+          )
+
+          expected_keys = set(
+              expected_objects
+          )
+
+          actual_keys = set(
+              actual_objects
+          )
+
+          missing_objects = sorted(
+              expected_keys - actual_keys
+          )
+
+          extra_objects = sorted(
+              actual_keys - expected_keys
+          )
+
+          object_set_exact = (
+              not missing_objects
+              and not extra_objects
+          )
+
+          sql_mismatches = []
+
+          for key in sorted(
+              expected_keys & actual_keys
+          ):
+              if (
+                  expected_objects[key]
+                  != actual_objects[key]
+              ):
+                  sql_mismatches.append(
+                      key
+                  )
+
+          schema_sql_exact = (
+              not sql_mismatches
+          )
+
+          def norm_column(row):
+              return (
+                  str(
+                      row.get(
+                          "table_name",
+                          "",
+                      )
+                  ),
+                  int(
+                      row.get(
+                          "cid",
+                          0,
+                      )
+                      or 0
+                  ),
+                  str(
+                      row.get(
+                          "name",
+                          "",
+                      )
+                  ),
+                  str(
+                      row.get(
+                          "type",
+                          "",
+                      )
+                  ).upper(),
+                  int(
+                      row.get(
+                          "notnull",
+                          0,
+                      )
+                      or 0
+                  ),
+                  (
+                      None
+                      if row.get(
+                          "dflt_value"
+                      ) is None
+                      else str(
+                          row.get(
+                              "dflt_value"
+                          )
+                      )
+                  ),
+                  int(
+                      row.get(
+                          "pk",
+                          0,
+                      )
+                      or 0
+                  ),
+              )
+
+          expected_columns = sorted(
+              norm_column(row)
+              for row in expected[
+                  "columns"
+              ]
+          )
+
+          actual_columns = sorted(
+              norm_column(row)
+              for row in remote_columns
+          )
+
+          table_columns_exact = (
+              expected_columns
+              == actual_columns
+          )
+
+          expected_by_table = {}
+
+          actual_by_table = {}
+
+          for row in expected_columns:
+              expected_by_table.setdefault(
+                  row[0],
+                  [],
+              ).append(row)
+
+          for row in actual_columns:
+              actual_by_table.setdefault(
+                  row[0],
+                  [],
+              ).append(row)
+
+          column_mismatch_tables = sorted(
+              table
+              for table in (
+                  set(expected_by_table)
+                  | set(actual_by_table)
+              )
+              if (
+                  expected_by_table.get(
+                      table,
+                      [],
+                  )
+                  != actual_by_table.get(
+                      table,
+                      [],
+                  )
+              )
+          )
+
+          def norm_fk(row):
+              return (
+                  str(
+                      row.get(
+                          "table_name",
+                          "",
+                      )
+                  ),
+                  int(
+                      row.get(
+                          "id",
+                          0,
+                      )
+                      or 0
+                  ),
+                  int(
+                      row.get(
+                          "seq",
+                          0,
+                      )
+                      or 0
+                  ),
+                  str(
+                      row.get(
+                          "ref_table",
+                          "",
+                      )
+                  ),
+                  str(
+                      row.get(
+                          "from_col",
+                          "",
+                      )
+                  ),
+                  str(
+                      row.get(
+                          "to_col",
+                          "",
+                      )
+                  ),
+                  str(
+                      row.get(
+                          "on_update",
+                          "",
+                      )
+                  ).upper(),
+                  str(
+                      row.get(
+                          "on_delete",
+                          "",
+                      )
+                  ).upper(),
+                  str(
+                      row.get(
+                          "match",
+                          "",
+                      )
+                  ).upper(),
+              )
+
+          expected_fks = sorted(
+              norm_fk(row)
+              for row in expected[
+                  "foreign_keys"
+              ]
+          )
+
+          actual_fks = sorted(
+              norm_fk(row)
+              for row in remote_fks
+          )
+
+          foreign_keys_exact = (
+              expected_fks
+              == actual_fks
+          )
+
+          expected_fk_by_table = {}
+
+          actual_fk_by_table = {}
+
+          for row in expected_fks:
+              expected_fk_by_table.setdefault(
+                  row[0],
+                  [],
+              ).append(row)
+
+          for row in actual_fks:
+              actual_fk_by_table.setdefault(
+                  row[0],
+                  [],
+              ).append(row)
+
+          fk_mismatch_tables = sorted(
+              table
+              for table in (
+                  set(
+                      expected_fk_by_table
+                  )
+                  | set(
+                      actual_fk_by_table
+                  )
+              )
+              if (
+                  expected_fk_by_table.get(
+                      table,
+                      [],
+                  )
+                  != actual_fk_by_table.get(
+                      table,
+                      [],
+                  )
+              )
+          )
+
+          baseline_ready = all(
+              [
+                  object_set_exact,
+                  schema_sql_exact,
+                  table_columns_exact,
+                  foreign_keys_exact,
+              ]
+          )
+
+          def fmt_keys(items):
+              if not items:
+                  return "NONE"
+
+              return ",".join(
+                  kind + ":" + name
+                  for kind, name in items
+              )
+
+          print(
+              "EXPECTED_OBJECT_COUNT="
+              + str(
+                  len(expected_objects)
+              )
+          )
+
+          print(
+              "REMOTE_OBJECT_COUNT="
+              + str(
+                  len(actual_objects)
+              )
+          )
+
+          print(
+              "MISSING_OBJECTS="
+              + fmt_keys(
+                  missing_objects
+              )
+          )
+
+          print(
+              "EXTRA_OBJECTS="
+              + fmt_keys(
+                  extra_objects
+              )
+          )
+
+          print(
+              "SQL_MISMATCH_OBJECTS="
+              + fmt_keys(
+                  sql_mismatches
+              )
+          )
+
+          print(
+              "COLUMN_MISMATCH_TABLES="
+              + (
+                  ",".join(
+                      column_mismatch_tables
+                  )
+                  if column_mismatch_tables
+                  else "NONE"
+              )
+          )
+
+          print(
+              "FK_MISMATCH_TABLES="
+              + (
+                  ",".join(
+                      fk_mismatch_tables
+                  )
+                  if fk_mismatch_tables
+                  else "NONE"
+              )
+          )
+
+          print(
+              "OBJECT_SET_EXACT="
+              + (
+                  "PASS"
+                  if object_set_exact
+                  else "FAIL"
+              )
+          )
+
+          print(
+              "SCHEMA_SQL_EXACT="
+              + (
+                  "PASS"
+                  if schema_sql_exact
+                  else "FAIL"
+              )
+          )
+
+          print(
+              "TABLE_COLUMNS_EXACT="
+              + (
+                  "PASS"
+                  if table_columns_exact
+                  else "FAIL"
+              )
+          )
+
+          print(
+              "FOREIGN_KEYS_EXACT="
+              + (
+                  "PASS"
+                  if foreign_keys_exact
+                  else "FAIL"
+              )
+          )
+
+          print(
+              "BASELINE_READY="
+              + (
+                  "PASS"
+                  if baseline_ready
+                  else "FAIL"
+              )
+          )
+
+          print(
+              "REMOTE_DATABASE_WRITES=NONE"
+          )
+
+          print(
+              "MIGRATIONS_APPLIED=NO"
+          )
+
+          if not baseline_ready:
+              raise SystemExit(2)
+          PY
