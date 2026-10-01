@@ -462,9 +462,18 @@ jobs:
 
           cd cloudflare/control-plane
 
+          EXPECTED_JSON="$RUNNER_TEMP/expected-schema.json"
           REMOTE_OBJECTS="$RUNNER_TEMP/remote-objects.json"
           REMOTE_COLUMNS="$RUNNER_TEMP/remote-columns.json"
           REMOTE_FKS="$RUNNER_TEMP/remote-fks.json"
+          TABLE_LIST="$RUNNER_TEMP/expected-tables.txt"
+
+          COL_DIR="$RUNNER_TEMP/d1-column-parts"
+          FK_DIR="$RUNNER_TEMP/d1-fk-parts"
+
+          mkdir -p \
+            "$COL_DIR" \
+            "$FK_DIR"
 
           OBJECT_SQL="
           SELECT
@@ -480,72 +489,381 @@ jobs:
           ORDER BY type, name;
           "
 
-          COLUMN_SQL="$(
-            cat "$RUNNER_TEMP/remote-columns.sql"
-          )"
+          run_read_query() {
+            local sql="$1"
+            local output="$2"
+            local error_file="$output.err"
 
-          FK_SQL="$(
-            cat "$RUNNER_TEMP/remote-fks.sql"
-          )"
+            : > "$error_file"
+
+            if npx --yes wrangler@4 \
+              d1 execute \
+              appforge-control-plane-db \
+              --remote \
+              --config "$CONFIG" \
+              --command "$sql" \
+              --json \
+              > "$output" \
+              2> "$error_file"
+            then
+              rm -f "$error_file"
+              return 0
+            fi
+
+            rm -f "$error_file"
+            return 1
+          }
 
           case "$OBJECT_SQL" in
             *SELECT*) ;;
             *)
-              echo "REMOTE_OBJECT_SQL_GUARD=FAIL"
-              exit 1
-              ;;
-          esac
-
-          case "$COLUMN_SQL" in
-            SELECT*) ;;
-            *)
-              echo "REMOTE_COLUMN_SQL_GUARD=FAIL"
-              exit 1
-              ;;
-          esac
-
-          case "$FK_SQL" in
-            SELECT*) ;;
-            *)
-              echo "REMOTE_FK_SQL_GUARD=FAIL"
+              echo "OBJECT_SQL_READ_ONLY_GUARD=FAIL"
               exit 1
               ;;
           esac
 
           echo "REMOTE_SQL_READ_ONLY_GUARD=PASS"
 
-          npx --yes wrangler@4 \
-            d1 execute \
-            appforge-control-plane-db \
-            --remote \
-            --config "$CONFIG" \
-            --command "$OBJECT_SQL" \
-            --json \
-            > "$REMOTE_OBJECTS"
+          run_read_query \
+            "$OBJECT_SQL" \
+            "$REMOTE_OBJECTS" || {
+              echo "REMOTE_OBJECTS_QUERY=FAIL"
+              exit 1
+            }
 
           echo "REMOTE_OBJECTS_QUERY=PASS"
 
-          npx --yes wrangler@4 \
-            d1 execute \
-            appforge-control-plane-db \
-            --remote \
-            --config "$CONFIG" \
-            --command "$COLUMN_SQL" \
-            --json \
-            > "$REMOTE_COLUMNS"
+          python3 - \
+            "$EXPECTED_JSON" \
+            "$TABLE_LIST" <<'PY_TABLES'
+          import json
+          import re
+          import sys
+          from pathlib import Path
+
+          source = Path(sys.argv[1])
+          target = Path(sys.argv[2])
+
+          data = json.loads(
+              source.read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          tables = data.get(
+              "tables",
+              [],
+          )
+
+          if not tables:
+              raise SystemExit(
+                  "EXPECTED_TABLE_LIST=EMPTY"
+              )
+
+          for table in tables:
+              if not re.fullmatch(
+                  r"[A-Za-z_][A-Za-z0-9_]*",
+                  str(table),
+              ):
+                  raise SystemExit(
+                      "UNSAFE_TABLE_NAME"
+                  )
+
+          target.write_text(
+              "\n".join(
+                  str(table)
+                  for table in tables
+              )
+              + "\n",
+              encoding="utf-8",
+          )
+
+          print(
+              "REMOTE_TABLE_QUERY_COUNT="
+              + str(len(tables))
+          )
+          PY_TABLES
+
+          echo
+          echo "=== READ TABLE COLUMNS INDIVIDUALLY ==="
+
+          while IFS= read -r TABLE
+          do
+            [ -n "$TABLE" ] || continue
+
+            case "$TABLE" in
+              *[!A-Za-z0-9_]*)
+                echo "TABLE_NAME_GUARD=FAIL"
+                exit 1
+                ;;
+            esac
+
+            echo "COLUMN_TABLE=$TABLE"
+
+            SQL="PRAGMA table_info(\"$TABLE\");"
+
+            run_read_query \
+              "$SQL" \
+              "$COL_DIR/$TABLE.json" || {
+                echo "REMOTE_COLUMN_TABLE=$TABLE=FAIL"
+                exit 1
+              }
+
+            echo "REMOTE_COLUMN_TABLE=$TABLE=PASS"
+
+          done < "$TABLE_LIST"
 
           echo "REMOTE_COLUMNS_QUERY=PASS"
 
-          npx --yes wrangler@4 \
-            d1 execute \
-            appforge-control-plane-db \
-            --remote \
-            --config "$CONFIG" \
-            --command "$FK_SQL" \
-            --json \
-            > "$REMOTE_FKS"
+          echo
+          echo "=== READ FOREIGN KEYS INDIVIDUALLY ==="
+
+          while IFS= read -r TABLE
+          do
+            [ -n "$TABLE" ] || continue
+
+            case "$TABLE" in
+              *[!A-Za-z0-9_]*)
+                echo "TABLE_NAME_GUARD=FAIL"
+                exit 1
+                ;;
+            esac
+
+            echo "FK_TABLE=$TABLE"
+
+            SQL="PRAGMA foreign_key_list(\"$TABLE\");"
+
+            run_read_query \
+              "$SQL" \
+              "$FK_DIR/$TABLE.json" || {
+                echo "REMOTE_FK_TABLE=$TABLE=FAIL"
+                exit 1
+              }
+
+            echo "REMOTE_FK_TABLE=$TABLE=PASS"
+
+          done < "$TABLE_LIST"
 
           echo "REMOTE_FOREIGN_KEYS_QUERY=PASS"
+
+          echo
+          echo "=== AGGREGATE READ-ONLY RESULTS ==="
+
+          python3 - \
+            "$EXPECTED_JSON" \
+            "$COL_DIR" \
+            "$FK_DIR" \
+            "$REMOTE_COLUMNS" \
+            "$REMOTE_FKS" <<'PY_AGG'
+          import json
+          import sys
+          from pathlib import Path
+
+          (
+              expected_path,
+              col_dir,
+              fk_dir,
+              columns_out,
+              fks_out,
+          ) = map(
+              Path,
+              sys.argv[1:],
+          )
+
+          expected = json.loads(
+              expected_path.read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          tables = expected[
+              "tables"
+          ]
+
+          def rows_from_wrangler(path):
+              data = json.loads(
+                  path.read_text(
+                      encoding="utf-8"
+                  )
+              )
+
+              rows = []
+
+              def walk(value):
+                  if isinstance(
+                      value,
+                      dict,
+                  ):
+                      results = value.get(
+                          "results"
+                      )
+
+                      if isinstance(
+                          results,
+                          list,
+                      ):
+                          for row in results:
+                              if isinstance(
+                                  row,
+                                  dict,
+                              ):
+                                  rows.append(
+                                      row
+                                  )
+                          return
+
+                      for child in value.values():
+                          walk(child)
+
+                  elif isinstance(
+                      value,
+                      list,
+                  ):
+                      for child in value:
+                          walk(child)
+
+              walk(data)
+
+              return rows
+
+          columns = []
+          foreign_keys = []
+
+          for table in tables:
+              column_path = (
+                  col_dir
+                  / f"{table}.json"
+              )
+
+              if not column_path.is_file():
+                  raise SystemExit(
+                      "COLUMN_RESULT_MISSING="
+                      + table
+                  )
+
+              for row in rows_from_wrangler(
+                  column_path
+              ):
+                  columns.append({
+                      "table_name":
+                          table,
+                      "cid":
+                          row.get(
+                              "cid"
+                          ),
+                      "name":
+                          row.get(
+                              "name"
+                          ),
+                      "type":
+                          row.get(
+                              "type"
+                          ),
+                      "notnull":
+                          row.get(
+                              "notnull"
+                          ),
+                      "dflt_value":
+                          row.get(
+                              "dflt_value"
+                          ),
+                      "pk":
+                          row.get(
+                              "pk"
+                          ),
+                  })
+
+              fk_path = (
+                  fk_dir
+                  / f"{table}.json"
+              )
+
+              if not fk_path.is_file():
+                  raise SystemExit(
+                      "FK_RESULT_MISSING="
+                      + table
+                  )
+
+              for row in rows_from_wrangler(
+                  fk_path
+              ):
+                  foreign_keys.append({
+                      "table_name":
+                          table,
+                      "id":
+                          row.get(
+                              "id"
+                          ),
+                      "seq":
+                          row.get(
+                              "seq"
+                          ),
+                      "ref_table":
+                          row.get(
+                              "table"
+                          ),
+                      "from_col":
+                          row.get(
+                              "from"
+                          ),
+                      "to_col":
+                          row.get(
+                              "to"
+                          ),
+                      "on_update":
+                          row.get(
+                              "on_update"
+                          ),
+                      "on_delete":
+                          row.get(
+                              "on_delete"
+                          ),
+                      "match":
+                          row.get(
+                              "match"
+                          ),
+                  })
+
+          columns_out.write_text(
+              json.dumps(
+                  {
+                      "results":
+                          columns
+                  },
+                  indent=2,
+                  sort_keys=True,
+              ),
+              encoding="utf-8",
+          )
+
+          fks_out.write_text(
+              json.dumps(
+                  {
+                      "results":
+                          foreign_keys
+                  },
+                  indent=2,
+                  sort_keys=True,
+              ),
+              encoding="utf-8",
+          )
+
+          print(
+              "REMOTE_COLUMN_COUNT="
+              + str(len(columns))
+          )
+
+          print(
+              "REMOTE_FOREIGN_KEY_COUNT="
+              + str(
+                  len(foreign_keys)
+              )
+          )
+
+          print(
+              "REMOTE_SCHEMA_AGGREGATION=PASS"
+          )
+          PY_AGG
 
           echo "REMOTE_DATABASE_WRITES=NONE"
           echo "MIGRATIONS_APPLIED=NO"
