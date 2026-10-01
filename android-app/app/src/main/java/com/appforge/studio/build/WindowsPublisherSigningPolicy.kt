@@ -2,14 +2,13 @@ package com.appforge.studio.build
 
 import android.content.Context
 import com.appforge.studio.security.OwnerAccessPolicy
+import com.appforge.studio.terminal.LinuxShellEngine
 import java.io.File
 
 /**
- * Windows publisher signing is intentionally owner/admin-only.
+ * Windows publisher signing is owner/admin-only and fail-closed.
  *
- * V1 establishes the visibility and engine guard without storing a certificate,
- * private key or password in source. A later secure provider may enable signing
- * only after importing signing material into owner-private storage.
+ * Signing material never lives in source, project payloads or GitHub.
  */
 internal object WindowsPublisherSigningPolicy {
     private const val PREFS =
@@ -17,6 +16,9 @@ internal object WindowsPublisherSigningPolicy {
 
     private const val ENABLED =
         "enabled"
+
+    private const val PROVIDER =
+        "provider"
 
     fun adminSectionVisible(
         context: Context
@@ -26,25 +28,143 @@ internal object WindowsPublisherSigningPolicy {
                 context
             )
 
+    /*
+     * Deliberately not owner-filtered:
+     * if signing was enabled by the owner and the owner session later
+     * disappears, applyIfRequested must fail closed rather than silently
+     * releasing an unsigned EXE.
+     */
     fun signingRequested(
         context: Context
     ): Boolean =
-        adminSectionVisible(
-            context
-        ) &&
-            context
-                .getSharedPreferences(
-                    PREFS,
-                    Context.MODE_PRIVATE
-                )
-                .getBoolean(
-                    ENABLED,
-                    false
-                )
+        context
+            .getSharedPreferences(
+                PREFS,
+                Context.MODE_PRIVATE
+            )
+            .getBoolean(
+                ENABLED,
+                false
+            )
+
+    fun configuredProvider(
+        context: Context
+    ): String? =
+        context
+            .getSharedPreferences(
+                PREFS,
+                Context.MODE_PRIVATE
+            )
+            .getString(
+                PROVIDER,
+                null
+            )
+
+    fun configureLocalPkcs12(
+        context: Context,
+        pkcs12Bytes: ByteArray,
+        password: CharArray
+    ) {
+        OwnerAccessPolicy
+            .requireActiveOwner(
+                context
+            )
+
+        WindowsPublisherSigningStore
+            .importPkcs12(
+                context = context,
+                pkcs12Bytes = pkcs12Bytes,
+                password = password
+            )
+
+        context
+            .getSharedPreferences(
+                PREFS,
+                Context.MODE_PRIVATE
+            )
+            .edit()
+            .putString(
+                PROVIDER,
+                WindowsPublisherSigningStore.PROVIDER_ID
+            )
+            .putBoolean(
+                ENABLED,
+                true
+            )
+            .apply()
+    }
+
+    fun setSigningEnabled(
+        context: Context,
+        enabled: Boolean
+    ) {
+        OwnerAccessPolicy
+            .requireActiveOwner(
+                context
+            )
+
+        if (enabled) {
+            val provider =
+                WindowsPublisherSigningProviders
+                    .resolve(
+                        configuredProvider(
+                            context
+                        )
+                    )
+
+            check(
+                provider != null &&
+                    provider.isConfigured(
+                        context
+                    )
+            ) {
+                "Windows publisher signing etkin ancak güvenli sertifika sağlayıcısı henüz yapılandırılmadı."
+            }
+        }
+
+        context
+            .getSharedPreferences(
+                PREFS,
+                Context.MODE_PRIVATE
+            )
+            .edit()
+            .putBoolean(
+                ENABLED,
+                enabled
+            )
+            .apply()
+    }
+
+    fun clearConfiguration(
+        context: Context
+    ) {
+        OwnerAccessPolicy
+            .requireActiveOwner(
+                context
+            )
+
+        WindowsPublisherSigningStore
+            .clear(
+                context
+            )
+
+        context
+            .getSharedPreferences(
+                PREFS,
+                Context.MODE_PRIVATE
+            )
+            .edit()
+            .clear()
+            .apply()
+    }
 
     fun applyIfRequested(
         context: Context,
         target: File,
+        rootfs: File,
+        shell: LinuxShellEngine,
+        buildId: String,
+        offline: Boolean,
         onLog: (String) -> Unit = {}
     ) {
         if (
@@ -67,12 +187,35 @@ internal object WindowsPublisherSigningPolicy {
             "Windows publisher signing target is invalid."
         }
 
+        val provider =
+            WindowsPublisherSigningProviders
+                .resolve(
+                    configuredProvider(
+                        context
+                    )
+                )
+
+        check(
+            provider != null &&
+                provider.isConfigured(
+                    context
+                )
+        ) {
+            "Windows publisher signing etkin ancak güvenli sertifika sağlayıcısı henüz yapılandırılmadı."
+        }
+
         onLog(
-            "🔐 Windows publisher signing • yönetici doğrulandı."
+            "🔐 Windows publisher signing • yönetici doğrulandı • provider=${provider.id}"
         )
 
-        error(
-            "Windows publisher signing etkin ancak güvenli sertifika sağlayıcısı henüz yapılandırılmadı. İmzasız dosya yayınlanmadı."
+        provider.sign(
+            context = context,
+            target = target,
+            rootfs = rootfs,
+            shell = shell,
+            buildId = buildId,
+            offline = offline,
+            onLog = onLog
         )
     }
 }

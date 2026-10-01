@@ -3,8 +3,8 @@ type: decision
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-18
-last_verified: 2026-09-18
+updated: 2026-10-01
+last_verified: 2026-10-01
 confidence: high
 tags:
   - decisions
@@ -483,3 +483,18 @@ Windows publisher signing is a final-artifact operation available only to a
 server-verified owner/admin session. The build engine must deny requested
 signing when owner verification is absent and must never embed real signing
 material in source, logs, wiki or project payloads.
+
+
+## 2026-10-01 — Windows publisher signing provider-based ve fail-closed
+
+### Decision
+
+Windows Portable ve Native EXE aynı owner/admin-only signing politikasını
+kullanır.
+
+İlk provider, Android Keystore ile şifrelenen local PKCS#12'dır. Secret
+material proje workspace'ine, Git repository'sine, APK asset'lerine veya
+loglara yazılmaz.
+
+Signing istenmişse ve owner doğrulaması, provider, timestamp veya signature
+verification kapılarından biri başarısızsa unsigned EXE yayınlanmaz ve silinir.

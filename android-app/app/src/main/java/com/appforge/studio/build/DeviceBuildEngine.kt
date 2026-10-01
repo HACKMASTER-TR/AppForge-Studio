@@ -390,6 +390,52 @@ object DeviceBuildEngine {
                         )
             }
 
+            val finalWindowsExe =
+                state.exe
+
+            if (
+                finalWindowsExe != null &&
+                WindowsPublisherSigningPolicy
+                    .signingRequested(
+                        context
+                    )
+            ) {
+                try {
+                    WindowsPublisherSigningPolicy
+                        .applyIfRequested(
+                            context = context,
+                            target = finalWindowsExe,
+                            rootfs = rootfs,
+                            shell = shell,
+                            buildId = state.id,
+                            offline = state.offline
+                        ) {
+                            detail ->
+                            state.logs.add(
+                                detail
+                            )
+                        }
+
+                    verifyWindowsX64Pe(
+                        finalWindowsExe
+                    )
+                } catch (
+                    signingFailure: Throwable
+                ) {
+                    finalWindowsExe
+                        .delete()
+
+                    state.exe =
+                        null
+
+                    state.logs.add(
+                        "🔒 Windows publisher signing fail-closed • imzasız EXE silindi."
+                    )
+
+                    throw signingFailure
+                }
+            }
+
             state.status = "success"
             state.progress = 100
             state.logs.add("✅ Hazır • Derleme tamamen cihaz üzerinde tamamlandı.")
@@ -1082,17 +1128,6 @@ object DeviceBuildEngine {
             target
         )
 
-        WindowsPublisherSigningPolicy
-            .applyIfRequested(
-                context = context,
-                target = target
-            ) {
-                detail ->
-                state.logs.add(
-                    detail
-                )
-            }
-
         state.exe =
             target
 
@@ -1271,17 +1306,6 @@ object DeviceBuildEngine {
         ) {
             "Windows Portable EXE çıktısı oluşturulamadı."
         }
-
-        WindowsPublisherSigningPolicy
-            .applyIfRequested(
-                context = context,
-                target = target
-            ) {
-                detail ->
-                state.logs.add(
-                    detail
-                )
-            }
 
         state.exe = target
         state.progress =
