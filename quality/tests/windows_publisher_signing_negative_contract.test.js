@@ -381,3 +381,86 @@ test("any requested signing failure deletes final EXE and clears artifact state"
     /catch\s*\(\s*t:\s*Throwable\s*\)\s*\{[\s\S]{0,900}?state\.status\s*=\s*"failed"/
   );
 });
+
+test("self-signed publisher certificate is accepted only for debuggable physical test builds", () => {
+  assert.match(
+    provider,
+    /ApplicationInfo\.FLAG_DEBUGGABLE/
+  );
+
+  assert.match(
+    provider,
+    /SELF_SIGNED_DEBUG_ACCEPTANCE_V1/
+  );
+
+  assert.match(
+    provider,
+    /APPFORGE_ALLOW_SELF_SIGNED_TEST/
+  );
+
+  assert.match(
+    provider,
+    /APPFORGE_WINDOWS_PUBLISHER_SELF_SIGNED_RELEASE=BLOCKED/
+  );
+
+  assert.match(
+    provider,
+    /-CAfile \/workspace\/signer-cert\.pem/
+  );
+
+  assert.match(
+    provider,
+    /-TSA-CAfile \/etc\/ssl\/certs\/ca-certificates\.crt/
+  );
+
+  assert.match(
+    provider,
+    /-require-leaf-hash/
+  );
+
+  assert.match(
+    provider,
+    /SIGNER_LEAF_SHA256/
+  );
+
+  assert.match(
+    provider,
+    /APPFORGE_WINDOWS_PUBLISHER_SELF_SIGNED_TEST=PASS/
+  );
+
+  /*
+   * Debug self-signed acceptance must not disable timestamp,
+   * CRL/CDP or HTTPS peer verification globally.
+   */
+  assert.doesNotMatch(
+    provider,
+    /-ignore-timestamp|-ignore-crl|-ignore-cdp|-noverifypeer/
+  );
+
+  const debugGate =
+    provider.indexOf(
+      "ApplicationInfo.FLAG_DEBUGGABLE"
+    );
+
+  const releaseBlock =
+    provider.indexOf(
+      "APPFORGE_WINDOWS_PUBLISHER_SELF_SIGNED_RELEASE=BLOCKED"
+    );
+
+  const testTrust =
+    provider.indexOf(
+      "-CAfile /workspace/signer-cert.pem"
+    );
+
+  assert.ok(
+    debugGate >= 0
+  );
+
+  assert.ok(
+    releaseBlock > debugGate
+  );
+
+  assert.ok(
+    testTrust > releaseBlock
+  );
+});
