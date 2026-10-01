@@ -1,0 +1,1192 @@
+name: AppForge D1 Ledger Reconcile Once
+
+on:
+  push:
+    branches:
+      - audit/d1-ledger-readonly-20261001
+    paths:
+      - .github/workflows/pro-d1-ledger-reconcile-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appforge-d1-ledger-reconcile-once
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    name: D1 Ledger Reconcile Once
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/audit/d1-ledger-readonly-20261001'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout exact reconciliation source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Lock reconciliation source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EXPECTED_PARENT="bc79d6592301a416d9fc5efff9c9d2ef1696c897"
+          WORKFLOW=".github/workflows/pro-d1-ledger-reconcile-once.yml"
+
+          test "$GITHUB_REF" = \
+            "refs/heads/audit/d1-ledger-readonly-20261001"
+
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_PARENT" || {
+            echo "RECONCILE_PARENT_GUARD=FAIL"
+            exit 1
+          }
+
+          CHANGED="$(
+            git diff-tree \
+              --no-commit-id \
+              --name-only \
+              -r HEAD
+          )"
+
+          test "$CHANGED" = "$WORKFLOW" || {
+            echo "RECONCILE_DIFF_GUARD=FAIL"
+            printf '%s\n' "$CHANGED"
+            exit 1
+          }
+
+          cd cloudflare/control-plane/migrations
+
+          printf '%s  %s\n' \
+            fb99da298cc857e8f21cbff47c7ad91ef32e1bfc9a9d9a1f05dc7b9c08f4ff4b \
+            0001_accountless_control_plane.sql \
+            e863282232c077c4bf1797c6deae0d95b9e98a80671e6864c77ec644d9d1eca3 \
+            0002_admin_pro_codes.sql \
+            c1d58e3166f3f405ca63a807e0823251751c7fd548b4bd2d700a4d530e6e190d \
+            0003_pro_grants.sql \
+            3ba356dcf345935275e53ae98a63186406f14328f687183ff6f8075e48173bf1 \
+            0004_pro_grant_revocation.sql \
+            722a28fd98f7ce142530e29b21a2c3209f1bd61c044ca7e9ac2cfb2b6cdf6995 \
+            0005_pro_lifecycle.sql \
+            | sha256sum -c -
+
+          echo "RECONCILE_PARENT_GUARD=PASS"
+          echo "RECONCILE_DIFF_GUARD=PASS"
+          echo "MIGRATION_HASH_GUARD=PASS"
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Verify separated Cloudflare tokens
+        shell: bash
+        env:
+          READ_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          EDIT_TOKEN: ${{ secrets.CLOUDFLARE_D1_RECONCILE_TOKEN }}
+          ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import urllib.error
+          import urllib.request
+
+          read_token = os.environ.get("READ_TOKEN", "")
+          edit_token = os.environ.get("EDIT_TOKEN", "")
+          account = os.environ.get("ACCOUNT_ID", "")
+          database = os.environ.get("DATABASE_ID", "")
+
+          if not all(
+              [
+                  read_token,
+                  edit_token,
+                  account,
+                  database,
+              ]
+          ):
+              raise SystemExit(
+                  "REQUIRED_SECRETS_PRESENT=FAIL"
+              )
+
+          if read_token == edit_token:
+              raise SystemExit(
+                  "TOKEN_SEPARATION=FAIL"
+              )
+
+          if not re.fullmatch(
+              r"[0-9a-fA-F]{32}",
+              account,
+          ):
+              raise SystemExit(
+                  "ACCOUNT_ID_FORMAT=FAIL"
+              )
+
+          if not re.fullmatch(
+              r"[0-9a-fA-F]{8}-"
+              r"[0-9a-fA-F]{4}-"
+              r"[0-9a-fA-F]{4}-"
+              r"[0-9a-fA-F]{4}-"
+              r"[0-9a-fA-F]{12}",
+              database,
+          ):
+              raise SystemExit(
+                  "DATABASE_ID_FORMAT=FAIL"
+              )
+
+          url = (
+              "https://api.cloudflare.com/"
+              "client/v4/accounts/"
+              + account
+              + "/tokens/verify"
+          )
+
+          def verify(label, token):
+              request = urllib.request.Request(
+                  url,
+                  headers={
+                      "Authorization":
+                          "Bearer " + token,
+                      "Accept":
+                          "application/json",
+                  },
+              )
+
+              try:
+                  with urllib.request.urlopen(
+                      request,
+                      timeout=20,
+                  ) as response:
+                      payload = json.load(response)
+              except Exception:
+                  raise SystemExit(
+                      label
+                      + "_TOKEN_VERIFY=FAIL"
+                  )
+
+              status = (
+                  payload
+                  .get("result", {})
+                  .get("status")
+              )
+
+              print(
+                  label
+                  + "_TOKEN_STATUS="
+                  + str(status)
+              )
+
+              if status != "active":
+                  raise SystemExit(
+                      label
+                      + "_TOKEN_ACTIVE=FAIL"
+                  )
+
+              print(
+                  label
+                  + "_TOKEN_ACTIVE=PASS"
+              )
+
+          verify(
+              "READ",
+              read_token,
+          )
+
+          verify(
+              "EDIT",
+              edit_token,
+          )
+
+          print(
+              "TOKEN_SEPARATION=PASS"
+          )
+          print(
+              "SECRET_VALUES=NOT_PRINTED"
+          )
+          PY
+
+      - name: Build expected application schema
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EXPECTED_DB="$RUNNER_TEMP/expected.sqlite"
+          EXPECTED_JSON="$RUNNER_TEMP/expected-app-schema.json"
+
+          export EXPECTED_DB
+          export EXPECTED_JSON
+
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import sqlite3
+          from pathlib import Path
+
+          migration_dir = Path(
+              "cloudflare/control-plane/migrations"
+          )
+
+          expected_names = [
+              "0001_accountless_control_plane.sql",
+              "0002_admin_pro_codes.sql",
+              "0003_pro_grants.sql",
+              "0004_pro_grant_revocation.sql",
+              "0005_pro_lifecycle.sql",
+          ]
+
+          files = sorted(
+              migration_dir.glob("*.sql")
+          )
+
+          if [
+              p.name
+              for p in files
+          ] != expected_names:
+              raise SystemExit(
+                  "LOCAL_MIGRATION_SEQUENCE=FAIL"
+              )
+
+          db_path = Path(
+              os.environ["EXPECTED_DB"]
+          )
+
+          con = sqlite3.connect(
+              db_path
+          )
+
+          con.execute(
+              "PRAGMA foreign_keys = ON"
+          )
+
+          for path in files:
+              con.executescript(
+                  path.read_text(
+                      encoding="utf-8"
+                  )
+              )
+
+          con.commit()
+
+          def canon_sql(sql):
+              if sql is None:
+                  return ""
+
+              value = str(sql)
+
+              value = re.sub(
+                  r"--[^\n]*",
+                  " ",
+                  value,
+              )
+
+              value = re.sub(
+                  r"/\*.*?\*/",
+                  " ",
+                  value,
+                  flags=re.S,
+              )
+
+              value = re.sub(
+                  r"\bIF\s+NOT\s+EXISTS\b",
+                  " ",
+                  value,
+                  flags=re.I,
+              )
+
+              value = (
+                  value
+                  .strip()
+                  .rstrip(";")
+              )
+
+              value = re.sub(
+                  r"\s+",
+                  " ",
+                  value,
+              )
+
+              value = re.sub(
+                  r"\s*([(),=])\s*",
+                  r"\1",
+                  value,
+              )
+
+              return value.lower()
+
+          objects = []
+
+          for row in con.execute(
+              """
+              SELECT
+                type,
+                name,
+                tbl_name,
+                sql
+              FROM sqlite_schema
+              WHERE sql IS NOT NULL
+                AND name NOT LIKE 'sqlite_%'
+                AND name <> 'd1_migrations'
+                AND name NOT LIKE '_cf_%'
+              ORDER BY type, name
+              """
+          ):
+              objects.append({
+                  "type":
+                      row[0],
+                  "name":
+                      row[1],
+                  "tbl_name":
+                      row[2],
+                  "sql":
+                      canon_sql(
+                          row[3]
+                      ),
+              })
+
+          Path(
+              os.environ["EXPECTED_JSON"]
+          ).write_text(
+              json.dumps(
+                  objects,
+                  indent=2,
+                  sort_keys=True,
+              ),
+              encoding="utf-8",
+          )
+
+          print(
+              "EXPECTED_APP_OBJECT_COUNT="
+              + str(len(objects))
+          )
+
+          if len(objects) != 21:
+              raise SystemExit(
+                  "EXPECTED_APP_OBJECT_COUNT_GUARD=FAIL"
+              )
+
+          print(
+              "EXPECTED_APP_SCHEMA_BUILD=PASS"
+          )
+
+          con.close()
+          PY
+
+      - name: Pre-write live D1 fail-closed audit
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+
+          CONFIG="$RUNNER_TEMP/read-wrangler.toml"
+
+          cat > "$CONFIG" <<TOML
+          name = "appforge-control-plane"
+          main = "src/index.mjs"
+          compatibility_date = "2026-09-19"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "appforge-control-plane-db"
+          database_id = "$CLOUDFLARE_D1_DATABASE_ID"
+          migrations_dir = "migrations"
+          TOML
+
+          cd cloudflare/control-plane
+
+          APP_JSON="$RUNNER_TEMP/prewrite-app.json"
+          LEDGER_JSON="$RUNNER_TEMP/prewrite-ledger.json"
+
+          APP_SQL="
+          SELECT
+            type,
+            name,
+            tbl_name,
+            sql
+          FROM sqlite_schema
+          WHERE sql IS NOT NULL
+            AND name NOT LIKE 'sqlite_%'
+            AND name <> 'd1_migrations'
+            AND name NOT LIKE '_cf_%'
+          ORDER BY type, name;
+          "
+
+          LEDGER_SQL="
+          SELECT COUNT(*) AS ledger_table_count
+          FROM sqlite_schema
+          WHERE type = 'table'
+            AND name = 'd1_migrations';
+          "
+
+          npx --yes wrangler@4 \
+            d1 execute \
+            appforge-control-plane-db \
+            --remote \
+            --config "$CONFIG" \
+            --command "$APP_SQL" \
+            --json \
+            > "$APP_JSON"
+
+          npx --yes wrangler@4 \
+            d1 execute \
+            appforge-control-plane-db \
+            --remote \
+            --config "$CONFIG" \
+            --command "$LEDGER_SQL" \
+            --json \
+            > "$LEDGER_JSON"
+
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          root = Path(
+              os.environ["RUNNER_TEMP"]
+          )
+
+          expected = json.loads(
+              (
+                  root
+                  / "expected-app-schema.json"
+              ).read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          def rows(path):
+              data = json.loads(
+                  path.read_text(
+                      encoding="utf-8"
+                  )
+              )
+
+              found = []
+
+              def walk(value):
+                  if isinstance(
+                      value,
+                      dict,
+                  ):
+                      result = value.get(
+                          "results"
+                      )
+
+                      if isinstance(
+                          result,
+                          list,
+                      ):
+                          found.extend(
+                              row
+                              for row in result
+                              if isinstance(
+                                  row,
+                                  dict,
+                              )
+                          )
+                          return
+
+                      for child in value.values():
+                          walk(child)
+
+                  elif isinstance(
+                      value,
+                      list,
+                  ):
+                      for child in value:
+                          walk(child)
+
+              walk(data)
+
+              return found
+
+          def canon_sql(sql):
+              if sql is None:
+                  return ""
+
+              value = str(sql)
+
+              value = re.sub(
+                  r"--[^\n]*",
+                  " ",
+                  value,
+              )
+
+              value = re.sub(
+                  r"/\*.*?\*/",
+                  " ",
+                  value,
+                  flags=re.S,
+              )
+
+              value = re.sub(
+                  r"\bIF\s+NOT\s+EXISTS\b",
+                  " ",
+                  value,
+                  flags=re.I,
+              )
+
+              value = (
+                  value
+                  .strip()
+                  .rstrip(";")
+              )
+
+              value = re.sub(
+                  r"\s+",
+                  " ",
+                  value,
+              )
+
+              value = re.sub(
+                  r"\s*([(),=])\s*",
+                  r"\1",
+                  value,
+              )
+
+              return value.lower()
+
+          actual = []
+
+          for row in rows(
+              root / "prewrite-app.json"
+          ):
+              actual.append({
+                  "type":
+                      str(
+                          row.get(
+                              "type",
+                              "",
+                          )
+                      ),
+                  "name":
+                      str(
+                          row.get(
+                              "name",
+                              "",
+                          )
+                      ),
+                  "tbl_name":
+                      str(
+                          row.get(
+                              "tbl_name",
+                              "",
+                          )
+                      ),
+                  "sql":
+                      canon_sql(
+                          row.get("sql")
+                      ),
+              })
+
+          actual = sorted(
+              actual,
+              key=lambda x: (
+                  x["type"],
+                  x["name"],
+              ),
+          )
+
+          expected = sorted(
+              expected,
+              key=lambda x: (
+                  x["type"],
+                  x["name"],
+              ),
+          )
+
+          print(
+              "PREWRITE_REMOTE_APP_OBJECT_COUNT="
+              + str(len(actual))
+          )
+
+          if actual != expected:
+              raise SystemExit(
+                  "PREWRITE_APP_SCHEMA_EXACT=FAIL"
+              )
+
+          ledger_rows = rows(
+              root / "prewrite-ledger.json"
+          )
+
+          if len(ledger_rows) != 1:
+              raise SystemExit(
+                  "PREWRITE_LEDGER_QUERY=FAIL"
+              )
+
+          count = int(
+              ledger_rows[0].get(
+                  "ledger_table_count",
+                  -1,
+              )
+          )
+
+          print(
+              "PREWRITE_LEDGER_TABLE_COUNT="
+              + str(count)
+          )
+
+          if count != 0:
+              raise SystemExit(
+                  "PREWRITE_LEDGER_ABSENT=FAIL"
+              )
+
+          print(
+              "PREWRITE_APP_SCHEMA_EXACT=PASS"
+          )
+          print(
+              "PREWRITE_LEDGER_ABSENT=PASS"
+          )
+          print(
+              "PREWRITE_WRITE_AUTHORIZED=PASS"
+          )
+          PY
+
+      - name: Write Wrangler migration ledger baseline only
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_RECONCILE_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+
+          CONFIG="$RUNNER_TEMP/edit-wrangler.toml"
+
+          cat > "$CONFIG" <<TOML
+          name = "appforge-control-plane"
+          main = "src/index.mjs"
+          compatibility_date = "2026-09-19"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "appforge-control-plane-db"
+          database_id = "$CLOUDFLARE_D1_DATABASE_ID"
+          migrations_dir = "migrations"
+          TOML
+
+          cd cloudflare/control-plane
+
+          WRITE_SQL="$(cat <<'SQL'
+          CREATE TABLE "d1_migrations" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE,
+            applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+          );
+
+          INSERT INTO "d1_migrations" (name)
+          VALUES ('0001_accountless_control_plane.sql');
+
+          INSERT INTO "d1_migrations" (name)
+          VALUES ('0002_admin_pro_codes.sql');
+
+          INSERT INTO "d1_migrations" (name)
+          VALUES ('0003_pro_grants.sql');
+
+          INSERT INTO "d1_migrations" (name)
+          VALUES ('0004_pro_grant_revocation.sql');
+
+          INSERT INTO "d1_migrations" (name)
+          VALUES ('0005_pro_lifecycle.sql');
+          SQL
+          )"
+
+          if printf '%s\n' "$WRITE_SQL" |
+            grep -Eqi \
+              '\b(DROP|ALTER|UPDATE|DELETE|REPLACE|TRUNCATE)\b'
+          then
+            echo "WRITE_SQL_DESTRUCTIVE_GUARD=FAIL"
+            exit 1
+          fi
+
+          for TABLE in \
+            installations \
+            play_purchase_records \
+            admin_identities \
+            quota_events \
+            audit_events \
+            pro_activation_codes \
+            pro_admin_grants \
+            pro_installation_keys \
+            installation_challenges \
+            pro_admin_grant_history \
+            pro_redemption_receipts
+          do
+            if printf '%s\n' "$WRITE_SQL" |
+              grep -Fq "$TABLE"
+            then
+              echo "APP_TABLE_WRITE_GUARD=FAIL:$TABLE"
+              exit 1
+            fi
+          done
+
+          CREATE_COUNT="$(
+            printf '%s\n' "$WRITE_SQL" |
+            grep -c 'CREATE TABLE "d1_migrations"'
+          )"
+
+          INSERT_COUNT="$(
+            printf '%s\n' "$WRITE_SQL" |
+            grep -c 'INSERT INTO "d1_migrations"'
+          )"
+
+          test "$CREATE_COUNT" -eq 1
+          test "$INSERT_COUNT" -eq 5
+
+          echo "WRITE_SQL_DESTRUCTIVE_GUARD=PASS"
+          echo "APP_TABLE_WRITE_GUARD=PASS"
+          echo "LEDGER_CREATE_COUNT=$CREATE_COUNT"
+          echo "LEDGER_INSERT_COUNT=$INSERT_COUNT"
+          echo "WRITE_SCOPE=D1_MIGRATIONS_ONLY"
+
+          RESULT="$RUNNER_TEMP/ledger-write-result.json"
+
+          npx --yes wrangler@4 \
+            d1 execute \
+            appforge-control-plane-db \
+            --remote \
+            --config "$CONFIG" \
+            --command "$WRITE_SQL" \
+            --json \
+            > "$RESULT"
+
+          echo "LEDGER_BASELINE_WRITE=PASS"
+          echo "MIGRATIONS_APPLIED=NO"
+
+      - name: Post-write exact verification
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+
+          CONFIG="$RUNNER_TEMP/post-read-wrangler.toml"
+
+          cat > "$CONFIG" <<TOML
+          name = "appforge-control-plane"
+          main = "src/index.mjs"
+          compatibility_date = "2026-09-19"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "appforge-control-plane-db"
+          database_id = "$CLOUDFLARE_D1_DATABASE_ID"
+          migrations_dir = "migrations"
+          TOML
+
+          cd cloudflare/control-plane
+
+          LEDGER_JSON="$RUNNER_TEMP/post-ledger.json"
+          LEDGER_SCHEMA_JSON="$RUNNER_TEMP/post-ledger-schema.json"
+          APP_JSON="$RUNNER_TEMP/post-app.json"
+
+          npx --yes wrangler@4 \
+            d1 execute \
+            appforge-control-plane-db \
+            --remote \
+            --config "$CONFIG" \
+            --command \
+            'SELECT id,name,applied_at FROM "d1_migrations" ORDER BY id;' \
+            --json \
+            > "$LEDGER_JSON"
+
+          npx --yes wrangler@4 \
+            d1 execute \
+            appforge-control-plane-db \
+            --remote \
+            --config "$CONFIG" \
+            --command \
+            'PRAGMA table_info("d1_migrations");' \
+            --json \
+            > "$LEDGER_SCHEMA_JSON"
+
+          APP_SQL="
+          SELECT
+            type,
+            name,
+            tbl_name,
+            sql
+          FROM sqlite_schema
+          WHERE sql IS NOT NULL
+            AND name NOT LIKE 'sqlite_%'
+            AND name <> 'd1_migrations'
+            AND name NOT LIKE '_cf_%'
+          ORDER BY type, name;
+          "
+
+          npx --yes wrangler@4 \
+            d1 execute \
+            appforge-control-plane-db \
+            --remote \
+            --config "$CONFIG" \
+            --command "$APP_SQL" \
+            --json \
+            > "$APP_JSON"
+
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          root = Path(
+              os.environ["RUNNER_TEMP"]
+          )
+
+          def rows(path):
+              data = json.loads(
+                  path.read_text(
+                      encoding="utf-8"
+                  )
+              )
+
+              found = []
+
+              def walk(value):
+                  if isinstance(
+                      value,
+                      dict,
+                  ):
+                      result = value.get(
+                          "results"
+                      )
+
+                      if isinstance(
+                          result,
+                          list,
+                      ):
+                          found.extend(
+                              row
+                              for row in result
+                              if isinstance(
+                                  row,
+                                  dict,
+                              )
+                          )
+                          return
+
+                      for child in value.values():
+                          walk(child)
+
+                  elif isinstance(
+                      value,
+                      list,
+                  ):
+                      for child in value:
+                          walk(child)
+
+              walk(data)
+              return found
+
+          ledger = rows(
+              root / "post-ledger.json"
+          )
+
+          expected_names = [
+              "0001_accountless_control_plane.sql",
+              "0002_admin_pro_codes.sql",
+              "0003_pro_grants.sql",
+              "0004_pro_grant_revocation.sql",
+              "0005_pro_lifecycle.sql",
+          ]
+
+          names = [
+              str(
+                  row.get(
+                      "name",
+                      "",
+                  )
+              )
+              for row in ledger
+          ]
+
+          ids = [
+              int(
+                  row.get(
+                      "id",
+                      -1,
+                  )
+              )
+              for row in ledger
+          ]
+
+          timestamps_ok = all(
+              bool(
+                  str(
+                      row.get(
+                          "applied_at",
+                          "",
+                      )
+                  ).strip()
+              )
+              for row in ledger
+          )
+
+          print(
+              "POST_LEDGER_COUNT="
+              + str(len(ledger))
+          )
+
+          if len(ledger) != 5:
+              raise SystemExit(
+                  "POST_LEDGER_COUNT_EXACT=FAIL"
+              )
+
+          if names != expected_names:
+              raise SystemExit(
+                  "LEDGER_NAMES_EXACT=FAIL"
+              )
+
+          if ids != [1, 2, 3, 4, 5]:
+              raise SystemExit(
+                  "LEDGER_IDS_EXACT=FAIL"
+              )
+
+          if not timestamps_ok:
+              raise SystemExit(
+                  "LEDGER_TIMESTAMPS_PRESENT=FAIL"
+              )
+
+          schema = rows(
+              root
+              / "post-ledger-schema.json"
+          )
+
+          normalized_schema = [
+              (
+                  int(
+                      row.get(
+                          "cid",
+                          -1,
+                      )
+                  ),
+                  str(
+                      row.get(
+                          "name",
+                          "",
+                      )
+                  ),
+                  str(
+                      row.get(
+                          "type",
+                          "",
+                      )
+                  ).upper(),
+                  int(
+                      row.get(
+                          "notnull",
+                          0,
+                      )
+                      or 0
+                  ),
+                  (
+                      None
+                      if row.get(
+                          "dflt_value"
+                      ) is None
+                      else str(
+                          row.get(
+                              "dflt_value"
+                          )
+                      ).upper()
+                  ),
+                  int(
+                      row.get(
+                          "pk",
+                          0,
+                      )
+                      or 0
+                  ),
+              )
+              for row in schema
+          ]
+
+          expected_schema = [
+              (
+                  0,
+                  "id",
+                  "INTEGER",
+                  0,
+                  None,
+                  1,
+              ),
+              (
+                  1,
+                  "name",
+                  "TEXT",
+                  0,
+                  None,
+                  0,
+              ),
+              (
+                  2,
+                  "applied_at",
+                  "TIMESTAMP",
+                  1,
+                  "CURRENT_TIMESTAMP",
+                  0,
+              ),
+          ]
+
+          if normalized_schema != expected_schema:
+              print(
+                  "ACTUAL_LEDGER_SCHEMA="
+                  + repr(
+                      normalized_schema
+                  )
+              )
+              raise SystemExit(
+                  "LEDGER_SCHEMA_EXACT=FAIL"
+              )
+
+          def canon_sql(sql):
+              if sql is None:
+                  return ""
+
+              value = str(sql)
+
+              value = re.sub(
+                  r"--[^\n]*",
+                  " ",
+                  value,
+              )
+
+              value = re.sub(
+                  r"/\*.*?\*/",
+                  " ",
+                  value,
+                  flags=re.S,
+              )
+
+              value = re.sub(
+                  r"\bIF\s+NOT\s+EXISTS\b",
+                  " ",
+                  value,
+                  flags=re.I,
+              )
+
+              value = (
+                  value
+                  .strip()
+                  .rstrip(";")
+              )
+
+              value = re.sub(
+                  r"\s+",
+                  " ",
+                  value,
+              )
+
+              value = re.sub(
+                  r"\s*([(),=])\s*",
+                  r"\1",
+                  value,
+              )
+
+              return value.lower()
+
+          expected_app = json.loads(
+              (
+                  root
+                  / "expected-app-schema.json"
+              ).read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          actual_app = []
+
+          for row in rows(
+              root / "post-app.json"
+          ):
+              actual_app.append({
+                  "type":
+                      str(
+                          row.get(
+                              "type",
+                              "",
+                          )
+                      ),
+                  "name":
+                      str(
+                          row.get(
+                              "name",
+                              "",
+                          )
+                      ),
+                  "tbl_name":
+                      str(
+                          row.get(
+                              "tbl_name",
+                              "",
+                          )
+                      ),
+                  "sql":
+                      canon_sql(
+                          row.get("sql")
+                      ),
+              })
+
+          expected_app = sorted(
+              expected_app,
+              key=lambda x: (
+                  x["type"],
+                  x["name"],
+              ),
+          )
+
+          actual_app = sorted(
+              actual_app,
+              key=lambda x: (
+                  x["type"],
+                  x["name"],
+              ),
+          )
+
+          if actual_app != expected_app:
+              raise SystemExit(
+                  "POSTWRITE_APP_SCHEMA_EXACT=FAIL"
+              )
+
+          print(
+              "LEDGER_NAMES_EXACT=PASS"
+          )
+          print(
+              "LEDGER_IDS_EXACT=PASS"
+          )
+          print(
+              "LEDGER_TIMESTAMPS_PRESENT=PASS"
+          )
+          print(
+              "LEDGER_SCHEMA_EXACT=PASS"
+          )
+          print(
+              "POSTWRITE_APP_SCHEMA_EXACT=PASS"
+          )
+          print(
+              "APPLICATION_DATA_MIGRATIONS_APPLIED=NO"
+          )
+          print(
+              "RECONCILIATION_RESULT=PASS"
+          )
+          PY
