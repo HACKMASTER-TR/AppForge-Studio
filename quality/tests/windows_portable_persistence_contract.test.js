@@ -142,3 +142,66 @@ test(
     }
   }
 );
+
+test(
+  "portable host flushes DOM storage for forced-termination durability",
+  async () => {
+    const main =
+      await read(
+        "windows-host/main.cjs"
+      );
+
+    for (
+      const marker of [
+        "STORAGE_DURABILITY_FLUSH_MS",
+        "flushStorageData",
+        "startStorageDurabilityFlush",
+        "timer.unref"
+      ]
+    ) {
+      assert.ok(
+        main.includes(
+          marker
+        ),
+        marker
+      );
+    }
+
+    assert.match(
+      main,
+      /webContents[\s\S]*session[\s\S]*flushStorageData\(\)/
+    );
+
+    assert.match(
+      main,
+      /startStorageDurabilityFlush\(\s*window\s*\)/
+    );
+  }
+);
+
+
+test(
+  "Windows CI proves forced-termination recovery for localStorage and IndexedDB",
+  async () => {
+    const workflow =
+      await read(
+        ".github/workflows/windows-portable-host.yml"
+      );
+
+    for (
+      const marker of [
+        "PORTABLE_FORCED_TERMINATION=PASS",
+        "PORTABLE_CRASH_LOCALSTORAGE_RECOVERY=PASS",
+        "PORTABLE_CRASH_INDEXEDDB_RECOVERY=PASS",
+        "PORTABLE_CRASH_RECOVERY=PASS"
+      ]
+    ) {
+      assert.ok(
+        workflow.includes(
+          marker
+        ),
+        marker
+      );
+    }
+  }
+);

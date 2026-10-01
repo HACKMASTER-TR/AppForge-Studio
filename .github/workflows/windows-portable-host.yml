@@ -327,6 +327,168 @@ jobs:
             }
           }
 
+
+          # ------------------------------------------------------------
+          # Forced-termination persistence acceptance
+          # ------------------------------------------------------------
+          $crashResult = Join-Path `
+            $pwd `
+            "windows-host/dist/persistence-result-crash.json"
+
+          $recoveryResult = Join-Path `
+            $pwd `
+            "windows-host/dist/persistence-result-recovery.json"
+
+          Remove-Item `
+            -LiteralPath $crashResult `
+            -Force `
+            -ErrorAction SilentlyContinue
+
+          Remove-Item `
+            -LiteralPath $recoveryResult `
+            -Force `
+            -ErrorAction SilentlyContinue
+
+          $beforeCrashProcesses = @(
+            Get-CimInstance `
+              Win32_Process |
+            Select-Object `
+              -ExpandProperty ProcessId
+          )
+
+          $env:APPFORGE_HOST_SMOKE_FILE =
+            $crashResult
+
+          $env:APPFORGE_HOST_SMOKE_EXIT =
+            "0"
+
+          Start-Process `
+            -FilePath $smokeB |
+            Out-Null
+
+          $crashDeadline =
+            (Get-Date).AddSeconds(
+              60
+            )
+
+          while (
+            (Get-Date) -lt $crashDeadline -and
+            -not (
+              Test-Path `
+                -LiteralPath $crashResult
+            )
+          ) {
+            Start-Sleep `
+              -Milliseconds 250
+          }
+
+          if (
+            -not (
+              Test-Path `
+                -LiteralPath $crashResult
+            )
+          ) {
+            throw "Forced-termination smoke result was not written."
+          }
+
+          Start-Sleep `
+            -Seconds 2
+
+          $crash =
+            Get-Content `
+              -LiteralPath $crashResult `
+              -Raw |
+            ConvertFrom-Json
+
+          if (
+            [int]$crash.smokeState.localStorageCount -ne 4
+          ) {
+            throw "Forced-termination pre-kill localStorage count mismatch."
+          }
+
+          if (
+            [int]$crash.smokeState.indexedDbCount -ne 4
+          ) {
+            throw "Forced-termination pre-kill IndexedDB count mismatch."
+          }
+
+          $newCrashProcesses = @(
+            Get-CimInstance `
+              Win32_Process |
+            Where-Object {
+              (
+                $_.ProcessId -notin
+                  $beforeCrashProcesses
+              ) -and
+              (
+                $_.Name -like
+                  "AppForge*" -or
+                [string]$_.CommandLine -like
+                  "*AppForge-Windows-Host-persistence-b*"
+              )
+            }
+          )
+
+          if (
+            $newCrashProcesses.Count -eq 0
+          ) {
+            throw "Forced-termination AppForge process set was empty."
+          }
+
+          foreach (
+            $process in
+            $newCrashProcesses
+          ) {
+            Stop-Process `
+              -Id $process.ProcessId `
+              -Force `
+              -ErrorAction SilentlyContinue
+          }
+
+          Start-Sleep `
+            -Seconds 1
+
+          $remainingCrashProcesses = @(
+            Get-CimInstance `
+              Win32_Process |
+            Where-Object {
+              $_.ProcessId -in
+                $newCrashProcesses.ProcessId
+            }
+          )
+
+          if (
+            $remainingCrashProcesses.Count -ne 0
+          ) {
+            throw "Forced-termination process shutdown incomplete."
+          }
+
+          Write-Host "PORTABLE_FORCED_TERMINATION=PASS"
+
+          $env:APPFORGE_HOST_SMOKE_EXIT =
+            "1"
+
+          $recovery =
+            Invoke-AppForgeSmoke `
+              -Exe $smokeB `
+              -Result $recoveryResult
+
+          if (
+            [int]$recovery.smokeState.localStorageCount -ne 5
+          ) {
+            throw "localStorage did not survive forced termination."
+          }
+
+          if (
+            [int]$recovery.smokeState.indexedDbCount -ne 5
+          ) {
+            throw "IndexedDB did not survive forced termination."
+          }
+
+          Write-Host "PORTABLE_CRASH_LOCALSTORAGE_RECOVERY=PASS"
+          Write-Host "PORTABLE_CRASH_INDEXEDDB_RECOVERY=PASS"
+          Write-Host "PORTABLE_CRASH_RECOVERY=PASS"
+
           Write-Host "WINDOWS_PORTABLE_PAYLOAD_SMOKE=PASS"
           Write-Host "PORTABLE_STABLE_ORIGIN=PASS"
           Write-Host "PORTABLE_LOCALSTORAGE_PERSISTENCE=PASS"

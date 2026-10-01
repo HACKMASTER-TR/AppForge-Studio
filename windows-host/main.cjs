@@ -55,6 +55,10 @@ const LOCAL_HOST =
   "app";
 
 
+const STORAGE_DURABILITY_FLUSH_MS =
+  500;
+
+
 protocol.registerSchemesAsPrivileged(
   [
     {
@@ -345,6 +349,60 @@ async function registerLocalProtocol() {
 }
 
 
+function flushStorageData(
+  window
+) {
+  if (
+    !window ||
+    window.isDestroyed()
+  ) {
+    return;
+  }
+
+  try {
+    window
+      .webContents
+      .session
+      .flushStorageData();
+  } catch {}
+}
+
+
+function startStorageDurabilityFlush(
+  window
+) {
+  flushStorageData(
+    window
+  );
+
+  const timer =
+    setInterval(
+      () => {
+        flushStorageData(
+          window
+        );
+      },
+      STORAGE_DURABILITY_FLUSH_MS
+    );
+
+  if (
+    typeof timer.unref ===
+      "function"
+  ) {
+    timer.unref();
+  }
+
+  window.once(
+    "closed",
+    () => {
+      clearInterval(
+        timer
+      );
+    }
+  );
+}
+
+
 function portableExecutable() {
   const candidate =
     String(
@@ -545,6 +603,15 @@ async function writeSmokeResult(
       window
     );
 
+  /*
+   * Force Chromium DOM storage to disk before the smoke checkpoint.
+   * This makes forced-termination acceptance test the real durability
+   * boundary instead of only in-memory localStorage state.
+   */
+  flushStorageData(
+    window
+  );
+
   const result = {
     payloadLoaded:
       true,
@@ -646,6 +713,16 @@ function createWindow() {
         }
       }
     );
+
+  /*
+   * Recent localStorage mutations may otherwise remain buffered in
+   * Chromium memory until a graceful shutdown. Keep a bounded periodic
+   * durability flush so unexpected process termination loses neither the
+   * latest persisted application state nor the stable appforge origin.
+   */
+  startStorageDurabilityFlush(
+    window
+  );
 
   window
     .webContents
@@ -815,6 +892,15 @@ app.on(
 app.on(
   "will-quit",
   () => {
+    for (
+      const window of
+      BrowserWindow.getAllWindows()
+    ) {
+      flushStorageData(
+        window
+      );
+    }
+
     cleanRuntime();
   }
 );
