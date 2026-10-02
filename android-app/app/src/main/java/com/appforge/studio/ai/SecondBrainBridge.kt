@@ -4,6 +4,7 @@ import android.content.Context
 import org.json.JSONObject
 
 object SecondBrainBridge {
+
     private const val ASSET_NAME =
         "second_brain_snapshot.json"
 
@@ -12,12 +13,22 @@ object SecondBrainBridge {
     ): JSONObject? =
         runCatching {
             context.assets
-                .open(ASSET_NAME)
+                .open(
+                    ASSET_NAME
+                )
                 .bufferedReader()
-                .use { reader ->
+                .use {
+                    reader ->
+
                     JSONObject(
                         reader.readText()
                     )
+                }
+                .takeIf {
+                    it.optInt(
+                        "schemaVersion",
+                        -1
+                    ) == 2
                 }
         }.getOrNull()
 
@@ -25,65 +36,104 @@ object SecondBrainBridge {
         context: Context
     ): String? {
         val data =
-            snapshot(context)
+            snapshot(
+                context
+            )
                 ?: return null
 
-        return buildString {
-            append("v")
-            append(
-                data.optString(
-                    "version",
+        val basis =
+            data
+                .optString(
+                    "sourceBasisSha256",
                     "?"
                 )
-            )
-            append(" | risk=")
-            append(
-                data.optString(
-                    "risk",
-                    "UNKNOWN"
+                .take(
+                    12
                 )
+
+        return buildString {
+            append(
+                "SecondBrain V"
             )
-            append(" ")
+
             append(
                 data.optInt(
-                    "riskScore",
+                    "schemaVersion",
                     -1
                 )
             )
-            append("/100")
-            append(" | security=")
+
+            append(
+                " | authority="
+            )
+
             append(
                 data.optString(
-                    "security",
+                    "authority",
                     "UNKNOWN"
                 )
             )
-            append(" | release=")
+
+            append(
+                " | basis="
+            )
+
+            append(
+                basis
+            )
+
+            append(
+                " | build="
+            )
+
             append(
                 data.optString(
-                    "release",
+                    "buildArchitecture",
                     "UNKNOWN"
                 )
             )
-            append(" | API=")
+
             append(
-                data.optInt(
-                    "apiRoutes",
-                    0
+                " | publisher="
+            )
+
+            append(
+                data.optString(
+                    "publisherAuthorization",
+                    "UNKNOWN"
                 )
             )
-            append(" | DB=")
+
             append(
-                data.optInt(
-                    "databaseTables",
-                    0
+                " | d1="
+            )
+
+            append(
+                data.optString(
+                    "d1Ledger",
+                    "UNKNOWN"
                 )
             )
-            append(" | tests=")
+
             append(
-                data.optInt(
-                    "tests",
-                    0
+                " | release="
+            )
+
+            append(
+                data.optString(
+                    "releaseGate",
+                    "UNKNOWN"
+                )
+            )
+
+            append(
+                " | live="
+            )
+
+            append(
+                data.optString(
+                    "liveState",
+                    "UNKNOWN"
                 )
             )
         }
