@@ -192,7 +192,7 @@ override this checkpoint.
 - The `unknown protocol: device` failure is prevented at the routing boundary
   and account/admin clients reject non-HTTPS production control-plane URLs.
 - Admin authorization is loaded from the authenticated server response.
-- Admin account management loads automatically when the screen opens.
+- Historical note: the then-present AdminAccountsScreen auto-loaded account management. That screen was removed on 2026-10-02 after zero production reachability was verified; active owner administration remains on current Admin Ops/control-plane surfaces.
 - The obsolete Autoscale dashboard and 10/25/50 real-build stress controls are
   removed from Android Admin Ops.
 - Update-policy failure retains the existing `Çevrimdışı devam et` path.

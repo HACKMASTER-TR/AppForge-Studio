@@ -27,5 +27,5 @@ This is a long-lived, multi-domain repository. The wiki therefore uses Full mode
 
 ## Boundaries
 
-- Live GitHub, Railway, Play Console, and production health are unknown until authenticated checks are run.
+- Live GitHub, Play Console, and production health remain unknown until authenticated checks are run. Railway is retired from the active project-build architecture and is not a current provider whose live status needs to be inferred.
 - This wiki does not replace the Android product’s local AI or Unified Agent features.

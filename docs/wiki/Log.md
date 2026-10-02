@@ -79,3 +79,18 @@ source_files: []
   `BuildApiClient`, Unified Agent resume behavior and Cloudflare control plane.
 - Boundaries: no application route deletion, D1 write/migration, deployment,
   `main` change or Play Production action.
+
+## 2026-10-02 — maintenance | Retired provider active claims removed
+
+- Confirmed by source audit that Railway, Render and remote autoscale runtime
+  providers are absent from production source.
+- Rewrote README text that still advertised Railway authorization and
+  remote-Worker performance behavior as active.
+- README now reflects device-local normal builds and Pro Ömür Boyu only.
+- Project Overview no longer treats Railway as a live provider with unknown
+  status.
+- Current Status now marks the removed AdminAccountsScreen as historical.
+- Negative retirement contracts, historical decisions and
+  `.appforge/fail-inventory` evidence remain preserved.
+- No control-plane source, D1 state, deployment, `main`, or Play Production
+  change was made.
