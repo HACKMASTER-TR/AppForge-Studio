@@ -222,6 +222,20 @@ internal object WindowsPublisherSigningPolicy {
             "Windows publisher signing etkin ancak güvenli sertifika sağlayıcısı henüz yapılandırılmadı."
         }
 
+        val authorization =
+            WindowsPublisherSigningAuthorizationClient
+                .authorizeAndConsume(
+                    context = context,
+                    target = target,
+                    buildId = buildId,
+                    offline = offline
+                )
+
+        onLog(
+            "🔐 Windows publisher authorization • server verified • " +
+                "one-time grant consumed."
+        )
+
         onLog(
             "🔐 Windows publisher signing • yönetici doğrulandı • provider=${provider.id}"
         )
@@ -232,6 +246,7 @@ internal object WindowsPublisherSigningPolicy {
             rootfs = rootfs,
             shell = shell,
             buildId = buildId,
+            authorization = authorization,
             offline = offline,
             onLog = onLog
         )
