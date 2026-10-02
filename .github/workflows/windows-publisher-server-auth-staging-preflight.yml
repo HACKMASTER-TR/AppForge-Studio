@@ -33,9 +33,11 @@ jobs:
           test "$GITHUB_REF" = \
             "refs/heads/audit/windows-publisher-server-auth-preflight-20261002"
 
-          test "$(git rev-parse HEAD^)" = "$SOURCE_HEAD"
+          git merge-base             --is-ancestor             "$SOURCE_HEAD"             HEAD
 
-          test "$(git diff --name-only HEAD^ HEAD)" = "$AUDIT_FILE"
+          test "$(
+            git diff               --name-only               "$SOURCE_HEAD"               HEAD
+          )" = "$AUDIT_FILE"
 
           test -f cloudflare/control-plane/src/index.mjs
           test -f .github/scripts/pro_cloudflare_auth_preflight.py
@@ -278,7 +280,20 @@ jobs:
           ):
               status, payload = get(route)
 
-              if status == 404:
+              if (
+                  status == 404
+                  and payload.get("error")
+                      in (
+                          "not_found",
+                          None,
+                      )
+              ):
+                  state = "NOT_DEPLOYED"
+              elif (
+                  status == 503
+                  and payload.get("error")
+                      == "admin_operation_not_migrated"
+              ):
                   state = "NOT_DEPLOYED"
               elif (
                   status == 405
