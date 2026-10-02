@@ -29,11 +29,25 @@ class AppForgeAgentIntelligenceTest {
     @Test
     fun secondBrainSnapshotParsesKnownSchema() {
         val snapshot = AppForgeAgentSecondBrainSnapshotParser.parse(
-            """{"version":"3.0.0","head":"abc123","branch":"main","risk":"ACCEPT","riskScore":15,"security":"GREEN","apiRoutes":83,"databaseTables":34,"migrations":25,"tests":279,"release":"REVIEW_REQUIRED","liveGithub":"OK","liveRailway":"CLI_ERROR"}"""
+            """{"schemaVersion":2,"project":"AppForge Studio","authority":"REPOSITORY_DERIVED","sourceBasisSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sourceBasisFileCount":578,"buildArchitecture":"DEVICE_LOCAL","publisherAuthorization":"STAGING_DEVICE_ACCEPTED","d1Ledger":"RECONCILED_0001_0005","d1Migrations":5,"wikiPages":39,"qualityContractFiles":224,"androidUnitTestFiles":52,"releaseGate":"REVIEW_REQUIRED","productionPublisherEndpoint":"DISABLED","liveState":"NOT_LIVE_QUERY"}"""
         )
-        assertEquals(83, snapshot.apiRoutes)
-        assertEquals(34, snapshot.databaseTables)
-        assertEquals("GREEN", snapshot.security)
+
+        assertEquals(2, snapshot.schemaVersion)
+        assertEquals("REPOSITORY_DERIVED", snapshot.authority)
+        assertEquals("DEVICE_LOCAL", snapshot.buildArchitecture)
+        assertEquals(
+            "STAGING_DEVICE_ACCEPTED",
+            snapshot.publisherAuthorization
+        )
+        assertEquals(
+            "RECONCILED_0001_0005",
+            snapshot.d1Ledger
+        )
+        assertEquals(5, snapshot.d1Migrations)
+        assertEquals(
+            "NOT_LIVE_QUERY",
+            snapshot.liveState
+        )
     }
 
     @Test
