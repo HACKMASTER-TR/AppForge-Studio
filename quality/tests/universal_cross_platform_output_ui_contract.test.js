@@ -33,7 +33,10 @@ test("universal output selector exposes ALL and keeps EXE enabled", () => {
 });
 
 test("all output has a clear APK AAB EXE summary", () => {
-  assert.match(main, /"APK \+ AAB \+ Windows EXE"/);
+  assert.match(
+    main,
+    /"APK \+ AAB \+ Windows Portable EXE"/
+  );
   assert.match(
     main,
     /Universal projede Android APK\/AAB ve Windows Portable EXE aynı kaynak paketinden birlikte oluşturulur\./

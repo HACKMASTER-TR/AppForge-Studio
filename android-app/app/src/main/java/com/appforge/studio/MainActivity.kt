@@ -19031,6 +19031,74 @@ private fun WindowsPublisherSigningAdminCard(
     }
 }
 
+private fun windowsExeModeLabel(
+    buildOutput: String
+): String =
+    when (
+        buildOutput
+            .trim()
+            .lowercase()
+    ) {
+        "native-exe",
+        "windows-native-exe" ->
+            "Windows Native EXE"
+
+        else ->
+            "Windows Portable EXE"
+    }
+
+
+private fun windowsExeModeRoute(
+    buildOutput: String
+): String =
+    when (
+        buildOutput
+            .trim()
+            .lowercase()
+    ) {
+        "native-exe",
+        "windows-native-exe" ->
+            "NATIVE • C/C++ • CMake + MinGW-w64 • Windows x64 PE"
+
+        else ->
+            "PORTABLE • AppForge Generic Host • Windows 10/11 x64"
+    }
+
+
+private fun windowsExeModeState(
+    buildOutput: String
+): String =
+    when (
+        buildOutput
+            .trim()
+            .lowercase()
+    ) {
+        "native-exe",
+        "windows-native-exe" ->
+            "EXPERIMENTAL"
+
+        else ->
+            "READY"
+    }
+
+
+private fun windowsExeDownloadButtonLabel(
+    buildOutput: String
+): String =
+    when (
+        buildOutput
+            .trim()
+            .lowercase()
+    ) {
+        "native-exe",
+        "windows-native-exe" ->
+            "NATIVE EXE'Yİ İNDİR"
+
+        else ->
+            "PORTABLE EXE'Yİ İNDİR"
+    }
+
+
 @Composable
 private fun BuildSettingsStep(
     draft: ProjectDraft,
@@ -19080,7 +19148,7 @@ private fun BuildSettingsStep(
 
             "all",
             "apk+aab+exe" ->
-                "APK + AAB + Windows EXE"
+                "APK + AAB + Windows Portable EXE"
 
             else ->
                 "APK"
@@ -19429,6 +19497,85 @@ private fun BuildSettingsStep(
             }
         }
 
+        if (
+            draft.buildOutput ==
+                "exe" ||
+            draft.buildOutput ==
+                "native-exe"
+        ) {
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                if (formCompact) 12.dp else 16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                6.dp
+                            )
+                    ) {
+                        Text(
+                            "Windows EXE motoru",
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            windowsExeModeLabel(
+                                draft.buildOutput
+                            ),
+                            color =
+                                Accent,
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            windowsExeModeRoute(
+                                draft.buildOutput
+                            ),
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+
+                        Text(
+                            "Durum: ${
+                                windowsExeModeState(
+                                    draft.buildOutput
+                                )
+                            }",
+                            fontSize =
+                                11.sp,
+                            color =
+                                if (
+                                    draft.buildOutput ==
+                                        "native-exe"
+                                ) {
+                                    Accent
+                                } else {
+                                    TextSecondary
+                                }
+                        )
+                    }
+                }
+            }
+        }
+
         item {
             Card(
                 colors =
@@ -19461,7 +19608,7 @@ private fun BuildSettingsStep(
                         "all",
                         "apk+aab+exe" -> {
                             Text(
-                                "APK + AAB + Windows EXE",
+                                "APK + AAB + Windows Portable EXE",
                                 fontWeight =
                                     FontWeight.Medium
                             )
@@ -19485,7 +19632,7 @@ private fun BuildSettingsStep(
 
                         "exe" -> {
                             Text(
-                                "Windows EXE",
+                                "Windows Portable EXE",
                                 fontWeight =
                                     FontWeight.Medium
                             )
@@ -19868,6 +20015,16 @@ private fun BuildStep(
     val scope =
         rememberCoroutineScope()
 
+    val windowsExeArtifactLabel =
+        windowsExeModeLabel(
+            buildOutput
+        )
+
+    val windowsExeDownloadButtonText =
+        windowsExeDownloadButtonLabel(
+            buildOutput
+        )
+
     var showBuildTechnicalDetails by
         rememberSaveable {
             mutableStateOf(false)
@@ -19991,7 +20148,7 @@ private fun BuildStep(
                 scope.launch {
                     try {
                         downloadMessage =
-                            "Windows EXE indiriliyor..."
+                            "$windowsExeArtifactLabel indiriliyor..."
 
                         val ticket =
                             withContext(
@@ -20018,13 +20175,13 @@ private fun BuildStep(
                         }
 
                         downloadMessage =
-                            "✅ Windows EXE başarıyla kaydedildi."
+                            "✅ $windowsExeArtifactLabel başarıyla kaydedildi."
 
                     } catch (
                         t: Throwable
                     ) {
                         downloadMessage =
-                            "EXE indirme hatası: ${t.message}"
+                            "$windowsExeArtifactLabel indirme hatası: ${t.message}"
                     }
                 }
             }
@@ -21359,7 +21516,7 @@ private fun BuildStep(
                             exeUrl != null
                         ) {
                             Text(
-                                "✓ Windows EXE hazır",
+                                "✓ $windowsExeArtifactLabel hazır",
                                 fontSize =
                                     12.sp
                             )
@@ -22114,7 +22271,7 @@ private fun BuildStep(
                             scope.launch {
                                 try {
                                     downloadMessage =
-                                        "Windows EXE indiriliyor..."
+                                        "$windowsExeArtifactLabel indiriliyor..."
 
                                     val ticket =
                                         withContext(
@@ -22163,11 +22320,11 @@ private fun BuildStep(
                                             Build.VERSION_CODES.Q
                                     ) {
                                         downloadMessage =
-                                            "✅ Windows EXE indirildi • Downloads/AppForgeStudio ve " +
+                                            "✅ $windowsExeArtifactLabel indirildi • Downloads/AppForgeStudio ve " +
                                                 "AppForge Dosyaları/APK bölümüne kaydedildi."
                                     } else {
                                         downloadMessage =
-                                            "✅ Windows EXE özel kopyası kaydedildi. Public hedefi seç..."
+                                            "✅ $windowsExeArtifactLabel özel kopyası kaydedildi. Public hedefi seç..."
 
                                         exeSaveLauncher.launch(
                                             fileName
@@ -22178,7 +22335,7 @@ private fun BuildStep(
                                     t: Throwable
                                 ) {
                                     downloadMessage =
-                                        "EXE indirme hatası: ${t.message}"
+                                        "$windowsExeArtifactLabel indirme hatası: ${t.message}"
                                 }
                             }
 
@@ -22189,7 +22346,7 @@ private fun BuildStep(
                             scope.launch {
                                 try {
                                     downloadMessage =
-                                        "Windows EXE indiriliyor..."
+                                        "$windowsExeArtifactLabel indiriliyor..."
 
                                     val ticket =
                                         withContext(
@@ -22216,13 +22373,13 @@ private fun BuildStep(
                                     }
 
                                     downloadMessage =
-                                        "✅ Windows EXE Downloads/AppForgeStudio klasörüne kaydedildi."
+                                        "✅ $windowsExeArtifactLabel Downloads/AppForgeStudio klasörüne kaydedildi."
 
                                 } catch (
                                     t: Throwable
                                 ) {
                                     downloadMessage =
-                                        "EXE indirme hatası: ${t.message}"
+                                        "$windowsExeArtifactLabel indirme hatası: ${t.message}"
                                 }
                             }
                         } else {
@@ -22235,7 +22392,7 @@ private fun BuildStep(
                         Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        "WINDOWS EXE'Yİ İNDİR"
+                        windowsExeDownloadButtonText
                     )
                 }
             }
@@ -24233,6 +24390,24 @@ private fun BuildHistoryScreen(onBack: () -> Unit) {
                                 fontSize = 12.sp
                             )
                             Text("Durum: ${b.status}", color = TextSecondary)
+
+                            if (
+                                b.exeUrl != null &&
+                                b.buildOutput.isNotBlank()
+                            ) {
+                                Text(
+                                    "Windows motoru: ${
+                                        windowsExeModeLabel(
+                                            b.buildOutput
+                                        )
+                                    }",
+                                    color =
+                                        Accent,
+                                    fontSize =
+                                        11.sp
+                                )
+                            }
+
                             Text(
                                 DateFormat.getDateTimeInstance().format(Date(b.createdAt)),
                                 color = TextSecondary,

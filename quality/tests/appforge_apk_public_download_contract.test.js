@@ -114,12 +114,19 @@ test(
         "\"AAB'Yİ İNDİR\""
       );
 
+    const exeArtifactBlock =
+      main.indexOf(
+        "if (\n            artifactPublicationReady &&\n            exeUrl != null"
+      );
+
     const exeButton =
       main.indexOf(
-        "\"WINDOWS EXE'Yİ İNDİR\""
+        "windowsExeDownloadButtonText",
+        exeArtifactBlock
       );
 
     assert.notEqual(aabButton, -1);
+    assert.notEqual(exeArtifactBlock, -1);
     assert.notEqual(exeButton, -1);
 
     const aabStart =

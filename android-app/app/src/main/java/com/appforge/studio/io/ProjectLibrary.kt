@@ -36,6 +36,7 @@ data class SavedBuild(
     val apkUrl: String?,
     val aabUrl: String?,
     val exeUrl: String? = null,
+    val buildOutput: String = "",
     val buildNo: Long? = null
 )
 
@@ -1016,6 +1017,7 @@ object ProjectLibrary {
                 apkUrl = apkUrl,
                 aabUrl = aabUrl,
                 exeUrl = exeUrl,
+                buildOutput = draft.buildOutput,
                 buildNo = buildNo
             )
         )
@@ -1032,6 +1034,7 @@ object ProjectLibrary {
                     put("apkUrl", b.apkUrl)
                     put("aabUrl", b.aabUrl)
                     put("exeUrl", b.exeUrl)
+                    put("buildOutput", b.buildOutput)
                     put("buildNo", b.buildNo)
                 }
             )
@@ -1058,6 +1061,7 @@ object ProjectLibrary {
                             apkUrl = o.optString("apkUrl").takeIf { it.isNotBlank() && it != "null" },
                             aabUrl = o.optString("aabUrl").takeIf { it.isNotBlank() && it != "null" },
                             exeUrl = o.optString("exeUrl").takeIf { it.isNotBlank() && it != "null" },
+                            buildOutput = o.optString("buildOutput", ""),
                             buildNo =
                                 o.optLong(
                                     "buildNo",

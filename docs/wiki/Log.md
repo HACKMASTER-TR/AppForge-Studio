@@ -114,3 +114,20 @@ source_files: []
 - `.appforge` backups and fail-inventory evidence remain preserved.
 - No D1 write, Cloudflare deployment, Play Production action, `main` mutation
   or PR merge was performed.
+
+## 2026-10-02 — feature | Windows EXE mode UX V1
+
+- Builder now presents Windows Portable EXE and Windows Native EXE as two
+  explicit Windows output engines instead of a generic Windows EXE label.
+- Portable EXE remains READY for compatible Web/Node/Universal projects and
+  uses the AppForge Generic Host.
+- Native EXE remains EXPERIMENTAL for C/C++/CMake sources and uses the
+  device-local CMake + MinGW-w64 Windows x64 PE path.
+- Build result status, download action and build history identify the selected
+  Windows EXE engine.
+- Build history now persists `buildOutput` with a backwards-compatible empty
+  default for older records.
+- No engine readiness promotion was performed.
+- PR #63 portable physical acceptance remains pending for the Tulpar test.
+- No merge, Play Production action, D1 write or Cloudflare deployment was
+  performed.
