@@ -64,3 +64,18 @@ source_files: []
 - Boundaries: no new D1 migration, no `main` change, no Play Production change
   and no draft PR merge.
 - Remaining: real Windows Authenticode physical end-to-end acceptance.
+
+## 2026-10-02 — maintenance | Stale backend documentation reconciled
+
+- Summary: Reclassified the former Express/Worker Build Service as historical,
+  rewrote the active backend map around device-local project builds and the
+  Cloudflare control plane, and replaced the stale PostgreSQL database map
+  with the reconciled D1 0001–0005 schema.
+- BUG-7: the legacy-brain validation page is now resolved; it no longer claims
+  an active device blocker.
+- Navigation: Wiki task routing no longer sends current build work to retired
+  Express/queue documentation.
+- Preserved: `docs/delete-account.html`, active `AppForgeAccountClient`,
+  `BuildApiClient`, Unified Agent resume behavior and Cloudflare control plane.
+- Boundaries: no application route deletion, D1 write/migration, deployment,
+  `main` change or Play Production action.

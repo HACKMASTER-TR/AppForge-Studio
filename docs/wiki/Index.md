@@ -29,10 +29,10 @@ source_files: []
 | Task Type | Read First | Then Read | Then Inspect |
 |---|---|---|---|
 | Android UI or local feature | [[Android_App_Map]] | [[Feature_Overview]], [[Security_And_Entitlements]] | Android Kotlin and tests |
-| Build API, queue, or artifact | [[Build_Service_Map]] | [[Build_And_Worker_Architecture]], [[Database_Map]] | Express routes and service modules |
+| Build, artifact, or engine | [[Build_And_Worker_Architecture]] | [[Worker_And_Artifact_Flow]], [[Device_Build_Runtime_V3]] | DeviceBuildEngine, BuildApiClient and build contracts |
 | Auth, billing, or account | [[Security_And_Entitlements]] | [[Integration_Index]], [[Database_Map]] | Auth, Play, and client hardening code |
 | Windows publisher signing | [[Windows_Publisher_Authorization]] | [[Security_And_Entitlements]], [[Deployment_And_CI]] | Publisher authorization client/provider, control plane and contracts |
-| Worker or deployment | [[Deployment_And_CI]] | [[Build_And_Worker_Architecture]], [[Current_Status]] | Docker, worker, and workflow files |
+| Control plane or deployment | [[Deployment_And_CI]] | [[Backend_API_Domains]], [[Current_Status]] | Cloudflare control plane and workflow files |
 | Terminal or developer tools | [[Terminal_And_Developer_Tools]] | [[Android_App_Map]], [[Account_And_Security_Map]] | terminal Kotlin modules and contracts |
 | Bug or test failure | [[Bug_Index]] | [[Current_Status]], [[Open_Questions]] | named test and its source files |
 | Architecture change | [[System_Architecture]] | [[Decision_Index]], affected maps | related source, config, migrations, and tests |
@@ -46,7 +46,8 @@ source_files: []
 - [[Current_Status]]
 - [[Feature_Overview]]
 - [[System_Architecture]]
-- [[Build_Service_Map]]
+- [[Backend_API_Domains]]
+- [[Build_Service_Map]] — historical / retired
 - [[Android_App_Map]]
 - [[Terminal_And_Developer_Tools]]
 - [[Local_AI_And_Agent_Map]]
