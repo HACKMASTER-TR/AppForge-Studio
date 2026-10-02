@@ -84,6 +84,18 @@ else
     fail "Secret hygiene guard"
 fi
 
+if python3 scripts/repository-hygiene-check.py; then
+    pass "Repository hygiene guard"
+else
+    fail "Repository hygiene guard"
+fi
+
+if python3 scripts/generate-second-brain-snapshot.py --check; then
+    pass "Second Brain deterministic snapshot"
+else
+    fail "Second Brain deterministic snapshot"
+fi
+
 is_android_proot() {
     if [ -x /system/bin/app_process ] || [ -x /system/bin/getprop ]; then
         return 0
@@ -298,11 +310,15 @@ else
     fail "Second Brain wiki audit syntax"
 fi
 
-if python3 -m py_compile scripts/wiki-secret-scan.py scripts/wiki-prune-report.py
+if python3 -m py_compile \
+    scripts/wiki-secret-scan.py \
+    scripts/wiki-prune-report.py \
+    scripts/repository-hygiene-check.py \
+    scripts/generate-second-brain-snapshot.py
 then
-    pass "Second Brain wiki Python syntax"
+    pass "Second Brain / hygiene Python syntax"
 else
-    fail "Second Brain wiki Python syntax"
+    fail "Second Brain / hygiene Python syntax"
 fi
 
 echo

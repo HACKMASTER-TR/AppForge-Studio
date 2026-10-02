@@ -49,3 +49,13 @@ __pycache__/
 gha-creds-*.json
 *.bak
 /worker-log.txt
+
+# Repository hygiene
+/AppForgeStudio-latest.apk
+*.tmp
+*.temp
+*.orig
+*.rej
+*.swp
+*.save
+*~

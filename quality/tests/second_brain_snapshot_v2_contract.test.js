@@ -43,15 +43,6 @@ const screen =
     "utf8"
   );
 
-const agent =
-  fs.readFileSync(
-    path.join(
-      repo,
-      "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAgentSecondBrain.kt"
-    ),
-    "utf8"
-  );
-
 const bridge =
   fs.readFileSync(
     path.join(
@@ -226,12 +217,11 @@ test(
 );
 
 test(
-  "Second Brain UI and AI consume schema V2",
+  "Second Brain UI and AI bridge consume schema V2",
   () => {
     for (
       const source of [
         screen,
-        agent,
         bridge
       ]
     ) {
@@ -253,11 +243,6 @@ test(
 
     assert.doesNotMatch(
       screen,
-      /riskScore|apiRoutes|databaseTables|liveGithub/
-    );
-
-    assert.doesNotMatch(
-      agent,
       /riskScore|apiRoutes|databaseTables|liveGithub/
     );
 

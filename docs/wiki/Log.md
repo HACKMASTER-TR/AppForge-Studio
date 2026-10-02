@@ -94,3 +94,23 @@ source_files: []
   `.appforge/fail-inventory` evidence remain preserved.
 - No control-plane source, D1 state, deployment, `main`, or Play Production
   change was made.
+
+## 2026-10-02 — maintenance | Final repository hygiene gate
+
+- Removed five source files with no reachable production path:
+  `UniversalLanguageSupport.kt`,
+  `AppForgeAgentIntelligentBlueprintProvider.kt`,
+  `AppForgeAgentProductionCoordinator.kt`,
+  `AppForgeAgentSecondBrain.kt`, and
+  `ExcelToolsHistoryStore.kt`.
+- The removed V9 intelligent-provider / Second Brain pair was a test-only
+  unreachable cluster. Active Second Brain V2 integration remains separate.
+- Removed tracked `AppForgeStudio-latest.apk`; Android Debug continues to
+  generate it as a transient CI artifact and the owner Terminal command
+  resolves the successful exact-HEAD Actions artifact.
+- Added permanent repository hygiene rules and a reusable hygiene guard.
+- Hard Stability Gate and local pre-push now enforce repository hygiene and
+  deterministic Second Brain snapshot freshness.
+- `.appforge` backups and fail-inventory evidence remain preserved.
+- No D1 write, Cloudflare deployment, Play Production action, `main` mutation
+  or PR merge was performed.

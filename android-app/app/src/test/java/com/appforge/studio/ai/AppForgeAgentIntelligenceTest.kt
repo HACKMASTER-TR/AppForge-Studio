@@ -7,48 +7,6 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 class AppForgeAgentIntelligenceTest {
-    private val validBlueprintJson = """
-        {
-          "schemaVersion":1,
-          "appName":"TaskFlow",
-          "prompt":"Görev uygulaması",
-          "platform":"ANDROID",
-          "startRoute":"/home",
-          "screens":[{
-            "id":"home",
-            "title":"Ana Sayfa",
-            "route":"/home",
-            "purpose":"Görevleri gösterir",
-            "components":["TaskList"],
-            "actions":[]
-          }],
-          "maxRepairAttempts":2
-        }
-    """.trimIndent()
-
-    @Test
-    fun secondBrainSnapshotParsesKnownSchema() {
-        val snapshot = AppForgeAgentSecondBrainSnapshotParser.parse(
-            """{"schemaVersion":2,"project":"AppForge Studio","authority":"REPOSITORY_DERIVED","sourceBasisSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sourceBasisFileCount":578,"buildArchitecture":"DEVICE_LOCAL","publisherAuthorization":"STAGING_DEVICE_ACCEPTED","d1Ledger":"RECONCILED_0001_0005","d1Migrations":5,"wikiPages":39,"qualityContractFiles":224,"androidUnitTestFiles":52,"releaseGate":"REVIEW_REQUIRED","productionPublisherEndpoint":"DISABLED","liveState":"NOT_LIVE_QUERY"}"""
-        )
-
-        assertEquals(2, snapshot.schemaVersion)
-        assertEquals("REPOSITORY_DERIVED", snapshot.authority)
-        assertEquals("DEVICE_LOCAL", snapshot.buildArchitecture)
-        assertEquals(
-            "STAGING_DEVICE_ACCEPTED",
-            snapshot.publisherAuthorization
-        )
-        assertEquals(
-            "RECONCILED_0001_0005",
-            snapshot.d1Ledger
-        )
-        assertEquals(5, snapshot.d1Migrations)
-        assertEquals(
-            "NOT_LIVE_QUERY",
-            snapshot.liveState
-        )
-    }
 
     @Test
     fun sensitiveContextNeverEntersPacket() {
@@ -129,37 +87,6 @@ class AppForgeAgentIntelligenceTest {
             cloudAvailable = true
         )
         assertEquals(AppForgeAgentAiRoute.CLOUD, plan.route)
-    }
-
-    @Test
-    fun hybridUsesLocalFirstAndDoesNotCallCloudOnValidOutput() {
-        var cloudCalls = 0
-        val provider = AppForgeAgentIntelligentBlueprintProvider(
-            localProvider = AppForgeAgentRawAiProviderV9 { validBlueprintJson },
-            cloudProvider = AppForgeAgentRawAiProviderV9 {
-                cloudCalls += 1
-                validBlueprintJson
-            }
-        )
-        val output = provider.createBlueprint("Build API backed notes app")
-        assertEquals(validBlueprintJson, output)
-        assertEquals(0, cloudCalls)
-        assertEquals(AppForgeAgentAiRoute.HYBRID, provider.lastPlan?.route)
-    }
-
-    @Test
-    fun hybridFallsBackToCloudWhenLocalOutputIsInvalid() {
-        var cloudCalls = 0
-        val provider = AppForgeAgentIntelligentBlueprintProvider(
-            localProvider = AppForgeAgentRawAiProviderV9 { "not-json" },
-            cloudProvider = AppForgeAgentRawAiProviderV9 {
-                cloudCalls += 1
-                validBlueprintJson
-            }
-        )
-        val output = provider.createBlueprint("Build database backed notes app")
-        assertEquals(validBlueprintJson, output)
-        assertEquals(1, cloudCalls)
     }
 
     @Test
