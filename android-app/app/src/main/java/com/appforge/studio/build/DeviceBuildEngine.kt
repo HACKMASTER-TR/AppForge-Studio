@@ -551,7 +551,7 @@ object DeviceBuildEngine {
             rootfs,
             workspace,
             state,
-            "/opt/appforge-device/ensure-gradle ${sh(gradleVersion)}",
+            "APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} /opt/appforge-device/ensure-gradle ${sh(gradleVersion)}",
             "gradle-$gradleVersion"
         ).lineSequence().lastOrNull { it.isNotBlank() }?.trim()
             ?: error("Gradle hazırlanamadı.")
