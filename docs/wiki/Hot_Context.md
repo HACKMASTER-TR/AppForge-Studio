@@ -70,3 +70,24 @@ source_files:
 - [[Deployment_And_CI]]
 - [[Security_And_Entitlements]]
 - [[Open_Questions]]
+
+## Windows Output Artifact Flow V2
+
+<!-- APPFORGE_WINDOWS_OUTPUT_ARTIFACT_FLOW_V2_HOT -->
+
+- Windows Portable EXE and Windows Native EXE now have separate artifact
+  identities throughout Builder ticketing, persisted history recovery and
+  public Downloads classification.
+- Portable ticket is `exe`; Native ticket is `native-exe`.
+- Portable output filename is `*_windows-portable.exe`; Native output filename
+  is `*_windows-native.exe`.
+- Legacy generic EXE remains Portable for backward compatibility.
+- Legacy Unified Agent history rejects Native artifact requests fail-closed.
+- Permanent V2 artifact-flow contract is 8/8 PASS.
+- Full Quality after V2 is 814/814 PASS.
+- Windows Native remains EXPERIMENTAL; physical Windows acceptance remains a
+  separate gate.
+- No protected-main mutation, PR merge, Play Production action, D1 write,
+  Cloudflare deployment or failover change is part of V2.
+
+Read next: [[Windows_Output_Artifact_Flow_V2]]

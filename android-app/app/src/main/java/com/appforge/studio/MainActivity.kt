@@ -19099,6 +19099,23 @@ private fun windowsExeDownloadButtonLabel(
     }
 
 
+private fun windowsExeDownloadTicketType(
+    buildOutput: String
+): String =
+    when (
+        buildOutput
+            .trim()
+            .lowercase()
+    ) {
+        "native-exe",
+        "windows-native-exe" ->
+            "native-exe"
+
+        else ->
+            "exe"
+    }
+
+
 @Composable
 private fun BuildSettingsStep(
     draft: ProjectDraft,
@@ -20160,7 +20177,7 @@ private fun BuildStep(
                                     apiKey
                                 ).createDownloadTicket(
                                     id,
-                                    "exe"
+                                    windowsExeDownloadTicketType(buildOutput)
                                 )
                             }
 
@@ -22284,7 +22301,7 @@ private fun BuildStep(
                                             )
                                                 .createDownloadTicket(
                                                     id,
-                                                    "exe"
+                                                    windowsExeDownloadTicketType(buildOutput)
                                                 )
                                         }
 
@@ -22358,7 +22375,7 @@ private fun BuildStep(
                                                 apiKey
                                             ).createDownloadTicket(
                                                 id,
-                                                "exe"
+                                                windowsExeDownloadTicketType(buildOutput)
                                             )
                                         }
 

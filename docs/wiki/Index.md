@@ -30,6 +30,7 @@ source_files: []
 |---|---|---|---|
 | Android UI or local feature | [[Android_App_Map]] | [[Feature_Overview]], [[Security_And_Entitlements]] | Android Kotlin and tests |
 | Build, artifact, or engine | [[Build_And_Worker_Architecture]] | [[Worker_And_Artifact_Flow]], [[Device_Build_Runtime_V3]] | DeviceBuildEngine, BuildApiClient and build contracts |
+| Windows artifact identity or download | [[Windows_Output_Artifact_Flow_V2]] | [[Device_Build_Runtime_V3]], [[Windows_Publisher_Authorization]] | BuildArtifactModel, BuildApiClient, DownloadedApkFolder and Windows artifact contracts |
 | Auth, billing, or account | [[Security_And_Entitlements]] | [[Integration_Index]], [[Database_Map]] | Auth, Play, and client hardening code |
 | Windows publisher signing | [[Windows_Publisher_Authorization]] | [[Security_And_Entitlements]], [[Deployment_And_CI]] | Publisher authorization client/provider, control plane and contracts |
 | Control plane or deployment | [[Deployment_And_CI]] | [[Backend_API_Domains]], [[Current_Status]] | Cloudflare control plane and workflow files |
@@ -56,3 +57,4 @@ source_files: []
 - [[Bug_Index]]
 - [[Decision_Index]]
 - [[Device_Build_Runtime_V3]]
+- [[Windows_Output_Artifact_Flow_V2]]

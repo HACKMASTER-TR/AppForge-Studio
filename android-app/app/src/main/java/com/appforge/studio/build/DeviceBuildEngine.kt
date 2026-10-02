@@ -65,6 +65,7 @@ object DeviceBuildEngine {
         @Volatile var apk: File? = null,
         @Volatile var aab: File? = null,
         @Volatile var exe: File? = null,
+        @Volatile var windowsArtifactKind: DeviceArtifactKind? = null,
         @Volatile var shell: LinuxShellEngine? = null,
         @Volatile var shellSessionId: String? = null
     )
@@ -119,23 +120,45 @@ object DeviceBuildEngine {
         }
 
     fun artifact(id: String, kind: String): File? {
-        val state = jobs[id] ?: return null
+        val state =
+            jobs[id]
+                ?: return null
+
+        val normalizedKind =
+            kind
+                .trim()
+                .lowercase()
 
         val file =
             when (
-                kind
-                    .trim()
-                    .lowercase()
+                normalizedKind
             ) {
+                "apk" ->
+                    state.apk
+
                 "aab" ->
                     state.aab
 
                 "exe",
-                "windows-exe" ->
+                "windows-exe",
+                "portable-exe",
+                "windows-portable-exe" ->
                     state.exe
+                        ?.takeIf {
+                            state.windowsArtifactKind ==
+                                DeviceArtifactKind.WINDOWS_EXE
+                        }
+
+                "native-exe",
+                "windows-native-exe" ->
+                    state.exe
+                        ?.takeIf {
+                            state.windowsArtifactKind ==
+                                DeviceArtifactKind.WINDOWS_NATIVE_EXE
+                        }
 
                 else ->
-                    state.apk
+                    null
             }
 
         return file
@@ -235,6 +258,27 @@ object DeviceBuildEngine {
             val wantsWindowsNativeExe =
                 DeviceArtifactKind.WINDOWS_NATIVE_EXE in
                     requestedOutputs
+
+            check(
+                !(
+                    wantsWindowsExe &&
+                    wantsWindowsNativeExe
+                )
+            ) {
+                "Portable EXE ve Native EXE aynı artifact kanalını paylaşamaz."
+            }
+
+            state.windowsArtifactKind =
+                when {
+                    wantsWindowsNativeExe ->
+                        DeviceArtifactKind.WINDOWS_NATIVE_EXE
+
+                    wantsWindowsExe ->
+                        DeviceArtifactKind.WINDOWS_EXE
+
+                    else ->
+                        null
+                }
 
             state.preflight.add("✅ Build cihaz üzerinde çalışacak.")
             state.preflight.add("✅ Worker / queue / cloud build kullanılmıyor.")

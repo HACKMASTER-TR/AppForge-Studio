@@ -131,3 +131,25 @@ source_files: []
 - PR #63 portable physical acceptance remains pending for the Tulpar test.
 - No merge, Play Production action, D1 write or Cloudflare deployment was
   performed.
+
+## 2026-10-02 — feature | Windows Output Artifact Flow V2
+
+<!-- APPFORGE_WINDOWS_OUTPUT_ARTIFACT_FLOW_V2_LOG -->
+
+- Separated Windows Portable and Windows Native artifact identities beyond the
+  V1 UI layer into ticketing, persisted recovery, filename generation and
+  public Downloads classification.
+- Portable uses ticket `exe`; Native uses ticket `native-exe`.
+- Added explicit `*_windows-portable.exe` and `*_windows-native.exe`
+  identities.
+- Legacy generic EXE remains Portable.
+- Legacy Unified Agent Native lookup fails closed instead of inferring Native
+  from old EXE history.
+- Added permanent artifact-flow regression coverage: 8/8 PASS.
+- Updated stale history tests to be whitespace-tolerant without weakening exact
+  Build ID and fail-closed recovery contracts.
+- Full Quality completed 814/814 PASS.
+- Boundaries: no PR merge, protected-main mutation, Play Production action, D1
+  write/migration, Cloudflare deployment or failover change.
+- Remaining external gates: Portable/Native physical Windows acceptance and
+  physical Authenticode acceptance.

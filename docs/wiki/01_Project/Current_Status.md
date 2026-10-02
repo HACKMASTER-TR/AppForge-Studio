@@ -443,3 +443,29 @@ observed: navigating away from an active build and returning to step 10 can
 show `Hazır / %0` and the normal build button while the actual engine job
 continues. V25.1 must restore the active build identity/state on Builder
 re-entry and must prevent a duplicate build action while that job is active.
+
+## 2026-10-02 — Windows Output Artifact Flow V2
+
+<!-- APPFORGE_WINDOWS_OUTPUT_ARTIFACT_FLOW_V2_STATUS -->
+
+Status: SOURCE + TARGETED + FULL QUALITY PASS.
+
+Verified contracts:
+
+- Portable download ticket: `exe`
+- Native download ticket: `native-exe`
+- Portable filename: `*_windows-portable.exe`
+- Native filename: `*_windows-native.exe`
+- persisted build history distinguishes Portable and Native through
+  `buildOutput`
+- Native/Portable cross-resolution fails closed
+- legacy generic EXE remains Portable
+- legacy Unified Agent cannot resolve a Native artifact from historical EXE
+- Downloads explicitly classify Native and Portable before generic EXE fallback
+- permanent V2 contract: 8/8 PASS
+- Full Quality: 814/814 PASS
+
+Windows Native remains EXPERIMENTAL. Portable and Native physical Windows
+acceptance remains outside this source gate.
+
+See [[Windows_Output_Artifact_Flow_V2]].
