@@ -23,6 +23,7 @@ internal interface WindowsPublisherSigningProvider {
         rootfs: File,
         shell: LinuxShellEngine,
         buildId: String,
+        authorization: WindowsPublisherSigningAuthorization,
         offline: Boolean,
         onLog: (String) -> Unit
     )
@@ -64,6 +65,7 @@ internal object LocalPkcs12WindowsPublisherSigningProvider :
         rootfs: File,
         shell: LinuxShellEngine,
         buildId: String,
+        authorization: WindowsPublisherSigningAuthorization,
         offline: Boolean,
         onLog: (String) -> Unit
     ) {
@@ -92,6 +94,12 @@ internal object LocalPkcs12WindowsPublisherSigningProvider :
         ) {
             "Windows publisher signing input EXE geçersiz."
         }
+
+        WindowsPublisherSigningAuthorizationClient
+            .requireArtifactMatch(
+                target = target,
+                authorization = authorization
+            )
 
         /*
          * SELF_SIGNED_DEBUG_ACCEPTANCE_V1
@@ -162,6 +170,12 @@ internal object LocalPkcs12WindowsPublisherSigningProvider :
                 unsigned,
                 overwrite = true
             )
+
+            WindowsPublisherSigningAuthorizationClient
+                .requireArtifactMatch(
+                    target = unsigned,
+                    authorization = authorization
+                )
 
             WindowsPublisherSigningStore
                 .materializeInto(

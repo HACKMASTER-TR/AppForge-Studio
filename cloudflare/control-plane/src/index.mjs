@@ -18,6 +18,347 @@ const json = (value, status = 200) => new Response(JSON.stringify(value), {
 const fail = (code, status = 503) => json({ ok: false, error: code }, status);
 const ready = env => typeof env?.DB?.prepare === 'function';
 
+const WINDOWS_SIGNING_PURPOSE =
+  'windows-publisher-signing-v1';
+
+const WINDOWS_SIGNING_GRANT_TTL_SECONDS =
+  120;
+
+const windowsSigningGrantRoute = pathname =>
+  pathname === '/api/admin/windows-signing/grant' ||
+  pathname === '/api/admin/windows-signing/consume';
+
+const validWindowsSigningRequest = body =>
+  body &&
+  body.purpose === WINDOWS_SIGNING_PURPOSE &&
+  typeof body.buildId === 'string' &&
+  /^[A-Za-z0-9._:-]{1,160}$/.test(body.buildId) &&
+  typeof body.artifactSha256 === 'string' &&
+  /^[0-9a-f]{64}$/.test(body.artifactSha256) &&
+  typeof body.requestNonce === 'string' &&
+  /^[A-Za-z0-9_-]{43,128}$/.test(body.requestNonce);
+
+async function signingSha256(value) {
+  const bytes =
+    new TextEncoder()
+      .encode(value);
+
+  const digest =
+    await crypto.subtle.digest(
+      'SHA-256',
+      bytes
+    );
+
+  return [...new Uint8Array(digest)]
+    .map(
+      byte =>
+        byte
+          .toString(16)
+          .padStart(2, '0')
+    )
+    .join('');
+}
+
+async function windowsSigningBinding(
+  verifiedAdminHash,
+  grant
+) {
+  return signingSha256(
+    [
+      verifiedAdminHash,
+      grant.grantId,
+      grant.purpose,
+      grant.buildId,
+      grant.artifactSha256,
+      grant.requestNonce,
+      String(grant.issuedAt),
+      String(grant.expiresAt)
+    ].join('\n')
+  );
+}
+
+async function handleWindowsSigningAuthorization(
+  request,
+  env,
+  verifiedAdminHash,
+  pathname
+) {
+  if (request.method !== 'POST') {
+    return fail(
+      'method_not_allowed',
+      405
+    );
+  }
+
+  if (
+    (Number(
+      request.headers.get(
+        'content-length'
+      )
+    ) || 0) > 4096
+  ) {
+    return fail(
+      'invalid_signing_request',
+      400
+    );
+  }
+
+  const raw =
+    await request.text();
+
+  if (raw.length > 4096) {
+    return fail(
+      'invalid_signing_request',
+      400
+    );
+  }
+
+  let body;
+
+  try {
+    body =
+      JSON.parse(raw);
+  } catch {
+    return fail(
+      'invalid_signing_request',
+      400
+    );
+  }
+
+  if (
+    !validWindowsSigningRequest(body)
+  ) {
+    return fail(
+      'invalid_signing_request',
+      400
+    );
+  }
+
+  const now =
+    Math.floor(
+      Date.now() / 1000
+    );
+
+  if (
+    pathname ===
+      '/api/admin/windows-signing/grant'
+  ) {
+    const grant = {
+      grantId:
+        crypto.randomUUID(),
+
+      purpose:
+        WINDOWS_SIGNING_PURPOSE,
+
+      buildId:
+        body.buildId,
+
+      artifactSha256:
+        body.artifactSha256,
+
+      requestNonce:
+        body.requestNonce,
+
+      issuedAt:
+        now,
+
+      expiresAt:
+        now +
+        WINDOWS_SIGNING_GRANT_TTL_SECONDS
+    };
+
+    const binding =
+      await windowsSigningBinding(
+        verifiedAdminHash,
+        grant
+      );
+
+    try {
+      const saved =
+        await env.DB.prepare(
+          `INSERT INTO audit_events
+           (id, event_kind, actor_reference_hash, created_at)
+           VALUES (?, ?, ?, ?)`
+        ).bind(
+          `windows-signing-grant-issue:${grant.grantId}`,
+          'windows_signing_grant_issued',
+          binding,
+          grant.issuedAt
+        ).run();
+
+      if (
+        saved?.meta?.changes !== 1
+      ) {
+        return fail(
+          'signing_grant_storage_unavailable',
+          503
+        );
+      }
+    } catch {
+      return fail(
+        'signing_grant_storage_unavailable',
+        503
+      );
+    }
+
+    return json(
+      {
+        ok: true,
+        ...grant
+      },
+      201
+    );
+  }
+
+  if (
+    typeof body.grantId !== 'string' ||
+    !/^[0-9a-f-]{36}$/.test(
+      body.grantId
+    ) ||
+    !Number.isSafeInteger(
+      body.issuedAt
+    ) ||
+    !Number.isSafeInteger(
+      body.expiresAt
+    )
+  ) {
+    return fail(
+      'invalid_signing_grant',
+      400
+    );
+  }
+
+  const grant = {
+    grantId:
+      body.grantId,
+
+    purpose:
+      body.purpose,
+
+    buildId:
+      body.buildId,
+
+    artifactSha256:
+      body.artifactSha256,
+
+    requestNonce:
+      body.requestNonce,
+
+    issuedAt:
+      body.issuedAt,
+
+    expiresAt:
+      body.expiresAt
+  };
+
+  if (
+    grant.issuedAt > now + 60 ||
+    grant.issuedAt < now - 300 ||
+    grant.expiresAt <= now ||
+    grant.expiresAt -
+      grant.issuedAt < 1 ||
+    grant.expiresAt -
+      grant.issuedAt > 180
+  ) {
+    return fail(
+      'signing_grant_expired',
+      409
+    );
+  }
+
+  const binding =
+    await windowsSigningBinding(
+      verifiedAdminHash,
+      grant
+    );
+
+  const issueId =
+    `windows-signing-grant-issue:${grant.grantId}`;
+
+  const consumeId =
+    `windows-signing-grant-use:${grant.grantId}`;
+
+  try {
+    const issued =
+      await env.DB.prepare(
+        `SELECT created_at
+         FROM audit_events
+         WHERE id = ?
+           AND event_kind = ?
+           AND actor_reference_hash = ?`
+      ).bind(
+        issueId,
+        'windows_signing_grant_issued',
+        binding
+      ).first();
+
+    if (
+      Number(
+        issued?.created_at
+      ) !== grant.issuedAt
+    ) {
+      return fail(
+        'signing_grant_invalid',
+        403
+      );
+    }
+
+    const alreadyUsed =
+      await env.DB.prepare(
+        `SELECT id
+         FROM audit_events
+         WHERE id = ?
+           AND event_kind = ?`
+      ).bind(
+        consumeId,
+        'windows_signing_grant_consumed'
+      ).first();
+
+    if (
+      alreadyUsed?.id
+    ) {
+      return fail(
+        'signing_grant_replay',
+        409
+      );
+    }
+
+    const consumed =
+      await env.DB.prepare(
+        `INSERT INTO audit_events
+         (id, event_kind, actor_reference_hash, created_at)
+         VALUES (?, ?, ?, ?)`
+      ).bind(
+        consumeId,
+        'windows_signing_grant_consumed',
+        binding,
+        now
+      ).run();
+
+    if (
+      consumed?.meta?.changes !== 1
+    ) {
+      return fail(
+        'signing_grant_storage_unavailable',
+        503
+      );
+    }
+
+  } catch {
+    return fail(
+      'signing_grant_storage_unavailable',
+      503
+    );
+  }
+
+  return json({
+    ok: true,
+    consumed: true,
+    grantId:
+      grant.grantId
+  });
+}
+
 async function health(env) {
   if (!ready(env)) return json({ ok: false, service: 'appforge-control-plane', database: 'binding_missing' }, 503);
   try {
@@ -63,11 +404,24 @@ export async function handleRequest(request, env, dependencies = {}) {
         pathname === '/api/admin/pro-grants' ||
         pathname.startsWith('/api/admin/pro-grants/');
 
+      const publisherSigningRoute =
+        windowsSigningGrantRoute(
+          pathname
+        );
+
       // Admin alone is account-based. Normal users stay accountless.
       // An email, old bearer, device ID or Play purchase NEVER confers admin.
-      if (pathname === '/api/admin/system-status' || pathname === '/api/admin/google/verify' || proAdminRoute) {
-        if ((pathname === '/api/admin/system-status' && request.method !== 'GET') ||
-            (pathname === '/api/admin/google/verify' && request.method !== 'POST')) {
+      if (
+        pathname === '/api/admin/system-status' ||
+        pathname === '/api/admin/google/verify' ||
+        proAdminRoute ||
+        publisherSigningRoute
+      ) {
+        if (
+          (pathname === '/api/admin/system-status' && request.method !== 'GET') ||
+          (pathname === '/api/admin/google/verify' && request.method !== 'POST') ||
+          (publisherSigningRoute && request.method !== 'POST')
+        ) {
           return fail('method_not_allowed', 405);
         }
         if (!env?.GOOGLE_WEB_CLIENT_ID || !env?.GOOGLE_ANDROID_CLIENT_ID || !ready(env)) {
@@ -120,6 +474,16 @@ export async function handleRequest(request, env, dependencies = {}) {
         if (pathname === '/api/admin/google/verify') {
           return json({ ok: true, adminVerified: true, expiresAt: identity.exp });
         }
+
+        if (publisherSigningRoute) {
+          return handleWindowsSigningAuthorization(
+            request,
+            env,
+            verifiedAdminHash,
+            pathname
+          );
+        }
+
         if (proAdminRoute) {
           return handleAdminProCodes(
             request, env, verifiedAdminHash, pathname
