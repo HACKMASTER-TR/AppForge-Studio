@@ -4,6 +4,8 @@ const {
   app,
   BrowserWindow,
   dialog,
+  net,
+  protocol,
   shell
 } =
   require(
@@ -31,8 +33,17 @@ const crypto =
   );
 
 const {
+  pathToFileURL
+} =
+  require(
+    "node:url"
+  );
+
+
+const {
   materializeAppForgePayload,
-  readPayloadMetadata
+  readPayloadMetadata,
+  safeRelativePath
 } =
   require(
     "./payload.cjs"
@@ -45,6 +56,50 @@ const {
   require(
     "./storage.cjs"
   );
+
+
+const LOCAL_SCHEME =
+  "appforge";
+
+const LOCAL_HOST =
+  "app";
+
+
+const STORAGE_DURABILITY_FLUSH_MS =
+  500;
+
+
+protocol.registerSchemesAsPrivileged(
+  [
+    {
+      scheme:
+        LOCAL_SCHEME,
+
+      privileges: {
+        standard:
+          true,
+
+        secure:
+          true,
+
+        supportFetchAPI:
+          true,
+
+        corsEnabled:
+          true,
+
+        allowServiceWorkers:
+          true,
+
+        stream:
+          true,
+
+        codeCache:
+          true
+      }
+    }
+  ]
+);
 
 
 function portableExecutable() {
@@ -80,6 +135,9 @@ let payload =
   null;
 
 let startupError =
+  null;
+
+let persistentSessionData =
   null;
 
 let ownsSingleInstance =
@@ -119,6 +177,25 @@ try {
   app.setPath(
     "userData",
     userDataRoot
+  );
+
+  persistentSessionData =
+    path.join(
+      userDataRoot,
+      "session-data"
+    );
+
+  fs.mkdirSync(
+    persistentSessionData,
+    {
+      recursive:
+        true
+    }
+  );
+
+  app.setPath(
+    "sessionData",
+    persistentSessionData
   );
 
   app.setAppUserModelId(
@@ -178,6 +255,271 @@ function cleanRuntime() {
 }
 
 
+function localAppUrl(
+  startPage
+) {
+  const relative =
+    safeRelativePath(
+      startPage
+    );
+
+  const encoded =
+    relative
+      .split(
+        "/"
+      )
+      .map(
+        part =>
+          encodeURIComponent(
+            part
+          )
+      )
+      .join(
+        "/"
+      );
+
+  return (
+    `${LOCAL_SCHEME}://` +
+    `${LOCAL_HOST}/` +
+    encoded
+  );
+}
+
+
+function isLocalAppUrl(
+  value
+) {
+  try {
+    const parsed =
+      new URL(
+        value
+      );
+
+    return (
+      parsed.protocol ===
+        `${LOCAL_SCHEME}:` &&
+      parsed.hostname ===
+        LOCAL_HOST
+    );
+
+  } catch {
+    return false;
+  }
+}
+
+
+function resolveLocalRequestFile(
+  requestUrl
+) {
+  if (
+    !payload ||
+    payload
+      .manifest
+      .sourceMode !==
+      "LOCAL"
+  ) {
+    return null;
+  }
+
+  let parsed;
+
+  try {
+    parsed =
+      new URL(
+        requestUrl
+      );
+  } catch {
+    return null;
+  }
+
+  if (
+    parsed.protocol !==
+      `${LOCAL_SCHEME}:` ||
+    parsed.hostname !==
+      LOCAL_HOST
+  ) {
+    return null;
+  }
+
+  let pathname;
+
+  try {
+    pathname =
+      decodeURIComponent(
+        parsed.pathname
+      );
+  } catch {
+    return null;
+  }
+
+  const requested =
+    pathname
+      .replace(
+        /^\/+/
+        ,
+        ""
+      )
+      .trim();
+
+  let relative;
+
+  try {
+    relative =
+      safeRelativePath(
+        requested ||
+          payload
+            .manifest
+            .startPage
+      );
+  } catch {
+    return null;
+  }
+
+  const root =
+    path.resolve(
+      payload.siteRoot
+    );
+
+  const target =
+    path.resolve(
+      root,
+      relative
+    );
+
+  const relativeToRoot =
+    path.relative(
+      root,
+      target
+    );
+
+  if (
+    !relativeToRoot ||
+    relativeToRoot.startsWith(
+      ".."
+    ) ||
+    path.isAbsolute(
+      relativeToRoot
+    )
+  ) {
+    return null;
+  }
+
+  try {
+    if (
+      !fs.statSync(
+        target
+      ).isFile()
+    ) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+
+  return target;
+}
+
+
+async function registerLocalProtocol() {
+  if (
+    !payload ||
+    payload
+      .manifest
+      .sourceMode !==
+      "LOCAL"
+  ) {
+    return;
+  }
+
+  protocol.handle(
+    LOCAL_SCHEME,
+    request => {
+      const file =
+        resolveLocalRequestFile(
+          request.url
+        );
+
+      if (
+        !file
+      ) {
+        return new Response(
+          "Not Found",
+          {
+            status:
+              404,
+
+            headers: {
+              "content-type":
+                "text/plain; charset=utf-8"
+            }
+          }
+        );
+      }
+
+      return net.fetch(
+        pathToFileURL(
+          file
+        ).toString()
+      );
+    }
+  );
+}
+
+
+function flushStorageData(
+  window
+) {
+  if (
+    !window ||
+    window.isDestroyed()
+  ) {
+    return;
+  }
+
+  try {
+    window
+      .webContents
+      .session
+      .flushStorageData();
+  } catch {}
+}
+
+
+function startStorageDurabilityFlush(
+  window
+) {
+  flushStorageData(
+    window
+  );
+
+  const timer =
+    setInterval(
+      () => {
+        flushStorageData(
+          window
+        );
+      },
+      STORAGE_DURABILITY_FLUSH_MS
+    );
+
+  if (
+    typeof timer.unref ===
+      "function"
+  ) {
+    timer.unref();
+  }
+
+  window.once(
+    "closed",
+    () => {
+      clearInterval(
+        timer
+      );
+    }
+  );
+}
+
+
 async function smokeStorageValue(
   window
 ) {
@@ -219,6 +561,50 @@ async function smokeStorageValue(
 }
 
 
+async function readSmokeState(
+  window
+) {
+  for (
+    let attempt = 0;
+    attempt < 100;
+    attempt += 1
+  ) {
+    const state =
+      await window
+        .webContents
+        .executeJavaScript(
+          "window.__APPFORGE_SMOKE_STATE__ || null",
+          true
+        )
+        .catch(
+          () =>
+            null
+        );
+
+    if (
+      state &&
+      (
+        state.ready ===
+          true ||
+        state.error
+      )
+    ) {
+      return state;
+    }
+
+    await new Promise(
+      resolve =>
+        setTimeout(
+          resolve,
+          100
+        )
+    );
+  }
+
+  return null;
+}
+
+
 async function writeSmokeResult(
   window
 ) {
@@ -239,6 +625,15 @@ async function writeSmokeResult(
     await smokeStorageValue(
       window
     );
+
+  const smokeState =
+    await readSmokeState(
+      window
+    );
+
+  flushStorageData(
+    window
+  );
 
   const result = {
     payloadLoaded:
@@ -267,9 +662,19 @@ async function writeSmokeResult(
         "userData"
       ),
 
+    persistentUserDataPath:
+      app.getPath(
+        "userData"
+      ),
+
+    persistentSessionDataPath:
+      persistentSessionData,
+
     runtimeRoot,
 
-    storageValue
+    storageValue,
+
+    smokeState
   };
 
   fs.writeFileSync(
@@ -386,6 +791,10 @@ function createWindow() {
       }
     );
 
+  startStorageDurabilityFlush(
+    window
+  );
+
   window
     .webContents
     .setWindowOpenHandler(
@@ -434,8 +843,8 @@ function createWindow() {
       if (
         manifest.sourceMode ===
           "LOCAL" &&
-        !url.startsWith(
-          "file:"
+        !isLocalAppUrl(
+          url
         )
       ) {
         event.preventDefault();
@@ -484,9 +893,8 @@ function createWindow() {
       manifest.webUrl
     );
   } else {
-    window.loadFile(
-      path.join(
-        payload.siteRoot,
+    window.loadURL(
+      localAppUrl(
         manifest.startPage
       )
     );
@@ -523,7 +931,7 @@ app.on(
 app
   .whenReady()
   .then(
-    () => {
+    async () => {
       if (
         !ownsSingleInstance &&
         !startupError
@@ -545,6 +953,8 @@ app
         app.quit();
         return;
       }
+
+      await registerLocalProtocol();
 
       createWindow();
 
@@ -576,6 +986,15 @@ app.on(
 app.on(
   "will-quit",
   () => {
+    for (
+      const window of
+      BrowserWindow.getAllWindows()
+    ) {
+      flushStorageData(
+        window
+      );
+    }
+
     cleanRuntime();
   }
 );

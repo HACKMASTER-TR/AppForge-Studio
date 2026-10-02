@@ -8,6 +8,7 @@ on:
       - ".github/workflows/windows-portable-host.yml"
       - "windows-host/**"
       - "quality/tests/windows_portable_host_v1_contract.test.js"
+      - "quality/tests/windows_portable_persistence_contract.test.js"
 
   workflow_dispatch:
 
@@ -256,6 +257,427 @@ jobs:
             -Recurse `
             -Force `
             -ErrorAction SilentlyContinue
+
+      - name: Verify portable persistence across relaunch and relocation
+        shell: pwsh
+        run: |
+          $base = "${{ steps.host.outputs.path }}"
+
+          $smokeA = Join-Path `
+            $pwd `
+            "windows-host/dist/AppForge-Windows-Host-persistence-a.exe"
+
+          $smokeB = Join-Path `
+            $pwd `
+            "windows-host/dist/AppForge-Windows-Host-persistence-b.exe"
+
+          $result1 = Join-Path `
+            $pwd `
+            "windows-host/dist/persistence-result-1.json"
+
+          $result2 = Join-Path `
+            $pwd `
+            "windows-host/dist/persistence-result-2.json"
+
+          $result3 = Join-Path `
+            $pwd `
+            "windows-host/dist/persistence-result-3.json"
+
+          $isolatedLocalAppData = Join-Path `
+            $pwd `
+            "windows-host/dist/test-local-app-data"
+
+          if (
+            Test-Path `
+              -LiteralPath $isolatedLocalAppData
+          ) {
+            Remove-Item `
+              -LiteralPath $isolatedLocalAppData `
+              -Recurse `
+              -Force
+          }
+
+          New-Item `
+            -ItemType Directory `
+            -Path $isolatedLocalAppData `
+            -Force |
+            Out-Null
+
+          Copy-Item `
+            -LiteralPath $base `
+            -Destination $smokeA `
+            -Force
+
+          node `
+            windows-host/scripts/append-smoke-payload.cjs `
+            $smokeA
+
+          $env:LOCALAPPDATA = $isolatedLocalAppData
+          $env:APPFORGE_HOST_SMOKE_EXIT = "1"
+
+          function Invoke-AppForgeSmoke {
+            param(
+              [string]$Exe,
+              [string]$Result
+            )
+
+            Remove-Item `
+              -LiteralPath $Result `
+              -Force `
+              -ErrorAction SilentlyContinue
+
+            $env:APPFORGE_HOST_SMOKE_FILE = $Result
+
+            $process = Start-Process `
+              -FilePath $Exe `
+              -PassThru
+
+            if (
+              -not $process.WaitForExit(
+                60000
+              )
+            ) {
+              $process.Kill()
+
+              throw "Portable host smoke test timed out."
+            }
+
+            if (
+              -not (
+                Test-Path `
+                  -LiteralPath $Result
+              )
+            ) {
+              throw "Portable host did not write smoke result."
+            }
+
+            return (
+              Get-Content `
+                -LiteralPath $Result `
+                -Raw |
+              ConvertFrom-Json
+            )
+          }
+
+          $first = Invoke-AppForgeSmoke `
+            -Exe $smokeA `
+            -Result $result1
+
+          if (
+            $first.payloadLoaded -ne $true
+          ) {
+            throw "First launch payload load failed."
+          }
+
+          if (
+            $first.appId -ne "com.appforge.windows.smoke"
+          ) {
+            throw "First launch app ID mismatch."
+          }
+
+          if (
+            $first.sourceMode -ne "LOCAL"
+          ) {
+            throw "First launch source mode mismatch."
+          }
+
+          if (
+            $first.loadedUrl -notlike "appforge://app/*"
+          ) {
+            throw "Stable appforge origin was not used."
+          }
+
+          if (
+            $first.smokeState.ready -ne $true
+          ) {
+            throw "First launch storage smoke did not become ready."
+          }
+
+          if (
+            [int]$first.smokeState.localStorageCount -ne 1
+          ) {
+            throw "First launch localStorage count mismatch."
+          }
+
+          if (
+            [int]$first.smokeState.indexedDbCount -ne 1
+          ) {
+            throw "First launch IndexedDB count mismatch."
+          }
+
+          if (
+            [string]::IsNullOrWhiteSpace(
+              $first.persistentUserDataPath
+            )
+          ) {
+            throw "Persistent userData path missing."
+          }
+
+          if (
+            [string]::IsNullOrWhiteSpace(
+              $first.persistentSessionDataPath
+            )
+          ) {
+            throw "Persistent sessionData path missing."
+          }
+
+          $second = Invoke-AppForgeSmoke `
+            -Exe $smokeA `
+            -Result $result2
+
+          if (
+            [int]$second.smokeState.localStorageCount -ne 2
+          ) {
+            throw "localStorage did not survive close/reopen."
+          }
+
+          if (
+            [int]$second.smokeState.indexedDbCount -ne 2
+          ) {
+            throw "IndexedDB did not survive close/reopen."
+          }
+
+          if (
+            $second.persistentUserDataPath -ne
+            $first.persistentUserDataPath
+          ) {
+            throw "userData path changed between relaunches."
+          }
+
+          if (
+            $second.persistentSessionDataPath -ne
+            $first.persistentSessionDataPath
+          ) {
+            throw "sessionData path changed between relaunches."
+          }
+
+          Copy-Item `
+            -LiteralPath $smokeA `
+            -Destination $smokeB `
+            -Force
+
+          $third = Invoke-AppForgeSmoke `
+            -Exe $smokeB `
+            -Result $result3
+
+          if (
+            [int]$third.smokeState.localStorageCount -ne 3
+          ) {
+            throw "localStorage did not survive EXE relocation."
+          }
+
+          if (
+            [int]$third.smokeState.indexedDbCount -ne 3
+          ) {
+            throw "IndexedDB did not survive EXE relocation."
+          }
+
+          if (
+            $third.persistentUserDataPath -ne
+            $first.persistentUserDataPath
+          ) {
+            throw "userData path changed after EXE relocation."
+          }
+
+          if (
+            $third.persistentSessionDataPath -ne
+            $first.persistentSessionDataPath
+          ) {
+            throw "sessionData path changed after EXE relocation."
+          }
+
+          $runtimeRoot = Join-Path `
+            $env:TEMP `
+            "AppForgePortableHost"
+
+          if (
+            Test-Path `
+              -LiteralPath $runtimeRoot
+          ) {
+            $leftovers = @(
+              Get-ChildItem `
+                -LiteralPath $runtimeRoot `
+                -Directory `
+                -ErrorAction SilentlyContinue
+            )
+
+            if (
+              $leftovers.Count -ne 0
+            ) {
+              throw "Portable runtime temp directory was not cleaned."
+            }
+          }
+
+
+          # ------------------------------------------------------------
+          # Forced-termination persistence acceptance
+          # ------------------------------------------------------------
+          $crashResult = Join-Path `
+            $pwd `
+            "windows-host/dist/persistence-result-crash.json"
+
+          $recoveryResult = Join-Path `
+            $pwd `
+            "windows-host/dist/persistence-result-recovery.json"
+
+          Remove-Item `
+            -LiteralPath $crashResult `
+            -Force `
+            -ErrorAction SilentlyContinue
+
+          Remove-Item `
+            -LiteralPath $recoveryResult `
+            -Force `
+            -ErrorAction SilentlyContinue
+
+          $beforeCrashProcesses = @(
+            Get-CimInstance `
+              Win32_Process |
+            Select-Object `
+              -ExpandProperty ProcessId
+          )
+
+          $env:APPFORGE_HOST_SMOKE_FILE =
+            $crashResult
+
+          $env:APPFORGE_HOST_SMOKE_EXIT =
+            "0"
+
+          Start-Process `
+            -FilePath $smokeB |
+            Out-Null
+
+          $crashDeadline =
+            (Get-Date).AddSeconds(
+              60
+            )
+
+          while (
+            (Get-Date) -lt $crashDeadline -and
+            -not (
+              Test-Path `
+                -LiteralPath $crashResult
+            )
+          ) {
+            Start-Sleep `
+              -Milliseconds 250
+          }
+
+          if (
+            -not (
+              Test-Path `
+                -LiteralPath $crashResult
+            )
+          ) {
+            throw "Forced-termination smoke result was not written."
+          }
+
+          Start-Sleep `
+            -Seconds 2
+
+          $crash =
+            Get-Content `
+              -LiteralPath $crashResult `
+              -Raw |
+            ConvertFrom-Json
+
+          if (
+            [int]$crash.smokeState.localStorageCount -ne 4
+          ) {
+            throw "Forced-termination pre-kill localStorage count mismatch."
+          }
+
+          if (
+            [int]$crash.smokeState.indexedDbCount -ne 4
+          ) {
+            throw "Forced-termination pre-kill IndexedDB count mismatch."
+          }
+
+          $newCrashProcesses = @(
+            Get-CimInstance `
+              Win32_Process |
+            Where-Object {
+              (
+                $_.ProcessId -notin
+                  $beforeCrashProcesses
+              ) -and
+              (
+                $_.Name -like
+                  "AppForge*" -or
+                [string]$_.CommandLine -like
+                  "*AppForge-Windows-Host-persistence-b*"
+              )
+            }
+          )
+
+          if (
+            $newCrashProcesses.Count -eq 0
+          ) {
+            throw "Forced-termination AppForge process set was empty."
+          }
+
+          foreach (
+            $process in
+            $newCrashProcesses
+          ) {
+            Stop-Process `
+              -Id $process.ProcessId `
+              -Force `
+              -ErrorAction SilentlyContinue
+          }
+
+          Start-Sleep `
+            -Seconds 1
+
+          $remainingCrashProcesses = @(
+            Get-CimInstance `
+              Win32_Process |
+            Where-Object {
+              $_.ProcessId -in
+                $newCrashProcesses.ProcessId
+            }
+          )
+
+          if (
+            $remainingCrashProcesses.Count -ne 0
+          ) {
+            throw "Forced-termination process shutdown incomplete."
+          }
+
+          Write-Host "PORTABLE_FORCED_TERMINATION=PASS"
+
+          $env:APPFORGE_HOST_SMOKE_EXIT =
+            "1"
+
+          $recovery =
+            Invoke-AppForgeSmoke `
+              -Exe $smokeB `
+              -Result $recoveryResult
+
+          if (
+            [int]$recovery.smokeState.localStorageCount -ne 5
+          ) {
+            throw "localStorage did not survive forced termination."
+          }
+
+          if (
+            [int]$recovery.smokeState.indexedDbCount -ne 5
+          ) {
+            throw "IndexedDB did not survive forced termination."
+          }
+
+          Write-Host "PORTABLE_CRASH_LOCALSTORAGE_RECOVERY=PASS"
+          Write-Host "PORTABLE_CRASH_INDEXEDDB_RECOVERY=PASS"
+          Write-Host "PORTABLE_CRASH_RECOVERY=PASS"
+
+          Write-Host "WINDOWS_PORTABLE_PAYLOAD_SMOKE=PASS"
+          Write-Host "PORTABLE_STABLE_ORIGIN=PASS"
+          Write-Host "PORTABLE_LOCALSTORAGE_PERSISTENCE=PASS"
+          Write-Host "PORTABLE_INDEXEDDB_PERSISTENCE=PASS"
+          Write-Host "PORTABLE_RELAUNCH_PERSISTENCE=PASS"
+          Write-Host "PORTABLE_RELOCATION_PERSISTENCE=PASS"
+          Write-Host "PORTABLE_RUNTIME_CLEANUP=PASS"
+          Write-Host "PORTABLE_USERDATA_PATH=$($first.persistentUserDataPath)"
 
       - name: Create host manifest
         shell: pwsh
