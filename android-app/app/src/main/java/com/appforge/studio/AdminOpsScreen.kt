@@ -91,6 +91,20 @@ fun AdminOpsScreen(
     val activity = context as? android.app.Activity
     var signingIn by remember { mutableStateOf(false) }
 
+    var publisherAcceptanceRunning by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+    var publisherAcceptanceResult by
+        remember {
+            mutableStateOf<String?>(
+                null
+            )
+        }
+
     val adminApi =
         remember(
             serverUrl
@@ -359,6 +373,116 @@ fun AdminOpsScreen(
                 AdminProCodesPanel(
                     serverUrl = serverUrl
                 )
+            }
+
+            if (
+                BuildConfig.DEBUG
+            ) {
+                item {
+                    Card(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .padding(
+                                        16.dp
+                                    ),
+                            verticalArrangement =
+                                Arrangement
+                                    .spacedBy(
+                                        8.dp
+                                    )
+                        ) {
+                            Text(
+                                "Publisher Grant Canlı Kabul",
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .titleMedium
+                            )
+
+                            Text(
+                                "Debug-only • Google tokenı gösterilmez veya loglanmaz.",
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .bodySmall
+                            )
+
+                            Button(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth(),
+                                enabled =
+                                    !publisherAcceptanceRunning,
+                                onClick = {
+                                    scope.launch {
+                                        publisherAcceptanceRunning =
+                                            true
+
+                                        publisherAcceptanceResult =
+                                            null
+
+                                        try {
+                                            publisherAcceptanceResult =
+                                                withContext(
+                                                    Dispatchers.IO
+                                                ) {
+                                                    PublisherSigningLiveAcceptance
+                                                        .run(
+                                                            serverUrl
+                                                        )
+                                                }
+                                        } catch (
+                                            error: Exception
+                                        ) {
+                                            publisherAcceptanceResult =
+                                                "LIVE_SIGNING_GRANT_ACCEPTANCE=FAIL\n" +
+                                                    error
+                                                        .message
+                                                        .orEmpty()
+                                                        .take(
+                                                            180
+                                                        )
+                                                        .ifBlank {
+                                                            "unknown_error"
+                                                        }
+                                        } finally {
+                                            publisherAcceptanceRunning =
+                                                false
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text(
+                                    if (
+                                        publisherAcceptanceRunning
+                                    ) {
+                                        "TEST ÇALIŞIYOR..."
+                                    } else {
+                                        "CANLI KABUL TESTİNİ ÇALIŞTIR"
+                                    }
+                                )
+                            }
+
+                            publisherAcceptanceResult
+                                ?.let {
+                                    result ->
+
+                                    Text(
+                                        result,
+                                        style =
+                                            MaterialTheme
+                                                .typography
+                                                .bodySmall
+                                    )
+                                }
+                        }
+                    }
+                }
             }
 
             item {
