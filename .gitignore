@@ -47,3 +47,5 @@ __pycache__/
 *.pyc
 *.pyo
 gha-creds-*.json
+*.bak
+/worker-log.txt
