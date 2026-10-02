@@ -3,8 +3,8 @@ type: log
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-21
-last_verified: 2026-09-21
+updated: 2026-10-02
+last_verified: 2026-10-02
 confidence: high
 tags:
   - log
@@ -47,3 +47,20 @@ source_files: []
   failover change was part of the audit.
 - Remaining gates: `d1_migrations` reconciliation and
   real-device Pro lifecycle acceptance.
+
+## 2026-10-02 — validation | Server-verified publisher authorization accepted
+
+- Summary: Windows publisher signing now requires a short-lived one-time
+  control-plane grant bound to the exact unsigned EXE SHA-256, Build ID,
+  purpose and random request nonce.
+- Source validation: implementation commit `53895ff` passed full quality and
+  Android Debug CI.
+- Staging: source commit `63d32e6` was deployed by marker-only commit
+  `7736c35`; controlled staging workflow run `36971590024` passed.
+- Physical acceptance: debug acceptance commit `54d564e` and Android Debug run
+  `36974764595` produced the physical test APK.
+- Result: Google admin verification PASS, grant issue PASS, artifact mutation
+  BLOCKED, valid consume PASS, replay BLOCKED.
+- Boundaries: no new D1 migration, no `main` change, no Play Production change
+  and no draft PR merge.
+- Remaining: real Windows Authenticode physical end-to-end acceptance.

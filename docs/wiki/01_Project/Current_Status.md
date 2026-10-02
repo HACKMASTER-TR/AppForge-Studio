@@ -3,8 +3,8 @@ type: status
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-25
-last_verified: 2026-09-25
+updated: 2026-10-02
+last_verified: 2026-10-02
 confidence: high
 tags:
   - status
@@ -40,6 +40,32 @@ source_files:
 ---
 
 # Current Status
+
+## 2026-10-02 authoritative checkpoint
+
+- Server-verified Windows publisher authorization is CLOSED / PASS through
+  source, full quality, Android Debug CI, controlled Cloudflare staging deploy
+  and physical Android live acceptance.
+- Implementation source: `53895ff5cabc33cf822754fbd55036dae3ae4758`.
+- Controlled staging source: `63d32e68e4f97454b0bde79ddde5dcd87e49252e`.
+- Marker-only deploy commit:
+  `7736c3564210727ce75ea13a50124c11a23d36da`.
+- Controlled staging workflow run `36971590024` completed successfully.
+- Physical debug acceptance source:
+  `54d564eb530cba4749785769010cc8f21c5fadc4`.
+- Android Debug acceptance APK run `36974764595` completed successfully.
+- Physical acceptance proved Google server verification, grant issue,
+  artifact-hash mutation rejection, valid consume and replay rejection.
+- Publisher authorization adds no D1 migration. Migrations 0001–0005 are the
+  reconciled staging migration set.
+- `main`, Play Production and `appforge-failover` remained untouched.
+- PR #61, PR #63 and PR #64 remain open/draft.
+- Portable EXE physical persistence retest remains paused.
+- Real Windows Authenticode signing remains a separate physical gate.
+
+Historical dated sections below describe the state at those dates and must not
+override this checkpoint.
+
 
 ## Verified repository state
 

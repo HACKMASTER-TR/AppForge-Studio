@@ -3,72 +3,70 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-28
-last_verified: 2026-09-28
+updated: 2026-10-02
+last_verified: 2026-10-02
 confidence: high
 tags:
   - hot-context
   - device-build
-  - runtime-v3
+  - windows
+  - publisher-signing
 related:
   - "[[Index]]"
-  - "[[Device_Build_Runtime_V3]]"
   - "[[Current_Status]]"
-  - "[[Bug_Index]]"
-  - "[[Standing_Delivery_Authorization]]"
+  - "[[Windows_Publisher_Authorization]]"
+  - "[[Deployment_And_CI]]"
+  - "[[Open_Questions]]"
 source_files:
-  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
-  - "android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt"
-  - "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
-  - "android-app/app/src/main/java/com/appforge/studio/AppForgeApplication.kt"
-  - "android-app/app/src/main/java/com/appforge/studio/AppForgeBuildNumbers.kt"
-  - "android-app/app/src/main/assets/device-build/build-expo.sh"
+  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPublisherSigningAuthorizationClient.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPublisherSigningPolicy.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPublisherSigningProvider.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt"
+  - "cloudflare/control-plane/src/index.mjs"
+  - "cloudflare/control-plane/tests/windows_publisher_signing_grant.test.mjs"
+  - "quality/tests/windows_publisher_server_authorization_contract.test.js"
 ---
 # Hot Context
 
 ## Current Focus
 
-- Expo SDK54/RN0.81.4 offline acceptance PASS: `AF-0000001019` produced APK+AAB and launched `APPFORGE_EXPO54_OFFLINE_PASS`.
-- V25 offline matrix closed. V25.1 OPEN: Builder re-entry can show `Hazır / %0` during an active build.
-- V24 main protection is server-accepted on PR #58; V23 Windows persistence is source/CI accepted with physical Windows relaunch still pending. Play Production remains untouched.
+- Server-verified Windows publisher authorization is CLOSED / PASS through source, CI, staging deployment and physical Android acceptance.
+- Second Brain is being synchronized to the verified 2026-10-02 project state.
+- Normal project compilation remains device-local. Remote Railway/Render build infrastructure is retired.
+- Windows Native EXE and Portable EXE remain separate engines.
+- PR #61, PR #63 and PR #64 remain open/draft and must not be merged without explicit approval.
 
 ## Must Know
 
-- Source, tests, CI, and physical-device evidence override wiki claims.
-- Remote build backends remain retired; project builds stay device-local.
-- D1 migrations remain blocked pending migration-history reconciliation.
-- Standing fail-stop authorization is in [[Standing_Delivery_Authorization]].
+- Source, automated tests, CI, deployed-state evidence and physical-device evidence are separate gates.
+- D1 migration ledger reconciliation is complete for migrations 0001 through 0005.
+- Publisher authorization adds no D1 migration; it reuses the existing audit ledger.
+- Google admin authority is server verified from a signed Google ID token plus active D1 allow-list identity. Email, device ID or local state never grants admin.
+- Publisher signing fails closed if authorization, network, artifact binding, certificate validation or signature verification fails.
+- `main`, Play Production and `appforge-failover` remain protected.
 
 ## Recent Important Changes
 
-- BUG-A closed in V19 with duplicate-safe `ExpoModulesPackage()` registration.
-- BUG-B closed in V20.3 by disabling only `expo-modules-core` PCH in the disposable Expo workspace; clang/PCH exit 139 did not recur in 4/4 acceptance.
-- V21 added shared event-driven progress, non-crashing cancel flow, and persistent Build No values beginning at `AF-0000001000`.
-- V21 physical acceptance passed progress synchronization, cancel stability, success-only 100%, Build No sequence/persistence, and active-build survival.
-- V21.1 and V21.2 still failed BUG-C physically: notification return could show `Hazır / %0`; notification dismissal/foreground handoff also remained incorrect.
-- V21.3 physical retest failed BUG-C: notification still arrived about 10 seconds late, dismissal failed, and Builder eventually returned to `Hazır / %0` while tracking was lost.
-- V21.4 physical retest passed prompt notification display and compact progress, but tapping the notification caused MainActivity to be redirected/finished by the application update gate; build survival and background reappearance therefore failed.
-- V21.5 physical retest passed notification tap return, same-build continuation, dismissal, background reappearance, and final-result retention; BUG-C is closed.
-- V21.6 physically passed soft Builder percentage/bar movement while preserving V21.5 notification and build lifecycle behavior.
-- V21.7 physically passed repeated APK/AAB/EXE saves; duplicate suffixes remain before `.apk`, `.aab`, and `.exe`, and existing files stay untouched.
-- V22 removed project-wide mtime artifact selection. Native Android and Expo SDK54 both physically passed APK+AAB build/output acceptance.
-
-## V21.7 Physical Acceptance
-
-- Repeated APK, AAB and EXE saves passed with `(1)`, `(2)` inserted before the extension.
-- Existing artifacts remained untouched; V21.7 source, tests, Android Debug CI and physical acceptance are closed.
+- Play Production P0 fail-closed work is source/CI accepted on draft PR #62.
+- Builder V25.1 re-entry handling is closed.
+- D1 migrations 0001–0005 were reconciled exactly.
+- Portable EXE crash-durability CI passed; physical Windows retest is paused.
+- Windows publisher authorization commit `53895ff` passed full quality and Android Debug CI.
+- Staging source `63d32e6` was deployed by marker commit `7736c35`; controlled staging workflow passed.
+- Physical Android live acceptance proved grant issue, artifact mismatch rejection, valid consume and replay rejection.
 
 ## Current Risks / Open Questions
 
-- V23 Windows persistence is source/CI accepted; physical relaunch and EXE-update persistence acceptance remain pending.
-- V25.1 must preserve Build ID/progress across Builder re-entry and block duplicate build starts.
-- Expo READY remains limited to SDK54/RN0.81; broader Expo and standalone React Native stay outside the accepted surface.
-- D1 migration history remains unresolved.
+- Real Windows Authenticode signing with publisher material still needs physical end-to-end acceptance.
+- Portable EXE physical relaunch/update persistence retest remains paused.
+- Production custom-domain signing endpoint is not enabled.
+- Draft PR merge decisions remain intentionally pending.
 
 ## Read Next
 
-- [[Device_Build_Runtime_V3]]
+- [[Windows_Publisher_Authorization]]
 - [[Current_Status]]
-- [[Bug_Index]]
-- [[Standing_Delivery_Authorization]]
+- [[Deployment_And_CI]]
+- [[Security_And_Entitlements]]
+- [[Open_Questions]]

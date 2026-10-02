@@ -3,8 +3,8 @@ type: decision
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-10-01
-last_verified: 2026-10-01
+updated: 2026-10-02
+last_verified: 2026-10-02
 confidence: high
 tags:
   - decisions
@@ -498,3 +498,48 @@ loglara yazılmaz.
 
 Signing istenmişse ve owner doğrulaması, provider, timestamp veya signature
 verification kapılarından biri başarısızsa unsigned EXE yayınlanmaz ve silinir.
+
+## 2026-10-02 — Server-verified Windows publisher authorization
+
+### Context
+
+A local owner flag or locally stored certificate would allow Windows publisher
+signing without proving that the operator still has current administrator
+authority or that the exact unsigned artifact was authorized.
+
+### Decision
+
+Publisher signing requires a short-lived one-time HTTPS grant from the
+Cloudflare control plane. The server re-verifies Google administrator identity
+against the active D1 allow-list and binds the grant to purpose, Build ID,
+artifact SHA-256 and a fresh request nonce.
+
+The exact unsigned EXE is re-hashed before signing. PKCS12/PFX material remains
+local and is never uploaded to the authorization service.
+
+### Alternatives considered
+
+- Trust local owner state: rejected because persisted or stale client state is
+  not server authority.
+- Upload the signing certificate/private key to the Worker: rejected because
+  the control plane does not need signing secrets.
+- Authorize only by Build ID: rejected because the grant must bind the exact
+  artifact bytes.
+- Reusable authorization token: rejected because replay must fail closed.
+
+### Consequences
+
+Network or identity-provider failure prevents signing. A consumed grant cannot
+be reused. Artifact mutation invalidates authorization. Signing failure removes
+the requested final EXE instead of publishing an unsigned fallback.
+
+No new D1 migration is required; existing audit storage records issue and
+consume evidence.
+
+### Evidence
+
+Source commit `53895ff5cabc33cf822754fbd55036dae3ae4758` passed the full quality
+suite and Android Debug CI. Controlled staging deployment completed in run
+`36971590024`. Physical Android acceptance from debug commit
+`54d564eb530cba4749785769010cc8f21c5fadc4` proved issue, mismatch rejection,
+consume and replay rejection against live staging.

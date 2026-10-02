@@ -3,8 +3,8 @@ type: architecture
 status: draft
 project: AppForge Studio
 created: 2026-09-20
-updated: 2026-09-21
-last_verified: 2026-09-21
+updated: 2026-10-02
+last_verified: 2026-10-02
 confidence: medium
 tags:
   - pro
@@ -36,6 +36,19 @@ source_files:
 ---
 
 # Admin-issued Pro code lifecycle (staging only)
+
+## 2026-10-02 current ledger correction
+
+The historical sections below correctly record that the migration ledger was
+unreconciled at earlier checkpoints. That is no longer the current state.
+
+Migrations 0001 through 0005 have now been reconciled exactly. Publisher
+authorization reuses the existing `audit_events` table and adds no migration.
+
+The 2026-10-02 publisher authorization staging deployment did not run
+`wrangler d1 migrations apply`. Its physical acceptance wrote only the expected
+grant issue/consume audit evidence.
+
 
 ## Authoritative contract
 

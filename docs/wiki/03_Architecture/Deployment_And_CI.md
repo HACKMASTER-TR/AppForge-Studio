@@ -3,80 +3,96 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-28
-last_verified: 2026-09-28
+updated: 2026-10-02
+last_verified: 2026-10-02
 confidence: high
 tags:
   - deployment
   - ci
+  - cloudflare
 related:
   - "[[Test_And_CI_Map]]"
   - "[[System_Architecture]]"
+  - "[[Windows_Publisher_Authorization]]"
 source_files:
   - ".github/workflows/android-debug.yml"
   - ".github/workflows/android-play-release.yml"
   - ".github/workflows/appforge-stability-gate.yml"
   - ".github/workflows/pro-kotlin-feature.yml"
-  - ".github/workflows/cleanup-old-runs.yml"
-  - "scripts/appforge"
+  - ".github/workflows/pro-cloudflare-auth-preflight.yml"
+  - ".github/workflows/pro-cloudflare-dry-run.yml"
+  - ".github/workflows/pro-cloudflare-staging-deploy.yml"
+  - ".github/workflows/windows-portable-host.yml"
   - "scripts/appforge-stability-gate"
 ---
-
 # Deployment and CI
 
-AppForge Studio no longer deploys a remote Build Service or Worker pool for
-normal application builds.
+## Product build architecture
 
-The active distribution path is:
+Normal user project compilation is device-local.
 
-1. AppForge Studio builds user projects on the Android device.
-2. GitHub remains the source repository and CI authority.
-3. `android-debug.yml` validates Android application changes.
-4. `android-play-release.yml` handles Google Play delivery when explicitly
-   requested and eligible.
-5. Google Play / Google Cloud remain external distribution and billing
-   infrastructure.
+Railway, Render, remote Build Service workers, remote Android workers and
+autoscaling are retired from the active project-build architecture.
 
-Railway, Render, remote Android Workers, Source Workers, Windows Workers,
-autoscaling, and production build-service deployment workflows are retired
-from the active architecture.
+GitHub remains the source and CI authority.
 
-CI success is not a substitute for device acceptance. Device-build changes
-must be tested on a real supported Android device before shipping.
+Android Debug validates Android application compilation. AppForge Stability
+Gate validates retained policy and feature contracts. Windows Portable Host has
+its own Windows CI path.
 
+Google Play delivery is separate and must be explicitly authorized.
 
-## Feature-branch Pro Kotlin validation
+## Cloudflare control plane
 
-`pro-kotlin-feature.yml` runs only on the dedicated
-Pro control-plane feature branch. It is a compile
-check, not an APK release or device acceptance.
+The Cloudflare Worker is security/control-plane infrastructure, not a remote
+project-build worker.
 
-For API 37, SDK Manager uses the package
-`platforms;android-37.0`, with `android.jar` inside
-`platforms/android-37.0`. The Android Gradle
-configuration retains `compileSdk = 37`.
+Staging deployment uses a protected sequence:
 
-The initial CI run failed during Android SDK setup
-because it requested `platforms;android-37`.
-Kotlin compilation was skipped. A later successful
-run is required before recording Kotlin compile PASS.
+1. read-only Cloudflare token/binding preflight;
+2. Wrangler bundle dry-run;
+3. exact source review;
+4. explicit marker-only deploy commit;
+5. controlled Worker deployment;
+6. post-deploy health and route checks.
 
-## 2026-09-23 retirement
+The controlled deployment workflow preserves existing Worker variables and D1
+binding and does not automatically apply migrations.
 
-The legacy Node backend test entrypoint was replaced by
-`npm --prefix quality test`; `appforge-stability-gate.yml` runs the retained
-device/Pro/Windows/Terminal contracts with Node 22 and does not build or
-deploy any remote worker. Android Debug remains the compilation gate.
+## Publisher authorization deployment — 2026-10-02
 
-## 2026-09-28 CI runner hygiene
+The publisher authorization source was first validated without deployment.
 
-Active Linux GitHub Actions jobs are pinned to `ubuntu-24.04` instead of the
-moving `ubuntu-latest` alias. This preserves the currently accepted runner
-family across GitHub's announced Ubuntu 26 `latest` migration.
+Cloudflare-only source commit
+`63d32e68e4f97454b0bde79ddde5dcd87e49252e` was then fast-forwarded to the
+control-plane feature branch.
 
-The Stability Gate policy job uses `actions/setup-python@v7` with Python 3.12.
-Node 22, JDK 21 and Gradle 9.3.1 test contracts remain unchanged. Windows
-Portable Host continues to use its Windows runner independently.
+Marker-only commit
+`7736c3564210727ce75ea13a50124c11a23d36da` triggered the existing controlled
+staging workflow.
 
-`quality/tests/github_ci_hygiene_contract.test.js` prevents accidental return
-to `ubuntu-latest` or `setup-python@v5`.
+Run `36971590024` passed:
+
+- explicit deploy request guard;
+- Cloudflare credential/binding preflight;
+- Wrangler dry-run;
+- Worker deployment;
+- staging health;
+- D1 reachability;
+- existing Pro route checks.
+
+`MIGRATIONS_APPLY=NOT_STARTED` and `DATABASE_WRITES=NONE` were recorded by the
+deployment smoke test.
+
+A later physical acceptance intentionally wrote only the publisher grant audit
+events required by the feature.
+
+## Protection boundaries
+
+`main`, Play Production and `appforge-failover` are not staging deployment
+targets.
+
+Feature CI, staging deployment and physical acceptance do not imply permission
+to merge a draft PR or publish to Play.
+
+A production custom-domain change requires its own review and acceptance.

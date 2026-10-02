@@ -3,59 +3,52 @@ type: status
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-10-02
+last_verified: 2026-10-02
 confidence: high
 tags:
   - open-questions
 related:
   - "[[Current_Status]]"
-source_files:
-  - ".appforge/runtime-blockers.json"
+  - "[[Windows_Publisher_Authorization]]"
+source_files: []
 ---
-
 # Open Questions
 
-1. There is no source-verified replacement for the removed privacy or account-deletion product pages. Their historical content is intentionally excluded from the wiki; any new product or legal requirement needs its own evidence and approval.
-2. Is the `fast_signing_key.test.js` byte-length failure a stale fixture, an intentional key change, or a source defect? It was not caused by dependency installation.
-3. Is BUG-7 still active after the latest APK is installed and manually tested on a physical device?
-4. Should the tracked APK and historical `.bak` files be retained, archived outside Git, or removed in a separately approved cleanup?
+## Active engineering gates
 
-## Cloudflare accountless rollout blockers — 2026-09-19
+1. Complete a real Windows Authenticode end-to-end physical signing test using
+   configured publisher material. Server grant acceptance alone does not prove
+   the final Windows signature path.
 
-- How will an installation prove possession of a key (or which free quotas
-  remain device-local) without trusting `X-AppForge-Device-ID`?
-- Which Google Play products, package and service credentials are actually
-  configured? Design secure token refresh, restore, linked purchases and RTDN.
-- Which verified Google OIDC `sub` will be explicitly provisioned as admin,
-  and how will the issuer/audience/signature be validated?
-- Android session/registration, Pro purchasing, admin, and templates need
-  a source-verified accountless integration and physical device acceptance.
-- D1 schema has not been migrated remotely; `workers.dev` and custom-domain
-  cutover are blocked until the above checks pass.
+2. Resume the paused Portable EXE physical relaunch/update persistence retest.
+   Crash durability is CI accepted, but the latest physical Windows retest is
+   intentionally paused.
 
-- Phase 5: configure the real Play Console non-consumable product ID, package
-  name and server-side verifier/acknowledgement and refund reconciliation.
-- Phase 5: migrate all remaining account-dependent app areas and retired
-  workspace/template/owner flows without deleting locally encrypted data.
-- Phase 5: implement separate verified Google OIDC admin authorization.
-- Phase 5: full-repo Kotlin/CI gate and real Play test purchase/restore are
-  required; the staged API must not be switched to the production domain.
+3. Decide when PR #61, PR #63 and PR #64 are eligible for merge. They remain
+   draft/open and no merge is implied by staging acceptance.
 
-## Google admin OIDC staging follow-ups — 2026-09-20
+4. Review production custom-domain enablement for publisher authorization.
+   Staging is accepted; production routing remains intentionally separate.
 
-- Provision the administrator's **verified** Google `sub` hash in the D1 allow-list; the OAuth test-user email is not sufficient. Do not paste raw ID tokens into issues or chats.
-- Configure both the Web OAuth Client ID and Android OAuth Client ID in the staging Worker; verify Debug and Play signing certificates separately.
-- Implement Android Credential Manager, server-backed owner state, token expiry/re-entry, Terminal navigation and owner vault access; do not bypass `OwnerAccessPolicy` or clear local data.
-- D1 migration, actual staging Worker deploy, negative/positive on-device auth tests and production cutover are still pending.
+5. Review and remove genuinely dead legacy routes only in a separately scoped
+   cleanup. Do not mix cleanup with accepted feature branches.
 
-- Phase 6B: Android Credential Manager and server nonce-binding are staged;
-  true Android CI compilation and real-device testing remain required.
-- Configure BOTH Web/Android OAuth IDs on the staging Worker, apply D1 schema
-  and provision the Google `sub` allowlist from a verified identity. Do not
-  infer admin from email or copy ID token into SQL/GitHub.
-- Determine a safe way to preserve existing Terminal per-account workspace
-  selection for previously signed-in users; no automated data migration.
-- The production domain still serves the old failover Worker: Android admin
-  cannot succeed until a separately reviewed HTTPS staging endpoint is
-  configured/deployed. Never switch production without testing.
+6. Replace or redesign the stale runtime `second_brain_snapshot.json`
+   generation model. The source-verified Wiki is authoritative until the
+   embedded snapshot has its own reproducible generator and semantics.
+
+## Resolved since earlier wiki checkpoints
+
+- D1 migration history for migrations 0001 through 0005 is reconciled.
+- Google administrator OIDC and active D1 allow-list verification are live in
+  staging and physically accepted.
+- Server-verified publisher grant issue/consume/replay protection is physically
+  accepted on Android against staging.
+- Builder V25.1 re-entry work is closed.
+
+## Standing boundaries
+
+- Normal project builds remain device-local.
+- Play Production remains untouched unless separately authorized.
+- Do not infer production readiness from staging acceptance.

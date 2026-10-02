@@ -3,8 +3,8 @@ type: registry
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-19
-last_verified: 2026-09-19
+updated: 2026-10-02
+last_verified: 2026-10-02
 confidence: high
 tags:
   - coverage
@@ -30,6 +30,7 @@ This is a routing and completeness register, not proof that every listed source 
 
 | Operations and automation | .github/workflows/; .appforge/; scripts/; README.md | [[03_Architecture/Deployment_And_CI]]; [[03_Architecture/Operations_And_Automation]]; [[01_Project/Current_Status]] | covered | Configuration evidence does not prove deployed or live state. |
 | Device build runtime | android-app/app/src/main/java/com/appforge/studio/build/; android-app/app/src/main/assets/device-build/ | [[03_Architecture/Device_Build_Runtime_V3]]; [[03_Architecture/Build_And_Worker_Architecture]]; [[03_Architecture/System_Architecture]] | covered | Review engine capability, toolchain pinning and real-device acceptance together. |
+| Publisher authorization and Cloudflare admin control plane | android-app/app/src/main/java/com/appforge/studio/build/WindowsPublisherSigningAuthorizationClient.kt; android-app/app/src/main/java/com/appforge/studio/build/WindowsPublisherSigningPolicy.kt; android-app/app/src/main/java/com/appforge/studio/build/WindowsPublisherSigningProvider.kt; cloudflare/control-plane/; quality/tests/windows_publisher_server_authorization_contract.test.js | [[03_Architecture/Windows_Publisher_Authorization]]; [[03_Architecture/Security_And_Entitlements]]; [[03_Architecture/Deployment_And_CI]] | covered | Keep source, CI, live staging and physical acceptance evidence distinct; never persist tokens or signing secrets. |
 <!-- COVERAGE_REGISTRY_END -->
 
 ## Maintenance Rule

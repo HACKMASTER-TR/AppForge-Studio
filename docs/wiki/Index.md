@@ -3,8 +3,8 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-27
-last_verified: 2026-09-27
+updated: 2026-10-02
+last_verified: 2026-10-02
 confidence: high
 tags:
   - index
@@ -31,6 +31,7 @@ source_files: []
 | Android UI or local feature | [[Android_App_Map]] | [[Feature_Overview]], [[Security_And_Entitlements]] | Android Kotlin and tests |
 | Build API, queue, or artifact | [[Build_Service_Map]] | [[Build_And_Worker_Architecture]], [[Database_Map]] | Express routes and service modules |
 | Auth, billing, or account | [[Security_And_Entitlements]] | [[Integration_Index]], [[Database_Map]] | Auth, Play, and client hardening code |
+| Windows publisher signing | [[Windows_Publisher_Authorization]] | [[Security_And_Entitlements]], [[Deployment_And_CI]] | Publisher authorization client/provider, control plane and contracts |
 | Worker or deployment | [[Deployment_And_CI]] | [[Build_And_Worker_Architecture]], [[Current_Status]] | Docker, worker, and workflow files |
 | Terminal or developer tools | [[Terminal_And_Developer_Tools]] | [[Android_App_Map]], [[Account_And_Security_Map]] | terminal Kotlin modules and contracts |
 | Bug or test failure | [[Bug_Index]] | [[Current_Status]], [[Open_Questions]] | named test and its source files |
@@ -39,6 +40,7 @@ source_files: []
 
 ## Core Pages
 
+- [[Windows_Publisher_Authorization]]
 - [[Pro_Code_Lifecycle_Staging]]
 - [[Project_Overview]]
 - [[Current_Status]]
