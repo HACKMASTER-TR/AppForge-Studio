@@ -552,7 +552,43 @@ jobs:
                       + domain_id,
                   )
 
+                  print(
+                      "CANARY_DOMAIN_DELETE_HTTP="
+                      + str(status)
+                  )
+
                   if result_ok(status, body):
+                      print(
+                          "CANARY_DOMAIN_DELETE_REQUEST=PASS"
+                      )
+                  else:
+                      print(
+                          "CANARY_DOMAIN_DELETE_REQUEST="
+                          "NON_SUCCESS"
+                      )
+                      print(
+                          "CANARY_DOMAIN_DELETE_SAFE_ERROR="
+                          + safe_error(body)
+                      )
+
+                  domain_removed = False
+
+                  for _ in range(30):
+                      remaining_now = [
+                          item
+                          for item in domains()
+                          if isinstance(item, dict)
+                          and item.get("hostname")
+                              == OVERLAY
+                      ]
+
+                      if not remaining_now:
+                          domain_removed = True
+                          break
+
+                      time.sleep(2)
+
+                  if domain_removed:
                       print(
                           "CANARY_DOMAIN_CLEANUP=PASS"
                       )
