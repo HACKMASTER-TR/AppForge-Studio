@@ -18,14 +18,13 @@ source_files: []
 
 ## Active engineering gates
 
-1. Repeat the real Windows Authenticode Portable EXE build with the
-   post-sign Native-only validation fix and preserve the final signed artifact.
-2. Verify that final signed Portable EXE on real Windows, including embedded
-   signature, expected test publisher identity and executable launch.
-3. Complete non-admin and missing-provider/certificate fail-closed physical
+1. Run the Authenticode-aware Windows Host payload parser on Windows CI.
+2. Capture the exact new Windows Host SHA-256 and byte size, then update the
+   Android pinned host only from that accepted artifact.
+3. Build the exact Android Debug APK and repeat signed Portable execution on
+   real Windows, requiring the embedded AppForge project to load successfully.
+4. Complete non-admin and missing-provider/certificate fail-closed physical
    signing acceptance.
-4. Decide when PR #61, PR #63 and PR #64 are eligible for merge. They remain
-   draft/open and no merge is implied by physical or staging acceptance.
 5. Review production custom-domain enablement for publisher authorization.
 6. Wait for Play Production access approval before any Production release.
 7. Reconcile the release-integration branch into protected `main` only after
@@ -48,13 +47,18 @@ source_files: []
 
 ## Real Windows Authenticode boundary
 
-Real Windows Authenticode cryptographic execution is now physically proven,
-but the complete final-artifact gate is not closed yet because the successful
-signed Portable artifact was deleted by the subsequently discovered post-sign
-Native-only validation bug.
+Authenticode cryptographic execution, embedded signer presence, Code Signing
+EKU, DigiCert RFC3161 timestamp and signed-artifact preservation are physically
+proven.
 
-The patched APK must therefore repeat the physical build and preserve the final
-signed EXE before Authenticode end-to-end acceptance can be closed.
+End-to-end Portable acceptance remains open because Authenticode places its PE
+Certificate Table after the existing AppForge overlay. The old Windows Host
+treated physical EOF as the AppForge payload end and therefore failed to locate
+the project footer after signing.
+
+The local patch is Certificate-Table aware and adds Android post-sign payload
+validation. Windows CI plus a new exact-host physical rebuild remain required
+before the end-to-end gate can close.
 
 ## Standing boundaries
 

@@ -30,9 +30,8 @@ source_files: []
 
 ## 2026-09-15 — maintenance | Legacy docs root cleanup verified
 
-- Summary: Removed legacy Markdown and backup files from the `docs/` root so durable project memory remains under `docs/wiki/`.
-- Validation: `docs/` now contains only `docs/wiki/`, `privacy.html`, and `delete-account.html`. The latest GitHub Actions run for the cleanup commit completed successfully.
-- Boundary: `privacy.html` and `delete-account.html` are product/legal pages, not second-brain wiki pages.
+- Removed legacy Markdown/backups from `docs/`; durable wiki memory remains in
+  `docs/wiki/`. Legal privacy/delete pages were preserved and cleanup CI passed.
 
 ## 2026-09-21 — validation | Pro staging Live Audit accepted
 
@@ -174,11 +173,9 @@ source_files: []
   integration.
 - No PR merge, protected-main mutation or Production publish occurred.
 
+## 2026-10-03 — validation | Portable Authenticode
 
-## 2026-10-03 — validation | Portable and Authenticode physical
-
-- Tulpar Portable persistence, relocation and crash recovery: PASS.
-- Authenticode signing, RFC3161 timestamp and signature verification: PASS.
-- Portable was then incorrectly sent to the Native x64 validator; fail-closed
-  deleted it. Native-only guard patch and regression tests PASS; final signed
-  artifact retest remains pending.
+- Crypto/RFC3161 and artifact preservation: PASS.
+- Authenticode Certificate-Table payload lookup regression patched.
+- Targeted `14/14`, Full Quality `826/826 PASS`.
+- Windows Host CI and physical runtime retest remain.

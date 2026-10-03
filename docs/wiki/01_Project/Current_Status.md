@@ -13,6 +13,9 @@ related:
   - "[[Hot_Context]]"
   - "[[Bug_Index]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt"
+  - "windows-host/tests/payload.test.cjs"
+  - "windows-host/payload.cjs"
   - "android-app/app/src/main/java/com/appforge/studio/security/GoogleAdminIdentityClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt"
   - "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt"
@@ -61,22 +64,30 @@ Release Integration V1 remains the active integration line.
 - protected `main`: UNTOUCHED.
 - Play Production release: NOT STARTED.
 
-## Portable signing regression
+## Portable Authenticode payload regression
 
-The physical signing run exposed one post-sign finalization defect:
-a successfully signed Portable EXE was incorrectly passed to the Native-only
-`verifyWindowsX64Pe` contract. Fail-closed handling deleted the final artifact.
+The Native-only post-sign validator defect is fixed and the patched Android
+build preserved the signed Portable EXE.
 
-The release-integration worktree now gates that validator with
-`WINDOWS_NATIVE_EXE`. Publisher targeted tests are `27/27 PASS`, Portable
-targeted tests are `10/10 PASS`, and Full Quality is `825/825 PASS`.
+Physical inspection then exposed a second A-class regression: Authenticode
+correctly appended the PE Certificate Table after the AppForge overlay payload,
+while the Windows Host still looked for `APPFORGE-EXE-V1!` at physical EOF.
+The signed EXE therefore had valid Authenticode, Code Signing EKU and DigiCert
+RFC3161 timestamp data but the runtime reported that the AppForge payload
+signature could not be found.
+
+The local release-integration patch now resolves the logical payload end from
+`IMAGE_DIRECTORY_ENTRY_SECURITY`, preserves unsigned EOF behavior, and
+revalidates the Portable payload after signing before build success is
+published. Targeted quality is `14/14 PASS`; Full Quality is `826/826 PASS`.
 
 ## Remaining release gates
 
-- repeat the Portable signed-artifact physical run using an APK containing the
-  post-sign validator fix;
-- verify the final signed Portable EXE on real Windows;
-- complete non-admin and missing-provider/certificate fail-closed physical
+- run the patched Windows Host unit test and build on Windows CI;
+- publish/pin the exact accepted Windows Host hash and size for Android;
+- rebuild the exact Android Debug APK and repeat signed Portable physical
+  acceptance on Tulpar;
+- close non-admin and missing-provider/certificate fail-closed physical
   signing acceptance;
 - decide production publisher endpoint enablement;
 - wait for Play Production access approval;

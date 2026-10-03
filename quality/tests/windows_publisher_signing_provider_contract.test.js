@@ -165,3 +165,68 @@ test("post-sign native PE verification does not reject Portable EXE", () => {
     /\.applyIfRequested\([\s\S]{0,1200}?\)\s*\n\s*verifyWindowsX64Pe\(\s*finalWindowsExe/
   );
 });
+
+
+test("signed Portable payload lookup is Authenticode certificate-table aware", () => {
+  const engine = read(
+    "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+  );
+
+  const packager = read(
+    "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt"
+  );
+
+  const host = read(
+    "windows-host/payload.cjs"
+  );
+
+  assert.match(
+    host,
+    /AUTHENTICODE_CERTIFICATE_TABLE_V1/
+  );
+
+  assert.match(
+    host,
+    /SECURITY_DIRECTORY_INDEX\s*=\s*\n?\s*4/
+  );
+
+  assert.match(
+    host,
+    /payloadLogicalEnd/
+  );
+
+  assert.match(
+    host,
+    /locatePayloadFooter/
+  );
+
+  assert.match(
+    host,
+    /certificateOffset/
+  );
+
+  assert.match(
+    packager,
+    /WINDOWS_PORTABLE_AUTHENTICODE_PAYLOAD_VERIFY_V1/
+  );
+
+  assert.match(
+    packager,
+    /internal fun verifyFinalArtifact/
+  );
+
+  assert.match(
+    packager,
+    /portablePayloadLogicalEnd/
+  );
+
+  assert.match(
+    packager,
+    /portablePayloadFooterEnd/
+  );
+
+  assert.match(
+    engine,
+    /WINDOWS_SIGNED_PORTABLE_PAYLOAD_VERIFY_V1[\s\S]*WindowsPortableExePackager[\s\S]*verifyFinalArtifact/
+  );
+});

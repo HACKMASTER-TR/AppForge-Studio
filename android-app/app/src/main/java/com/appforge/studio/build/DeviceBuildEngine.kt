@@ -480,6 +480,28 @@ object DeviceBuildEngine {
                         verifyWindowsX64Pe(
                             finalWindowsExe
                         )
+
+                    } else if (
+                        state.windowsArtifactKind ==
+                            DeviceArtifactKind.WINDOWS_EXE
+                    ) {
+                        /*
+                         * WINDOWS_SIGNED_PORTABLE_PAYLOAD_VERIFY_V1
+                         *
+                         * Authenticode verification alone is not enough:
+                         * signing appends a PE Certificate Table after the
+                         * AppForge overlay payload. Revalidate the logical
+                         * AppForge payload boundary before publishing the
+                         * final signed Portable EXE.
+                         */
+                        WindowsPortableExePackager
+                            .verifyFinalArtifact(
+                                finalWindowsExe
+                            )
+
+                        state.logs.add(
+                            "✅ Windows Portable EXE • Authenticode sonrası payload doğrulandı."
+                        )
                     }
                 } catch (
                     signingFailure: Throwable

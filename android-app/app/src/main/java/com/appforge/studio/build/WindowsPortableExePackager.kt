@@ -620,11 +620,46 @@ internal object WindowsPortableExePackager {
         }
     }
 
-    private fun verifyPackagedExe(
-        file: File,
-        expectedPayloadLength: Long
+    /*
+     * WINDOWS_PORTABLE_AUTHENTICODE_PAYLOAD_VERIFY_V1
+     *
+     * Unsigned Portable EXEs end with the AppForge payload footer.
+     *
+     * Authenticode-signed Portable EXEs instead end with a PE
+     * WIN_CERTIFICATE table. IMAGE_DIRECTORY_ENTRY_SECURITY contains
+     * the physical file offset of that table, so the AppForge footer
+     * must be validated immediately before it, allowing only 0..7
+     * zero alignment bytes.
+     *
+     * This mirrors windows-host/payload.cjs and prevents a build from
+     * being marked successful when Authenticode itself is valid but the
+     * embedded AppForge project can no longer be located at runtime.
+     */
+    internal fun verifyFinalArtifact(
+        file: File
     ) {
-        RandomAccessFile(file, "r").use { raf ->
+        readVerifiedPayloadLength(
+            file
+        )
+    }
+
+    private fun readVerifiedPayloadLength(
+        file: File
+    ): Long {
+        require(
+            file.isFile &&
+                file.length() >
+                    0L
+        ) {
+            "Windows Portable EXE bulunamadı."
+        }
+
+        RandomAccessFile(
+            file,
+            "r"
+        ).use {
+            raf ->
+
             require(
                 raf.length() >
                     WindowsPortableHostStore.HOST_BYTES
@@ -632,27 +667,47 @@ internal object WindowsPortableExePackager {
                 "Windows EXE çıktısı host boyutunu aşmıyor."
             }
 
-            raf.seek(0L)
+            raf.seek(
+                0L
+            )
 
             require(
-                raf.read() == 'M'.code &&
-                    raf.read() == 'Z'.code
+                raf.read() ==
+                    'M'.code &&
+                    raf.read() ==
+                        'Z'.code
             ) {
                 "Windows EXE MZ başlığı geçersiz."
             }
 
+            val logicalEnd =
+                portablePayloadLogicalEnd(
+                    raf
+                )
+
+            val footerEnd =
+                portablePayloadFooterEnd(
+                    raf =
+                        raf,
+                    logicalEnd =
+                        logicalEnd
+                )
+
             val footerBytes =
                 8L +
-                    FOOTER_MAGIC.size.toLong()
+                    FOOTER_MAGIC
+                        .size
+                        .toLong()
 
             require(
-                raf.length() > footerBytes
+                footerEnd >
+                    footerBytes
             ) {
                 "Windows EXE footer eksik."
             }
 
             raf.seek(
-                raf.length() -
+                footerEnd -
                     footerBytes
             )
 
@@ -660,21 +715,23 @@ internal object WindowsPortableExePackager {
                 raf.readLong()
 
             require(
-                payloadLength ==
-                    expectedPayloadLength
+                payloadLength in
+                    1L..MAX_PAYLOAD_BYTES
             ) {
-                "Windows EXE payload uzunluğu doğrulanamadı."
+                "Windows EXE payload uzunluğu geçersiz."
             }
 
-            val magic =
+            val footerMagic =
                 ByteArray(
                     FOOTER_MAGIC.size
                 )
 
-            raf.readFully(magic)
+            raf.readFully(
+                footerMagic
+            )
 
             require(
-                magic.contentEquals(
+                footerMagic.contentEquals(
                     FOOTER_MAGIC
                 )
             ) {
@@ -682,7 +739,7 @@ internal object WindowsPortableExePackager {
             }
 
             val payloadOffset =
-                raf.length() -
+                footerEnd -
                     footerBytes -
                     payloadLength
 
@@ -693,14 +750,18 @@ internal object WindowsPortableExePackager {
                 "Windows EXE payload konumu geçersiz."
             }
 
-            raf.seek(payloadOffset)
+            raf.seek(
+                payloadOffset
+            )
 
             val payloadMagic =
                 ByteArray(
                     PAYLOAD_MAGIC.size
                 )
 
-            raf.readFully(payloadMagic)
+            raf.readFully(
+                payloadMagic
+            )
 
             require(
                 payloadMagic.contentEquals(
@@ -709,6 +770,373 @@ internal object WindowsPortableExePackager {
             ) {
                 "Windows EXE payload başlığı doğrulanamadı."
             }
+
+            return payloadLength
+        }
+    }
+
+    private fun portablePayloadLogicalEnd(
+        raf: RandomAccessFile
+    ): Long {
+        val physicalEnd =
+            raf.length()
+
+        if (
+            physicalEnd <
+                64L
+        ) {
+            return physicalEnd
+        }
+
+        val peOffset =
+            readUnsignedIntLe(
+                raf =
+                    raf,
+                offset =
+                    0x3cL
+            )
+
+        if (
+            peOffset <=
+                0L ||
+            peOffset +
+                24L >
+                physicalEnd
+        ) {
+            return physicalEnd
+        }
+
+        raf.seek(
+            peOffset
+        )
+
+        val signature =
+            ByteArray(
+                4
+            )
+
+        raf.readFully(
+            signature
+        )
+
+        if (
+            signature[0] !=
+                0x50.toByte() ||
+            signature[1] !=
+                0x45.toByte() ||
+            signature[2] !=
+                0x00.toByte() ||
+            signature[3] !=
+                0x00.toByte()
+        ) {
+            return physicalEnd
+        }
+
+        val optionalHeaderSize =
+            readUnsignedShortLe(
+                raf =
+                    raf,
+                offset =
+                    peOffset +
+                        20L
+            )
+
+        val optionalHeaderOffset =
+            peOffset +
+                24L
+
+        val optionalHeaderEnd =
+            optionalHeaderOffset +
+                optionalHeaderSize
+                    .toLong()
+
+        if (
+            optionalHeaderSize <
+                2 ||
+            optionalHeaderEnd >
+                physicalEnd
+        ) {
+            return physicalEnd
+        }
+
+        val optionalMagic =
+            readUnsignedShortLe(
+                raf =
+                    raf,
+                offset =
+                    optionalHeaderOffset
+            )
+
+        val dataDirectoryOffset =
+            when (
+                optionalMagic
+            ) {
+                0x020b ->
+                    112
+
+                0x010b ->
+                    96
+
+                else ->
+                    return physicalEnd
+            }
+
+        /*
+         * IMAGE_DIRECTORY_ENTRY_SECURITY = 4.
+         * Unlike other PE data directories, VirtualAddress is a
+         * physical file offset.
+         */
+        val securityDirectoryOffset =
+            optionalHeaderOffset +
+                dataDirectoryOffset
+                    .toLong() +
+                4L *
+                    8L
+
+        if (
+            securityDirectoryOffset +
+                8L >
+                optionalHeaderEnd
+        ) {
+            return physicalEnd
+        }
+
+        val certificateOffset =
+            readUnsignedIntLe(
+                raf =
+                    raf,
+                offset =
+                    securityDirectoryOffset
+            )
+
+        val certificateSize =
+            readUnsignedIntLe(
+                raf =
+                    raf,
+                offset =
+                    securityDirectoryOffset +
+                        4L
+            )
+
+        if (
+            certificateOffset ==
+                0L &&
+            certificateSize ==
+                0L
+        ) {
+            return physicalEnd
+        }
+
+        require(
+            certificateOffset >
+                0L &&
+                certificateSize >
+                    0L &&
+                certificateOffset <=
+                    physicalEnd &&
+                certificateSize <=
+                    physicalEnd -
+                        certificateOffset
+        ) {
+            "Windows Authenticode sertifika tablosu geçersiz."
+        }
+
+        return certificateOffset
+    }
+
+    private fun portablePayloadFooterEnd(
+        raf: RandomAccessFile,
+        logicalEnd: Long
+    ): Long {
+        val physicalEnd =
+            raf.length()
+
+        val authenticodePresent =
+            logicalEnd <
+                physicalEnd
+
+        val maxPadding =
+            if (
+                authenticodePresent
+            ) {
+                7
+            } else {
+                0
+            }
+
+        for (
+            padding in
+            0..maxPadding
+        ) {
+            val footerEnd =
+                logicalEnd -
+                    padding
+                        .toLong()
+
+            if (
+                footerEnd <
+                    FOOTER_MAGIC
+                        .size
+                        .toLong()
+            ) {
+                continue
+            }
+
+            if (
+                padding >
+                    0
+            ) {
+                raf.seek(
+                    footerEnd
+                )
+
+                var alignmentValid =
+                    true
+
+                repeat(
+                    padding
+                ) {
+                    if (
+                        raf.read() !=
+                            0
+                    ) {
+                        alignmentValid =
+                            false
+                    }
+                }
+
+                if (
+                    !alignmentValid
+                ) {
+                    continue
+                }
+            }
+
+            raf.seek(
+                footerEnd -
+                    FOOTER_MAGIC
+                        .size
+                        .toLong()
+            )
+
+            val candidate =
+                ByteArray(
+                    FOOTER_MAGIC.size
+                )
+
+            raf.readFully(
+                candidate
+            )
+
+            if (
+                candidate.contentEquals(
+                    FOOTER_MAGIC
+                )
+            ) {
+                return footerEnd
+            }
+        }
+
+        error(
+            "AppForge Windows payload imzası bulunamadı."
+        )
+    }
+
+    private fun readUnsignedShortLe(
+        raf: RandomAccessFile,
+        offset: Long
+    ): Int {
+        raf.seek(
+            offset
+        )
+
+        val b0 =
+            raf.read()
+
+        val b1 =
+            raf.read()
+
+        require(
+            b0 >=
+                0 &&
+                b1 >=
+                    0
+        ) {
+            "Windows PE başlığı beklenmedik biçimde sona erdi."
+        }
+
+        return b0 or
+            (
+                b1 shl
+                    8
+            )
+    }
+
+    private fun readUnsignedIntLe(
+        raf: RandomAccessFile,
+        offset: Long
+    ): Long {
+        raf.seek(
+            offset
+        )
+
+        val b0 =
+            raf.read()
+
+        val b1 =
+            raf.read()
+
+        val b2 =
+            raf.read()
+
+        val b3 =
+            raf.read()
+
+        require(
+            b0 >=
+                0 &&
+                b1 >=
+                    0 &&
+                b2 >=
+                    0 &&
+                b3 >=
+                    0
+        ) {
+            "Windows PE başlığı beklenmedik biçimde sona erdi."
+        }
+
+        return (
+            b0.toLong() or
+                (
+                    b1.toLong() shl
+                        8
+                ) or
+                (
+                    b2.toLong() shl
+                        16
+                ) or
+                (
+                    b3.toLong() shl
+                        24
+                )
+            ) and
+            0xffffffffL
+    }
+
+    private fun verifyPackagedExe(
+        file: File,
+        expectedPayloadLength: Long
+    ) {
+        val payloadLength =
+            readVerifiedPayloadLength(
+                file
+            )
+
+        require(
+            payloadLength ==
+                expectedPayloadLength
+        ) {
+            "Windows EXE payload uzunluğu doğrulanamadı."
         }
     }
 

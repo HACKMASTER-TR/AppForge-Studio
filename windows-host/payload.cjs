@@ -47,6 +47,30 @@ const MAX_SITE_FILES =
   10000;
 
 
+/*
+ * AUTHENTICODE_CERTIFICATE_TABLE_V1
+ *
+ * AppForge's project payload is appended to the Portable Host before
+ * Authenticode signing.
+ *
+ * Authenticode signing appends a WIN_CERTIFICATE table after the existing
+ * executable bytes. Therefore the physical EOF is no longer the AppForge
+ * payload footer.
+ *
+ * IMAGE_DIRECTORY_ENTRY_SECURITY is special: its VirtualAddress field is
+ * a physical file offset rather than an RVA. For a signed Portable EXE,
+ * the AppForge logical payload end is immediately before that certificate
+ * table, allowing only the normal 0..7 byte alignment padding.
+ *
+ * Unsigned Portable EXEs preserve the historical physical-EOF behavior.
+ */
+const SECURITY_DIRECTORY_INDEX =
+  4;
+
+const AUTHENTICODE_ALIGNMENT_BYTES =
+  8;
+
+
 function readExactly(
   fd,
   length,
@@ -87,6 +111,294 @@ function readExactly(
   }
 
   return out;
+}
+
+
+function readUInt16Le(
+  fd,
+  position
+) {
+  return readExactly(
+    fd,
+    2,
+    position
+  ).readUInt16LE(
+    0
+  );
+}
+
+
+function readUInt32Le(
+  fd,
+  position
+) {
+  return readExactly(
+    fd,
+    4,
+    position
+  ).readUInt32LE(
+    0
+  );
+}
+
+
+function payloadLogicalEnd(
+  fd,
+  physicalEnd
+) {
+  /*
+   * Preserve the old unsigned behavior unless this is recognizably
+   * a PE image carrying an Authenticode Certificate Table.
+   */
+  if (
+    physicalEnd <
+      64
+  ) {
+    return physicalEnd;
+  }
+
+  const peOffset =
+    readUInt32Le(
+      fd,
+      0x3c
+    );
+
+  if (
+    peOffset <=
+      0 ||
+    peOffset +
+      24 >
+      physicalEnd
+  ) {
+    return physicalEnd;
+  }
+
+  const peSignature =
+    readExactly(
+      fd,
+      4,
+      peOffset
+    );
+
+  if (
+    peSignature[0] !==
+      0x50 ||
+    peSignature[1] !==
+      0x45 ||
+    peSignature[2] !==
+      0x00 ||
+    peSignature[3] !==
+      0x00
+  ) {
+    return physicalEnd;
+  }
+
+  const optionalHeaderSize =
+    readUInt16Le(
+      fd,
+      peOffset +
+        20
+    );
+
+  const optionalHeaderOffset =
+    peOffset +
+      24;
+
+  const optionalHeaderEnd =
+    optionalHeaderOffset +
+      optionalHeaderSize;
+
+  if (
+    optionalHeaderSize <
+      2 ||
+    optionalHeaderEnd >
+      physicalEnd
+  ) {
+    return physicalEnd;
+  }
+
+  const optionalMagic =
+    readUInt16Le(
+      fd,
+      optionalHeaderOffset
+    );
+
+  let dataDirectoryOffset;
+
+  if (
+    optionalMagic ===
+      0x20b
+  ) {
+    dataDirectoryOffset =
+      112;
+
+  } else if (
+    optionalMagic ===
+      0x10b
+  ) {
+    dataDirectoryOffset =
+      96;
+
+  } else {
+    return physicalEnd;
+  }
+
+  const securityDirectoryOffset =
+    optionalHeaderOffset +
+      dataDirectoryOffset +
+      SECURITY_DIRECTORY_INDEX *
+        8;
+
+  if (
+    securityDirectoryOffset +
+      8 >
+      optionalHeaderEnd
+  ) {
+    return physicalEnd;
+  }
+
+  /*
+   * IMAGE_DIRECTORY_ENTRY_SECURITY:
+   *   DWORD VirtualAddress -> physical file offset
+   *   DWORD Size
+   */
+  const certificateOffset =
+    readUInt32Le(
+      fd,
+      securityDirectoryOffset
+    );
+
+  const certificateSize =
+    readUInt32Le(
+      fd,
+      securityDirectoryOffset +
+        4
+    );
+
+  if (
+    certificateOffset ===
+      0 &&
+    certificateSize ===
+      0
+  ) {
+    return physicalEnd;
+  }
+
+  if (
+    certificateOffset <=
+      0 ||
+    certificateSize <=
+      0 ||
+    certificateOffset >
+      physicalEnd ||
+    certificateSize >
+      physicalEnd -
+        certificateOffset
+  ) {
+    throw new Error(
+      "Windows Authenticode sertifika tablosu geçersiz."
+    );
+  }
+
+  return certificateOffset;
+}
+
+
+function locatePayloadFooter(
+  fd,
+  physicalEnd
+) {
+  const logicalEnd =
+    payloadLogicalEnd(
+      fd,
+      physicalEnd
+    );
+
+  const authenticodePresent =
+    logicalEnd <
+      physicalEnd;
+
+  const maxPadding =
+    authenticodePresent
+      ? AUTHENTICODE_ALIGNMENT_BYTES -
+          1
+      : 0;
+
+  for (
+    let padding =
+      0;
+    padding <=
+      maxPadding;
+    padding +=
+      1
+  ) {
+    const footerEnd =
+      logicalEnd -
+        padding;
+
+    if (
+      footerEnd <
+        FOOTER_BYTES
+    ) {
+      continue;
+    }
+
+    /*
+     * Authenticode Certificate Table is 8-byte aligned.
+     * Only zero alignment bytes are accepted between the
+     * AppForge footer and the certificate table.
+     */
+    if (
+      padding >
+        0
+    ) {
+      const alignment =
+        readExactly(
+          fd,
+          padding,
+          footerEnd
+        );
+
+      if (
+        alignment.some(
+          value =>
+            value !==
+              0
+        )
+      ) {
+        continue;
+      }
+    }
+
+    const footer =
+      readExactly(
+        fd,
+        FOOTER_BYTES,
+        footerEnd -
+          FOOTER_BYTES
+      );
+
+    if (
+      footer
+        .subarray(
+          8
+        )
+        .equals(
+          FOOTER_MAGIC
+        )
+    ) {
+      return {
+        footer,
+        footerEnd,
+        authenticodePresent,
+        padding
+      };
+    }
+  }
+
+  throw new Error(
+    "AppForge Windows payload imzası bulunamadı."
+  );
 }
 
 
@@ -293,28 +605,15 @@ function readPayloadMetadata(
       );
     }
 
-    const footer =
-      readExactly(
+    const footerLocation =
+      locatePayloadFooter(
         fd,
-        FOOTER_BYTES,
-        stat.size -
-          FOOTER_BYTES
+        stat.size
       );
 
-    const foundMagic =
-      footer.subarray(
-        8
-      );
-
-    if (
-      !foundMagic.equals(
-        FOOTER_MAGIC
-      )
-    ) {
-      throw new Error(
-        "AppForge Windows payload imzası bulunamadı."
-      );
-    }
+    const footer =
+      footerLocation
+        .footer;
 
     const payloadLengthBig =
       footer.readBigUInt64BE(
@@ -340,7 +639,8 @@ function readPayloadMetadata(
       );
 
     const payloadOffset =
-      stat.size -
+      footerLocation
+        .footerEnd -
       FOOTER_BYTES -
       payloadLength;
 

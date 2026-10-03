@@ -19,6 +19,8 @@ related:
   - "[[Windows_Publisher_Authorization]]"
   - "[[Open_Questions]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt"
+  - "windows-host/payload.cjs"
   - ".github/workflows/android-play-release.yml"
   - ".github/workflows/windows-portable-host.yml"
   - "windows-host/main.cjs"
@@ -36,8 +38,9 @@ source_files:
 - Full Quality is `825/825 PASS`.
 - Tulpar Windows Portable persistence/relaunch/relocation/crash physical retest
   is PASS.
-- Authenticode crypto, signature verification and RFC3161 timestamp are
-  physically PASS; patched final signed-artifact retest remains pending.
+- Authenticode crypto, Code Signing EKU, RFC3161 timestamp and final signed
+  artifact preservation are physically PASS; payload runtime acceptance remains
+  pending after discovery of an Authenticode Certificate-Table/EOF boundary.
 - Protected `main` remains untouched.
 
 ## Must Know
@@ -47,6 +50,8 @@ source_files:
   0005.
 - Portable and Native EXE are distinct artifact identities.
 - Portable post-sign flow must not execute the Native-only x86-64 validator.
+- Signed Portable payload lookup must resolve logical EOF from the PE Security
+  Directory rather than assume the physical file end is the AppForge footer.
 - Native Android CMake and real Windows x64 launch are physically PASS.
 - Production publisher endpoint remains DISABLED.
 - `PRODUCTION_READY=NO`.
@@ -58,15 +63,17 @@ source_files:
 - Physical publisher signing consumed the server grant, produced a valid
   debug-only self-signed Authenticode signature and verified the DigiCert
   RFC3161 timestamp.
-- A post-sign bug incorrectly applied Native PE validation to Portable output;
-  fail-closed deleted the signed artifact.
-- The validator is now Native-only; publisher targeted tests are `27/27 PASS`
-  and Portable targeted tests are `10/10 PASS`.
+- The Native-only validator regression is fixed and the next signed artifact
+  was preserved.
+- That preserved EXE proved a second runtime regression: Authenticode's
+  Certificate Table moved physical EOF beyond the AppForge footer.
+- Local host/parser and Android post-sign validation patches are in place;
+  targeted quality is `14/14 PASS` and Full Quality is `826/826 PASS`.
 
 ## Current Risks / Open Questions
 
-- Repeat signed Portable physical build using the patched APK.
-- Verify and launch the preserved signed EXE on real Windows.
+- Run patched Windows Host unit/build CI and capture exact host hash/size.
+- Pin that accepted host in Android and repeat signed Portable physical runtime.
 - Non-admin and missing-provider fail-closed physical acceptance: PENDING.
 - Production publisher endpoint: DISABLED pending review.
 - Play Production access and final protected-main integration: PENDING.

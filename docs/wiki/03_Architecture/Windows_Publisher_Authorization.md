@@ -18,6 +18,9 @@ related:
   - "[[Current_Status]]"
   - "[[Decision_Index]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt"
+  - "windows-host/tests/payload.test.cjs"
+  - "windows-host/payload.cjs"
   - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPublisherSigningAuthorizationClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPublisherSigningPolicy.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPublisherSigningProvider.kt"
@@ -85,21 +88,28 @@ The physical signing execution proved:
 - final cryptographic signature verification inside the provider: PASS;
 - debug-only self-signed publisher acceptance: PASS.
 
-The successful signature was followed by an unrelated finalization defect:
-Portable EXE was incorrectly passed to the Native-only x86-64 PE validator.
-Fail-closed handling then deleted the signed final artifact.
+The Native-only post-sign validator defect was fixed and the subsequent
+physical build preserved the signed Portable artifact.
 
-The fix now runs `verifyWindowsX64Pe` after signing only when
-`state.windowsArtifactKind == WINDOWS_NATIVE_EXE`. Publisher targeted tests are
-`27/27 PASS`, Portable targeted tests are `10/10 PASS`, and Full Quality is
-`825/825 PASS`.
+That retest exposed a separate runtime boundary: Authenticode appends the PE
+Certificate Table after the AppForge overlay payload. The previous Windows Host
+looked for the AppForge footer at physical EOF, so the signed process started
+but displayed `AppForge Windows payload imzası bulunamadı.` even though the
+embedded Authenticode signer, Code Signing EKU and DigiCert RFC3161 timestamp
+were present.
+
+The local fix makes both the Windows Host reader and Android final Portable
+validator aware of `IMAGE_DIRECTORY_ENTRY_SECURITY`. Unsigned Portable behavior
+remains EOF-based. Android now fails closed if a signed Portable artifact can
+no longer resolve its AppForge payload.
+
+Targeted quality is `14/14 PASS` and Full Quality is `826/826 PASS`.
 
 ## Remaining boundary
 
-Real Windows Authenticode cryptographic signing is physically proven, but
-complete final signed-artifact acceptance remains pending until the patched
-debug APK repeats the Portable build, preserves the signed EXE and that EXE is
-verified and launched on real Windows.
+The new parser still requires Windows Host CI, exact artifact pinning and a
+fresh physical signed Portable rebuild before `REAL_AUTHENTICODE_END_TO_END`
+can be closed.
 
 No ID token, PKCS12 password, private key, nonce or raw grant material is
 stored in this wiki.
