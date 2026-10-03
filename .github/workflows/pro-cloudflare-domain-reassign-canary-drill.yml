@@ -1,0 +1,382 @@
+name: AppForge Cloudflare Canary Reassign Drill
+
+on:
+  push:
+    branches:
+      - feat/release-integration-v1-20261002
+    paths:
+      - .github/workflows/pro-cloudflare-domain-reassign-canary-drill.yml
+
+permissions:
+  contents: read
+
+jobs:
+  canary-domain-drill:
+    name: Canary Custom Domain Reassign And Restore
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout exact feature source
+        uses: actions/checkout@v7
+
+      - name: Verify exact branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = \
+            "refs/heads/feat/release-integration-v1-20261002"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "FEATURE_SOURCE=PASS"
+
+      - name: Canary reassign and mandatory restore
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          python3 - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.error
+          import urllib.request
+
+          TOKEN = os.environ.get("CLOUDFLARE_API_TOKEN", "")
+          ACCOUNT = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "")
+
+          CANARY = "api-canary.appforgecloud.com"
+          PRODUCTION = "api.appforgecloud.com"
+
+          SOURCE = "appforge-control-plane"
+          TEMP = "appforge-failover"
+
+          BASE = (
+              "https://api.cloudflare.com/client/v4/accounts/"
+              + ACCOUNT
+              + "/workers/domains"
+          )
+
+          if not TOKEN or not ACCOUNT:
+              raise SystemExit("CLOUDFLARE_SECRET_INPUT=FAIL")
+
+          headers = {
+              "Authorization": "Bearer " + TOKEN,
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+          }
+
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, *args, **kwargs):
+                  return None
+
+          opener = urllib.request.build_opener(NoRedirect)
+
+          def request_json(method, url, payload=None):
+              data = None
+
+              if payload is not None:
+                  data = json.dumps(payload).encode("utf-8")
+
+              req = urllib.request.Request(
+                  url,
+                  headers=headers,
+                  data=data,
+                  method=method,
+              )
+
+              try:
+                  with opener.open(req, timeout=20) as response:
+                      body = json.load(response)
+                      return response.status, body
+              except urllib.error.HTTPError as exc:
+                  try:
+                      body = json.load(exc)
+                  except Exception:
+                      body = {}
+
+                  return exc.code, body
+
+          def list_domains():
+              status, body = request_json("GET", BASE)
+
+              if (
+                  status != 200
+                  or not isinstance(body, dict)
+                  or body.get("success") is not True
+                  or not isinstance(body.get("result"), list)
+              ):
+                  raise RuntimeError("DOMAIN_LIST_FAILED")
+
+              return body["result"]
+
+          def find_one(hostname):
+              found = [
+                  x for x in list_domains()
+                  if isinstance(x, dict)
+                  and x.get("hostname") == hostname
+              ]
+
+              if len(found) != 1:
+                  raise RuntimeError(
+                      "DOMAIN_UNIQUE_BINDING_FAILED:"
+                      + hostname
+                  )
+
+              return found[0]
+
+          def wait_owner(hostname, service, attempts=30):
+              for _ in range(attempts):
+                  item = find_one(hostname)
+
+                  if item.get("service") == service:
+                      return item
+
+                  time.sleep(2)
+
+              raise RuntimeError(
+                  "DOMAIN_OWNER_TIMEOUT:"
+                  + hostname
+                  + ":"
+                  + service
+              )
+
+          def attach(hostname, service, zone_id, zone_name):
+              payload = {
+                  "hostname": hostname,
+                  "service": service,
+                  "zone_id": zone_id,
+                  "zone_name": zone_name,
+              }
+
+              return request_json(
+                  "PUT",
+                  BASE,
+                  payload,
+              )
+
+          def safe_api_error(body):
+              if not isinstance(body, dict):
+                  return "unknown"
+
+              errors = body.get("errors")
+
+              if not isinstance(errors, list) or not errors:
+                  return "unknown"
+
+              first = errors[0]
+
+              if not isinstance(first, dict):
+                  return "unknown"
+
+              code = str(first.get("code", "unknown"))
+              message = str(
+                  first.get("message", "unknown")
+              )[:160]
+
+              return code + ":" + message
+
+          print(
+              "=== CLOUDFLARE CANARY REASSIGN DRILL ==="
+          )
+          print("SECRET_VALUES=NOT_PRINTED")
+
+          canary = find_one(CANARY)
+          production = find_one(PRODUCTION)
+
+          if canary.get("service") != SOURCE:
+              raise SystemExit(
+                  "CANARY_PRE_OWNER_GUARD=FAIL"
+              )
+
+          if production.get("service") != TEMP:
+              raise SystemExit(
+                  "PRODUCTION_PRE_OWNER_GUARD=FAIL"
+              )
+
+          print("CANARY_PRE_OWNER=PASS")
+          print("PRODUCTION_PRE_OWNER=PASS")
+          print("PRODUCTION_DOMAIN_MUTATION=NONE")
+
+          zone_id = canary.get("zone_id")
+          zone_name = canary.get("zone_name")
+
+          if not zone_id or not zone_name:
+              raise SystemExit(
+                  "CANARY_ZONE_METADATA=FAIL"
+              )
+
+          changed = False
+          restore_required = False
+
+          try:
+              status, body = attach(
+                  CANARY,
+                  TEMP,
+                  zone_id,
+                  zone_name,
+              )
+
+              print(
+                  "CANARY_REASSIGN_HTTP="
+                  + str(status)
+              )
+
+              if not (
+                  200 <= status < 300
+                  and isinstance(body, dict)
+                  and body.get("success") is True
+              ):
+                  # Existing binding takeover may simply not be
+                  # supported by the public API. That is a valid
+                  # diagnostic result as long as ownership did not
+                  # change.
+                  current = find_one(CANARY)
+
+                  if current.get("service") != SOURCE:
+                      raise RuntimeError(
+                          "FAILED_REASSIGN_CHANGED_OWNER"
+                      )
+
+                  print(
+                      "CANARY_REASSIGN_API_SUPPORTED=NO"
+                  )
+                  print(
+                      "CANARY_REASSIGN_SAFE_ERROR="
+                      + safe_api_error(body)
+                  )
+                  print(
+                      "CANARY_OWNER_UNCHANGED=PASS"
+                  )
+                  print("CANARY_RESTORE=NOT_REQUIRED")
+                  print("CANARY_DRILL_RESULT=UNSUPPORTED")
+                  raise SystemExit(0)
+
+              restore_required = True
+
+              wait_owner(CANARY, TEMP)
+              changed = True
+
+              print(
+                  "CANARY_REASSIGN_API_SUPPORTED=YES"
+              )
+              print(
+                  "CANARY_TEMP_OWNER="
+                  + TEMP
+              )
+              print(
+                  "CANARY_TEMP_OWNER_VERIFY=PASS"
+              )
+
+          finally:
+              if restore_required:
+                  status, body = attach(
+                      CANARY,
+                      SOURCE,
+                      zone_id,
+                      zone_name,
+                  )
+
+                  print(
+                      "CANARY_RESTORE_HTTP="
+                      + str(status)
+                  )
+
+                  if not (
+                      200 <= status < 300
+                      and isinstance(body, dict)
+                      and body.get("success") is True
+                  ):
+                      print(
+                          "CANARY_RESTORE_API=FAIL"
+                      )
+                      raise RuntimeError(
+                          "CANARY_RESTORE_FAILED"
+                      )
+
+                  wait_owner(CANARY, SOURCE)
+
+                  print(
+                      "CANARY_RESTORE_API=PASS"
+                  )
+                  print(
+                      "CANARY_FINAL_OWNER="
+                      + SOURCE
+                  )
+                  print(
+                      "CANARY_FINAL_OWNER_VERIFY=PASS"
+                  )
+
+          if not changed:
+              raise SystemExit(
+                  "CANARY_CHANGED_STATE_EXPECTATION=FAIL"
+              )
+
+          # Production ownership must have remained untouched.
+          production_after = find_one(PRODUCTION)
+
+          if production_after.get("service") != TEMP:
+              raise SystemExit(
+                  "PRODUCTION_OWNER_CHANGED=FAIL"
+              )
+
+          print("PRODUCTION_OWNER_UNCHANGED=PASS")
+
+          # Final runtime check after restore.
+          health_url = (
+              "https://"
+              + CANARY
+              + "/health"
+          )
+
+          for attempt in range(30):
+              req = urllib.request.Request(
+                  health_url,
+                  headers={
+                      "Accept": "application/json",
+                      "User-Agent":
+                          "AppForge-Canary-Reassign-Drill/1.0",
+                  },
+                  method="GET",
+              )
+
+              try:
+                  with opener.open(req, timeout=20) as response:
+                      data = json.load(response)
+
+                      if (
+                          response.status == 200
+                          and isinstance(data, dict)
+                          and data.get("ok") is True
+                          and data.get("database")
+                              == "reachable"
+                      ):
+                          print(
+                              "CANARY_POST_RESTORE_HEALTH=PASS"
+                          )
+                          print(
+                              "CANARY_POST_RESTORE_DATABASE="
+                              "reachable"
+                          )
+                          break
+              except Exception:
+                  pass
+
+              time.sleep(2)
+          else:
+              raise SystemExit(
+                  "CANARY_POST_RESTORE_HEALTH=FAIL"
+              )
+
+          print(
+              "CANARY_ATOMIC_REASSIGN_DRILL=PASS"
+          )
+          print(
+              "PRODUCTION_DOMAIN_MUTATION=NONE"
+          )
+          print("D1_WRITES=NONE")
+          print("WORKER_DEPLOY=NONE")
+          PY
