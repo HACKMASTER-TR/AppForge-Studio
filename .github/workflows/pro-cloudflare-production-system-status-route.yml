@@ -1,0 +1,658 @@
+name: AppForge Production System Status Route
+
+on:
+  push:
+    branches:
+      - feat/release-integration-v1-20261002
+    paths:
+      - .github/workflows/pro-cloudflare-production-system-status-route.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appforge-production-system-status-route
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy exact system-status production route
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout exact feature source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Verify exact release base
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EXPECTED_BRANCH="feat/release-integration-v1-20261002"
+          EXPECTED_BASE="8775fc3fd5dacbe1c0feaf013d4e60f5409df4f4"
+
+          test "${GITHUB_REF_NAME}" = "${EXPECTED_BRANCH}" || {
+            echo "BRANCH_GUARD=FAIL"
+            exit 10
+          }
+
+          ACTUAL_BASE="$(git rev-parse HEAD^)"
+
+          test "$ACTUAL_BASE" = "$EXPECTED_BASE" || {
+            echo "BASE_GUARD=FAIL"
+            echo "ACTUAL_BASE=$ACTUAL_BASE"
+            exit 11
+          }
+
+          echo "BRANCH_GUARD=PASS"
+          echo "BASE_GUARD=PASS"
+
+      - name: Deploy and verify system-status route
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import tempfile
+          import time
+          import urllib.error
+          import urllib.request
+
+          TOKEN = os.environ.get("CLOUDFLARE_API_TOKEN", "")
+          ACCOUNT = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "")
+
+          HOST = "api.appforgecloud.com"
+          ORIGIN = "appforge-failover"
+          TARGET = "appforge-control-plane"
+          API = "https://api.cloudflare.com/client/v4"
+
+          EXISTING_PATHS = [
+              "/api/admin/google/verify",
+              "/api/admin/windows-signing/grant",
+              "/api/admin/windows-signing/consume",
+          ]
+
+          NEW_PATH = "/api/admin/system-status"
+
+          EXISTING_PATTERNS = [
+              "https://" + HOST + path
+              for path in EXISTING_PATHS
+          ]
+
+          NEW_PATTERN = (
+              "https://"
+              + HOST
+              + NEW_PATH
+          )
+
+          EXPECTED_FINAL_PATTERNS = (
+              EXISTING_PATTERNS
+              + [NEW_PATTERN]
+          )
+
+          if not TOKEN or not ACCOUNT:
+              raise SystemExit("SECRET_INPUT=FAIL")
+
+          HEADERS = {
+              "Authorization": "Bearer " + TOKEN,
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+          }
+
+          def api(method, path, payload=None):
+              data = (
+                  json.dumps(payload).encode()
+                  if payload is not None
+                  else None
+              )
+
+              request = urllib.request.Request(
+                  API + path,
+                  headers=HEADERS,
+                  method=method,
+                  data=data,
+              )
+
+              try:
+                  with urllib.request.urlopen(
+                      request,
+                      timeout=20,
+                  ) as response:
+                      return response.status, json.load(response)
+
+              except urllib.error.HTTPError as exc:
+                  try:
+                      body = json.load(exc)
+                  except Exception:
+                      body = {}
+
+                  return exc.code, body
+
+          def ok(status, body):
+              return (
+                  200 <= status < 300
+                  and isinstance(body, dict)
+                  and body.get("success") is True
+              )
+
+          def safe_error(body):
+              if not isinstance(body, dict):
+                  return "unknown"
+
+              errors = body.get("errors")
+
+              if not isinstance(errors, list):
+                  return "unknown"
+
+              parts = []
+
+              for item in errors[:3]:
+                  if not isinstance(item, dict):
+                      continue
+
+                  parts.append(
+                      str(item.get("code", "unknown"))
+                      + ":"
+                      + str(item.get("message", "unknown"))[:180]
+                  )
+
+              return "|".join(parts) or "unknown"
+
+          def domains():
+              status, body = api(
+                  "GET",
+                  f"/accounts/{ACCOUNT}/workers/domains",
+              )
+
+              if not ok(status, body):
+                  raise RuntimeError(
+                      "DOMAIN_LIST=FAIL:"
+                      + safe_error(body)
+                  )
+
+              return body.get("result") or []
+
+          def one_domain(hostname):
+              found = [
+                  item
+                  for item in domains()
+                  if isinstance(item, dict)
+                  and item.get("hostname") == hostname
+              ]
+
+              if len(found) != 1:
+                  raise RuntimeError(
+                      "DOMAIN_UNIQUE_GUARD=FAIL:"
+                      + hostname
+                  )
+
+              return found[0]
+
+          def routes(zone_id):
+              status, body = api(
+                  "GET",
+                  f"/zones/{zone_id}/workers/routes",
+              )
+
+              if not ok(status, body):
+                  raise RuntimeError(
+                      "ROUTE_LIST=FAIL:"
+                      + safe_error(body)
+                  )
+
+              return body.get("result") or []
+
+          def host_routes(zone_id):
+              output = {}
+
+              for item in routes(zone_id):
+                  if not isinstance(item, dict):
+                      continue
+
+                  pattern = str(
+                      item.get("pattern", "")
+                  )
+
+                  if HOST in pattern:
+                      output[pattern] = item
+
+              return output
+
+          def http(path):
+              body_file = tempfile.NamedTemporaryFile(delete=False)
+              header_file = tempfile.NamedTemporaryFile(delete=False)
+
+              body_file.close()
+              header_file.close()
+
+              try:
+                  result = subprocess.run(
+                      [
+                          "curl",
+                          "--silent",
+                          "--show-error",
+                          "--connect-timeout", "10",
+                          "--max-time", "20",
+                          "--max-redirs", "0",
+                          "--dump-header", header_file.name,
+                          "--output", body_file.name,
+                          "--write-out", "%{http_code}",
+                          "https://" + HOST + path,
+                      ],
+                      capture_output=True,
+                      text=True,
+                  )
+
+                  code = int(
+                      result.stdout.strip()
+                      or "0"
+                  )
+
+                  try:
+                      with open(
+                          body_file.name,
+                          encoding="utf-8",
+                      ) as handle:
+                          payload = json.load(handle)
+                  except Exception:
+                      payload = {}
+
+                  response_headers = {}
+
+                  with open(
+                      header_file.name,
+                      encoding="utf-8",
+                      errors="replace",
+                  ) as handle:
+                      for line in handle:
+                          if ":" not in line:
+                              continue
+
+                          key, value = line.split(":", 1)
+
+                          response_headers[
+                              key.strip().lower()
+                          ] = value.strip()
+
+                  return (
+                      result.returncode,
+                      code,
+                      payload,
+                      response_headers,
+                  )
+
+              finally:
+                  for name in (
+                      body_file.name,
+                      header_file.name,
+                  ):
+                      try:
+                          os.unlink(name)
+                      except OSError:
+                          pass
+
+          def delete_new_route(
+              zone_id,
+              route_id,
+          ):
+              print("SYSTEM_STATUS_ROLLBACK=START")
+
+              status, body = api(
+                  "DELETE",
+                  f"/zones/{zone_id}/workers/routes/"
+                  + route_id,
+              )
+
+              if not ok(status, body):
+                  print(
+                      "SYSTEM_STATUS_ROLLBACK_DELETE=FAIL:"
+                      + safe_error(body)
+                  )
+                  return False
+
+              print(
+                  "SYSTEM_STATUS_ROLLBACK_DELETE=PASS"
+              )
+
+              removed = False
+
+              for _ in range(30):
+                  current = host_routes(zone_id)
+
+                  if NEW_PATTERN not in current:
+                      removed = True
+                      break
+
+                  time.sleep(2)
+
+              if not removed:
+                  print(
+                      "SYSTEM_STATUS_ROLLBACK_VERIFY=FAIL"
+                  )
+                  return False
+
+              print(
+                  "SYSTEM_STATUS_ROLLBACK_VERIFY=PASS"
+              )
+
+              existing = host_routes(zone_id)
+
+              if set(existing) != set(EXISTING_PATTERNS):
+                  print(
+                      "SYSTEM_STATUS_ROLLBACK_BASELINE=FAIL"
+                  )
+                  return False
+
+              for pattern in EXISTING_PATTERNS:
+                  if (
+                      existing[pattern].get("script")
+                      != TARGET
+                  ):
+                      print(
+                          "SYSTEM_STATUS_ROLLBACK_TARGET=FAIL"
+                      )
+                      return False
+
+              print(
+                  "SYSTEM_STATUS_ROLLBACK_BASELINE=PASS"
+              )
+
+              print(
+                  "SYSTEM_STATUS_ROLLBACK=PASS"
+              )
+
+              return True
+
+          print("SECRET_VALUES=NOT_PRINTED")
+
+          production = one_domain(HOST)
+
+          if production.get("service") != ORIGIN:
+              raise SystemExit(
+                  "PRODUCTION_OWNER_GUARD=FAIL"
+              )
+
+          zone_id = production.get("zone_id")
+
+          if not zone_id:
+              raise SystemExit("ZONE_ID=FAIL")
+
+          print("PRODUCTION_OWNER_GUARD=PASS")
+
+          current = host_routes(zone_id)
+
+          if set(current) != set(EXISTING_PATTERNS):
+              print(
+                  "EXPECTED_EXISTING_ROUTE_COUNT=3"
+              )
+              print(
+                  "ACTUAL_EXISTING_ROUTE_COUNT="
+                  + str(len(current))
+              )
+
+              for pattern in sorted(current):
+                  print(
+                      "ACTUAL_EXISTING_ROUTE="
+                      + pattern
+                  )
+
+              raise SystemExit(
+                  "EXISTING_ROUTE_SET_GUARD=FAIL"
+              )
+
+          for pattern in EXISTING_PATTERNS:
+              if current[pattern].get("script") != TARGET:
+                  raise SystemExit(
+                      "EXISTING_ROUTE_TARGET_GUARD=FAIL:"
+                      + pattern
+                  )
+
+          print(
+              "EXISTING_ROUTE_SET_GUARD=PASS"
+          )
+          print(
+              "EXISTING_ROUTE_COUNT=3"
+          )
+          print(
+              "EXISTING_ROUTE_TARGET=appforge-control-plane"
+          )
+
+          route_id = None
+
+          try:
+              status, body = api(
+                  "POST",
+                  f"/zones/{zone_id}/workers/routes",
+                  {
+                      "pattern": NEW_PATTERN,
+                      "script": TARGET,
+                  },
+              )
+
+              if not ok(status, body):
+                  raise RuntimeError(
+                      "SYSTEM_STATUS_ROUTE_CREATE=FAIL:"
+                      + safe_error(body)
+                  )
+
+              route_id = (
+                  (body.get("result") or {}).get("id")
+              )
+
+              if not route_id:
+                  current = host_routes(zone_id)
+                  item = current.get(NEW_PATTERN)
+
+                  if isinstance(item, dict):
+                      route_id = item.get("id")
+
+              if not route_id:
+                  raise RuntimeError(
+                      "SYSTEM_STATUS_ROUTE_ID=FAIL"
+                  )
+
+              print(
+                  "SYSTEM_STATUS_ROUTE_CREATE=PASS"
+              )
+              print(
+                  "SYSTEM_STATUS_ROUTE_ID="
+                  + route_id
+              )
+
+              active = None
+
+              for _ in range(30):
+                  current = host_routes(zone_id)
+
+                  if (
+                      set(current)
+                      == set(EXPECTED_FINAL_PATTERNS)
+                      and all(
+                          current[p].get("script")
+                          == TARGET
+                          for p in EXPECTED_FINAL_PATTERNS
+                      )
+                  ):
+                      active = current
+                      break
+
+                  time.sleep(2)
+
+              if active is None:
+                  raise RuntimeError(
+                      "FINAL_ROUTE_SET=FAIL"
+                  )
+
+              print("FINAL_ROUTE_SET=PASS")
+              print("FINAL_ROUTE_COUNT=4")
+
+              runtime_ok = False
+
+              for _ in range(30):
+                  (
+                      rc,
+                      code,
+                      payload,
+                      headers,
+                  ) = http(NEW_PATH)
+
+                  if (
+                      rc == 0
+                      and code == 401
+                      and isinstance(payload, dict)
+                      and payload.get("error")
+                          == "invalid_identity"
+                  ):
+                      runtime_ok = True
+                      break
+
+                  time.sleep(2)
+
+              if not runtime_ok:
+                  raise RuntimeError(
+                      "SYSTEM_STATUS_RUNTIME=FAIL"
+                  )
+
+              print(
+                  "SYSTEM_STATUS_HTTP=401"
+              )
+              print(
+                  "SYSTEM_STATUS_ERROR=invalid_identity"
+              )
+              print(
+                  "SYSTEM_STATUS_RUNTIME=PASS"
+              )
+
+              for path in EXISTING_PATHS:
+                  existing_ok = False
+
+                  for _ in range(10):
+                      (
+                          rc,
+                          code,
+                          payload,
+                          headers,
+                      ) = http(path)
+
+                      if (
+                          rc == 0
+                          and code == 405
+                          and isinstance(payload, dict)
+                          and payload.get("error")
+                              == "method_not_allowed"
+                      ):
+                          existing_ok = True
+                          break
+
+                      time.sleep(1)
+
+                  if not existing_ok:
+                      raise RuntimeError(
+                          "EXISTING_ROUTE_RUNTIME=FAIL:"
+                          + path
+                      )
+
+                  print(
+                      "EXISTING_ROUTE_RUNTIME=PASS:"
+                      + path
+                  )
+
+              (
+                  rc,
+                  code,
+                  payload,
+                  headers,
+              ) = http("/health")
+
+              if not (
+                  rc == 0
+                  and code == 404
+                  and headers.get(
+                      "x-railway-edge"
+                  )
+              ):
+                  raise RuntimeError(
+                      "NON_MATCHING_FAILOVER=FAIL"
+                  )
+
+              print(
+                  "NON_MATCHING_FAILOVER=PASS"
+              )
+
+              if (
+                  one_domain(HOST).get("service")
+                  != ORIGIN
+              ):
+                  raise RuntimeError(
+                      "FINAL_PRODUCTION_OWNER_GUARD=FAIL"
+                  )
+
+              print(
+                  "FINAL_PRODUCTION_OWNER_GUARD=PASS"
+              )
+
+          except Exception as error:
+              print(
+                  "SYSTEM_STATUS_ROUTE_DEPLOY=FAIL:"
+                  + str(error)[:500]
+              )
+
+              if route_id:
+                  rollback_ok = delete_new_route(
+                      zone_id,
+                      route_id,
+                  )
+
+                  if rollback_ok:
+                      raise SystemExit(
+                          "SYSTEM_STATUS_ROUTE_DEPLOY_ROLLBACK=PASS"
+                      )
+
+                  raise SystemExit(
+                      "SYSTEM_STATUS_ROUTE_DEPLOY_ROLLBACK=FAIL"
+                  )
+
+              raise
+
+          print(
+              "SYSTEM_STATUS_ROUTE_DEPLOY=PASS"
+          )
+          print(
+              "PRODUCTION_EXACT_ROUTE_COUNT=4"
+          )
+          print(
+              "CUSTOM_DOMAIN_MUTATION=NONE"
+          )
+          print(
+              "WORKER_DEPLOY=NONE"
+          )
+          print(
+              "D1_WRITES=NONE"
+          )
+          print(
+              "PLAY_PRODUCTION=UNTOUCHED"
+          )
+          print(
+              "MAIN=UNTOUCHED"
+          )
+          PY
+
+      - name: Final protected-resource boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "PRODUCTION_CUSTOM_DOMAIN_OWNER=appforge-failover"
+          echo "PROTECTED_FAILOVER_VERSION=UNTOUCHED"
+          echo "PLAY_PRODUCTION=UNTOUCHED"
+          echo "MAIN=UNTOUCHED"
