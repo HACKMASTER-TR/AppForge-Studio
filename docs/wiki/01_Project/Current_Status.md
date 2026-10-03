@@ -50,7 +50,7 @@ Release Integration V1 remains the active integration line.
 
 - PR #62 Play Production fail-closed: INTEGRATED.
 - PR #63 Portable persistence: SEMANTICALLY INTEGRATED.
-- Full Quality: `825/825 PASS`.
+- Full Quality: `826/826 PASS`.
 - Windows Portable physical persistence/relaunch/relocation/crash retest on
   Tulpar: PASS.
 - Portable localStorage and IndexedDB physical sequence: `1 → 2 → 3 → 4 → 5`
@@ -76,20 +76,24 @@ The signed EXE therefore had valid Authenticode, Code Signing EKU and DigiCert
 RFC3161 timestamp data but the runtime reported that the AppForge payload
 signature could not be found.
 
-The local release-integration patch now resolves the logical payload end from
+The release-integration fix resolves the logical payload end from
 `IMAGE_DIRECTORY_ENTRY_SECURITY`, preserves unsigned EOF behavior, and
 revalidates the Portable payload after signing before build success is
-published. Targeted quality is `14/14 PASS`; Full Quality is `826/826 PASS`.
+published. Windows Host CI run `37143822118` passed, and Android pins the
+accepted staging host `windows-host-v1-c7e4b2a` at SHA-256
+`f4aa9c8bee1b919cfb7e3cd6e8073ab4097b0b8e050bc8fb3758f5a198b98c1e`
+and `375039759` bytes.
+
+Exact-head Android Debug run `37144740820` passed at commit
+`252875794e5c288953da369a81dc4074625499b8`. Physical build
+`AF-0000001057` then produced the signed Portable EXE successfully. On Tulpar,
+the generated project rendered normally, no payload-signature error dialog
+appeared, and the application launch counter reached `2`.
+
+`REAL_AUTHENTICODE_END_TO_END=PASS`.
 
 ## Remaining release gates
 
-- Windows Host CI run `37143822118`: PASS, including payload unit tests,
-  build, persistence, relocation and forced-termination recovery;
-- exact accepted host is pinned as staging revision `windows-host-v1-c7e4b2a`,
-  SHA-256 `f4aa9c8bee1b919cfb7e3cd6e8073ab4097b0b8e050bc8fb3758f5a198b98c1e`,
-  size `375039759` bytes;
-- rebuild the exact Android Debug APK and repeat signed Portable physical
-  acceptance on Tulpar;
 - close non-admin and missing-provider/certificate fail-closed physical
   signing acceptance;
 - decide production publisher endpoint enablement;

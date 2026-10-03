@@ -175,7 +175,6 @@ source_files: []
 
 ## 2026-10-03 — validation | Portable Authenticode
 
-- Crypto/RFC3161 and artifact preservation: PASS.
-- Authenticode Certificate-Table payload lookup regression patched.
-- Targeted `14/14`, Full Quality `826/826 PASS`.
-- Windows Host CI and physical runtime retest remain.
+- Crypto/RFC3161, signed artifact and embedded project runtime: PASS.
+- Windows Host CI and exact Android pin: PASS.
+- Physical build `AF-0000001057`: `REAL_AUTHENTICODE_END_TO_END=PASS`.

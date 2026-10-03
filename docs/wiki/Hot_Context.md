@@ -35,12 +35,13 @@ source_files:
 ## Current Focus
 
 - Release Integration V1 remains the active integration line.
-- Full Quality is `825/825 PASS`.
+- Full Quality is `826/826 PASS`.
 - Tulpar Windows Portable persistence/relaunch/relocation/crash physical retest
   is PASS.
-- Authenticode crypto, Code Signing EKU, RFC3161 timestamp and final signed
-  artifact preservation are physically PASS; payload runtime acceptance remains
-  pending after discovery of an Authenticode Certificate-Table/EOF boundary.
+- Authenticode crypto, Code Signing EKU, RFC3161 timestamp, final signed
+  artifact preservation and embedded Portable project runtime are physically
+  PASS.
+- `REAL_AUTHENTICODE_END_TO_END=PASS`.
 - Protected `main` remains untouched.
 
 ## Must Know
@@ -67,14 +68,16 @@ source_files:
   was preserved.
 - That preserved EXE proved a second runtime regression: Authenticode's
   Certificate Table moved physical EOF beyond the AppForge footer.
-- Local host/parser and Android post-sign validation patches are in place;
-  targeted quality is `14/14 PASS` and Full Quality is `826/826 PASS`.
+- Windows Host CI run `37143822118` passed; Android pins exact staging host
+  `windows-host-v1-c7e4b2a`.
+- Exact-head Android Debug run `37144740820` passed.
+- Physical build `AF-0000001057` rendered the project on Tulpar without the
+  former payload-signature error; launch counter reached `2`.
 
 ## Current Risks / Open Questions
 
-- Run patched Windows Host unit/build CI and capture exact host hash/size.
-- Pin that accepted host in Android and repeat signed Portable physical runtime.
-- Non-admin and missing-provider fail-closed physical acceptance: PENDING.
+- Non-admin and missing-provider/certificate fail-closed physical acceptance:
+  PENDING.
 - Production publisher endpoint: DISABLED pending review.
 - Play Production access and final protected-main integration: PENDING.
 

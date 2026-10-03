@@ -18,15 +18,11 @@ source_files: []
 
 ## Active engineering gates
 
-1. Build the exact Android Debug APK containing the accepted pinned Windows
-   Host revision and repeat signed Portable execution on real Windows.
-2. Require the embedded AppForge project to load successfully after
-   Authenticode signing.
-3. Complete non-admin and missing-provider/certificate fail-closed physical
+1. Complete non-admin and missing-provider/certificate fail-closed physical
    signing acceptance.
-4. Review production custom-domain enablement for publisher authorization.
-5. Wait for Play Production access approval before any Production release.
-6. Reconcile the release-integration branch into protected `main` only after
+2. Review production custom-domain enablement for publisher authorization.
+3. Wait for Play Production access approval before any Production release.
+4. Reconcile the release-integration branch into protected `main` only after
    the remaining release gates are closed.
 
 ## Resolved since earlier checkpoints
@@ -43,21 +39,25 @@ source_files: []
 - Debug-only self-signed publisher signature verification is PASS.
 - The Portable post-sign Native x86-64 validator regression is patched and
   covered by regression tests.
+- Windows Host CI run `37143822118` passed with the Authenticode-aware payload
+  reader and exact staging host pin.
+- Exact-head Android Debug run `37144740820` passed.
+- Physical build `AF-0000001057` rendered its embedded project on Tulpar after
+  signing, without the former payload-signature error; launch counter reached
+  `2`.
+- `REAL_AUTHENTICODE_END_TO_END=PASS`.
 
 ## Real Windows Authenticode boundary
 
 Authenticode cryptographic execution, embedded signer presence, Code Signing
-EKU, DigiCert RFC3161 timestamp and signed-artifact preservation are physically
-proven.
+EKU, DigiCert RFC3161 timestamp, signed-artifact preservation and the embedded
+AppForge project runtime are physically proven.
 
-End-to-end Portable acceptance remains open because Authenticode places its PE
-Certificate Table after the existing AppForge overlay. The old Windows Host
-treated physical EOF as the AppForge payload end and therefore failed to locate
-the project footer after signing.
+The Certificate-Table-aware Windows Host and Android post-sign validation are
+accepted. Physical build `AF-0000001057` loaded the project successfully on
+Tulpar with no payload-signature error.
 
-The local patch is Certificate-Table aware and adds Android post-sign payload
-validation. Windows CI plus a new exact-host physical rebuild remain required
-before the end-to-end gate can close.
+`REAL_AUTHENTICODE_END_TO_END=PASS`.
 
 ## Standing boundaries
 

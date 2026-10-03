@@ -105,11 +105,25 @@ no longer resolve its AppForge payload.
 
 Targeted quality is `14/14 PASS` and Full Quality is `826/826 PASS`.
 
-## Remaining boundary
+## 2026-10-03 end-to-end physical acceptance
 
-The new parser still requires Windows Host CI, exact artifact pinning and a
-fresh physical signed Portable rebuild before `REAL_AUTHENTICODE_END_TO_END`
-can be closed.
+Windows Host CI run `37143822118` passed and Android was pinned to staging host
+`windows-host-v1-c7e4b2a`, SHA-256
+`f4aa9c8bee1b919cfb7e3cd6e8073ab4097b0b8e050bc8fb3758f5a198b98c1e`,
+size `375039759` bytes.
+
+Exact-head Android Debug run `37144740820` passed at commit
+`252875794e5c288953da369a81dc4074625499b8`.
+
+Physical signed Portable build `AF-0000001057` then launched on Tulpar,
+rendered the embedded AppForge Authenticode test project, showed no
+payload-signature error, and recorded launch counter `2`.
+
+`REAL_AUTHENTICODE_END_TO_END=PASS`.
+
+Remaining physical publisher gates are non-admin denial and
+missing-provider/certificate fail-closed acceptance. Production public trust is
+not claimed by the debug self-signed certificate.
 
 No ID token, PKCS12 password, private key, nonce or raw grant material is
 stored in this wiki.
