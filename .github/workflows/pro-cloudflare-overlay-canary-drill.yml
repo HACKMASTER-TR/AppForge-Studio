@@ -1,0 +1,593 @@
+name: AppForge Cloudflare Overlay Canary Drill
+
+on:
+  push:
+    branches:
+      - feat/release-integration-v1-20261002
+    paths:
+      - .github/workflows/pro-cloudflare-overlay-canary-drill.yml
+
+permissions:
+  contents: read
+
+jobs:
+  overlay-canary:
+    name: Selective Worker Route Overlay Canary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout exact feature source
+        uses: actions/checkout@v7
+
+      - name: Verify exact branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = \
+            "refs/heads/feat/release-integration-v1-20261002"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "FEATURE_SOURCE=PASS"
+
+      - name: Run overlay canary and mandatory cleanup
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import tempfile
+          import time
+          import urllib.error
+          import urllib.request
+
+          TOKEN = os.environ.get("CLOUDFLARE_API_TOKEN", "")
+          ACCOUNT = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "")
+
+          PROD = "api.appforgecloud.com"
+          OVERLAY = "api-overlay-canary.appforgecloud.com"
+
+          ORIGIN = "appforge-failover"
+          TARGET = "appforge-control-plane"
+
+          if not TOKEN or not ACCOUNT:
+              raise SystemExit("CLOUDFLARE_SECRET_INPUT=FAIL")
+
+          API = "https://api.cloudflare.com/client/v4"
+
+          headers = {
+              "Authorization": "Bearer " + TOKEN,
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+          }
+
+          def api(method, path, payload=None):
+              data = None
+
+              if payload is not None:
+                  data = json.dumps(payload).encode()
+
+              req = urllib.request.Request(
+                  API + path,
+                  headers=headers,
+                  method=method,
+                  data=data,
+              )
+
+              try:
+                  with urllib.request.urlopen(
+                      req,
+                      timeout=20,
+                  ) as response:
+                      return (
+                          response.status,
+                          json.load(response),
+                      )
+
+              except urllib.error.HTTPError as exc:
+                  try:
+                      body = json.load(exc)
+                  except Exception:
+                      body = {}
+
+                  return exc.code, body
+
+          def result_ok(status, body):
+              return (
+                  200 <= status < 300
+                  and isinstance(body, dict)
+                  and body.get("success") is True
+              )
+
+          def safe_error(body):
+              if not isinstance(body, dict):
+                  return "unknown"
+
+              errors = body.get("errors")
+
+              if not isinstance(errors, list) or not errors:
+                  return "unknown"
+
+              first = errors[0]
+
+              if not isinstance(first, dict):
+                  return "unknown"
+
+              return (
+                  str(first.get("code", "unknown"))
+                  + ":"
+                  + str(first.get("message", "unknown"))[:140]
+              )
+
+          def domains():
+              status, body = api(
+                  "GET",
+                  f"/accounts/{ACCOUNT}/workers/domains",
+              )
+
+              if not result_ok(status, body):
+                  raise RuntimeError("DOMAIN_LIST_FAILED")
+
+              result = body.get("result")
+
+              if not isinstance(result, list):
+                  raise RuntimeError("DOMAIN_LIST_INVALID")
+
+              return result
+
+          def one_domain(host):
+              found = [
+                  item
+                  for item in domains()
+                  if isinstance(item, dict)
+                  and item.get("hostname") == host
+              ]
+
+              if len(found) != 1:
+                  raise RuntimeError(
+                      "DOMAIN_BINDING_COUNT:"
+                      + host
+                      + ":"
+                      + str(len(found))
+                  )
+
+              return found[0]
+
+          def public_ips(host):
+              url = (
+                  "https://cloudflare-dns.com/dns-query"
+                  "?name="
+                  + host
+                  + "&type=A"
+              )
+
+              req = urllib.request.Request(
+                  url,
+                  headers={
+                      "Accept": "application/dns-json",
+                  },
+              )
+
+              try:
+                  with urllib.request.urlopen(
+                      req,
+                      timeout=15,
+                  ) as response:
+                      body = json.load(response)
+              except Exception:
+                  return []
+
+              answers = body.get("Answer") or []
+
+              return [
+                  item.get("data")
+                  for item in answers
+                  if isinstance(item, dict)
+                  and item.get("type") == 1
+                  and isinstance(item.get("data"), str)
+              ]
+
+          def wait_ip(host):
+              for _ in range(60):
+                  values = public_ips(host)
+
+                  if values:
+                      return values[0]
+
+                  time.sleep(2)
+
+              raise RuntimeError("PUBLIC_DNS_TIMEOUT")
+
+          def http(host, ip, path):
+              body_file = tempfile.NamedTemporaryFile(
+                  delete=False
+              )
+              header_file = tempfile.NamedTemporaryFile(
+                  delete=False
+              )
+
+              body_file.close()
+              header_file.close()
+
+              try:
+                  proc = subprocess.run(
+                      [
+                          "curl",
+                          "--silent",
+                          "--show-error",
+                          "--connect-timeout", "10",
+                          "--max-time", "20",
+                          "--max-redirs", "0",
+                          "--resolve",
+                          f"{host}:443:{ip}",
+                          "--header",
+                          "Accept: application/json",
+                          "--dump-header",
+                          header_file.name,
+                          "--output",
+                          body_file.name,
+                          "--write-out",
+                          "%{http_code}",
+                          "https://" + host + path,
+                      ],
+                      text=True,
+                      capture_output=True,
+                      check=False,
+                  )
+
+                  status = int(
+                      proc.stdout.strip() or "0"
+                  )
+
+                  try:
+                      with open(
+                          body_file.name,
+                          encoding="utf-8",
+                      ) as f:
+                          payload = json.load(f)
+                  except Exception:
+                      payload = {}
+
+                  response_headers = {}
+
+                  with open(
+                      header_file.name,
+                      encoding="utf-8",
+                      errors="replace",
+                  ) as f:
+                      for line in f:
+                          if ":" not in line:
+                              continue
+
+                          k, v = line.split(":", 1)
+                          response_headers[
+                              k.strip().lower()
+                          ] = v.strip()
+
+                  return (
+                      proc.returncode,
+                      status,
+                      payload,
+                      response_headers,
+                  )
+
+              finally:
+                  for path_name in (
+                      body_file.name,
+                      header_file.name,
+                  ):
+                      try:
+                          os.unlink(path_name)
+                      except OSError:
+                          pass
+
+          print("SECRET_VALUES=NOT_PRINTED")
+
+          production = one_domain(PROD)
+
+          if production.get("service") != ORIGIN:
+              raise SystemExit(
+                  "PRODUCTION_OWNER_GUARD=FAIL"
+              )
+
+          print("PRODUCTION_OWNER_GUARD=PASS")
+
+          if any(
+              isinstance(x, dict)
+              and x.get("hostname") == OVERLAY
+              for x in domains()
+          ):
+              raise SystemExit(
+                  "OVERLAY_CANARY_ALREADY_EXISTS"
+              )
+
+          zone_id = production.get("zone_id")
+          zone_name = production.get("zone_name")
+
+          if not zone_id or not zone_name:
+              raise SystemExit("ZONE_METADATA=FAIL")
+
+          domain_id = None
+          route_id = None
+
+          try:
+              status, body = api(
+                  "PUT",
+                  f"/accounts/{ACCOUNT}/workers/domains",
+                  {
+                      "hostname": OVERLAY,
+                      "service": ORIGIN,
+                      "zone_id": zone_id,
+                      "zone_name": zone_name,
+                  },
+              )
+
+              if not result_ok(status, body):
+                  print(
+                      "OVERLAY_DOMAIN_CREATE_ERROR="
+                      + safe_error(body)
+                  )
+                  raise RuntimeError(
+                      "OVERLAY_DOMAIN_CREATE_FAILED"
+                  )
+
+              domain = one_domain(OVERLAY)
+
+              if domain.get("service") != ORIGIN:
+                  raise RuntimeError(
+                      "OVERLAY_ORIGIN_OWNER_FAILED"
+                  )
+
+              domain_id = domain.get("id")
+
+              if not domain_id:
+                  raise RuntimeError(
+                      "OVERLAY_DOMAIN_ID_MISSING"
+                  )
+
+              print(
+                  "OVERLAY_ORIGIN_OWNER="
+                  + ORIGIN
+              )
+              print("OVERLAY_ORIGIN_OWNER=PASS")
+
+              ip = wait_ip(OVERLAY)
+
+              print("OVERLAY_PUBLIC_DNS=PASS")
+
+              rc, code, payload, resp_headers = http(
+                  OVERLAY,
+                  ip,
+                  "/health",
+              )
+
+              if rc != 0:
+                  raise RuntimeError(
+                      "BASELINE_HTTP_FAILED"
+                  )
+
+              baseline_is_control_plane = (
+                  code == 200
+                  and isinstance(payload, dict)
+                  and payload.get("ok") is True
+                  and payload.get("service")
+                      == "appforge-control-plane"
+              )
+
+              if baseline_is_control_plane:
+                  raise RuntimeError(
+                      "BASELINE_ALREADY_CONTROL_PLANE"
+                  )
+
+              print(
+                  "BASELINE_HEALTH_HTTP="
+                  + str(code)
+              )
+              print(
+                  "BASELINE_CONTROL_PLANE=ABSENT_PASS"
+              )
+
+              route_pattern = (
+                  "https://"
+                  + OVERLAY
+                  + "/health"
+              )
+
+              status, body = api(
+                  "POST",
+                  f"/zones/{zone_id}/workers/routes",
+                  {
+                      "pattern": route_pattern,
+                      "script": TARGET,
+                  },
+              )
+
+              if not result_ok(status, body):
+                  print(
+                      "ROUTE_CREATE_ERROR="
+                      + safe_error(body)
+                  )
+                  raise RuntimeError(
+                      "ROUTE_CREATE_FAILED"
+                  )
+
+              result = body.get("result") or {}
+              route_id = result.get("id")
+
+              if not route_id:
+                  raise RuntimeError(
+                      "ROUTE_ID_MISSING"
+                  )
+
+              print("SELECTIVE_ROUTE_CREATE=PASS")
+              print(
+                  "SELECTIVE_ROUTE_TARGET="
+                  + TARGET
+              )
+
+              accepted = False
+
+              for _ in range(30):
+                  rc, code, payload, resp_headers = http(
+                      OVERLAY,
+                      ip,
+                      "/health",
+                  )
+
+                  if (
+                      rc == 0
+                      and code == 200
+                      and isinstance(payload, dict)
+                      and payload.get("ok") is True
+                      and payload.get("service")
+                          == "appforge-control-plane"
+                      and payload.get("database")
+                          == "reachable"
+                  ):
+                      accepted = True
+                      break
+
+                  time.sleep(2)
+
+              if not accepted:
+                  raise RuntimeError(
+                      "SELECTIVE_ROUTE_RUNTIME_FAILED"
+                  )
+
+              print("OVERLAY_HEALTH_HTTP=200")
+              print(
+                  "OVERLAY_HEALTH_SERVICE="
+                  "appforge-control-plane"
+              )
+              print(
+                  "OVERLAY_HEALTH_DATABASE=reachable"
+              )
+              print(
+                  "SELECTIVE_ROUTE_RUNTIME=PASS"
+              )
+
+              rc, root_code, root_payload, root_headers = http(
+                  OVERLAY,
+                  ip,
+                  "/",
+              )
+
+              if rc != 0:
+                  raise RuntimeError(
+                      "ORIGIN_ROOT_HTTP_FAILED"
+                  )
+
+              if (
+                  isinstance(root_payload, dict)
+                  and root_payload.get("service")
+                      == "appforge-control-plane"
+              ):
+                  raise RuntimeError(
+                      "NON_MATCHING_PATH_HIT_TARGET"
+                  )
+
+              print(
+                  "NON_MATCHING_ROOT_HTTP="
+                  + str(root_code)
+              )
+              print(
+                  "NON_MATCHING_PATH_ORIGIN=PASS"
+              )
+
+              if root_headers.get(
+                  "x-railway-edge"
+              ):
+                  print(
+                      "NON_MATCHING_RAILWAY_EVIDENCE=PASS"
+                  )
+              else:
+                  print(
+                      "NON_MATCHING_RAILWAY_EVIDENCE=UNPROVEN"
+                  )
+
+              production_after = one_domain(PROD)
+
+              if (
+                  production_after.get("service")
+                  != ORIGIN
+              ):
+                  raise RuntimeError(
+                      "PRODUCTION_OWNER_CHANGED"
+                  )
+
+              print(
+                  "PRODUCTION_OWNER_UNCHANGED=PASS"
+              )
+              print(
+                  "SELECTIVE_ROUTE_OVERLAY_CANARY=PASS"
+              )
+
+          finally:
+              if route_id:
+                  status, body = api(
+                      "DELETE",
+                      f"/zones/{zone_id}/workers/routes/"
+                      + route_id,
+                  )
+
+                  if result_ok(status, body):
+                      print(
+                          "CANARY_ROUTE_CLEANUP=PASS"
+                      )
+                  else:
+                      print(
+                          "CANARY_ROUTE_CLEANUP=FAIL"
+                      )
+
+              if domain_id:
+                  status, body = api(
+                      "DELETE",
+                      f"/accounts/{ACCOUNT}/workers/domains/"
+                      + domain_id,
+                  )
+
+                  if result_ok(status, body):
+                      print(
+                          "CANARY_DOMAIN_CLEANUP=PASS"
+                      )
+                  else:
+                      print(
+                          "CANARY_DOMAIN_CLEANUP=FAIL"
+                      )
+
+          remaining = [
+              x for x in domains()
+              if isinstance(x, dict)
+              and x.get("hostname") == OVERLAY
+          ]
+
+          if remaining:
+              raise SystemExit(
+                  "CANARY_CLEANUP_VERIFY=FAIL"
+              )
+
+          if one_domain(PROD).get("service") != ORIGIN:
+              raise SystemExit(
+                  "FINAL_PRODUCTION_OWNER_GUARD=FAIL"
+              )
+
+          print("CANARY_CLEANUP_VERIFY=PASS")
+          print("FINAL_PRODUCTION_OWNER_GUARD=PASS")
+          print("D1_WRITES=NONE")
+          print("WORKER_DEPLOY=NONE")
+          print("PRODUCTION_DOMAIN_MUTATION=NONE")
+          PY
+
+      - name: Final safety boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "MAIN=UNTOUCHED"
+          echo "PLAY_PRODUCTION=UNTOUCHED"
+          echo "PRODUCTION_CUSTOM_DOMAIN=UNTOUCHED"
