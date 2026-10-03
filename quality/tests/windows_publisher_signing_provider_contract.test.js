@@ -132,3 +132,36 @@ test("engine removes unsigned EXE when requested signing fails", () => {
     /publisher signing fail-closed/
   );
 });
+
+
+test("post-sign native PE verification does not reject Portable EXE", () => {
+  const engine = read(
+    "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+  );
+
+  const signingIndex =
+    engine.indexOf(
+      ".applyIfRequested("
+    );
+
+  assert.ok(
+    signingIndex >= 0,
+    "publisher signing call missing"
+  );
+
+  const postSigning =
+    engine.slice(
+      signingIndex,
+      signingIndex + 5000
+    );
+
+  assert.match(
+    postSigning,
+    /state\.windowsArtifactKind\s*==\s*DeviceArtifactKind\.WINDOWS_NATIVE_EXE[\s\S]*verifyWindowsX64Pe/
+  );
+
+  assert.doesNotMatch(
+    postSigning,
+    /\.applyIfRequested\([\s\S]{0,1200}?\)\s*\n\s*verifyWindowsX64Pe\(\s*finalWindowsExe/
+  );
+});

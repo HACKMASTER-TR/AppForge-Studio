@@ -3,8 +3,8 @@ type: status
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-10-02
-last_verified: 2026-10-02
+updated: 2026-10-03
+last_verified: 2026-10-03
 confidence: high
 tags:
   - status
@@ -41,40 +41,53 @@ source_files:
 
 # Current Status
 
-## Authoritative checkpoint — 2026-10-02
+## Authoritative checkpoint — 2026-10-03
 
-Release Integration V1 is the active integration line based on closed Windows
-Output Artifact Flow V2.
+Release Integration V1 remains the active integration line.
 
-- PR #62 Play Production fail-closed code: INTEGRATED.
+- PR #62 Play Production fail-closed: INTEGRATED.
 - PR #63 Portable persistence: SEMANTICALLY INTEGRATED.
-- Portable crash durability: INTEGRATED.
-- targeted release-integration tests: 25/25 PASS.
-- Full Quality: 824/824 PASS.
+- Full Quality: `825/825 PASS`.
+- Windows Portable physical persistence/relaunch/relocation/crash retest on
+  Tulpar: PASS.
+- Portable localStorage and IndexedDB physical sequence: `1 → 2 → 3 → 4 → 5`
+  PASS.
 - Native Android physical CMake build: PASS.
 - Native PE32+ x64 Windows launch: PASS.
 - server-verified publisher authorization staging acceptance: PASS.
-- runtime blockers: none active.
-- D1 migration ledger: reconciled 0001–0005.
-- protected main: UNTOUCHED.
+- physical Authenticode cryptographic signing: PASS.
+- DigiCert RFC3161 timestamp and signature verification: PASS.
+- debug-only self-signed publisher acceptance: PASS.
+- protected `main`: UNTOUCHED.
 - Play Production release: NOT STARTED.
+
+## Portable signing regression
+
+The physical signing run exposed one post-sign finalization defect:
+a successfully signed Portable EXE was incorrectly passed to the Native-only
+`verifyWindowsX64Pe` contract. Fail-closed handling deleted the final artifact.
+
+The release-integration worktree now gates that validator with
+`WINDOWS_NATIVE_EXE`. Publisher targeted tests are `27/27 PASS`, Portable
+targeted tests are `10/10 PASS`, and Full Quality is `825/825 PASS`.
 
 ## Remaining release gates
 
-- Portable Windows physical persistence/relaunch/relocation/crash retest.
-- real Authenticode end-to-end physical signing.
-- signed-publisher verification.
-- non-admin and missing-provider/certificate fail-closed signing acceptance.
-- production publisher endpoint decision.
-- Play Production access approval.
-- final protected-main release integration.
+- repeat the Portable signed-artifact physical run using an APK containing the
+  post-sign validator fix;
+- verify the final signed Portable EXE on real Windows;
+- complete non-admin and missing-provider/certificate fail-closed physical
+  signing acceptance;
+- decide production publisher endpoint enablement;
+- wait for Play Production access approval;
+- reconcile final release integration into protected `main`.
 
 `PRODUCTION_READY=NO`.
 
 ## Historical record
 
-Detailed dated implementation, staging, physical-acceptance and regression
-history is preserved in
+Detailed earlier implementation and validation history remains in
 [[archive/Current_Status_History_2026-10-02]].
 
-See also [[Release_Integration_V1]], [[Hot_Context]] and [[Open_Questions]].
+See [[Release_Integration_V1]], [[Windows_Publisher_Authorization]],
+[[Hot_Context]] and [[Open_Questions]].

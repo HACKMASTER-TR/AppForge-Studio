@@ -460,9 +460,27 @@ object DeviceBuildEngine {
                             )
                         }
 
-                    verifyWindowsX64Pe(
-                        finalWindowsExe
-                    )
+                    /*
+                     * WINDOWS_SIGNED_ARTIFACT_POST_VERIFY_V2
+                     *
+                     * verifyWindowsX64Pe is the Native C/C++ artifact
+                     * architecture contract. Portable EXE uses the
+                     * separately verified AppForge Generic Host and its
+                     * Authenticode signature has already been verified
+                     * by the signing provider.
+                     *
+                     * Applying the Native PE-machine contract to the
+                     * Portable artifact here can incorrectly reject an
+                     * otherwise successfully signed Portable EXE.
+                     */
+                    if (
+                        state.windowsArtifactKind ==
+                            DeviceArtifactKind.WINDOWS_NATIVE_EXE
+                    ) {
+                        verifyWindowsX64Pe(
+                            finalWindowsExe
+                        )
+                    }
                 } catch (
                     signingFailure: Throwable
                 ) {
@@ -473,7 +491,7 @@ object DeviceBuildEngine {
                         null
 
                     state.logs.add(
-                        "🔒 Windows publisher signing fail-closed • imzasız EXE silindi."
+                        "🔒 Windows publisher signing fail-closed • final EXE artifact silindi."
                     )
 
                     throw signingFailure

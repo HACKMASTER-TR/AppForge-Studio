@@ -3,8 +3,8 @@ type: log
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-10-02
-last_verified: 2026-10-02
+updated: 2026-10-03
+last_verified: 2026-10-03
 confidence: high
 tags:
   - log
@@ -173,3 +173,12 @@ source_files: []
   production publisher endpoint review, Play Production access and final main
   integration.
 - No PR merge, protected-main mutation or Production publish occurred.
+
+
+## 2026-10-03 — validation | Portable and Authenticode physical
+
+- Tulpar Portable persistence, relocation and crash recovery: PASS.
+- Authenticode signing, RFC3161 timestamp and signature verification: PASS.
+- Portable was then incorrectly sent to the Native x64 validator; fail-closed
+  deleted it. Native-only guard patch and regression tests PASS; final signed
+  artifact retest remains pending.
