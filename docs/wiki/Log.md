@@ -176,5 +176,6 @@ source_files: []
 ## 2026-10-03 — validation | Portable Authenticode
 
 - Crypto/RFC3161, signed artifact and embedded project runtime: PASS.
-- Windows Host CI and exact Android pin: PASS.
-- Physical build `AF-0000001057`: `REAL_AUTHENTICODE_END_TO_END=PASS`.
+- `AF-0000001057`: `REAL_AUTHENTICODE_END_TO_END=PASS`.
+- `AF-0000001058`: missing-provider fail-closed PASS.
+- `AF-0000001059`: non-admin signing denial PASS.

@@ -121,9 +121,26 @@ payload-signature error, and recorded launch counter `2`.
 
 `REAL_AUTHENTICODE_END_TO_END=PASS`.
 
-Remaining physical publisher gates are non-admin denial and
-missing-provider/certificate fail-closed acceptance. Production public trust is
-not claimed by the debug self-signed certificate.
+## 2026-10-03 negative physical acceptance
+
+Physical build `AF-0000001058` was executed with publisher signing still
+requested while the encrypted certificate/provider material was unavailable.
+The build failed with
+`Windows publisher signing etkin ancak güvenli sertifika sağlayıcısı henüz yapılandırılmadı.`
+and the final EXE artifact was deleted.
+
+`MISSING_PROVIDER_FAIL_CLOSED=PASS`.
+
+Physical build `AF-0000001059` was then executed without an active verified
+owner/admin session while publisher signing remained requested. The signing
+path failed with `Owner access denied.` and again deleted the final EXE.
+
+`NON_ADMIN_SIGNING_NEGATIVE=PASS`.
+
+Together these tests physically prove that requested publisher signing cannot
+silently downgrade to an unsigned successful EXE.
+
+Production public trust is not claimed by the debug self-signed certificate.
 
 No ID token, PKCS12 password, private key, nonce or raw grant material is
 stored in this wiki.

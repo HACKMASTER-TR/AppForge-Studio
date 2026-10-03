@@ -18,11 +18,9 @@ source_files: []
 
 ## Active engineering gates
 
-1. Complete non-admin and missing-provider/certificate fail-closed physical
-   signing acceptance.
-2. Review production custom-domain enablement for publisher authorization.
-3. Wait for Play Production access approval before any Production release.
-4. Reconcile the release-integration branch into protected `main` only after
+1. Review production custom-domain enablement for publisher authorization.
+2. Wait for Play Production access approval before any Production release.
+3. Reconcile the release-integration branch into protected `main` only after
    the remaining release gates are closed.
 
 ## Resolved since earlier checkpoints
@@ -46,6 +44,14 @@ source_files: []
   signing, without the former payload-signature error; launch counter reached
   `2`.
 - `REAL_AUTHENTICODE_END_TO_END=PASS`.
+- Physical build `AF-0000001058` proved requested signing fails closed when
+  the configured certificate/provider material is unavailable; the final EXE
+  artifact was deleted.
+- Physical build `AF-0000001059` proved an inactive owner session cannot
+  execute requested publisher signing; `Owner access denied.` was returned and
+  the final EXE artifact was deleted.
+- `MISSING_PROVIDER_FAIL_CLOSED=PASS`.
+- `NON_ADMIN_SIGNING_NEGATIVE=PASS`.
 
 ## Real Windows Authenticode boundary
 

@@ -73,11 +73,14 @@ source_files:
 - Exact-head Android Debug run `37144740820` passed.
 - Physical build `AF-0000001057` rendered the project on Tulpar without the
   former payload-signature error; launch counter reached `2`.
+- `AF-0000001058` physically proved missing-provider/certificate fail-closed;
+  the final EXE was deleted.
+- `AF-0000001059` physically proved non-admin signing denial with
+  `Owner access denied.`; the final EXE was deleted.
+- Both publisher-signing negative physical gates are PASS.
 
 ## Current Risks / Open Questions
 
-- Non-admin and missing-provider/certificate fail-closed physical acceptance:
-  PENDING.
 - Production publisher endpoint: DISABLED pending review.
 - Play Production access and final protected-main integration: PENDING.
 

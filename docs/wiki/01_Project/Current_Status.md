@@ -61,6 +61,10 @@ Release Integration V1 remains the active integration line.
 - physical Authenticode cryptographic signing: PASS.
 - DigiCert RFC3161 timestamp and signature verification: PASS.
 - debug-only self-signed publisher acceptance: PASS.
+- missing-provider/certificate physical fail-closed build `AF-0000001058`: PASS.
+- non-admin publisher-signing denial build `AF-0000001059`: PASS.
+- requested-signing failure deletes the final EXE instead of publishing an
+  unsigned artifact: PHYSICALLY PASS.
 - protected `main`: UNTOUCHED.
 - Play Production release: NOT STARTED.
 
@@ -94,8 +98,6 @@ appeared, and the application launch counter reached `2`.
 
 ## Remaining release gates
 
-- close non-admin and missing-provider/certificate fail-closed physical
-  signing acceptance;
 - decide production publisher endpoint enablement;
 - wait for Play Production access approval;
 - reconcile final release integration into protected `main`.
