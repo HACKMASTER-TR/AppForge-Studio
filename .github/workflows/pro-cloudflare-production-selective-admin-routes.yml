@@ -1,0 +1,862 @@
+name: AppForge Production Selective Admin Routes
+
+on:
+  push:
+    branches:
+      - feat/release-integration-v1-20261002
+    paths:
+      - .github/workflows/pro-cloudflare-production-selective-admin-routes.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appforge-production-selective-admin-routes
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy exact production admin routes
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.head_commit.message == 'ci(cloudflare): deploy selective production admin routes'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout exact feature source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Verify protected release base
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EXPECTED_BRANCH="feat/release-integration-v1-20261002"
+          EXPECTED_BASE="207595233c858eebd9a279c7b837947117d10f12"
+
+          test "${GITHUB_REF_NAME}" = "${EXPECTED_BRANCH}" || {
+            echo "BRANCH_GUARD=FAIL"
+            exit 10
+          }
+
+          ACTUAL_BASE="$(git rev-parse HEAD^)"
+
+          test "${ACTUAL_BASE}" = "${EXPECTED_BASE}" || {
+            echo "RELEASE_BASE_GUARD=FAIL"
+            echo "ACTUAL_BASE=${ACTUAL_BASE}"
+            exit 11
+          }
+
+          echo "BRANCH_GUARD=PASS"
+          echo "RELEASE_BASE_GUARD=PASS"
+          echo "EXPECTED_BASE=${EXPECTED_BASE}"
+
+      - name: Deploy and verify exact production routes
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import tempfile
+          import time
+          import urllib.error
+          import urllib.request
+
+          TOKEN = os.environ.get(
+              "CLOUDFLARE_API_TOKEN",
+              ""
+          )
+
+          ACCOUNT = os.environ.get(
+              "CLOUDFLARE_ACCOUNT_ID",
+              ""
+          )
+
+          HOST = "api.appforgecloud.com"
+          ORIGIN = "appforge-failover"
+          TARGET = "appforge-control-plane"
+
+          API = (
+              "https://api.cloudflare.com/client/v4"
+          )
+
+          PATHS = [
+              "/api/admin/google/verify",
+              "/api/admin/windows-signing/grant",
+              "/api/admin/windows-signing/consume",
+          ]
+
+          PATTERNS = [
+              "https://" + HOST + path
+              for path in PATHS
+          ]
+
+          if not TOKEN or not ACCOUNT:
+              raise SystemExit(
+                  "SECRET_INPUT=FAIL"
+              )
+
+          HEADERS = {
+              "Authorization":
+                  "Bearer " + TOKEN,
+              "Accept":
+                  "application/json",
+              "Content-Type":
+                  "application/json",
+          }
+
+          def api(
+              method,
+              path,
+              payload=None,
+          ):
+              data = (
+                  json.dumps(payload).encode()
+                  if payload is not None
+                  else None
+              )
+
+              request = urllib.request.Request(
+                  API + path,
+                  headers=HEADERS,
+                  method=method,
+                  data=data,
+              )
+
+              try:
+                  with urllib.request.urlopen(
+                      request,
+                      timeout=20,
+                  ) as response:
+                      return (
+                          response.status,
+                          json.load(response),
+                      )
+
+              except urllib.error.HTTPError as exc:
+                  try:
+                      body = json.load(exc)
+                  except Exception:
+                      body = {}
+
+                  return exc.code, body
+
+          def ok(status, body):
+              return (
+                  200 <= status < 300
+                  and isinstance(body, dict)
+                  and body.get("success") is True
+              )
+
+          def safe_error(body):
+              if not isinstance(body, dict):
+                  return "unknown"
+
+              errors = body.get("errors")
+
+              if not isinstance(errors, list):
+                  return "unknown"
+
+              parts = []
+
+              for item in errors[:3]:
+                  if not isinstance(item, dict):
+                      continue
+
+                  code = str(
+                      item.get(
+                          "code",
+                          "unknown",
+                      )
+                  )
+
+                  message = str(
+                      item.get(
+                          "message",
+                          "unknown",
+                      )
+                  )
+
+                  parts.append(
+                      code
+                      + ":"
+                      + message[:180]
+                  )
+
+              return (
+                  "|".join(parts)
+                  or "unknown"
+              )
+
+          def domains():
+              status, body = api(
+                  "GET",
+                  f"/accounts/{ACCOUNT}"
+                  "/workers/domains",
+              )
+
+              if not ok(status, body):
+                  raise RuntimeError(
+                      "DOMAIN_LIST=FAIL:"
+                      + safe_error(body)
+                  )
+
+              return (
+                  body.get("result")
+                  or []
+              )
+
+          def one_domain(hostname):
+              found = [
+                  item
+                  for item in domains()
+                  if isinstance(item, dict)
+                  and item.get("hostname")
+                      == hostname
+              ]
+
+              if len(found) != 1:
+                  raise RuntimeError(
+                      "DOMAIN_UNIQUE_GUARD=FAIL:"
+                      + hostname
+                  )
+
+              return found[0]
+
+          def routes(zone_id):
+              status, body = api(
+                  "GET",
+                  f"/zones/{zone_id}"
+                  "/workers/routes",
+              )
+
+              if not ok(status, body):
+                  raise RuntimeError(
+                      "ROUTE_LIST=FAIL:"
+                      + safe_error(body)
+                  )
+
+              return (
+                  body.get("result")
+                  or []
+              )
+
+          def route_on_host(item):
+              if not isinstance(item, dict):
+                  return False
+
+              pattern = str(
+                  item.get(
+                      "pattern",
+                      "",
+                  )
+              )
+
+              return HOST in pattern
+
+          def exact_routes(zone_id):
+              output = {}
+
+              for item in routes(zone_id):
+                  if not isinstance(item, dict):
+                      continue
+
+                  pattern = item.get(
+                      "pattern"
+                  )
+
+                  if pattern in PATTERNS:
+                      output[pattern] = item
+
+              return output
+
+          def http(path):
+              body_file = (
+                  tempfile.NamedTemporaryFile(
+                      delete=False
+                  )
+              )
+
+              header_file = (
+                  tempfile.NamedTemporaryFile(
+                      delete=False
+                  )
+              )
+
+              body_file.close()
+              header_file.close()
+
+              try:
+                  result = subprocess.run(
+                      [
+                          "curl",
+                          "--silent",
+                          "--show-error",
+                          "--connect-timeout",
+                          "10",
+                          "--max-time",
+                          "20",
+                          "--max-redirs",
+                          "0",
+                          "--dump-header",
+                          header_file.name,
+                          "--output",
+                          body_file.name,
+                          "--write-out",
+                          "%{http_code}",
+                          "https://"
+                          + HOST
+                          + path,
+                      ],
+                      capture_output=True,
+                      text=True,
+                  )
+
+                  code = int(
+                      result.stdout.strip()
+                      or "0"
+                  )
+
+                  try:
+                      with open(
+                          body_file.name,
+                          encoding="utf-8",
+                      ) as handle:
+                          payload = json.load(
+                              handle
+                          )
+                  except Exception:
+                      payload = {}
+
+                  response_headers = {}
+
+                  with open(
+                      header_file.name,
+                      encoding="utf-8",
+                      errors="replace",
+                  ) as handle:
+                      for line in handle:
+                          if ":" not in line:
+                              continue
+
+                          key, value = (
+                              line.split(
+                                  ":",
+                                  1,
+                              )
+                          )
+
+                          response_headers[
+                              key.strip().lower()
+                          ] = value.strip()
+
+                  return (
+                      result.returncode,
+                      code,
+                      payload,
+                      response_headers,
+                  )
+
+              finally:
+                  for name in (
+                      body_file.name,
+                      header_file.name,
+                  ):
+                      try:
+                          os.unlink(name)
+                      except OSError:
+                          pass
+
+          def rollback(
+              zone_id,
+              known_ids,
+          ):
+              print(
+                  "PRODUCTION_ROLLBACK=START"
+              )
+
+              rollback_ok = True
+
+              ids = set(known_ids)
+
+              try:
+                  current = exact_routes(
+                      zone_id
+                  )
+
+                  # Preflight proved there were
+                  # zero routes on this hostname.
+                  # Therefore any desired exact
+                  # route now present was created
+                  # by this run.
+                  for item in current.values():
+                      if (
+                          isinstance(item, dict)
+                          and item.get("script")
+                              == TARGET
+                          and item.get("id")
+                      ):
+                          ids.add(
+                              item["id"]
+                          )
+
+              except Exception as error:
+                  rollback_ok = False
+
+                  print(
+                      "ROLLBACK_DISCOVERY=FAIL:"
+                      + str(error)[:300]
+                  )
+
+              for route_id in reversed(
+                  sorted(ids)
+              ):
+                  status, body = api(
+                      "DELETE",
+                      f"/zones/{zone_id}"
+                      "/workers/routes/"
+                      + route_id,
+                  )
+
+                  if ok(status, body):
+                      print(
+                          "ROLLBACK_ROUTE_DELETE=PASS:"
+                          + route_id
+                      )
+                  else:
+                      rollback_ok = False
+
+                      print(
+                          "ROLLBACK_ROUTE_DELETE=FAIL:"
+                          + route_id
+                          + ":"
+                          + safe_error(body)
+                      )
+
+              absent = False
+
+              for _ in range(30):
+                  try:
+                      if not exact_routes(
+                          zone_id
+                      ):
+                          absent = True
+                          break
+                  except Exception:
+                      pass
+
+                  time.sleep(2)
+
+              if absent:
+                  print(
+                      "ROLLBACK_ROUTE_ABSENCE=PASS"
+                  )
+              else:
+                  rollback_ok = False
+
+                  print(
+                      "ROLLBACK_ROUTE_ABSENCE=FAIL"
+                  )
+
+              try:
+                  owner_ok = (
+                      one_domain(HOST).get(
+                          "service"
+                      )
+                      == ORIGIN
+                  )
+              except Exception:
+                  owner_ok = False
+
+              if owner_ok:
+                  print(
+                      "ROLLBACK_PRODUCTION_OWNER_GUARD=PASS"
+                  )
+              else:
+                  rollback_ok = False
+
+                  print(
+                      "ROLLBACK_PRODUCTION_OWNER_GUARD=FAIL"
+                  )
+
+              if rollback_ok:
+                  print(
+                      "PRODUCTION_ROLLBACK=PASS"
+                  )
+              else:
+                  print(
+                      "PRODUCTION_ROLLBACK=FAIL"
+                  )
+
+              return rollback_ok
+
+          print(
+              "SECRET_VALUES=NOT_PRINTED"
+          )
+
+          production = one_domain(HOST)
+
+          if (
+              production.get("service")
+              != ORIGIN
+          ):
+              raise SystemExit(
+                  "PRODUCTION_OWNER_GUARD=FAIL"
+              )
+
+          zone_id = production.get(
+              "zone_id"
+          )
+
+          zone_name = production.get(
+              "zone_name"
+          )
+
+          if not zone_id or not zone_name:
+              raise SystemExit(
+                  "ZONE_METADATA=FAIL"
+              )
+
+          print(
+              "PRODUCTION_OWNER_GUARD=PASS"
+          )
+
+          print(
+              "PRODUCTION_OWNER="
+              + ORIGIN
+          )
+
+          print(
+              "ZONE_METADATA=PASS"
+          )
+
+          existing = routes(zone_id)
+
+          host_routes = [
+              item
+              for item in existing
+              if route_on_host(item)
+          ]
+
+          if host_routes:
+              print(
+                  "PRODUCTION_HOST_EXISTING_ROUTE_COUNT="
+                  + str(len(host_routes))
+              )
+
+              for item in host_routes[:10]:
+                  print(
+                      "EXISTING_ROUTE_PATTERN="
+                      + str(
+                          item.get(
+                              "pattern",
+                              "",
+                          )
+                      )
+                  )
+
+              raise SystemExit(
+                  "PRODUCTION_ROUTE_PREFLIGHT=BLOCKED"
+              )
+
+          print(
+              "PRODUCTION_ROUTE_PREFLIGHT=PASS"
+          )
+
+          print(
+              "EXISTING_PRODUCTION_HOST_ROUTES=0"
+          )
+
+          (
+              rc,
+              baseline_code,
+              baseline_payload,
+              baseline_headers,
+          ) = http("/health")
+
+          if not (
+              rc == 0
+              and baseline_code == 404
+              and baseline_headers.get(
+                  "x-railway-edge"
+              )
+          ):
+              raise SystemExit(
+                  "BASELINE_FAILOVER_FINGERPRINT=FAIL"
+              )
+
+          print(
+              "BASELINE_HEALTH_HTTP=404"
+          )
+
+          print(
+              "BASELINE_RAILWAY_EVIDENCE=PASS"
+          )
+
+          print(
+              "BASELINE_FAILOVER_FINGERPRINT=PASS"
+          )
+
+          created_ids = []
+
+          try:
+              for pattern in PATTERNS:
+                  status, body = api(
+                      "POST",
+                      f"/zones/{zone_id}"
+                      "/workers/routes",
+                      {
+                          "pattern":
+                              pattern,
+                          "script":
+                              TARGET,
+                      },
+                  )
+
+                  if not ok(
+                      status,
+                      body,
+                  ):
+                      raise RuntimeError(
+                          "ROUTE_CREATE=FAIL:"
+                          + pattern
+                          + ":"
+                          + safe_error(body)
+                      )
+
+                  route_id = (
+                      (
+                          body.get(
+                              "result"
+                          )
+                          or {}
+                      ).get("id")
+                  )
+
+                  if not route_id:
+                      matches = exact_routes(
+                          zone_id
+                      )
+
+                      item = matches.get(
+                          pattern
+                      )
+
+                      if isinstance(
+                          item,
+                          dict,
+                      ):
+                          route_id = (
+                              item.get("id")
+                          )
+
+                  if not route_id:
+                      raise RuntimeError(
+                          "ROUTE_ID=FAIL:"
+                          + pattern
+                      )
+
+                  created_ids.append(
+                      route_id
+                  )
+
+                  print(
+                      "ROUTE_CREATE=PASS:"
+                      + pattern
+                  )
+
+                  print(
+                      "ROUTE_ID="
+                      + route_id
+                  )
+
+              active = None
+
+              for _ in range(30):
+                  current = exact_routes(
+                      zone_id
+                  )
+
+                  if (
+                      set(current)
+                      == set(PATTERNS)
+                      and all(
+                          current[p].get(
+                              "script"
+                          )
+                          == TARGET
+                          for p in PATTERNS
+                      )
+                  ):
+                      active = current
+                      break
+
+                  time.sleep(2)
+
+              if active is None:
+                  raise RuntimeError(
+                      "ACTIVE_ROUTE_SET=FAIL"
+                  )
+
+              print(
+                  "ACTIVE_ROUTE_SET=PASS"
+              )
+
+              print(
+                  "ACTIVE_ROUTE_COUNT=3"
+              )
+
+              print(
+                  "ACTIVE_ROUTE_TARGET="
+                  + TARGET
+              )
+
+              for path in PATHS:
+                  route_ok = False
+
+                  for _ in range(30):
+                      (
+                          rc,
+                          code,
+                          payload,
+                          headers,
+                      ) = http(path)
+
+                      if (
+                          rc == 0
+                          and code == 405
+                          and isinstance(
+                              payload,
+                              dict,
+                          )
+                          and payload.get(
+                              "error"
+                          )
+                          == "method_not_allowed"
+                      ):
+                          route_ok = True
+                          break
+
+                      time.sleep(2)
+
+                  if not route_ok:
+                      raise RuntimeError(
+                          "PRODUCTION_ROUTE_RUNTIME=FAIL:"
+                          + path
+                      )
+
+                  print(
+                      "PRODUCTION_ROUTE_RUNTIME=PASS:"
+                      + path
+                  )
+
+              (
+                  rc,
+                  code,
+                  payload,
+                  headers,
+              ) = http("/health")
+
+              if not (
+                  rc == 0
+                  and code == 404
+                  and headers.get(
+                      "x-railway-edge"
+                  )
+              ):
+                  raise RuntimeError(
+                      "NON_MATCHING_FAILOVER=FAIL"
+                  )
+
+              print(
+                  "NON_MATCHING_HEALTH_HTTP=404"
+              )
+
+              print(
+                  "NON_MATCHING_RAILWAY_EVIDENCE=PASS"
+              )
+
+              print(
+                  "NON_MATCHING_FAILOVER=PASS"
+              )
+
+              if (
+                  one_domain(HOST).get(
+                      "service"
+                  )
+                  != ORIGIN
+              ):
+                  raise RuntimeError(
+                      "FINAL_PRODUCTION_OWNER_GUARD=FAIL"
+                  )
+
+              print(
+                  "FINAL_PRODUCTION_OWNER_GUARD=PASS"
+              )
+
+          except Exception as error:
+              print(
+                  "PRODUCTION_ROUTE_DEPLOY=FAIL:"
+                  + str(error)[:500]
+              )
+
+              if not rollback(
+                  zone_id,
+                  created_ids,
+              ):
+                  raise SystemExit(
+                      "PRODUCTION_ROUTE_DEPLOY_ROLLBACK=FAIL"
+                  )
+
+              raise SystemExit(
+                  "PRODUCTION_ROUTE_DEPLOY_ROLLBACK=PASS"
+              )
+
+          print(
+              "PRODUCTION_ROUTE_DEPLOY=PASS"
+          )
+
+          print(
+              "PRODUCTION_EXACT_ROUTE_COUNT=3"
+          )
+
+          print(
+              "CUSTOM_DOMAIN_MUTATION=NONE"
+          )
+
+          print(
+              "WORKER_DEPLOY=NONE"
+          )
+
+          print(
+              "D1_WRITES=NONE"
+          )
+
+          print(
+              "PLAY_PRODUCTION=UNTOUCHED"
+          )
+
+          print(
+              "MAIN=UNTOUCHED"
+          )
+          PY
+
+      - name: Final protected-resource boundary
+        if: always()
+        shell: bash
+        run: |
+          echo "PRODUCTION_CUSTOM_DOMAIN_OWNER=appforge-failover"
+          echo "PROTECTED_FAILOVER_VERSION=UNTOUCHED"
+          echo "PLAY_PRODUCTION=UNTOUCHED"
+          echo "MAIN=UNTOUCHED"
