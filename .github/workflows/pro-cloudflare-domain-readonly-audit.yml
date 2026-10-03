@@ -1,0 +1,169 @@
+name: AppForge Cloudflare Domain Read-Only Audit
+
+on:
+  push:
+    branches:
+      - feat/release-integration-v1-20261002
+    paths:
+      - .github/workflows/pro-cloudflare-domain-readonly-audit.yml
+
+permissions:
+  contents: read
+
+jobs:
+  domain-audit:
+    name: Cloudflare Worker Domain Read-Only Audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout exact feature source
+        uses: actions/checkout@v7
+
+      - name: Verify exact branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = \
+            "refs/heads/feat/release-integration-v1-20261002"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "FEATURE_SOURCE=PASS"
+
+      - name: Audit Worker custom-domain ownership
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          token = os.environ.get("CLOUDFLARE_API_TOKEN", "")
+          account = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "")
+
+          if not token or not account:
+              raise SystemExit("CLOUDFLARE_SECRET_INPUT=FAIL")
+
+          url = (
+              "https://api.cloudflare.com/client/v4/accounts/"
+              + account
+              + "/workers/domains"
+          )
+
+          request = urllib.request.Request(
+              url,
+              headers={
+                  "Authorization": "Bearer " + token,
+                  "Accept": "application/json",
+              },
+              method="GET",
+          )
+
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, *args, **kwargs):
+                  return None
+
+          opener = urllib.request.build_opener(NoRedirect)
+
+          try:
+              with opener.open(request, timeout=20) as response:
+                  status = response.status
+                  payload = json.load(response)
+          except urllib.error.HTTPError as exc:
+              print("CLOUDFLARE_HTTP=" + str(exc.code))
+              raise SystemExit("CLOUDFLARE_DOMAIN_API=FAIL")
+
+          if status != 200:
+              raise SystemExit("CLOUDFLARE_HTTP_STATUS=FAIL")
+
+          if (
+              not isinstance(payload, dict)
+              or payload.get("success") is not True
+          ):
+              raise SystemExit("CLOUDFLARE_API_RESPONSE=FAIL")
+
+          result = payload.get("result")
+
+          if not isinstance(result, list):
+              raise SystemExit("CLOUDFLARE_DOMAIN_LIST=FAIL")
+
+          wanted = {
+              "api-canary.appforgecloud.com":
+                  "appforge-control-plane",
+              "api.appforgecloud.com":
+                  "appforge-failover",
+          }
+
+          found = {}
+
+          for item in result:
+              if not isinstance(item, dict):
+                  continue
+
+              hostname = item.get("hostname")
+              service = item.get("service")
+
+              if hostname in wanted:
+                  found.setdefault(hostname, []).append(service)
+
+          print("CLOUDFLARE_DOMAIN_API=PASS")
+          print("SECRET_VALUES=NOT_PRINTED")
+          print("API_METHOD=GET")
+          print("CLOUDFLARE_MUTATION=NONE")
+
+          for hostname, expected in wanted.items():
+              services = found.get(hostname, [])
+
+              safe = (
+                  hostname
+                  .replace(".", "_")
+                  .replace("-", "_")
+                  .upper()
+              )
+
+              print(
+                  safe
+                  + "_MATCH_COUNT="
+                  + str(len(services))
+              )
+
+              if len(services) != 1:
+                  print(safe + "_UNIQUE_BINDING=FAIL")
+                  raise SystemExit(1)
+
+              actual = services[0]
+
+              print(
+                  safe
+                  + "_SERVICE="
+                  + str(actual)
+              )
+
+              if actual != expected:
+                  print(safe + "_OWNER=FAIL")
+                  raise SystemExit(1)
+
+              print(safe + "_OWNER=PASS")
+
+          print("CANARY_OWNER=appforge-control-plane")
+          print("PRODUCTION_OWNER=appforge-failover")
+          print("DOMAIN_OWNERSHIP_AUDIT=PASS")
+          PY
+
+      - name: Confirm read-only boundary
+        shell: bash
+        run: |
+          echo "POST_REQUESTS=NONE"
+          echo "PUT_REQUESTS=NONE"
+          echo "DELETE_REQUESTS=NONE"
+          echo "DNS_CHANGE=NONE"
+          echo "CUSTOM_DOMAIN_CHANGE=NONE"
+          echo "WORKER_DEPLOY=NONE"
+          echo "D1_WRITES=NONE"
+          echo "READ_ONLY_AUDIT=PASS"
