@@ -298,14 +298,89 @@ jobs:
 
           print("PRODUCTION_OWNER_GUARD=PASS")
 
-          if any(
-              isinstance(x, dict)
-              and x.get("hostname") == OVERLAY
-              for x in domains()
-          ):
-              raise SystemExit(
-                  "OVERLAY_CANARY_ALREADY_EXISTS"
+          existing_overlay = [
+              item
+              for item in domains()
+              if isinstance(item, dict)
+              and item.get("hostname") == OVERLAY
+          ]
+
+          if existing_overlay:
+              if (
+                  len(existing_overlay) != 1
+                  or existing_overlay[0].get("service")
+                      != ORIGIN
+              ):
+                  raise SystemExit(
+                      "STALE_OVERLAY_RECOVERY_GUARD=FAIL"
+                  )
+
+              stale_id = existing_overlay[0].get("id")
+
+              if not stale_id:
+                  raise SystemExit(
+                      "STALE_OVERLAY_ID=FAIL"
+                  )
+
+              print(
+                  "STALE_OVERLAY_DETECTED=PASS"
               )
+
+              status, body = api(
+                  "DELETE",
+                  f"/accounts/{ACCOUNT}/workers/domains/"
+                  + stale_id,
+              )
+
+              print(
+                  "STALE_OVERLAY_DELETE_HTTP="
+                  + str(status)
+              )
+
+              stale_removed = False
+
+              for _ in range(30):
+                  current = [
+                      item
+                      for item in domains()
+                      if isinstance(item, dict)
+                      and item.get("hostname")
+                          == OVERLAY
+                  ]
+
+                  if not current:
+                      stale_removed = True
+                      break
+
+                  time.sleep(2)
+
+              if not stale_removed:
+                  print(
+                      "STALE_OVERLAY_SAFE_ERROR="
+                      + safe_error(body)
+                  )
+                  raise SystemExit(
+                      "STALE_OVERLAY_RECOVERY=FAIL"
+                  )
+
+              print(
+                  "STALE_OVERLAY_RECOVERY=PASS"
+              )
+          else:
+              print(
+                  "STALE_OVERLAY_RECOVERY=NOT_REQUIRED"
+              )
+
+          # Production ownership must still be unchanged
+          # after stale-test cleanup.
+          if one_domain(PROD).get("service") != ORIGIN:
+              raise SystemExit(
+                  "POST_STALE_RECOVERY_PRODUCTION_GUARD=FAIL"
+              )
+
+          print(
+              "POST_STALE_RECOVERY_PRODUCTION_GUARD=PASS"
+          )
 
           zone_id = production.get("zone_id")
           zone_name = production.get("zone_name")
