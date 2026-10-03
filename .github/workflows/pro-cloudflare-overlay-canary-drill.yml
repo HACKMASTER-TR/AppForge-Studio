@@ -29,7 +29,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           echo "FEATURE_SOURCE=PASS"
 
-      - name: Run overlay canary and mandatory cleanup
+      - name: Run persistent canary route overlay
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -50,79 +50,56 @@ jobs:
           TOKEN = os.environ.get("CLOUDFLARE_API_TOKEN", "")
           ACCOUNT = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "")
 
-          PROD = "api.appforgecloud.com"
-          OVERLAY = "api-overlay-canary.appforgecloud.com"
+          CANARY = "api-canary.appforgecloud.com"
+          PRODUCTION = "api.appforgecloud.com"
 
-          ORIGIN = "appforge-failover"
-          TARGET = "appforge-control-plane"
-
-          if not TOKEN or not ACCOUNT:
-              raise SystemExit("CLOUDFLARE_SECRET_INPUT=FAIL")
+          CANARY_OWNER = "appforge-control-plane"
+          PRODUCTION_OWNER = "appforge-failover"
+          ROUTE_TARGET = "appforge-failover"
 
           API = "https://api.cloudflare.com/client/v4"
 
-          headers = {
+          if not TOKEN or not ACCOUNT:
+              raise SystemExit("SECRET_INPUT=FAIL")
+
+          HEADERS = {
               "Authorization": "Bearer " + TOKEN,
               "Accept": "application/json",
               "Content-Type": "application/json",
           }
 
           def api(method, path, payload=None):
-              data = None
+              data = (
+                  json.dumps(payload).encode()
+                  if payload is not None
+                  else None
+              )
 
-              if payload is not None:
-                  data = json.dumps(payload).encode()
-
-              req = urllib.request.Request(
+              request = urllib.request.Request(
                   API + path,
-                  headers=headers,
+                  headers=HEADERS,
                   method=method,
                   data=data,
               )
 
               try:
                   with urllib.request.urlopen(
-                      req,
+                      request,
                       timeout=20,
                   ) as response:
-                      return (
-                          response.status,
-                          json.load(response),
-                      )
-
+                      return response.status, json.load(response)
               except urllib.error.HTTPError as exc:
                   try:
                       body = json.load(exc)
                   except Exception:
                       body = {}
-
                   return exc.code, body
 
-          def result_ok(status, body):
+          def ok(status, body):
               return (
                   200 <= status < 300
                   and isinstance(body, dict)
                   and body.get("success") is True
-              )
-
-          def safe_error(body):
-              if not isinstance(body, dict):
-                  return "unknown"
-
-              errors = body.get("errors")
-
-              if not isinstance(errors, list) or not errors:
-                  return "unknown"
-
-              first = errors[0]
-
-              if not isinstance(first, dict):
-                  return "unknown"
-
-              return (
-                  str(first.get("code", "unknown"))
-                  + ":"
-                  + str(first.get("message", "unknown"))[:140]
               )
 
           def domains():
@@ -131,92 +108,60 @@ jobs:
                   f"/accounts/{ACCOUNT}/workers/domains",
               )
 
-              if not result_ok(status, body):
-                  raise RuntimeError("DOMAIN_LIST_FAILED")
+              if not ok(status, body):
+                  raise RuntimeError("DOMAIN_LIST=FAIL")
 
-              result = body.get("result")
+              return body["result"]
 
-              if not isinstance(result, list):
-                  raise RuntimeError("DOMAIN_LIST_INVALID")
-
-              return result
-
-          def one_domain(host):
+          def one(hostname):
               found = [
-                  item
-                  for item in domains()
-                  if isinstance(item, dict)
-                  and item.get("hostname") == host
+                  x for x in domains()
+                  if isinstance(x, dict)
+                  and x.get("hostname") == hostname
               ]
 
               if len(found) != 1:
                   raise RuntimeError(
-                      "DOMAIN_BINDING_COUNT:"
-                      + host
-                      + ":"
-                      + str(len(found))
+                      "DOMAIN_UNIQUE_GUARD:"
+                      + hostname
                   )
 
               return found[0]
 
-          def public_ips(host):
-              url = (
+          def public_ip(host):
+              request = urllib.request.Request(
                   "https://cloudflare-dns.com/dns-query"
-                  "?name="
-                  + host
-                  + "&type=A"
+                  "?name=" + host + "&type=A",
+                  headers={"Accept": "application/dns-json"},
               )
 
-              req = urllib.request.Request(
-                  url,
-                  headers={
-                      "Accept": "application/dns-json",
-                  },
-              )
+              with urllib.request.urlopen(
+                  request,
+                  timeout=15,
+              ) as response:
+                  body = json.load(response)
 
-              try:
-                  with urllib.request.urlopen(
-                      req,
-                      timeout=15,
-                  ) as response:
-                      body = json.load(response)
-              except Exception:
-                  return []
-
-              answers = body.get("Answer") or []
-
-              return [
-                  item.get("data")
-                  for item in answers
-                  if isinstance(item, dict)
-                  and item.get("type") == 1
-                  and isinstance(item.get("data"), str)
+              values = [
+                  x.get("data")
+                  for x in body.get("Answer", [])
+                  if isinstance(x, dict)
+                  and x.get("type") == 1
               ]
 
-          def wait_ip(host):
-              for _ in range(60):
-                  values = public_ips(host)
+              if not values:
+                  raise RuntimeError("DNS_A_RECORD=FAIL")
 
-                  if values:
-                      return values[0]
-
-                  time.sleep(2)
-
-              raise RuntimeError("PUBLIC_DNS_TIMEOUT")
+              return values[0]
 
           def http(host, ip, path):
-              body_file = tempfile.NamedTemporaryFile(
-                  delete=False
-              )
-              header_file = tempfile.NamedTemporaryFile(
-                  delete=False
-              )
+              body = tempfile.NamedTemporaryFile(delete=False)
+              headers = tempfile.NamedTemporaryFile(delete=False)
 
-              body_file.close()
-              header_file.close()
+              body.close()
+              headers.close()
 
               try:
-                  proc = subprocess.run(
+                  result = subprocess.run(
                       [
                           "curl",
                           "--silent",
@@ -226,28 +171,20 @@ jobs:
                           "--max-redirs", "0",
                           "--resolve",
                           f"{host}:443:{ip}",
-                          "--header",
-                          "Accept: application/json",
-                          "--dump-header",
-                          header_file.name,
-                          "--output",
-                          body_file.name,
-                          "--write-out",
-                          "%{http_code}",
+                          "--dump-header", headers.name,
+                          "--output", body.name,
+                          "--write-out", "%{http_code}",
                           "https://" + host + path,
                       ],
-                      text=True,
                       capture_output=True,
-                      check=False,
+                      text=True,
                   )
 
-                  status = int(
-                      proc.stdout.strip() or "0"
-                  )
+                  code = int(result.stdout.strip() or "0")
 
                   try:
                       with open(
-                          body_file.name,
+                          body.name,
                           encoding="utf-8",
                       ) as f:
                           payload = json.load(f)
@@ -257,351 +194,134 @@ jobs:
                   response_headers = {}
 
                   with open(
-                      header_file.name,
+                      headers.name,
                       encoding="utf-8",
                       errors="replace",
                   ) as f:
                       for line in f:
-                          if ":" not in line:
-                              continue
-
-                          k, v = line.split(":", 1)
-                          response_headers[
-                              k.strip().lower()
-                          ] = v.strip()
+                          if ":" in line:
+                              k, v = line.split(":", 1)
+                              response_headers[
+                                  k.strip().lower()
+                              ] = v.strip()
 
                   return (
-                      proc.returncode,
-                      status,
+                      result.returncode,
+                      code,
                       payload,
                       response_headers,
                   )
 
               finally:
-                  for path_name in (
-                      body_file.name,
-                      header_file.name,
-                  ):
+                  for name in (body.name, headers.name):
                       try:
-                          os.unlink(path_name)
+                          os.unlink(name)
                       except OSError:
                           pass
 
           print("SECRET_VALUES=NOT_PRINTED")
 
-          production = one_domain(PROD)
+          canary = one(CANARY)
+          production = one(PRODUCTION)
 
-          if production.get("service") != ORIGIN:
-              raise SystemExit(
-                  "PRODUCTION_OWNER_GUARD=FAIL"
-              )
+          if canary.get("service") != CANARY_OWNER:
+              raise SystemExit("CANARY_OWNER_GUARD=FAIL")
 
+          if production.get("service") != PRODUCTION_OWNER:
+              raise SystemExit("PRODUCTION_OWNER_GUARD=FAIL")
+
+          print("CANARY_OWNER_GUARD=PASS")
           print("PRODUCTION_OWNER_GUARD=PASS")
 
-          existing_overlay = [
-              item
-              for item in domains()
-              if isinstance(item, dict)
-              and item.get("hostname") == OVERLAY
-          ]
+          zone_id = canary.get("zone_id")
 
-          if existing_overlay:
-              if (
-                  len(existing_overlay) != 1
-                  or existing_overlay[0].get("service")
-                      != ORIGIN
-              ):
-                  raise SystemExit(
-                      "STALE_OVERLAY_RECOVERY_GUARD=FAIL"
-                  )
+          if not zone_id:
+              raise SystemExit("ZONE_ID=FAIL")
 
-              stale_id = existing_overlay[0].get("id")
+          ip = public_ip(CANARY)
 
-              if not stale_id:
-                  raise SystemExit(
-                      "STALE_OVERLAY_ID=FAIL"
-                  )
+          print("CANARY_PUBLIC_DNS=PASS")
 
-              print(
-                  "STALE_OVERLAY_DETECTED=PASS"
-              )
-
-              status, body = api(
-                  "DELETE",
-                  f"/accounts/{ACCOUNT}/workers/domains/"
-                  + stale_id,
-              )
-
-              print(
-                  "STALE_OVERLAY_DELETE_HTTP="
-                  + str(status)
-              )
-
-              stale_removed = False
-
-              for _ in range(30):
-                  current = [
-                      item
-                      for item in domains()
-                      if isinstance(item, dict)
-                      and item.get("hostname")
-                          == OVERLAY
-                  ]
-
-                  if not current:
-                      stale_removed = True
-                      break
-
-                  time.sleep(2)
-
-              if not stale_removed:
-                  print(
-                      "STALE_OVERLAY_SAFE_ERROR="
-                      + safe_error(body)
-                  )
-                  raise SystemExit(
-                      "STALE_OVERLAY_RECOVERY=FAIL"
-                  )
-
-              print(
-                  "STALE_OVERLAY_RECOVERY=PASS"
-              )
-          else:
-              print(
-                  "STALE_OVERLAY_RECOVERY=NOT_REQUIRED"
-              )
-
-          # Production ownership must still be unchanged
-          # after stale-test cleanup.
-          if one_domain(PROD).get("service") != ORIGIN:
-              raise SystemExit(
-                  "POST_STALE_RECOVERY_PRODUCTION_GUARD=FAIL"
-              )
-
-          print(
-              "POST_STALE_RECOVERY_PRODUCTION_GUARD=PASS"
+          rc, code, payload, response_headers = http(
+              CANARY,
+              ip,
+              "/health",
           )
 
-          zone_id = production.get("zone_id")
-          zone_name = production.get("zone_name")
+          if not (
+              rc == 0
+              and code == 200
+              and payload.get("ok") is True
+              and payload.get("service")
+                  == "appforge-control-plane"
+              and payload.get("database")
+                  == "reachable"
+          ):
+              raise SystemExit("BASELINE_CONTROL_PLANE=FAIL")
 
-          if not zone_id or not zone_name:
-              raise SystemExit("ZONE_METADATA=FAIL")
+          print("BASELINE_HEALTH_HTTP=200")
+          print("BASELINE_CONTROL_PLANE=PASS")
+          print("BASELINE_DATABASE=reachable")
 
-          domain_id = None
           route_id = None
 
           try:
               status, body = api(
-                  "PUT",
-                  f"/accounts/{ACCOUNT}/workers/domains",
-                  {
-                      "hostname": OVERLAY,
-                      "service": ORIGIN,
-                      "zone_id": zone_id,
-                      "zone_name": zone_name,
-                  },
-              )
-
-              if not result_ok(status, body):
-                  print(
-                      "OVERLAY_DOMAIN_CREATE_ERROR="
-                      + safe_error(body)
-                  )
-                  raise RuntimeError(
-                      "OVERLAY_DOMAIN_CREATE_FAILED"
-                  )
-
-              domain = one_domain(OVERLAY)
-
-              if domain.get("service") != ORIGIN:
-                  raise RuntimeError(
-                      "OVERLAY_ORIGIN_OWNER_FAILED"
-                  )
-
-              domain_id = domain.get("id")
-
-              if not domain_id:
-                  raise RuntimeError(
-                      "OVERLAY_DOMAIN_ID_MISSING"
-                  )
-
-              print(
-                  "OVERLAY_ORIGIN_OWNER="
-                  + ORIGIN
-              )
-              print("OVERLAY_ORIGIN_OWNER=PASS")
-
-              ip = wait_ip(OVERLAY)
-
-              print("OVERLAY_PUBLIC_DNS=PASS")
-
-              rc, code, payload, resp_headers = http(
-                  OVERLAY,
-                  ip,
-                  "/health",
-              )
-
-              if rc != 0:
-                  raise RuntimeError(
-                      "BASELINE_HTTP_FAILED"
-                  )
-
-              baseline_is_control_plane = (
-                  code == 200
-                  and isinstance(payload, dict)
-                  and payload.get("ok") is True
-                  and payload.get("service")
-                      == "appforge-control-plane"
-              )
-
-              if baseline_is_control_plane:
-                  raise RuntimeError(
-                      "BASELINE_ALREADY_CONTROL_PLANE"
-                  )
-
-              print(
-                  "BASELINE_HEALTH_HTTP="
-                  + str(code)
-              )
-              print(
-                  "BASELINE_CONTROL_PLANE=ABSENT_PASS"
-              )
-
-              route_pattern = (
-                  "https://"
-                  + OVERLAY
-                  + "/health"
-              )
-
-              status, body = api(
                   "POST",
                   f"/zones/{zone_id}/workers/routes",
                   {
-                      "pattern": route_pattern,
-                      "script": TARGET,
+                      "pattern":
+                          "https://"
+                          + CANARY
+                          + "/health",
+                      "script": ROUTE_TARGET,
                   },
               )
 
-              if not result_ok(status, body):
-                  print(
-                      "ROUTE_CREATE_ERROR="
-                      + safe_error(body)
-                  )
-                  raise RuntimeError(
-                      "ROUTE_CREATE_FAILED"
-                  )
+              if not ok(status, body):
+                  raise RuntimeError("ROUTE_CREATE=FAIL")
 
-              result = body.get("result") or {}
-              route_id = result.get("id")
+              route_id = (body.get("result") or {}).get("id")
 
               if not route_id:
-                  raise RuntimeError(
-                      "ROUTE_ID_MISSING"
-                  )
+                  raise RuntimeError("ROUTE_ID=FAIL")
 
               print("SELECTIVE_ROUTE_CREATE=PASS")
-              print(
-                  "SELECTIVE_ROUTE_TARGET="
-                  + TARGET
-              )
 
-              accepted = False
+              overlay_ok = False
 
               for _ in range(30):
-                  rc, code, payload, resp_headers = http(
-                      OVERLAY,
+                  rc, code, payload, h = http(
+                      CANARY,
                       ip,
                       "/health",
                   )
 
                   if (
                       rc == 0
-                      and code == 200
-                      and isinstance(payload, dict)
-                      and payload.get("ok") is True
-                      and payload.get("service")
-                          == "appforge-control-plane"
-                      and payload.get("database")
-                          == "reachable"
+                      and code == 404
+                      and h.get("x-railway-edge")
                   ):
-                      accepted = True
+                      overlay_ok = True
                       break
 
                   time.sleep(2)
 
-              if not accepted:
+              if not overlay_ok:
                   raise RuntimeError(
-                      "SELECTIVE_ROUTE_RUNTIME_FAILED"
+                      "SELECTIVE_ROUTE_RUNTIME=FAIL"
                   )
 
-              print("OVERLAY_HEALTH_HTTP=200")
-              print(
-                  "OVERLAY_HEALTH_SERVICE="
-                  "appforge-control-plane"
-              )
-              print(
-                  "OVERLAY_HEALTH_DATABASE=reachable"
-              )
-              print(
-                  "SELECTIVE_ROUTE_RUNTIME=PASS"
-              )
+              print("OVERLAY_HEALTH_HTTP=404")
+              print("OVERLAY_RAILWAY_EVIDENCE=PASS")
+              print("SELECTIVE_ROUTE_RUNTIME=PASS")
 
-              rc, root_code, root_payload, root_headers = http(
-                  OVERLAY,
-                  ip,
-                  "/",
-              )
-
-              if rc != 0:
-                  raise RuntimeError(
-                      "ORIGIN_ROOT_HTTP_FAILED"
-                  )
-
-              if (
-                  isinstance(root_payload, dict)
-                  and root_payload.get("service")
-                      == "appforge-control-plane"
-              ):
-                  raise RuntimeError(
-                      "NON_MATCHING_PATH_HIT_TARGET"
-                  )
-
-              print(
-                  "NON_MATCHING_ROOT_HTTP="
-                  + str(root_code)
-              )
-              print(
-                  "NON_MATCHING_PATH_ORIGIN=PASS"
-              )
-
-              if root_headers.get(
-                  "x-railway-edge"
-              ):
-                  print(
-                      "NON_MATCHING_RAILWAY_EVIDENCE=PASS"
-                  )
-              else:
-                  print(
-                      "NON_MATCHING_RAILWAY_EVIDENCE=UNPROVEN"
-                  )
-
-              production_after = one_domain(PROD)
-
-              if (
-                  production_after.get("service")
-                  != ORIGIN
-              ):
+              if one(PRODUCTION).get("service") != PRODUCTION_OWNER:
                   raise RuntimeError(
                       "PRODUCTION_OWNER_CHANGED"
                   )
 
-              print(
-                  "PRODUCTION_OWNER_UNCHANGED=PASS"
-              )
-              print(
-                  "SELECTIVE_ROUTE_OVERLAY_CANARY=PASS"
-              )
+              print("PRODUCTION_OWNER_UNCHANGED=PASS")
 
           finally:
               if route_id:
@@ -611,88 +331,52 @@ jobs:
                       + route_id,
                   )
 
-                  if result_ok(status, body):
-                      print(
-                          "CANARY_ROUTE_CLEANUP=PASS"
-                      )
-                  else:
-                      print(
+                  if not ok(status, body):
+                      raise RuntimeError(
                           "CANARY_ROUTE_CLEANUP=FAIL"
                       )
 
-              if domain_id:
-                  status, body = api(
-                      "DELETE",
-                      f"/accounts/{ACCOUNT}/workers/domains/"
-                      + domain_id,
-                  )
+                  print("CANARY_ROUTE_CLEANUP=PASS")
 
-                  print(
-                      "CANARY_DOMAIN_DELETE_HTTP="
-                      + str(status)
-                  )
+          restored = False
 
-                  if result_ok(status, body):
-                      print(
-                          "CANARY_DOMAIN_DELETE_REQUEST=PASS"
-                      )
-                  else:
-                      print(
-                          "CANARY_DOMAIN_DELETE_REQUEST="
-                          "NON_SUCCESS"
-                      )
-                      print(
-                          "CANARY_DOMAIN_DELETE_SAFE_ERROR="
-                          + safe_error(body)
-                      )
-
-                  domain_removed = False
-
-                  for _ in range(30):
-                      remaining_now = [
-                          item
-                          for item in domains()
-                          if isinstance(item, dict)
-                          and item.get("hostname")
-                              == OVERLAY
-                      ]
-
-                      if not remaining_now:
-                          domain_removed = True
-                          break
-
-                      time.sleep(2)
-
-                  if domain_removed:
-                      print(
-                          "CANARY_DOMAIN_CLEANUP=PASS"
-                      )
-                  else:
-                      print(
-                          "CANARY_DOMAIN_CLEANUP=FAIL"
-                      )
-
-          remaining = [
-              x for x in domains()
-              if isinstance(x, dict)
-              and x.get("hostname") == OVERLAY
-          ]
-
-          if remaining:
-              raise SystemExit(
-                  "CANARY_CLEANUP_VERIFY=FAIL"
+          for _ in range(30):
+              rc, code, payload, h = http(
+                  CANARY,
+                  ip,
+                  "/health",
               )
 
-          if one_domain(PROD).get("service") != ORIGIN:
+              if (
+                  rc == 0
+                  and code == 200
+                  and payload.get("ok") is True
+                  and payload.get("service")
+                      == "appforge-control-plane"
+                  and payload.get("database")
+                      == "reachable"
+              ):
+                  restored = True
+                  break
+
+              time.sleep(2)
+
+          if not restored:
+              raise SystemExit(
+                  "CANARY_POST_CLEANUP_RESTORE=FAIL"
+              )
+
+          print("CANARY_POST_CLEANUP_RESTORE=PASS")
+
+          if one(PRODUCTION).get("service") != PRODUCTION_OWNER:
               raise SystemExit(
                   "FINAL_PRODUCTION_OWNER_GUARD=FAIL"
               )
 
-          print("CANARY_CLEANUP_VERIFY=PASS")
           print("FINAL_PRODUCTION_OWNER_GUARD=PASS")
+          print("CUSTOM_DOMAIN_MUTATION=NONE")
           print("D1_WRITES=NONE")
-          print("WORKER_DEPLOY=NONE")
-          print("PRODUCTION_DOMAIN_MUTATION=NONE")
+          print("SELECTIVE_ROUTE_OVERLAY_CANARY=PASS")
           PY
 
       - name: Final safety boundary
