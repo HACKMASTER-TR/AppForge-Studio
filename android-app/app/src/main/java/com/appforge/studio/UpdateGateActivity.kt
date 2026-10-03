@@ -116,6 +116,28 @@ internal fun playVisibleStudioUpdateState(
     }
 }
 
+internal fun backendUnavailableStudioUpdatePolicy(
+    currentVersionCode: Int,
+    playStoreUrl: String
+): StudioUpdatePolicy {
+    val current =
+        currentVersionCode
+            .coerceAtLeast(1)
+
+    return StudioUpdatePolicy(
+        state =
+            StudioUpdateState.NORMAL,
+        latestVersionCode =
+            current,
+        minSupportedVersionCode =
+            1,
+        message =
+            "",
+        playStoreUrl =
+            playStoreUrl
+    )
+}
+
 private sealed interface GateUiState {
     data object Loading : GateUiState
     data class Ready(val policy: StudioUpdatePolicy) : GateUiState
@@ -219,16 +241,39 @@ class UpdateGateActivity : ComponentActivity() {
                     policy
                 )
             }.onFailure {
-                val cached = loadCachedPolicy()
+                val cached =
+                    loadCachedPolicy()
 
                 if (
-                    cached?.state == StudioUpdateState.MAINTENANCE
+                    cached?.state ==
+                        StudioUpdateState.MAINTENANCE
                 ) {
-                    uiState = GateUiState.Ready(cached)
+                    uiState =
+                        GateUiState.Ready(
+                            cached
+                        )
                 } else {
-                    uiState = GateUiState.Error(
-                        message = "Sürüm kontrolü yapılamadı. İnternet bağlantını kontrol edip tekrar deneyebilirsin.",
-                        canContinueOffline = true
+                    /*
+                     * UPDATE_GATE_PLAY_FALLBACK_V1
+                     *
+                     * Backend policy availability must never block
+                     * normal application startup.
+                     *
+                     * When the control-plane policy endpoint cannot
+                     * be reached, Google Play remains the authority
+                     * for user-visible update availability.
+                     *
+                     * If Play itself is unavailable, the existing
+                     * applyPlayVisiblePolicy fail-open path opens
+                     * Studio normally.
+                     */
+                    applyPlayVisiblePolicy(
+                        backendUnavailableStudioUpdatePolicy(
+                            currentVersionCode =
+                                BuildConfig.VERSION_CODE,
+                            playStoreUrl =
+                                PLAY_STORE_FALLBACK
+                        )
                     )
                 }
             }

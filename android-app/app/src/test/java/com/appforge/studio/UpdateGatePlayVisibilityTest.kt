@@ -6,6 +6,37 @@ import org.junit.Test
 class UpdateGatePlayVisibilityTest {
 
     @Test
+    fun `backend outage falls back to Play without blocking startup`() {
+        val policy =
+            backendUnavailableStudioUpdatePolicy(
+                currentVersionCode = 529,
+                playStoreUrl =
+                    "https://play.google.com/store/apps/details?id=com.appforge.studio"
+            )
+
+        assertEquals(
+            StudioUpdateState.NORMAL,
+            policy.state
+        )
+
+        assertEquals(
+            529,
+            policy.latestVersionCode
+        )
+
+        assertEquals(
+            1,
+            policy.minSupportedVersionCode
+        )
+
+        assertEquals(
+            "",
+            policy.message
+        )
+    }
+
+
+    @Test
     fun `backend only version is invisible until Play offers it`() {
         assertEquals(
             StudioUpdateState.NORMAL,

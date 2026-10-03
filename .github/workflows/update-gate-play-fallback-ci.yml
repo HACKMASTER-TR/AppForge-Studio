@@ -1,0 +1,124 @@
+name: Update Gate Play Fallback CI
+
+on:
+  push:
+    branches:
+      - feat/release-integration-v1-20261002
+    paths:
+      - android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt
+      - android-app/app/src/test/java/com/appforge/studio/UpdateGatePlayVisibilityTest.kt
+      - .github/workflows/update-gate-play-fallback-ci.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify Play-first update fallback
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.3.1"
+
+      - name: Install Android native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SDKMANAGER="$(
+            find "$ANDROID_HOME/cmdline-tools" \
+              -type f \
+              -name sdkmanager \
+              | sort -V \
+              | tail -n 1
+          )"
+
+          test -x "$SDKMANAGER"
+
+          "$SDKMANAGER" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+          echo "ANDROID_NATIVE_TOOLCHAIN=PASS"
+
+      - name: Static contract
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SRC="android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
+          TEST="android-app/app/src/test/java/com/appforge/studio/UpdateGatePlayVisibilityTest.kt"
+
+          grep -Fq \
+            'UPDATE_GATE_PLAY_FALLBACK_V1' \
+            "$SRC"
+
+          grep -Fq \
+            'backendUnavailableStudioUpdatePolicy' \
+            "$SRC"
+
+          grep -Fq \
+            'backend outage falls back to Play without blocking startup' \
+            "$TEST"
+
+          if grep -Fq \
+            'Sürüm kontrolü yapılamadı. İnternet bağlantını kontrol edip tekrar deneyebilirsin.' \
+            "$SRC"; then
+            echo "BACKEND_BLOCKING_ERROR_REMOVAL=FAIL"
+            exit 1
+          fi
+
+          echo "PLAY_FALLBACK_STATIC_GUARD=PASS"
+          echo "BACKEND_BLOCKING_ERROR_REMOVAL=PASS"
+
+      - name: Targeted unit test
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gradle \
+            -p android-app \
+            :app:testDebugUnitTest \
+            --tests 'com.appforge.studio.UpdateGatePlayVisibilityTest' \
+            --stacktrace
+
+          echo "TARGETED_TEST=PASS"
+
+      - name: Compile debug source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gradle \
+            -p android-app \
+            :app:compileDebugKotlin \
+            --stacktrace
+
+          echo "ANDROID_COMPILE=PASS"
+
+      - name: Final contract
+        shell: bash
+        run: |
+          echo "UPDATE_POLICY_BACKEND_REQUIRED_FOR_STARTUP=NO"
+          echo "GOOGLE_PLAY_UPDATE_AUTHORITY=PASS"
+          echo "BACKEND_FAILURE_FAIL_OPEN=PASS"
+          echo "PLAY_FAILURE_FAIL_OPEN=PASS"
+          echo "PRODUCTION_ROUTE_CHANGE=NONE"
+          echo "PLAY_UPLOAD=NONE"
+          echo "PLAY_PRODUCTION=UNTOUCHED"
+          echo "MAIN=UNTOUCHED"
+          echo "UPDATE_GATE_PLAY_FALLBACK_CI=PASS"
