@@ -18,16 +18,15 @@ source_files: []
 
 ## Active engineering gates
 
-1. Run the Authenticode-aware Windows Host payload parser on Windows CI.
-2. Capture the exact new Windows Host SHA-256 and byte size, then update the
-   Android pinned host only from that accepted artifact.
-3. Build the exact Android Debug APK and repeat signed Portable execution on
-   real Windows, requiring the embedded AppForge project to load successfully.
-4. Complete non-admin and missing-provider/certificate fail-closed physical
+1. Build the exact Android Debug APK containing the accepted pinned Windows
+   Host revision and repeat signed Portable execution on real Windows.
+2. Require the embedded AppForge project to load successfully after
+   Authenticode signing.
+3. Complete non-admin and missing-provider/certificate fail-closed physical
    signing acceptance.
-5. Review production custom-domain enablement for publisher authorization.
-6. Wait for Play Production access approval before any Production release.
-7. Reconcile the release-integration branch into protected `main` only after
+4. Review production custom-domain enablement for publisher authorization.
+5. Wait for Play Production access approval before any Production release.
+6. Reconcile the release-integration branch into protected `main` only after
    the remaining release gates are closed.
 
 ## Resolved since earlier checkpoints

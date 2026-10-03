@@ -83,8 +83,11 @@ published. Targeted quality is `14/14 PASS`; Full Quality is `826/826 PASS`.
 
 ## Remaining release gates
 
-- run the patched Windows Host unit test and build on Windows CI;
-- publish/pin the exact accepted Windows Host hash and size for Android;
+- Windows Host CI run `37143822118`: PASS, including payload unit tests,
+  build, persistence, relocation and forced-termination recovery;
+- exact accepted host is pinned as staging revision `windows-host-v1-c7e4b2a`,
+  SHA-256 `f4aa9c8bee1b919cfb7e3cd6e8073ab4097b0b8e050bc8fb3758f5a198b98c1e`,
+  size `375039759` bytes;
 - rebuild the exact Android Debug APK and repeat signed Portable physical
   acceptance on Tulpar;
 - close non-admin and missing-provider/certificate fail-closed physical

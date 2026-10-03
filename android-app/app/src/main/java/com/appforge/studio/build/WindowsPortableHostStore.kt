@@ -12,18 +12,18 @@ import java.security.MessageDigest
 internal object WindowsPortableHostStore {
 
     const val REVISION =
-        "windows-host-v1-a8c5323"
+        "windows-host-v1-c7e4b2a"
 
     const val HOST_URL =
         "https://github.com/HACKMASTER-TR/AppForge-Studio/" +
-            "releases/download/windows-host-v1-a8c5323/" +
+            "releases/download/windows-host-v1-c7e4b2a/" +
             "AppForge-Windows-Host-v1.exe"
 
     const val HOST_SHA256 =
-        "699e5e13a157b9e436f8c19d0d6bca6264b510a71939a741d756078148d56c03"
+        "f4aa9c8bee1b919cfb7e3cd6e8073ab4097b0b8e050bc8fb3758f5a198b98c1e"
 
     const val HOST_BYTES =
-        375_025_483L
+        375_039_759L
 
     private const val DIRECTORY =
         "offline-build-pack/windows-host-v1"
