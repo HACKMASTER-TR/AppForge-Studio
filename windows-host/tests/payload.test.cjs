@@ -77,7 +77,7 @@ function makePayloadExe(
   );
 
   host.write(
-    "PE\\0\\0",
+    "PE\0\0",
     peOffset,
     "binary"
   );
