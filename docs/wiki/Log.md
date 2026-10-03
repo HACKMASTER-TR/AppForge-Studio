@@ -153,3 +153,23 @@ source_files: []
   write/migration, Cloudflare deployment or failover change.
 - Remaining external gates: Portable/Native physical Windows acceptance and
   physical Authenticode acceptance.
+
+## 2026-10-02 — release integration | PR #62 + PR #63
+
+<!-- APPFORGE_RELEASE_INTEGRATION_V1_LOG -->
+
+- Started from closed Windows Output Artifact Flow V2.
+- Integrated PR #62 Play Production fail-closed commit without merging PR #62.
+- PR #63 direct cherry-pick conflicted with newer V2 Windows host architecture.
+- Aborted the conflict cleanly.
+- Reconciled PR #63 semantically while preserving V2 `storage.cjs` persistent
+  profile and single-instance behavior.
+- Added stable `appforge://` origin, IndexedDB persistence, relocation
+  persistence and forced-termination storage durability contracts.
+- targeted release-integration contracts: 25/25 PASS.
+- Corrected Second Brain truth: Native real Windows x64 launch is PASS based on
+  PR #61 physical acceptance evidence.
+- Remaining gates are physical Authenticode, Portable physical retest,
+  production publisher endpoint review, Play Production access and final main
+  integration.
+- No PR merge, protected-main mutation or Production publish occurred.

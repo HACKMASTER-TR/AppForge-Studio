@@ -8,86 +8,63 @@ last_verified: 2026-10-02
 confidence: high
 tags:
   - hot-context
+  - release-integration
   - device-build
   - windows
-  - publisher-signing
 related:
   - "[[Index]]"
   - "[[Current_Status]]"
+  - "[[Release_Integration_V1]]"
+  - "[[Windows_Output_Artifact_Flow_V2]]"
   - "[[Windows_Publisher_Authorization]]"
-  - "[[Deployment_And_CI]]"
   - "[[Open_Questions]]"
 source_files:
-  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
-  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPublisherSigningAuthorizationClient.kt"
-  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPublisherSigningPolicy.kt"
-  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPublisherSigningProvider.kt"
-  - "android-app/app/src/main/java/com/appforge/studio/security/OwnerAccessPolicy.kt"
-  - "cloudflare/control-plane/src/index.mjs"
-  - "cloudflare/control-plane/tests/windows_publisher_signing_grant.test.mjs"
-  - "quality/tests/windows_publisher_server_authorization_contract.test.js"
+  - ".github/workflows/android-play-release.yml"
+  - ".github/workflows/windows-portable-host.yml"
+  - "windows-host/main.cjs"
+  - "quality/tests/appforge_play_distribution_contract.test.js"
+  - "quality/tests/windows_portable_persistence_contract.test.js"
 ---
+
 # Hot Context
 
 ## Current Focus
 
-- Server-verified Windows publisher authorization is CLOSED / PASS through source, CI, staging deployment and physical Android acceptance.
-- Second Brain is being synchronized to the verified 2026-10-02 project state.
-- Normal project compilation remains device-local. Remote Railway/Render build infrastructure is retired.
-- Windows Native EXE and Portable EXE remain separate engines.
-- PR #61, PR #63 and PR #64 remain open/draft and must not be merged without explicit approval.
+- Release Integration V1 integrates the audited PR #62 Play fail-closed gap and semantically reconciles PR #63 Portable persistence with V2.
+- Full Quality is `824/824 PASS`.
+- Windows Output Artifact Flow V2 remains closed at `b9993dd45eb4a1452a0acf66eccd2658af49fd9a`.
+- Protected `main` remains untouched.
 
 ## Must Know
 
-- Source, automated tests, CI, deployed-state evidence and physical-device evidence are separate gates.
+- Normal project compilation remains device-local.
 - D1 migration ledger reconciliation is complete for migrations 0001 through 0005.
-- Publisher authorization adds no D1 migration; it reuses the existing audit ledger.
-- Google admin authority is server verified from a signed Google ID token plus active D1 allow-list identity. Email, device ID or local state never grants admin.
-- Publisher signing fails closed if authorization, network, artifact binding, certificate validation or signature verification fails.
-- `main`, Play Production and `appforge-failover` remain protected.
+- Portable and Native EXE are distinct artifact identities.
+- Native Android physical CMake build: PASS.
+- Native PE32+ x64 launch on real Windows x64: PASS.
+- Server-verified publisher authorization staging acceptance: PASS.
+- `PRODUCTION_READY=NO`.
 
 ## Recent Important Changes
 
-- Play Production P0 fail-closed work is source/CI accepted on draft PR #62.
-- Builder V25.1 re-entry handling is closed.
-- D1 migrations 0001–0005 were reconciled exactly.
-- Portable EXE crash-durability CI passed; physical Windows retest is paused.
-- Windows publisher authorization commit `53895ff` passed full quality and Android Debug CI.
-- Staging source `63d32e6` was deployed by marker commit `7736c35`; controlled staging workflow passed.
-- Physical Android live acceptance proved grant issue, artifact mismatch rejection, valid consume and replay rejection.
+- PR #62 Play Production fail-closed behavior is integrated without merging the draft PR.
+- PR #63 persistence was reconciled while preserving V2 `storage.cjs` and single-instance behavior.
+- Portable now carries stable `appforge://` origin, IndexedDB, relocation and crash-durability contracts.
+- Second Brain records Native Windows x64 execution as physically accepted.
 
 ## Current Risks / Open Questions
 
-- Real Windows Authenticode signing with publisher material still needs physical end-to-end acceptance.
-- Portable EXE physical relaunch/update persistence retest remains paused.
-- Production custom-domain signing endpoint is not enabled.
-- Draft PR merge decisions remain intentionally pending.
+- Portable Windows persistence/relaunch/relocation/crash physical retest: PENDING.
+- Real Windows Authenticode end-to-end signing: PENDING.
+- Signed-publisher and negative fail-closed signing acceptance: PENDING.
+- Production publisher endpoint: DISABLED pending review.
+- Play Production access: PENDING.
+- Final protected-main integration: PENDING.
 
 ## Read Next
 
-- [[Windows_Publisher_Authorization]]
+- [[Release_Integration_V1]]
 - [[Current_Status]]
-- [[Deployment_And_CI]]
-- [[Security_And_Entitlements]]
+- [[Windows_Output_Artifact_Flow_V2]]
+- [[Windows_Publisher_Authorization]]
 - [[Open_Questions]]
-
-## Windows Output Artifact Flow V2
-
-<!-- APPFORGE_WINDOWS_OUTPUT_ARTIFACT_FLOW_V2_HOT -->
-
-- Windows Portable EXE and Windows Native EXE now have separate artifact
-  identities throughout Builder ticketing, persisted history recovery and
-  public Downloads classification.
-- Portable ticket is `exe`; Native ticket is `native-exe`.
-- Portable output filename is `*_windows-portable.exe`; Native output filename
-  is `*_windows-native.exe`.
-- Legacy generic EXE remains Portable for backward compatibility.
-- Legacy Unified Agent history rejects Native artifact requests fail-closed.
-- Permanent V2 artifact-flow contract is 8/8 PASS.
-- Full Quality after V2 is 814/814 PASS.
-- Windows Native remains EXPERIMENTAL; physical Windows acceptance remains a
-  separate gate.
-- No protected-main mutation, PR merge, Play Production action, D1 write,
-  Cloudflare deployment or failover change is part of V2.
-
-Read next: [[Windows_Output_Artifact_Flow_V2]]

@@ -52,3 +52,24 @@ source_files: []
 - Normal project builds remain device-local.
 - Play Production remains untouched unless separately authorized.
 - Do not infer production readiness from staging acceptance.
+
+## Release Integration V1 — remaining gates
+
+<!-- APPFORGE_RELEASE_INTEGRATION_V1_OPEN_GATES -->
+
+The Release Gap Audit code blockers from PR #62 and PR #63 are closed on the
+release integration branch. The original draft PRs remain unmerged.
+
+Remaining release questions/gates:
+
+1. Complete the Windows Portable persistence/relaunch/relocation/crash physical
+   retest.
+2. Complete real Windows Authenticode end-to-end signing.
+3. Verify the signed publisher on Windows.
+4. Complete non-admin and missing-provider/certificate fail-closed physical
+   signing acceptance.
+5. Decide whether and when to enable the production publisher authorization
+   endpoint.
+6. Wait for Play Production access approval before any Production release.
+7. Reconcile final release integration into protected `main` only after the
+   remaining gates are closed.

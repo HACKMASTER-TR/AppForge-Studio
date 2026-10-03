@@ -163,5 +163,5 @@ acceptance.
 Still pending outside this V2 source gate:
 
 - Portable EXE Tulpar persistence/relaunch/relocation acceptance;
-- Native Windows x64 physical execution acceptance;
+- Native Windows x64 physical execution: PASS from PR #61 physical acceptance evidence;
 - physical Authenticode publisher-signing acceptance.
