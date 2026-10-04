@@ -170,6 +170,47 @@ test(
 );
 
 test(
+  "live smoke derives the workers.dev URL from the successful deploy",
+  () => {
+    assert.doesNotMatch(
+      workflow,
+      /appforge-integrity-staging\.28550040284a\.workers\.dev/
+    );
+
+    assert.match(
+      workflow,
+      /DEPLOYMENT_URL_DISCOVERY=PASS/
+    );
+
+    assert.match(
+      workflow,
+      /INTEGRITY_STAGING_BASE/
+    );
+
+    assert.match(
+      workflow,
+      /\$GITHUB_ENV/
+    );
+
+    assert.ok(
+      workflow.includes(
+        'BASE="${INTEGRITY_STAGING_BASE:?missing staging base URL}"'
+      )
+    );
+
+    const atomicPassCount =
+      workflow.split(
+        `echo "ATOMIC_CODE_AND_SECRETS_DEPLOY=PASS"`
+      ).length - 1;
+
+    assert.equal(
+      atomicPassCount,
+      1
+    );
+  }
+);
+
+test(
   "production surfaces remain outside isolated deploy",
   () => {
     assert.match(

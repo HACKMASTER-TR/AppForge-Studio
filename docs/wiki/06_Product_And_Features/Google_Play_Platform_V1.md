@@ -375,3 +375,35 @@ No staging deployment is triggered by this source-fix commit.
 The previous failed live command was attempted, so existence of a partial
 isolated Worker state must remain UNKNOWN until Cloudflare state is
 audited or a subsequent guarded deployment succeeds.
+
+
+### V4.6 dynamic live smoke URL
+
+Bootstrap retry run `37173145170` proved the Cloudflare
+deployment boundary is now valid:
+
+- `ISOLATED_WORKER_DRY_RUN=PASS`;
+- `SECRET_PAYLOAD_DRY_RUN=PASS`;
+- `ISOLATED_WORKER_DEPLOY=PASS`;
+- `ATOMIC_CODE_AND_SECRETS_DEPLOY=PASS`;
+- ephemeral secret file removal passed.
+
+The subsequent live smoke failed before application validation because
+the workflow contained a hard-coded workers.dev account subdomain and
+the first `/health` request returned HTTP 404.
+
+Failure class:
+
+`C_SMOKE_BASE_URL_HARDCODED`
+
+V4.6 removes the hard-coded workers.dev base URL. The successful
+Wrangler deployment output is parsed for the exact
+`appforge-integrity-staging` workers.dev URL, the result is validated,
+passed to the following step through `GITHUB_ENV`, and then used by the
+live smoke test.
+
+The duplicate `ATOMIC_CODE_AND_SECRETS_DEPLOY=PASS` log line is also
+removed.
+
+Production Worker, D1, custom domains, production routes, Play
+Production and main remain outside this change.

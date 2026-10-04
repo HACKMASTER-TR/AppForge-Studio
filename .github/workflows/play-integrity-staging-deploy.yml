@@ -360,7 +360,46 @@ jobs:
 
           test ! -e "$SECRETS_FILE"
 
-          echo "ATOMIC_CODE_AND_SECRETS_DEPLOY=PASS"
+          BASE="$(
+            python3 - "$DEPLOY_LOG" <<'PYURL'
+          import re
+          import sys
+          from pathlib import Path
+
+          text = Path(sys.argv[1]).read_text(
+              encoding="utf-8",
+              errors="replace",
+          )
+
+          text = re.sub(
+              r"\x1b\[[0-?]*[ -/]*[@-~]",
+              "",
+              text,
+          )
+
+          pattern = re.compile(
+              r"https://appforge-integrity-staging"
+              r"\.[A-Za-z0-9-]+"
+              r"(?:\.[A-Za-z0-9-]+)*"
+              r"\.workers\.dev"
+          )
+
+          matches = pattern.findall(text)
+
+          if not matches:
+              raise SystemExit(
+                  "DEPLOYMENT_URL_DISCOVERY=FAIL"
+              )
+
+          print(matches[-1].rstrip("/"))
+          PYURL
+          )"
+
+          test -n "$BASE"
+
+          printf "INTEGRITY_STAGING_BASE=%s\n"             "$BASE"             >> "$GITHUB_ENV"
+
+          echo "DEPLOYMENT_URL_DISCOVERY=PASS"
           echo "ATOMIC_CODE_AND_SECRETS_DEPLOY=PASS"
           echo "EPHEMERAL_SECRET_FILE_REMOVED=PASS"
 
@@ -377,7 +416,18 @@ jobs:
         run: |
           set -euo pipefail
 
-          BASE="https://appforge-integrity-staging.28550040284a.workers.dev"
+          BASE="${INTEGRITY_STAGING_BASE:?missing staging base URL}"
+
+          case "$BASE" in
+            https://appforge-integrity-staging.*.workers.dev)
+              ;;
+            *)
+              echo "STAGING_BASE_URL_GUARD=FAIL"
+              exit 1
+              ;;
+          esac
+
+          echo "STAGING_BASE_URL_GUARD=PASS"
 
           HEALTH="$(
             curl \
