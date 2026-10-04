@@ -21,6 +21,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -44,7 +45,9 @@ import java.io.File
 
 @Composable
 internal fun OfflineBuildPackScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    firstRun: Boolean = false,
+    onFirstRunComplete: ((Boolean) -> Unit)? = null
 ) {
     val context =
         LocalContext.current
@@ -62,6 +65,14 @@ internal fun OfflineBuildPackScreen(
         }
 
     var installing by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+
+    var showFirstRunSkipDialog by
         remember {
             mutableStateOf(
                 false
@@ -285,6 +296,64 @@ internal fun OfflineBuildPackScreen(
     }
 
     if (
+        showFirstRunSkipDialog
+    ) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {
+                showFirstRunSkipDialog =
+                    false
+            },
+
+            title = {
+                Text(
+                    "Çevrimdışı paketleri atla?"
+                )
+            },
+
+            text = {
+                Text(
+                    "Uygulamayı kullanmaya devam edebilirsin. " +
+                        "Ancak Device / Offline Build gerektiren projeler, " +
+                        "gerekli paketler kurulana kadar cihaz üzerinde " +
+                        "derlenemez. Paketleri daha sonra Ayarlar > " +
+                        "Tam Çevrimdışı Derleme Paketi bölümünden kurabilirsin."
+                )
+            },
+
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        showFirstRunSkipDialog =
+                            false
+
+                        onFirstRunComplete
+                            ?.invoke(
+                                true
+                            )
+                    }
+                ) {
+                    Text(
+                        "YİNE DE DEVAM ET"
+                    )
+                }
+            },
+
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        showFirstRunSkipDialog =
+                            false
+                    }
+                ) {
+                    Text(
+                        "GERİ DÖN VE İNDİR"
+                    )
+                }
+            }
+        )
+    }
+
+    if (
         showAndroidSdkLicenseDialog
     ) {
         androidx.compose.material3.AlertDialog(
@@ -407,20 +476,30 @@ internal fun OfflineBuildPackScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Tam Çevrimdışı Derleme Paketi",
+                        if (
+                            firstRun
+                        ) {
+                            "Çevrimdışı Derleme Kurulumu"
+                        } else {
+                            "Tam Çevrimdışı Derleme Paketi"
+                        },
                         fontWeight =
                             FontWeight.Bold
                     )
                 },
 
                 navigationIcon = {
-                    IconButton(
-                        onClick =
-                            onBack
+                    if (
+                        !firstRun
                     ) {
-                        Text(
-                            "←"
-                        )
+                        IconButton(
+                            onClick =
+                                onBack
+                        ) {
+                            Text(
+                                "←"
+                            )
+                        }
                     }
                 },
 
@@ -498,8 +577,8 @@ internal fun OfflineBuildPackScreen(
                         )
 
                         Text(
-                            "Tahmini indirme: yaklaşık 2–3,2 GB • " +
-                                "hedef cihaz kullanımı: yaklaşık 5–8 GB"
+                            "Tahmini indirme: yaklaşık 1,8 GB • " +
+                                "hedef cihaz kullanımı: yaklaşık 4,5 GB"
                         )
 
                         Text(
@@ -556,6 +635,63 @@ internal fun OfflineBuildPackScreen(
                                     } else {
                                         "HAZIR BİLEŞENLERİ İNDİR VE KUR"
                                     }
+                                )
+                            }
+                        }
+
+
+                        if (
+                            firstRun
+                        ) {
+                            Text(
+                                "Bu paketleri indirmezsen AppForge'u " +
+                                    "kullanmaya devam edebilirsin; ancak " +
+                                    "Device / Offline Build gerektiren projeler " +
+                                    "paketler kurulana kadar cihaz üzerinde " +
+                                    "derlenemez."
+                            )
+
+                            val firstRunPackReady =
+                                status.completeTargetReady &&
+                                    status.windowsNativeToolchainReady
+
+                            if (
+                                firstRunPackReady
+                            ) {
+                                Button(
+                                    modifier =
+                                        Modifier.fillMaxWidth(),
+
+                                    enabled =
+                                        !installing,
+
+                                    onClick = {
+                                        onFirstRunComplete
+                                            ?.invoke(
+                                                false
+                                            )
+                                    }
+                                ) {
+                                    Text(
+                                        "DEVAM ET"
+                                    )
+                                }
+                            }
+
+                            OutlinedButton(
+                                modifier =
+                                    Modifier.fillMaxWidth(),
+
+                                enabled =
+                                    !installing,
+
+                                onClick = {
+                                    showFirstRunSkipDialog =
+                                        true
+                                }
+                            ) {
+                                Text(
+                                    "ŞİMDİLİK ATLA"
                                 )
                             }
                         }

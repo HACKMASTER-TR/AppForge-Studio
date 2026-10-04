@@ -752,7 +752,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, OFFLINE_PACK, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, OFFLINE_PACK_FIRST_RUN, OFFLINE_PACK, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
 
 /*
  * BUILD_SOURCE_ENGINE_REFRESH_V1
@@ -890,19 +890,67 @@ private fun AppForgeApp() {
             )
         }
     var screen by rememberSaveable {
-        mutableStateOf(
-            if (
-                context.getSharedPreferences(
-                    "appforge_onboarding",
-                    Context.MODE_PRIVATE
-                ).getBoolean(
-                    "completed",
-                    false
+        val onboardingPreferences =
+            context.getSharedPreferences(
+                "appforge_onboarding",
+                Context.MODE_PRIVATE
+            )
+
+        val offlinePackPreferences =
+            context.getSharedPreferences(
+                "appforge_offline_pack",
+                Context.MODE_PRIVATE
+            )
+
+        val onboardingCompleted =
+            onboardingPreferences.getBoolean(
+                "completed",
+                false
+            )
+
+        /*
+         * OFFLINE_PACK_FIRST_RUN_GATE_V1
+         *
+         * Only a genuinely fresh AppForge installation receives the
+         * required marker here. Existing installations have already
+         * completed onboarding, so upgrading AppForge does not suddenly
+         * force the new screen on them.
+         */
+        if (
+            !onboardingCompleted
+        ) {
+            offlinePackPreferences
+                .edit()
+                .putBoolean(
+                    "first_run_gate_required_v1",
+                    true
                 )
-            ) {
-                AppScreen.HOME
-            } else {
-                AppScreen.ONBOARDING
+                .apply()
+        }
+
+        val offlinePackGateRequired =
+            offlinePackPreferences.getBoolean(
+                "first_run_gate_required_v1",
+                false
+            )
+
+        val offlinePackGateCompleted =
+            offlinePackPreferences.getBoolean(
+                "first_run_gate_completed_v1",
+                false
+            )
+
+        mutableStateOf(
+            when {
+                !onboardingCompleted ->
+                    AppScreen.ONBOARDING
+
+                offlinePackGateRequired &&
+                    !offlinePackGateCompleted ->
+                    AppScreen.OFFLINE_PACK_FIRST_RUN
+
+                else ->
+                    AppScreen.HOME
             }
         )
     }
@@ -1152,7 +1200,9 @@ private fun AppForgeApp() {
 
         if (
             screen ==
-                AppScreen.ONBOARDING
+                AppScreen.ONBOARDING ||
+            screen ==
+                AppScreen.OFFLINE_PACK_FIRST_RUN
         ) {
             return
         }
@@ -4754,7 +4804,7 @@ private fun AppForgeApp() {
                                 .apply()
 
                             screen =
-                                AppScreen.HOME
+                                AppScreen.OFFLINE_PACK_FIRST_RUN
                         }
                     )
 
@@ -5561,6 +5611,48 @@ onOpenPro = {
                     },
                     onOpenAdmin = { screen = AppScreen.ADMIN_OPS }
                 )
+
+                AppScreen.OFFLINE_PACK_FIRST_RUN ->
+                    OfflineBuildPackScreen(
+                        firstRun =
+                            true,
+
+                        onFirstRunComplete = {
+                            skipped ->
+
+                            context
+                                .getSharedPreferences(
+                                    "appforge_offline_pack",
+                                    Context.MODE_PRIVATE
+                                )
+                                .edit()
+                                .putBoolean(
+                                    "first_run_gate_completed_v1",
+                                    true
+                                )
+                                .putBoolean(
+                                    "first_run_gate_skipped_v1",
+                                    skipped
+                                )
+                                .putLong(
+                                    "first_run_gate_completed_at",
+                                    System.currentTimeMillis()
+                                )
+                                .apply()
+
+                            screen =
+                                AppScreen.HOME
+                        },
+
+                        onBack = {
+                            /*
+                             * First-run setup cannot be bypassed by the
+                             * top-app-bar or Android system back button.
+                             * The user must install or explicitly choose
+                             * "Şimdilik atla".
+                             */
+                        }
+                    )
 
                 AppScreen.OFFLINE_PACK ->
                     OfflineBuildPackScreen(
