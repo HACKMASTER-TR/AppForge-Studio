@@ -2,7 +2,6 @@ package com.hackmaster.videoforge
 
 import android.Manifest
 import android.app.AlertDialog
-import android.app.DownloadManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -11,7 +10,6 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
-import android.os.Environment
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.view.View
@@ -1498,140 +1496,128 @@ class VideoForgeActivity : AppCompatActivity() {
         val trimmed =
             url.trim()
 
-        if (trimmed.isBlank()) {
+        if (
+            trimmed.isBlank()
+        ) {
             status(
                 "Önce video bağlantısını gir."
             )
+
             return
         }
 
-        val uri =
-            runCatching {
-                Uri.parse(
-                    trimmed
-                )
-            }.getOrNull()
+        status(
+            "Video indiriliyor ve doğrulanıyor…"
+        )
 
-        if (
-            uri == null ||
-            (
-                !uri.scheme.equals(
-                    "https",
-                    true
-                ) &&
-                !uri.scheme.equals(
-                    "http",
-                    true
-                )
-            ) ||
-            uri.host.isNullOrBlank()
-        ) {
-            status(
-                "Geçerli bir http:// veya https:// video bağlantısı gir."
-            )
-            return
-        }
+        Thread(
+            {
+                var downloaded:
+                    UrlVideoImporter.ValidatedDownload? =
+                    null
 
-        val host =
-            uri.host
-                .orEmpty()
-                .lowercase(
-                    Locale.US
-                )
+                try {
+                    val validated =
+                        UrlVideoImporter.downloadValidated(
+                            this,
+                            trimmed
+                        ) {
+                            done,
+                            total ->
 
-        if (
-            host == "localhost" ||
-            host == "127.0.0.1" ||
-            host == "::1"
-        ) {
-            status(
-                "Yerel cihaz bağlantıları desteklenmiyor."
-            )
-            return
-        }
+                            val message =
+                                if (
+                                    total >
+                                    0L
+                                ) {
+                                    val percent =
+                                        (
+                                            done *
+                                                100L /
+                                                total
+                                        )
+                                            .coerceIn(
+                                                0L,
+                                                100L
+                                            )
 
-        val rawName =
-            uri.lastPathSegment
-                .orEmpty()
+                                    "Video indiriliyor ve doğrulanıyor… %$percent"
+                                } else {
+                                    "Video indiriliyor ve doğrulanıyor…"
+                                }
 
-        val detectedExtension =
-            rawName
-                .substringAfterLast(
-                    '.',
-                    ""
-                )
-                .lowercase(
-                    Locale.US
-                )
+                            runOnUiThread {
+                                if (
+                                    !isFinishing &&
+                                    !isDestroyed
+                                ) {
+                                    status(
+                                        message
+                                    )
+                                }
+                            }
+                        }
 
-        val extension =
-            detectedExtension.takeIf {
-                it in setOf(
-                    "mp4",
-                    "webm",
-                    "mov",
-                    "mkv",
-                    "m4v",
-                    "3gp"
-                )
-            } ?: "mp4"
+                    downloaded =
+                        validated
 
-        val stamp =
-            SimpleDateFormat(
-                "yyyyMMdd_HHmmss",
-                Locale.US
-            ).format(
-                Date()
-            )
+                    val stamp =
+                        SimpleDateFormat(
+                            "yyyyMMdd_HHmmss",
+                            Locale.US
+                        ).format(
+                            Date()
+                        )
 
-        val fileName =
-            "VideoForge_$stamp.$extension"
+                    val baseName =
+                        "VideoForge_$stamp"
 
-        runCatching {
-            val request =
-                DownloadManager.Request(
-                    uri
-                )
-                    .setTitle(
-                        fileName
-                    )
-                    .setDescription(
-                        "Video indiriliyor"
-                    )
-                    .setMimeType(
-                        "video/*"
-                    )
-                    .setAllowedOverMetered(
-                        true
-                    )
-                    .setAllowedOverRoaming(
-                        false
-                    )
-                    .setNotificationVisibility(
-                        DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-                    )
-                    .setDestinationInExternalPublicDir(
-                        Environment.DIRECTORY_DOWNLOADS,
-                        "VideoForge/$fileName"
+                    UrlVideoImporter.saveValidatedToDownloads(
+                        this,
+                        validated,
+                        baseName
                     )
 
-            val manager =
-                getSystemService(
-                    DOWNLOAD_SERVICE
-                ) as DownloadManager
+                    runOnUiThread {
+                        if (
+                            !isFinishing &&
+                            !isDestroyed
+                        ) {
+                            status(
+                                "Video doğrulandı ve İndirilenler/VideoForge klasörüne kaydedildi: " +
+                                    "$baseName.${validated.extension}"
+                            )
+                        }
+                    }
 
-            manager.enqueue(
-                request
-            )
-        }.onSuccess {
-            status(
-                "İndirme başlatıldı. Dosya İndirilenler/VideoForge klasörüne kaydedilecek."
-            )
-        }.onFailure {
-            status(
-                "İndirme başlatılamadı: ${it.message ?: "Bilinmeyen hata"}"
-            )
-        }
+                } catch (
+                    t: Throwable
+                ) {
+                    val message =
+                        t.message
+                            ?: "Video indirilemedi veya doğrulanamadı."
+
+                    runOnUiThread {
+                        if (
+                            !isFinishing &&
+                            !isDestroyed
+                        ) {
+                            status(
+                                message
+                            )
+                        }
+                    }
+
+                } finally {
+                    runCatching {
+                        downloaded
+                            ?.file
+                            ?.delete()
+                    }
+                }
+            },
+            "VideoForgeValidatedDownload"
+        ).start()
     }
 
     private fun baseServiceIntent(mode: String, options: StudioOptions): Intent = Intent(this, DubForegroundService::class.java).apply {
