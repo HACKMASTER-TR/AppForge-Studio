@@ -34,6 +34,7 @@ jobs:
             quality/tests/appforge_play_distribution_contract.test.js \
             quality/tests/google_play_ops_v3_contract.test.js \
             quality/tests/google_play_integrity_v4_contract.test.js \
+            quality/tests/google_play_integrity_staging_boundary_v4_contract.test.js \
             cloudflare/control-plane/tests/play_integrity_policy.test.mjs \
             cloudflare/control-plane/tests/google_service_account_oauth.test.mjs \
             cloudflare/control-plane/tests/play_integrity_decode.test.mjs \

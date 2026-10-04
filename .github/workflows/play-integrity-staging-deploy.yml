@@ -1,0 +1,327 @@
+name: AppForge Play Integrity Isolated Staging Deploy
+
+on:
+  push:
+    branches:
+      - feat/google-play-platform-v1-20261004
+    paths:
+      - cloudflare/control-plane/.play-integrity-staging-deploy-request
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy isolated Play Integrity staging
+    if: >-
+      github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
+      github.ref == 'refs/heads/feat/google-play-platform-v1-20261004'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout exact deploy commit
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Explicit marker guard
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MARKER="cloudflare/control-plane/.play-integrity-staging-deploy-request"
+
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+          test "$(git show -s --format=%s HEAD)" = \
+            "deploy(staging): Play Integrity V4"
+
+          CHANGED="$(
+            git diff \
+              --name-only \
+              HEAD^ \
+              HEAD
+          )"
+
+          test "$CHANGED" = "$MARKER"
+
+          test -s "$MARKER"
+
+          test "$(cat "$MARKER")" = \
+            "$(git rev-parse HEAD^)"
+
+          echo "DEPLOY_MARKER_GUARD=PASS"
+          echo "SOURCE_CHANGE_IN_DEPLOY_COMMIT=NONE"
+
+      - name: Validate staging-only secrets
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+          PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
+          PLAY_INTEGRITY_SERVICE_ACCOUNT_EMAIL: ${{ secrets.PLAY_INTEGRITY_SERVICE_ACCOUNT_EMAIL }}
+          PLAY_INTEGRITY_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.PLAY_INTEGRITY_SERVICE_ACCOUNT_PRIVATE_KEY }}
+          PLAY_INTEGRITY_SESSION_SECRET: ${{ secrets.PLAY_INTEGRITY_SESSION_SECRET }}
+        run: |
+          set -euo pipefail
+
+          required=(
+            CLOUDFLARE_API_TOKEN
+            CLOUDFLARE_ACCOUNT_ID
+            PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER
+            PLAY_INTEGRITY_SERVICE_ACCOUNT_EMAIL
+            PLAY_INTEGRITY_SERVICE_ACCOUNT_PRIVATE_KEY
+            PLAY_INTEGRITY_SESSION_SECRET
+          )
+
+          for name in "${required[@]}"; do
+            test -n "${!name:-}" || {
+              echo "SECRET_PREFLIGHT=FAIL:$name"
+              exit 1
+            }
+          done
+
+          [[ "$PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER" =~ ^[1-9][0-9]{5,19}$ ]]
+
+          test "${#PLAY_INTEGRITY_SESSION_SECRET}" -ge 32
+
+          echo "STAGING_SECRET_PREFLIGHT=PASS"
+          echo "SECRET_VALUES=NOT_PRINTED"
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Build isolated Worker dry-run
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          CONFIG="$RUNNER_TEMP/appforge-integrity-staging.toml"
+
+          cat > "$CONFIG" <<'TOML'
+          name = "appforge-integrity-staging"
+          main = "src/integrity_staging_index.mjs"
+          compatibility_date = "2026-09-19"
+          workers_dev = true
+          preview_urls = false
+          keep_vars = true
+          TOML
+
+          cd cloudflare/control-plane
+
+          npx --yes wrangler@4 deploy \
+            --config "$CONFIG" \
+            --dry-run \
+            --keep-vars \
+            --outdir "$RUNNER_TEMP/integrity-staging-bundle" \
+            > "$RUNNER_TEMP/integrity-staging-dry-run.log" \
+            2>&1
+
+          echo "ISOLATED_WORKER_DRY_RUN=PASS"
+          echo "TARGET_WORKER=appforge-integrity-staging"
+          echo "D1_BINDING=NONE"
+          echo "CUSTOM_DOMAIN=NONE"
+          echo "PRODUCTION_ROUTE=NONE"
+
+      - name: Configure isolated Worker secrets
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+          PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
+          PLAY_INTEGRITY_SERVICE_ACCOUNT_EMAIL: ${{ secrets.PLAY_INTEGRITY_SERVICE_ACCOUNT_EMAIL }}
+          PLAY_INTEGRITY_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.PLAY_INTEGRITY_SERVICE_ACCOUNT_PRIVATE_KEY }}
+          PLAY_INTEGRITY_SERVICE_ACCOUNT_KEY_ID: ${{ secrets.PLAY_INTEGRITY_SERVICE_ACCOUNT_KEY_ID }}
+          PLAY_INTEGRITY_SESSION_SECRET: ${{ secrets.PLAY_INTEGRITY_SESSION_SECRET }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          CONFIG="$RUNNER_TEMP/appforge-integrity-staging.toml"
+
+          cd cloudflare/control-plane
+
+          put_secret() {
+            NAME="$1"
+            VALUE="$2"
+
+            printf '%s' "$VALUE" |
+              npx --yes wrangler@4 secret put \
+                "$NAME" \
+                --config "$CONFIG" \
+                > /dev/null
+          }
+
+          put_secret \
+            PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER \
+            "$PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"
+
+          put_secret \
+            PLAY_INTEGRITY_SERVICE_ACCOUNT_EMAIL \
+            "$PLAY_INTEGRITY_SERVICE_ACCOUNT_EMAIL"
+
+          put_secret \
+            PLAY_INTEGRITY_SERVICE_ACCOUNT_PRIVATE_KEY \
+            "$PLAY_INTEGRITY_SERVICE_ACCOUNT_PRIVATE_KEY"
+
+          put_secret \
+            PLAY_INTEGRITY_SESSION_SECRET \
+            "$PLAY_INTEGRITY_SESSION_SECRET"
+
+          if [ -n "${PLAY_INTEGRITY_SERVICE_ACCOUNT_KEY_ID:-}" ]; then
+            put_secret \
+              PLAY_INTEGRITY_SERVICE_ACCOUNT_KEY_ID \
+              "$PLAY_INTEGRITY_SERVICE_ACCOUNT_KEY_ID"
+          fi
+
+          echo "ISOLATED_WORKER_SECRETS=PASS"
+          echo "SECRET_VALUES=NOT_PRINTED"
+
+      - name: Deploy only isolated Integrity Worker
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          set +x
+
+          CONFIG="$RUNNER_TEMP/appforge-integrity-staging.toml"
+
+          cd cloudflare/control-plane
+
+          npx --yes wrangler@4 deploy \
+            --config "$CONFIG" \
+            --keep-vars \
+            > "$RUNNER_TEMP/integrity-staging-deploy.log" \
+            2>&1
+
+          echo "ISOLATED_WORKER_DEPLOY=PASS"
+          echo "TARGET_WORKER=appforge-integrity-staging"
+
+          echo "APPFORGE_CONTROL_PLANE_DEPLOY=NONE"
+          echo "D1_WRITES=NONE"
+          echo "CUSTOM_DOMAIN_MUTATION=NONE"
+          echo "PRODUCTION_ROUTE_MUTATION=NONE"
+          echo "PLAY_PRODUCTION=UNTOUCHED"
+          echo "MAIN=UNTOUCHED"
+
+      - name: Live isolated staging smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE="https://appforge-integrity-staging.28550040284a.workers.dev"
+
+          HEALTH="$(
+            curl \
+              --silent \
+              --show-error \
+              --fail-with-body \
+              "$BASE/health"
+          )"
+
+          CONFIG="$(
+            curl \
+              --silent \
+              --show-error \
+              --fail-with-body \
+              "$BASE/api/security/config"
+          )"
+
+          python3 - "$HEALTH" "$CONFIG" <<'PY'
+          import json
+          import sys
+
+          health = json.loads(
+              sys.argv[1]
+          )
+
+          config = json.loads(
+              sys.argv[2]
+          )
+
+          if (
+              health.get("ok") is not True
+              or health.get("service")
+              != "appforge-integrity-staging"
+              or health.get("database")
+              != "not_bound"
+          ):
+              raise SystemExit(
+                  "ISOLATED_STAGING_HEALTH=FAIL"
+              )
+
+          if (
+              config.get("integrityEnabled")
+              is not True
+              or config.get("serverDecode")
+              != "configured"
+          ):
+              raise SystemExit(
+                  "INTEGRITY_CONFIG_LIVE=FAIL"
+              )
+
+          print(
+              "ISOLATED_STAGING_HEALTH=PASS"
+          )
+
+          print(
+              "INTEGRITY_CONFIG_LIVE=PASS"
+          )
+          PY
+
+          STATUS="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "$RUNNER_TEMP/invalid-attest.json" \
+              --write-out "%{http_code}" \
+              --request POST \
+              --header "Content-Type: application/json" \
+              --data '{}' \
+              "$BASE/api/security/attest"
+          )"
+
+          test "$STATUS" = "400"
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(
+              Path(
+                  Path(
+                      __import__("os")
+                      .environ["RUNNER_TEMP"]
+                  )
+                  / "invalid-attest.json"
+              ).read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          if (
+              data.get("error")
+              != "invalid_integrity_request"
+          ):
+              raise SystemExit(
+                  "ATTEST_FAIL_CLOSED_SMOKE=FAIL"
+              )
+
+          print(
+              "ATTEST_FAIL_CLOSED_SMOKE=PASS"
+          )
+          PY
+
+          echo "GOOGLE_REAL_TOKEN_TEST=PENDING_PHYSICAL_PLAY_INSTALL"
+          echo "PRODUCTION_ENDPOINTS=UNTOUCHED"

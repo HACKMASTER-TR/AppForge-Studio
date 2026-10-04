@@ -258,3 +258,31 @@ Required before staging activation:
 
 V4 source/CI does not deploy the Worker, mutate D1, enable Play Console
 verdicts, or add a Production route.
+
+## V4.1 isolated Integrity staging
+
+The existing `appforge-control-plane` Worker must not be used as the
+Play Integrity staging deployment target because Production exact routes
+already target that Worker.
+
+Physical Play Integrity acceptance therefore uses a distinct Worker:
+
+`appforge-integrity-staging`
+
+This isolated Worker exposes only:
+
+- `GET /health`
+- `GET /api/security/config`
+- `POST /api/security/attest`
+
+It has:
+
+- no D1 binding
+- no Custom Domain
+- no Production routes
+- no admin endpoints
+- no Pro endpoints
+- no Play publishing capability
+
+Deployment is marker-triggered and requires a marker-only commit.
+Creating the workflow does not deploy it.
