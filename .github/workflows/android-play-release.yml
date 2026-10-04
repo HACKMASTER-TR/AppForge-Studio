@@ -1,6 +1,12 @@
 name: AppForge Play Release
 
 on:
+  push:
+    branches:
+      - feat/google-play-platform-v1-20261004
+    paths:
+      - .github/.play-integrity-internal-track-acceptance-request
+
   workflow_dispatch:
   release:
     types:
@@ -27,6 +33,39 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Guard physical acceptance Internal track marker
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MARKER=".github/.play-integrity-internal-track-acceptance-request"
+
+          test "$GITHUB_REPOSITORY" = "HACKMASTER-TR/AppForge-Studio"
+          test "$GITHUB_REF" = "refs/heads/feat/google-play-platform-v1-20261004"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+          test "$(git show -s --format=%s HEAD)" = \
+            "share(internal-track): Play Integrity physical acceptance"
+
+          CHANGED="$(
+            git diff \
+              --name-only \
+              HEAD^ \
+              HEAD
+          )"
+
+          test "$CHANGED" = "$MARKER"
+          test -s "$MARKER"
+
+          test "$(tr -d '\r\n' < "$MARKER")" = \
+            "$(git rev-parse HEAD^)"
+
+          echo "PHYSICAL_ACCEPTANCE_INTERNAL_TRACK_MARKER_GUARD=PASS"
+          echo "SOURCE_CHANGE_IN_ACCEPTANCE_COMMIT=NONE"
+          echo "PLAY_TRACK=internal"
+          echo "PLAY_PRODUCTION_MUTATION=NONE"
+
       - name: Resolve fail-closed Play track
         id: play-production-gate
         shell: bash
@@ -44,9 +83,23 @@ jobs:
             exit 1
           }
 
+          if [ "$EVENT_NAME" = "push" ]; then
+            echo "APPFORGE_PLAY_TRACK=internal" >> "$GITHUB_ENV"
+            echo "APPFORGE_PLAY_RELEASE_MODE=integrity_acceptance_internal_completed" >> "$GITHUB_ENV"
+            echo "APPFORGE_PLAY_INTEGRITY_ACCEPTANCE=true" >> "$GITHUB_ENV"
+            echo "APPFORGE_PLAY_INTEGRITY_STAGING_BASE_URL=https://appforge-integrity-staging.28550040284a.workers.dev" >> "$GITHUB_ENV"
+            echo "APPFORGE_PLAY_INTEGRITY_ACCEPTANCE_VERSION_CODE=530" >> "$GITHUB_ENV"
+
+            echo "PLAY_PRODUCTION_GATE=PHYSICAL_ACCEPTANCE_INTERNAL_ONLY"
+            echo "PLAY_INTERNAL_ACCEPTANCE_VERSION_CODE=530"
+            echo "PLAY_PRODUCTION_MUTATION=NONE"
+            exit 0
+          fi
+
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "APPFORGE_PLAY_TRACK=internal" >> "$GITHUB_ENV"
             echo "APPFORGE_PLAY_RELEASE_MODE=internal_completed" >> "$GITHUB_ENV"
+            echo "APPFORGE_PLAY_INTEGRITY_ACCEPTANCE=false" >> "$GITHUB_ENV"
             echo "PLAY_PRODUCTION_GATE=MANUAL_INTERNAL_ONLY"
             exit 0
           fi
@@ -164,6 +217,68 @@ jobs:
           echo "APPFORGE_PLAY_RELEASE_MODE=production_draft_then_staged" >> "$GITHUB_ENV"
           echo "PLAY_PRODUCTION_INITIAL_STATE=DRAFT"
           echo "PLAY_PRODUCTION_GATE=PASS"
+
+      - name: Verify isolated Integrity staging target
+        if: env.APPFORGE_PLAY_INTEGRITY_ACCEPTANCE == 'true'
+        shell: bash
+        env:
+          STAGING_BASE_URL: ${{ env.APPFORGE_PLAY_INTEGRITY_STAGING_BASE_URL }}
+        run: |
+          set -euo pipefail
+
+          python3 - "$STAGING_BASE_URL" <<'PYSTAGING'
+          import re
+          import sys
+
+          value = sys.argv[1].strip()
+
+          if not re.fullmatch(
+              r"https://"
+              r"appforge-integrity-staging"
+              r"\.[A-Za-z0-9.-]+"
+              r"\.workers\.dev",
+              value,
+          ):
+              raise SystemExit(
+                  "INTERNAL_TRACK_STAGING_URL_GUARD=FAIL"
+              )
+
+          print(
+              "INTERNAL_TRACK_STAGING_URL_GUARD=PASS"
+          )
+          PYSTAGING
+
+          HEALTH="$(
+            curl \
+              --silent \
+              --show-error \
+              --fail-with-body \
+              "$STAGING_BASE_URL/health"
+          )"
+
+          python3 - "$HEALTH" <<'PYHEALTH'
+          import json
+          import sys
+
+          data = json.loads(sys.argv[1])
+
+          if (
+              data.get("ok") is not True
+              or data.get("service")
+              != "appforge-integrity-staging"
+              or data.get("database")
+              != "not_bound"
+          ):
+              raise SystemExit(
+                  "INTERNAL_TRACK_STAGING_PREFLIGHT=FAIL"
+              )
+
+          print(
+              "INTERNAL_TRACK_STAGING_PREFLIGHT=PASS"
+          )
+          PYHEALTH
+
+          echo "PLAY_PRODUCTION_MUTATION=NONE"
 
       - name: Authenticate to Google Cloud with GitHub OIDC
         id: google-auth
@@ -310,8 +425,39 @@ jobs:
                   "versionCode/versionName bulunamadı."
               )
 
-          version_code = code_match.group(1)
+          source_version_code = code_match.group(1)
           version_name = name_match.group(1)
+
+          acceptance_enabled = (
+              os.environ.get(
+                  "APPFORGE_PLAY_INTEGRITY_ACCEPTANCE",
+                  "false",
+              )
+              == "true"
+          )
+
+          if acceptance_enabled:
+              override = os.environ.get(
+                  "APPFORGE_PLAY_INTEGRITY_ACCEPTANCE_VERSION_CODE",
+                  "",
+              ).strip()
+
+              if (
+                  not override.isdigit()
+                  or int(override) <= int(source_version_code)
+              ):
+                  raise SystemExit(
+                      "PLAY_ACCEPTANCE_VERSION_CODE_GUARD=FAIL"
+                  )
+
+              version_code = override
+
+              print(
+                  "PLAY_ACCEPTANCE_VERSION_CODE_GUARD=PASS"
+              )
+
+          else:
+              version_code = source_version_code
 
           aab_name = (
               f"AppForgeStudio-Play-"
@@ -405,14 +551,33 @@ jobs:
           APPFORGE_RELEASE_KEY_ALIAS: appforge-release
           APPFORGE_RELEASE_KEY_PASSWORD: ${{ secrets.APPFORGE_RELEASE_KEY_PASSWORD }}
           APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
+          INTEGRITY_ACCEPTANCE: ${{ env.APPFORGE_PLAY_INTEGRITY_ACCEPTANCE }}
+          INTEGRITY_STAGING_BASE_URL: ${{ env.APPFORGE_PLAY_INTEGRITY_STAGING_BASE_URL }}
+          INTEGRITY_ACCEPTANCE_VERSION_CODE: ${{ env.APPFORGE_PLAY_INTEGRITY_ACCEPTANCE_VERSION_CODE }}
         run: |
           set -euo pipefail
+
+          EXTRA_GRADLE_ARGS=()
+
+          if test "$INTEGRITY_ACCEPTANCE" = "true"; then
+            EXTRA_GRADLE_ARGS+=(
+              "-PappforgePlayIntegrityAcceptance=true"
+              "-PappforgePlayIntegrityAcceptanceBaseUrl=$INTEGRITY_STAGING_BASE_URL"
+              "-PappforgePlayIntegrityAcceptanceVersionCode=$INTEGRITY_ACCEPTANCE_VERSION_CODE"
+            )
+
+            echo "PHYSICAL_ACCEPTANCE_INTERNAL_TRACK_BUILD=ENABLED"
+            echo "PHYSICAL_ACCEPTANCE_INTERNAL_TRACK_VERSION_CODE=$INTEGRITY_ACCEPTANCE_VERSION_CODE"
+          else
+            echo "PHYSICAL_ACCEPTANCE_INTERNAL_TRACK_BUILD=DISABLED"
+          fi
 
           gradle \
             -p android-app \
             :app:testDebugUnitTest \
             :app:signingReport \
             :app:bundleRelease \
+            "${EXTRA_GRADLE_ARGS[@]}" \
             --stacktrace
 
       - name: Verify Play Store permissions

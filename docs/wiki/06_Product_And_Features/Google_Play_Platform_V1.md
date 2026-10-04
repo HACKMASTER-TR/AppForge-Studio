@@ -551,3 +551,44 @@ fail-closed condition is responsible for denial.
 
 Play Production, D1, production Worker routes and protected main remain
 untouched.
+
+
+### V4.7.8 real Play Internal testing acceptance
+
+Internal App Sharing successfully proved Standard Integrity token
+generation and Google server decoding, but the decoded application
+verdict remained `PLAY_RECOGNIZED=false`.
+
+V4.7.8 therefore adds a separate physical acceptance path through the
+real Google Play `internal` testing track.
+
+The path is branch-local and can run only when a marker-only commit
+changes:
+
+`.github/.play-integrity-internal-track-acceptance-request`
+
+The marker commit must:
+
+- be on `feat/google-play-platform-v1-20261004`;
+- use the exact acceptance commit message;
+- change only the marker;
+- contain its parent SHA.
+
+The acceptance artifact uses versionCode `530`
+without changing the normal source versionCode `529`.
+
+The acceptance build:
+
+- enables the physical Integrity harness;
+- targets only the isolated Integrity staging Worker;
+- remains R8-disabled only because the explicit acceptance flag is set;
+- uploads only to Google Play track `internal`;
+- uses Google Play App Signing delivery;
+- never selects Production.
+
+VersionCode `530` is reserved for this physical
+acceptance build. A later normal Play release intended to supersede it
+must use versionCode `531` or greater.
+
+Protected main, Play Production, D1 and the production Worker remain
+untouched.

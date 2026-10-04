@@ -207,6 +207,18 @@ val appforgePlayIntegrityAcceptanceBaseUrl =
         ?.trim()
         .orEmpty()
 
+val appforgePlayIntegrityAcceptanceVersionCode =
+    providers.gradleProperty(
+        "appforgePlayIntegrityAcceptanceVersionCode"
+    )
+        .orNull
+        ?.trim()
+        ?.takeIf {
+            it.isNotEmpty()
+        }
+        ?.toIntOrNull()
+
+
 val appforgePlayIntegrityStagingUrl =
     Regex(
         "^https://appforge-integrity-staging\\.[A-Za-z0-9.-]+\\.workers\\.dev$"
@@ -227,6 +239,15 @@ require(
 ) {
     "Play Integrity acceptance harness requires the isolated staging URL."
 }
+
+require(
+    appforgePlayIntegrityAcceptanceVersionCode == null ||
+        appforgePlayIntegrityAcceptanceVersionCode in
+            1..2_100_000_000
+) {
+    "Play Integrity acceptance versionCode is invalid."
+}
+
 
 
 require(
@@ -249,7 +270,16 @@ android {
         applicationId = "com.appforge.studio"
         minSdk = 26
         targetSdk = 37
-        versionCode = 529
+        versionCode =
+            if (
+                appforgePlayIntegrityAcceptance
+            ) {
+                appforgePlayIntegrityAcceptanceVersionCode
+                    ?: 529
+            } else {
+                529
+            }
+
         versionName = "5.0.29"
     }
 

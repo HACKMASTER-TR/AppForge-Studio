@@ -42,6 +42,14 @@ const manifest = await readFile(
   "utf8"
 );
 
+const playRelease = await readFile(
+  new URL(
+    "../../.github/workflows/android-play-release.yml",
+    import.meta.url
+  ),
+  "utf8"
+);
+
 const sharing = await readFile(
   new URL(
     "../../.github/workflows/play-internal-app-sharing.yml",
@@ -319,6 +327,71 @@ test(
     assert.doesNotMatch(
       acceptance,
       /integrityToken=.*\$\{/
+    );
+  }
+);
+
+test(
+  "physical acceptance can use guarded real Play Internal testing track",
+  () => {
+    assert.match(
+      playRelease,
+      /push:[\s\S]*feat\/google-play-platform-v1-20261004/
+    );
+
+    assert.match(
+      playRelease,
+      /\.github\/\.play-integrity-internal-track-acceptance-request/
+    );
+
+    assert.match(
+      playRelease,
+      /PHYSICAL_ACCEPTANCE_INTERNAL_TRACK_MARKER_GUARD=PASS/
+    );
+
+    assert.match(
+      playRelease,
+      /PLAY_PRODUCTION_GATE=PHYSICAL_ACCEPTANCE_INTERNAL_ONLY/
+    );
+
+    assert.match(
+      playRelease,
+      /APPFORGE_PLAY_TRACK=internal/
+    );
+
+    assert.match(
+      playRelease,
+      /APPFORGE_PLAY_INTEGRITY_ACCEPTANCE=true/
+    );
+
+    assert.match(
+      playRelease,
+      /APPFORGE_PLAY_INTEGRITY_ACCEPTANCE_VERSION_CODE=530/
+    );
+
+    assert.match(
+      playRelease,
+      /-PappforgePlayIntegrityAcceptance=true/
+    );
+
+    assert.match(
+      playRelease,
+      /-PappforgePlayIntegrityAcceptanceVersionCode/
+    );
+
+    assert.match(
+      playRelease,
+      /track:\s*internal/
+    );
+
+    assert.match(
+      playRelease,
+      /PLAY_PRODUCTION_MUTATION=NONE/
+    );
+
+    assert.match(
+      gradle,
+      /appforgePlayIntegrityAcceptanceVersionCode/
     );
   }
 );
