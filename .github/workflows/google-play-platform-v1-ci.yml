@@ -1,0 +1,101 @@
+name: Google Play Platform V1 CI
+
+on:
+  push:
+    branches:
+      - feat/google-play-platform-v1-20261004
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify Google Play platform integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Play platform static contract
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node --test \
+            quality/tests/google_play_platform_v1_contract.test.js
+
+          echo "PLAY_PLATFORM_STATIC_CONTRACT=PASS"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.3.1"
+
+      - name: Install deterministic Android native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SDKMANAGER="$(
+            find "$ANDROID_HOME/cmdline-tools" \
+              -type f \
+              -name sdkmanager \
+              | sort -V \
+              | tail -n 1
+          )"
+
+          test -x "$SDKMANAGER"
+
+          "$SDKMANAGER" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+          echo "ANDROID_NATIVE_TOOLCHAIN=PASS"
+
+      - name: Android compile and unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gradle \
+            -p android-app \
+            :app:testDebugUnitTest \
+            :app:compileDebugKotlin \
+            --stacktrace
+
+          echo "ANDROID_UNIT_TESTS=PASS"
+          echo "ANDROID_COMPILE=PASS"
+
+      - name: Play mutation boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          WF=".github/workflows/google-play-platform-v1-ci.yml"
+
+          if grep -Fq \
+            "upload-google-play" \
+            "$WF"; then
+            echo "PLAY_UPLOAD_GUARD=FAIL"
+            exit 1
+          fi
+
+          echo "PLAY_UPLOAD=NONE"
+          echo "PLAY_PRODUCTION=UNTOUCHED"
+          echo "PLAY_CONSOLE_MUTATION=NONE"
+          echo "MAIN=UNTOUCHED"
+          echo "GOOGLE_PLAY_PLATFORM_V1_CI=PASS"
