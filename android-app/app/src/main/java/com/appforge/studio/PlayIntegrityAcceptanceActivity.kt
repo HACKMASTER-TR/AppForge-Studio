@@ -8,6 +8,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
+import com.appforge.studio.security.StudioSecurityApiException
 import com.appforge.studio.security.StudioSecurityClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -300,10 +301,107 @@ class PlayIntegrityAcceptanceActivity : ComponentActivity() {
                      * after Google decodeIntegrityToken has completed and
                      * the decoded evaluation reached the local policy.
                      *
-                     * This is therefore a real Standard Integrity +
-                     * server decode acceptance even if optional verdicts
-                     * prevent issuance of the final AppForge session.
+                     * V4.7.6 exposes only the already-sanitized verdict
+                     * summary returned by the isolated staging Worker.
+                     * The encrypted Google token and AppForge session
+                     * value are never exposed.
                      */
+                    val verdict =
+                        (
+                            error as?
+                                StudioSecurityApiException
+                        )
+                            ?.safeVerdict
+
+                    val requestVerified =
+                        verdict
+                            ?.optBoolean(
+                                "requestVerified",
+                                false
+                            )
+                            ?: false
+
+                    val playRecognized =
+                        verdict
+                            ?.optBoolean(
+                                "playRecognized",
+                                false
+                            )
+                            ?: false
+
+                    val meetsDeviceIntegrity =
+                        verdict
+                            ?.optBoolean(
+                                "meetsDeviceIntegrity",
+                                false
+                            )
+                            ?: false
+
+                    val optionalVerdictsReady =
+                        verdict
+                            ?.optBoolean(
+                                "optionalVerdictsReady",
+                                false
+                            )
+                            ?: false
+
+                    val appAccessRisk =
+                        verdict
+                            ?.optBoolean(
+                                "appAccessRisk",
+                                false
+                            )
+                            ?: false
+
+                    val playProtectRaw =
+                        verdict
+                            ?.optString(
+                                "playProtectVerdict",
+                                "UNKNOWN"
+                            )
+                            .orEmpty()
+
+                    val playProtectVerdict =
+                        if (
+                            playProtectRaw in
+                            setOf(
+                                "UNEVALUATED",
+                                "NO_ISSUES",
+                                "NO_DATA",
+                                "MEDIUM_RISK",
+                                "HIGH_RISK",
+                                "POSSIBLE_RISK"
+                            )
+                        ) {
+                            playProtectRaw
+                        } else {
+                            "UNKNOWN"
+                        }
+
+                    val activityRaw =
+                        verdict
+                            ?.optString(
+                                "activityLevel",
+                                "UNKNOWN"
+                            )
+                            .orEmpty()
+
+                    val activityLevel =
+                        if (
+                            activityRaw in
+                            setOf(
+                                "UNEVALUATED",
+                                "LEVEL_1",
+                                "LEVEL_2",
+                                "LEVEL_3",
+                                "LEVEL_4"
+                            )
+                        ) {
+                            activityRaw
+                        } else {
+                            "UNKNOWN"
+                        }
+
                     reportView.text =
                         """
                         PHYSICAL_ACCEPTANCE=DECODE_PASS_POLICY_DENIED
@@ -312,6 +410,13 @@ class PlayIntegrityAcceptanceActivity : ComponentActivity() {
                         STANDARD_INTEGRITY_TOKEN=PASS
                         GOOGLE_DECODE_INTEGRITY_TOKEN=PASS
                         SERVER_VERDICT_POLICY=DENIED
+                        REQUEST_VERIFIED=$requestVerified
+                        PLAY_RECOGNIZED=$playRecognized
+                        MEETS_DEVICE_INTEGRITY=$meetsDeviceIntegrity
+                        OPTIONAL_VERDICTS_READY=$optionalVerdictsReady
+                        APP_ACCESS_RISK=$appAccessRisk
+                        PLAY_PROTECT_VERDICT=$playProtectVerdict
+                        ACTIVITY_LEVEL=$activityLevel
                         INTEGRITY_SESSION=NOT_ISSUED
                         TOKEN_VALUE=NOT_PRINTED
                         SESSION_VALUE=NOT_PRINTED

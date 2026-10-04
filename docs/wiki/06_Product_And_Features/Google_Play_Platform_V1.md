@@ -519,3 +519,35 @@ existing R8 minification and resource shrinking remain enabled.
 
 No Google Integrity token, AppForge Integrity session, Production track,
 D1 or production Worker route is changed by this fix.
+
+
+### V4.7.6 safe policy verdict diagnostics
+
+Physical acceptance now proves:
+
+- Standard Integrity token generation succeeds;
+- Google `decodeIntegrityToken` succeeds;
+- request binding is valid;
+- the isolated staging Worker reaches local policy evaluation.
+
+The remaining result is `integrity_policy_denied`.
+
+V4.7.6 preserves the Worker's already-sanitized policy verdict object
+inside a typed client exception and exposes only:
+
+- request verified;
+- Play recognition;
+- device integrity;
+- optional verdict readiness;
+- app access risk;
+- Play Protect verdict;
+- recent device activity level.
+
+The encrypted Google Integrity token and AppForge Integrity session are
+not exposed or logged.
+
+This diagnostic does not change the policy. It only identifies which
+fail-closed condition is responsible for denial.
+
+Play Production, D1, production Worker routes and protected main remain
+untouched.

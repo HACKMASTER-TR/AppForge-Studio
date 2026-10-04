@@ -10,6 +10,14 @@ const gradle = await readFile(
   "utf8"
 );
 
+const securityClient = await readFile(
+  new URL(
+    "../../android-app/app/src/main/java/com/appforge/studio/security/StudioSecurityClient.kt",
+    import.meta.url
+  ),
+  "utf8"
+);
+
 const gate = await readFile(
   new URL(
     "../../android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt",
@@ -241,6 +249,76 @@ test(
     assert.match(
       gradle,
       /providers\.gradleProperty\("appforgePlayIntegrityAcceptance"\)[\s\S]*orNull == "true"/
+    );
+  }
+);
+
+test(
+  "policy denial exposes only a safe verdict summary",
+  () => {
+    assert.match(
+      securityClient,
+      /class StudioSecurityApiException/
+    );
+
+    assert.match(
+      securityClient,
+      /safeVerdict/
+    );
+
+    assert.match(
+      securityClient,
+      /integrity_policy_denied/
+    );
+
+    assert.match(
+      acceptance,
+      /REQUEST_VERIFIED=/
+    );
+
+    assert.match(
+      acceptance,
+      /PLAY_RECOGNIZED=/
+    );
+
+    assert.match(
+      acceptance,
+      /MEETS_DEVICE_INTEGRITY=/
+    );
+
+    assert.match(
+      acceptance,
+      /OPTIONAL_VERDICTS_READY=/
+    );
+
+    assert.match(
+      acceptance,
+      /APP_ACCESS_RISK=/
+    );
+
+    assert.match(
+      acceptance,
+      /PLAY_PROTECT_VERDICT=/
+    );
+
+    assert.match(
+      acceptance,
+      /ACTIVITY_LEVEL=/
+    );
+
+    assert.match(
+      acceptance,
+      /TOKEN_VALUE=NOT_PRINTED/
+    );
+
+    assert.match(
+      acceptance,
+      /SESSION_VALUE=NOT_PRINTED/
+    );
+
+    assert.doesNotMatch(
+      acceptance,
+      /integrityToken=.*\$\{/
     );
   }
 );

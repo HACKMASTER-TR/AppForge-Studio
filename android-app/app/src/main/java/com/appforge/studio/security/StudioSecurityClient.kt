@@ -14,6 +14,13 @@ import java.security.SecureRandom
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+class StudioSecurityApiException(
+    val errorCode: String,
+    val safeVerdict: JSONObject?
+) : IllegalStateException(
+    errorCode
+)
+
 data class SecurityConfig(
     val integrityEnabled: Boolean,
     val cloudProjectNumber: Long,
@@ -953,19 +960,42 @@ class StudioSecurityClient(
             conn.responseCode !in
             200..299
         ) {
-            val message =
+            val errorJson =
                 runCatching {
-                    JSONObject(text)
-                        .optString(
-                            "error",
-                            "Güvenlik doğrulaması başarısız."
-                        )
-                }.getOrDefault(
-                    "Güvenlik doğrulaması başarısız."
-                )
+                    JSONObject(
+                        text
+                    )
+                }.getOrNull()
 
-            throw IllegalStateException(
-                message
+            val message =
+                errorJson
+                    ?.optString(
+                        "error",
+                        "Güvenlik doğrulaması başarısız."
+                    )
+                    ?.ifBlank {
+                        "Güvenlik doğrulaması başarısız."
+                    }
+                    ?: "Güvenlik doğrulaması başarısız."
+
+            val safeVerdict =
+                if (
+                    message ==
+                        "integrity_policy_denied"
+                ) {
+                    errorJson
+                        ?.optJSONObject(
+                            "verdict"
+                        )
+                } else {
+                    null
+                }
+
+            throw StudioSecurityApiException(
+                errorCode =
+                    message,
+                safeVerdict =
+                    safeVerdict
             )
         }
 
