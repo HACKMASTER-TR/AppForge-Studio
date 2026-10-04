@@ -383,8 +383,23 @@ android {
                 "false"
             )
             ciReleaseSigning?.let { signingConfig = it }
-            isMinifyEnabled = true
-            isShrinkResources = true
+            /*
+             * PLAY_INTEGRITY_PHYSICAL_ACCEPTANCE_V4_7_4
+             *
+             * The special Internal App Sharing acceptance build must remain
+             * unminified. A physical Play-installed release exposed a
+             * pre-Activity AndroidX Startup / WorkManager / WorkDatabase
+             * initialization crash only after R8 processing.
+             *
+             * Normal release builds do not pass
+             * appforgePlayIntegrityAcceptance and therefore remain minified
+             * and resource-shrunk exactly as before.
+             */
+            isMinifyEnabled =
+                !appforgePlayIntegrityAcceptance
+
+            isShrinkResources =
+                !appforgePlayIntegrityAcceptance
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

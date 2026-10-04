@@ -488,3 +488,34 @@ built.
 The path uploads only to Google Play Internal App Sharing.
 Protected main, Play Production, D1 and production Worker routes remain
 outside this flow.
+
+
+### V4.7.4 physical acceptance R8 isolation
+
+The first Play-installed physical acceptance AAB successfully passed:
+
+- guarded Internal App Sharing build;
+- Google WIF authentication;
+- Android Publisher authentication;
+- Internal App Sharing upload;
+- Google Play installation.
+
+The application then crashed before the physical acceptance Activity
+could start.
+
+ADB captured the release-only runtime failure at process startup:
+
+`InitializationProvider -> WorkManagerInitializer -> WorkDatabase`
+
+The crash occurred before any Standard Integrity request was made.
+
+Because the physical acceptance artifact is an isolated diagnostic build,
+V4.7.4 disables R8 minification and resource shrinking only when:
+
+`appforgePlayIntegrityAcceptance=true`
+
+Normal release builds keep the property disabled by default, so their
+existing R8 minification and resource shrinking remain enabled.
+
+No Google Integrity token, AppForge Integrity session, Production track,
+D1 or production Worker route is changed by this fix.

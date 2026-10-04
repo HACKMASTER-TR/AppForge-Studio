@@ -226,6 +226,26 @@ test(
 );
 
 test(
+  "physical acceptance disables R8 while normal release stays minified",
+  () => {
+    assert.match(
+      gradle,
+      /isMinifyEnabled\s*=\s*[\s\S]*!appforgePlayIntegrityAcceptance/
+    );
+
+    assert.match(
+      gradle,
+      /isShrinkResources\s*=\s*[\s\S]*!appforgePlayIntegrityAcceptance/
+    );
+
+    assert.match(
+      gradle,
+      /providers\.gradleProperty\("appforgePlayIntegrityAcceptance"\)[\s\S]*orNull == "true"/
+    );
+  }
+);
+
+test(
   "Google Play CI includes V4.7 contract",
   () => {
     assert.match(
