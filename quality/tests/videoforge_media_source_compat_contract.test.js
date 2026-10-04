@@ -26,15 +26,14 @@ const storage = fs.readFileSync(
   "utf8"
 );
 
-const service = fs.readFileSync(
-  new URL(
-    "../../android-app/app/src/main/java/com/hackmaster/videoforge/DubForegroundService.kt",
-    import.meta.url
-  ),
-  "utf8"
-);
+test("VideoForge keeps normal content URI opening first", () => {
+  assert.match(
+    compat,
+    /direct\.setDataSource\(\s*context,\s*uri/
+  );
+});
 
-test("VideoForge retries content URIs through AssetFileDescriptor", () => {
+test("VideoForge keeps descriptor fallback second", () => {
   assert.match(
     compat,
     /openAssetFileDescriptor/
@@ -49,38 +48,69 @@ test("VideoForge retries content URIs through AssetFileDescriptor", () => {
     compat,
     /afd\.startOffset/
   );
+});
+
+test("VideoForge adds app-private local media copy as final fallback", () => {
+  assert.match(
+    compat,
+    /context\.cacheDir/
+  );
 
   assert.match(
     compat,
-    /afd\.declaredLength/
+    /videoforge-media-source-v2/
+  );
+
+  assert.match(
+    compat,
+    /openInputStream/
+  );
+
+  assert.match(
+    compat,
+    /materializeLocalCopy/
   );
 });
 
-test("extractor has direct URI path plus descriptor fallback", () => {
+test("local copy is written atomically and validated", () => {
   assert.match(
     compat,
-    /direct\.setDataSource\(\s*context,\s*uri,\s*null\s*\)/
+    /\.part/
   );
 
   assert.match(
     compat,
-    /fallback\.setDataSource/
-  );
-});
-
-test("metadata retriever has direct URI path plus descriptor fallback", () => {
-  assert.match(
-    compat,
-    /direct\.setDataSource\(\s*context,\s*uri\s*\)/
+    /renameTo/
   );
 
   assert.match(
     compat,
-    /fun openRetriever/
+    /part\.length\(\) != sourceSize/
   );
 });
 
-test("all VideoForge media reads use compatibility layer", () => {
+test("MediaExtractor can use absolute local fallback path", () => {
+  assert.match(
+    compat,
+    /local\.setDataSource\(\s*file\.absolutePath\s*\)/
+  );
+});
+
+test("MediaMetadataRetriever can use absolute local fallback path", () => {
+  const count =
+    (
+      compat.match(
+        /local\.setDataSource\(\s*file\.absolutePath\s*\)/g
+      ) || []
+    ).length;
+
+  assert.equal(
+    count,
+    2
+  );
+});
+
+test("all VideoForge media consumers remain on shared compatibility layer", () => {
   assert.match(
     audio,
     /MediaSourceCompat\.openExtractor/
@@ -95,26 +125,16 @@ test("all VideoForge media reads use compatibility layer", () => {
     storage,
     /MediaSourceCompat\.openRetriever/
   );
-
-  assert.doesNotMatch(
-    audio,
-    /setDataSource\(context,\s*(?:uri|inputUri)/
-  );
-
-  assert.doesNotMatch(
-    storage,
-    /setDataSource\(context,\s*uri/
-  );
 });
 
-test("media source failures are converted into user-friendly errors", () => {
+test("old cache copies are bounded by cleanup policy", () => {
   assert.match(
-    service,
-    /setDataSource/
+    compat,
+    /CACHE_MAX_AGE_MS/
   );
 
   assert.match(
-    service,
-    /Video açılamadı/
+    compat,
+    /cleanupOldCopies/
   );
 });
