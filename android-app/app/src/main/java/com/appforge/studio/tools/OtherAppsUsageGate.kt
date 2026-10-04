@@ -9,12 +9,9 @@ import android.content.Context
  *   Excel Tools = 1 local use
  *   VideoForge = 1 local use
  *
- * PRO Monthly:
- *   Local counter is bypassed.
- *   Every use is charged authoritatively to the server-side
- *   AppForge project quota.
- *
- * The server, not this class, is authoritative for PRO quota.
+ * PRO Lifetime / verified owner:
+ *   Local FREE counters are bypassed.
+ *   Excel Tools and VideoForge have unlimited local access.
  */
 object OtherAppsUsageGate {
 
@@ -119,8 +116,7 @@ object OtherAppsUsageGate {
     ): Boolean {
 
         /*
-         * PRO consumption MUST be completed by the server
-         * project-quota endpoint.
+         * Lifetime PRO bypasses local FREE consumption.
          */
         if (proUnlocked) {
             return true

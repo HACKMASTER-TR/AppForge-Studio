@@ -32,17 +32,10 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.lifecycleScope
 import com.appforge.studio.tools.OtherAppsUsageGate
-import com.appforge.studio.security.SecureAccountStore
-import com.appforge.studio.security.StudioSecurityClient
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 
 class VideoForgeActivity : AppCompatActivity() {
 
@@ -343,7 +336,7 @@ class VideoForgeActivity : AppCompatActivity() {
         body.addView(
             text(
                 if (proUnlocked) {
-                    "PRO • Her işlem proje kotasından 1 hak düşürür"
+                    "PRO / Yönetici • Sınırsız kullanım"
                 } else {
                     "FREE • Kalan hak: ${OtherAppsUsageGate.remaining(this, OtherAppsUsageGate.Tool.VIDEO_FORGE, false)}/1"
                 },
@@ -1347,143 +1340,56 @@ class VideoForgeActivity : AppCompatActivity() {
                 1
             )
 
-        if (!proUnlocked) {
-
-            if (
-                OtherAppsUsageGate.consume(
-                    this,
-                    false,
-                    OtherAppsUsageGate.Tool.VIDEO_FORGE,
-                    required
-                )
-            ) {
-                onGranted()
-                return
-            }
-
-            val message =
-                "VideoForge için 1 ücretsiz kullanım hakkını kullandın."
-
-            status(
-                message
-            )
-
-            AlertDialog.Builder(
-                this
-            )
-                .setTitle(
-                    "PRO gerekli"
-                )
-                .setMessage(
-                    message
-                )
-                .setNegativeButton(
-                    "Kapat",
-                    null
-                )
-                .setPositiveButton(
-                    "PRO'YA GEÇ"
-                ) { _, _ ->
-                    finish()
-                }
-                .show()
-
+        /*
+         * Lifetime PRO and verified Owner/Admin access
+         * are unlimited.
+         *
+         * They must never depend on a project quota,
+         * quota-specific account session or quota API.
+         */
+        if (proUnlocked) {
+            onGranted()
             return
         }
-
-        val session =
-            SecureAccountStore
-                .loadSession(
-                    this
-                )
 
         if (
-            session == null ||
-            serverUrl.isBlank()
-        ) {
-            status(
-                "PRO proje kotası doğrulanamadı. Yeniden giriş yap."
+            OtherAppsUsageGate.consume(
+                this,
+                false,
+                OtherAppsUsageGate.Tool.VIDEO_FORGE,
+                required
             )
+        ) {
+            onGranted()
             return
         }
 
+        val message =
+            "VideoForge için 1 ücretsiz kullanım hakkını kullandın."
+
         status(
-            "PRO proje kotası kontrol ediliyor…"
+            message
         )
 
-        lifecycleScope.launch {
-
-            try {
-                val quota =
-                    withContext(
-                        Dispatchers.IO
-                    ) {
-                        StudioSecurityClient(
-                            context =
-                                this@VideoForgeActivity,
-                            baseUrl =
-                                serverUrl,
-                            accessToken =
-                                session.token
-                        )
-                            .consumeOtherAppProjectQuota(
-                                tool =
-                                    "video_forge",
-                                usageId =
-                                    UUID
-                                        .randomUUID()
-                                        .toString(),
-                                amount =
-                                    required
-                            )
-                    }
-
-                quota.projectLimit
-                    ?.let {
-                        limit ->
-
-                        val remaining =
-                            (
-                                limit -
-                                    quota.projectUsed
-                            ).coerceAtLeast(
-                                0
-                            )
-
-                        status(
-                            "PRO proje kotası: $remaining hak kaldı."
-                        )
-                    }
-
-                onGranted()
-
-            } catch (
-                t: Throwable
-            ) {
-                val message =
-                    t.message
-                        ?: "PRO proje kotası kontrol edilemedi."
-
-                status(
-                    message
-                )
-
-                AlertDialog.Builder(
-                    this@VideoForgeActivity
-                )
-                    .setTitle(
-                        "Proje kotası"
-                    )
-                    .setMessage(
-                        message
-                    )
-                    .setPositiveButton(
-                        "Tamam",
-                        null
-                    )
-                    .show()
+        AlertDialog.Builder(
+            this
+        )
+            .setTitle(
+                "PRO gerekli"
+            )
+            .setMessage(
+                message
+            )
+            .setNegativeButton(
+                "Kapat",
+                null
+            )
+            .setPositiveButton(
+                "PRO'YA GEÇ"
+            ) { _, _ ->
+                finish()
             }
-        }
+            .show()
     }
 
     private fun currentOptions(preview: Boolean = false): StudioOptions {

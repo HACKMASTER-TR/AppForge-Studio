@@ -5033,7 +5033,8 @@ private fun AppForgeApp() {
                                 AppScreen.EXCEL_TOOLS
                         },
                         proUnlocked =
-                            proStatus?.active == true,
+                            terminalOwner ||
+                                proStatus?.active == true,
                                                 serverUrl =
                             DEFAULT_CONTROL_PLANE_URL,
 onOpenPro = {
@@ -5049,7 +5050,8 @@ onOpenPro = {
                                 AppScreen.OTHER_APPS
                         },
                         proUnlocked =
-                            proStatus?.active == true,
+                            terminalOwner ||
+                                proStatus?.active == true,
                                                 serverUrl =
                             DEFAULT_CONTROL_PLANE_URL,
 onOpenPro = {
