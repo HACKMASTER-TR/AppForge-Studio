@@ -301,6 +301,9 @@ class DubForegroundService : Service(), AppVisibility.Listener {
             raw.contains("network", true) || raw.contains("HTTP", true) ->
                 "Ağ işlemi başarısız. Bağlantıyı veya video URL'sini kontrol et. ($raw)"
             raw.contains("TTS", true) || raw.contains("metin-okuma", true) -> raw
+            raw.contains("media motoru", true) ||
+                raw.contains("setDataSource", true) ->
+                "Video açılamadı. Dosyanın tam indirilmiş ve geçerli bir video olduğundan emin ol. ($raw)"
             raw.contains("memory", true) || raw.contains("OutOfMemory", true) ->
                 "Telefon belleği yetersiz kaldı. Kaliteyi 'Hızlı' seç veya başka uygulamaları kapat."
             else -> raw.ifBlank { t::class.java.simpleName }

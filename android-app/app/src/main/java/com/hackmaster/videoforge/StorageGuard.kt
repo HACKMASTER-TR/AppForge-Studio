@@ -10,10 +10,21 @@ object StorageGuard {
 
     fun estimate(context: Context, uri: Uri, previewSeconds: Int? = null): Estimate {
         var duration = 0.0
-        val r = MediaMetadataRetriever()
+        val r =
+            MediaSourceCompat.openRetriever(
+                context,
+                uri
+            )
+
         try {
-            r.setDataSource(context, uri)
-            duration = (r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L) / 1000.0
+            duration =
+                (
+                    r.extractMetadata(
+                        MediaMetadataRetriever.METADATA_KEY_DURATION
+                    )
+                        ?.toLongOrNull()
+                        ?: 0L
+                ) / 1000.0
         } finally {
             r.release()
         }

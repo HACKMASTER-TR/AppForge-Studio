@@ -25,8 +25,11 @@ object AudioMedia {
     data class MonoAudio(val samples: FloatArray, val sampleRate: Int, val durationSeconds: Double)
 
     fun decodeMono(context: Context, uri: Uri): MonoAudio {
-        val extractor = MediaExtractor()
-        extractor.setDataSource(context, uri, null)
+        val extractor =
+            MediaSourceCompat.openExtractor(
+                context,
+                uri
+            )
         var track = -1
         var inputFormat: MediaFormat? = null
         for (i in 0 until extractor.trackCount) {
@@ -324,8 +327,11 @@ object AudioMedia {
         if (outputFile.exists()) outputFile.delete()
         outputFile.parentFile?.mkdirs()
 
-        val extractor = MediaExtractor()
-        extractor.setDataSource(context, inputUri, null)
+        val extractor =
+            MediaSourceCompat.openExtractor(
+                context,
+                inputUri
+            )
         var videoTrack = -1
         var videoFormat: MediaFormat? = null
         for (i in 0 until extractor.trackCount) {
@@ -342,9 +348,13 @@ object AudioMedia {
         val muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
         val videoMuxTrack = muxer.addTrack(videoFormat!!)
 
-        val retriever = MediaMetadataRetriever()
+        val retriever =
+            MediaSourceCompat.openRetriever(
+                context,
+                inputUri
+            )
+
         try {
-            retriever.setDataSource(context, inputUri)
             retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull()?.let {
                 if (it != 0) muxer.setOrientationHint(it)
             }
