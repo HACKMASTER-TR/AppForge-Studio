@@ -427,6 +427,42 @@ test(
 );
 
 test(
+  "Play version resolution uses a stable base version source",
+  () => {
+    assert.match(
+      gradle,
+      /val appforgeBaseVersionCode\s*=\s*529/
+    );
+
+    assert.match(
+      gradle,
+      /versionCode\s*=[\s\S]*appforgeBaseVersionCode/
+    );
+
+    const stableResolverCount =
+      (
+        playRelease.match(
+          /appforgeBaseVersionCode/g
+        ) || []
+      ).length;
+
+    assert.ok(
+      stableResolverCount >= 2
+    );
+
+    const legacyResolver =
+      String.raw`r"\bversionCode\s*=\s*(\d+)",`;
+
+    assert.equal(
+      playRelease.includes(
+        legacyResolver
+      ),
+      false
+    );
+  }
+);
+
+test(
   "Google Play CI includes V4.7 contract",
   () => {
     assert.match(

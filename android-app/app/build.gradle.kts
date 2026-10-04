@@ -197,6 +197,9 @@ val appforgeProRecoveryTest = providers.gradleProperty("appforgeProRecoveryTest"
 val appforgeProSecondDevice = providers.gradleProperty("appforgeProSecondDevice").orNull == "true"
 val appforgeProProcessDeathTest = providers.gradleProperty("appforgeProProcessDeathTest").orNull == "true"
 
+val appforgeBaseVersionCode =
+    529
+
 val appforgePlayIntegrityAcceptance =
     providers.gradleProperty("appforgePlayIntegrityAcceptance")
         .orNull == "true"
@@ -275,9 +278,9 @@ android {
                 appforgePlayIntegrityAcceptance
             ) {
                 appforgePlayIntegrityAcceptanceVersionCode
-                    ?: 529
+                    ?: appforgeBaseVersionCode
             } else {
-                529
+                appforgeBaseVersionCode
             }
 
         versionName = "5.0.29"

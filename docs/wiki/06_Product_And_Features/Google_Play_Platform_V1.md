@@ -621,3 +621,27 @@ The OAuth client ID value is never printed.
 This change does not weaken the Production gate and does not change the
 Integrity policy, Play Production, D1, production Worker or protected
 main.
+
+
+### V4.7.12 stable Play version resolver
+
+The real Google Play Internal-track acceptance retry passed the
+marker guard, Internal-only routing, staging preflight, GitHub
+OIDC/WIF, release-secret validation, native toolchain setup and
+release-key verification.
+
+It then stopped before build/upload because two workflow parsers still
+expected a direct `versionCode = <number>` assignment.
+
+V4.7.12 introduces the explicit source of truth:
+
+`appforgeBaseVersionCode = 529`
+
+Normal builds continue to use 529. The physical acceptance artifact
+continues to use the explicit versionCode 530 override.
+
+Both the Production tag/version verifier and the generic Play artifact
+version resolver now read the same base-version constant.
+
+Play Production, D1, the production Worker and protected main remain
+untouched.

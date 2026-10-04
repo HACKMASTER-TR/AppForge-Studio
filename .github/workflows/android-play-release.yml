@@ -163,7 +163,7 @@ jobs:
           )
 
           code_match = re.search(
-              r"\bversionCode\s*=\s*(\d+)",
+              r"\bappforgeBaseVersionCode\s*=\s*(\d+)",
               source,
           )
 
@@ -420,7 +420,7 @@ jobs:
           ).read_text(encoding="utf-8")
 
           code_match = re.search(
-              r"\bversionCode\s*=\s*(\d+)",
+              r"\bappforgeBaseVersionCode\s*=\s*(\d+)",
               source
           )
 
