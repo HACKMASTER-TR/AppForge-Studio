@@ -397,6 +397,36 @@ test(
 );
 
 test(
+  "physical acceptance does not require unrelated GitHub OAuth secret",
+  () => {
+    assert.match(
+      playRelease,
+      /required=\([\s\S]*APPFORGE_RELEASE_KEYSTORE_B64[\s\S]*APPFORGE_RELEASE_STORE_PASSWORD[\s\S]*APPFORGE_RELEASE_KEY_PASSWORD/
+    );
+
+    assert.match(
+      playRelease,
+      /APPFORGE_PLAY_INTEGRITY_ACCEPTANCE:-false/
+    );
+
+    assert.match(
+      playRelease,
+      /required\+=\([\s\S]*APPFORGE_GITHUB_OAUTH_CLIENT_ID/
+    );
+
+    assert.match(
+      playRelease,
+      /GITHUB_OAUTH_SECRET_REQUIREMENT=PHYSICAL_ACCEPTANCE_NOT_REQUIRED/
+    );
+
+    assert.match(
+      playRelease,
+      /GITHUB_OAUTH_SECRET_REQUIREMENT=NORMAL_RELEASE_REQUIRED/
+    );
+  }
+);
+
+test(
   "Google Play CI includes V4.7 contract",
   () => {
     assert.match(

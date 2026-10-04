@@ -592,3 +592,32 @@ must use versionCode `531` or greater.
 
 Protected main, Play Production, D1 and the production Worker remain
 untouched.
+
+
+### V4.7.10 physical acceptance OAuth secret isolation
+
+The first real Google Play Internal-track physical acceptance trigger
+successfully passed:
+
+- marker-only trigger validation;
+- fail-closed Internal-track routing;
+- isolated Integrity staging health preflight;
+- Google GitHub OIDC / WIF authentication.
+
+The run stopped before the Android build because the shared release
+secret preflight also required `APPFORGE_GITHUB_OAUTH_CLIENT_ID`.
+
+The physical Integrity acceptance Activity does not use GitHub OAuth.
+V4.7.10 therefore scopes that unrelated secret as follows:
+
+- physical Integrity acceptance push: GitHub OAuth client ID is not
+  required;
+- normal manually-dispatched Internal release: still required;
+- Production release: still required;
+- release keystore and signing passwords: always required.
+
+The OAuth client ID value is never printed.
+
+This change does not weaken the Production gate and does not change the
+Integrity policy, Play Production, D1, production Worker or protected
+main.

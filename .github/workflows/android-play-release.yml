@@ -327,8 +327,17 @@ jobs:
             APPFORGE_RELEASE_KEYSTORE_B64
             APPFORGE_RELEASE_STORE_PASSWORD
             APPFORGE_RELEASE_KEY_PASSWORD
-            APPFORGE_GITHUB_OAUTH_CLIENT_ID
           )
+
+          if test "${APPFORGE_PLAY_INTEGRITY_ACCEPTANCE:-false}" != "true"; then
+            required+=(
+              APPFORGE_GITHUB_OAUTH_CLIENT_ID
+            )
+
+            echo "GITHUB_OAUTH_SECRET_REQUIREMENT=NORMAL_RELEASE_REQUIRED"
+          else
+            echo "GITHUB_OAUTH_SECRET_REQUIREMENT=PHYSICAL_ACCEPTANCE_NOT_REQUIRED"
+          fi
 
           missing=0
 
