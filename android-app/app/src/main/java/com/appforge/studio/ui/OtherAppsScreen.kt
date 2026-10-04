@@ -99,7 +99,7 @@ fun OtherAppsScreen(
                         "XLSX, XLSM ve CSV dosyaları için cihaz üzerinde çalışan Excel araçları.",
                     status =
                         if (proUnlocked) {
-                            "PRO / Yönetici • Sınırsız kullanım"
+                            "PRO • Sınırsız kullanım"
                         } else {
                             "FREE • Kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.EXCEL_TOOLS, false)}/1"
                         },
@@ -135,7 +135,7 @@ fun OtherAppsScreen(
                                 "64-bit ARM cihaz gerekli"
 
                             proUnlocked ->
-                                "PRO / Yönetici • Sınırsız kullanım • V4.1.2"
+                                "PRO • Sınırsız kullanım • V4.1.2"
 
                             else ->
                                 "FREE • Kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.VIDEO_FORGE, false)}/1 • V4.1.2"

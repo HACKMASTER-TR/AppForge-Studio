@@ -259,7 +259,7 @@ fun ExcelToolsScreen(
                                 "✓ XLSX, XLSM ve CSV desteği\n" +
                                 "✓ Maksimum dosya boyutu: 80 MB\n" +
                                 if (proUnlocked) {
-                                    "✓ PRO / Yönetici: Sınırsız kullanım"
+                                    "✓ PRO: Sınırsız kullanım"
                                 } else {
                                     "✓ FREE kalan hak: ${OtherAppsUsageGate.remaining(context, OtherAppsUsageGate.Tool.EXCEL_TOOLS, false)}/1"
                                 },

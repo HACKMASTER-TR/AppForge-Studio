@@ -62,17 +62,17 @@ test("FREE keeps the existing one-use local policy", () => {
 test("Lifetime Pro and verified Owner are unlimited", () => {
   assert.match(
     otherApps,
-    /PRO \/ Yönetici • Sınırsız kullanım/
+    /PRO • Sınırsız kullanım/
   );
 
   assert.match(
     video,
-    /PRO \/ Yönetici • Sınırsız kullanım/
+    /PRO • Sınırsız kullanım/
   );
 
   assert.match(
     excel,
-    /PRO \/ Yönetici: Sınırsız kullanım/
+    /PRO: Sınırsız kullanım/
   );
 });
 

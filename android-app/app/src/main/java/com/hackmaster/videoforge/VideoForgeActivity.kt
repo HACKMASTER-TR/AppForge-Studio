@@ -336,7 +336,7 @@ class VideoForgeActivity : AppCompatActivity() {
         body.addView(
             text(
                 if (proUnlocked) {
-                    "PRO / Yönetici • Sınırsız kullanım"
+                    "PRO • Sınırsız kullanım"
                 } else {
                     "FREE • Kalan hak: ${OtherAppsUsageGate.remaining(this, OtherAppsUsageGate.Tool.VIDEO_FORGE, false)}/1"
                 },
