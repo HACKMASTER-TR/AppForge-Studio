@@ -79,6 +79,32 @@ test(
 );
 
 test(
+  "Wrangler config is colocated with the control-plane source tree",
+  () => {
+    const expected =
+      'CONFIG="$GITHUB_WORKSPACE/cloudflare/control-plane/.wrangler-integrity-staging-ci.toml"';
+
+    const occurrences =
+      workflow.split(expected).length - 1;
+
+    assert.equal(
+      occurrences,
+      2
+    );
+
+    assert.doesNotMatch(
+      workflow,
+      /CONFIG="\$RUNNER_TEMP\/appforge-integrity-staging\.toml"/
+    );
+
+    assert.match(
+      workflow,
+      /main = "src\/integrity_staging_index\.mjs"/
+    );
+  }
+);
+
+test(
   "first isolated deploy uploads code and secrets atomically",
   () => {
     assert.doesNotMatch(

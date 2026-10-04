@@ -104,7 +104,7 @@ jobs:
           set -euo pipefail
           set +x
 
-          CONFIG="$RUNNER_TEMP/appforge-integrity-staging.toml"
+          CONFIG="$GITHUB_WORKSPACE/cloudflare/control-plane/.wrangler-integrity-staging-ci.toml"
 
           cat > "$CONFIG" <<'TOML'
           name = "appforge-integrity-staging"
@@ -117,15 +117,29 @@ jobs:
 
           cd cloudflare/control-plane
 
-          npx --yes wrangler@4 deploy \
-            --config "$CONFIG" \
-            --dry-run \
-            --keep-vars \
-            --outdir "$RUNNER_TEMP/integrity-staging-bundle" \
-            > "$RUNNER_TEMP/integrity-staging-dry-run.log" \
-            2>&1
+          DRY_LOG="$RUNNER_TEMP/integrity-staging-dry-run.log"
 
-          echo "ISOLATED_WORKER_DRY_RUN=PASS"
+          if npx --yes wrangler@4 deploy \
+              --config "$CONFIG" \
+              --dry-run \
+              --keep-vars \
+              --outdir "$RUNNER_TEMP/integrity-staging-bundle" \
+              > "$DRY_LOG" \
+              2>&1
+          then
+            echo "ISOLATED_WORKER_DRY_RUN=PASS"
+          else
+            echo "ISOLATED_WORKER_DRY_RUN=FAIL"
+            echo "=== WRANGLER SAFE DIAGNOSTIC ==="
+
+            grep -Ei \
+              'error|failed|cannot|could not|not found|no such file|entry.?point|main' \
+              "$DRY_LOG" \
+              | tail -n 60 \
+              || true
+
+            exit 1
+          fi
           echo "TARGET_WORKER=appforge-integrity-staging"
           echo "D1_BINDING=NONE"
           echo "CUSTOM_DOMAIN=NONE"
@@ -147,11 +161,12 @@ jobs:
           set +x
           umask 077
 
-          CONFIG="$RUNNER_TEMP/appforge-integrity-staging.toml"
+          CONFIG="$GITHUB_WORKSPACE/cloudflare/control-plane/.wrangler-integrity-staging-ci.toml"
           SECRETS_FILE="$RUNNER_TEMP/appforge-integrity-staging-secrets.json"
 
           cleanup() {
             rm -f "$SECRETS_FILE"
+            rm -f "$CONFIG"
           }
 
           trap cleanup EXIT

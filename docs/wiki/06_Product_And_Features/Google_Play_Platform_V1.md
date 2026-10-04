@@ -318,3 +318,31 @@ The deployment remains isolated from:
 - Custom Domains
 - Production routes
 - Play Production
+
+### V4.3 isolated staging dry-run path correction
+
+The first physical isolated staging attempt stopped before deployment at
+the Wrangler dry-run.
+
+Failure class:
+
+`C_TOOL_CONFIG_PATH`
+
+The generated Wrangler configuration had been placed under
+`RUNNER_TEMP` while its `main` entry remained:
+
+`src/integrity_staging_index.mjs`
+
+Relative Worker source paths must resolve from the configuration
+location. V4.3 therefore creates the temporary Wrangler configuration
+inside:
+
+`cloudflare/control-plane/`
+
+next to the Worker `src/` tree.
+
+No Worker deployment occurred during the failed attempt. The code/secrets
+deploy and live smoke steps were skipped.
+
+V4.3 also surfaces a restricted Wrangler diagnostic on future dry-run
+failures and removes the transient config after deployment.
