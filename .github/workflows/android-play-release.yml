@@ -46,6 +46,7 @@ jobs:
 
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "APPFORGE_PLAY_TRACK=internal" >> "$GITHUB_ENV"
+            echo "APPFORGE_PLAY_RELEASE_MODE=internal_completed" >> "$GITHUB_ENV"
             echo "PLAY_PRODUCTION_GATE=MANUAL_INTERNAL_ONLY"
             exit 0
           fi
@@ -160,6 +161,8 @@ jobs:
           PY_VERSION
 
           echo "APPFORGE_PLAY_TRACK=production" >> "$GITHUB_ENV"
+          echo "APPFORGE_PLAY_RELEASE_MODE=production_draft_then_staged" >> "$GITHUB_ENV"
+          echo "PLAY_PRODUCTION_INITIAL_STATE=DRAFT"
           echo "PLAY_PRODUCTION_GATE=PASS"
 
       - name: Authenticate to Google Cloud with GitHub OIDC
@@ -476,11 +479,23 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload signed AAB to Google Play
+      - name: Upload signed AAB to Google Play Internal
+        if: env.APPFORGE_PLAY_TRACK == 'internal'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: ${{ steps.google-auth.outputs.credentials_file_path }}
           packageName: com.appforge.studio
           releaseFiles: ${{ env.APPFORGE_PLAY_AAB_NAME }}
-          track: ${{ env.APPFORGE_PLAY_TRACK }}
+          track: internal
           status: completed
+
+      - name: Upload signed AAB to Google Play Production as draft
+        if: env.APPFORGE_PLAY_TRACK == 'production'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ steps.google-auth.outputs.credentials_file_path }}
+          packageName: com.appforge.studio
+          releaseFiles: ${{ env.APPFORGE_PLAY_AAB_NAME }}
+          track: production
+          status: draft
+          inAppUpdatePriority: 2

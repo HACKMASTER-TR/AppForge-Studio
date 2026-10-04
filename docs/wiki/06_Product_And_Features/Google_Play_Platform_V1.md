@@ -138,3 +138,62 @@ Install Referrer runtime kütüphanesi CODE_READY olarak kalır.
 
 Otomatik attribution/veri toplama, Privacy Policy ve Play Data Safety
 eşlemesi tamamlanmadan etkinleştirilmez.
+
+## V3 fail-closed Play operations
+
+### Production release contract
+
+Future Play Production artifacts are created as DRAFT first.
+
+No GitHub release event directly serves the new AppForge version to all users.
+
+Activation sequence:
+
+DRAFT
+-> 5%
+-> 20%
+-> 50%
+-> 100%
+
+Each Production state mutation requires:
+
+- exact versionCode
+- exact operation
+- explicit confirmation token
+- fresh Google Play edit
+- edit validation
+- edit commit
+
+The rollout can be halted and resumed while staged.
+
+### App Recovery
+
+The Recovery workflow defaults to read-only `list`.
+
+Supported explicitly gated operations:
+
+- create DRAFT Remote In-App Update recovery for one exact versionCode
+- deploy a known recovery action ID
+- cancel a known recovery action ID
+
+A recovery draft is never deployed automatically.
+
+### Advanced Play Integrity
+
+`play_integrity_policy.mjs` contains the fail-closed policy evaluator for:
+
+- MEETS_DEVICE_INTEGRITY
+- App Access Risk
+- Play Protect
+- Recent Device Activity
+- Device Attributes
+
+The policy module is not equivalent to live server verification.
+
+It remains BACKEND_GATED until:
+
+1. optional verdicts are enabled in Play Console,
+2. the server-side Play Integrity token decode path is migrated and verified,
+3. production routing for the audited security endpoint is explicitly approved.
+
+Missing optional verdicts deny critical actions in the policy evaluator.

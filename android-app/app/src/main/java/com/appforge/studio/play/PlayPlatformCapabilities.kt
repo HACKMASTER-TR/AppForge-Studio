@@ -5,6 +5,7 @@ enum class PlayCapabilityState {
     CODE_READY,
     CONSOLE_GATED,
     API_GATED,
+    BACKEND_GATED,
     POST_RELEASE_DATA,
     PLANNED
 }
@@ -68,11 +69,11 @@ object PlayPlatformCapabilities {
             PlayCapability("excessive_wakeup", PlayCapabilityState.POST_RELEASE_DATA),
             PlayCapability("stuck_background_wakelock", PlayCapabilityState.POST_RELEASE_DATA),
 
-            PlayCapability("integrity_app_access_risk", PlayCapabilityState.CONSOLE_GATED),
-            PlayCapability("integrity_play_protect", PlayCapabilityState.CONSOLE_GATED),
-            PlayCapability("integrity_recent_device_activity", PlayCapabilityState.CONSOLE_GATED),
-            PlayCapability("integrity_device_attributes", PlayCapabilityState.CONSOLE_GATED),
-            PlayCapability("integrity_device_recall", PlayCapabilityState.CONSOLE_GATED),
+            PlayCapability("integrity_app_access_risk", PlayCapabilityState.BACKEND_GATED),
+            PlayCapability("integrity_play_protect", PlayCapabilityState.BACKEND_GATED),
+            PlayCapability("integrity_recent_device_activity", PlayCapabilityState.BACKEND_GATED),
+            PlayCapability("integrity_device_attributes", PlayCapabilityState.BACKEND_GATED),
+            PlayCapability("integrity_device_recall", PlayCapabilityState.BACKEND_GATED),
 
             PlayCapability("tester_management_api", PlayCapabilityState.API_GATED),
             PlayCapability("track_management_api", PlayCapabilityState.API_GATED),

@@ -127,26 +127,31 @@ test(
 );
 
 test(
-  "Play uploader consumes only the fail-closed resolved track",
+  "manual upload stays Internal while Production upload is draft-first",
   () => {
     assert.match(
       workflow,
-      /track:\s*\$\{\{\s*env\.APPFORGE_PLAY_TRACK\s*\}\}/
+      /if:\s*env\.APPFORGE_PLAY_TRACK\s*==\s*'internal'[\s\S]*track:\s*internal[\s\S]*status:\s*completed/
     );
 
     assert.match(
       workflow,
-      /status:\s*completed/
+      /if:\s*env\.APPFORGE_PLAY_TRACK\s*==\s*'production'[\s\S]*track:\s*production[\s\S]*status:\s*draft/
+    );
+
+    assert.match(
+      workflow,
+      /PLAY_PRODUCTION_INITIAL_STATE=DRAFT/
+    );
+
+    assert.match(
+      workflow,
+      /inAppUpdatePriority:\s*2/
     );
 
     assert.match(
       workflow,
       /types:\s*\n\s*-\s*published/
-    );
-
-    assert.doesNotMatch(
-      workflow,
-      /github\.event_name\s*==\s*'release'\s*&&\s*'production'/
     );
   }
 );

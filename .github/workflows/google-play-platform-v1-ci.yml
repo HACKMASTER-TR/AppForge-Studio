@@ -30,7 +30,10 @@ jobs:
           set -euo pipefail
 
           node --test \
-            quality/tests/google_play_platform_v1_contract.test.js
+            quality/tests/google_play_platform_v1_contract.test.js \
+            quality/tests/appforge_play_distribution_contract.test.js \
+            quality/tests/google_play_ops_v3_contract.test.js \
+            cloudflare/control-plane/tests/play_integrity_policy.test.mjs
 
           echo "PLAY_PLATFORM_STATIC_CONTRACT=PASS"
 

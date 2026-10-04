@@ -23,7 +23,15 @@
     "in_app_update_priority": "api_gated",
     "localized_release_notes": "api_gated",
     "country_targeting": "api_gated",
-    "internal_app_sharing_workflow": "manual_api_ready"
+    "internal_app_sharing_workflow": "manual_api_ready",
+    "production_initial_state": "draft",
+    "staged_rollout_sequence": [
+      0.05,
+      0.2,
+      0.5,
+      1.0
+    ],
+    "rollout_operations_workflow": "manual_fail_closed_ready"
   },
   "quality": {
     "pre_launch_report": "console_gated",
@@ -39,11 +47,11 @@
   "security": {
     "play_app_signing": "console_gated",
     "automatic_protection": "console_gated",
-    "integrity_app_access_risk": "console_gated",
-    "integrity_play_protect": "console_gated",
-    "integrity_recent_device_activity": "console_gated",
-    "integrity_device_attributes": "console_gated",
-    "integrity_device_recall": "beta_or_console_gated"
+    "integrity_app_access_risk": "backend_policy_ready_console_and_decode_gated",
+    "integrity_play_protect": "backend_policy_ready_console_and_decode_gated",
+    "integrity_recent_device_activity": "backend_policy_ready_console_and_decode_gated",
+    "integrity_device_attributes": "backend_policy_ready_console_and_decode_gated",
+    "integrity_device_recall": "backend_policy_ready_console_and_decode_gated"
   },
   "store": {
     "custom_store_listings": "console_gated",
@@ -53,7 +61,7 @@
     "pre_registration": "console_gated"
   },
   "recovery": {
-    "app_recovery": "api_gated"
+    "app_recovery": "manual_fail_closed_ready"
   },
   "automation": {
     "second_brain_play_health": "planned",
