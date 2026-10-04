@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "name": "AppForge Google Play Platform V1",
+  "production_mutation_default": false,
+  "play_upload_default": false,
+  "runtime": {
+    "in_app_updates": "active",
+    "play_integrity": "active",
+    "billing": "active",
+    "in_app_review": "code_ready",
+    "install_referrer": "code_ready",
+    "feature_delivery": "code_ready_requires_modules",
+    "asset_delivery": "code_ready_requires_asset_packs"
+  },
+  "distribution": {
+    "aab": "active",
+    "internal_testing": "pipeline_ready",
+    "closed_testing": "console_gated",
+    "open_testing": "console_gated",
+    "production": "explicit_approval_only",
+    "staged_rollout": "api_gated",
+    "rollout_halt_resume": "api_gated",
+    "in_app_update_priority": "api_gated",
+    "localized_release_notes": "api_gated",
+    "country_targeting": "api_gated"
+  },
+  "quality": {
+    "pre_launch_report": "console_gated",
+    "android_vitals": "post_release_data",
+    "developer_reporting_api": "api_gated",
+    "crash_rate": "post_release_data",
+    "anr_rate": "post_release_data",
+    "slow_startup": "post_release_data",
+    "excessive_wakeup": "post_release_data",
+    "stuck_background_wakelock": "post_release_data"
+  },
+  "security": {
+    "play_app_signing": "console_gated",
+    "automatic_protection": "console_gated",
+    "integrity_app_access_risk": "console_gated",
+    "integrity_play_protect": "console_gated",
+    "integrity_recent_device_activity": "console_gated",
+    "integrity_device_attributes": "console_gated",
+    "integrity_device_recall": "beta_or_console_gated"
+  },
+  "store": {
+    "custom_store_listings": "console_gated",
+    "store_listing_experiments": "console_gated",
+    "store_conversion_analytics": "post_release_data",
+    "reach_and_devices": "post_release_data",
+    "pre_registration": "console_gated"
+  },
+  "recovery": {
+    "app_recovery": "api_gated"
+  },
+  "automation": {
+    "second_brain_play_health": "planned",
+    "release_health_gate": "planned",
+    "automatic_rollout_progression": "planned",
+    "automatic_rollout_halt": "planned"
+  }
+}
