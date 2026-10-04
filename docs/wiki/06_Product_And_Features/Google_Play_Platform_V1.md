@@ -346,3 +346,32 @@ deploy and live smoke steps were skipped.
 
 V4.3 also surfaces a restricted Wrangler diagnostic on future dry-run
 failures and removes the transient config after deployment.
+
+### V4.5 live deploy diagnostic hardening
+
+Retry run `37170941870` proved that the Wrangler source-path correction
+worked:
+
+`ISOLATED_WORKER_DRY_RUN=PASS`
+
+The run then failed inside the live atomic deploy command before the live
+smoke test. Because Wrangler stdout/stderr had been redirected only to a
+runner-local file, the exact Cloudflare error was not visible.
+
+Failure class at this stage:
+
+`C_TOOL_DEPLOY_DIAGNOSTIC_HIDDEN`
+
+V4.5 adds:
+
+- a second non-mutating dry-run using the real ephemeral secrets file;
+- explicit `SECRET_PAYLOAD_DRY_RUN`;
+- a redacted Wrangler diagnostic on live deployment failure;
+- exact-value secret redaction;
+- PEM and long credential-like value redaction.
+
+No staging deployment is triggered by this source-fix commit.
+
+The previous failed live command was attempted, so existence of a partial
+isolated Worker state must remain UNKNOWN until Cloudflare state is
+audited or a subsequent guarded deployment succeeds.

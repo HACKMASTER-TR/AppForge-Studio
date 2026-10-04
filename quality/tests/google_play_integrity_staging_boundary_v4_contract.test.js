@@ -135,6 +135,41 @@ test(
 );
 
 test(
+  "secret payload is dry-run before live deploy and failures are safely diagnosed",
+  () => {
+    assert.match(
+      workflow,
+      /SECRET_PAYLOAD_DRY_RUN=PASS/
+    );
+
+    assert.match(
+      workflow,
+      /--dry-run[\s\S]*--secrets-file/
+    );
+
+    assert.match(
+      workflow,
+      /WRANGLER SAFE DEPLOY DIAGNOSTIC/
+    );
+
+    assert.match(
+      workflow,
+      /safe_deploy_diag/
+    );
+
+    assert.match(
+      workflow,
+      /REDACTED_PEM/
+    );
+
+    assert.doesNotMatch(
+      workflow,
+      /cat "\$DEPLOY_LOG"/
+    );
+  }
+);
+
+test(
   "production surfaces remain outside isolated deploy",
   () => {
     assert.match(

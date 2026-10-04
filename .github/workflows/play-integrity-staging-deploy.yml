@@ -250,18 +250,117 @@ jobs:
 
           cd cloudflare/control-plane
 
-          npx --yes wrangler@4 deploy \
-            --config "$CONFIG" \
-            --keep-vars \
-            --secrets-file "$SECRETS_FILE" \
-            > "$RUNNER_TEMP/integrity-staging-deploy.log" \
-            2>&1
+          SECRET_DRY_LOG="$RUNNER_TEMP/integrity-staging-secret-dry-run.log"
+          DEPLOY_LOG="$RUNNER_TEMP/integrity-staging-deploy.log"
+
+          safe_deploy_diag() {
+            python3 - "$1" <<'PY'
+          import os
+          import re
+          import sys
+          from pathlib import Path
+
+          path = Path(sys.argv[1])
+
+          try:
+              text = path.read_text(
+                  encoding="utf-8",
+                  errors="replace"
+              )
+          except Exception:
+              print("DIAGNOSTIC_LOG_READ=FAIL")
+              raise SystemExit(0)
+
+          secret_names = (
+              "CLOUDFLARE_API_TOKEN",
+              "CLOUDFLARE_ACCOUNT_ID",
+              "PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER",
+              "PLAY_INTEGRITY_SERVICE_ACCOUNT_EMAIL",
+              "PLAY_INTEGRITY_SERVICE_ACCOUNT_PRIVATE_KEY",
+              "PLAY_INTEGRITY_SERVICE_ACCOUNT_KEY_ID",
+              "PLAY_INTEGRITY_SESSION_SECRET",
+          )
+
+          for name in secret_names:
+              value = os.environ.get(name, "")
+              if value:
+                  text = text.replace(
+                      value,
+                      "[REDACTED]"
+                  )
+
+          text = re.sub(
+              r"-----BEGIN [^-]+-----.*?-----END [^-]+-----",
+              "[REDACTED_PEM]",
+              text,
+              flags=re.S,
+          )
+
+          text = re.sub(
+              r"(?i)(authorization\s*[:=]\s*bearer\s+)[^\s]+",
+              r"\1[REDACTED]",
+              text,
+          )
+
+          # Defensive redaction for long credential-like strings.
+          text = re.sub(
+              r"(?<![A-Za-z0-9])"
+              r"[A-Za-z0-9_./+=-]{80,}"
+              r"(?![A-Za-z0-9])",
+              "[REDACTED_LONG_VALUE]",
+              text,
+          )
+
+          lines = text.splitlines()
+
+          print("SAFE_DIAGNOSTIC_BEGIN")
+
+          for line in lines[-120:]:
+              print(line[:1000])
+
+          print("SAFE_DIAGNOSTIC_END")
+          PY
+          }
+
+          # Validate exactly the same code + secrets payload locally
+          # before any Cloudflare mutation.
+          if npx --yes wrangler@4 deploy \
+              --config "$CONFIG" \
+              --dry-run \
+              --keep-vars \
+              --secrets-file "$SECRETS_FILE" \
+              --outdir "$RUNNER_TEMP/integrity-staging-secret-bundle" \
+              > "$SECRET_DRY_LOG" \
+              2>&1
+          then
+            echo "SECRET_PAYLOAD_DRY_RUN=PASS"
+          else
+            echo "SECRET_PAYLOAD_DRY_RUN=FAIL"
+            echo "=== WRANGLER SAFE SECRET DRY-RUN DIAGNOSTIC ==="
+            safe_deploy_diag "$SECRET_DRY_LOG"
+            exit 1
+          fi
+
+          if npx --yes wrangler@4 deploy \
+              --config "$CONFIG" \
+              --keep-vars \
+              --secrets-file "$SECRETS_FILE" \
+              > "$DEPLOY_LOG" \
+              2>&1
+          then
+            echo "ISOLATED_WORKER_DEPLOY=PASS"
+          else
+            echo "ISOLATED_WORKER_DEPLOY=FAIL"
+            echo "=== WRANGLER SAFE DEPLOY DIAGNOSTIC ==="
+            safe_deploy_diag "$DEPLOY_LOG"
+            exit 1
+          fi
 
           rm -f "$SECRETS_FILE"
 
           test ! -e "$SECRETS_FILE"
 
-          echo "ISOLATED_WORKER_DEPLOY=PASS"
+          echo "ATOMIC_CODE_AND_SECRETS_DEPLOY=PASS"
           echo "ATOMIC_CODE_AND_SECRETS_DEPLOY=PASS"
           echo "EPHEMERAL_SECRET_FILE_REMOVED=PASS"
 
