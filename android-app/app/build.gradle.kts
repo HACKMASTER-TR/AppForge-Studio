@@ -521,6 +521,13 @@ dependencies {
 
     // VideoForge V4.1.2
     implementation("androidx.appcompat:appcompat:1.7.1")
+
+    // VideoForge V5.2 - DRM-free VOD adaptive stream export
+    implementation("androidx.media3:media3-common:1.11.1")
+    implementation("androidx.media3:media3-effect:1.11.1")
+    implementation("androidx.media3:media3-transformer:1.11.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
+    implementation("androidx.media3:media3-exoplayer-dash:1.11.1")
     implementation("androidx.activity:activity-ktx:1.13.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
     implementation("com.google.mlkit:language-id:17.0.6")

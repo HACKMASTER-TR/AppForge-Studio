@@ -106,6 +106,39 @@ object UrlVideoImporter {
         onProgress: (downloaded: Long, total: Long) -> Unit
     ): ValidatedDownload {
 
+        val adaptive =
+            AdaptiveStreamDownloader.downloadIfAdaptive(
+                context = context,
+                address = address,
+                onProgress = onProgress
+            )
+
+        if (
+            adaptive !=
+            null
+        ) {
+            try {
+                validateVideoTrack(
+                    adaptive
+                )
+
+                return ValidatedDownload(
+                    file = adaptive,
+                    extension = "mp4",
+                    mimeType = "video/mp4"
+                )
+
+            } catch (
+                t: Throwable
+            ) {
+                runCatching {
+                    adaptive.delete()
+                }
+
+                throw t
+            }
+        }
+
         val downloaded =
             download(
                 context,
