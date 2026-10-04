@@ -94,3 +94,47 @@ Source
 
 PLAY_PRODUCTION varsayılan olarak MUTATION_DISABLED durumundadır.
 Bu V1 değişikliği herhangi bir Google Play release yüklemez.
+
+## V2 runtime activation
+
+### In-App Review
+
+In-App Review artık gerçek AppForge build başarısına bağlıdır.
+
+Kurallar:
+
+- debug build'de çalışmaz
+- yalnız Google Play installer kaynağında çalışır
+- en az 3 başarılı AppForge build gerekir
+- aynı Build ID iki kez sayılmaz
+- en fazla 120 günde bir review isteği denenir
+- Play'in review penceresini gerçekten gösterip göstermediği tahmin edilmez
+
+### Internal App Sharing
+
+`play-internal-app-sharing.yml` yalnız workflow_dispatch ile çalışır.
+
+Ek güvenlik:
+
+- `INTERNAL_SHARE` açık onayı gerekir
+- yalnız Internal App Sharing upload endpoint'i kullanılır
+- Production track değiştirilmez
+- upload sonucu URL, certificate fingerprint ve SHA-256 doğrulanır
+
+### Android Vitals / Developer Reporting
+
+`play-vitals-readonly.yml` yalnız okuma yapar.
+
+İlk V2 sorguları:
+
+- Crash Rate metric-set metadata
+- ANR Rate metric-set metadata
+
+Production release, track veya kullanıcı dağıtımı değiştirilmez.
+
+### Install Referrer
+
+Install Referrer runtime kütüphanesi CODE_READY olarak kalır.
+
+Otomatik attribution/veri toplama, Privacy Policy ve Play Data Safety
+eşlemesi tamamlanmadan etkinleştirilmez.

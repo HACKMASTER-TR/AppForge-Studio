@@ -106,6 +106,7 @@ import com.appforge.studio.security.AppSignatureVerifier
 import com.appforge.studio.security.ProStatus
 import com.appforge.studio.security.StudioSecurityClient
 import com.appforge.studio.security.StudioBillingManager
+import com.appforge.studio.play.PlayReviewGate
 import com.appforge.studio.security.SecureAccountStore
 import com.appforge.studio.security.OwnerAccessPolicy
 import com.appforge.studio.security.StudioPlanPrice
@@ -4220,6 +4221,18 @@ private fun AppForgeApp() {
                                         context,
                                         effectiveBuildDraft,
                                         existingProjectId
+                                    )
+                            }
+
+                            hostActivity?.let {
+                                activity ->
+
+                                PlayReviewGate
+                                    .recordSuccessfulBuildAndMaybeRequest(
+                                        activity =
+                                            activity,
+                                        buildId =
+                                            created.buildId
                                     )
                             }
                         }

@@ -33,7 +33,7 @@ object PlayPlatformCapabilities {
             PlayCapability("play_oidc_wif", PlayCapabilityState.ACTIVE),
             PlayCapability("release_upload_signing", PlayCapabilityState.ACTIVE),
 
-            PlayCapability("in_app_review", PlayCapabilityState.CODE_READY),
+            PlayCapability("in_app_review", PlayCapabilityState.ACTIVE),
             PlayCapability("install_referrer", PlayCapabilityState.CODE_READY),
             PlayCapability("feature_delivery", PlayCapabilityState.CODE_READY),
             PlayCapability("asset_delivery", PlayCapabilityState.CODE_READY),

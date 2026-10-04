@@ -1,0 +1,102 @@
+name: AppForge Play Vitals Readonly
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  APPFORGE_GCP_PROJECT_ID: "appforge-18a5a"
+  APPFORGE_PLAY_WIF_PROVIDER: "projects/564043752274/locations/global/workloadIdentityPools/appforge-github/providers/appforge-github-oidc"
+  APPFORGE_PLAY_SERVICE_ACCOUNT: "appforge-play-publisher@appforge-18a5a.iam.gserviceaccount.com"
+
+jobs:
+  read-vitals:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Authenticate read-only reporting access
+        id: google-auth
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.APPFORGE_GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.APPFORGE_PLAY_WIF_PROVIDER }}
+          service_account: ${{ env.APPFORGE_PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/playdeveloperreporting
+
+      - name: Read crash and ANR metric-set metadata
+        shell: bash
+        env:
+          ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+
+          test -n "$ACCESS_TOKEN"
+
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --header "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://playdeveloperreporting.googleapis.com/v1beta1/apps/com.appforge.studio/crashRateMetricSet" \
+            > play-vitals-crash.json
+
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --header "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://playdeveloperreporting.googleapis.com/v1beta1/apps/com.appforge.studio/anrRateMetricSet" \
+            > play-vitals-anr.json
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          for name in (
+              "play-vitals-crash.json",
+              "play-vitals-anr.json",
+          ):
+              data = json.loads(
+                  Path(name).read_text(
+                      encoding="utf-8"
+                  )
+              )
+
+              if not isinstance(
+                  data,
+                  dict
+              ):
+                  raise SystemExit(
+                      f"PLAY_VITALS_JSON=FAIL:{name}"
+                  )
+
+          print(
+              "PLAY_VITALS_CRASH_METADATA=PASS"
+          )
+          print(
+              "PLAY_VITALS_ANR_METADATA=PASS"
+          )
+          print(
+              "PLAY_VITALS_MODE=READ_ONLY"
+          )
+          print(
+              "PLAY_PRODUCTION_MUTATION=NONE"
+          )
+          PY
+
+      - name: Preserve Vitals metadata
+        uses: actions/upload-artifact@v7
+        with:
+          name: AppForge-Play-Vitals-Metadata
+          path: |
+            play-vitals-crash.json
+            play-vitals-anr.json
+          retention-days: 7

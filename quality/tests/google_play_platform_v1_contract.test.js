@@ -77,7 +77,7 @@ test("capability registry never confuses code-ready with active", () => {
 
   assert.match(
     registry,
-    /"in_app_review", PlayCapabilityState\.CODE_READY/
+    /"in_app_review", PlayCapabilityState\.ACTIVE/
   );
 
   assert.match(
@@ -114,5 +114,95 @@ test("existing manual release remains internal-only", () => {
   assert.match(
     existingRelease,
     /APPFORGE_PLAY_TRACK=internal/
+  );
+});
+
+const reviewGate = await readFile(
+  new URL(
+    "../../android-app/app/src/main/java/com/appforge/studio/play/PlayReviewGate.kt",
+    import.meta.url
+  ),
+  "utf8"
+);
+
+const internalSharingWorkflow = await readFile(
+  new URL(
+    "../../.github/workflows/play-internal-app-sharing.yml",
+    import.meta.url
+  ),
+  "utf8"
+);
+
+const vitalsWorkflow = await readFile(
+  new URL(
+    "../../.github/workflows/play-vitals-readonly.yml",
+    import.meta.url
+  ),
+  "utf8"
+);
+
+test("In-App Review is gated by successful Play-installed builds", () => {
+  assert.match(
+    reviewGate,
+    /PLAY_REVIEW_MIN_SUCCESSFUL_BUILDS\s*=\s*3/
+  );
+
+  assert.match(
+    reviewGate,
+    /120L \* 24L \* 60L \* 60L \* 1000L/
+  );
+
+  assert.match(
+    reviewGate,
+    /BuildConfig\.DEBUG/
+  );
+
+  assert.match(
+    reviewGate,
+    /com\.android\.vending/
+  );
+});
+
+test("Internal App Sharing workflow cannot publish Production", () => {
+  assert.match(
+    internalSharingWorkflow,
+    /INTERNAL_SHARE/
+  );
+
+  assert.match(
+    internalSharingWorkflow,
+    /internalappsharing\/com\.appforge\.studio\/artifacts\/bundle/
+  );
+
+  assert.doesNotMatch(
+    internalSharingWorkflow,
+    /tracks\/production/
+  );
+
+  assert.doesNotMatch(
+    internalSharingWorkflow,
+    /track:\s*production/
+  );
+});
+
+test("Vitals workflow is reporting-only", () => {
+  assert.match(
+    vitalsWorkflow,
+    /playdeveloperreporting/
+  );
+
+  assert.match(
+    vitalsWorkflow,
+    /crashRateMetricSet/
+  );
+
+  assert.match(
+    vitalsWorkflow,
+    /anrRateMetricSet/
+  );
+
+  assert.doesNotMatch(
+    vitalsWorkflow,
+    /androidpublisher\.googleapis\.com/
   );
 });
