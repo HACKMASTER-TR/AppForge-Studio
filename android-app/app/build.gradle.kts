@@ -197,6 +197,38 @@ val appforgeProRecoveryTest = providers.gradleProperty("appforgeProRecoveryTest"
 val appforgeProSecondDevice = providers.gradleProperty("appforgeProSecondDevice").orNull == "true"
 val appforgeProProcessDeathTest = providers.gradleProperty("appforgeProProcessDeathTest").orNull == "true"
 
+val appforgePlayIntegrityAcceptance =
+    providers.gradleProperty("appforgePlayIntegrityAcceptance")
+        .orNull == "true"
+
+val appforgePlayIntegrityAcceptanceBaseUrl =
+    providers.gradleProperty("appforgePlayIntegrityAcceptanceBaseUrl")
+        .orNull
+        ?.trim()
+        .orEmpty()
+
+val appforgePlayIntegrityStagingUrl =
+    Regex(
+        "^https://appforge-integrity-staging\\.[A-Za-z0-9.-]+\\.workers\\.dev$"
+    )
+
+require(
+    appforgePlayIntegrityAcceptanceBaseUrl.isBlank() ||
+        appforgePlayIntegrityStagingUrl.matches(
+            appforgePlayIntegrityAcceptanceBaseUrl
+        )
+) {
+    "Play Integrity acceptance URL must target only the isolated staging Worker."
+}
+
+require(
+    !appforgePlayIntegrityAcceptance ||
+        appforgePlayIntegrityAcceptanceBaseUrl.isNotBlank()
+) {
+    "Play Integrity acceptance harness requires the isolated staging URL."
+}
+
+
 require(
     !appforgeProProcessDeathTest ||
         (!appforgeProRecoveryTest && !appforgeProSecondDevice)
@@ -302,6 +334,18 @@ android {
             "String",
             "APPFORGE_GOOGLE_WEB_CLIENT_ID",
             "\"564043752274-ortqs7ep6cbhh7ji3taf4s41g8trnome.apps.googleusercontent.com\""
+        )
+
+        buildConfigField(
+            "boolean",
+            "PLAY_INTEGRITY_ACCEPTANCE_HARNESS",
+            appforgePlayIntegrityAcceptance.toString()
+        )
+
+        buildConfigField(
+            "String",
+            "PLAY_INTEGRITY_ACCEPTANCE_BASE_URL",
+            "\"$appforgePlayIntegrityAcceptanceBaseUrl\""
         )
     }
 

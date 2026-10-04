@@ -388,22 +388,73 @@ deployment boundary is now valid:
 - `ATOMIC_CODE_AND_SECRETS_DEPLOY=PASS`;
 - ephemeral secret file removal passed.
 
-The subsequent live smoke failed before application validation because
-the workflow contained a hard-coded workers.dev account subdomain and
-the first `/health` request returned HTTP 404.
+The subsequent first-deploy live smoke failed before application
+validation because the first `/health` request returned HTTP 404.
 
-Failure class:
+A later successful guarded deployment proved that Wrangler resolved the
+same workers.dev hostname that had previously been hard-coded. Therefore
+the evidence does not support the earlier conclusion that the hostname
+itself was wrong.
 
-`C_SMOKE_BASE_URL_HARDCODED`
+Best-fit diagnosis after the successful retry:
 
-V4.6 removes the hard-coded workers.dev base URL. The successful
-Wrangler deployment output is parsed for the exact
-`appforge-integrity-staging` workers.dev URL, the result is validated,
-passed to the following step through `GITHUB_ENV`, and then used by the
-live smoke test.
+`C_WORKERS_DEV_FIRST_DEPLOY_ACTIVATION`
+
+This is treated as a likely first-deploy workers.dev activation /
+propagation condition rather than a proven hostname error.
+
+V4.6 still removes the hard-coded workers.dev base URL as a robustness
+improvement. The successful Wrangler deployment output is parsed for the
+exact `appforge-integrity-staging` workers.dev URL, the result is
+validated, passed to the following step through `GITHUB_ENV`, and then
+used by the live smoke test.
 
 The duplicate `ATOMIC_CODE_AND_SECRETS_DEPLOY=PASS` log line is also
 removed.
 
 Production Worker, D1, custom domains, production routes, Play
 Production and main remain outside this change.
+
+
+### V4.7 physical Play Integrity acceptance harness
+
+V4.6 established a green isolated staging deployment using a
+Worker-scoped Editor token.
+
+V4.7 adds a physical Android acceptance harness for the final
+Play-installed Standard Integrity verification.
+
+The harness is disabled by default and is enabled only when the Internal
+App Sharing workflow is explicitly dispatched with:
+
+- `integrity_acceptance=true`;
+- an exact `appforge-integrity-staging.*.workers.dev` base URL.
+
+When enabled, the normal update gate redirects to an unexported physical
+acceptance Activity.
+
+That Activity performs the real sequence:
+
+1. read isolated staging security config;
+2. prepare and request a Standard Integrity token through Google Play;
+3. send the encrypted token and server-recomputable binding to
+   `/api/security/attest`;
+4. let the Worker call Google `decodeIntegrityToken`;
+5. evaluate request, app and device verdicts;
+6. issue an AppForge Integrity session only if policy allows it.
+
+Neither the encrypted Google Integrity token nor the AppForge session
+value is printed.
+
+If the server returns `integrity_policy_denied`, V4.7 reports
+`DECODE_PASS_POLICY_DENIED`. That state proves the real Standard
+Integrity token reached the Worker and Google decode completed, while
+also preserving the fail-closed policy boundary.
+
+Normal release builds do not pass the acceptance Gradle property and
+therefore retain normal launch behavior.
+
+Internal App Sharing remains isolated from Play Production.
+
+Production Worker, D1, custom domains, Production routes, Play
+Production and protected main remain untouched.

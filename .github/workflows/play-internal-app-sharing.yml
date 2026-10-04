@@ -8,6 +8,17 @@ on:
         required: true
         type: string
 
+      integrity_acceptance:
+        description: "Build isolated Play Integrity physical acceptance harness"
+        required: true
+        default: false
+        type: boolean
+
+      integrity_staging_base_url:
+        description: "Exact appforge-integrity-staging workers.dev URL"
+        required: false
+        type: string
+
 permissions:
   contents: read
   id-token: write
@@ -27,10 +38,41 @@ jobs:
         shell: bash
         env:
           CONFIRM: ${{ inputs.confirm }}
+          INTEGRITY_ACCEPTANCE: ${{ inputs.integrity_acceptance }}
+          INTEGRITY_STAGING_BASE_URL: ${{ inputs.integrity_staging_base_url }}
         run: |
           set -euo pipefail
 
           test "$CONFIRM" = "INTERNAL_SHARE"
+
+          if test "$INTEGRITY_ACCEPTANCE" = "true"; then
+            python3 - "$INTEGRITY_STAGING_BASE_URL" <<'PYURL'
+          import re
+          import sys
+
+          value = sys.argv[1].strip()
+
+          pattern = re.compile(
+              r"^https://"
+              r"appforge-integrity-staging"
+              r"\.[A-Za-z0-9.-]+"
+              r"\.workers\.dev$"
+          )
+
+          if not pattern.fullmatch(value):
+              raise SystemExit(
+                  "INTEGRITY_ACCEPTANCE_URL_GUARD=FAIL"
+              )
+
+          print(
+              "INTEGRITY_ACCEPTANCE_URL_GUARD=PASS"
+          )
+          PYURL
+
+            echo "INTEGRITY_ACCEPTANCE_BUILD=ENABLED"
+          else
+            echo "INTEGRITY_ACCEPTANCE_BUILD=DISABLED"
+          fi
 
           echo "INTERNAL_APP_SHARING_GATE=PASS"
           echo "PLAY_PRODUCTION_MUTATION=NONE"
@@ -113,14 +155,30 @@ jobs:
           APPFORGE_RELEASE_KEY_ALIAS: appforge-release
           APPFORGE_RELEASE_KEY_PASSWORD: ${{ secrets.APPFORGE_RELEASE_KEY_PASSWORD }}
           APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
+          INTEGRITY_ACCEPTANCE: ${{ inputs.integrity_acceptance }}
+          INTEGRITY_STAGING_BASE_URL: ${{ inputs.integrity_staging_base_url }}
         run: |
           set -euo pipefail
+
+          EXTRA_GRADLE_ARGS=()
+
+          if test "$INTEGRITY_ACCEPTANCE" = "true"; then
+            EXTRA_GRADLE_ARGS+=(
+              "-PappforgePlayIntegrityAcceptance=true"
+              "-PappforgePlayIntegrityAcceptanceBaseUrl=$INTEGRITY_STAGING_BASE_URL"
+            )
+          fi
 
           gradle \
             -p android-app \
             :app:testDebugUnitTest \
             :app:bundleRelease \
+            "${EXTRA_GRADLE_ARGS[@]}" \
             --stacktrace
+
+          if test "$INTEGRITY_ACCEPTANCE" = "true"; then
+            echo "INTEGRITY_ACCEPTANCE_AAB=PASS"
+          fi
 
           echo "INTERNAL_SHARE_AAB_BUILD=PASS"
 

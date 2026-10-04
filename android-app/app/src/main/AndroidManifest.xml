@@ -54,6 +54,10 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|uiMode" />
 
         <activity
+            android:name=".PlayIntegrityAcceptanceActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ProPurchasesActivity"
             android:exported="false" />
 

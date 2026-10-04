@@ -154,6 +154,23 @@ class UpdateGateActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (
+            BuildConfig
+                .PLAY_INTEGRITY_ACCEPTANCE_HARNESS
+        ) {
+            startActivity(
+                Intent(
+                    this,
+                    PlayIntegrityAcceptanceActivity::class.java
+                )
+            )
+
+            finish()
+
+            return
+        }
+
         UpdateGateSession.revoke()
         appUpdateManager = AppUpdateManagerFactory.create(this)
 
