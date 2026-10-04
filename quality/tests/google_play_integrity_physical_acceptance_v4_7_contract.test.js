@@ -181,6 +181,51 @@ test(
 );
 
 test(
+  "feature branch physical acceptance uses a marker-only push gate",
+  () => {
+    assert.match(
+      sharing,
+      /push:[\s\S]*feat\/google-play-platform-v1-20261004/
+    );
+
+    assert.match(
+      sharing,
+      /\.github\/\.play-integrity-physical-acceptance-request/
+    );
+
+    assert.match(
+      sharing,
+      /PHYSICAL_ACCEPTANCE_MARKER_GUARD=PASS/
+    );
+
+    assert.match(
+      sharing,
+      /share\(internal\): Play Integrity physical acceptance/
+    );
+
+    assert.match(
+      sharing,
+      /git rev-parse HEAD\^/
+    );
+
+    assert.match(
+      sharing,
+      /INTEGRITY_STAGING_PREFLIGHT=PASS/
+    );
+
+    assert.match(
+      sharing,
+      /APPFORGE_INTERNAL_SHARE_ACCEPTANCE/
+    );
+
+    assert.match(
+      sharing,
+      /PLAY_PRODUCTION_MUTATION=NONE/
+    );
+  }
+);
+
+test(
   "Google Play CI includes V4.7 contract",
   () => {
     assert.match(

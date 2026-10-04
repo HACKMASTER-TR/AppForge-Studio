@@ -1,6 +1,12 @@
 name: AppForge Play Internal App Sharing
 
 on:
+  push:
+    branches:
+      - feat/google-play-platform-v1-20261004
+    paths:
+      - .github/.play-integrity-physical-acceptance-request
+
   workflow_dispatch:
     inputs:
       confirm:
@@ -34,14 +40,61 @@ jobs:
     timeout-minutes: 35
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Explicit branch-local physical acceptance marker guard
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MARKER=".github/.play-integrity-physical-acceptance-request"
+
+          test "$GITHUB_REPOSITORY" = "HACKMASTER-TR/AppForge-Studio"
+          test "$GITHUB_REF" = "refs/heads/feat/google-play-platform-v1-20261004"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+          test "$(git show -s --format=%s HEAD)" = \
+            "share(internal): Play Integrity physical acceptance"
+
+          CHANGED="$(
+            git diff \
+              --name-only \
+              HEAD^ \
+              HEAD
+          )"
+
+          test "$CHANGED" = "$MARKER"
+          test -s "$MARKER"
+
+          test "$(tr -d '\r\n' < "$MARKER")" = \
+            "$(git rev-parse HEAD^)"
+
+          echo "PHYSICAL_ACCEPTANCE_MARKER_GUARD=PASS"
+          echo "SOURCE_CHANGE_IN_SHARE_COMMIT=NONE"
+          echo "PLAY_PRODUCTION_MUTATION=NONE"
+
       - name: Explicit Internal App Sharing gate
         shell: bash
         env:
+          EVENT_NAME: ${{ github.event_name }}
           CONFIRM: ${{ inputs.confirm }}
-          INTEGRITY_ACCEPTANCE: ${{ inputs.integrity_acceptance }}
-          INTEGRITY_STAGING_BASE_URL: ${{ inputs.integrity_staging_base_url }}
+          INPUT_ACCEPTANCE: ${{ inputs.integrity_acceptance }}
+          INPUT_STAGING_URL: ${{ inputs.integrity_staging_base_url }}
         run: |
           set -euo pipefail
+
+          if test "$EVENT_NAME" = "push"; then
+            CONFIRM="INTERNAL_SHARE"
+            INTEGRITY_ACCEPTANCE="true"
+            INTEGRITY_STAGING_BASE_URL="https://appforge-integrity-staging.28550040284a.workers.dev"
+          else
+            INTEGRITY_ACCEPTANCE="$INPUT_ACCEPTANCE"
+            INTEGRITY_STAGING_BASE_URL="$INPUT_STAGING_URL"
+          fi
 
           test "$CONFIRM" = "INTERNAL_SHARE"
 
@@ -69,16 +122,50 @@ jobs:
           )
           PYURL
 
+            HEALTH="$(
+              curl \
+                --silent \
+                --show-error \
+                --fail-with-body \
+                "$INTEGRITY_STAGING_BASE_URL/health"
+            )"
+
+            python3 - "$HEALTH" <<'PYHEALTH'
+          import json
+          import sys
+
+          data = json.loads(
+              sys.argv[1]
+          )
+
+          if (
+              data.get("ok") is not True
+              or data.get("service")
+              != "appforge-integrity-staging"
+              or data.get("database")
+              != "not_bound"
+          ):
+              raise SystemExit(
+                  "INTEGRITY_STAGING_PREFLIGHT=FAIL"
+              )
+
+          print(
+              "INTEGRITY_STAGING_PREFLIGHT=PASS"
+          )
+          PYHEALTH
+
             echo "INTEGRITY_ACCEPTANCE_BUILD=ENABLED"
           else
             echo "INTEGRITY_ACCEPTANCE_BUILD=DISABLED"
           fi
 
+          {
+            echo "APPFORGE_INTERNAL_SHARE_ACCEPTANCE=$INTEGRITY_ACCEPTANCE"
+            echo "APPFORGE_INTERNAL_SHARE_STAGING_BASE_URL=$INTEGRITY_STAGING_BASE_URL"
+          } >> "$GITHUB_ENV"
+
           echo "INTERNAL_APP_SHARING_GATE=PASS"
           echo "PLAY_PRODUCTION_MUTATION=NONE"
-
-      - name: Checkout
-        uses: actions/checkout@v7
 
       - name: Set up JDK 21
         uses: actions/setup-java@v6
@@ -155,17 +242,15 @@ jobs:
           APPFORGE_RELEASE_KEY_ALIAS: appforge-release
           APPFORGE_RELEASE_KEY_PASSWORD: ${{ secrets.APPFORGE_RELEASE_KEY_PASSWORD }}
           APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
-          INTEGRITY_ACCEPTANCE: ${{ inputs.integrity_acceptance }}
-          INTEGRITY_STAGING_BASE_URL: ${{ inputs.integrity_staging_base_url }}
         run: |
           set -euo pipefail
 
           EXTRA_GRADLE_ARGS=()
 
-          if test "$INTEGRITY_ACCEPTANCE" = "true"; then
+          if test "${APPFORGE_INTERNAL_SHARE_ACCEPTANCE:-false}" = "true"; then
             EXTRA_GRADLE_ARGS+=(
               "-PappforgePlayIntegrityAcceptance=true"
-              "-PappforgePlayIntegrityAcceptanceBaseUrl=$INTEGRITY_STAGING_BASE_URL"
+              "-PappforgePlayIntegrityAcceptanceBaseUrl=$APPFORGE_INTERNAL_SHARE_STAGING_BASE_URL"
             )
           fi
 
@@ -176,7 +261,7 @@ jobs:
             "${EXTRA_GRADLE_ARGS[@]}" \
             --stacktrace
 
-          if test "$INTEGRITY_ACCEPTANCE" = "true"; then
+          if test "${APPFORGE_INTERNAL_SHARE_ACCEPTANCE:-false}" = "true"; then
             echo "INTEGRITY_ACCEPTANCE_AAB=PASS"
           fi
 

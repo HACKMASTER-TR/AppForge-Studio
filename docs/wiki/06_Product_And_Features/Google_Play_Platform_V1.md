@@ -458,3 +458,33 @@ Internal App Sharing remains isolated from Play Production.
 
 Production Worker, D1, custom domains, Production routes, Play
 Production and protected main remain untouched.
+
+
+### V4.7.1 branch-local Internal App Sharing trigger
+
+The Internal App Sharing workflow is not yet present on protected
+`main`, so feature-branch physical acceptance does not rely on
+`workflow_dispatch`.
+
+V4.7.1 adds a push trigger restricted to:
+
+`.github/.play-integrity-physical-acceptance-request`
+
+The push path is accepted only when:
+
+- repository and feature branch are exact;
+- commit message is exactly
+  `share(internal): Play Integrity physical acceptance`;
+- the commit changes only the marker;
+- marker content equals the commit parent SHA.
+
+The guarded push forces physical acceptance mode and targets only:
+
+`https://appforge-integrity-staging.28550040284a.workers.dev`
+
+The isolated Worker `/health` endpoint is validated before the AAB is
+built.
+
+The path uploads only to Google Play Internal App Sharing.
+Protected main, Play Production, D1 and production Worker routes remain
+outside this flow.
