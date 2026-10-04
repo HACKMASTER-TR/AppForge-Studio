@@ -106,10 +106,15 @@ object UrlVideoImporter {
         onProgress: (downloaded: Long, total: Long) -> Unit
     ): ValidatedDownload {
 
+        val resolvedAddress =
+            PublicMediaPageResolver.resolve(
+                address
+            )
+
         val adaptive =
             AdaptiveStreamDownloader.downloadIfAdaptive(
                 context = context,
-                address = address,
+                address = resolvedAddress,
                 onProgress = onProgress
             )
 
@@ -142,7 +147,7 @@ object UrlVideoImporter {
         val downloaded =
             download(
                 context,
-                address,
+                resolvedAddress,
                 onProgress
             )
 
@@ -158,7 +163,7 @@ object UrlVideoImporter {
             val extension =
                 detectExtension(
                     downloaded,
-                    address
+                    resolvedAddress
                 )
 
             val mimeType =
