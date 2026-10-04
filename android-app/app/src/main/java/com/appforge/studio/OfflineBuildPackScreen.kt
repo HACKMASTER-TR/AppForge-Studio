@@ -90,12 +90,12 @@ internal fun OfflineBuildPackScreen(
                     status.currentAndroidEnginesReady &&
                     status.windowsHostReady
                 ) {
-                    "Android / Node / Python ve Windows Host hazır. " +
+                    "Android / Node / Python / Expo ve Windows Host hazır. " +
                         "Cihaz EXE paketleme kabulü bekliyor."
                 } else if (
                     status.currentAndroidEnginesReady
                 ) {
-                    "Android / Node / Python paketi hazır. " +
+                    "Android / Node / Python / Expo paketi hazır. " +
                         "Windows Host kurulumu bekliyor."
                 } else {
                     "Paket henüz kurulmadı."
@@ -273,7 +273,7 @@ internal fun OfflineBuildPackScreen(
                         } else if (
                             it.windowsHostReady
                         ) {
-                            "Android / Node / Python ve Windows Host hazır. " +
+                            "Android / Node / Python / Expo ve Windows Host hazır. " +
                                 "Cihaz-local EXE paketleme kabulü bekliyor."
                         } else {
                             "Hazır Android bileşenleri kuruldu. " +
@@ -577,8 +577,8 @@ internal fun OfflineBuildPackScreen(
                         )
 
                         Text(
-                            "Tahmini indirme: yaklaşık 1,8 GB • " +
-                                "hedef cihaz kullanımı: yaklaşık 4,5 GB"
+                            "İndirme boyutu cihaz mimarisi ve mevcut cache'e göre değişir. " +
+                                "Expo/NDK dahil tam paket birkaç GB depolama alanı kullanabilir."
                         )
 
                         Text(
@@ -652,8 +652,7 @@ internal fun OfflineBuildPackScreen(
                             )
 
                             val firstRunPackReady =
-                                status.completeTargetReady &&
-                                    status.windowsNativeToolchainReady
+                                status.completeTargetReady
 
                             if (
                                 firstRunPackReady
@@ -737,6 +736,21 @@ internal fun OfflineBuildPackScreen(
 
                     ready =
                         status.pythonAndroidReady
+                )
+            }
+
+            item {
+                OfflinePackComponentCard(
+                    title =
+                        "Expo SDK 54 / React Native 0.81",
+
+                    subtitle =
+                        "Node 22 + Android API 36 + NDK 27.1 + CMake/Ninja " +
+                            "cihaz toolchain'i. Projeye özel npm bağımlılıkları " +
+                            "ayrıca cache kontrolünden geçer.",
+
+                    ready =
+                        status.expoToolchainReady
                 )
             }
 

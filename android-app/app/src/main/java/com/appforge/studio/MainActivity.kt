@@ -3877,6 +3877,72 @@ private fun AppForgeApp() {
                 buildDraft
                     .sourceTechnology
 
+        /*
+         * OFFLINE_BUILD_PREFLIGHT_GATE_V1
+         */
+        val offlinePackCheck =
+            com.appforge.studio.build
+                .OfflineBuildPackManager
+                .checkBuildRequirements(
+                    context,
+                    verifiedBuildDraft
+                )
+
+        if (
+            !offlinePackCheck.ready
+        ) {
+            status =
+                "Çevrimdışı derleme paketi eksik."
+
+            progress =
+                0
+
+            logs =
+                listOf(
+                    "⛔ Derleme başlatılmadı • gerekli cihaz toolchain paketi eksik."
+                )
+
+            preflight =
+                listOf(
+                    "BUILD_BLOCKED=YES",
+                    "OFFLINE_BUILD_READY=NO",
+                    "ENGINE=${offlinePackCheck.engine}"
+                ) +
+                    offlinePackCheck.missing.map {
+                        "MISSING=$it"
+                    }
+
+            buildProjectKey =
+                null
+
+            buildId =
+                null
+
+            buildNo =
+                null
+
+            apkUrl =
+                null
+
+            aabUrl =
+                null
+
+            exeUrl =
+                null
+
+            screen =
+                AppScreen.BUILDER
+
+            step =
+                10
+
+            openWorkspaceScreen(
+                AppScreen.OFFLINE_PACK
+            )
+
+            return@buildStart
+        }
+
         buildBusy =
             true
 
@@ -5589,7 +5655,11 @@ onOpenPro = {
                     onOpenLanguage = { screen = AppScreen.LANGUAGE },
                     onOpenKeystore = { screen = AppScreen.KEYSTORES },
                     onOpenPro = { screen = AppScreen.PRO },
-                    onOpenOfflinePack = { screen = AppScreen.OFFLINE_PACK },
+                    onOpenOfflinePack = {
+                        openWorkspaceScreen(
+                            AppScreen.OFFLINE_PACK
+                        )
+                    },
                     onOpenHowTo = { screen = AppScreen.HELP },
                     onOpenPlayGuide = { screen = AppScreen.PLAY_GUIDE },
                     onOpenLegal = { screen = AppScreen.LEGAL },
@@ -5657,8 +5727,7 @@ onOpenPro = {
                 AppScreen.OFFLINE_PACK ->
                     OfflineBuildPackScreen(
                         onBack = {
-                            screen =
-                                AppScreen.SETTINGS
+                            returnFromWorkspace()
                         }
                     )
 

@@ -86,6 +86,16 @@ object DeviceBuildEngine {
         draft: ProjectDraft,
         projectZip: File?
     ): DeviceBuildStart {
+
+        /*
+         * OFFLINE_BUILD_PREFLIGHT_GATE_V1
+         */
+        OfflineBuildPackManager
+            .requireReadyForBuild(
+                context.applicationContext,
+                draft
+            )
+
         val id = "local-" + UUID.randomUUID().toString().replace("-", "").take(20)
         val buildNo =
             AppForgeBuildNumberStore.next(context.applicationContext)
