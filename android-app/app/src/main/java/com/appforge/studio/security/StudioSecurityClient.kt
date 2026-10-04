@@ -177,8 +177,18 @@ class StudioSecurityClient(
         val timestamp =
             System.currentTimeMillis()
 
+        /*
+         * PLAY_INTEGRITY_REQUEST_BINDING_V4
+         *
+         * The server must be able to independently recompute
+         * exactly the same requestHash.
+         *
+         * Do not bind to userId here: AppForge normal-user flow
+         * is accountless and the old value was not sent to the
+         * backend, so the server could not independently verify it.
+         */
         val material =
-            "$userId|$action|$nonce|$timestamp"
+            "appforge-integrity-v1|$action|$nonce|$timestamp"
 
         val requestHash =
             MessageDigest

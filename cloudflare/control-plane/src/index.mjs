@@ -1,6 +1,7 @@
 import { verifyGoogleIdToken, subjectSha256, InvalidIdentity, IdentityProviderUnavailable } from './google_oidc.mjs';
 import { handleAdminProCodes } from './admin_pro_codes.mjs';
 import { handleProRedemption } from './pro_redemption.mjs';
+import { handlePlayIntegritySecurityRoute } from './play_integrity_route.mjs';
 /**
  * AppForge accountless control-plane staging.
  * No normal-user login, registration, synthetic admin or Pro entitlement.
@@ -376,6 +377,18 @@ export async function handleRequest(request, env, dependencies = {}) {
     try {
       const { pathname, searchParams } = new URL(request.url);
       if (pathname === '/health' && request.method === 'GET') return health(env);
+
+      if (
+        pathname === '/api/security/config' ||
+        pathname === '/api/security/attest'
+      ) {
+        return handlePlayIntegritySecurityRoute(
+          request,
+          env,
+          dependencies,
+          pathname
+        );
+      }
 
       if (pathname === '/api/client/android/policy' && request.method === 'GET') {
         // STAGING ONLY: no fabricated Play release / forced-update policy.

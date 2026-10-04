@@ -108,6 +108,37 @@ export function evaluateAdvancedPlayIntegrity(
       ? deviceAttributes.sdkVersion
       : null;
 
+  const recall =
+    device.deviceRecall &&
+    typeof device.deviceRecall === 'object'
+      ? device.deviceRecall
+      : null;
+
+  const recallValues =
+    recall &&
+    recall.values &&
+    typeof recall.values === 'object'
+      ? recall.values
+      : {};
+
+  const deviceRecall =
+    recall
+      ? {
+          bitFirst:
+            recallValues.bitFirst === true,
+
+          bitSecond:
+            recallValues.bitSecond === true,
+
+          bitThird:
+            recallValues.bitThird === true
+        }
+      : null;
+
+  /*
+   * Device Recall is decoded and exposed, but its bits do not
+   * automatically mean "risk". Their semantics are application-defined.
+   */
   const optionalVerdictsReady =
     accessEvaluated &&
     playProtectEvaluated &&
@@ -128,6 +159,7 @@ export function evaluateAdvancedPlayIntegrity(
     activityLevel,
     activityRisk,
     sdkVersion,
+    deviceRecall,
     criticalActionAllowed
   };
 }

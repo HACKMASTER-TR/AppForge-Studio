@@ -47,11 +47,14 @@
   "security": {
     "play_app_signing": "console_gated",
     "automatic_protection": "console_gated",
-    "integrity_app_access_risk": "backend_policy_ready_console_and_decode_gated",
-    "integrity_play_protect": "backend_policy_ready_console_and_decode_gated",
-    "integrity_recent_device_activity": "backend_policy_ready_console_and_decode_gated",
-    "integrity_device_attributes": "backend_policy_ready_console_and_decode_gated",
-    "integrity_device_recall": "backend_policy_ready_console_and_decode_gated"
+    "integrity_app_access_risk": "server_decode_ready_console_gated",
+    "integrity_play_protect": "server_decode_ready_console_gated",
+    "integrity_recent_device_activity": "server_decode_ready_console_gated",
+    "integrity_device_attributes": "server_decode_ready_console_gated",
+    "integrity_device_recall": "server_decode_ready_policy_semantics_pending",
+    "play_integrity_server_decode": "code_ready_service_account_secret_gated",
+    "play_integrity_request_binding": "server_recomputable_v1",
+    "play_integrity_short_lived_session": "code_ready_secret_gated"
   },
   "store": {
     "custom_store_listings": "console_gated",

@@ -197,3 +197,64 @@ It remains BACKEND_GATED until:
 3. production routing for the audited security endpoint is explicitly approved.
 
 Missing optional verdicts deny critical actions in the policy evaluator.
+
+## V4 server-side Play Integrity verification
+
+V4 adds the real backend verification architecture without deploying it.
+
+### Request binding
+
+Android Standard Integrity requests use:
+
+`SHA-256("appforge-integrity-v1|action|nonce|timestamp")`
+
+The backend independently recomputes this material before trusting the
+Google-decoded `requestHash`.
+
+The previous userId-based material was removed because normal AppForge
+users are accountless and the backend did not independently receive that
+value.
+
+### Google server decode
+
+Backend flow:
+
+1. Android requests a Standard Integrity token.
+2. Android sends the encrypted token and binding fields to AppForge.
+3. AppForge obtains a Google OAuth access token with the `playintegrity`
+   scope from dedicated service-account credentials.
+4. AppForge calls `com.appforge.studio:decodeIntegrityToken`.
+5. AppForge verifies:
+   - requestPackageName
+   - requestHash
+   - Google token timestamp freshness
+   - PLAY_RECOGNIZED
+   - MEETS_DEVICE_INTEGRITY
+   - App Access Risk
+   - Play Protect
+   - Recent Device Activity
+6. Only a fully accepted verdict may produce a short-lived
+   HMAC-signed AppForge integrity session.
+
+### Device Recall
+
+Device Recall bits are decoded, but V4 does not assign a security meaning
+to bitFirst/bitSecond/bitThird.
+
+Their semantics must be explicitly defined before they can block or allow
+an operation.
+
+### Required Worker secrets / vars
+
+No values belong in Git.
+
+Required before staging activation:
+
+- PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER
+- PLAY_INTEGRITY_SERVICE_ACCOUNT_EMAIL
+- PLAY_INTEGRITY_SERVICE_ACCOUNT_PRIVATE_KEY
+- PLAY_INTEGRITY_SERVICE_ACCOUNT_KEY_ID (optional)
+- PLAY_INTEGRITY_SESSION_SECRET
+
+V4 source/CI does not deploy the Worker, mutate D1, enable Play Console
+verdicts, or add a Production route.
