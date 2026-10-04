@@ -85,11 +85,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          WF=".github/workflows/google-play-platform-v1-ci.yml"
-
-          if grep -Fq \
-            "upload-google-play" \
-            "$WF"; then
+          if grep -R -Fq \
+            "r0adkll/upload-google-play" \
+            android-app \
+            .appforge \
+            docs/wiki/06_Product_And_Features \
+            quality/tests 2>/dev/null; then
             echo "PLAY_UPLOAD_GUARD=FAIL"
             exit 1
           fi
