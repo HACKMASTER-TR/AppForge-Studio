@@ -286,3 +286,35 @@ It has:
 
 Deployment is marker-triggered and requires a marker-only commit.
 Creating the workflow does not deploy it.
+
+### V4.2 atomic first staging deployment
+
+The first deployment of `appforge-integrity-staging` must not use
+`wrangler secret put`.
+
+`wrangler secret put` creates and immediately deploys a Worker version,
+which would introduce deployment mutations before the explicitly guarded
+deployment step.
+
+V4.2 instead creates an ephemeral secrets JSON file only inside the
+GitHub Actions runner and performs one:
+
+`wrangler deploy --secrets-file ...`
+
+operation.
+
+The temporary secrets file:
+
+- is never committed;
+- is mode 0600;
+- is not printed;
+- is deleted immediately after deployment;
+- never reaches the repository or workflow artifacts.
+
+The deployment remains isolated from:
+
+- `appforge-control-plane`
+- D1
+- Custom Domains
+- Production routes
+- Play Production

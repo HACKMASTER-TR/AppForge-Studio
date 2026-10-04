@@ -79,6 +79,36 @@ test(
 );
 
 test(
+  "first isolated deploy uploads code and secrets atomically",
+  () => {
+    assert.doesNotMatch(
+      workflow,
+      /wrangler@4 secret put/
+    );
+
+    assert.doesNotMatch(
+      workflow,
+      /wrangler secret put/
+    );
+
+    assert.match(
+      workflow,
+      /--secrets-file/
+    );
+
+    assert.match(
+      workflow,
+      /ATOMIC_CODE_AND_SECRETS_DEPLOY=PASS/
+    );
+
+    assert.match(
+      workflow,
+      /EPHEMERAL_SECRET_FILE_REMOVED=PASS/
+    );
+  }
+);
+
+test(
   "production surfaces remain outside isolated deploy",
   () => {
     assert.match(

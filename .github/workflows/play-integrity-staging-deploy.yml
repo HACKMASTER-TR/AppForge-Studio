@@ -131,7 +131,7 @@ jobs:
           echo "CUSTOM_DOMAIN=NONE"
           echo "PRODUCTION_ROUTE=NONE"
 
-      - name: Configure isolated Worker secrets
+      - name: Deploy isolated Integrity Worker atomically with secrets
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -145,69 +145,112 @@ jobs:
         run: |
           set -euo pipefail
           set +x
+          umask 077
 
           CONFIG="$RUNNER_TEMP/appforge-integrity-staging.toml"
+          SECRETS_FILE="$RUNNER_TEMP/appforge-integrity-staging-secrets.json"
 
-          cd cloudflare/control-plane
-
-          put_secret() {
-            NAME="$1"
-            VALUE="$2"
-
-            printf '%s' "$VALUE" |
-              npx --yes wrangler@4 secret put \
-                "$NAME" \
-                --config "$CONFIG" \
-                > /dev/null
+          cleanup() {
+            rm -f "$SECRETS_FILE"
           }
 
-          put_secret \
-            PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER \
-            "$PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"
+          trap cleanup EXIT
 
-          put_secret \
-            PLAY_INTEGRITY_SERVICE_ACCOUNT_EMAIL \
-            "$PLAY_INTEGRITY_SERVICE_ACCOUNT_EMAIL"
+          python3 - "$SECRETS_FILE" <<'PY'
+          import json
+          import os
+          import pathlib
+          import sys
 
-          put_secret \
-            PLAY_INTEGRITY_SERVICE_ACCOUNT_PRIVATE_KEY \
-            "$PLAY_INTEGRITY_SERVICE_ACCOUNT_PRIVATE_KEY"
+          target = pathlib.Path(
+              sys.argv[1]
+          )
 
-          put_secret \
-            PLAY_INTEGRITY_SESSION_SECRET \
-            "$PLAY_INTEGRITY_SESSION_SECRET"
+          required = {
+              "PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER":
+                  os.environ.get(
+                      "PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER",
+                      ""
+                  ),
 
-          if [ -n "${PLAY_INTEGRITY_SERVICE_ACCOUNT_KEY_ID:-}" ]; then
-            put_secret \
-              PLAY_INTEGRITY_SERVICE_ACCOUNT_KEY_ID \
-              "$PLAY_INTEGRITY_SERVICE_ACCOUNT_KEY_ID"
-          fi
+              "PLAY_INTEGRITY_SERVICE_ACCOUNT_EMAIL":
+                  os.environ.get(
+                      "PLAY_INTEGRITY_SERVICE_ACCOUNT_EMAIL",
+                      ""
+                  ),
 
-          echo "ISOLATED_WORKER_SECRETS=PASS"
-          echo "SECRET_VALUES=NOT_PRINTED"
+              "PLAY_INTEGRITY_SERVICE_ACCOUNT_PRIVATE_KEY":
+                  os.environ.get(
+                      "PLAY_INTEGRITY_SERVICE_ACCOUNT_PRIVATE_KEY",
+                      ""
+                  ),
 
-      - name: Deploy only isolated Integrity Worker
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          set +x
+              "PLAY_INTEGRITY_SESSION_SECRET":
+                  os.environ.get(
+                      "PLAY_INTEGRITY_SESSION_SECRET",
+                      ""
+                  ),
+          }
 
-          CONFIG="$RUNNER_TEMP/appforge-integrity-staging.toml"
+          missing = [
+              key
+              for key, value in required.items()
+              if not value
+          ]
+
+          if missing:
+              raise SystemExit(
+                  "SECRET_FILE_PREFLIGHT=FAIL"
+              )
+
+          key_id = os.environ.get(
+              "PLAY_INTEGRITY_SERVICE_ACCOUNT_KEY_ID",
+              ""
+          )
+
+          if key_id:
+              required[
+                  "PLAY_INTEGRITY_SERVICE_ACCOUNT_KEY_ID"
+              ] = key_id
+
+          target.write_text(
+              json.dumps(
+                  required
+              ),
+              encoding="utf-8"
+          )
+
+          target.chmod(
+              0o600
+          )
+
+          print(
+              "EPHEMERAL_SECRET_FILE=CREATED"
+          )
+
+          print(
+              "SECRET_VALUES=NOT_PRINTED"
+          )
+          PY
 
           cd cloudflare/control-plane
 
           npx --yes wrangler@4 deploy \
             --config "$CONFIG" \
             --keep-vars \
+            --secrets-file "$SECRETS_FILE" \
             > "$RUNNER_TEMP/integrity-staging-deploy.log" \
             2>&1
 
-          echo "ISOLATED_WORKER_DEPLOY=PASS"
-          echo "TARGET_WORKER=appforge-integrity-staging"
+          rm -f "$SECRETS_FILE"
 
+          test ! -e "$SECRETS_FILE"
+
+          echo "ISOLATED_WORKER_DEPLOY=PASS"
+          echo "ATOMIC_CODE_AND_SECRETS_DEPLOY=PASS"
+          echo "EPHEMERAL_SECRET_FILE_REMOVED=PASS"
+
+          echo "TARGET_WORKER=appforge-integrity-staging"
           echo "APPFORGE_CONTROL_PLANE_DEPLOY=NONE"
           echo "D1_WRITES=NONE"
           echo "CUSTOM_DOMAIN_MUTATION=NONE"
