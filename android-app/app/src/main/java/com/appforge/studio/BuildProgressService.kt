@@ -44,6 +44,15 @@ class BuildProgressService : Service() {
     private var monitorJob: Job? =
         null
 
+    /*
+     * BUILD_TERMINAL_NOTIFICATION_PERSIST_V1_1
+     *
+     * Terminal build result becomes a normal tappable notification and
+     * must survive Service teardown.
+     */
+    private var preserveTerminalNotificationOnDestroy =
+        false
+
     override fun onStartCommand(
         intent: Intent?,
         flags: Int,
@@ -247,8 +256,22 @@ class BuildProgressService : Service() {
                 )
 
                 if (!active) {
-                    stopForeground(STOP_FOREGROUND_DETACH)
-                    stopSelf(startId)
+                    /*
+                     * BUILD_TERMINAL_NOTIFICATION_PERSIST_V1_1
+                     * showNotification() has already converted the active
+                     * progress entry into a terminal result notification.
+                     */
+                    preserveTerminalNotificationOnDestroy =
+                        true
+
+                    stopForeground(
+                        STOP_FOREGROUND_DETACH
+                    )
+
+                    stopSelf(
+                        startId
+                    )
+
                     return
                 }
             } catch (_: Throwable) {
@@ -418,6 +441,9 @@ class BuildProgressService : Service() {
                     serverUrl = serverUrl
                 )
 
+                preserveTerminalNotificationOnDestroy =
+                    true
+
                 clear(
                     this@BuildProgressService
                 )
@@ -467,18 +493,35 @@ class BuildProgressService : Service() {
     override fun onDestroy() {
         monitorJob?.cancel()
 
-        runCatching {
-            stopForeground(
-                Service.STOP_FOREGROUND_REMOVE
-            )
-        }
+        /*
+         * BUILD_TERMINAL_NOTIFICATION_PERSIST_V1_1
+         *
+         * Normal Service teardown removes an active progress notification.
+         * A proven terminal result is detached and deliberately preserved
+         * so the user can tap it after the build has completed.
+         */
+        if (
+            preserveTerminalNotificationOnDestroy
+        ) {
+            runCatching {
+                stopForeground(
+                    Service.STOP_FOREGROUND_DETACH
+                )
+            }
+        } else {
+            runCatching {
+                stopForeground(
+                    Service.STOP_FOREGROUND_REMOVE
+                )
+            }
 
-        getSystemService(
-            NotificationManager::class.java
-        )
-            .cancel(
-                NOTIFICATION_ID
+            getSystemService(
+                NotificationManager::class.java
             )
+                .cancel(
+                    NOTIFICATION_ID
+                )
+        }
 
         serviceScope.cancel()
 

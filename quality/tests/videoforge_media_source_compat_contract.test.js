@@ -58,7 +58,7 @@ test("VideoForge adds app-private local media copy as final fallback", () => {
 
   assert.match(
     compat,
-    /videoforge-media-source-v2/
+    /videoforge-media-source-v3/
   );
 
   assert.match(
@@ -85,7 +85,22 @@ test("local copy is written atomically and validated", () => {
 
   assert.match(
     compat,
-    /part\.length\(\) != sourceSize/
+    /!part\.isFile[\s\S]*part\.length\(\)\s*<=\s*0L/
+  );
+
+  assert.match(
+    compat,
+    /!target\.isFile[\s\S]*target\.length\(\)\s*<=\s*0L/
+  );
+
+  /*
+   * Provider OpenableColumns.SIZE is advisory in V1.1.
+   * Atomic copy validity is proven by a non-empty part and
+   * final non-empty target, not strict metadata equality.
+   */
+  assert.doesNotMatch(
+    compat,
+    /part\.length\(\)\s*!=\s*sourceSize/
   );
 });
 
@@ -136,5 +151,46 @@ test("old cache copies are bounded by cleanup policy", () => {
   assert.match(
     compat,
     /cleanupOldCopies/
+  );
+});
+
+test("provider SIZE metadata no longer rejects a valid local copy", () => {
+  assert.match(
+    compat,
+    /VIDEOFORGE_MEDIA_PROVIDER_SIZE_TOLERANCE_V1_1/
+  );
+
+  assert.doesNotMatch(
+    compat,
+    /yerel kopyası eksik\. Beklenen=/
+  );
+});
+
+test("VideoForge can explicitly materialize a stable processing source", () => {
+  assert.match(
+    compat,
+    /VIDEOFORGE_STABLE_LOCAL_SOURCE_V1_1/
+  );
+
+  assert.match(
+    compat,
+    /fun materializeForProcessing/
+  );
+
+  assert.match(
+    compat,
+    /Uri\.fromFile/
+  );
+});
+
+test("media-open failure now preserves a bounded lower-level reason", () => {
+  assert.match(
+    compat,
+    /safeMediaError/
+  );
+
+  assert.match(
+    compat,
+    /Alt neden:/
   );
 });

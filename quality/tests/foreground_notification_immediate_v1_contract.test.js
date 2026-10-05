@@ -73,7 +73,7 @@ test("completed build keeps exact restore reference until result persistence", (
 
   assert.match(
     service,
-    /if \(!active\)[\s\S]*stopForeground\(STOP_FOREGROUND_DETACH\)[\s\S]*stopSelf\(startId\)/
+    /if\s*\(\s*!active\s*\)[\s\S]*stopForeground\(\s*STOP_FOREGROUND_DETACH\s*\)[\s\S]*stopSelf\(\s*startId\s*\)/
   );
 });
 
@@ -155,7 +155,7 @@ test("completed local build can restore exact persisted artifact availability", 
 test("VideoForge uses foreground service for all four user-started jobs", () => {
   const starts =
     videoActivity.match(
-      /ContextCompat\.startForegroundService\(this,\s*i\)/g
+      /ContextCompat\.startForegroundService\(\s*this,\s*i\s*\)/g
     ) ?? [];
 
   assert.equal(

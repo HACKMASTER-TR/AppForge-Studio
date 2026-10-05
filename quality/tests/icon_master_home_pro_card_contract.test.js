@@ -18,10 +18,12 @@ test("same full-width prepared master feeds APK and EXE outputs", () => {
   assert.match(windows, /WindowsPeIconPatcher\.install\(appContext, draft\.iconUri!!, part\)/);
 });
 
-test("bottom Home Pro card is absent while plan chip and existing Pro navigation remain", () => {
-  assert.doesNotMatch(home, /ModernProCard\s*\(/);
+test("Home now exposes the requested first-class Pro destination", () => {
+  assert.match(home, /HOME_PRO_ENTRY_V1_1/);
+  assert.match(home, /ModernProCard\s*\(/);
   assert.match(home, /ModernHomeHero\(/);
   assert.match(home, /proUnlocked = proUnlocked/);
   assert.match(home, /onOpenPro: \(\) -> Unit/);
+  assert.match(home, /onClick = onOpenPro/);
   assert.match(home, /Text\("Ayarlar"\)/);
 });

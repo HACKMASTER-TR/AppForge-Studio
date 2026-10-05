@@ -85,20 +85,76 @@ class VideoForgeActivity : AppCompatActivity() {
 
     private val pickVideo = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
-            persist(uri)
-            selectedVideo = uri
-            lastInput = uri
-            fileText.text = "Video: ${displayName(uri)}"
+            val persisted =
+                persist(
+                    uri
+                )
+
+            selectedVideo =
+                uri
+
+            lastInput =
+                uri
+
+            fileText.text =
+                "Video: ${displayName(uri)}"
+
             refreshButtons()
-            status("Video seçildi.")
+
+            status(
+                if (
+                    persisted
+                ) {
+                    "Video seçildi."
+                } else {
+                    "Video seçildi. Kalıcı dosya izni alınamadı; " +
+                        "gerekirse güvenli yerel kopya kullanılacak."
+                }
+            )
         }
     }
 
     private val pickQueue = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         selectedQueue.clear()
-        uris.forEach { uri -> persist(uri); selectedQueue += uri }
-        queueText.text = if (selectedQueue.isEmpty()) "Kuyruk: boş" else "Kuyruk: ${selectedQueue.size} video hazır"
+
+        var persistFailures =
+            0
+
+        uris.forEach {
+            uri ->
+
+            if (
+                !persist(
+                    uri
+                )
+            ) {
+                persistFailures +=
+                    1
+            }
+
+            selectedQueue +=
+                uri
+        }
+
+        queueText.text =
+            if (
+                selectedQueue.isEmpty()
+            ) {
+                "Kuyruk: boş"
+            } else {
+                "Kuyruk: ${selectedQueue.size} video hazır"
+            }
+
         refreshButtons()
+
+        if (
+            persistFailures > 0
+        ) {
+            status(
+                "$persistFailures video için kalıcı dosya izni alınamadı; " +
+                    "gerekirse güvenli yerel kopya kullanılacak."
+            )
+        }
     }
 
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -1435,31 +1491,157 @@ class VideoForgeActivity : AppCompatActivity() {
         )
     }
 
-    private fun startSingle(uri: Uri, preview: Boolean) {
-        if (!ModelManager(this).isReady()) { status("Önce AI modellerini hazırla."); return }
-
-        runCatching {
-            StorageGuard.requireEnough(
-                this,
-                uri,
-                if (preview) 30 else null
-            )
-        }.onFailure {
+    private fun startSingle(
+        uri: Uri,
+        preview: Boolean
+    ) {
+        if (
+            !ModelManager(
+                this
+            ).isReady()
+        ) {
             status(
-                it.message
-                    ?: "Depolama kontrolü başarısız."
+                "Önce AI modellerini hazırla."
             )
+
             return
         }
 
-        claimUsage {
-            val options = currentOptions(preview)
-            val i = baseServiceIntent(DubForegroundService.MODE_DUB, options).apply {
-                putExtra(DubForegroundService.EXTRA_VIDEO_URI, uri.toString())
-                putExtra(DubForegroundService.EXTRA_SOURCE_LABEL, displayName(uri))
+        var processingUri =
+            uri
+
+        val firstPreflight =
+            runCatching {
+                StorageGuard.requireEnough(
+                    this,
+                    processingUri,
+                    if (
+                        preview
+                    ) {
+                        30
+                    } else {
+                        null
+                    }
+                )
             }
-            ContextCompat.startForegroundService(this, i)
-            setWorking(true)
+
+        if (
+            firstPreflight.isFailure
+        ) {
+            val originalError =
+                firstPreflight
+                    .exceptionOrNull()
+
+            if (
+                originalError == null ||
+                !isMediaOpenFailure(
+                    originalError
+                )
+            ) {
+                status(
+                    originalError
+                        ?.message
+                        ?: "Depolama kontrolü başarısız."
+                )
+
+                return
+            }
+
+            /*
+             * VIDEOFORGE_MEDIA_RETRY_V1_1
+             *
+             * Same selected video gets one automatic retry from a verified
+             * app-private local copy. This avoids unreliable provider/native
+             * descriptor behavior without asking the user to select another
+             * video.
+             */
+            processingUri =
+                runCatching {
+                    MediaSourceCompat
+                        .materializeForProcessing(
+                            this,
+                            uri
+                        )
+                }
+                    .getOrElse {
+                        retryError ->
+
+                        status(
+                            "Video açılamadı. " +
+                                (
+                                    retryError.message
+                                        ?: originalError.message
+                                        ?: "medya kaynağı okunamadı"
+                                )
+                        )
+
+                        return
+                    }
+
+            val localPreflight =
+                runCatching {
+                    StorageGuard.requireEnough(
+                        this,
+                        processingUri,
+                        if (
+                            preview
+                        ) {
+                            30
+                        } else {
+                            null
+                        }
+                    )
+                }
+
+            if (
+                localPreflight.isFailure
+            ) {
+                status(
+                    "Video açılamadı. " +
+                        (
+                            localPreflight
+                                .exceptionOrNull()
+                                ?.message
+                                ?: "yerel medya kopyası doğrulanamadı"
+                        )
+                )
+
+                return
+            }
+        }
+
+        claimUsage {
+            val options =
+                currentOptions(
+                    preview
+                )
+
+            val i =
+                baseServiceIntent(
+                    DubForegroundService.MODE_DUB,
+                    options
+                ).apply {
+                    putExtra(
+                        DubForegroundService.EXTRA_VIDEO_URI,
+                        processingUri.toString()
+                    )
+
+                    putExtra(
+                        DubForegroundService.EXTRA_SOURCE_LABEL,
+                        displayName(
+                            uri
+                        )
+                    )
+                }
+
+            ContextCompat.startForegroundService(
+                this,
+                i
+            )
+
+            setWorking(
+                true
+            )
         }
     }
 
@@ -2169,9 +2351,63 @@ class VideoForgeActivity : AppCompatActivity() {
 
     private fun status(message: String) { statusText.text = message }
 
-    private fun persist(uri: Uri) {
-        try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Throwable) {}
+    private fun isMediaOpenFailure(
+        error: Throwable
+    ): Boolean {
+        var current:
+            Throwable? =
+            error
+
+        while (
+            current != null
+        ) {
+            if (
+                current is
+                    java.io.IOException
+            ) {
+                return true
+            }
+
+            val message =
+                current.message
+                    .orEmpty()
+                    .lowercase()
+
+            if (
+                message.contains(
+                    "media motoru"
+                ) ||
+                message.contains(
+                    "dosya tanımlayıcısı"
+                ) ||
+                message.contains(
+                    "video açılamadı"
+                ) ||
+                message.contains(
+                    "yerel güvenli"
+                )
+            ) {
+                return true
+            }
+
+            current =
+                current.cause
+        }
+
+        return false
     }
+
+    private fun persist(
+        uri: Uri
+    ): Boolean =
+        runCatching {
+            contentResolver
+                .takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+        }
+            .isSuccess
 
     private fun displayName(uri: Uri): String {
         var name = uri.lastPathSegment ?: "video"

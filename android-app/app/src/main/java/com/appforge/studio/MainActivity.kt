@@ -754,7 +754,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, OFFLINE_PACK_FIRST_RUN, OFFLINE_PACK, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, OFFLINE_PACK_FIRST_RUN, OFFLINE_PACK, LEGAL, HELP, PLAY_GUIDE, PRO, PRO_SUPPORT, KEYSTORES, LANGUAGE }
 
 /*
  * BUILD_SOURCE_ENGINE_REFRESH_V1
@@ -5771,7 +5771,17 @@ onOpenPro = {
                     session = session,
                     currentStatus = proStatus,
                     securityMessage = proSecurityMessage,
-                    onBack = { screen = AppScreen.SETTINGS },
+                    onBack = {
+                        navigateAppSystemBack()
+                    },
+                    onStart = {
+                        screen =
+                            AppScreen.HOME
+                    },
+                    onSupport = {
+                        screen =
+                            AppScreen.PRO_SUPPORT
+                    },
                     onVerified = { result ->
                         proStatus = result
                         proSecurityMessage =
@@ -5785,6 +5795,14 @@ onOpenPro = {
                         proSecurityMessage = it
                     }
                 )
+
+                AppScreen.PRO_SUPPORT ->
+                    com.appforge.studio.ui
+                        .DeveloperSupportScreenV1(
+                            onBack = {
+                                navigateAppSystemBack()
+                            }
+                        )
 
                 AppScreen.KEYSTORES -> KeystoreManagerScreen(
                     languageCode = prefs.languageCode,
@@ -25526,9 +25544,36 @@ private fun ProUpgradeScreen(
     currentStatus: ProStatus?,
     securityMessage: String,
     onBack: () -> Unit,
+    onStart: () -> Unit,
+    onSupport: () -> Unit,
     onVerified: (ProStatus) -> Unit,
     onSecurityMessage: (String) -> Unit
 ) {
+    /*
+     * PRO_HOME_EXPERIENCE_V1_1
+     *
+     * Billing/security remains unchanged. Active PRO users now see the
+     * requested celebration and developer-support experience.
+     */
+    if (
+        currentStatus?.active ==
+            true
+    ) {
+        com.appforge.studio.ui
+            .ProWelcomeScreenV1(
+                securityMessage =
+                    securityMessage,
+                onBack =
+                    onBack,
+                onStart =
+                    onStart,
+                onSupport =
+                    onSupport
+            )
+
+        return
+    }
+
     val context = LocalContext.current
     val activity = context as? android.app.Activity
     val scope = rememberCoroutineScope()

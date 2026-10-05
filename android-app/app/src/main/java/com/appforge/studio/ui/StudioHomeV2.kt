@@ -128,6 +128,18 @@ fun StudioHomeV2(
                     onCreateAdvanced = onCreateAdvanced
                 )
             }
+
+            /*
+             * HOME_PRO_ENTRY_V1_1
+             * PRO is now a first-class Home destination.
+             */
+            item {
+                ModernProCard(
+                    proUnlocked = proUnlocked,
+                    onClick = onOpenPro
+                )
+            }
+
             item {
                 HomeSectionTitle(
                     "Hızlı erişim",

@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -633,51 +634,122 @@ internal fun ModernProCard(
                     onClick()
                 },
         shape =
-            RoundedCornerShape(22.dp)
+            RoundedCornerShape(
+                24.dp
+            ),
+        colors =
+            CardDefaults
+                .elevatedCardColors(
+                    containerColor =
+                        Color(
+                            0xFF080808
+                        )
+                ),
+        elevation =
+            CardDefaults
+                .elevatedCardElevation(
+                    defaultElevation =
+                        4.dp
+                )
     ) {
         Row(
             modifier =
-                Modifier.padding(18.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        20.dp
+                    ),
             verticalAlignment =
                 Alignment.CenterVertically
         ) {
-            Column(
-                modifier =
-                    Modifier.weight(1f)
+            Surface(
+                shape =
+                    RoundedCornerShape(
+                        16.dp
+                    ),
+                color =
+                    Color(
+                        0xFF2A2500
+                    )
             ) {
                 Text(
-                    if (proUnlocked) {
-                        "AppForge Pro aktif"
-                    } else {
-                        "AppForge Pro"
-                    },
+                    "PRO",
+                    modifier =
+                        Modifier.padding(
+                            horizontal =
+                                14.dp,
+                            vertical =
+                                11.dp
+                        ),
+                    color =
+                        Color(
+                            0xFFFFD400
+                        ),
                     fontWeight =
-                        FontWeight.Bold
+                        FontWeight.Black
+                )
+            }
+
+            Column(
+                modifier =
+                    Modifier
+                        .weight(
+                            1f
+                        )
+                        .padding(
+                            start =
+                                14.dp
+                        )
+            ) {
+                Text(
+                    if (
+                        proUnlocked
+                    ) {
+                        "AppForge PRO Aktif"
+                    } else {
+                        "Pro'ya Yükselt"
+                    },
+                    color =
+                        Color.White,
+                    fontWeight =
+                        FontWeight.Black,
+                    fontSize =
+                        18.sp
                 )
 
                 Text(
-                    if (proUnlocked) {
-                        "Pro özelliklerin kullanıma hazır."
+                    if (
+                        proUnlocked
+                    ) {
+                        "PRO dünyanı ve destek merkezini aç."
                     } else {
-                        "Planını ve özelliklerini görüntüle."
+                        "Ömür boyu PRO avantajlarını görüntüle."
                     },
                     color =
-                        MaterialTheme
-                            .colorScheme
-                            .onSurfaceVariant,
+                        Color(
+                            0xFFB8B8B8
+                        ),
                     fontSize =
-                        13.sp
+                        12.sp
                 )
             }
 
             Text(
-                "Aç",
+                if (
+                    proUnlocked
+                ) {
+                    "AÇ"
+                } else {
+                    "YÜKSELT"
+                },
                 color =
-                    MaterialTheme
-                        .colorScheme
-                        .primary,
+                    Color(
+                        0xFFFFD400
+                    ),
                 fontWeight =
-                    FontWeight.Bold
+                    FontWeight.Black,
+                fontSize =
+                    12.sp
             )
         }
     }

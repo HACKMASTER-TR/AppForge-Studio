@@ -25,7 +25,7 @@ import java.security.MessageDigest
 internal object MediaSourceCompat {
 
     private const val CACHE_DIRECTORY =
-        "videoforge-media-source-v2"
+        "videoforge-media-source-v3"
 
     private const val CACHE_MAX_AGE_MS =
         24L * 60L * 60L * 1000L
@@ -107,7 +107,8 @@ internal object MediaSourceCompat {
                     throw IOException(
                         "Seçilen video Android medya motoru tarafından " +
                             "doğrudan, dosya tanımlayıcısından veya " +
-                            "yerel güvenli kopyadan açılamadı.",
+                            "yerel güvenli kopyadan açılamadı. " +
+                            "Alt neden: ${safeMediaError(localError)}",
                         localError
                     )
                 }
@@ -191,12 +192,65 @@ internal object MediaSourceCompat {
                     throw IOException(
                         "Seçilen video Android medya motoru tarafından " +
                             "doğrudan, dosya tanımlayıcısından veya " +
-                            "yerel güvenli kopyadan açılamadı.",
+                            "yerel güvenli kopyadan açılamadı. " +
+                            "Alt neden: ${safeMediaError(localError)}",
                         localError
                     )
                 }
             }
         }
+    }
+
+    /*
+     * VIDEOFORGE_STABLE_LOCAL_SOURCE_V1_1
+     *
+     * Used for one automatic retry when a provider URI cannot be consumed
+     * by Android's native media layer. The copy remains inside app-private
+     * cache and is returned as file:// for the existing media pipeline.
+     */
+    fun materializeForProcessing(
+        context: Context,
+        uri: Uri
+    ): Uri {
+        if (
+            uri.scheme.equals(
+                "file",
+                ignoreCase = true
+            )
+        ) {
+            val existing =
+                uri.path
+                    ?.let(
+                        ::File
+                    )
+
+            if (
+                existing != null &&
+                existing.isFile &&
+                existing.length() > 0L
+            ) {
+                return uri
+            }
+        }
+
+        val file =
+            materializeLocalCopy(
+                context,
+                uri
+            )
+
+        if (
+            !file.isFile ||
+            file.length() <= 0L
+        ) {
+            throw IOException(
+                "VideoForge yerel medya kopyası doğrulanamadı."
+            )
+        }
+
+        return Uri.fromFile(
+            file
+        )
     }
 
     private fun setExtractorFromDescriptor(
@@ -349,14 +403,16 @@ internal object MediaSourceCompat {
                 "$key.$extension"
             )
 
+        /*
+         * VIDEOFORGE_MEDIA_PROVIDER_SIZE_TOLERANCE_V1_1
+         *
+         * OpenableColumns.SIZE is advisory. Some providers report a
+         * different value while still exposing the complete video stream.
+         * A previously verified non-empty app-private copy is reusable.
+         */
         if (
             target.isFile &&
-            target.length() > 0L &&
-            (
-                sourceSize == null ||
-                    sourceSize <= 0L ||
-                    target.length() == sourceSize
-            )
+            target.length() > 0L
         ) {
             target.setLastModified(
                 System.currentTimeMillis()
@@ -415,16 +471,11 @@ internal object MediaSourceCompat {
                 )
             }
 
-            if (
-                sourceSize != null &&
-                sourceSize > 0L &&
-                part.length() != sourceSize
-            ) {
-                throw IOException(
-                    "Seçilen videonun yerel kopyası eksik. " +
-                        "Beklenen=$sourceSize, alınan=${part.length()}."
-                )
-            }
+            /*
+             * Do not reject a readable copied stream solely because
+             * provider-reported SIZE differs. Android's media parser is
+             * the final validity check.
+             */
 
             runCatching {
                 target.delete()
@@ -563,6 +614,63 @@ internal object MediaSourceCompat {
                     }
                 }
         }.getOrNull()
+
+    private fun safeMediaError(
+        error: Throwable
+    ): String {
+        val messages =
+            mutableListOf<String>()
+
+        var current:
+            Throwable? =
+            error
+
+        var depth =
+            0
+
+        while (
+            current != null &&
+            depth < 4
+        ) {
+            current.message
+                ?.trim()
+                ?.replace(
+                    '\n',
+                    ' '
+                )
+                ?.takeIf {
+                    it.isNotBlank()
+                }
+                ?.let {
+                    if (
+                        it !in messages
+                    ) {
+                        messages +=
+                            it
+                    }
+                }
+
+            current =
+                current.cause
+
+            depth +=
+                1
+        }
+
+        return messages
+            .take(
+                3
+            )
+            .joinToString(
+                " | "
+            )
+            .take(
+                420
+            )
+            .ifBlank {
+                "medya kaynağı okunamadı"
+            }
+    }
 
     private fun sha256(
         value: String
