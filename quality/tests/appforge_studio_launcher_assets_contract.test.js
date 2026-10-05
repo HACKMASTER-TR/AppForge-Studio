@@ -34,7 +34,7 @@ test("AppForge Studio itself uses full-artwork density launcher assets", () => {
   }
 });
 
-test("Home exposes compact Pro destination while keeping plan indicator and settings", () => {
+test("Home keeps compact Pro destination and replaces the old Plan tile with Offline Pack", () => {
   const home = read("android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt").toString();
   const dashboard = read("android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeDashboard.kt").toString();
 
@@ -42,7 +42,15 @@ test("Home exposes compact Pro destination while keeping plan indicator and sett
   assert.match(home, /TextButton\(onClick = onOpenPro\)/);
   assert.match(home, /Text\("PRO"\)/);
   assert.doesNotMatch(home, /ModernProCard\s*\(/);
-  assert.match(home, /ModernHomeHero\(/);
-  assert.match(dashboard, /"PRO"/);
+  assert.match(home, /onOpenOfflinePack/);
+  assert.match(dashboard, /HOME_OFFLINE_PACK_ENTRY_V1_3/);
+  assert.match(dashboard, /"Tam Çevrimdışı"/);
+  assert.match(dashboard, /"Derleme Paketi"/);
+
+  const heroStart = dashboard.indexOf("internal fun ModernHomeHero(");
+  const heroEnd = dashboard.indexOf("@Composable\nprivate fun HomeStat", heroStart);
+  const hero = dashboard.slice(heroStart, heroEnd);
+  assert.doesNotMatch(hero, /"Plan"/);
+
   assert.match(home, /Text\("Ayarlar"\)/);
 });

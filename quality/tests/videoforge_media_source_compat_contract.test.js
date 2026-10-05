@@ -58,12 +58,19 @@ test("StorageGuard no longer hard-depends on MediaMetadataRetriever", () => {
   assert.doesNotMatch(storage, /MediaMetadataRetriever|openRetriever/);
 });
 
-test("single-video processing materializes one stable local source before FGS", () => {
-  assert.match(video, /VIDEOFORGE_STABLE_LOCAL_PROCESSING_V1_2/);
+test("single-video processing tries the selected provider URI before compatibility fallback", () => {
+  assert.match(video, /VIDEOFORGE_PROVIDER_FIRST_PROCESSING_V1_3/);
+  const start = video.indexOf("private fun startSingle(");
+  const end = video.indexOf("private fun startQueue()", start);
+  const block = video.slice(start, end);
+  assert.match(block, /val processingUri\s*=\s*uri/);
   assert.match(
-    video,
-    /materializeForProcessing[\s\S]*StorageGuard\.requireEnough[\s\S]*ContextCompat\.startForegroundService/
+    block,
+    /StorageGuard\.requireEnough[\s\S]*ContextCompat\.startForegroundService/
   );
+  assert.doesNotMatch(block, /materializeForProcessing/);
+  assert.match(compat, /materializeLocalCopy/);
+  assert.match(compat, /VIDEOFORGE_LOCAL_COPY_INTEGRITY_V1_2/);
 });
 
 test("local copy is atomic and byte/hash verified", () => {

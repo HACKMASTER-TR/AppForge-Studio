@@ -155,6 +155,16 @@ class MainActivity : ComponentActivity() {
     var buildNotificationSequence by mutableIntStateOf(0)
         private set
 
+    /* OWNER_TERMINAL_RESULT_NAV_V1_4 */
+    var openTerminalFromNotification by mutableStateOf(false)
+        private set
+
+    var terminalSessionIdFromNotification by mutableStateOf<String?>(null)
+        private set
+
+    var terminalNotificationSequence by mutableIntStateOf(0)
+        private set
+
     var accountActionUri by mutableStateOf<Uri?>(null)
         private set
 
@@ -186,6 +196,53 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun captureTerminalNotification(
+        sourceIntent: Intent?
+    ) {
+        if (
+            sourceIntent?.getBooleanExtra(
+                com.appforge.studio.terminal
+                    .LinuxTerminalJobService
+                    .EXTRA_OPEN_TERMINAL,
+                false
+            ) != true
+        ) {
+            return
+        }
+
+        val sessionId =
+            sourceIntent.getStringExtra(
+                com.appforge.studio.terminal
+                    .LinuxTerminalJobService
+                    .EXTRA_TERMINAL_SESSION_ID
+            )
+                ?.takeIf {
+                    it.matches(
+                        Regex(
+                            "^[0-9a-fA-F-]{36}$"
+                        )
+                    )
+                }
+                ?: return
+
+        openTerminalFromNotification =
+            true
+
+        terminalSessionIdFromNotification =
+            sessionId
+
+        terminalNotificationSequence +=
+            1
+    }
+
+    fun consumeTerminalNotificationNavigation() {
+        openTerminalFromNotification =
+            false
+
+        terminalSessionIdFromNotification =
+            null
+    }
+
     fun consumeAccountAction() {
         accountActionUri =
             null
@@ -197,6 +254,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         captureAccountAction(
+            intent
+        )
+
+        captureTerminalNotification(
             intent
         )
 
@@ -277,6 +338,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
 
         captureAccountAction(intent)
+        captureTerminalNotification(intent)
 
         if (
             intent.getBooleanExtra(
@@ -1102,6 +1164,19 @@ private fun AppForgeApp() {
             )
         }
 
+    /*
+     * OFFLINE_PACK_RETURN_ISOLATION_V1_3
+     *
+     * Offline Pack keeps its own return destination so opening it from
+     * Settings cannot overwrite Settings' Home return target.
+     */
+    var offlinePackReturnScreen by
+        rememberSaveable {
+            mutableStateOf(
+                AppScreen.HOME
+            )
+        }
+
     var terminalReturnScreen by
         rememberSaveable {
             mutableStateOf(
@@ -1115,6 +1190,82 @@ private fun AppForgeApp() {
                 1
             )
         }
+
+    var requestedLinuxSessionId by
+        rememberSaveable {
+            mutableStateOf<String?>(
+                null
+            )
+        }
+
+    LaunchedEffect(
+        hostActivity?.terminalNotificationSequence,
+        terminalOwner
+    ) {
+        val activity =
+            hostActivity
+                ?: return@LaunchedEffect
+
+        if (
+            !activity.openTerminalFromNotification
+        ) {
+            return@LaunchedEffect
+        }
+
+        val requested =
+            activity.terminalSessionIdFromNotification
+
+        if (
+            terminalOwner &&
+            !requested.isNullOrBlank()
+        ) {
+            if (
+                screen !=
+                    AppScreen.TERMINAL
+            ) {
+                terminalReturnScreen =
+                    screen
+
+                terminalReturnStep =
+                    step
+            }
+
+            requestedLinuxSessionId =
+                requested
+
+            screen =
+                AppScreen.TERMINAL
+
+            runCatching {
+                com.appforge.studio.terminal
+                    .LinuxPtySessionRegistry
+                    .markActivated(
+                        requested
+                    )
+            }
+        }
+
+        if (
+            !requested.isNullOrBlank()
+        ) {
+            com.appforge.studio.terminal
+                .LinuxTerminalJobService
+                .dismissResultNotification(
+                    context,
+                    requested
+                )
+
+            com.appforge.studio.terminal
+                .LinuxSessionNotifier
+                .dismissCompletedNotification(
+                    context,
+                    requested
+                )
+        }
+
+        activity
+            .consumeTerminalNotificationNavigation()
+    }
 
     fun openWorkspaceScreen(
         target: AppScreen
@@ -1152,6 +1303,14 @@ private fun AppForgeApp() {
             step =
                 workspaceReturnStep
         }
+    }
+
+    fun openOfflinePack() {
+        offlinePackReturnScreen =
+            screen
+
+        screen =
+            AppScreen.OFFLINE_PACK
     }
 
     /*
@@ -2216,6 +2375,10 @@ private fun AppForgeApp() {
                 setOf("success", "failed", "cancelled", "canceled")
         ) {
             BuildProgressService.clear(context)
+            BuildProgressService
+                .dismissTerminalResultNotification(
+                    context
+                )
         }
     }
 
@@ -5061,6 +5224,10 @@ private fun AppForgeApp() {
                             )
                         },
 
+                        onOpenOfflinePack = {
+                            openOfflinePack()
+                        },
+
                         onOpenOtherApps = {
                             screen =
                                 AppScreen.OTHER_APPS
@@ -5671,9 +5838,7 @@ onOpenPro = {
                     onOpenKeystore = { screen = AppScreen.KEYSTORES },
                     onOpenPro = { screen = AppScreen.PRO },
                     onOpenOfflinePack = {
-                        openWorkspaceScreen(
-                            AppScreen.OFFLINE_PACK
-                        )
+                        openOfflinePack()
                     },
                     onOpenHowTo = { screen = AppScreen.HELP },
                     onOpenPlayGuide = { screen = AppScreen.PLAY_GUIDE },
@@ -5742,7 +5907,8 @@ onOpenPro = {
                 AppScreen.OFFLINE_PACK ->
                     OfflineBuildPackScreen(
                         onBack = {
-                            returnFromWorkspace()
+                            screen =
+                                offlinePackReturnScreen
                         }
                     )
 
@@ -5812,6 +5978,10 @@ onOpenPro = {
                 AppScreen.KEYSTORES -> KeystoreManagerScreen(
                     languageCode = prefs.languageCode,
                     refreshKey = keystoreRefresh,
+                    canGenerate =
+                        proStatus?.active ==
+                            true ||
+                        terminalOwner,
                     onBack = { screen = AppScreen.SETTINGS },
                     onImport = {
                         if (
@@ -5948,7 +6118,18 @@ onOpenPro = {
                                 ?.email
                                 .orEmpty(),
 
+                        requestedLinuxSessionId =
+                            requestedLinuxSessionId,
+
+                        onRequestedSessionConsumed = {
+                            requestedLinuxSessionId =
+                                null
+                        },
+
                         onBack = {
+                            requestedLinuxSessionId =
+                                null
+
                             screen =
                                 terminalReturnScreen
 
@@ -6429,9 +6610,29 @@ onOpenPro = {
                                 sourceAnalysis
                             ) { draft = it }
 
-                            4 -> AppearanceStep(draft, { draft = it }) {
-                                iconPicker.launch(arrayOf("image/*"))
-                            }
+                            4 -> AppearanceStep(
+                                d = draft,
+                                update = {
+                                    draft = it
+                                },
+                                onPickIcon = {
+                                    iconPicker.launch(
+                                        arrayOf(
+                                            "image/*"
+                                        )
+                                    )
+                                },
+                                onRemoveIcon = {
+                                    draft =
+                                        draft.copy(
+                                            iconUri = null,
+                                            iconName = ""
+                                        )
+
+                                    status =
+                                        "Özel uygulama ikonu kaldırıldı."
+                                }
+                            )
 
                             5 -> NativeBridgeStep(
                                 d = draft,
@@ -15636,7 +15837,8 @@ private fun FeatureToggleCard(
 private fun AppearanceStep(
     d: ProjectDraft,
     update: (ProjectDraft) -> Unit,
-    onPickIcon: () -> Unit
+    onPickIcon: () -> Unit,
+    onRemoveIcon: () -> Unit
 ) {
     val formCompact =
         LocalConfiguration.current
@@ -15740,21 +15942,55 @@ private fun AppearanceStep(
                             13.sp
                     )
 
-                    Button(
-                        onClick =
-                            onPickIcon,
-                        modifier =
-                            Modifier.fillMaxWidth()
+                    /* ICON_EDIT_ACTIONS_V1_4 */
+                    if (
+                        d.iconName.isBlank()
                     ) {
-                        Text(
-                            if (
-                                d.iconName.isBlank()
-                            ) {
+                        Button(
+                            onClick =
+                                onPickIcon,
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        ) {
+                            Text(
                                 "PNG Uygulama İkonu Seç"
-                            } else {
-                                "İkonu değiştir"
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            horizontalArrangement =
+                                Arrangement.spacedBy(
+                                    8.dp
+                                )
+                        ) {
+                            Button(
+                                onClick =
+                                    onPickIcon,
+                                modifier =
+                                    Modifier.weight(
+                                        1f
+                                    )
+                            ) {
+                                Text(
+                                    "İkonu düzenle / değiştir"
+                                )
                             }
-                        )
+
+                            OutlinedButton(
+                                onClick =
+                                    onRemoveIcon,
+                                modifier =
+                                    Modifier.weight(
+                                        1f
+                                    )
+                            ) {
+                                Text(
+                                    "İkonu kaldır"
+                                )
+                            }
+                        }
                     }
 
                     Text(
@@ -25890,6 +26126,7 @@ private fun ProPlanCard(
 private fun KeystoreManagerScreen(
     languageCode: String,
     refreshKey: Int,
+    canGenerate: Boolean,
     onBack: () -> Unit,
     onImport: () -> Unit,
     onMessage: (String) -> Unit
@@ -25925,37 +26162,235 @@ private fun KeystoreManagerScreen(
             else -> 16.dp
         }
 
-    val context = LocalContext.current
-    var keys by remember(refreshKey) { mutableStateOf(KeystoreVault.load(context)) }
+    val context =
+        LocalContext.current
+
+    val scope =
+        rememberCoroutineScope()
+
+    var keys by
+        remember(refreshKey) {
+            mutableStateOf(
+                KeystoreVault.load(
+                    context
+                )
+            )
+        }
+
+    var pendingExport by
+        remember {
+            mutableStateOf<ManagedKeystore?>(
+                null
+            )
+        }
+
+    var createDialog by
+        remember {
+            mutableStateOf(false)
+        }
+
+    var recreateTarget by
+        remember {
+            mutableStateOf<ManagedKeystore?>(
+                null
+            )
+        }
+
+    var generating by
+        remember {
+            mutableStateOf(false)
+        }
 
     fun reload() {
-        keys = KeystoreVault.load(context)
+        keys =
+            KeystoreVault.load(
+                context
+            )
+    }
+
+    val exportLauncher =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts.CreateDocument(
+                    "application/octet-stream"
+                )
+        ) {
+            destination: Uri? ->
+
+            val item =
+                pendingExport
+
+            pendingExport =
+                null
+
+            if (
+                destination == null ||
+                item == null
+            ) {
+                return@rememberLauncherForActivityResult
+            }
+
+            scope.launch {
+                runCatching {
+                    withContext(
+                        Dispatchers.IO
+                    ) {
+                        val source =
+                            File(
+                                item.savedPath
+                            )
+
+                        require(
+                            source.isFile &&
+                                source.length() >
+                                    0L
+                        ) {
+                            "Keystore dosyası bulunamadı."
+                        }
+
+                        context.contentResolver
+                            .openOutputStream(
+                                destination,
+                                "w"
+                            )
+                            ?.use { output ->
+                                source.inputStream()
+                                    .use { input ->
+                                        input.copyTo(
+                                            output
+                                        )
+                                    }
+                            }
+                            ?: error(
+                                "Hedef dosya açılamadı."
+                            )
+                    }
+                }.onSuccess {
+                    onMessage(
+                        "Keystore dosyası kaydedildi: ${item.originalFileName}"
+                    )
+                }.onFailure {
+                    onMessage(
+                        "Keystore kaydedilemedi: ${it.message}"
+                    )
+                }
+            }
+        }
+
+    fun generate(
+        name: String,
+        alias: String,
+        password: String,
+        recreateId: String?
+    ) {
+        if (!canGenerate) {
+            onMessage(
+                "Release keystore oluşturma ve yeniden oluşturma için AppForge PRO gereklidir."
+            )
+            return
+        }
+
+        if (generating) {
+            return
+        }
+
+        generating =
+            true
+
+        scope.launch {
+            runCatching {
+                KeystoreVault.createGenerated(
+                    context = context,
+                    displayName = name,
+                    alias = alias,
+                    password = password,
+                    recreateId = recreateId
+                )
+            }.onSuccess {
+                reload()
+                onMessage(
+                    if (
+                        recreateId == null
+                    ) {
+                        "Yeni release keystore oluşturuldu. Parolanızı güvenli bir yerde saklayın."
+                    } else {
+                        "Keystore yeni bir imza anahtarıyla yeniden oluşturuldu."
+                    }
+                )
+            }.onFailure {
+                onMessage(
+                    "Keystore oluşturulamadı: ${it.message}"
+                )
+            }
+
+            generating =
+                false
+        }
     }
 
     LaunchedEffect(refreshKey) {
         reload()
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(
+        Modifier.fillMaxSize()
+    ) {
         TopAppBar(
-            title = { Text(t(languageCode, "keystore_manager"), fontWeight = FontWeight.Bold) },
-            navigationIcon = { IconButton(onClick = onBack) { Text("←") } },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
+            title = {
+                Text(
+                    t(
+                        languageCode,
+                        "keystore_manager"
+                    ),
+                    fontWeight =
+                        FontWeight.Bold
+                )
+            },
+            navigationIcon = {
+                IconButton(
+                    onClick = onBack
+                ) {
+                    Text("←")
+                }
+            },
+            colors =
+                TopAppBarDefaults
+                    .topAppBarColors(
+                        containerColor = Bg
+                    )
         )
 
         LazyColumn(
             modifier =
                 Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .widthIn(max = keystoreContentMaxWidth)
-                    .fillMaxWidth().weight(1f),
+                    .align(
+                        Alignment.CenterHorizontally
+                    )
+                    .widthIn(
+                        max =
+                            keystoreContentMaxWidth
+                    )
+                    .fillMaxWidth()
+                    .weight(1f),
             contentPadding =
                 PaddingValues(
-                    horizontal = keystoreHorizontalPadding,
+                    horizontal =
+                        keystoreHorizontalPadding,
                     vertical =
-                        if (keystoreCompact) 10.dp else 16.dp
+                        if (keystoreCompact) {
+                            10.dp
+                        } else {
+                            16.dp
+                        }
                 ),
-            verticalArrangement = Arrangement.spacedBy(if (keystoreCompact) 9.dp else 14.dp)
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    if (keystoreCompact) {
+                        9.dp
+                    } else {
+                        14.dp
+                    }
+                )
         ) {
             item {
                 LegalInfoCard(
@@ -25969,7 +26404,7 @@ private fun KeystoreManagerScreen(
                 LegalInfoCard(
                     icon = "💡",
                     title = "Önemli İpucu",
-                    body = "Varsayılan keystore otomatik olarak oluşturulur. Pro sürümde özel keystore içe aktarabilir ve mevcut imzanızı koruyabilirsiniz."
+                    body = "Oluşturduğunuz veya içe aktardığınız release keystore'u ayrıca dışa kaydedin. Yeniden oluşturma aynı anahtarı geri getirmez; yeni bir imza kimliği üretir."
                 )
             }
 
@@ -25985,30 +26420,90 @@ private fun KeystoreManagerScreen(
             item {
                 Text(
                     "Keystore'larınız",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = if (keystoreCompact) 18.sp else 22.sp
+                    fontWeight =
+                        FontWeight.Bold,
+                    fontSize =
+                        if (keystoreCompact) {
+                            18.sp
+                        } else {
+                            22.sp
+                        }
                 )
             }
 
             if (keys.isEmpty()) {
                 item {
-                    NoteCard("Henüz içe aktarılmış keystore yok.")
+                    NoteCard(
+                        "Henüz kayıtlı keystore yok."
+                    )
                 }
             } else {
-                items(keys, key = { it.id }) { item ->
+                items(
+                    keys,
+                    key = {
+                        it.id
+                    }
+                ) {
+                    item ->
+
                     ManagedKeystoreCard(
                         item = item,
-                        languageCode = languageCode,
-                        onCopy = { text, label ->
+                        languageCode =
+                            languageCode,
+                        onCopy = {
+                            text,
+                            label ->
+
                             val clipboard =
-                                context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
-                            onMessage("$label panoya kopyalandı.")
+                                context.getSystemService(
+                                    Context.CLIPBOARD_SERVICE
+                                ) as ClipboardManager
+
+                            clipboard.setPrimaryClip(
+                                ClipData.newPlainText(
+                                    label,
+                                    text
+                                )
+                            )
+
+                            onMessage(
+                                "$label panoya kopyalandı."
+                            )
                         },
+                        onSave = {
+                            pendingExport =
+                                item
+
+                            exportLauncher.launch(
+                                item.originalFileName
+                            )
+                        },
+                        onRecreate =
+                            if (
+                                item.generated
+                            ) {
+                                {
+                                    if (canGenerate) {
+                                        recreateTarget =
+                                            item
+                                    } else {
+                                        onMessage(
+                                            "Keystore yeniden oluşturma için AppForge PRO gereklidir."
+                                        )
+                                    }
+                                }
+                            } else {
+                                null
+                            },
                         onDelete = {
-                            KeystoreVault.delete(context, item.id)
+                            KeystoreVault.delete(
+                                context,
+                                item.id
+                            )
                             reload()
-                            onMessage("Keystore silindi: ${item.name}")
+                            onMessage(
+                                "Keystore silindi: ${item.name}"
+                            )
                         }
                     )
                 }
@@ -26018,35 +26513,360 @@ private fun KeystoreManagerScreen(
         Column(
             modifier =
                 Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .widthIn(max = keystoreContentMaxWidth)
+                    .align(
+                        Alignment.CenterHorizontally
+                    )
+                    .widthIn(
+                        max =
+                            keystoreContentMaxWidth
+                    )
                     .fillMaxWidth()
                     .padding(
-                        horizontal = keystoreHorizontalPadding,
-                        vertical = if (keystoreCompact) 10.dp else 14.dp
-                    )
+                        horizontal =
+                            keystoreHorizontalPadding,
+                        vertical =
+                            if (keystoreCompact) {
+                                10.dp
+                            } else {
+                                14.dp
+                            }
+                    ),
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    10.dp
+                )
         ) {
+            Button(
+                enabled =
+                    !generating,
+                onClick = {
+                    if (canGenerate) {
+                        createDialog =
+                            true
+                    } else {
+                        onMessage(
+                            "Yeni release keystore oluşturmak için AppForge PRO gereklidir."
+                        )
+                    }
+                },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(
+                            if (keystoreCompact) {
+                                48.dp
+                            } else {
+                                52.dp
+                            }
+                        )
+            ) {
+                Text(
+                    if (generating) {
+                        "KEYSTORE OLUŞTURULUYOR…"
+                    } else if (canGenerate) {
+                        "YENİ KEYSTORE OLUŞTUR"
+                    } else {
+                        "YENİ KEYSTORE OLUŞTUR • PRO"
+                    },
+                    fontWeight =
+                        FontWeight.Bold
+                )
+            }
+
             Button(
                 onClick = {
                     reload()
-                    onMessage("${KeystoreVault.count(context)} keystore bulundu.")
+                    onMessage(
+                        "${KeystoreVault.count(context)} keystore bulundu."
+                    )
                 },
-                modifier = Modifier.fillMaxWidth().height(if (keystoreCompact) 48.dp else 52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9ACEFF), contentColor = Color(0xFF0D213D))
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(
+                            if (keystoreCompact) {
+                                48.dp
+                            } else {
+                                52.dp
+                            }
+                        ),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor =
+                            Color(
+                                0xFF9ACEFF
+                            ),
+                        contentColor =
+                            Color(
+                                0xFF0D213D
+                            )
+                    )
             ) {
-                Text(t(languageCode, "find_backups"), fontWeight = FontWeight.Bold)
+                Text(
+                    t(
+                        languageCode,
+                        "find_backups"
+                    ),
+                    fontWeight =
+                        FontWeight.Bold
+                )
             }
 
-            Spacer(Modifier.height(10.dp))
-
             Button(
-                onClick = onImport,
-                modifier = Modifier.fillMaxWidth().height(if (keystoreCompact) 48.dp else 52.dp)
+                onClick =
+                    onImport,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(
+                            if (keystoreCompact) {
+                                48.dp
+                            } else {
+                                52.dp
+                            }
+                        )
             ) {
-                Text(t(languageCode, "import_keystore"), fontWeight = FontWeight.Bold)
+                Text(
+                    t(
+                        languageCode,
+                        "import_keystore"
+                    ),
+                    fontWeight =
+                        FontWeight.Bold
+                )
             }
         }
     }
+
+    if (createDialog) {
+        GeneratedKeystoreDialog(
+            title =
+                "Yeni Release Keystore",
+            initialName =
+                "appforge-release",
+            initialAlias =
+                "appforge-release",
+            warning =
+                "Gerçek RSA 3072 / PKCS12 imza anahtarı üretilecek. Parola AppForge tarafından kaydedilmez.",
+            onDismiss = {
+                createDialog =
+                    false
+            },
+            onConfirm = {
+                name,
+                alias,
+                password ->
+
+                createDialog =
+                    false
+
+                generate(
+                    name = name,
+                    alias = alias,
+                    password = password,
+                    recreateId = null
+                )
+            }
+        )
+    }
+
+    recreateTarget?.let {
+        target ->
+
+        GeneratedKeystoreDialog(
+            title =
+                "Keystore'u Yeniden Oluştur",
+            initialName =
+                target.name,
+            initialAlias =
+                target.alias.ifBlank {
+                    "appforge-release"
+                },
+            warning =
+                "Bu işlem aynı anahtarı kurtarmaz; yeni bir imza kimliği üretir ve mevcut dosyanın yerini alır.",
+            onDismiss = {
+                recreateTarget =
+                    null
+            },
+            onConfirm = {
+                name,
+                alias,
+                password ->
+
+                val id =
+                    target.id
+
+                recreateTarget =
+                    null
+
+                generate(
+                    name = name,
+                    alias = alias,
+                    password = password,
+                    recreateId = id
+                )
+            }
+        )
+    }
+}
+
+@Composable
+private fun GeneratedKeystoreDialog(
+    title: String,
+    initialName: String,
+    initialAlias: String,
+    warning: String,
+    onDismiss: () -> Unit,
+    onConfirm: (
+        String,
+        String,
+        String
+    ) -> Unit
+) {
+    var name by
+        remember(initialName) {
+            mutableStateOf(
+                initialName
+            )
+        }
+
+    var alias by
+        remember(initialAlias) {
+            mutableStateOf(
+                initialAlias
+            )
+        }
+
+    var password by
+        remember {
+            mutableStateOf("")
+        }
+
+    var confirmation by
+        remember {
+            mutableStateOf("")
+        }
+
+    val valid =
+        name.isNotBlank() &&
+            alias.isNotBlank() &&
+            password.length >=
+                8 &&
+            password ==
+                confirmation
+
+    AlertDialog(
+        onDismissRequest =
+            onDismiss,
+        title = {
+            Text(
+                title
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement =
+                    Arrangement.spacedBy(
+                        10.dp
+                    )
+            ) {
+                Text(
+                    warning,
+                    color =
+                        TextSecondary,
+                    fontSize =
+                        12.sp
+                )
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = {
+                        name = it
+                    },
+                    label = {
+                        Text(
+                            "Keystore adı"
+                        )
+                    },
+                    singleLine =
+                        true
+                )
+
+                OutlinedTextField(
+                    value = alias,
+                    onValueChange = {
+                        alias = it
+                    },
+                    label = {
+                        Text(
+                            "Key alias"
+                        )
+                    },
+                    singleLine =
+                        true
+                )
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = {
+                        password = it
+                    },
+                    label = {
+                        Text(
+                            "Parola • en az 8 karakter"
+                        )
+                    },
+                    singleLine =
+                        true,
+                    visualTransformation =
+                        PasswordVisualTransformation()
+                )
+
+                OutlinedTextField(
+                    value = confirmation,
+                    onValueChange = {
+                        confirmation = it
+                    },
+                    label = {
+                        Text(
+                            "Parolayı tekrar gir"
+                        )
+                    },
+                    singleLine =
+                        true,
+                    visualTransformation =
+                        PasswordVisualTransformation()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled =
+                    valid,
+                onClick = {
+                    onConfirm(
+                        name,
+                        alias,
+                        password
+                    )
+                }
+            ) {
+                Text(
+                    "Oluştur"
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick =
+                    onDismiss
+            ) {
+                Text(
+                    "İptal"
+                )
+            }
+        }
+    )
 }
 
 @Composable
@@ -26054,65 +26874,246 @@ private fun ManagedKeystoreCard(
     item: ManagedKeystore,
     languageCode: String,
     onCopy: (String, String) -> Unit,
+    onSave: () -> Unit,
+    onRecreate: (() -> Unit)?,
     onDelete: () -> Unit
 ) {
     val managedKeyCompact =
         LocalConfiguration.current.screenWidthDp < 380
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Card2),
-        shape = RoundedCornerShape(if (managedKeyCompact) 18.dp else 22.dp)
+        colors =
+            CardDefaults.cardColors(
+                containerColor = Card2
+            ),
+        shape =
+            RoundedCornerShape(
+                if (managedKeyCompact) {
+                    18.dp
+                } else {
+                    22.dp
+                }
+            )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(if (managedKeyCompact) 12.dp else 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        if (managedKeyCompact) {
+                            12.dp
+                        } else {
+                            16.dp
+                        }
+                    ),
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    10.dp
+                )
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment =
+                    Alignment.CenterVertically
+            ) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF23344E)),
-                    shape = RoundedCornerShape(if (managedKeyCompact) 13.dp else 16.dp)
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Color(
+                                    0xFF23344E
+                                )
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            if (managedKeyCompact) {
+                                13.dp
+                            } else {
+                                16.dp
+                            }
+                        )
                 ) {
                     Box(
-                        modifier = Modifier.size(if (managedKeyCompact) 42.dp else 50.dp),
-                        contentAlignment = Alignment.Center
+                        modifier =
+                            Modifier.size(
+                                if (managedKeyCompact) {
+                                    42.dp
+                                } else {
+                                    50.dp
+                                }
+                            ),
+                        contentAlignment =
+                            Alignment.Center
                     ) {
-                        Text("🔒", fontSize = if (managedKeyCompact) 20.sp else 24.sp)
+                        Text(
+                            "🔒",
+                            fontSize =
+                                if (managedKeyCompact) {
+                                    20.sp
+                                } else {
+                                    24.sp
+                                }
+                        )
                     }
                 }
 
-                Spacer(Modifier.width(if (managedKeyCompact) 9.dp else 12.dp))
-
-                Column(Modifier.weight(1f)) {
-                    Text(
-                    item.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = if (managedKeyCompact) 17.sp else 20.sp
+                Spacer(
+                    Modifier.width(
+                        if (managedKeyCompact) {
+                            9.dp
+                        } else {
+                            12.dp
+                        }
+                    )
                 )
-                    Text(item.algorithm, color = TextSecondary, fontSize = 12.sp)
-                    Text(item.savedPath, color = TextSecondary, fontSize = 12.sp)
+
+                Column(
+                    Modifier.weight(
+                        1f
+                    )
+                ) {
+                    Text(
+                        item.name,
+                        fontWeight =
+                            FontWeight.Bold,
+                        fontSize =
+                            if (managedKeyCompact) {
+                                17.sp
+                            } else {
+                                20.sp
+                            }
+                    )
+
+                    Text(
+                        item.algorithm,
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    if (
+                        item.alias.isNotBlank()
+                    ) {
+                        Text(
+                            "Alias: ${item.alias}",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+                    }
                 }
 
-                TextButton(onClick = onDelete) {
-                    Text(t(languageCode, "delete"))
+                TextButton(
+                    onClick =
+                        onDelete
+                ) {
+                    Text(
+                        t(
+                            languageCode,
+                            "delete"
+                        )
+                    )
                 }
             }
 
-            Text("Sertifika parmak izleri", fontWeight = FontWeight.Bold)
-            FingerprintBox("SHA-1", item.sha1)
-            FingerprintBox("SHA-256", item.sha256)
-
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        8.dp
+                    )
+            ) {
                 OutlinedButton(
-                    onClick = { onCopy(item.sha1, "SHA-1") },
-                    modifier = Modifier.weight(1f)
+                    onClick =
+                        onSave,
+                    modifier =
+                        Modifier.weight(
+                            1f
+                        )
                 ) {
-                    Text(t(languageCode, "copy_sha1"))
+                    Text(
+                        "Dosyaya Kaydet"
+                    )
                 }
+
+                onRecreate?.let {
+                    recreate ->
+
+                    OutlinedButton(
+                        onClick =
+                            recreate,
+                        modifier =
+                            Modifier.weight(
+                                1f
+                            )
+                    ) {
+                        Text(
+                            "Yeniden Oluştur"
+                        )
+                    }
+                }
+            }
+
+            Text(
+                "Dosya parmak izleri",
+                fontWeight =
+                    FontWeight.Bold
+            )
+
+            FingerprintBox(
+                "SHA-1",
+                item.sha1
+            )
+
+            FingerprintBox(
+                "SHA-256",
+                item.sha256
+            )
+
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        10.dp
+                    )
+            ) {
                 OutlinedButton(
-                    onClick = { onCopy(item.sha256, "SHA-256") },
-                    modifier = Modifier.weight(1f)
+                    onClick = {
+                        onCopy(
+                            item.sha1,
+                            "SHA-1"
+                        )
+                    },
+                    modifier =
+                        Modifier.weight(
+                            1f
+                        )
                 ) {
-                    Text(t(languageCode, "copy_sha256"))
+                    Text(
+                        t(
+                            languageCode,
+                            "copy_sha1"
+                        )
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        onCopy(
+                            item.sha256,
+                            "SHA-256"
+                        )
+                    },
+                    modifier =
+                        Modifier.weight(
+                            1f
+                        )
+                ) {
+                    Text(
+                        t(
+                            languageCode,
+                            "copy_sha256"
+                        )
+                    )
                 }
             }
         }

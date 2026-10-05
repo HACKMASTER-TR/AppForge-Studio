@@ -181,11 +181,21 @@ test(
 );
 
 test(
-  "offline pack returns to the originating workspace",
+  "offline pack returns to the exact screen that opened it",
   () => {
     assert.match(
       main,
-      /AppScreen\.OFFLINE_PACK ->[\s\S]{0,220}returnFromWorkspace\(\)/
+      /OFFLINE_PACK_RETURN_ISOLATION_V1_3/
+    );
+
+    assert.match(
+      main,
+      /fun openOfflinePack\(\)[\s\S]*offlinePackReturnScreen\s*=\s*screen[\s\S]*screen\s*=\s*AppScreen\.OFFLINE_PACK/
+    );
+
+    assert.match(
+      main,
+      /AppScreen\.OFFLINE_PACK ->[\s\S]{0,320}screen\s*=\s*offlinePackReturnScreen/
     );
   }
 );

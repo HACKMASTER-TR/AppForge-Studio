@@ -544,18 +544,63 @@ requestConfiguredPermissions();
             )
         );
 
-        if (
+        /*
+         * APPFORGE_WEB_SYSTEM_BARS_V1_4
+         *
+         * Normal HTML/URL wrappers keep Android system bars visible and
+         * manually inset the WebView content. Fullscreen is the only mode
+         * allowed to hide bars and use the physical edge-to-edge area.
+         */
+        boolean fullscreen =
             config.optBoolean(
                 "fullscreen",
                 false
-            )
+            );
+
+        if (
+            Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.R
         ) {
-            window
-                .getDecorView()
-                .setSystemUiVisibility(
+            window.setDecorFitsSystemWindows(
+                false
+            );
+
+            android.view.WindowInsetsController controller =
+                window.getInsetsController();
+
+            if (controller != null) {
+                if (fullscreen) {
+                    controller.hide(
+                        android.view.WindowInsets.Type.systemBars()
+                    );
+
+                    controller.setSystemBarsBehavior(
+                        android.view.WindowInsetsController
+                            .BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    );
+                } else {
+                    controller.show(
+                        android.view.WindowInsets.Type.systemBars()
+                    );
+                }
+            }
+        } else {
+            int flags =
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+
+            if (fullscreen) {
+                flags |=
                     View.SYSTEM_UI_FLAG_FULLSCREEN
                         | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                         | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+            }
+
+            window
+                .getDecorView()
+                .setSystemUiVisibility(
+                    flags
                 );
         }
     }
@@ -2796,6 +2841,21 @@ requestConfiguredPermissions();
             return;
         }
 
+        if (
+            config.optBoolean(
+                "fullscreen",
+                false
+            )
+        ) {
+            content.setPadding(
+                0,
+                0,
+                0,
+                0
+            );
+            return;
+        }
+
         final int baseLeft =
             content.getPaddingLeft();
         final int baseTop =
@@ -2814,15 +2874,40 @@ requestConfiguredPermissions();
                     return null;
                 }
 
+                int left;
+                int top;
+                int right;
+                int bottom;
+
+                if (
+                    Build.VERSION.SDK_INT >=
+                        Build.VERSION_CODES.R
+                ) {
+                    android.graphics.Insets bars =
+                        insets.getInsets(
+                            android.view.WindowInsets.Type.systemBars()
+                        );
+
+                    left = bars.left;
+                    top = bars.top;
+                    right = bars.right;
+                    bottom = bars.bottom;
+                } else {
+                    left =
+                        insets.getSystemWindowInsetLeft();
+                    top =
+                        insets.getSystemWindowInsetTop();
+                    right =
+                        insets.getSystemWindowInsetRight();
+                    bottom =
+                        insets.getSystemWindowInsetBottom();
+                }
+
                 view.setPadding(
-                    baseLeft +
-                        insets.getSystemWindowInsetLeft(),
-                    baseTop +
-                        insets.getSystemWindowInsetTop(),
-                    baseRight +
-                        insets.getSystemWindowInsetRight(),
-                    baseBottom +
-                        insets.getSystemWindowInsetBottom()
+                    baseLeft + left,
+                    baseTop + top,
+                    baseRight + right,
+                    baseBottom + bottom
                 );
 
                 return insets;

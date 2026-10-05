@@ -37,6 +37,7 @@ fun StudioHomeV2(
     onOpenUnifiedAgent: () -> Unit,
     onOpenTemplates: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenOfflinePack: () -> Unit,
     onOpenTasks: () -> Unit,
     onOpenTerminal: () -> Unit,
     onOpenOtherApps: () -> Unit,
@@ -132,6 +133,7 @@ fun StudioHomeV2(
                     projectCount = allProjects.size,
                     buildCount = builds.size,
                     proUnlocked = proUnlocked,
+                    onOpenOfflinePack = onOpenOfflinePack,
                     onCreateQuick = onCreateQuick,
                     onCreateAdvanced = onCreateAdvanced
                 )

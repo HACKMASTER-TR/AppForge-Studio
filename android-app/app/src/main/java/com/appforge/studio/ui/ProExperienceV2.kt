@@ -603,25 +603,6 @@ fun DeveloperSupportScreenV1(
 
         Spacer(
             Modifier.height(
-                16.dp
-            )
-        )
-
-        Text(
-            "Destek ürünleri Google Play Console'da ayrı ürünler olarak " +
-                "tanımlanana kadar ödeme başlatılmaz.",
-            modifier =
-                Modifier.fillMaxWidth(),
-            color =
-                ProMuted,
-            fontSize =
-                12.sp,
-            textAlign =
-                TextAlign.Center
-        )
-
-        Spacer(
-            Modifier.height(
                 28.dp
             )
         )

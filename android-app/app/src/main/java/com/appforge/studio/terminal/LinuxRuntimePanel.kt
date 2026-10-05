@@ -31,7 +31,9 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun LinuxRuntimePanel(
     workspace: File,
-    onOpenSsh: () -> Unit
+    onOpenSsh: () -> Unit,
+    requestedSessionId: String? = null,
+    onRequestedSessionConsumed: () -> Unit = {}
 ) {
     val context =
         LocalContext.current
@@ -243,7 +245,11 @@ internal fun LinuxRuntimePanel(
                 LinuxMultiSessionTerminalPanel(
                     manager = manager,
                     distribution = distribution,
-                    workspace = workspace
+                    workspace = workspace,
+                    requestedSessionId =
+                        requestedSessionId,
+                    onRequestedSessionConsumed =
+                        onRequestedSessionConsumed
                 )
             } else {
                 Text(

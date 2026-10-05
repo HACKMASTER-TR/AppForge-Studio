@@ -1038,6 +1038,24 @@ class BuildProgressService : Service() {
                 .cancel(NOTIFICATION_ID)
         }
 
+        /*
+         * BUILD_TERMINAL_NOTIFICATION_ACK_V1_3
+         *
+         * Terminal result notifications survive Service teardown, then are
+         * dismissed after the user taps the terminal result.
+         */
+        fun dismissTerminalResultNotification(
+            context: Context
+        ) {
+            context
+                .getSystemService(
+                    NotificationManager::class.java
+                )
+                .cancel(
+                    NOTIFICATION_ID
+                )
+        }
+
         fun clear(
             context: Context
         ) {

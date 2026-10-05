@@ -39,15 +39,17 @@ test("VideoForge no longer lets Retriever block extractor-decodable media", () =
   assert.doesNotMatch(audio, /MediaMetadataRetriever|openRetriever/);
 });
 
-test("single-video source is byte/hash verified before the foreground job", () => {
+test("single-video processing keeps provider URI primary with verified local fallback", () => {
   assert.match(media, /VIDEOFORGE_LOCAL_COPY_INTEGRITY_V1_2/);
   assert.match(media, /sourceStreamHash/);
   assert.match(media, /localHash/);
-  assert.match(video, /VIDEOFORGE_STABLE_LOCAL_PROCESSING_V1_2/);
-  assert.match(
-    video,
-    /materializeForProcessing[\s\S]*StorageGuard\.requireEnough[\s\S]*startForegroundService/
-  );
+  assert.match(video, /VIDEOFORGE_PROVIDER_FIRST_PROCESSING_V1_3/);
+  const start = video.indexOf("private fun startSingle(");
+  const end = video.indexOf("private fun startQueue()", start);
+  const block = video.slice(start, end);
+  assert.match(block, /val processingUri\s*=\s*uri/);
+  assert.match(block, /StorageGuard\.requireEnough[\s\S]*startForegroundService/);
+  assert.doesNotMatch(block, /materializeForProcessing/);
 });
 
 test("Home and PRO celebration implement the physical UX request", () => {

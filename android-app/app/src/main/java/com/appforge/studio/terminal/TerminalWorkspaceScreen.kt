@@ -341,7 +341,9 @@ fun TerminalWorkspaceScreen(
     accountEmail: String,
     onBack: () -> Unit,
     onOpenBuilder: (String?) -> Unit,
-    onOpenAi: (String?) -> Unit
+    onOpenAi: (String?) -> Unit,
+    requestedLinuxSessionId: String? = null,
+    onRequestedSessionConsumed: () -> Unit = {}
 ) {
     val context =
         LocalContext.current
@@ -607,6 +609,17 @@ fun TerminalWorkspaceScreen(
                 TerminalWorkspaceTab.TERMINAL
             )
         }
+
+    LaunchedEffect(
+        requestedLinuxSessionId
+    ) {
+        if (
+            !requestedLinuxSessionId.isNullOrBlank()
+        ) {
+            selectedTab =
+                TerminalWorkspaceTab.ULTIMATE
+        }
+    }
 
     var downloadsImportRequestToken by
         remember {
@@ -1612,6 +1625,10 @@ fun TerminalWorkspaceScreen(
                     TerminalWorkspaceTab.ULTIMATE ->
                         TerminalUltimatePanel(
                             workspace = workspace,
+                            requestedLinuxSessionId =
+                                requestedLinuxSessionId,
+                            onRequestedSessionConsumed =
+                                onRequestedSessionConsumed,
                             onRunCommand = { command ->
                                 selectedTab =
                                     TerminalWorkspaceTab.TERMINAL

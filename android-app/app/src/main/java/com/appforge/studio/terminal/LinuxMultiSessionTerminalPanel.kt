@@ -51,7 +51,9 @@ import kotlinx.coroutines.launch
 internal fun LinuxMultiSessionTerminalPanel(
     manager: AndroidLinuxRuntimeManager,
     distribution: LinuxDistribution,
-    workspace: File
+    workspace: File,
+    requestedSessionId: String? = null,
+    onRequestedSessionConsumed: () -> Unit = {}
 ) {
     val context =
         LocalContext.current
@@ -188,6 +190,36 @@ internal fun LinuxMultiSessionTerminalPanel(
         ) {
             secondarySessionId =
                 null
+        }
+    }
+
+    LaunchedEffect(
+        requestedSessionId,
+        sessions.map {
+            it.id
+        }
+    ) {
+        val requested =
+            requestedSessionId
+                ?.takeIf {
+                    id ->
+                    sessions.any {
+                        it.id == id
+                    }
+                }
+
+        if (
+            requested != null
+        ) {
+            activeSessionId =
+                requested
+
+            LinuxPtySessionRegistry
+                .markActivated(
+                    requested
+                )
+
+            onRequestedSessionConsumed()
         }
     }
 

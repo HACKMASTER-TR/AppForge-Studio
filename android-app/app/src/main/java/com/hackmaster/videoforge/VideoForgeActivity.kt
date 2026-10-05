@@ -1508,33 +1508,14 @@ class VideoForgeActivity : AppCompatActivity() {
         }
 
         /*
-         * VIDEOFORGE_STABLE_LOCAL_PROCESSING_V1_2
+         * VIDEOFORGE_PROVIDER_FIRST_PROCESSING_V1_3
          *
-         * Use one verified app-private byte-for-byte source for the whole
-         * single-video job. Provider URI lifetime/descriptor differences
-         * must not change the media source between preflight and the FGS.
+         * Keep the selected content URI as the processing identity.
+         * MediaSourceCompat owns the direct URI -> descriptor -> SHA-256
+         * verified local-copy fallback chain.
          */
         val processingUri =
-            runCatching {
-                MediaSourceCompat
-                    .materializeForProcessing(
-                        this,
-                        uri
-                    )
-            }
-                .getOrElse {
-                    error ->
-
-                    status(
-                        "Video açılamadı. " +
-                            (
-                                error.message
-                                    ?: "yerel güvenli medya kopyası oluşturulamadı"
-                            )
-                    )
-
-                    return
-                }
+            uri
 
         val preflight =
             runCatching {

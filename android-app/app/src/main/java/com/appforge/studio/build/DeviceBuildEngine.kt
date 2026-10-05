@@ -363,22 +363,55 @@ object DeviceBuildEngine {
                         "/bin/sh /workspace/runtime/install-toolchain.sh ${sh(toolchainEngine)}"
                 }
 
-            runShellBlocking(
-                shell = shell,
-                rootfs = rootfs,
-                workspace = workspace,
-                state = state,
-                command = toolchainCommand,
-                suffix =
-                    if (
-                        sourceEngine ==
-                            "windows-native"
-                    ) {
-                        "windows-native-toolchain"
-                    } else {
-                        "toolchain"
-                    }
-            )
+            /*
+             * APPFORGE_FAST_WEB_TOOLCHAIN_REUSE_V1_4
+             *
+             * HTML/URL wrappers are intentionally the only engine allowed
+             * to bypass install-toolchain.sh when the pinned Android/JDK/
+             * Gradle set is already complete inside Runtime V3.
+             *
+             * Expo, Python, native Android, universal and Windows engines
+             * keep their existing preparation path unchanged.
+             */
+            val fastWebToolchainReuse =
+                sourceEngine ==
+                    "webview-static" ||
+                sourceEngine.isBlank() ||
+                sourceEngine ==
+                    "unknown"
+
+            if (
+                fastWebToolchainReuse &&
+                staticWebToolchainReady(
+                    rootfs
+                )
+            ) {
+                state.logs.add(
+                    "⚡ Fast Web • hazır Android/JDK/Gradle araçları yeniden kullanılıyor."
+                )
+                advanceProgress(
+                    state,
+                    25,
+                    "Fast Web araçları hazır"
+                )
+            } else {
+                runShellBlocking(
+                    shell = shell,
+                    rootfs = rootfs,
+                    workspace = workspace,
+                    state = state,
+                    command = toolchainCommand,
+                    suffix =
+                        if (
+                            sourceEngine ==
+                                "windows-native"
+                        ) {
+                            "windows-native-toolchain"
+                        } else {
+                            "toolchain"
+                        }
+                )
+            }
 
             checkCancelled(state)
             advanceProgress(state, 25, "Derleniyor")
@@ -1002,6 +1035,35 @@ object DeviceBuildEngine {
     }
 
 
+    private fun staticWebToolchainReady(
+        rootfs: File
+    ): Boolean {
+        val base =
+            File(
+                rootfs,
+                "opt/appforge-device"
+            )
+
+        val requiredFiles =
+            listOf(
+                File(base, ".ready-v5"),
+                File(base, ".android-sdk-license-20260428"),
+                File(base, "android-sdk/platforms/android-37.0/android.jar"),
+                File(base, "android-sdk/build-tools/36.0.0/aapt2"),
+                File(base, "jdk-17/bin/java"),
+                File(base, "jdk-17/bin/javac"),
+                File(base, "gradle-9.3.1/bin/gradle"),
+                File(base, "ensure-gradle")
+            )
+
+        return requiredFiles.all {
+            it.isFile &&
+                it.length() >
+                    0L
+        }
+    }
+
+
     private fun buildStaticWeb(
         context: Context,
         draft: ProjectDraft,
@@ -1022,13 +1084,14 @@ object DeviceBuildEngine {
             )
         ) {
             buildWebWrapper(
-                context,
-                draft,
-                workspace,
-                rootfs,
-                shell,
-                state,
-                siteRoot
+                context = context,
+                draft = draft,
+                workspace = workspace,
+                rootfs = rootfs,
+                shell = shell,
+                state = state,
+                siteRoot = siteRoot,
+                fastWebBuild = true
             )
         }
 
@@ -1486,7 +1549,8 @@ object DeviceBuildEngine {
         shell: LinuxShellEngine,
         state: JobState,
         siteRoot: File?,
-        nodeWebAssets: Boolean = false
+        nodeWebAssets: Boolean = false,
+        fastWebBuild: Boolean = false
     ) {
         val project = File(workspace, "android-wrapper")
         project.deleteRecursively()
@@ -1543,10 +1607,25 @@ object DeviceBuildEngine {
             writeText(webManifest(draft))
         }
         DeviceProjectIcon.install(context, draft, project)
-        writeSdkFiles(project)
+        writeSdkFiles(
+            project = project,
+            enableBuildCache =
+                fastWebBuild
+        )
 
         state.logs.add("🤖 Android paketi cihazda oluşturuluyor.")
-        buildGradleProject(context, draft, project, workspace, rootfs, shell, state, "9.3.1")
+        buildGradleProject(
+            context = context,
+            draft = draft,
+            project = project,
+            workspace = workspace,
+            rootfs = rootfs,
+            shell = shell,
+            state = state,
+            gradleVersion = "9.3.1",
+            useBuildCache =
+                fastWebBuild
+        )
     }
 
     private fun buildAndroidProject(
@@ -1708,7 +1787,8 @@ object DeviceBuildEngine {
         state: JobState,
         gradleVersion: String,
         nodeRequired: Boolean = false,
-        variantOverride: String? = null
+        variantOverride: String? = null,
+        useBuildCache: Boolean = false
     ) {
         val safeWorkspace =
             workspace
@@ -1928,6 +2008,10 @@ object DeviceBuildEngine {
 
             append(sh(gradlePath))
             append(" -p . --no-daemon --stacktrace ")
+
+            if (useBuildCache) {
+                append("--build-cache ")
+            }
 
             if (nodeRequired) {
                 // APPFORGE_EXPO_AGP_RUNTIME_INIT_V1
@@ -2298,7 +2382,8 @@ object DeviceBuildEngine {
 
     private fun writeSdkFiles(
         project: File,
-        sdkRoot: String = "/opt/appforge-device/android-sdk"
+        sdkRoot: String = "/opt/appforge-device/android-sdk",
+        enableBuildCache: Boolean = false
     ) {
         File(project, "local.properties").writeText("sdk.dir=$sdkRoot\n")
         val gradleProperties = File(project, "gradle.properties")
@@ -2306,13 +2391,20 @@ object DeviceBuildEngine {
         val filtered = existing.lineSequence().filterNot {
             it.startsWith("android.aapt2FromMavenOverride=") ||
                 it.startsWith("org.gradle.workers.max=") ||
-                it.startsWith("org.gradle.jvmargs=")
-        }.joinToString("\n")
+                it.startsWith("org.gradle.jvmargs=") ||
+                it.startsWith("org.gradle.caching=")
+        }.joinToString("
+")
         gradleProperties.writeText(
             filtered.trimEnd() + "\n" +
                 "android.aapt2FromMavenOverride=$sdkRoot/build-tools/36.0.0/aapt2\n" +
                 "org.gradle.workers.max=2\n" +
-                "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\n"
+                "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\n" +
+                if (enableBuildCache) {
+                    "org.gradle.caching=true\n"
+                } else {
+                    ""
+                }
         )
     }
 

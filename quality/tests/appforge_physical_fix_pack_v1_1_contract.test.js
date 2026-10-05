@@ -46,9 +46,9 @@ test("completed build notification survives Service teardown", () => {
   assert.match(destroy, /else[\s\S]*STOP_FOREGROUND_REMOVE[\s\S]*\.cancel/);
 });
 
-test("same selected VideoForge media uses verified stable local processing", () => {
-  assert.match(video, /VIDEOFORGE_STABLE_LOCAL_PROCESSING_V1_2/);
-  assert.match(video, /materializeForProcessing/);
+test("same selected VideoForge media keeps provider-first processing with verified fallback", () => {
+  assert.match(video, /VIDEOFORGE_PROVIDER_FIRST_PROCESSING_V1_3/);
+  assert.match(video, /val processingUri\s*=\s*uri/);
   assert.match(media, /VIDEOFORGE_EXTRACTOR_PREFLIGHT_V1_2/);
   assert.match(media, /VIDEOFORGE_LOCAL_COPY_INTEGRITY_V1_2/);
 });
@@ -83,9 +83,12 @@ test("approved developer note is present", () => {
   assert.match(pro, /erişim haklarını değiştirmez/);
 });
 
-test("support cards do not fake an unconfigured payment flow", () => {
-  assert.match(pro, /Google Play Console'da ayrı ürünler/);
+test("support cards stay disabled without showing implementation details", () => {
   assert.match(pro, /enabled\s*=\s*false/);
+  assert.doesNotMatch(
+    pro,
+    /Destek ürünleri Google Play Console'da ayrı ürünler/
+  );
   assert.doesNotMatch(pro, /launchBillingFlow|consumeAsync/);
 });
 
