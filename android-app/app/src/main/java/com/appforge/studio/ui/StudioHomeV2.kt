@@ -97,6 +97,14 @@ fun StudioHomeV2(
                         }
                     }
 
+                    /*
+                     * HOME_PRO_TOP_APP_BAR_V1_2
+                     * Keep PRO as a compact peer of Yönetici/Ayarlar.
+                     */
+                    TextButton(onClick = onOpenPro) {
+                        Text("PRO")
+                    }
+
                     TextButton(onClick = onOpenSettings) {
                         Text("Ayarlar")
                     }
@@ -126,17 +134,6 @@ fun StudioHomeV2(
                     proUnlocked = proUnlocked,
                     onCreateQuick = onCreateQuick,
                     onCreateAdvanced = onCreateAdvanced
-                )
-            }
-
-            /*
-             * HOME_PRO_ENTRY_V1_1
-             * PRO is now a first-class Home destination.
-             */
-            item {
-                ModernProCard(
-                    proUnlocked = proUnlocked,
-                    onClick = onOpenPro
                 )
             }
 

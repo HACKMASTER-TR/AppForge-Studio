@@ -244,7 +244,7 @@ test("active build foreground service is independent of Activity visibility", ()
   );
 });
 
-test("notification tap hydrates snapshot before navigation and hides the tracker", () => {
+test("notification tap hydrates snapshot before navigation and preserves the active tracker", () => {
   const effectStart = main.indexOf(
     "ACTIVE_BUILD_NOTIFICATION_REBIND_V2"
   );
@@ -264,12 +264,12 @@ test("notification tap hydrates snapshot before navigation and hides the tracker
     "NOTIFICATION_RETURN_ATOMIC_HANDOFF_V21_4",
     restoreIndex
   );
-  const screenIndex = main.indexOf(
-    "screen = AppScreen.BUILDER",
+  const persistMarkerIndex = main.indexOf(
+    "ACTIVE_BUILD_NOTIFICATION_TAP_PERSIST_V1_2",
     handoffMarkerIndex
   );
-  const stopIndex = main.indexOf(
-    "BuildProgressService.stop(context)",
+  const screenIndex = main.indexOf(
+    "screen = AppScreen.BUILDER",
     handoffMarkerIndex
   );
   const consumeIndex = main.indexOf(
@@ -279,23 +279,38 @@ test("notification tap hydrates snapshot before navigation and hides the tracker
 
   assert.ok(restoreIndex > effectStart && restoreIndex < effectEnd);
   assert.ok(handoffMarkerIndex > restoreIndex && handoffMarkerIndex < effectEnd);
-  assert.ok(screenIndex > handoffMarkerIndex && screenIndex < effectEnd);
-  assert.ok(stopIndex > screenIndex && stopIndex < effectEnd);
-  assert.ok(consumeIndex > stopIndex && consumeIndex < effectEnd);
+  assert.ok(persistMarkerIndex > handoffMarkerIndex && persistMarkerIndex < effectEnd);
+  assert.ok(screenIndex > persistMarkerIndex && screenIndex < effectEnd);
+  assert.ok(consumeIndex > screenIndex && consumeIndex < effectEnd);
 
   const effectBlock = main.slice(effectStart, effectEnd);
+  assert.doesNotMatch(
+    effectBlock,
+    /BuildProgressService\.stop\(context\)/
+  );
   assert.doesNotMatch(effectBlock, /while\s*\(\s*true\s*\)/);
   assert.doesNotMatch(effectBlock, /cancelBuild/);
 });
 
-test("BuildRuntimeState is a single owner and notification ID only hydrates it", () => {
+test("BuildRuntimeState is a single owner and notification navigation does not own the tracker", () => {
   assert.match(main, /BUILD_RUNTIME_SINGLE_OWNER_V21_4/);
   assert.match(main, /val buildRuntime =\s*remember\s*\{\s*BuildRuntimeState\(\)/);
   assert.doesNotMatch(main, /remember\(\s*initialBuildRestoreId\s*\)\s*\{\s*BuildRuntimeState\(\)/);
   assert.match(main, /NOTIFICATION_NAVIGATION_AFTER_HYDRATE_V21_4/);
+
   const rebind = main.indexOf("NOTIFICATION_RETURN_ATOMIC_HANDOFF_V21_4");
   assert.ok(rebind >= 0);
-  assert.match(main.slice(rebind, rebind + 1000), /screen\s*=\s*AppScreen\.BUILDER[\s\S]*BuildProgressService\.stop\(context\)[\s\S]*consumeBuildNotificationNavigation/);
+
+  const block = main.slice(rebind, rebind + 1200);
+  assert.match(block, /ACTIVE_BUILD_NOTIFICATION_TAP_PERSIST_V1_2/);
+  assert.match(
+    block,
+    /screen\s*=\s*AppScreen\.BUILDER[\s\S]*consumeBuildNotificationNavigation/
+  );
+  assert.doesNotMatch(
+    block,
+    /BuildProgressService\.stop\(context\)/
+  );
 });
 
 test("build tracking starts immediately instead of waiting for Activity pause", () => {
@@ -335,7 +350,7 @@ test("build tracking starts immediately instead of waiting for Activity pause", 
   );
 });
 
-test("notification tap does not stop tracking before result hydration", () => {
+test("notification tap never stops active tracking before or after result hydration", () => {
   const createStart =
     main.indexOf(
       "override fun onCreate"
@@ -397,7 +412,17 @@ test("notification tap does not stop tracking before result hydration", () => {
 
   assert.match(
     rebindBlock,
-    /restoreFromEngine\([\s\S]*BuildProgressService\.stop\(context\)/
+    /restoreFromEngine\(/
+  );
+
+  assert.match(
+    rebindBlock,
+    /ACTIVE_BUILD_NOTIFICATION_TAP_PERSIST_V1_2/
+  );
+
+  assert.doesNotMatch(
+    rebindBlock,
+    /BuildProgressService\.stop\(context\)/
   );
 });
 

@@ -2,195 +2,103 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const compat = fs.readFileSync(
-  new URL(
-    "../../android-app/app/src/main/java/com/hackmaster/videoforge/MediaSourceCompat.kt",
-    import.meta.url
-  ),
-  "utf8"
+const read = path =>
+  fs.readFileSync(
+    new URL("../../" + path, import.meta.url),
+    "utf8"
+  );
+
+const compat = read(
+  "android-app/app/src/main/java/com/hackmaster/videoforge/MediaSourceCompat.kt"
+);
+const audio = read(
+  "android-app/app/src/main/java/com/hackmaster/videoforge/AudioMedia.kt"
+);
+const storage = read(
+  "android-app/app/src/main/java/com/hackmaster/videoforge/StorageGuard.kt"
+);
+const video = read(
+  "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt"
+);
+const engine = read(
+  "android-app/app/src/main/java/com/hackmaster/videoforge/OfflineDubEngine.kt"
 );
 
-const audio = fs.readFileSync(
-  new URL(
-    "../../android-app/app/src/main/java/com/hackmaster/videoforge/AudioMedia.kt",
-    import.meta.url
-  ),
-  "utf8"
-);
+test("VideoForge keeps direct content URI and descriptor compatibility paths", () => {
+  assert.match(compat, /direct\.setDataSource\(\s*context,\s*uri/);
+  assert.match(compat, /openAssetFileDescriptor/);
+  assert.match(compat, /afd\.fileDescriptor/);
+  assert.match(compat, /afd\.startOffset/);
+});
 
-const storage = fs.readFileSync(
-  new URL(
-    "../../android-app/app/src/main/java/com/hackmaster/videoforge/StorageGuard.kt",
-    import.meta.url
-  ),
-  "utf8"
-);
-
-test("VideoForge keeps normal content URI opening first", () => {
+test("file URI processing uses an absolute local path before provider APIs", () => {
+  assert.match(compat, /private fun localFile/);
   assert.match(
     compat,
-    /direct\.setDataSource\(\s*context,\s*uri/
+    /localFile\(\s*uri\s*\)[\s\S]*MediaExtractor\(\)[\s\S]*file\.absolutePath/
+  );
+  assert.match(
+    compat,
+    /localFile\(\s*uri\s*\)[\s\S]*MediaMetadataRetriever\(\)[\s\S]*file\.absolutePath/
   );
 });
 
-test("VideoForge keeps descriptor fallback second", () => {
-  assert.match(
-    compat,
-    /openAssetFileDescriptor/
-  );
+test("processing preflight uses the real MediaExtractor parser", () => {
+  assert.match(compat, /VIDEOFORGE_EXTRACTOR_PREFLIGHT_V1_2/);
+  assert.match(compat, /fun probeForProcessing/);
+  assert.match(compat, /MediaFormat\.KEY_MIME/);
+  assert.match(compat, /MediaFormat\.KEY_DURATION/);
+  assert.match(compat, /Videoda ses parçası bulunamadı/);
+  assert.match(compat, /Videoda görüntü parçası bulunamadı/);
+});
 
-  assert.match(
-    compat,
-    /afd\.fileDescriptor/
-  );
+test("StorageGuard no longer hard-depends on MediaMetadataRetriever", () => {
+  assert.match(storage, /MediaSourceCompat\.probeForProcessing/);
+  assert.match(storage, /requireEnoughForDuration/);
+  assert.doesNotMatch(storage, /MediaMetadataRetriever|openRetriever/);
+});
 
+test("single-video processing materializes one stable local source before FGS", () => {
+  assert.match(video, /VIDEOFORGE_STABLE_LOCAL_PROCESSING_V1_2/);
   assert.match(
-    compat,
-    /afd\.startOffset/
+    video,
+    /materializeForProcessing[\s\S]*StorageGuard\.requireEnough[\s\S]*ContextCompat\.startForegroundService/
   );
 });
 
-test("VideoForge adds app-private local media copy as final fallback", () => {
-  assert.match(
-    compat,
-    /context\.cacheDir/
-  );
-
-  assert.match(
-    compat,
-    /videoforge-media-source-v3/
-  );
-
-  assert.match(
-    compat,
-    /openInputStream/
-  );
-
-  assert.match(
-    compat,
-    /materializeLocalCopy/
-  );
+test("local copy is atomic and byte/hash verified", () => {
+  assert.match(compat, /VIDEOFORGE_LOCAL_COPY_INTEGRITY_V1_2/);
+  assert.match(compat, /\.part/);
+  assert.match(compat, /copiedBytes/);
+  assert.match(compat, /sourceStreamHash/);
+  assert.match(compat, /localHash/);
+  assert.match(compat, /sha256\(\s*target\s*\)/);
+  assert.match(compat, /renameTo/);
 });
 
-test("local copy is written atomically and validated", () => {
-  assert.match(
-    compat,
-    /\.part/
-  );
-
-  assert.match(
-    compat,
-    /renameTo/
-  );
-
-  assert.match(
-    compat,
-    /!part\.isFile[\s\S]*part\.length\(\)\s*<=\s*0L/
-  );
-
-  assert.match(
-    compat,
-    /!target\.isFile[\s\S]*target\.length\(\)\s*<=\s*0L/
-  );
-
-  /*
-   * Provider OpenableColumns.SIZE is advisory in V1.1.
-   * Atomic copy validity is proven by a non-empty part and
-   * final non-empty target, not strict metadata equality.
-   */
-  assert.doesNotMatch(
-    compat,
-    /part\.length\(\)\s*!=\s*sourceSize/
-  );
+test("decode and mux stay on MediaExtractor while rotation is best-effort metadata", () => {
+  assert.match(audio, /MediaSourceCompat\.openExtractor/);
+  assert.match(audio, /VIDEOFORGE_MUX_ROTATION_WITHOUT_RETRIEVER_V1_2/);
+  assert.match(audio, /MediaFormat\.KEY_ROTATION/);
+  assert.doesNotMatch(audio, /MediaSourceCompat\.openRetriever|MediaMetadataRetriever/);
 });
 
-test("MediaExtractor can use absolute local fallback path", () => {
-  assert.match(
-    compat,
-    /local\.setDataSource\(\s*file\.absolutePath\s*\)/
-  );
+test("decoded duration gets an exact second storage check", () => {
+  assert.match(engine, /VIDEOFORGE_EXACT_DURATION_STORAGE_V1_2/);
+  assert.match(engine, /requireEnoughForDuration/);
+  assert.match(engine, /decodedRaw\.durationSeconds/);
 });
 
-test("MediaMetadataRetriever can use absolute local fallback path", () => {
-  const count =
-    (
-      compat.match(
-        /local\.setDataSource\(\s*file\.absolutePath\s*\)/g
-      ) || []
-    ).length;
-
-  assert.equal(
-    count,
-    2
-  );
+test("stable processing source remains app-private and cache-bounded", () => {
+  assert.match(compat, /videoforge-media-source-v3/);
+  assert.match(compat, /context\.cacheDir/);
+  assert.match(compat, /CACHE_MAX_AGE_MS/);
+  assert.match(compat, /cleanupOldCopies/);
+  assert.match(compat, /fun materializeForProcessing/);
+  assert.match(compat, /Uri\.fromFile/);
 });
 
-test("all VideoForge media consumers remain on shared compatibility layer", () => {
-  assert.match(
-    audio,
-    /MediaSourceCompat\.openExtractor/
-  );
-
-  assert.match(
-    audio,
-    /MediaSourceCompat\.openRetriever/
-  );
-
-  assert.match(
-    storage,
-    /MediaSourceCompat\.openRetriever/
-  );
-});
-
-test("old cache copies are bounded by cleanup policy", () => {
-  assert.match(
-    compat,
-    /CACHE_MAX_AGE_MS/
-  );
-
-  assert.match(
-    compat,
-    /cleanupOldCopies/
-  );
-});
-
-test("provider SIZE metadata no longer rejects a valid local copy", () => {
-  assert.match(
-    compat,
-    /VIDEOFORGE_MEDIA_PROVIDER_SIZE_TOLERANCE_V1_1/
-  );
-
-  assert.doesNotMatch(
-    compat,
-    /yerel kopyası eksik\. Beklenen=/
-  );
-});
-
-test("VideoForge can explicitly materialize a stable processing source", () => {
-  assert.match(
-    compat,
-    /VIDEOFORGE_STABLE_LOCAL_SOURCE_V1_1/
-  );
-
-  assert.match(
-    compat,
-    /fun materializeForProcessing/
-  );
-
-  assert.match(
-    compat,
-    /Uri\.fromFile/
-  );
-});
-
-test("media-open failure now preserves a bounded lower-level reason", () => {
-  assert.match(
-    compat,
-    /safeMediaError/
-  );
-
-  assert.match(
-    compat,
-    /Alt neden:/
-  );
+test("media-open errors preserve a bounded lower-level reason", () => {
+  assert.match(compat, /safeMediaError/);
+  assert.match(compat, /Alt neden:/);
 });

@@ -1,6 +1,13 @@
 package com.appforge.studio.ui
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,11 +34,15 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.appforge.studio.R
 
 private val ProBlack =
     Color(
@@ -58,9 +69,34 @@ private val ProMuted =
         0xFFA9A9A9
     )
 
+private data class ProConfettiParticle(
+    val xFraction: Float,
+    val phaseOffset: Float,
+    val speed: Float,
+    val sizePx: Float,
+    val color: Color
+)
+
+private val ProConfettiParticles =
+    listOf(
+        ProConfettiParticle(0.05f, 0.02f, 1.12f, 8f, ProYellow),
+        ProConfettiParticle(0.12f, 0.46f, 0.92f, 11f, ProBlue),
+        ProConfettiParticle(0.19f, 0.24f, 1.34f, 7f, Color(0xFFFF6B9E)),
+        ProConfettiParticle(0.27f, 0.68f, 1.05f, 10f, Color(0xFF68E1A2)),
+        ProConfettiParticle(0.34f, 0.12f, 0.84f, 6f, Color.White),
+        ProConfettiParticle(0.41f, 0.57f, 1.27f, 12f, ProYellow),
+        ProConfettiParticle(0.48f, 0.32f, 0.98f, 9f, ProBlue),
+        ProConfettiParticle(0.55f, 0.79f, 1.41f, 7f, Color(0xFFFF8A65)),
+        ProConfettiParticle(0.62f, 0.18f, 1.08f, 11f, Color(0xFFAB8BFF)),
+        ProConfettiParticle(0.69f, 0.52f, 0.89f, 8f, Color.White),
+        ProConfettiParticle(0.76f, 0.07f, 1.31f, 10f, Color(0xFF68E1A2)),
+        ProConfettiParticle(0.83f, 0.63f, 1.16f, 6f, ProYellow),
+        ProConfettiParticle(0.90f, 0.28f, 0.96f, 12f, Color(0xFFFF6B9E)),
+        ProConfettiParticle(0.96f, 0.84f, 1.38f, 8f, ProBlue)
+    )
+
 @Composable
 fun ProWelcomeScreenV1(
-    securityMessage: String,
     onBack: () -> Unit,
     onStart: () -> Unit,
     onSupport: () -> Unit
@@ -117,7 +153,7 @@ fun ProWelcomeScreenV1(
 
         Spacer(
             Modifier.height(
-                32.dp
+                24.dp
             )
         )
 
@@ -125,7 +161,7 @@ fun ProWelcomeScreenV1(
 
         Spacer(
             Modifier.height(
-                24.dp
+                20.dp
             )
         )
 
@@ -156,7 +192,7 @@ fun ProWelcomeScreenV1(
 
         Spacer(
             Modifier.height(
-                30.dp
+                28.dp
             )
         )
 
@@ -229,143 +265,136 @@ fun ProWelcomeScreenV1(
             )
         }
 
-        if (
-            securityMessage.isNotBlank()
-        ) {
-            Spacer(
-                Modifier.height(
-                    18.dp
-                )
-            )
-
-            Card(
-                colors =
-                    CardDefaults
-                        .cardColors(
-                            containerColor =
-                                ProPanel
-                        )
-            ) {
-                Text(
-                    securityMessage,
-                    modifier =
-                        Modifier.padding(
-                            16.dp
-                        ),
-                    color =
-                        Color.White
-                )
-            }
-        }
-
         Spacer(
             Modifier.height(
-                36.dp
+                32.dp
             )
         )
     }
 }
 
+/*
+ * PRO_CELEBRATION_CONFETTI_V1_2
+ *
+ * Pure Compose visual layer only: it does not read or change entitlement,
+ * billing, owner access, support products or navigation security.
+ */
 @Composable
 private fun ProCelebrationHero() {
+    val transition =
+        rememberInfiniteTransition()
+
+    val phase =
+        transition.animateFloat(
+            initialValue =
+                0f,
+            targetValue =
+                1f,
+            animationSpec =
+                infiniteRepeatable(
+                    animation =
+                        tween(
+                            durationMillis =
+                                2_800,
+                            easing =
+                                LinearEasing
+                        )
+                )
+        ).value
+
     Box(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .height(
-                    280.dp
+                    250.dp
                 )
     ) {
-        Text(
-            "✦     •       ✦\n" +
-                "   •      ✦       •\n" +
-                "✦      •      ✦",
+        Canvas(
             modifier =
-                Modifier
-                    .align(
-                        Alignment.TopCenter
-                    ),
-            color =
-                ProYellow,
-            textAlign =
-                TextAlign.Center,
-            fontSize =
-                29.sp,
-            lineHeight =
-                58.sp
-        )
+                Modifier.fillMaxSize()
+        ) {
+            val travel =
+                size.height +
+                    56f
+
+            ProConfettiParticles.forEach {
+                particle ->
+
+                val normalizedY =
+                    (
+                        phase *
+                            particle.speed +
+                            particle.phaseOffset
+                    ) % 1f
+
+                val y =
+                    normalizedY *
+                        travel -
+                        28f
+
+                val x =
+                    size.width *
+                        particle.xFraction
+
+                drawRect(
+                    color =
+                        particle.color,
+                    topLeft =
+                        Offset(
+                            x,
+                            y
+                        ),
+                    size =
+                        Size(
+                            particle.sizePx,
+                            particle.sizePx *
+                                1.55f
+                        )
+                )
+            }
+        }
 
         Surface(
             modifier =
                 Modifier
                     .size(
-                        144.dp
+                        156.dp
                     )
                     .align(
-                        Alignment.BottomCenter
+                        Alignment.Center
                     ),
             color =
                 Color(
-                    0xFF12264D
+                    0xFF0B1830
                 ),
             shape =
                 RoundedCornerShape(
-                    32.dp
+                    36.dp
                 ),
             border =
                 BorderStroke(
-                    2.dp,
-                    ProYellow
+                    1.dp,
+                    ProYellow.copy(
+                        alpha =
+                            0.45f
+                    )
                 )
         ) {
-            Box(
-                contentAlignment =
-                    Alignment.Center
-            ) {
-                Text(
-                    "</>  ➜  🤖",
-                    color =
-                        Color.White,
-                    fontWeight =
-                        FontWeight.Black,
-                    fontSize =
-                        25.sp
-                )
-
-                Surface(
-                    modifier =
-                        Modifier
-                            .align(
-                                Alignment.BottomEnd
-                            )
-                            .padding(
-                                8.dp
-                            ),
-                    color =
-                        ProYellow,
-                    shape =
-                        RoundedCornerShape(
-                            16.dp
-                        )
-                ) {
-                    Text(
-                        "PRO",
-                        modifier =
-                            Modifier.padding(
-                                horizontal =
-                                    10.dp,
-                                vertical =
-                                    3.dp
-                            ),
-                        color =
-                            Color.Black,
-                        fontWeight =
-                            FontWeight.Black,
-                        fontSize =
-                            11.sp
+            Image(
+                painter =
+                    painterResource(
+                        id =
+                            R.drawable
+                                .ic_launcher_foreground
+                    ),
+                contentDescription =
+                    "AppForge",
+                modifier =
+                    Modifier.padding(
+                        18.dp
                     )
-                }
-            }
+            )
         }
     }
 }

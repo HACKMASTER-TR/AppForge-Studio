@@ -68,6 +68,18 @@ class OfflineDubEngine(
 
         onProgress(3, "Video sesi telefonda çözülüyor…")
         val decodedRaw = withContext(Dispatchers.IO) { AudioMedia.decodeMono(context, input) }
+
+        /*
+         * VIDEOFORGE_EXACT_DURATION_STORAGE_V1_2
+         * The extractor/decoder result is the authoritative duration.
+         * Re-check storage without depending on MediaMetadataRetriever.
+         */
+        StorageGuard.requireEnoughForDuration(
+            context = context,
+            durationSeconds = decodedRaw.durationSeconds,
+            previewSeconds = previewLimit
+        )
+
         val duration = if (previewLimit != null) min(decodedRaw.durationSeconds, previewLimit.toDouble()) else decodedRaw.durationSeconds
         val decodedSamples = if (duration < decodedRaw.durationSeconds) {
             AudioMedia.slice(decodedRaw.samples, decodedRaw.sampleRate, 0.0, duration)

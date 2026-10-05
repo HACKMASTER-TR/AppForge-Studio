@@ -2189,7 +2189,6 @@ private fun AppForgeApp() {
                 .takeLast(120)
             screen = AppScreen.BUILDER
             step = 10
-            BuildProgressService.stop(context)
             activity.consumeBuildNotificationNavigation()
             return@LaunchedEffect
         }
@@ -2200,10 +2199,16 @@ private fun AppForgeApp() {
             startedAtMs = reference?.startedAtMs ?: buildStartedAtMs
         )
 
-        /* NOTIFICATION_RETURN_ATOMIC_HANDOFF_V21_4 */
+        /*
+         * NOTIFICATION_RETURN_ATOMIC_HANDOFF_V21_4
+         * ACTIVE_BUILD_NOTIFICATION_TAP_PERSIST_V1_2
+         *
+         * Opening the exact build from its notification only hydrates and
+         * navigates the UI. The active build owns BuildProgressService;
+         * notification navigation must never stop/cancel that tracker.
+         */
         screen = AppScreen.BUILDER
         step = 10
-        BuildProgressService.stop(context)
         activity.consumeBuildNotificationNavigation()
 
         if (
@@ -25561,8 +25566,6 @@ private fun ProUpgradeScreen(
     ) {
         com.appforge.studio.ui
             .ProWelcomeScreenV1(
-                securityMessage =
-                    securityMessage,
                 onBack =
                     onBack,
                 onStart =

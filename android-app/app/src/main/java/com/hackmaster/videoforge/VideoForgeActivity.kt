@@ -1507,10 +1507,36 @@ class VideoForgeActivity : AppCompatActivity() {
             return
         }
 
-        var processingUri =
-            uri
+        /*
+         * VIDEOFORGE_STABLE_LOCAL_PROCESSING_V1_2
+         *
+         * Use one verified app-private byte-for-byte source for the whole
+         * single-video job. Provider URI lifetime/descriptor differences
+         * must not change the media source between preflight and the FGS.
+         */
+        val processingUri =
+            runCatching {
+                MediaSourceCompat
+                    .materializeForProcessing(
+                        this,
+                        uri
+                    )
+            }
+                .getOrElse {
+                    error ->
 
-        val firstPreflight =
+                    status(
+                        "Video açılamadı. " +
+                            (
+                                error.message
+                                    ?: "yerel güvenli medya kopyası oluşturulamadı"
+                            )
+                    )
+
+                    return
+                }
+
+        val preflight =
             runCatching {
                 StorageGuard.requireEnough(
                     this,
@@ -1526,88 +1552,30 @@ class VideoForgeActivity : AppCompatActivity() {
             }
 
         if (
-            firstPreflight.isFailure
+            preflight.isFailure
         ) {
-            val originalError =
-                firstPreflight
-                    .exceptionOrNull()
+            val error =
+                preflight.exceptionOrNull()
 
-            if (
-                originalError == null ||
-                !isMediaOpenFailure(
-                    originalError
-                )
-            ) {
-                status(
-                    originalError
-                        ?.message
-                        ?: "Depolama kontrolü başarısız."
-                )
+            val message =
+                error
+                    ?.message
+                    ?: "Depolama/medya kontrolü başarısız."
 
-                return
-            }
-
-            /*
-             * VIDEOFORGE_MEDIA_RETRY_V1_1
-             *
-             * Same selected video gets one automatic retry from a verified
-             * app-private local copy. This avoids unreliable provider/native
-             * descriptor behavior without asking the user to select another
-             * video.
-             */
-            processingUri =
-                runCatching {
-                    MediaSourceCompat
-                        .materializeForProcessing(
-                            this,
-                            uri
-                        )
-                }
-                    .getOrElse {
-                        retryError ->
-
-                        status(
-                            "Video açılamadı. " +
-                                (
-                                    retryError.message
-                                        ?: originalError.message
-                                        ?: "medya kaynağı okunamadı"
-                                )
-                        )
-
-                        return
-                    }
-
-            val localPreflight =
-                runCatching {
-                    StorageGuard.requireEnough(
-                        this,
-                        processingUri,
-                        if (
-                            preview
-                        ) {
-                            30
-                        } else {
-                            null
-                        }
+            status(
+                if (
+                    error != null &&
+                    isMediaOpenFailure(
+                        error
                     )
+                ) {
+                    "Video açılamadı. $message"
+                } else {
+                    message
                 }
+            )
 
-            if (
-                localPreflight.isFailure
-            ) {
-                status(
-                    "Video açılamadı. " +
-                        (
-                            localPreflight
-                                .exceptionOrNull()
-                                ?.message
-                                ?: "yerel medya kopyası doğrulanamadı"
-                        )
-                )
-
-                return
-            }
+            return
         }
 
         claimUsage {

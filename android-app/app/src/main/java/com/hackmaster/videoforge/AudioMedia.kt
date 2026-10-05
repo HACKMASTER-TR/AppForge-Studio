@@ -7,7 +7,6 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaExtractor
 import android.media.MediaFormat
-import android.media.MediaMetadataRetriever
 import android.media.MediaMuxer
 import android.net.Uri
 import android.os.Build
@@ -348,19 +347,36 @@ object AudioMedia {
         val muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
         val videoMuxTrack = muxer.addTrack(videoFormat!!)
 
-        val retriever =
-            MediaSourceCompat.openRetriever(
-                context,
-                inputUri
-            )
-
-        try {
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull()?.let {
-                if (it != 0) muxer.setOrientationHint(it)
+        /*
+         * VIDEOFORGE_MUX_ROTATION_WITHOUT_RETRIEVER_V1_2
+         *
+         * Rotation is optional container metadata. A retriever failure must
+         * never invalidate a video that MediaExtractor already opened.
+         */
+        val rotation =
+            runCatching {
+                if (
+                    videoFormat!!.containsKey(
+                        MediaFormat.KEY_ROTATION
+                    )
+                ) {
+                    videoFormat!!.getInteger(
+                        MediaFormat.KEY_ROTATION
+                    )
+                } else {
+                    0
+                }
             }
-        } catch (_: Throwable) {
-        } finally {
-            retriever.release()
+                .getOrDefault(
+                    0
+                )
+
+        if (
+            rotation != 0
+        ) {
+            muxer.setOrientationHint(
+                rotation
+            )
         }
 
         val aacFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, audioSampleRate, 1).apply {

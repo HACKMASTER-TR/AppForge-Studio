@@ -34,47 +34,15 @@ test("AppForge Studio itself uses full-artwork density launcher assets", () => {
   }
 });
 
-test("Home exposes the approved Pro destination while keeping plan indicator and settings", () => {
+test("Home exposes compact Pro destination while keeping plan indicator and settings", () => {
   const home = read("android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt").toString();
   const dashboard = read("android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeDashboard.kt").toString();
 
-  assert.match(
-    home,
-    /HOME_PRO_ENTRY_V1_1/
-  );
-
-  assert.match(
-    home,
-    /ModernProCard\s*\(/
-  );
-
-  assert.match(
-    home,
-    /onClick\s*=\s*onOpenPro/
-  );
-
-  assert.match(
-    home,
-    /ModernHomeHero\(/
-  );
-
-  assert.match(
-    dashboard,
-    /"PRO"/
-  );
-
-  assert.match(
-    dashboard,
-    /Pro'ya Yükselt/
-  );
-
-  assert.match(
-    dashboard,
-    /AppForge PRO Aktif/
-  );
-
-  assert.match(
-    home,
-    /Text\("Ayarlar"\)/
-  );
+  assert.match(home, /HOME_PRO_TOP_APP_BAR_V1_2/);
+  assert.match(home, /TextButton\(onClick = onOpenPro\)/);
+  assert.match(home, /Text\("PRO"\)/);
+  assert.doesNotMatch(home, /ModernProCard\s*\(/);
+  assert.match(home, /ModernHomeHero\(/);
+  assert.match(dashboard, /"PRO"/);
+  assert.match(home, /Text\("Ayarlar"\)/);
 });

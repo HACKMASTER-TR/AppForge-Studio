@@ -3,6 +3,7 @@ package com.hackmaster.videoforge
 import android.content.Context
 import android.media.MediaExtractor
 import android.media.MediaMetadataRetriever
+import android.media.MediaFormat
 import android.net.Uri
 import android.provider.OpenableColumns
 import java.io.File
@@ -30,10 +31,157 @@ internal object MediaSourceCompat {
     private const val CACHE_MAX_AGE_MS =
         24L * 60L * 60L * 1000L
 
+    internal data class ProcessingProbe(
+        val durationSeconds: Double,
+        val hasAudio: Boolean,
+        val hasVideo: Boolean
+    )
+
+    /*
+     * VIDEOFORGE_EXTRACTOR_PREFLIGHT_V1_2
+     *
+     * MediaExtractor is the parser used by the real decode/mux pipeline.
+     * MediaMetadataRetriever is optional metadata tooling and must not be a
+     * hard preflight dependency.
+     */
+    fun probeForProcessing(
+        context: Context,
+        uri: Uri
+    ): ProcessingProbe {
+        val extractor =
+            openExtractor(
+                context,
+                uri
+            )
+
+        try {
+            var hasAudio =
+                false
+
+            var hasVideo =
+                false
+
+            var durationUs =
+                0L
+
+            for (
+                index in 0 until
+                    extractor.trackCount
+            ) {
+                val format =
+                    extractor.getTrackFormat(
+                        index
+                    )
+
+                val mime =
+                    format.getString(
+                        MediaFormat.KEY_MIME
+                    )
+                        .orEmpty()
+
+                if (
+                    mime.startsWith(
+                        "audio/"
+                    )
+                ) {
+                    hasAudio =
+                        true
+                }
+
+                if (
+                    mime.startsWith(
+                        "video/"
+                    )
+                ) {
+                    hasVideo =
+                        true
+                }
+
+                if (
+                    format.containsKey(
+                        MediaFormat.KEY_DURATION
+                    )
+                ) {
+                    val trackDuration =
+                        runCatching {
+                            format.getLong(
+                                MediaFormat.KEY_DURATION
+                            )
+                        }
+                            .getOrDefault(
+                                0L
+                            )
+
+                    durationUs =
+                        maxOf(
+                            durationUs,
+                            trackDuration
+                        )
+                }
+            }
+
+            require(
+                hasVideo
+            ) {
+                "Videoda görüntü parçası bulunamadı."
+            }
+
+            require(
+                hasAudio
+            ) {
+                "Videoda ses parçası bulunamadı."
+            }
+
+            return ProcessingProbe(
+                durationSeconds =
+                    durationUs
+                        .coerceAtLeast(
+                            0L
+                        ) /
+                        1_000_000.0,
+                hasAudio =
+                    true,
+                hasVideo =
+                    true
+            )
+        } finally {
+            extractor.release()
+        }
+    }
+
     fun openExtractor(
         context: Context,
         uri: Uri
     ): MediaExtractor {
+
+        localFile(
+            uri
+        )?.let {
+            file ->
+
+            val local =
+                MediaExtractor()
+
+            try {
+                local.setDataSource(
+                    file.absolutePath
+                )
+
+                return local
+            } catch (
+                error: Throwable
+            ) {
+                runCatching {
+                    local.release()
+                }
+
+                throw IOException(
+                    "Yerel video MediaExtractor tarafından açılamadı. " +
+                        "Alt neden: ${safeMediaError(error)}",
+                    error
+                )
+            }
+        }
 
         val direct =
             MediaExtractor()
@@ -120,6 +268,35 @@ internal object MediaSourceCompat {
         context: Context,
         uri: Uri
     ): MediaMetadataRetriever {
+
+        localFile(
+            uri
+        )?.let {
+            file ->
+
+            val local =
+                MediaMetadataRetriever()
+
+            try {
+                local.setDataSource(
+                    file.absolutePath
+                )
+
+                return local
+            } catch (
+                error: Throwable
+            ) {
+                runCatching {
+                    local.release()
+                }
+
+                throw IOException(
+                    "Yerel video MediaMetadataRetriever tarafından açılamadı. " +
+                        "Alt neden: ${safeMediaError(error)}",
+                    error
+                )
+            }
+        }
 
         val direct =
             MediaMetadataRetriever()
@@ -345,6 +522,12 @@ internal object MediaSourceCompat {
         uri: Uri
     ): File {
 
+        localFile(
+            uri
+        )?.let {
+            return it
+        }
+
         val directory =
             File(
                 context.cacheDir,
@@ -363,12 +546,6 @@ internal object MediaSourceCompat {
         cleanupOldCopies(
             directory
         )
-
-        val sourceSize =
-            querySourceSize(
-                context,
-                uri
-            )
 
         val extension =
             querySourceName(
@@ -403,24 +580,6 @@ internal object MediaSourceCompat {
                 "$key.$extension"
             )
 
-        /*
-         * VIDEOFORGE_MEDIA_PROVIDER_SIZE_TOLERANCE_V1_1
-         *
-         * OpenableColumns.SIZE is advisory. Some providers report a
-         * different value while still exposing the complete video stream.
-         * A previously verified non-empty app-private copy is reusable.
-         */
-        if (
-            target.isFile &&
-            target.length() > 0L
-        ) {
-            target.setLastModified(
-                System.currentTimeMillis()
-            )
-
-            return target
-        }
-
         val part =
             File(
                 directory,
@@ -431,7 +590,23 @@ internal object MediaSourceCompat {
             part.delete()
         }
 
+        /*
+         * VIDEOFORGE_LOCAL_COPY_INTEGRITY_V1_2
+         *
+         * Hash the exact bytes read from the selected provider while writing
+         * the .part file, then hash the final app-private file again. A local
+         * processing source is accepted only when byte count and SHA-256
+         * match the stream that was actually read.
+         */
         try {
+            val digest =
+                MessageDigest.getInstance(
+                    "SHA-256"
+                )
+
+            var copiedBytes =
+                0L
+
             val input =
                 context.contentResolver
                     .openInputStream(
@@ -455,27 +630,66 @@ internal object MediaSourceCompat {
                         .use {
                             output ->
 
-                            source.copyTo(
-                                output,
-                                1024 * 1024
-                            )
+                            val buffer =
+                                ByteArray(
+                                    1024 * 1024
+                                )
+
+                            while (
+                                true
+                            ) {
+                                val read =
+                                    source.read(
+                                        buffer
+                                    )
+
+                                if (
+                                    read < 0
+                                ) {
+                                    break
+                                }
+
+                                if (
+                                    read == 0
+                                ) {
+                                    continue
+                                }
+
+                                digest.update(
+                                    buffer,
+                                    0,
+                                    read
+                                )
+
+                                output.write(
+                                    buffer,
+                                    0,
+                                    read
+                                )
+
+                                copiedBytes +=
+                                    read
+                            }
+
+                            output.flush()
                         }
                 }
 
             if (
                 !part.isFile ||
-                part.length() <= 0L
+                copiedBytes <= 0L ||
+                part.length() !=
+                    copiedBytes
             ) {
                 throw IOException(
-                    "Seçilen videonun yerel kopyası boş."
+                    "Seçilen videonun yerel kopyası eksik veya boş."
                 )
             }
 
-            /*
-             * Do not reject a readable copied stream solely because
-             * provider-reported SIZE differs. Android's media parser is
-             * the final validity check.
-             */
+            val sourceStreamHash =
+                hex(
+                    digest.digest()
+                )
 
             runCatching {
                 target.delete()
@@ -500,10 +714,29 @@ internal object MediaSourceCompat {
 
             if (
                 !target.isFile ||
-                target.length() <= 0L
+                target.length() !=
+                    copiedBytes
             ) {
                 throw IOException(
-                    "Yerel VideoForge medya kopyası doğrulanamadı."
+                    "Yerel VideoForge medya kopyası byte doğrulamasını geçemedi."
+                )
+            }
+
+            val localHash =
+                sha256(
+                    target
+                )
+
+            if (
+                localHash !=
+                    sourceStreamHash
+            ) {
+                runCatching {
+                    target.delete()
+                }
+
+                throw IOException(
+                    "Yerel VideoForge medya kopyası SHA-256 doğrulamasını geçemedi."
                 )
             }
 
@@ -571,50 +804,6 @@ internal object MediaSourceCompat {
                 }
         }.getOrNull()
 
-    private fun querySourceSize(
-        context: Context,
-        uri: Uri
-    ): Long? =
-        runCatching {
-            context.contentResolver
-                .query(
-                    uri,
-                    arrayOf(
-                        OpenableColumns.SIZE
-                    ),
-                    null,
-                    null,
-                    null
-                )
-                ?.use {
-                    cursor ->
-
-                    if (
-                        !cursor.moveToFirst()
-                    ) {
-                        return@use null
-                    }
-
-                    val index =
-                        cursor.getColumnIndex(
-                            OpenableColumns.SIZE
-                        )
-
-                    if (
-                        index < 0 ||
-                        cursor.isNull(
-                            index
-                        )
-                    ) {
-                        null
-                    } else {
-                        cursor.getLong(
-                            index
-                        )
-                    }
-                }
-        }.getOrNull()
-
     private fun safeMediaError(
         error: Throwable
     ): String {
@@ -671,6 +860,101 @@ internal object MediaSourceCompat {
                 "medya kaynağı okunamadı"
             }
     }
+
+    private fun localFile(
+        uri: Uri
+    ): File? {
+        if (
+            !uri.scheme.equals(
+                "file",
+                ignoreCase = true
+            )
+        ) {
+            return null
+        }
+
+        return uri.path
+            ?.let(
+                ::File
+            )
+            ?.takeIf {
+                it.isFile &&
+                    it.length() >
+                    0L
+            }
+    }
+
+    private fun sha256(
+        file: File
+    ): String {
+        val digest =
+            MessageDigest.getInstance(
+                "SHA-256"
+            )
+
+        file.inputStream()
+            .buffered(
+                1024 * 1024
+            )
+            .use {
+                input ->
+
+                val buffer =
+                    ByteArray(
+                        1024 * 1024
+                    )
+
+                while (
+                    true
+                ) {
+                    val read =
+                        input.read(
+                            buffer
+                        )
+
+                    if (
+                        read < 0
+                    ) {
+                        break
+                    }
+
+                    if (
+                        read > 0
+                    ) {
+                        digest.update(
+                            buffer,
+                            0,
+                            read
+                        )
+                    }
+                }
+            }
+
+        return hex(
+            digest.digest()
+        )
+    }
+
+    private fun hex(
+        bytes: ByteArray
+    ): String =
+        bytes.joinToString(
+            separator = ""
+        ) {
+            byte ->
+
+            (
+                byte.toInt() and
+                    0xff
+            )
+                .toString(
+                    16
+                )
+                .padStart(
+                    2,
+                    '0'
+                )
+        }
 
     private fun sha256(
         value: String
