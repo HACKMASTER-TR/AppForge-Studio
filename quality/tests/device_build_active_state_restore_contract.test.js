@@ -177,31 +177,71 @@ test(
 );
 
 
-test("foreground return removes notification tracking without cancelling the active engine job", () => {
-  const start = service.indexOf(
-    "ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_4"
+test("active build foreground service is independent of Activity visibility", () => {
+  assert.match(
+    service,
+    /FOREGROUND_NOTIFICATION_IMMEDIATE_V1/
   );
-  assert.ok(start >= 0);
 
-  const end = service.indexOf(
-    "fun onHostPaused(",
-    start
-  );
+  const start =
+    service.indexOf(
+      "fun onHostResumed("
+    );
+
+  const end =
+    service.indexOf(
+      "fun stop(",
+      start
+    );
+
+  assert.ok(start >= 0);
   assert.ok(end > start);
 
-  const block = service.slice(start, end);
+  const block =
+    service.slice(
+      start,
+      end
+    );
 
-  assert.match(block, /fun onHostResumed\(/);
-  assert.match(block, /hostForeground\s*=\s*true/);
-  assert.match(block, /stop\(\s*context\s*\)/);
-  assert.doesNotMatch(block, /DeviceBuildEngine\.cancel/);
-  assert.doesNotMatch(block, /DeviceBuildEngine\.snapshot/);
-  assert.doesNotMatch(block, /clear\(context\)/);
+  assert.match(
+    block,
+    /fun onHostResumed\([\s\S]*\) = Unit/
+  );
 
-  assert.match(service, /Intent\.FLAG_ACTIVITY_REORDER_TO_FRONT/);
-  assert.match(service, /Intent\.FLAG_ACTIVITY_SINGLE_TOP/);
-  assert.doesNotMatch(service, /Intent\.FLAG_ACTIVITY_CLEAR_TOP/);
-  assert.match(main, /BuildProgressService\.onHostResumed\(this\)/);
+  assert.match(
+    block,
+    /fun onHostPaused\([\s\S]*\) = Unit/
+  );
+
+  assert.doesNotMatch(
+    block,
+    /stop\(\s*context\s*\)/
+  );
+
+  assert.doesNotMatch(
+    service,
+    /hostForeground/
+  );
+
+  assert.doesNotMatch(
+    service,
+    /foregroundSuppressed/
+  );
+
+  assert.match(
+    service,
+    /Intent\.FLAG_ACTIVITY_REORDER_TO_FRONT/
+  );
+
+  assert.match(
+    service,
+    /Intent\.FLAG_ACTIVITY_SINGLE_TOP/
+  );
+
+  assert.doesNotMatch(
+    service,
+    /Intent\.FLAG_ACTIVITY_CLEAR_TOP/
+  );
 });
 
 test("notification tap hydrates snapshot before navigation and hides the tracker", () => {
@@ -258,29 +298,134 @@ test("BuildRuntimeState is a single owner and notification ID only hydrates it",
   assert.match(main.slice(rebind, rebind + 1000), /screen\s*=\s*AppScreen\.BUILDER[\s\S]*BuildProgressService\.stop\(context\)[\s\S]*consumeBuildNotificationNavigation/);
 });
 
-test("notification background handoff starts at pause and closes the late-track race", () => {
-  assert.match(main, /BUILD_NOTIFICATION_HOST_OWNERSHIP_V21_4[\s\S]*override fun onPause\(\)[\s\S]*BuildProgressService\.onHostPaused\(this\)/);
-  assert.match(service, /ACTIVE_BUILD_LATE_TRACK_BACKGROUND_START_V21_4[\s\S]*!hostForeground[\s\S]*startPending/);
-  assert.match(service, /BUILD_NOTIFICATION_START_GUARD_V21_4[\s\S]*hostForeground[\s\S]*return/);
+test("build tracking starts immediately instead of waiting for Activity pause", () => {
+  const trackStart =
+    service.indexOf(
+      "fun track("
+    );
+
+  const trackEnd =
+    service.indexOf(
+      "fun trackBatch(",
+      trackStart
+    );
+
+  assert.ok(trackStart >= 0);
+  assert.ok(trackEnd > trackStart);
+
+  const trackBlock =
+    service.slice(
+      trackStart,
+      trackEnd
+    );
+
+  assert.match(
+    trackBlock,
+    /FOREGROUND_NOTIFICATION_IMMEDIATE_V1[\s\S]*startPending\(context\)/
+  );
+
+  assert.doesNotMatch(
+    trackBlock,
+    /hostForeground/
+  );
+
+  assert.match(
+    service,
+    /ContextCompat[\s\S]*startForegroundService/
+  );
 });
 
-test("notification tap directly stops foreground tracking and cannot resurrect", () => {
-  assert.match(service, /ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_4[\s\S]*hostForeground\s*=\s*true[\s\S]*stop\(context\)/);
-  assert.match(service, /fun stop\([\s\S]*hostForeground\s*=\s*true[\s\S]*context\.stopService/);
-  assert.match(service, /private fun showNotification\([\s\S]*foregroundSuppressed\s*\|\|[\s\S]*hostForeground/);
-  assert.doesNotMatch(service, /ACTION_HANDOFF_TO_FOREGROUND/);
+test("notification tap does not stop tracking before result hydration", () => {
+  const createStart =
+    main.indexOf(
+      "override fun onCreate"
+    );
+
+  const createEnd =
+    main.indexOf(
+      "override fun onNewIntent",
+      createStart
+    );
+
+  const newIntentStart =
+    createEnd;
+
+  const newIntentEnd =
+    main.indexOf(
+      "override fun onResume",
+      newIntentStart
+    );
+
+  assert.ok(createStart >= 0);
+  assert.ok(createEnd > createStart);
+  assert.ok(newIntentEnd > newIntentStart);
+
+  assert.doesNotMatch(
+    main.slice(
+      createStart,
+      createEnd
+    ),
+    /BuildProgressService\.stop\(this\)/
+  );
+
+  assert.doesNotMatch(
+    main.slice(
+      newIntentStart,
+      newIntentEnd
+    ),
+    /BuildProgressService\.stop\(this\)/
+  );
+
+  const rebind =
+    main.indexOf(
+      "ACTIVE_BUILD_NOTIFICATION_REBIND_V2"
+    );
+
+  assert.ok(rebind >= 0);
+
+  const rebindEnd =
+    main.indexOf(
+      "var conversionApkUri",
+      rebind
+    );
+
+  const rebindBlock =
+    main.slice(
+      rebind,
+      rebindEnd
+    );
+
+  assert.match(
+    rebindBlock,
+    /restoreFromEngine\([\s\S]*BuildProgressService\.stop\(context\)/
+  );
 });
 
-test("foreground resume preserves active build identity and suppresses notification publishing", () => {
-  const start = service.indexOf("ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_4");
-  assert.ok(start >= 0);
-  const end = service.indexOf("fun clear(", start);
-  assert.ok(end > start);
-  const block = service.slice(start, end);
-  assert.match(block, /hostForeground\s*=\s*true/);
-  assert.match(block, /context\.stopService/);
-  assert.doesNotMatch(block, /clear\(context\)/);
-  assert.doesNotMatch(block, /DeviceBuildEngine\.snapshot/);
+test("foreground resume no longer suppresses active build notification", () => {
+  assert.doesNotMatch(
+    service,
+    /hostForeground/
+  );
+
+  assert.doesNotMatch(
+    service,
+    /foregroundSuppressed/
+  );
+
+  assert.match(
+    service,
+    /FOREGROUND_NOTIFICATION_IMMEDIATE_V1/
+  );
+
+  assert.match(
+    service,
+    /private fun showNotification\([\s\S]*NotificationManager::class\.java[\s\S]*\.notify\(/
+  );
+
+  assert.match(
+    service,
+    /BUILD_NOTIFICATION_IMMEDIATE_DISPLAY_V21_4[\s\S]*FOREGROUND_SERVICE_IMMEDIATE/
+  );
 });
 
 test("compact build notification exposes numeric progress without expansion", () => {

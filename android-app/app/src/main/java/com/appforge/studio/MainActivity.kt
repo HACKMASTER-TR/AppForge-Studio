@@ -210,8 +210,11 @@ class MainActivity : ComponentActivity() {
             intent?.getStringExtra("appforge_build_server_url")
 
         if (openBuildFromNotification) {
-            // NOTIFICATION_CREATE_EAGER_DISMISS_V21_3
-            BuildProgressService.stop(this)
+            /*
+             * NOTIFICATION_RESULT_RESTORE_V1
+             * Do not stop foreground tracking before the exact Build ID
+             * has hydrated BuildRuntimeState and artifact availability.
+             */
             buildNotificationSequence += 1
         }
 
@@ -281,8 +284,7 @@ class MainActivity : ComponentActivity() {
                 false
             )
         ) {
-            // NOTIFICATION_TAP_EAGER_DISMISS_V21_3
-            BuildProgressService.stop(this)
+            /* NOTIFICATION_RESULT_RESTORE_V1 */
             buildIdFromNotification =
                 intent.getStringExtra(
                     "appforge_build_id"
@@ -4310,7 +4312,6 @@ private fun AppForgeApp() {
                         s.status ==
                             "cancelled"
                     ) {
-                        BuildProgressService.clear(context)
                         if (
                             s.status ==
                                 "success"
@@ -4381,6 +4382,15 @@ private fun AppForgeApp() {
                             },
                             buildNo =
                                 s.buildNo
+                        )
+
+                        /*
+                         * NOTIFICATION_RESULT_RESTORE_V1
+                         * Persist terminal result/artifact metadata first.
+                         * Only then may the active tracker be cleared.
+                         */
+                        BuildProgressService.clear(
+                            context
                         )
 
                         break

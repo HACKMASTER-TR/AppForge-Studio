@@ -6,10 +6,13 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.net.Uri
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -55,7 +58,14 @@ class DubForegroundService : Service(), AppVisibility.Listener {
         startedAt = System.currentTimeMillis()
         lastProgress = 0
         lastMessage = "VideoForge Studio hazırlanıyor…"
-        if (!AppVisibility.isForeground) showProgressNotification()
+
+        /*
+         * VIDEOFORGE_IMMEDIATE_FOREGROUND_V1
+         * A foreground service must become visible immediately after the
+         * user starts the job, regardless of Activity visibility.
+         */
+        showProgressNotification()
+
         acquireWakeLock()
 
         scope.launch {
@@ -157,11 +167,12 @@ class DubForegroundService : Service(), AppVisibility.Listener {
     }
 
     override fun onAppForegroundChanged(isForeground: Boolean) {
-        if (isForeground) {
-            removeProgressNotification()
-            notificationManager.cancel(COMPLETION_NOTIFICATION_ID)
-        } else if (running.get()) {
+        if (running.get()) {
             showProgressNotification()
+        } else if (isForeground) {
+            notificationManager.cancel(
+                COMPLETION_NOTIFICATION_ID
+            )
         }
     }
 
@@ -183,7 +194,7 @@ class DubForegroundService : Service(), AppVisibility.Listener {
         lastMessage = withEta
 
         if (state == STATE_RUNNING) {
-            if (!AppVisibility.isForeground) showProgressNotification()
+            showProgressNotification()
         } else {
             removeProgressNotification()
             if (!AppVisibility.isForeground) showCompletionNotification(withEta, state != STATE_ERROR)
@@ -195,7 +206,22 @@ class DubForegroundService : Service(), AppVisibility.Listener {
         if (!running.get()) return
         val n = progressNotification(lastProgress, lastMessage)
         if (!foregroundShown) {
-            startForeground(NOTIFICATION_ID, n)
+            val foregroundType =
+                if (
+                    Build.VERSION.SDK_INT >= 34
+                ) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                } else {
+                    0
+                }
+
+            ServiceCompat.startForeground(
+                this,
+                NOTIFICATION_ID,
+                n,
+                foregroundType
+            )
+
             foregroundShown = true
         } else {
             notificationManager.notify(NOTIFICATION_ID, n)
@@ -268,6 +294,9 @@ class DubForegroundService : Service(), AppVisibility.Listener {
             .setProgress(100, pct.coerceIn(0, 99), false)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setForegroundServiceBehavior(
+                NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE
+            )
             .setContentIntent(openIntent())
             .build()
 
@@ -340,10 +369,17 @@ class DubForegroundService : Service(), AppVisibility.Listener {
         private const val NOTIFICATION_ID = 4420
         private const val COMPLETION_NOTIFICATION_ID = 4421
 
-        fun clearVisibleNotifications(context: android.content.Context) {
-            val nm = context.getSystemService(NotificationManager::class.java)
-            nm.cancel(NOTIFICATION_ID)
-            nm.cancel(COMPLETION_NOTIFICATION_ID)
+        fun clearCompletionNotification(
+            context: android.content.Context
+        ) {
+            val nm =
+                context.getSystemService(
+                    NotificationManager::class.java
+                )
+
+            nm.cancel(
+                COMPLETION_NOTIFICATION_ID
+            )
         }
     }
 }

@@ -1,3 +1,22 @@
+---
+type: feature
+status: active
+project: AppForge Studio
+created: 2026-10-04
+updated: 2026-10-05
+last_verified: 2026-10-05
+confidence: high
+tags:
+  - google-play
+  - play-platform
+  - android
+related:
+  - "[[Integration_Index]]"
+  - "[[Deployment_And_CI]]"
+  - "[[Current_Status]]"
+source_files: []
+---
+
 # Google Play Platform V1
 
 ## Amaç

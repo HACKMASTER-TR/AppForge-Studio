@@ -44,32 +44,16 @@ class BuildProgressService : Service() {
     private var monitorJob: Job? =
         null
 
-    @Volatile
-    private var foregroundSuppressed =
-        false
-
     override fun onStartCommand(
         intent: Intent?,
         flags: Int,
         startId: Int
     ): Int {
 
-        /* BUILD_NOTIFICATION_FOREGROUND_GUARD_V21_4 */
-        if (
-            hostForeground
-        ) {
-            foregroundSuppressed = true
-            monitorJob?.cancel()
-            runCatching {
-                stopForeground(Service.STOP_FOREGROUND_REMOVE)
-            }
-            getSystemService(NotificationManager::class.java)
-                .cancel(NOTIFICATION_ID)
-            stopSelf(startId)
-            return START_NOT_STICKY
-        }
-
-        foregroundSuppressed = false
+        /* FOREGROUND_NOTIFICATION_IMMEDIATE_V1
+         * Active build tracking is foreground from the moment the user
+         * starts the build. App visibility must not delay the FGS.
+         */
 
         val prefs =
             getSharedPreferences(
@@ -263,7 +247,6 @@ class BuildProgressService : Service() {
                 )
 
                 if (!active) {
-                    clear(this@BuildProgressService)
                     stopForeground(STOP_FOREGROUND_DETACH)
                     stopSelf(startId)
                     return
@@ -482,9 +465,6 @@ class BuildProgressService : Service() {
     }
 
     override fun onDestroy() {
-        foregroundSuppressed =
-            true
-
         monitorJob?.cancel()
 
         runCatching {
@@ -530,13 +510,6 @@ class BuildProgressService : Service() {
         buildId: String?,
         serverUrl: String
     ) {
-        if (
-            foregroundSuppressed ||
-            hostForeground
-        ) {
-            return
-        }
-
         getSystemService(
             NotificationManager::class.java
         ).notify(
@@ -704,10 +677,6 @@ class BuildProgressService : Service() {
                 "canceled"
             )
 
-        /* BUILD_NOTIFICATION_HOST_VISIBILITY_V21_4 */
-        @Volatile
-        private var hostForeground = false
-
         fun track(
             context: Context,
             buildId: String,
@@ -759,12 +728,8 @@ class BuildProgressService : Service() {
                 )
                 .apply()
 
-            /* ACTIVE_BUILD_LATE_TRACK_BACKGROUND_START_V21_4 */
-            if (
-                !hostForeground
-            ) {
-                startPending(context)
-            }
+            /* FOREGROUND_NOTIFICATION_IMMEDIATE_V1 */
+            startPending(context)
         }
 
         fun trackBatch(
@@ -813,6 +778,9 @@ class BuildProgressService : Service() {
                     EXTRA_STARTED_AT_MS
                 )
                 .apply()
+
+            /* FOREGROUND_NOTIFICATION_IMMEDIATE_V1 */
+            startPending(context)
         }
 
         fun addBatchBuild(
@@ -928,8 +896,9 @@ class BuildProgressService : Service() {
         fun startPending(
             context: Context
         ) {
-            /* BUILD_NOTIFICATION_START_GUARD_V21_4 */
-            if (hostForeground) return
+            /* FOREGROUND_NOTIFICATION_IMMEDIATE_V1
+             * Foreground visibility no longer suppresses the build FGS.
+             */
 
             val prefs =
                 context.getSharedPreferences(
@@ -1002,21 +971,23 @@ class BuildProgressService : Service() {
                 )
         }
 
-        /* ACTIVE_BUILD_FOREGROUND_NOTIFICATION_HANDOFF_V21_4 */
-        fun onHostResumed(context: Context) {
-            hostForeground = true
-            stop(context)
-        }
+        /* FOREGROUND_NOTIFICATION_IMMEDIATE_V1
+         * Visibility changes do not own the foreground-service lifecycle.
+         * The build itself owns it.
+         */
+        fun onHostResumed(
+            @Suppress("UNUSED_PARAMETER")
+            context: Context
+        ) = Unit
 
-        fun onHostPaused(context: Context) {
-            hostForeground = false
-            startPending(context)
-        }
+        fun onHostPaused(
+            @Suppress("UNUSED_PARAMETER")
+            context: Context
+        ) = Unit
 
         fun stop(
             context: Context
         ) {
-            hostForeground = true
             context.stopService(
                 Intent(context, BuildProgressService::class.java)
             )

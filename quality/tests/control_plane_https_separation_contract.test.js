@@ -150,21 +150,33 @@ test("Pro status remains server verified", () => {
   assert.match(security, /https:\/\//);
 });
 
-test("update failure keeps an offline continuation path", () => {
+test("update failure keeps a Play-visible fail-open continuation path", () => {
   const update = read(
     "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
   );
 
   assert.match(
     update,
-    /GateUiState\.Error[\s\S]{0,500}?canContinueOffline\s*=\s*true/
+    /UPDATE_GATE_PLAY_FALLBACK_V1/
   );
+
+  assert.match(
+    update,
+    /backendUnavailableStudioUpdatePolicy/
+  );
+
+  assert.match(
+    update,
+    /applyPlayVisiblePolicy\([\s\S]{0,600}?backendUnavailableStudioUpdatePolicy/
+  );
+
+  assert.match(
+    update,
+    /\.addOnFailureListener[\s\S]{0,1800}?openStudio\(\)/
+  );
+
   assert.match(
     update,
     /onContinue\s*=\s*::openStudio/
-  );
-  assert.match(
-    update,
-    /Çevrimdışı devam et/
   );
 });

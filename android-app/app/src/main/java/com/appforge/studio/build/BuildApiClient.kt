@@ -111,18 +111,123 @@ class BuildApiClient(
     }
 
     fun getBuild(buildId: String): BuildStatusResult {
-        val state = DeviceBuildEngine.snapshot(buildId)
-            ?: throw BuildApiException(404, "LOCAL_BUILD_NOT_FOUND", null, null, "Yerel derleme bulunamadı.")
+        val state =
+            DeviceBuildEngine.snapshot(
+                buildId
+            )
+
+        if (state != null) {
+            return BuildStatusResult(
+                buildId = state.id,
+                buildNo = state.buildNo,
+                status = state.status,
+                progress = state.progress,
+                logs = state.logs,
+                preflight = state.preflight,
+                apkAvailable =
+                    state.apk?.isFile == true &&
+                        (state.apk?.length() ?: 0L) > 0L,
+                aabAvailable =
+                    state.aab?.isFile == true &&
+                        (state.aab?.length() ?: 0L) > 0L,
+                exeAvailable = state.exe?.isFile == true &&
+                    (state.exe?.length() ?: 0L) > 0L
+            )
+        }
+
+        /*
+         * NOTIFICATION_RESULT_RESTORE_V1
+         *
+         * DeviceBuildEngine.jobs is process-local. A completed build,
+         * however, has a persistent history record and canonical artifact.
+         * Notification return must therefore restore from those exact
+         * persistent records instead of reporting LOCAL_BUILD_NOT_FOUND.
+         */
+        val saved =
+            ProjectLibrary
+                .loadBuilds(
+                    context
+                )
+                .firstOrNull {
+                    it.id ==
+                        buildId
+                }
+                ?: throw BuildApiException(
+                    404,
+                    "LOCAL_BUILD_NOT_FOUND",
+                    null,
+                    null,
+                    "Yerel derleme bulunamadı."
+                )
+
+        val apkAvailable =
+            !saved.apkUrl.isNullOrBlank() &&
+                persistedDeviceArtifact(
+                    buildId,
+                    "apk"
+                ) != null
+
+        val aabAvailable =
+            !saved.aabUrl.isNullOrBlank() &&
+                persistedDeviceArtifact(
+                    buildId,
+                    "aab"
+                ) != null
+
+        val windowsKind =
+            if (
+                saved.buildOutput
+                    .trim()
+                    .lowercase() in
+                    setOf(
+                        "native-exe",
+                        "windows-native-exe"
+                    )
+            ) {
+                "native-exe"
+            } else {
+                "exe"
+            }
+
+        val exeAvailable =
+            !saved.exeUrl.isNullOrBlank() &&
+                persistedDeviceArtifact(
+                    buildId,
+                    windowsKind
+                ) != null
+
         return BuildStatusResult(
-            buildId = state.id,
-            buildNo = state.buildNo,
-            status = state.status,
-            progress = state.progress,
-            logs = state.logs,
-            preflight = state.preflight,
-            apkAvailable = state.apk?.isFile == true,
-            aabAvailable = state.aab?.isFile == true,
-            exeAvailable = state.exe?.isFile == true
+            buildId =
+                saved.id,
+            buildNo =
+                saved.buildNo,
+            status =
+                saved.status,
+            progress =
+                if (
+                    saved.status.equals(
+                        "success",
+                        ignoreCase = true
+                    )
+                ) {
+                    100
+                } else {
+                    0
+                },
+            logs =
+                listOf(
+                    "ℹ️ Kalıcı cihaz-build kaydından geri yüklendi."
+                ),
+            preflight =
+                listOf(
+                    "✅ Exact Build ID ve canonical artifact dizini doğrulandı."
+                ),
+            apkAvailable =
+                apkAvailable,
+            aabAvailable =
+                aabAvailable,
+            exeAvailable =
+                exeAvailable
         )
     }
 

@@ -1,25 +1,46 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
-const main = fs.readFileSync(
-  "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-  "utf8"
+const here =
+  path.dirname(
+    fileURLToPath(
+      import.meta.url
+    )
+  );
+
+const root =
+  path.resolve(
+    here,
+    "../.."
+  );
+
+const read =
+  relative =>
+    fs.readFileSync(
+      path.join(
+        root,
+        relative
+      ),
+      "utf8"
+    );
+
+const main = read(
+  "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
 );
 
-const engine = fs.readFileSync(
-  "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt",
-  "utf8"
+const engine = read(
+  "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
 );
 
-const manager = fs.readFileSync(
-  "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt",
-  "utf8"
+const manager = read(
+  "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
 );
 
-const screen = fs.readFileSync(
-  "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt",
-  "utf8"
+const screen = read(
+  "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
 );
 
 test(

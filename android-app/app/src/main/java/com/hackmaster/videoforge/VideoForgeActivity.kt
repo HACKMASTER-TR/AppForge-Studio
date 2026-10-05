@@ -185,7 +185,16 @@ class VideoForgeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        DubForegroundService.clearVisibleNotifications(this)
+
+        /*
+         * VIDEOFORGE_IMMEDIATE_FOREGROUND_V1
+         * Never hide an active foreground-service notification merely
+         * because the VideoForge Activity is visible.
+         */
+        DubForegroundService
+            .clearCompletionNotification(
+                this
+            )
     }
 
     override fun onDestroy() {
@@ -505,9 +514,7 @@ class VideoForgeActivity : AppCompatActivity() {
                         StudioOptions()
                     )
 
-                startService(
-                    i
-                )
+                ContextCompat.startForegroundService(this, i)
 
                 setWorking(
                     true
@@ -1451,7 +1458,7 @@ class VideoForgeActivity : AppCompatActivity() {
                 putExtra(DubForegroundService.EXTRA_VIDEO_URI, uri.toString())
                 putExtra(DubForegroundService.EXTRA_SOURCE_LABEL, displayName(uri))
             }
-            startService(i)
+            ContextCompat.startForegroundService(this, i)
             setWorking(true)
         }
     }
@@ -1473,7 +1480,7 @@ class VideoForgeActivity : AppCompatActivity() {
             val i = baseServiceIntent(DubForegroundService.MODE_QUEUE, currentOptions(false)).apply {
                 putStringArrayListExtra(DubForegroundService.EXTRA_VIDEO_URIS, ArrayList(selectedQueue.map { it.toString() }))
             }
-            startService(i)
+            ContextCompat.startForegroundService(this, i)
             setWorking(true)
         }
     }
@@ -1485,7 +1492,7 @@ class VideoForgeActivity : AppCompatActivity() {
                 putExtra(DubForegroundService.EXTRA_VIDEO_URL, url)
                 putExtra(DubForegroundService.EXTRA_SOURCE_LABEL, "URL videosu")
             }
-            startService(i)
+            ContextCompat.startForegroundService(this, i)
             setWorking(true)
         }
     }

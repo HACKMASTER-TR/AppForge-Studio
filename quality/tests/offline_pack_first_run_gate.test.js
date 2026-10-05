@@ -1,15 +1,38 @@
 import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
 
-const main = fs.readFileSync(
-  "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt",
-  "utf8"
+const here =
+  path.dirname(
+    fileURLToPath(
+      import.meta.url
+    )
+  );
+
+const root =
+  path.resolve(
+    here,
+    "../.."
+  );
+
+const read =
+  relative =>
+    fs.readFileSync(
+      path.join(
+        root,
+        relative
+      ),
+      "utf8"
+    );
+
+const main = read(
+  "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
 );
 
-const pack = fs.readFileSync(
-  "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt",
-  "utf8"
+const pack = read(
+  "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
 );
 
 test("fresh install routes onboarding into first-run offline pack gate", () => {
