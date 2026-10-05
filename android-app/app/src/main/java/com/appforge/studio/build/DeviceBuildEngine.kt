@@ -2393,8 +2393,7 @@ object DeviceBuildEngine {
                 it.startsWith("org.gradle.workers.max=") ||
                 it.startsWith("org.gradle.jvmargs=") ||
                 it.startsWith("org.gradle.caching=")
-        }.joinToString("
-")
+        }.joinToString("\n")
         gradleProperties.writeText(
             filtered.trimEnd() + "\n" +
                 "android.aapt2FromMavenOverride=$sdkRoot/build-tools/36.0.0/aapt2\n" +

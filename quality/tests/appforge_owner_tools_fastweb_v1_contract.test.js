@@ -95,6 +95,11 @@ test("fast build optimization is isolated to webview-static URL wrapper", () => 
   assert.match(engine, /useBuildCache\s*=\s*fastWebBuild/);
   assert.match(engine, /if \(useBuildCache\)[\s\S]*--build-cache/);
 
+  assert.match(engine, /\.joinToString\("\\n"\)/);
+  assert.doesNotMatch(engine, /\.joinToString\("\s*\n\s*"\)/);
+  assert.match(engine, /org\.gradle\.caching=true\\n/);
+
+
   const expo = engine.slice(
     engine.indexOf("private fun buildExpoProject"),
     engine.indexOf("private fun buildPythonProject")
