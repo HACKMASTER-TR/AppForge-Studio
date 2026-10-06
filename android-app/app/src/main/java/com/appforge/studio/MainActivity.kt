@@ -2315,7 +2315,7 @@ private fun AppForgeApp() {
         if (!canSaveProject) {
             status =
                 "Ücretsiz denemede toplam $effectiveFreeProjectLimit farklı proje hakkın doldu. " +
-                "Bu projedeki ilk değişikliği kaydetmek için Pro veya Pro Aylık gerekli."
+                "Bu projedeki ilk değişikliği kaydetmek için Pro Ömür Boyu gerekli."
             return@LaunchedEffect
         }
 
@@ -4924,7 +4924,7 @@ private fun AppForgeApp() {
                         proSecurityMessage =
                             "Ücretsiz kotan doldu. " +
                             "Devam etmek için aşağıdan " +
-                            "Pro Aylık paketine geç."
+                            "Pro Ömür Boyu durumunu kontrol et."
 
                         status =
                             "Ücretsiz kota doldu • " +
@@ -4945,14 +4945,13 @@ private fun AppForgeApp() {
                         "PRO_MONTHLY_BUILD_LIMIT_REACHED" -> {
 
                         proSecurityMessage =
-                            "Pro Aylık kotan doldu. " +
-                            "Devam etmek için aşağıdan " +
-                            "+10, +25 veya +50 ek kota " +
-                            "paketlerinden birini seç."
+                            "Eski kota türü algılandı. " +
+                            "AppForge artık aylık Pro veya ek kota paketi sunmuyor. " +
+                            "Pro Ömür Boyu durumunu yenileyip tekrar dene."
 
                         status =
-                            "Pro kotası doldu • " +
-                            "ek kota paketi seç."
+                            "Eski kota yanıtı • " +
+                            "Pro durumunu yenile."
 
                         progress =
                             0
@@ -7162,7 +7161,7 @@ onOpenPro = {
 
                                     if (!canUseSlot) {
                                         status =
-                                            "Ücretsiz denemede toplam $effectiveFreeProjectLimit farklı proje hakkın doldu. Proje silmek yeni hak açmaz. Yeni proje için Pro veya Pro Aylık gerekli."
+                                            "Ücretsiz denemede toplam $effectiveFreeProjectLimit farklı proje hakkın doldu. Proje silmek yeni hak açmaz. Yeni proje için Pro Ömür Boyu gerekli."
                                     } else {
                                         currentProjectId =
                                             ProjectLibrary.save(
@@ -25560,7 +25559,7 @@ private fun ProjectLibraryScreen(
                             if (
                                 proUnlocked
                             ) {
-                                "${projects.size} kayıtlı proje • Pro ve Pro Aylık'ta proje sınırı yok."
+                                "${projects.size} kayıtlı proje • Pro Ömür Boyu'da proje sınırı yok."
                             } else {
                                 "${(freeProjectLimit - effectiveTrialSlotsUsed).coerceAtLeast(0)} yeni proje hakkın kaldı. Proje silmek hakkı geri getirmez."
                             },
@@ -25817,8 +25816,10 @@ private fun AccountScreen(
     Column(Modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("AppForge Hesapsız Kullanım", style = MaterialTheme.typography.headlineSmall)
-        Text("AppForge hesabı oluşturman veya e-posta/parola ile giriş yapman gerekmiyor.")
-        Text("Pro Ömür Boyu satın alımları Google Play üzerinden yönetilir.")
+        Text("Normal kullanım için AppForge hesabı oluşturulmaz; e-posta veya parola ile giriş yapman gerekmez.")
+        Text("Projeler, build geçmişi ve normal çalışma verileri cihazında yerel olarak tutulur.")
+        Text("Pro Ömür Boyu satın alımı Google Play üzerinden yönetilir.")
+        Text("Google ile yönetici doğrulaması yalnız owner/admin özellikleri içindir; normal kullanıcı hesabı değildir.")
         OutlinedButton(onClick = onBack) { Text("Geri") }
     }
 }
@@ -26100,7 +26101,7 @@ private fun TemplatesScreen(
         if (current == null) {
             templates = emptyList()
             message =
-                "Sunucudaki gerçek şablonları almak için hesabına giriş yap. Kategorileri yine de gezebilirsin."
+                "Hesapsız kullanım aktif. Şablon kataloğunu giriş yapmadan gezebilirsin; bu sürümde normal kullanıcı hesabı gerektiren sunucu şablonları kullanılmıyor."
             return
         }
 
@@ -26283,8 +26284,8 @@ private fun TemplatesScreen(
                             )
 
                             TemplateStatPill(
-                                label = "Giriş",
-                                value = if (session != null) "Açık" else "Kapalı"
+                                label = "Kullanım",
+                                value = "Hesapsız"
                             )
                         }
 
@@ -26337,7 +26338,7 @@ private fun TemplatesScreen(
                 if (matchedTemplates.isEmpty()) {
                     item {
                         NoteCard(
-                            "Aramana uyan sunucu şablonu bulunamadı."
+                            "Aramana uyan hazır şablon bulunamadı."
                         )
                     }
                 } else {
@@ -26381,9 +26382,9 @@ private fun TemplatesScreen(
                     item {
                         NoteCard(
                             if (session == null) {
-                                "Bu kategorideki gerçek sunucu şablonlarını görmek için önce hesabına giriş yap."
+                                "Bu kategoride henüz uygulanabilir hazır şablon yok. Normal kullanımda giriş yapman gerekmez."
                             } else {
-                                "Bu kategoride henüz sunucudan gelen hazır şablon bulunmuyor."
+                                "Bu kategoride henüz uygulanabilir hazır şablon bulunmuyor."
                             }
                         )
                     }

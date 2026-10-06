@@ -74,7 +74,7 @@ test("template bottom sheet and direct apply exist", async () => {
   );
 
   assert.equal(
-    text.includes("Sunucudaki gerçek şablonları almak için hesabına giriş yap"),
+    text.includes("Hesapsız kullanım aktif. Şablon kataloğunu giriş yapmadan gezebilirsin"),
     true
   );
 });
