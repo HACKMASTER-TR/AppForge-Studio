@@ -1204,59 +1204,6 @@ object AppForgeKnowledgeBase {
                             "ctrl c"
                         )
                 ),
-                HelpArticle(
-                    category =
-                        "Kullanım Rehberi",
-                    title =
-                        "Excel Tools nasıl kullanılır?",
-                    text =
-                        "1. AppForge Excel Tools'u aç ve DOSYA SEÇ düğmesine dokun.\n" +
-                            "2. XLSX, XLSM veya CSV dosyanı seç. Desteklenen maksimum dosya boyutu 80 MB'dir.\n" +
-                            "3. XLSX/XLSM dosyalarında çalışma kitabı ve sayfa korumaları kaldırılmış düzenlenebilir yeni bir kopya hazırlanır. Orijinal dosyaya dokunulmaz.\n" +
-                            "4. Formüller ve biçimlendirme korunur; XLSM dosyalarında makrolar korunur. CSV için de ayrı bir kopya oluşturulur.\n" +
-                            "5. İşlem tamamlandığında DOSYAYI AÇ ile sonucu açabilirsin.\n" +
-                            "6. Önceki işlemler İşlem geçmişi bölümünde görüntülenebilir.\n\n" +
-                            "Excel Tools ve VideoForge Free planda ayrı ayrı 1 kullanım hakkına sahiptir; PRO Aylık kullanımında her işlem mevcut proje kotasından 1 hak tüketir.",
-                    keywords =
-                        setOf(
-                            "excel",
-                            "excel tools",
-                            "xlsx",
-                            "xlsm",
-                            "csv",
-                            "makro",
-                            "koruma",
-                            "dosya",
-                            "80 mb"
-                        )
-                ),
-                HelpArticle(
-                    category =
-                        "Kullanım Rehberi",
-                    title =
-                        "VideoForge nasıl kullanılır?",
-                    text =
-                        "1. VideoForge'u aç ve VİDEO SEÇ ile telefonundaki videoyu seç.\n" +
-                            "2. Dublaj yapılacak hedef dili ve Hızlı, Dengeli veya Yüksek kalite seçeneğini belirle. Çoğu işlem için Dengeli önerilir.\n" +
-                            "3. İlk kullanımdaysa AI MODELLERİNİ HAZIRLA düğmesiyle gerekli yerel modelleri hazırla.\n" +
-                            "4. İstersen önce İLK 30 SANİYEYİ ÖNİZLE ile sonucu kontrol et.\n" +
-                            "5. DUBLAJ OLUŞTUR ile tam işlemi başlat. İlerleme Durum bölümünde gösterilir; tamamlandığında sonucu açabilir veya paylaşabilirsin.\n" +
-                            "6. Linkten video bölümüne doğrudan video dosyası bağlantısı girerek videoyu indirebilir veya dublaj işlemine gönderebilirsin. DRM, üyelik veya giriş koruması aşılmaz.\n" +
-                            "7. Gelişmiş Ayarlar'da kaynak dili, konuşmacı modu, SRT altyazı, arka plan sesi, zaman senkronizasyonu ve yarım kalan işlemi devam ettirme seçenekleri bulunur.\n" +
-                            "8. Oluşturulan sonuçlara İşlem geçmişi bölümünden tekrar ulaşabilirsin.",
-                    keywords =
-                        setOf(
-                            "videoforge",
-                            "video",
-                            "dublaj",
-                            "altyazı",
-                            "srt",
-                            "ai model",
-                            "hedef dil",
-                            "önizleme",
-                            "video indir"
-                        )
-                )
             )
 
         val languageSupport =

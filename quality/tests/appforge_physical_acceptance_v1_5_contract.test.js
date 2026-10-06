@@ -10,9 +10,6 @@ const read = path =>
 
 const main = read("android-app/app/src/main/java/com/appforge/studio/MainActivity.kt");
 const fast = read("android-app/app/src/main/assets/device-build/FastActivity.java");
-const video = read("android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt");
-const dub = read("android-app/app/src/main/java/com/hackmaster/videoforge/DubForegroundService.kt");
-const importer = read("android-app/app/src/main/java/com/hackmaster/videoforge/UrlVideoImporter.kt");
 const iconProcessor = read("android-app/app/src/main/java/com/appforge/studio/io/AppIconProcessor.kt");
 const deviceIcon = read("android-app/app/src/main/java/com/appforge/studio/build/DeviceProjectIcon.kt");
 const engine = read("android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt");
@@ -25,25 +22,6 @@ test("generated Web wrappers configure system bars after content attachment", ()
   assert.ok(block.indexOf("setContentView(root)") >= 0);
   assert.ok(block.indexOf("configureWindow()") > block.indexOf("setContentView(root)"));
   assert.ok(block.indexOf("applyAppForgeSystemBarInsets()") > block.indexOf("configureWindow()"));
-});
-
-test("VideoForge validates selected and URL media payloads", () => {
-  assert.match(video, /VIDEOFORGE_SELECTION_VALIDATION_V1_5/);
-  assert.match(video, /probeForProcessing/);
-  assert.match(dub, /downloadValidated/);
-  assert.match(importer, /rejectNonVideoPayload/);
-  assert.match(importer, /validateVideoTrack/);
-});
-
-test("VideoForge swipe-away stops job and notifications", () => {
-  assert.match(dub, /VIDEOFORGE_TASK_REMOVAL_STOP_V1_5/);
-  assert.match(dub, /override fun onTaskRemoved/);
-  assert.match(dub, /running\.getAndSet\(false\)/);
-  assert.match(dub, /removeProgressNotification\(\)/);
-  assert.match(dub, /notificationManager\.cancel\([\s\S]*COMPLETION_NOTIFICATION_ID/);
-  assert.match(dub, /START_NOT_STICKY/);
-  assert.match(dub, /STATE_CANCELLED/);
-  assert.match(video, /STATE_CANCELLED/);
 });
 
 test("Keystore backup picker and Builder vault are wired", () => {

@@ -8,8 +8,6 @@ const build = read("android-app/app/src/main/java/com/appforge/studio/BuildProgr
 const home = read("android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt");
 const dashboard = read("android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeDashboard.kt");
 const pro = read("android-app/app/src/main/java/com/appforge/studio/ui/ProExperienceV2.kt");
-const video = read("android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt");
-const media = read("android-app/app/src/main/java/com/hackmaster/videoforge/MediaSourceCompat.kt");
 
 test("terminal result notification is dismissed only after terminal result tap", () => {
   assert.match(build, /BUILD_TERMINAL_NOTIFICATION_PERSIST_V1_1/);
@@ -20,19 +18,6 @@ test("terminal result notification is dismissed only after terminal result tap",
   const block = main.slice(a, b);
   assert.match(block, /setOf\("success", "failed", "cancelled", "canceled"\)[\s\S]*BuildProgressService\.clear\(context\)[\s\S]*dismissTerminalResultNotification/);
   assert.doesNotMatch(block, /BuildProgressService\.stop\(context\)/);
-});
-
-test("VideoForge keeps selected provider URI primary with verified local fallback", () => {
-  const a = video.indexOf("private fun startSingle(");
-  const b = video.indexOf("private fun startQueue()", a);
-  const block = video.slice(a, b);
-  assert.match(block, /VIDEOFORGE_PROVIDER_FIRST_PROCESSING_V1_3/);
-  assert.match(block, /val processingUri\s*=\s*uri/);
-  assert.doesNotMatch(block, /materializeForProcessing/);
-  assert.match(block, /StorageGuard\.requireEnough[\s\S]*EXTRA_VIDEO_URI[\s\S]*processingUri\.toString\(\)/);
-  assert.match(media, /direct\.setDataSource\(\s*context,\s*uri/);
-  assert.match(media, /openAssetFileDescriptor/);
-  assert.match(media, /VIDEOFORGE_LOCAL_COPY_INTEGRITY_V1_2/);
 });
 
 test("Home replaces PRO Plan tile with clickable Offline Pack entry", () => {

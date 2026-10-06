@@ -112,7 +112,6 @@ import com.appforge.studio.security.OwnerAccessPolicy
 import com.appforge.studio.security.StudioPlanPrice
 import com.appforge.studio.task.AppForgeTaskManager
 import com.appforge.studio.terminal.OwnerArtifactReferenceStore
-import com.hackmaster.videoforge.AppVisibility
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -126,11 +125,6 @@ import kotlin.math.roundToInt
 import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
-    override fun onStart() {
-        super.onStart()
-        AppVisibility.activityStarted()
-    }
-
     /* BUILD_NOTIFICATION_HOST_OWNERSHIP_V21_4 */
     override fun onPause() {
         BuildProgressService.onHostPaused(this)
@@ -138,7 +132,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        AppVisibility.activityStopped()
         com.appforge.studio.terminal.LocalPtySessionRegistry.persistNow()
         super.onStop()
     }
@@ -816,7 +809,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, OFFLINE_PACK_FIRST_RUN, OFFLINE_PACK, LEGAL, HELP, PLAY_GUIDE, PRO, PRO_SUPPORT, KEYSTORES, LANGUAGE }
+private enum class AppScreen { ONBOARDING, HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, OFFLINE_PACK_FIRST_RUN, OFFLINE_PACK, LEGAL, HELP, PLAY_GUIDE, PRO, PRO_SUPPORT, KEYSTORES, LANGUAGE }
 
 /*
  * BUILD_SOURCE_ENGINE_REFRESH_V1
@@ -5565,11 +5558,6 @@ private fun AppForgeApp() {
                             openOfflinePack()
                         },
 
-                        onOpenOtherApps = {
-                            screen =
-                                AppScreen.OTHER_APPS
-                        },
-
                         onImportProject = {
                             backupImportLauncher
                                 .launch(
@@ -5656,45 +5644,6 @@ private fun AppForgeApp() {
                         }
                     )
                     }
-
-                AppScreen.OTHER_APPS ->
-                    com.appforge.studio.ui.OtherAppsScreen(
-                        onBack = {
-                            screen =
-                                AppScreen.HOME
-                        },
-                        onOpenExcelTools = {
-                            screen =
-                                AppScreen.EXCEL_TOOLS
-                        },
-                        proUnlocked =
-                            terminalOwner ||
-                                proStatus?.active == true,
-                                                serverUrl =
-                            DEFAULT_CONTROL_PLANE_URL,
-onOpenPro = {
-                            screen =
-                                AppScreen.PRO
-                        }
-                    )
-
-                AppScreen.EXCEL_TOOLS ->
-                    com.appforge.studio.tools.excel.ExcelToolsScreen(
-                        onBack = {
-                            screen =
-                                AppScreen.OTHER_APPS
-                        },
-                        proUnlocked =
-                            terminalOwner ||
-                                proStatus?.active == true,
-                                                serverUrl =
-                            DEFAULT_CONTROL_PLANE_URL,
-onOpenPro = {
-                            screen =
-                                AppScreen.PRO
-                        }
-                    )
-
                 AppScreen.MODE_SELECT ->
                     CreateModeSelectionScreen(
                         onQuick = {

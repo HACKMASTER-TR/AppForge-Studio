@@ -201,7 +201,7 @@ internal fun AppForgeHelpCenterScreen(
                         )
 
                         Text(
-                            "AppForge, Terminal, Excel Tools, VideoForge, APK, AAB, keystore, Billing, Firebase, Play Store veya başka bir özelliği yaz.",
+                            "AppForge, Terminal, APK, AAB, keystore, Billing, Firebase, Play Store veya başka bir özelliği yaz.",
                             color =
                                 TextSecondary,
                             lineHeight =

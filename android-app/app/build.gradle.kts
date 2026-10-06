@@ -519,20 +519,9 @@ dependencies {
     // for org.json during host-side unit tests, so use the real JVM library.
     testImplementation("org.json:json:20250517")
 
-    // VideoForge V4.1.2
-    implementation("androidx.appcompat:appcompat:1.7.1")
 
-    // VideoForge V5.2 - DRM-free VOD adaptive stream export
-    implementation("androidx.media3:media3-common:1.11.1")
-    implementation("androidx.media3:media3-effect:1.11.1")
-    implementation("androidx.media3:media3-transformer:1.11.1")
-    implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
-    implementation("androidx.media3:media3-exoplayer-dash:1.11.1")
     implementation("androidx.activity:activity-ktx:1.13.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
-    implementation("com.google.mlkit:language-id:17.0.6")
-    implementation("com.google.mlkit:translate:17.0.3")
-    implementation("com.github.k2-fsa:sherpa-onnx:v1.13.4")
     implementation("org.apache.commons:commons-compress:1.27.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

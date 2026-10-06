@@ -7,7 +7,6 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROCESSING" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
@@ -86,17 +85,5 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/apk_file_paths" />
         </provider>
-
-        <!-- AppForge > Diğer Uygulamalar > VideoForge -->
-        <activity
-            android:name="com.hackmaster.videoforge.VideoForgeActivity"
-            android:exported="false"
-            android:screenOrientation="unspecified"
-            android:theme="@style/VideoForgeTheme" />
-
-        <service
-            android:name="com.hackmaster.videoforge.DubForegroundService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync|mediaProcessing" />
     </application>
 </manifest>

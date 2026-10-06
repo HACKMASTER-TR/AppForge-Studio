@@ -20,13 +20,6 @@ const api = read(
   "android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt"
 );
 
-const videoService = read(
-  "android-app/app/src/main/java/com/hackmaster/videoforge/DubForegroundService.kt"
-);
-
-const videoActivity = read(
-  "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt"
-);
 
 test("build notification starts from track without foreground visibility gate", () => {
   assert.match(service, /FOREGROUND_NOTIFICATION_IMMEDIATE_V1/);
@@ -94,34 +87,4 @@ test("completed local build can restore exact persisted artifact availability", 
   assert.match(api, /ProjectLibrary[\s\S]*loadBuilds/);
   assert.match(api, /persistedDeviceArtifact\([\s\S]*"apk"/);
   assert.match(api, /persistedDeviceArtifact\([\s\S]*"aab"/);
-});
-
-test("VideoForge uses foreground service for all four user-started jobs", () => {
-  const starts =
-    videoActivity.match(
-      /ContextCompat\.startForegroundService\(\s*this,\s*i\s*\)/g
-    ) ?? [];
-
-  assert.equal(starts.length, 4);
-  assert.doesNotMatch(videoActivity, /\bstartService\s*\(/);
-});
-
-test("VideoForge foreground notification is immediate and not hidden in foreground", () => {
-  assert.match(videoService, /VIDEOFORGE_IMMEDIATE_FOREGROUND_V1/);
-  assert.match(videoService, /FOREGROUND_SERVICE_TYPE_DATA_SYNC/);
-  assert.match(videoService, /FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING/);
-  assert.match(videoService, /initialForegroundType/);
-  assert.match(videoService, /switchForegroundType/);
-  assert.match(videoService, /FOREGROUND_SERVICE_IMMEDIATE/);
-  assert.match(
-    videoService,
-    /lastMessage = "VideoForge Studio hazırlanıyor…"[\s\S]*showProgressNotification\(\)[\s\S]*acquireWakeLock/
-  );
-
-  const visibility = videoService.slice(
-    videoService.indexOf("override fun onAppForegroundChanged"),
-    videoService.indexOf("override fun onDestroy")
-  );
-
-  assert.doesNotMatch(visibility, /removeProgressNotification\(\)/);
 });

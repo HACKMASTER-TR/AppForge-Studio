@@ -40,7 +40,6 @@ fun StudioHomeV2(
     onOpenOfflinePack: () -> Unit,
     onOpenTasks: () -> Unit,
     onOpenTerminal: () -> Unit,
-    onOpenOtherApps: () -> Unit,
     onImportProject: () -> Unit,
     onExportAllProjects: () -> Unit,
     onExportAllAndroidProjects: () -> Unit,
@@ -226,16 +225,14 @@ fun StudioHomeV2(
             }
             item {
                 HomeToolRow(
-                    "Uygulamalar",
-                    onOpenOtherApps,
                     "Geri Dönüşüm",
-                    onOpenTrash
+                    onOpenTrash,
+                    "Tümünü dışa aktar",
+                    onExportAllProjects
                 )
             }
             item {
-                HomeToolRow(
-                    "Tümünü dışa aktar",
-                    onExportAllProjects,
+                HomeToolSingle(
                     "Android dışa aktar",
                     onExportAllAndroidProjects
                 )

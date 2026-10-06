@@ -689,6 +689,25 @@ internal fun HomeToolRow(
 }
 
 @Composable
+internal fun HomeToolSingle(
+    label: String,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier =
+            Modifier.fillMaxWidth()
+    ) {
+        Text(
+            label,
+            maxLines = 1,
+            overflow =
+                TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
 internal fun ModernProCard(
     proUnlocked: Boolean,
     onClick: () -> Unit

@@ -23,12 +23,6 @@ const dashboard = read(
 const pro = read(
   "android-app/app/src/main/java/com/appforge/studio/ui/ProExperienceV2.kt"
 );
-const media = read(
-  "android-app/app/src/main/java/com/hackmaster/videoforge/MediaSourceCompat.kt"
-);
-const video = read(
-  "android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt"
-);
 
 test("completed build notification survives Service teardown", () => {
   assert.match(build, /BUILD_TERMINAL_NOTIFICATION_PERSIST_V1_1/);
@@ -44,13 +38,6 @@ test("completed build notification survives Service teardown", () => {
   assert.match(destroy, /if\s*\(\s*preserveTerminalNotificationOnDestroy\s*\)/);
   assert.match(destroy, /STOP_FOREGROUND_DETACH/);
   assert.match(destroy, /else[\s\S]*STOP_FOREGROUND_REMOVE[\s\S]*\.cancel/);
-});
-
-test("same selected VideoForge media keeps provider-first processing with verified fallback", () => {
-  assert.match(video, /VIDEOFORGE_PROVIDER_FIRST_PROCESSING_V1_3/);
-  assert.match(video, /val processingUri\s*=\s*uri/);
-  assert.match(media, /VIDEOFORGE_EXTRACTOR_PREFLIGHT_V1_2/);
-  assert.match(media, /VIDEOFORGE_LOCAL_COPY_INTEGRITY_V1_2/);
 });
 
 test("PRO entry is compact in Home TopAppBar instead of a large card", () => {

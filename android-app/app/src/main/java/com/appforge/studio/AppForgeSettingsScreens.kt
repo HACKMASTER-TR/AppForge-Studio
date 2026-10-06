@@ -111,7 +111,7 @@ internal fun SettingsHubScreen(
         SettingsEntry(
             "❓",
             settingsT(languageCode, "how_to_use"),
-            "AppForge, Terminal, Excel Tools ve VideoForge kullanım rehberi",
+            "AppForge Studio ve Terminal kullanım rehberi",
             onOpenHowTo
         ),
         SettingsEntry(

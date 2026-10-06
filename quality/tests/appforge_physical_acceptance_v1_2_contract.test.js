@@ -7,10 +7,6 @@ const read = path =>
 
 const main = read("android-app/app/src/main/java/com/appforge/studio/MainActivity.kt");
 const build = read("android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt");
-const storage = read("android-app/app/src/main/java/com/hackmaster/videoforge/StorageGuard.kt");
-const media = read("android-app/app/src/main/java/com/hackmaster/videoforge/MediaSourceCompat.kt");
-const audio = read("android-app/app/src/main/java/com/hackmaster/videoforge/AudioMedia.kt");
-const video = read("android-app/app/src/main/java/com/hackmaster/videoforge/VideoForgeActivity.kt");
 const home = read("android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt");
 const pro = read("android-app/app/src/main/java/com/appforge/studio/ui/ProExperienceV2.kt");
 
@@ -29,27 +25,6 @@ test("terminal notification teardown persistence remains protected", () => {
   assert.match(build, /BUILD_TERMINAL_NOTIFICATION_PERSIST_V1_1/);
   assert.match(build, /STOP_FOREGROUND_DETACH/);
   assert.match(build, /preserveTerminalNotificationOnDestroy/);
-});
-
-test("VideoForge no longer lets Retriever block extractor-decodable media", () => {
-  assert.match(storage, /probeForProcessing/);
-  assert.doesNotMatch(storage, /MediaMetadataRetriever|openRetriever/);
-  assert.match(media, /VIDEOFORGE_EXTRACTOR_PREFLIGHT_V1_2/);
-  assert.match(audio, /VIDEOFORGE_MUX_ROTATION_WITHOUT_RETRIEVER_V1_2/);
-  assert.doesNotMatch(audio, /MediaMetadataRetriever|openRetriever/);
-});
-
-test("single-video processing keeps provider URI primary with verified local fallback", () => {
-  assert.match(media, /VIDEOFORGE_LOCAL_COPY_INTEGRITY_V1_2/);
-  assert.match(media, /sourceStreamHash/);
-  assert.match(media, /localHash/);
-  assert.match(video, /VIDEOFORGE_PROVIDER_FIRST_PROCESSING_V1_3/);
-  const start = video.indexOf("private fun startSingle(");
-  const end = video.indexOf("private fun startQueue()", start);
-  const block = video.slice(start, end);
-  assert.match(block, /val processingUri\s*=\s*uri/);
-  assert.match(block, /StorageGuard\.requireEnough[\s\S]*startForegroundService/);
-  assert.doesNotMatch(block, /materializeForProcessing/);
 });
 
 test("Home and PRO celebration implement the physical UX request", () => {

@@ -15,7 +15,7 @@ const mainUrl =
   );
 
 test(
-  "Play build exposes the four AppForge usage guides",
+  "Play build exposes current AppForge usage guides",
   async () => {
     const source =
       await readFile(
@@ -25,15 +25,32 @@ test(
 
     for (const title of [
       "AppForge Studio nasıl kullanılır?",
-      "AppForge Terminal nasıl kullanılır?",
-      "Excel Tools nasıl kullanılır?",
-      "VideoForge nasıl kullanılır?"
+      "AppForge Terminal nasıl kullanılır?"
     ]) {
       assert.ok(
         source.includes(title),
-        `Missing usage guide: ${title}`
+        `Missing current guide: ${title}`
       );
     }
+
+    const guideTitles =
+      [
+        ...source.matchAll(
+          /title\s*=\s*"([^"]+ nasıl kullanılır\?)"/g
+        )
+      ]
+        .map(
+          match =>
+            match[1]
+        );
+
+    assert.deepEqual(
+      guideTitles,
+      [
+        "AppForge Studio nasıl kullanılır?",
+        "AppForge Terminal nasıl kullanılır?"
+      ]
+    );
 
     assert.match(
       source,
