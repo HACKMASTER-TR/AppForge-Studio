@@ -79,6 +79,11 @@ test(
       main,
       /Deneme Hakkı|yeni proje hakkın kaldı|Ücretsiz denemede toplam/
     );
+
+    assert.doesNotMatch(
+      main,
+      /trialSlotsUsed|serverFreeProjectUsed/
+    );
   }
 );
 

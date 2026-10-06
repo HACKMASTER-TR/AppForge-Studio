@@ -25495,11 +25495,6 @@ private fun ProjectLibraryScreen(
                                                 context
                                             )
 
-                                    trialSlotsUsed =
-                                        ProjectLibrary
-                                            .freeProjectSlotsUsed(
-                                                context
-                                            )
                                 },
                                 modifier =
                                     Modifier
