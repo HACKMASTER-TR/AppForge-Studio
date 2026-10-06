@@ -78,3 +78,68 @@ test("Build result shows app icon and folder action", () => {
   assert.match(main, /KLASÖRDE GÖSTER/);
   assert.match(main, /primary:Download\/AppForgeStudio/);
 });
+
+test(
+  "normal generated Web wrappers restore visible system bars across window lifecycle",
+  () => {
+    assert.match(
+      fast,
+      /APPFORGE_SYSTEM_BARS_PHYSICAL_V1_6/
+    );
+
+    assert.match(
+      fast,
+      /WindowInsets\.Type\.statusBars\(\)/
+    );
+
+    assert.match(
+      fast,
+      /WindowInsets\.Type\.navigationBars\(\)/
+    );
+
+    assert.match(
+      fast,
+      /protected void onResume\(\)/
+    );
+
+    assert.match(
+      fast,
+      /public void onWindowFocusChanged/
+    );
+
+    assert.match(
+      fast,
+      /this::applyAppForgeSystemBarMode/
+    );
+
+    assert.match(
+      fast,
+      /clearFlags\([\s\S]*FLAG_FULLSCREEN/
+    );
+  }
+);
+
+test(
+  "generated Web wrappers explicitly control system-bar icon contrast",
+  () => {
+    assert.match(
+      fast,
+      /setSystemBarsAppearance/
+    );
+
+    assert.match(
+      fast,
+      /APPEARANCE_LIGHT_STATUS_BARS/
+    );
+
+    assert.match(
+      fast,
+      /APPEARANCE_LIGHT_NAVIGATION_BARS/
+    );
+
+    assert.match(
+      fast,
+      /Color\.luminance/
+    );
+  }
+);

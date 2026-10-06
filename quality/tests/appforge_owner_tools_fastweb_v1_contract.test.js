@@ -80,11 +80,61 @@ test("successful build completion surface remains the terminal UI instead of sta
 });
 
 test("generated HTML URL APK uses standard system bars unless fullscreen is explicitly enabled", () => {
-  assert.match(fast, /APPFORGE_WEB_SYSTEM_BARS_V1_4/);
-  assert.match(fast, /controller\.show\([\s\S]*WindowInsets\.Type\.systemBars/);
-  assert.match(fast, /controller\.hide\([\s\S]*WindowInsets\.Type\.systemBars/);
-  assert.match(fast, /if \([\s\S]*"fullscreen"[\s\S]*content\.setPadding\([\s\S]*0,[\s\S]*0,[\s\S]*0,[\s\S]*0/);
-  assert.match(fast, /setOnApplyWindowInsetsListener/);
+  /*
+   * V1.6 strengthens the original V1.4 behavior contract:
+   *
+   * - normal mode must explicitly restore BOTH physical bars;
+   * - fullscreen alone may hide the combined system bars;
+   * - normal mode must clear inherited FLAG_FULLSCREEN;
+   * - the existing manual inset contract remains active.
+   *
+   * Do not lock this regression test to the retired single
+   * controller.show(systemBars()) implementation.
+   */
+  assert.match(
+    fast,
+    /APPFORGE_SYSTEM_BARS_PHYSICAL_V1_6/
+  );
+
+  assert.match(
+    fast,
+    /controller\.show\([\s\S]*WindowInsets\.Type\.statusBars\(\)/
+  );
+
+  assert.match(
+    fast,
+    /controller\.show\([\s\S]*WindowInsets\.Type\.navigationBars\(\)/
+  );
+
+  assert.match(
+    fast,
+    /controller\.hide\([\s\S]*WindowInsets\.Type\.systemBars\(\)/
+  );
+
+  assert.match(
+    fast,
+    /clearFlags\([\s\S]*FLAG_FULLSCREEN/
+  );
+
+  assert.match(
+    fast,
+    /onWindowFocusChanged/
+  );
+
+  assert.match(
+    fast,
+    /protected void onResume\(\)/
+  );
+
+  assert.match(
+    fast,
+    /if \([\s\S]*"fullscreen"[\s\S]*content\.setPadding\([\s\S]*0,[\s\S]*0,[\s\S]*0,[\s\S]*0/
+  );
+
+  assert.match(
+    fast,
+    /setOnApplyWindowInsetsListener/
+  );
 });
 
 test("fast build optimization is isolated to webview-static URL wrapper", () => {
