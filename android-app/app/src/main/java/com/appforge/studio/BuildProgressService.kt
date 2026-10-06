@@ -6,8 +6,10 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.appforge.studio.build.BuildApiClient
 import com.appforge.studio.build.DeviceBuildEngine
@@ -122,8 +124,7 @@ class BuildProgressService : Service() {
         createChannel()
 
         if (mode == MODE_BATCH) {
-            startForeground(
-                NOTIFICATION_ID,
+            startBuildForeground(
                 notification(
                     appName =
                         "AppForge Studio",
@@ -155,8 +156,7 @@ class BuildProgressService : Service() {
                 AppForgeBuildProgress.visible(it.status, it.progress)
             } ?: 0
 
-            startForeground(
-                NOTIFICATION_ID,
+            startBuildForeground(
                 notification(
                     appName = appName,
                     text = if (initialSnapshot != null) {
@@ -490,6 +490,43 @@ class BuildProgressService : Service() {
         }
     }
 
+    /*
+     * APPFORGE_FGS_POLICY_ALIGNMENT_V2
+     *
+     * Android 15+ limits dataSync foreground service time.
+     * Stop immediately when the platform reports the timeout.
+     * Persisted build identity is deliberately kept so the UI can
+     * reconcile the real DeviceBuildEngine state when reopened.
+     */
+    override fun onTimeout(
+        startId: Int,
+        fgsType: Int
+    ) {
+        monitorJob?.cancel()
+
+        preserveTerminalNotificationOnDestroy =
+            false
+
+        runCatching {
+            stopForeground(
+                STOP_FOREGROUND_REMOVE
+            )
+        }
+
+        getSystemService(
+            NotificationManager::class.java
+        )
+            .cancel(
+                NOTIFICATION_ID
+            )
+
+        serviceScope.cancel()
+
+        stopSelf(
+            startId
+        )
+    }
+
     override fun onDestroy() {
         monitorJob?.cancel()
 
@@ -532,6 +569,17 @@ class BuildProgressService : Service() {
         intent: Intent?
     ): IBinder? =
         null
+
+    private fun startBuildForeground(
+        notification: android.app.Notification
+    ) {
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
+    }
 
     private fun createChannel() {
         getSystemService(

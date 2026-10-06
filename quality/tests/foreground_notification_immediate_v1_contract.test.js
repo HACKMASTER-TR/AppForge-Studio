@@ -109,6 +109,9 @@ test("VideoForge uses foreground service for all four user-started jobs", () => 
 test("VideoForge foreground notification is immediate and not hidden in foreground", () => {
   assert.match(videoService, /VIDEOFORGE_IMMEDIATE_FOREGROUND_V1/);
   assert.match(videoService, /FOREGROUND_SERVICE_TYPE_DATA_SYNC/);
+  assert.match(videoService, /FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING/);
+  assert.match(videoService, /initialForegroundType/);
+  assert.match(videoService, /switchForegroundType/);
   assert.match(videoService, /FOREGROUND_SERVICE_IMMEDIATE/);
   assert.match(
     videoService,

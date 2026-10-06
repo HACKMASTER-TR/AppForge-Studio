@@ -8,7 +8,6 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.Uri
-import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
@@ -30,6 +29,16 @@ class DubForegroundService : Service(), AppVisibility.Listener {
     private var lastMessage = "VideoForge Studio hazırlanıyor…"
     private var foregroundShown = false
 
+    /*
+     * APPFORGE_FGS_POLICY_ALIGNMENT_V2
+     *
+     * MODE_MODELS and URL acquisition are data transfer/local-file
+     * preparation work. Actual video dub/preview/queue processing uses
+     * mediaProcessing.
+     */
+    private var activeForegroundType =
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
+
     override fun onCreate() {
         super.onCreate()
         notificationManager = getSystemService(NotificationManager::class.java)
@@ -49,6 +58,12 @@ class DubForegroundService : Service(), AppVisibility.Listener {
         }
 
         val mode = intent.getStringExtra(EXTRA_MODE) ?: MODE_DUB
+
+        activeForegroundType =
+            initialForegroundType(
+                mode
+            )
+
         val videoUri = intent.getStringExtra(EXTRA_VIDEO_URI)
         val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL)
         val queue = intent.getStringArrayListExtra(EXTRA_VIDEO_URIS).orEmpty()
@@ -112,6 +127,15 @@ class DubForegroundService : Service(), AppVisibility.Listener {
 
                     importedFile =
                         imported
+
+                    /*
+                     * URL acquisition is now complete.
+                     * From this point the long-running work is media
+                     * decode/dub/transcode/mux processing.
+                     */
+                    switchForegroundType(
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
+                    )
 
                     items +=
                         Uri.fromFile(
@@ -220,6 +244,43 @@ class DubForegroundService : Service(), AppVisibility.Listener {
         )
     }
 
+    /*
+     * APPFORGE_FGS_TIMEOUT_V2
+     *
+     * Android 15+ calls this when the dataSync or mediaProcessing
+     * foreground-service quota is exhausted. Stop within the platform
+     * grace period instead of risking an ANR.
+     */
+    override fun onTimeout(
+        startId: Int,
+        fgsType: Int
+    ) {
+        if (
+            running.getAndSet(
+                false
+            )
+        ) {
+            broadcast(
+                0,
+                "VideoForge işlemi Android ön plan hizmeti zaman sınırına ulaştığı için durduruldu.",
+                STATE_CANCELLED
+            )
+        }
+
+        releaseWakeLock()
+        removeProgressNotification()
+
+        notificationManager.cancel(
+            COMPLETION_NOTIFICATION_ID
+        )
+
+        scope.cancel()
+
+        stopSelf(
+            startId
+        )
+    }
+
     override fun onAppForegroundChanged(isForeground: Boolean) {
         if (running.get()) {
             showProgressNotification()
@@ -256,29 +317,77 @@ class DubForegroundService : Service(), AppVisibility.Listener {
         broadcast(normalized, withEta, state)
     }
 
+    private fun initialForegroundType(
+        mode: String
+    ): Int =
+        when (
+            mode
+        ) {
+            MODE_MODELS,
+            MODE_URL_DUB ->
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+
+            MODE_DUB,
+            MODE_QUEUE ->
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
+
+            else ->
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
+        }
+
+    private fun switchForegroundType(
+        foregroundType: Int
+    ) {
+        if (
+            activeForegroundType ==
+            foregroundType
+        ) {
+            return
+        }
+
+        activeForegroundType =
+            foregroundType
+
+        if (
+            running.get() &&
+            foregroundShown
+        ) {
+            ServiceCompat.startForeground(
+                this,
+                NOTIFICATION_ID,
+                progressNotification(
+                    lastProgress,
+                    lastMessage
+                ),
+                activeForegroundType
+            )
+        }
+    }
+
     private fun showProgressNotification() {
         if (!running.get()) return
-        val n = progressNotification(lastProgress, lastMessage)
-        if (!foregroundShown) {
-            val foregroundType =
-                if (
-                    Build.VERSION.SDK_INT >= 34
-                ) {
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-                } else {
-                    0
-                }
 
+        val n =
+            progressNotification(
+                lastProgress,
+                lastMessage
+            )
+
+        if (!foregroundShown) {
             ServiceCompat.startForeground(
                 this,
                 NOTIFICATION_ID,
                 n,
-                foregroundType
+                activeForegroundType
             )
 
-            foregroundShown = true
+            foregroundShown =
+                true
         } else {
-            notificationManager.notify(NOTIFICATION_ID, n)
+            notificationManager.notify(
+                NOTIFICATION_ID,
+                n
+            )
         }
     }
 
