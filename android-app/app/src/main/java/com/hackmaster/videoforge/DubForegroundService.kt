@@ -45,7 +45,7 @@ class DubForegroundService : Service(), AppVisibility.Listener {
         if (intent?.action != ACTION_START) return START_NOT_STICKY
         if (!running.compareAndSet(false, true)) {
             broadcast(0, "Zaten devam eden bir VideoForge işlemi var.", STATE_RUNNING)
-            return START_REDELIVER_INTENT
+            return START_NOT_STICKY
         }
 
         val mode = intent.getStringExtra(EXTRA_MODE) ?: MODE_DUB
@@ -89,12 +89,39 @@ class DubForegroundService : Service(), AppVisibility.Listener {
                 if (mode == MODE_URL_DUB) {
                     require(!videoUrl.isNullOrBlank()) { "Video URL'si boş." }
                     update(13, "Video URL'den telefona alınıyor…")
-                    val imported = UrlVideoImporter.download(this@DubForegroundService, videoUrl) { done, total ->
-                        val p = if (total > 0L) (13 + (done * 10L / total)).toInt() else 16
-                        update(p.coerceIn(13, 23), "Video URL'den telefona alınıyor…")
-                    }
-                    importedFile = imported
-                    items += Uri.fromFile(imported) to (imported.name.ifBlank { "URL videosu" })
+                    val validated =
+                        UrlVideoImporter.downloadValidated(
+                            this@DubForegroundService,
+                            videoUrl
+                        ) { done, total ->
+                            val p =
+                                if (total > 0L) {
+                                    (13 + (done * 10L / total)).toInt()
+                                } else {
+                                    16
+                                }
+
+                            update(
+                                p.coerceIn(13, 23),
+                                "Video URL'den telefona alınıyor ve doğrulanıyor…"
+                            )
+                        }
+
+                    val imported =
+                        validated.file
+
+                    importedFile =
+                        imported
+
+                    items +=
+                        Uri.fromFile(
+                            imported
+                        ) to
+                            (
+                                imported.name.ifBlank {
+                                    "URL videosu"
+                                }
+                            )
                 } else if (mode == MODE_QUEUE) {
                     require(queue.isNotEmpty()) { "İşlem kuyruğu boş." }
                     queue.forEachIndexed { index, raw -> items += Uri.parse(raw) to "Kuyruk ${index + 1}" }
@@ -163,7 +190,34 @@ class DubForegroundService : Service(), AppVisibility.Listener {
                 stopSelf(startId)
             }
         }
-        return START_REDELIVER_INTENT
+        return START_NOT_STICKY
+    }
+
+    /*
+     * VIDEOFORGE_TASK_REMOVAL_STOP_V1_5
+     *
+     * Normal backgrounding keeps the foreground job alive. Explicitly
+     * swiping AppForge away from Recents means stop the user-started
+     * VideoForge job and remove both progress and completion notifications.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (running.getAndSet(false)) {
+            broadcast(
+                0,
+                "VideoForge işlemi uygulama son uygulamalardan kapatıldığı için durduruldu.",
+                STATE_CANCELLED
+            )
+        }
+
+        releaseWakeLock()
+        removeProgressNotification()
+        notificationManager.cancel(
+            COMPLETION_NOTIFICATION_ID
+        )
+        stopSelf()
+        super.onTaskRemoved(
+            rootIntent
+        )
     }
 
     override fun onAppForegroundChanged(isForeground: Boolean) {
@@ -364,6 +418,7 @@ class DubForegroundService : Service(), AppVisibility.Listener {
         const val STATE_MODELS_READY = "models_ready"
         const val STATE_DONE = "done"
         const val STATE_ERROR = "error"
+        const val STATE_CANCELLED = "cancelled"
 
         private const val CHANNEL_ID = "videoforge_studio_v412"
         private const val NOTIFICATION_ID = 4420

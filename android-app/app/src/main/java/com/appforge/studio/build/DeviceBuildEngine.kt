@@ -2335,17 +2335,95 @@ object DeviceBuildEngine {
         advanceProgress(state, 93, "Artefaktlar hazır")
     }
 
-    private fun copyKeystore(context: Context, draft: ProjectDraft, workspace: File): File {
-        val uri = draft.keystoreUri ?: error("Release keystore seçilmedi.")
-        require(draft.keyAlias.isNotBlank() && draft.storePassword.isNotBlank() && draft.keyPassword.isNotBlank()) {
+    /*
+     * MANAGED_KEYSTORE_BUILD_SOURCE_V1_5
+     *
+     * Builder can select SAF content:// or AppForge-vault file:// sources.
+     */
+    private fun copyKeystore(
+        context: Context,
+        draft: ProjectDraft,
+        workspace: File
+    ): File {
+        val rawUri =
+            draft.keystoreUri
+                ?: error(
+                    "Release keystore seçilmedi."
+                )
+
+        require(
+            draft.keyAlias.isNotBlank() &&
+                draft.storePassword.isNotBlank() &&
+                draft.keyPassword.isNotBlank()
+        ) {
             "Release signing bilgileri eksik."
         }
 
-        val target = File(workspace, "appforge-release.keystore")
-        context.contentResolver.openInputStream(Uri.parse(uri))?.use { input ->
-            target.outputStream().use { output -> input.copyTo(output) }
-        } ?: error("Keystore açılamadı.")
-        require(target.length() > 0L) { "Keystore boş." }
+        val target =
+            File(
+                workspace,
+                "appforge-release.keystore"
+            )
+
+        val parsed =
+            Uri.parse(
+                rawUri
+            )
+
+        val input =
+            if (
+                parsed.scheme.equals(
+                    "file",
+                    ignoreCase = true
+                )
+            ) {
+                val source =
+                    File(
+                        parsed.path
+                            ?: error(
+                                "Yönetilen keystore yolu geçersiz."
+                            )
+                    )
+
+                require(
+                    source.isFile &&
+                        source.length() >
+                            0L
+                ) {
+                    "Yönetilen keystore dosyası bulunamadı."
+                }
+
+                source.inputStream()
+            } else {
+                context.contentResolver
+                    .openInputStream(
+                        parsed
+                    )
+                    ?: error(
+                        "Keystore açılamadı."
+                    )
+            }
+
+        input.use {
+            source ->
+
+            target.outputStream()
+                .use {
+                    output ->
+
+                    source.copyTo(
+                        output
+                    )
+                }
+        }
+
+        require(
+            target.length() >
+                0L
+        ) {
+            "Keystore boş."
+        }
+
         return target
     }
 

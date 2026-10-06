@@ -83,36 +83,99 @@ class VideoForgeActivity : AppCompatActivity() {
     private lateinit var bgSeek: SeekBar
     private val speakerSpinners = mutableListOf<Spinner>()
 
-    private val pickVideo = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
+    /*
+     * VIDEOFORGE_SELECTION_VALIDATION_V1_5
+     *
+     * A provider may label HTML/text as video. Accept the selection only
+     * after MediaExtractor proves real video + audio tracks.
+     */
+    private val pickVideo =
+        registerForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            if (uri == null) {
+                return@registerForActivityResult
+            }
+
             val persisted =
                 persist(
                     uri
                 )
 
-            selectedVideo =
-                uri
-
-            lastInput =
-                uri
-
-            fileText.text =
-                "Video: ${displayName(uri)}"
-
-            refreshButtons()
-
             status(
-                if (
-                    persisted
-                ) {
-                    "Video seçildi."
-                } else {
-                    "Video seçildi. Kalıcı dosya izni alınamadı; " +
-                        "gerekirse güvenli yerel kopya kullanılacak."
-                }
+                "Video doğrulanıyor…"
             )
+
+            Thread(
+                {
+                    val validation =
+                        runCatching {
+                            MediaSourceCompat
+                                .probeForProcessing(
+                                    this,
+                                    uri
+                                )
+                        }
+
+                    runOnUiThread {
+                        if (
+                            isFinishing ||
+                            isDestroyed
+                        ) {
+                            return@runOnUiThread
+                        }
+
+                        validation
+                            .onSuccess {
+                                selectedVideo =
+                                    uri
+
+                                lastInput =
+                                    uri
+
+                                fileText.text =
+                                    "Video: ${displayName(uri)}"
+
+                                refreshButtons()
+
+                                status(
+                                    if (
+                                        persisted
+                                    ) {
+                                        "Video doğrulandı ve seçildi."
+                                    } else {
+                                        "Video doğrulandı. Kalıcı dosya izni alınamadı; " +
+                                            "gerekirse güvenli yerel kopya kullanılacak."
+                                    }
+                                )
+                            }
+                            .onFailure {
+                                error ->
+
+                                selectedVideo =
+                                    null
+
+                                lastInput =
+                                    null
+
+                                fileText.text =
+                                    "Henüz geçerli video seçilmedi."
+
+                                refreshButtons()
+
+                                status(
+                                    "Seçilen dosya geçerli bir video değil: " +
+                                        (
+                                            error.message
+                                                ?: error.javaClass.simpleName
+                                        )
+                                )
+                            }
+                    }
+                },
+                "VideoForgeSelectionValidation"
+            ).start()
         }
-    }
 
     private val pickQueue = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         selectedQueue.clear()
@@ -184,7 +247,9 @@ class VideoForgeActivity : AppCompatActivity() {
 
             when (state) {
                 DubForegroundService.STATE_MODELS_READY -> refreshModelStatus()
-                DubForegroundService.STATE_DONE, DubForegroundService.STATE_ERROR -> {
+                DubForegroundService.STATE_DONE,
+                DubForegroundService.STATE_ERROR,
+                DubForegroundService.STATE_CANCELLED -> {
                     refreshButtons()
                     refreshHistory()
                 }

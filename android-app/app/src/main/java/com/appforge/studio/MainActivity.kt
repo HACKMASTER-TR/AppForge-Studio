@@ -1505,6 +1505,21 @@ private fun AppForgeApp() {
     var proSecurityMessage by remember { mutableStateOf("") }
     var keystoreRefresh by remember { mutableIntStateOf(0) }
 
+    /* KEYSTORE_MANAGER_RETURN_V1_5 */
+    var keystoreManagerReturnScreen by
+        remember {
+            mutableStateOf(
+                AppScreen.SETTINGS
+            )
+        }
+
+    var keystoreManagerReturnStep by
+        remember {
+            mutableIntStateOf(
+                8
+            )
+        }
+
     var projectQuota by
         remember {
             mutableStateOf<
@@ -2970,55 +2985,308 @@ private fun AppForgeApp() {
         }
     }
 
-    val iconPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-            if (uri != null) {
+    /*
+     * APPFORGE_ICON_EDITOR_V1_5
+     */
+    var pendingIconUri by
+        remember {
+            mutableStateOf<Uri?>(
+                null
+            )
+        }
+
+    var pendingIconFill by
+        remember {
+            mutableStateOf(
+                true
+            )
+        }
+
+    var pendingIconZoom by
+        remember {
+            mutableFloatStateOf(
+                1f
+            )
+        }
+
+    val iconPicker =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts
+                    .OpenDocument()
+        ) {
+            uri: Uri? ->
+
+            if (
+                uri !=
+                    null
+            ) {
                 persistReadUriPermission(
                     context,
                     uri
                 )
-            }
 
-        if (uri != null) {
-            persistReadUriPermission(
-                context,
-                uri
-            )
-            status =
-                "Uygulama ikonu hazırlanıyor..."
+                pendingIconUri =
+                    uri
 
-            scope.launch {
-                try {
-                    val prepared =
-                        withContext(
-                            Dispatchers.IO
-                        ) {
-                            AppIconProcessor
-                                .prepare(
-                                    context = context,
-                                    source = uri,
-                                    backgroundColor =
-                                        draft.primaryColor
-                                )
-                        }
+                pendingIconFill =
+                    true
 
-                    draft =
-                        draft.copy(
-                            iconUri = prepared.uri,
-                            iconName = prepared.name
-                        )
+                pendingIconZoom =
+                    1f
 
-                    status =
-                        "İkon hazırlandı: ${prepared.sourceWidth}×${prepared.sourceHeight} → güvenli 1024×1024 PNG"
-                } catch (
-                    t: Throwable
-                ) {
-                    status =
-                        "İkon hazırlanamadı: ${t.message}"
-                }
+                status =
+                    "İkon düzenleme hazır."
             }
         }
+
+    fun applyPendingIconEdit() {
+        val source =
+            pendingIconUri
+                ?: return
+
+        val fill =
+            pendingIconFill
+
+        val zoom =
+            pendingIconZoom
+
+        pendingIconUri =
+            null
+
+        status =
+            "Uygulama ikonu yüksek kaliteli launcher çıktısına hazırlanıyor..."
+
+        scope.launch {
+            try {
+                val prepared =
+                    withContext(
+                        Dispatchers.IO
+                    ) {
+                        AppIconProcessor
+                            .prepare(
+                                context =
+                                    context,
+                                source =
+                                    source,
+                                backgroundColor =
+                                    draft.primaryColor,
+                                fillCanvas =
+                                    fill,
+                                zoom =
+                                    zoom
+                            )
+                    }
+
+                draft =
+                    draft.copy(
+                        iconUri =
+                            prepared.uri,
+                        iconName =
+                            prepared.name
+                    )
+
+                status =
+                    "İkon hazırlandı: " +
+                        "${prepared.sourceWidth}×${prepared.sourceHeight} → " +
+                        "1024×1024 launcher master"
+
+            } catch (
+                t: Throwable
+            ) {
+                status =
+                    "İkon hazırlanamadı: ${t.message}"
+            }
+        }
+    }
+
+    val iconEditUri =
+        pendingIconUri
+
+    if (
+        iconEditUri !=
+            null
+    ) {
+        val previewBitmap =
+            remember(
+                iconEditUri
+            ) {
+                runCatching {
+                    context.contentResolver
+                        .openInputStream(
+                            iconEditUri
+                        )
+                        ?.use {
+                            android.graphics.BitmapFactory
+                                .decodeStream(
+                                    it
+                                )
+                        }
+                }.getOrNull()
+            }
+
+        AlertDialog(
+            onDismissRequest = {
+                pendingIconUri =
+                    null
+            },
+            title = {
+                Text(
+                    "Uygulama ikonunu düzenle"
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            10.dp
+                        )
+                ) {
+                    AndroidView(
+                        factory = {
+                            android.widget.ImageView(
+                                it
+                            )
+                        },
+                        update = {
+                            view ->
+
+                            view.setImageBitmap(
+                                previewBitmap
+                            )
+
+                            view.scaleType =
+                                if (
+                                    pendingIconFill
+                                ) {
+                                    android.widget.ImageView
+                                        .ScaleType
+                                        .CENTER_CROP
+                                } else {
+                                    android.widget.ImageView
+                                        .ScaleType
+                                        .FIT_CENTER
+                                }
+
+                            view.scaleX =
+                                pendingIconZoom
+
+                            view.scaleY =
+                                pendingIconZoom
+                        },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(
+                                    190.dp
+                                )
+                    )
+
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(
+                                8.dp
+                            )
+                    ) {
+                        FilterChip(
+                            selected =
+                                pendingIconFill,
+                            onClick = {
+                                pendingIconFill =
+                                    true
+                            },
+                            label = {
+                                Text(
+                                    "Doldur"
+                                )
+                            },
+                            modifier =
+                                Modifier.weight(
+                                    1f
+                                )
+                        )
+
+                        FilterChip(
+                            selected =
+                                !pendingIconFill,
+                            onClick = {
+                                pendingIconFill =
+                                    false
+                            },
+                            label = {
+                                Text(
+                                    "Sığdır"
+                                )
+                            },
+                            modifier =
+                                Modifier.weight(
+                                    1f
+                                )
+                        )
+                    }
+
+                    Text(
+                        "Yakınlaştırma • ${"%.2f".format(java.util.Locale.US, pendingIconZoom)}x",
+                        fontSize =
+                            12.sp,
+                        color =
+                            TextSecondary
+                    )
+
+                    Slider(
+                        value =
+                            pendingIconZoom,
+                        onValueChange = {
+                            pendingIconZoom =
+                                it
+                        },
+                        valueRange =
+                            1f..1.6f
+                    )
+
+                    OutlinedButton(
+                        onClick = {
+                            iconPicker.launch(
+                                arrayOf(
+                                    "image/*"
+                                )
+                            )
+                        },
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "DOSYAYI DEĞİŞTİR"
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        applyPendingIconEdit()
+                    }
+                ) {
+                    Text(
+                        "UYGULA"
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingIconUri =
+                            null
+                    }
+                ) {
+                    Text(
+                        "İPTAL"
+                    )
+                }
+            }
+        )
     }
 
     val firebasePicker = rememberLauncherForActivityResult(
@@ -3535,6 +3803,76 @@ private fun AppForgeApp() {
                         "Keystore içe aktarılamadı: ${t.message}"
                 }
             }
+        }
+
+
+    /*
+     * KEYSTORE_DEVICE_BACKUP_PICKER_V1_5
+     *
+     * Scoped storage prevents silent whole-device crawling. The Android
+     * multi-document picker lets the user reveal/select device backups.
+     */
+    val managedKeystoreBackupPicker =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts
+                    .OpenMultipleDocuments()
+        ) {
+            uris ->
+
+            if (
+                uris.isEmpty()
+            ) {
+                status =
+                    "Keystore yedeği seçilmedi."
+
+                return@rememberLauncherForActivityResult
+            }
+
+            var importedCount =
+                0
+
+            var failedCount =
+                0
+
+            uris.forEach {
+                uri ->
+
+                runCatching {
+                    KeystoreVault
+                        .importFromUri(
+                            context,
+                            uri
+                        )
+                }
+                    .onSuccess {
+                        importedCount +=
+                            1
+                    }
+                    .onFailure {
+                        failedCount +=
+                            1
+                    }
+            }
+
+            keystoreRefresh +=
+                1
+
+            status =
+                buildString {
+                    append(
+                        "$importedCount keystore yedeği kasaya eklendi."
+                    )
+
+                    if (
+                        failedCount >
+                            0
+                    ) {
+                        append(
+                            " $failedCount dosya okunamadı."
+                        )
+                    }
+                }
         }
 
     /*
@@ -5835,7 +6173,13 @@ onOpenPro = {
                         returnFromWorkspace()
                     },
                     onOpenLanguage = { screen = AppScreen.LANGUAGE },
-                    onOpenKeystore = { screen = AppScreen.KEYSTORES },
+                    onOpenKeystore = {
+                        keystoreManagerReturnScreen =
+                            AppScreen.SETTINGS
+
+                        screen =
+                            AppScreen.KEYSTORES
+                    },
                     onOpenPro = { screen = AppScreen.PRO },
                     onOpenOfflinePack = {
                         openOfflinePack()
@@ -5982,11 +6326,23 @@ onOpenPro = {
                         proStatus?.active ==
                             true ||
                         terminalOwner,
-                    onBack = { screen = AppScreen.SETTINGS },
+                    onBack = {
+                        screen =
+                            keystoreManagerReturnScreen
+
+                        if (
+                            keystoreManagerReturnScreen ==
+                                AppScreen.BUILDER
+                        ) {
+                            step =
+                                keystoreManagerReturnStep
+                        }
+                    },
                     onImport = {
                         if (
                             proStatus?.active ==
-                            true
+                                true ||
+                            terminalOwner
                         ) {
                             managedKeystorePicker.launch(
                                 arrayOf(
@@ -5998,11 +6354,39 @@ onOpenPro = {
                         } else {
                             status =
                                 "Özel keystore içe aktarma için sunucu doğrulamalı Pro gerekli."
+
                             screen =
                                 AppScreen.PRO
                         }
                     },
-                    onMessage = { status = it }
+                    onFindBackups = {
+                        if (
+                            proStatus?.active ==
+                                true ||
+                            terminalOwner
+                        ) {
+                            status =
+                                "Cihazdaki keystore yedeklerini seç."
+
+                            managedKeystoreBackupPicker.launch(
+                                arrayOf(
+                                    "application/x-java-keystore",
+                                    "application/octet-stream",
+                                    "*/*"
+                                )
+                            )
+                        } else {
+                            status =
+                                "Keystore yedeklerini içe aktarma için AppForge PRO gereklidir."
+
+                            screen =
+                                AppScreen.PRO
+                        }
+                    },
+                    onMessage = {
+                        status =
+                            it
+                    }
                 )
 
 
@@ -6616,11 +7000,33 @@ onOpenPro = {
                                     draft = it
                                 },
                                 onPickIcon = {
-                                    iconPicker.launch(
-                                        arrayOf(
-                                            "image/*"
+                                    val currentIcon =
+                                        draft.iconUri
+
+                                    if (
+                                        currentIcon
+                                            .isNullOrBlank()
+                                    ) {
+                                        iconPicker.launch(
+                                            arrayOf(
+                                                "image/*"
+                                            )
                                         )
-                                    )
+                                    } else {
+                                        pendingIconUri =
+                                            Uri.parse(
+                                                currentIcon
+                                            )
+
+                                        pendingIconFill =
+                                            true
+
+                                        pendingIconZoom =
+                                            1f
+
+                                        status =
+                                            "Mevcut ikon düzenleme için açıldı."
+                                    }
                                 },
                                 onRemoveIcon = {
                                     draft =
@@ -6700,9 +7106,20 @@ onOpenPro = {
                                     keystorePicker.launch(
                                         arrayOf(
                                             "application/octet-stream",
-                                            "application/x-java-keystore"
+                                            "application/x-java-keystore",
+                                            "*/*"
                                         )
                                     )
+                                },
+                                onOpenKeystoreManager = {
+                                    keystoreManagerReturnScreen =
+                                        AppScreen.BUILDER
+
+                                    keystoreManagerReturnStep =
+                                        8
+
+                                    screen =
+                                        AppScreen.KEYSTORES
                                 }
                             )
 
@@ -18448,12 +18865,249 @@ private fun SigningStep(
     update: (ProjectDraft) -> Unit,
     isPro: Boolean,
     onOpenPro: () -> Unit,
-    onPickKeystore: () -> Unit
+    onPickKeystore: () -> Unit,
+    onOpenKeystoreManager: () -> Unit
 ) {
     var showProRequired by
         remember {
             mutableStateOf(false)
         }
+
+    val signingContext =
+        LocalContext.current
+
+    var managedKeystoreRevision by
+        remember {
+            mutableIntStateOf(
+                0
+            )
+        }
+
+    var showManagedKeystores by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+    val managedKeystores =
+        remember(
+            managedKeystoreRevision,
+            showManagedKeystores
+        ) {
+            KeystoreVault
+                .load(
+                    signingContext
+                )
+        }
+
+    if (
+        showManagedKeystores
+    ) {
+        AlertDialog(
+            onDismissRequest = {
+                showManagedKeystores =
+                    false
+            },
+            title = {
+                Text(
+                    "AppForge Keystore Kasası"
+                )
+            },
+            text = {
+                if (
+                    managedKeystores
+                        .isEmpty()
+                ) {
+                    Text(
+                        "Kasada keystore yok. Yeni oluşturabilir veya cihazdan içe aktarabilirsin."
+                    )
+                } else {
+                    LazyColumn(
+                        modifier =
+                            Modifier.heightIn(
+                                max =
+                                    360.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                8.dp
+                            )
+                    ) {
+                        items(
+                            managedKeystores,
+                            key = {
+                                it.id
+                            }
+                        ) {
+                            item ->
+
+                            Card(
+                                colors =
+                                    CardDefaults.cardColors(
+                                        containerColor =
+                                            Card2
+                                    ),
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier =
+                                        Modifier.padding(
+                                            10.dp
+                                        ),
+                                    verticalArrangement =
+                                        Arrangement.spacedBy(
+                                            6.dp
+                                        )
+                                ) {
+                                    Text(
+                                        item.name,
+                                        fontWeight =
+                                            FontWeight.Bold
+                                    )
+
+                                    Text(
+                                        item.originalFileName,
+                                        color =
+                                            TextSecondary,
+                                        fontSize =
+                                            11.sp
+                                    )
+
+                                    Row(
+                                        modifier =
+                                            Modifier.fillMaxWidth(),
+                                        horizontalArrangement =
+                                            Arrangement.spacedBy(
+                                                8.dp
+                                            )
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                val selectedUri =
+                                                    Uri.fromFile(
+                                                        File(
+                                                            item.savedPath
+                                                        )
+                                                    )
+                                                        .toString()
+
+                                                update(
+                                                    d.copy(
+                                                        signingMode =
+                                                            SigningMode.CUSTOM,
+                                                        keystoreUri =
+                                                            selectedUri,
+                                                        keystoreName =
+                                                            item.originalFileName,
+                                                        keyAlias =
+                                                            item.alias.ifBlank {
+                                                                d.keyAlias
+                                                            },
+                                                        storePassword =
+                                                            "",
+                                                        keyPassword =
+                                                            ""
+                                                    )
+                                                )
+
+                                                showManagedKeystores =
+                                                    false
+                                            },
+                                            modifier =
+                                                Modifier.weight(
+                                                    1f
+                                                )
+                                        ) {
+                                            Text(
+                                                "SEÇ"
+                                            )
+                                        }
+
+                                        OutlinedButton(
+                                            onClick = {
+                                                val selectedUri =
+                                                    Uri.fromFile(
+                                                        File(
+                                                            item.savedPath
+                                                        )
+                                                    )
+                                                        .toString()
+
+                                                KeystoreVault
+                                                    .delete(
+                                                        signingContext,
+                                                        item.id
+                                                    )
+
+                                                if (
+                                                    d.keystoreUri ==
+                                                        selectedUri
+                                                ) {
+                                                    update(
+                                                        d.copy(
+                                                            keystoreUri =
+                                                                null,
+                                                            keystoreName =
+                                                                "",
+                                                            keyAlias =
+                                                                "",
+                                                            storePassword =
+                                                                "",
+                                                            keyPassword =
+                                                                ""
+                                                        )
+                                                    )
+                                                }
+
+                                                managedKeystoreRevision +=
+                                                    1
+                                            },
+                                            modifier =
+                                                Modifier.weight(
+                                                    1f
+                                                )
+                                        ) {
+                                            Text(
+                                                "SİL"
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showManagedKeystores =
+                            false
+
+                        onOpenKeystoreManager()
+                    }
+                ) {
+                    Text(
+                        "YENİ OLUŞTUR / YÖNET"
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showManagedKeystores =
+                            false
+                    }
+                ) {
+                    Text(
+                        "KAPAT"
+                    )
+                }
+            }
+        )
+    }
 
     if (
         showProRequired
@@ -18712,6 +19366,46 @@ private fun SigningStep(
                             "✓ Keystore seçildi"
                         }
                     )
+                }
+            }
+
+            item {
+                /* BUILDER_MANAGED_KEYSTORE_V1_5 */
+                Row(
+                    modifier =
+                        Modifier.fillMaxWidth(),
+                    horizontalArrangement =
+                        Arrangement.spacedBy(
+                            8.dp
+                        )
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            showManagedKeystores =
+                                true
+                        },
+                        modifier =
+                            Modifier.weight(
+                                1f
+                            )
+                    ) {
+                        Text(
+                            "KASADAN SEÇ"
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick =
+                            onOpenKeystoreManager,
+                        modifier =
+                            Modifier.weight(
+                                1f
+                            )
+                    ) {
+                        Text(
+                            "OLUŞTUR / YÖNET"
+                        )
+                    }
                 }
             }
 
@@ -20439,6 +21133,82 @@ private fun BuildSettingsStep(
 }
 
 @Composable
+private fun BuildArtifactIcon(
+    iconUri: String?
+) {
+    val context =
+        LocalContext.current
+
+    val bitmap =
+        remember(
+            iconUri
+        ) {
+            iconUri
+                ?.takeIf {
+                    it.isNotBlank()
+                }
+                ?.let {
+                    raw ->
+
+                    runCatching {
+                        context.contentResolver
+                            .openInputStream(
+                                Uri.parse(
+                                    raw
+                                )
+                            )
+                            ?.use {
+                                android.graphics.BitmapFactory
+                                    .decodeStream(
+                                        it
+                                    )
+                            }
+                    }
+                        .getOrNull()
+                }
+        }
+
+    AndroidView(
+        factory = {
+            android.widget.ImageView(
+                it
+            ).apply {
+                scaleType =
+                    android.widget.ImageView
+                        .ScaleType
+                        .CENTER_CROP
+            }
+        },
+        update = {
+            view ->
+
+            if (
+                bitmap !=
+                    null
+            ) {
+                view.setImageBitmap(
+                    bitmap
+                )
+            } else {
+                view.setImageDrawable(
+                    runCatching {
+                        context.packageManager
+                            .getApplicationIcon(
+                                context.packageName
+                            )
+                    }.getOrNull()
+                )
+            }
+        },
+        modifier =
+            Modifier.size(
+                72.dp
+            )
+    )
+}
+
+
+@Composable
 private fun BuildStep(
     draft: ProjectDraft,
     onDraftChange: (ProjectDraft) -> Unit,
@@ -21938,13 +22708,48 @@ private fun BuildStep(
                         verticalArrangement =
                             Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
                     ) {
-                        Text(
-                            "✅ Derleme tamamlandı",
-                            color =
-                                Accent,
-                            fontWeight =
-                                FontWeight.Bold
-                        )
+                        /* BUILD_RESULT_APP_ICON_V1_5 */
+                        Row(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            verticalAlignment =
+                                Alignment.CenterVertically,
+                            horizontalArrangement =
+                                Arrangement.spacedBy(
+                                    12.dp
+                                )
+                        ) {
+                            BuildArtifactIcon(
+                                iconUri =
+                                    draft.iconUri
+                            )
+
+                            Column(
+                                modifier =
+                                    Modifier.weight(
+                                        1f
+                                    )
+                            ) {
+                                Text(
+                                    "✅ Derleme tamamlandı",
+                                    color =
+                                        Accent,
+                                    fontWeight =
+                                        FontWeight.Bold
+                                )
+
+                                Text(
+                                    draft.appName
+                                        .ifBlank {
+                                            "AppForge Uygulaması"
+                                        },
+                                    color =
+                                        TextSecondary,
+                                    fontSize =
+                                        12.sp
+                                )
+                            }
+                        }
 
                         Text(
                             "$availableOutputs çıktı indirilmeye hazır.",
@@ -22586,6 +23391,28 @@ private fun BuildStep(
                 ) {
                     Text(
                         "APK'YI PAYLAŞ"
+                    )
+                }
+            }
+        }
+
+        if (
+            apkCachedPath !=
+                null
+        ) {
+            item {
+                OutlinedButton(
+                    onClick = {
+                        downloadMessage =
+                            openAppForgeDownloadsFolder(
+                                context
+                            )
+                    },
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "KLASÖRDE GÖSTER"
                     )
                 }
             }
@@ -23966,6 +24793,94 @@ private fun publishApkToDownloads(
 }
 
 
+
+
+/*
+ * BUILD_RESULT_SHOW_FOLDER_V1_5
+ */
+private fun openAppForgeDownloadsFolder(
+    context: Context
+): String {
+    return runCatching {
+        val folderUri =
+            android.provider.DocumentsContract
+                .buildDocumentUri(
+                    "com.android.externalstorage.documents",
+                    "primary:Download/AppForgeStudio"
+                )
+
+        val direct =
+            Intent(
+                Intent.ACTION_VIEW
+            ).apply {
+                setDataAndType(
+                    folderUri,
+                    "vnd.android.document/directory"
+                )
+
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+
+                if (
+                    context !is
+                        android.app.Activity
+                ) {
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK
+                    )
+                }
+            }
+
+        if (
+            direct.resolveActivity(
+                context.packageManager
+            ) !=
+                null
+        ) {
+            context.startActivity(
+                direct
+            )
+        } else {
+            val fallback =
+                Intent(
+                    Intent.ACTION_OPEN_DOCUMENT_TREE
+                ).apply {
+                    if (
+                        Build.VERSION.SDK_INT >=
+                            Build.VERSION_CODES.O
+                    ) {
+                        putExtra(
+                            android.provider.DocumentsContract
+                                .EXTRA_INITIAL_URI,
+                            folderUri
+                        )
+                    }
+
+                    if (
+                        context !is
+                            android.app.Activity
+                    ) {
+                        addFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK
+                        )
+                    }
+                }
+
+            context.startActivity(
+                fallback
+            )
+        }
+
+        "✅ Downloads/AppForgeStudio klasörü açıldı."
+
+    }.getOrElse {
+        "Klasör açılamadı: ${
+            it.message
+                ?: it.javaClass.simpleName
+        }"
+    }
+}
 
 
 private fun installCachedApk(
@@ -26129,6 +27044,7 @@ private fun KeystoreManagerScreen(
     canGenerate: Boolean,
     onBack: () -> Unit,
     onImport: () -> Unit,
+    onFindBackups: () -> Unit,
     onMessage: (String) -> Unit
 ) {
     val keystoreConfiguration =
@@ -26575,10 +27491,8 @@ private fun KeystoreManagerScreen(
 
             Button(
                 onClick = {
-                    reload()
-                    onMessage(
-                        "${KeystoreVault.count(context)} keystore bulundu."
-                    )
+                    /* KEYSTORE_DEVICE_BACKUP_PICKER_V1_5 */
+                    onFindBackups()
                 },
                 modifier =
                     Modifier

@@ -81,8 +81,6 @@ public final class FastActivity extends Activity {
             getIntent()
         );
 
-        configureWindow();
-
         FrameLayout root = new FrameLayout(this);
 
         webView = new WebView(this);
@@ -122,9 +120,16 @@ public final class FastActivity extends Activity {
 
         setContentView(root);
 
-
+        /*
+         * APPFORGE_ANDROID_WINDOW_LIFECYCLE_V1_5
+         *
+         * WindowInsetsController requires an installed DecorView.
+         * Shared HTML/URL/Node-Web wrappers configure system bars only
+         * after setContentView().
+         */
+        configureWindow();
         applyAppForgeSystemBarInsets();
-requestConfiguredPermissions();
+        requestConfiguredPermissions();
 
         if (splashView != null) {
             splashView.postDelayed(
