@@ -149,7 +149,7 @@ object AppForgeAssistantIntegration {
             FeatureRoute(
                 AssistantAppAction(AssistantDestination.BUILD_SETTINGS, "Build ayarları", "Sürüm, çıktı ve servis ayarlarını düzenle."),
                 setOf("versioncode", "versionname", "sürüm", "apk aab", "çıktı", "build ayarı"),
-                "Build Ayarları: versionName/versionCode, APK/AAB/BOTH, proje kaydı ve Build Service bağlantısı."
+                "Build Ayarları: versionName/versionCode, APK/AAB/BOTH, proje kaydı ve cihazda build ayarları."
             ),
             FeatureRoute(
                 AssistantAppAction(AssistantDestination.BUILD, "Derleme ekranı", "Ön kontrolü ve canlı build durumunu gör."),
@@ -187,9 +187,9 @@ object AppForgeAssistantIntegration {
                 "Geri Dönüşüm Kutusu: silinen projeleri 30 gün saklar, geri yükler ve süresi dolunca proje dosyalarıyla birlikte temizler."
             ),
             FeatureRoute(
-                AssistantAppAction(AssistantDestination.ACCOUNT, "Hesabı aç", "Oturum ve Build Service bağlantısını yönet."),
-                setOf("hesap", "giriş", "oturum", "api key", "kayıt"),
-                "Hesap: güvenli oturum ve Build Service erişimi; anahtarlar Android güvenli deposunda tutulur."
+                AssistantAppAction(AssistantDestination.ACCOUNT, "Hesapsız kullanımı aç", "Normal AppForge kullanımının hesapsız olduğunu görüntüle."),
+                setOf("hesapsız", "hesap gerekmiyor", "normal kullanım", "giriş gerekmiyor"),
+                "Hesapsız Kullanım: normal AppForge kullanımı için e-posta veya parola hesabı oluşturulmaz."
             ),
             FeatureRoute(
                 AssistantAppAction(AssistantDestination.HELP, "Yardımı aç", "Kullanım rehberlerini ve aranabilir yardım konularını gör."),
@@ -202,9 +202,9 @@ object AppForgeAssistantIntegration {
                 "Play Rehberi: AAB, benzersiz package, artan versionCode, imza, politika ve test kanalı kontrol listesi."
             ),
             FeatureRoute(
-                AssistantAppAction(AssistantDestination.PRO, "Pro seçenekleri", "Doğrulanmış Pro ve Pro Aylık planlarını gör."),
-                setOf("pro", "ücret", "abonelik", "filigran", "sınırsız"),
-                "Pro: sunucu ve Play Integrity ile doğrulanan sınırsız proje/filigransız build yetkisi."
+                AssistantAppAction(AssistantDestination.PRO, "Pro Ömür Boyu", "Tek seferlik Google Play Pro satın alımını ve doğrulanmış durumunu gör."),
+                setOf("pro", "ömür boyu", "tek seferlik", "google play"),
+                "Pro Ömür Boyu: Google Play üzerinden tek seferlik satın alınır ve AppForge tarafından doğrulanır."
             ),
             FeatureRoute(
                 AssistantAppAction(AssistantDestination.KEYSTORES, "Keystore yöneticisi", "İmza kayıtlarını ve sertifika parmak izlerini yönet."),

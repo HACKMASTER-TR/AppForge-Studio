@@ -1570,11 +1570,6 @@ private fun AppForgeApp() {
             }
     }
 
-    val effectiveFreeProjectLimit =
-        projectQuota
-            ?.limit
-            ?: 5
-
     /*
      * One stable holder owns the high-frequency build runtime state.
      *
@@ -2300,17 +2295,6 @@ private fun AppForgeApp() {
         }
 
         delay(1200L)
-
-        val canSaveProject =
-            proStatus?.active == true ||
-            true
-
-        if (!canSaveProject) {
-            status =
-                "Ücretsiz denemede toplam $effectiveFreeProjectLimit farklı proje hakkın doldu. " +
-                "Bu projedeki ilk değişikliği kaydetmek için Pro Ömür Boyu gerekli."
-            return@LaunchedEffect
-        }
 
         ProjectLibrary.save(
             context,
@@ -4915,13 +4899,12 @@ private fun AppForgeApp() {
                         "FREE_PROJECT_LIMIT_REACHED" -> {
 
                         proSecurityMessage =
-                            "Ücretsiz kotan doldu. " +
-                            "Devam etmek için aşağıdan " +
-                            "Pro Ömür Boyu durumunu kontrol et."
+                            "Eski sunucu kota yanıtı algılandı. " +
+                            "Bu sürüm normal kullanıcıya proje kotası satmıyor. " +
+                            "Build'i tekrar dene."
 
                         status =
-                            "Ücretsiz kota doldu • " +
-                            "Pro'ya yükselt."
+                            "Eski kota yanıtı • tekrar dene."
 
                         progress =
                             0
@@ -5777,11 +5760,6 @@ private fun AppForgeApp() {
                     )
 
                 AppScreen.LIBRARY -> ProjectLibraryScreen(
-                    proUnlocked = proStatus?.active == true,
-                    freeProjectLimit =
-                        effectiveFreeProjectLimit,
-                    serverFreeProjectUsed =
-                        projectQuota?.used,
                     onBack = { screen = AppScreen.HOME },
                     onLoad = libraryLoad@{ saved ->
 
@@ -7099,27 +7077,12 @@ private fun AppForgeApp() {
                                         )
                                 },
                                 onSave = {
-                                    val packageName =
-                                        draft.packageName
-                                            .trim()
-
-                                    val canUseSlot =
-                                        proStatus?.active ==
-                                            true ||
-                                        true
-
-                                    if (!canUseSlot) {
-                                        status =
-                                            "Ücretsiz denemede toplam $effectiveFreeProjectLimit farklı proje hakkın doldu. Proje silmek yeni hak açmaz. Yeni proje için Pro Ömür Boyu gerekli."
-                                    } else {
-                                        currentProjectId =
-                                            ProjectLibrary.save(
-                                                context,
-                                                draft,
-                                                currentProjectId
-                                            )
-
-                                    }
+                                    currentProjectId =
+                                        ProjectLibrary.save(
+                                            context,
+                                            draft,
+                                            currentProjectId
+                                        )
                                 }
                             )
 
@@ -25353,9 +25316,6 @@ private fun installDownloadedApk(
 
 @Composable
 private fun ProjectLibraryScreen(
-    proUnlocked: Boolean,
-    freeProjectLimit: Int,
-    serverFreeProjectUsed: Int?,
     onBack: () -> Unit,
     onLoad: (SavedProject) -> Unit
 ) {
@@ -25401,23 +25361,6 @@ private fun ProjectLibraryScreen(
             )
         }
 
-    var trialSlotsUsed by
-        remember {
-            mutableIntStateOf(
-                ProjectLibrary
-                    .freeProjectSlotsUsed(
-                        context
-                    )
-            )
-        }
-
-    val effectiveTrialSlotsUsed =
-        maxOf(
-            trialSlotsUsed,
-            serverFreeProjectUsed
-                ?: 0
-        )
-
     Column(
         Modifier.fillMaxSize()
     ) {
@@ -25460,65 +25403,6 @@ private fun ProjectLibraryScreen(
             verticalArrangement =
                 Arrangement.spacedBy(if (libraryCompact) 7.dp else 10.dp)
         ) {
-            item {
-                Card(
-                    colors =
-                        CardDefaults
-                            .cardColors(
-                                containerColor =
-                                    if (
-                                        proUnlocked
-                                    ) {
-                                        Color(
-                                            0xFF173929
-                                        )
-                                    } else {
-                                        Card2
-                                    }
-                            ),
-                    shape =
-                        RoundedCornerShape(if (libraryCompact) 17.dp else 20.dp)
-                ) {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(if (libraryCompact) 12.dp else 16.dp),
-                        verticalArrangement =
-                            Arrangement
-                                .spacedBy(
-                                    5.dp
-                                )
-                    ) {
-                        Text(
-                            if (
-                                proUnlocked
-                            ) {
-                                "Proje Hakkı • SINIRSIZ"
-                            } else {
-                                "Deneme Hakkı • $effectiveTrialSlotsUsed / $freeProjectLimit"
-                            },
-                            fontWeight =
-                                FontWeight.Bold,
-                            fontSize =
-                                18.sp
-                        )
-
-                        Text(
-                            if (
-                                proUnlocked
-                            ) {
-                                "${projects.size} kayıtlı proje • Pro Ömür Boyu'da proje sınırı yok."
-                            } else {
-                                "${(freeProjectLimit - effectiveTrialSlotsUsed).coerceAtLeast(0)} yeni proje hakkın kaldı. Proje silmek hakkı geri getirmez."
-                            },
-                            color =
-                                TextSecondary
-                        )
-                    }
-                }
-            }
-
             if (
                 projects.isEmpty()
             ) {

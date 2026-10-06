@@ -336,14 +336,14 @@ object AppForgeKnowledgeBase {
                 setOf("ai", "proje", "bağlam", "context", "parola", "api")
             ),
             KnowledgeChunk(
-                "Free plan",
-                "Free hesapta toplam 5 farklı proje oluşturma deneme hakkı vardır. Proje silinse bile kullanılan hak geri gelmez. Aynı package name daha önce hakkı tüketmişse tekrar oluşturmak yeni hak tüketmez.",
-                setOf("free", "ücretsiz", "5", "proje", "deneme", "hak")
+                "Standart kullanım",
+                "Normal AppForge kullanımı hesapsızdır. Projeler ve normal build geçmişi cihazda tutulur; kullanıcıya aylık proje kotası veya proje deneme sayacı gösterilmez.",
+                setOf("free", "standart", "ücretsiz", "proje", "hesapsız")
             ),
             KnowledgeChunk(
-                "Pro planları",
-                "Pro tek seferlik satın almadır. Pro Aylık Google Play üzerinden otomatik yenilenen aboneliktir. İki Pro seçeneğinde de proje sayısı sınırsızdır ve Free projelerdeki Built with AppForge filigranı kaldırılır.",
-                setOf("pro", "aylık", "abonelik", "watermark", "filigran", "sınırsız")
+                "Pro Ömür Boyu",
+                "AppForge Pro Ömür Boyu Google Play üzerinden yapılan tek seferlik satın alımdır. AppForge için aylık Pro aboneliği veya ek kota paketi sunulmaz.",
+                setOf("pro", "ömür boyu", "satın alma", "google play")
             ),
             KnowledgeChunk(
                 "Pro güvenliği",
@@ -366,9 +366,9 @@ object AppForgeKnowledgeBase {
                 setOf("play", "store", "rehber", "ayarlar", "yayın")
             ),
             KnowledgeChunk(
-                "Gizlilik ve hesap silme",
-                "Yasal bölüm kullanım koşulları ve gizlilik bilgilerine erişim sağlar. Hesap kullanan uygulamalarda Google Play gereksinimlerine uygun hesap silme akışı uygulama içinde ve gerekli web sayfasında sunulabilir.",
-                setOf("gizlilik", "privacy", "hesap", "silme", "yasal")
+                "Gizlilik ve hesapsız kullanım",
+                "Yasal bölüm kullanım koşulları ve gizlilik bilgilerine erişim sağlar. Normal AppForge kullanımı için e-posta veya parola ile kullanıcı hesabı oluşturulmaz. Yönetici doğrulaması ve üçüncü taraf bağlantıları normal kullanıcı hesabından ayrı özelliklerdir.",
+                setOf("gizlilik", "privacy", "hesapsız", "yasal")
             ),
             KnowledgeChunk(
                 "Dil",
@@ -391,7 +391,7 @@ object AppForgeKnowledgeBase {
         listOf(
             FastFaq(
                 "Free ve Pro arasındaki fark ne?",
-                "Free planda toplam 5 farklı proje oluşturma deneme hakkı vardır ve kullanılan hak proje silinse de geri gelmez.\n\nPro ve Pro Aylık seçeneklerinde proje sayısı sınırsızdır ve Free projelerdeki \"Built with AppForge\" filigranı kaldırılır. Pro tek seferlik satın almadır; Pro Aylık Google Play üzerinden otomatik yenilenen aboneliktir.",
+                "Normal AppForge kullanımı hesapsızdır ve proje kütüphanesi cihazda tutulur. Kullanıcıya aylık proje kotası veya proje deneme sayacı gösterilmez.\n\nPro Ömür Boyu Google Play üzerinden yapılan tek seferlik satın alımdır; aylık AppForge Pro aboneliği ve ek kota paketi sunulmaz.",
                 setOf("free", "pro", "ücretsiz", "fark"),
                 setOf("free pro farkı", "ücretsiz pro farkı")
             ),
@@ -570,10 +570,10 @@ object AppForgeKnowledgeBase {
                 setOf("cache temizle")
             ),
             FastFaq(
-                "Hesabımı nasıl silebilirim?",
-                "AppForge Studio'nun hesap silme seçeneğini uygulama içindeki hesap/yasal akıştan kullanabilirsin. Google Play için gerekli web tabanlı hesap silme sayfası da uygulamanın yayın yapılandırmasına göre sunulur.",
-                setOf("hesap", "sil", "silme"),
-                setOf("account delete")
+                "AppForge hesabı gerekiyor mu?",
+                "Hayır. Normal AppForge kullanımı hesapsızdır; e-posta veya parola ile AppForge kullanıcı hesabı oluşturulmaz. Google ile yönetici doğrulaması, GitHub bağlantısı ve Google Play satın alma doğrulaması ayrı özelliklerdir.",
+                setOf("hesap", "hesapsız", "giriş"),
+                setOf("appforge hesap", "hesap gerekiyor mu")
             )
         )
 

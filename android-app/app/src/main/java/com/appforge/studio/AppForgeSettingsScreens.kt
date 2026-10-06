@@ -355,22 +355,22 @@ internal fun LegalCenterScreen(
         Triple(
             "📄",
             settingsT(languageCode, "terms_of_use"),
-            "AppForge ile dönüştürdüğün veya derlediğin kaynak, içerik, marka, izin ve dağıtım haklarından sen sorumlusun. Yalnız sana ait olan veya kullanma hakkın bulunan içerikleri işle. AppForge'ın güvenlik, kota, imzalama ve mağaza doğrulamalarını aşmaya çalışma."
+            "AppForge ile dönüştürdüğün veya derlediğin kaynak, içerik, marka, izin ve dağıtım haklarından sen sorumlusun. Yalnız sana ait olan veya kullanma hakkın bulunan içerikleri işle. AppForge'ın güvenlik, imzalama ve mağaza doğrulamalarını aşmaya çalışma."
         ),
         Triple(
             "☁️",
-            "Bulut build ve proje verileri",
-            "Build Service kullandığında gerekli proje kaynakları, build ayarları ve teknik metadata resmi AppForge sunucusuna gönderilebilir. Build logları ve çıktılar hizmetin çalışma ve saklama politikası kapsamında tutulabilir. Yerel araçlar yalnız cihazda çalıştıkları ölçüde buluta veri göndermez; kullanılan özelliğe göre davranış değişir."
+            "Cihazda build ve proje verileri",
+            "Normal AppForge build akışı cihaz üzerinde çalışır. Projeler, build geçmişi ve yerel çıktılar cihazdaki AppForge çalışma alanında tutulur. Yalnız kullanıcının açıkça etkinleştirdiği harici entegrasyonlar kendi işlevleri için ilgili hizmetlerle veri alışverişi yapabilir."
         ),
         Triple(
             "🔐",
             settingsT(languageCode, "privacy_policy"),
-            "Hesap, oturum, cihaz güvenliği, build geçmişi, kota ve satın alma doğrulaması için gerekli teknik veriler işlenebilir. Parolalar, API anahtarları ve keystore parolaları Yerel AI bağlamına eklenmez. Android istemcisindeki hassas hesap bağlantıları güvenli depoda tutulur. Hesap silme akışı sunucudaki hesap verilerinin silinmesini başlatır; üçüncü tarafların kendi saklama yükümlülükleri ayrıca geçerli olabilir."
+            "Normal AppForge kullanımı hesapsızdır; e-posta veya parola ile AppForge kullanıcı hesabı oluşturulmaz. Projeler ve normal build geçmişi cihazda tutulur. Parolalar, API anahtarları ve keystore parolaları Yerel AI bağlamına eklenmez. Google ile yönetici doğrulaması, GitHub bağlantısı ve Google Play satın alma doğrulaması yalnız ilgili özellik kullanıldığında kendi ayrı güvenlik akışları üzerinden çalışır."
         ),
         Triple(
             "🛒",
-            "Google Play ödemeleri ve abonelikler",
-            "Ödemeyi Google Play işler. AppForge sunucusu purchase token, ürün, abonelik durumu ve entitlement bilgisini Google Play ile doğrular. İptal, süre dolumu, refund veya revoke sonrası Pro erişimi sunucu gerçeğine göre kaldırılabilir. Ek kota paketleri yalnız uygun aktif Pro Aylık döneminde geçerlidir ve sonraki döneme devretmez."
+            "Google Play ödemeleri",
+            "AppForge Pro Ömür Boyu tek seferlik Google Play satın alımıdır. Aylık AppForge Pro aboneliği veya ek kota paketi sunulmaz. Satın alma kaydı Google Play üzerinden doğrulanmadan Pro erişimi verilmez; refund veya revoke gibi geçersizleştirmeler doğrulanan Pro durumuna yansıtılabilir."
         ),
         Triple(
             "✨",

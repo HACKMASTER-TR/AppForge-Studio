@@ -23,42 +23,34 @@ object AppForgeBuildErrorAdvisor {
     private val rules =
         listOf(
             Rule(
-                category = "Plan / Kota",
-                title = "FREE proje hakkı doldu",
+                category = "Uyumluluk / Eski sunucu yanıtı",
+                title = "Eski proje kotası yanıtı algılandı",
                 needles = listOf(
-                    "free_project_limit_reached",
-                    "farklı proje hakkın vardır",
-                    "farklı proje hakkın doldu",
-                    "silinen proje hakkı geri gelmez"
+                    "free_project_limit_reached"
                 ),
-                reason = "FREE hesabın bu kullanıcı için tanımlanan toplam farklı proje kotasına ulaştı.",
-                solution = "Daha önce hak kullanmış mevcut bir package name ile devam et, yöneticiden FREE proje limitini artırmasını iste veya Pro / Pro Aylık kullan.",
+                reason = "Build kaynağı artık normal AppForge ürün modelinde kullanılmayan eski bir proje kotası yanıtı döndürdü.",
+                solution = "Build'i yeniden dene. Sorun tekrarlanırsa teknik ayrıntılardaki hata kodunu kontrol et; bu sürüm normal kullanıcıya proje kotası satmaz.",
                 confidence = 99
             ),
             Rule(
-                category = "Plan / Kota",
-                title = "Pro Aylık başarılı proje hakkı doldu",
+                category = "Uyumluluk / Eski sunucu yanıtı",
+                title = "Eski aylık Pro yanıtı algılandı",
                 needles = listOf(
                     "pro_monthly_project_limit_reached",
-                    "pro aylık paketinde bu abonelik döneminde",
-                    "50 başarılı farklı proje hakkı",
-                    "başarılı farklı proje hakkı vardır"
+                    "pro_monthly_build_limit_reached"
                 ),
-                reason = "Pro Aylık hesabın mevcut abonelik dönemindeki başarılı farklı proje kotasına ulaştı. Başarısız build'ler bu kotaya dahil değildir.",
-                solution = "Mevcut projelerini tekrar build edebilirsin; aynı proje yeniden hak tüketmez. Yeni başarılı farklı projeler için bir sonraki abonelik döneminde 50 hak otomatik yenilenir.",
+                reason = "Build kaynağı artık satılmayan eski aylık Pro ürününe ait bir yanıt döndürdü.",
+                solution = "AppForge yalnız Pro Ömür Boyu ürününü kullanır. Pro durumunu yenileyip build'i tekrar dene.",
                 confidence = 99
             ),
             Rule(
-                category = "Plan / Eşzamanlı Build",
+                category = "Build / Eşzamanlı İşlem",
                 title = "Aktif build sınırına ulaşıldı",
                 needles = listOf(
-                    "active_build_limit",
-                    "free hesapta aynı anda en fazla",
-                    "aynı anda en fazla 1 aktif build",
-                    "aktif pro build kullanılabilir"
+                    "active_build_limit"
                 ),
-                reason = "Hesabın için izin verilen eşzamanlı aktif build sayısı dolu.",
-                solution = "Çalışan build tamamlanınca yeniden dene. FREE hesapta aynı anda 1 build çalışabilir; daha yüksek planlarda sunucunun tanımladığı limit uygulanır.",
+                reason = "Aynı anda çalışan build sayısı mevcut çalışma sınırına ulaştı.",
+                solution = "Çalışan build tamamlanınca veya iptal edilince yeniden dene.",
                 confidence = 99
             ),
             Rule(
