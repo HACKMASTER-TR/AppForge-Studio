@@ -6448,6 +6448,8 @@ private fun AppForgeApp() {
                     if (isAdminOpsAccount) {
                         AdminAiRouterScreen(
                             serverUrl = DEFAULT_CONTROL_PLANE_URL,
+                            projectId = currentProjectId,
+                            draft = draft,
                             onAuthorizationLost = {
                                 adminRevision += 1
                                 screen = AppScreen.HOME
