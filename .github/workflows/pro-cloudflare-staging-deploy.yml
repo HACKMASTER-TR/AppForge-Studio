@@ -91,6 +91,9 @@ jobs:
           preview_urls = false
           keep_vars = true
 
+          [ai]
+          binding = "AI"
+
           [[d1_databases]]
           binding = "DB"
           database_name = "appforge-control-plane-db"
