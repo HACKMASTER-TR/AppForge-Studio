@@ -1,0 +1,16 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const read=p=>fs.readFileSync(new URL("../../"+p,import.meta.url),"utf8");
+const worker=read("cloudflare/control-plane/src/index.mjs");
+const router=read("cloudflare/control-plane/src/admin_ai_router.mjs");
+const ai=read("android-app/app/src/main/java/com/appforge/studio/AdminAiRouterScreen.kt");
+const admin=read("android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt");
+const main=read("android-app/app/src/main/java/com/appforge/studio/MainActivity.kt");
+const home=read("android-app/app/src/main/java/com/appforge/studio/ui/StudioHomeV2.kt");
+test("router is inside verified admin gate",()=>{assert.match(worker,/const aiAdminRoute[\s\S]*\/api\/admin\/ai\/chat/);assert.match(worker,/verifyGoogleIdToken/);assert.match(worker,/SELECT state FROM admin_identities WHERE google_subject_hash = \?/);assert.match(worker,/owner\?\.state !== 'active'[\s\S]*admin_forbidden/);assert.match(worker,/if \(aiAdminRoute\)[\s\S]*handleAdminAiChat/);});
+test("normal Home hides AI unless admin",()=>{assert.match(home,/if\s*\(\s*fullAdmin\s*\)\s*\{[\s\S]{0,1200}?AppForge AI[\s\S]{0,1200}?AI ile Oluştur/);assert.match(home,/OwnerAccessPolicy\.isActiveOwner/);});
+test("runtime fail closes AI for non owner",()=>{for(const x of ["ADMIN_AI","AI_ASSISTANT","UNIFIED_AGENT"])assert.match(main,new RegExp(`screen == AppScreen\\.${x}`));assert.match(main,/privilegedScreen[\s\S]*!terminalOwner[\s\S]*AppScreen\.HOME/);});
+test("admin panel exposes AppForge AI",()=>{assert.match(admin,/onOpenAi:\s*\(\)\s*->\s*Unit/);assert.match(admin,/if\s*\(\s*authorized\s*\)[\s\S]{0,900}?APPFORGE AI/);assert.match(main,/AppScreen\.ADMIN_AI\s*->/);});
+test("Android has no provider secrets or direct endpoints",()=>{for(const x of ["GROQ_API_KEY","GEMINI_API_KEY","OPENROUTER_API_KEY","api.groq.com","generativelanguage.googleapis.com","openrouter.ai/api"])assert.equal(ai.includes(x),false,x);assert.match(ai,/\/api\/admin\/ai\/chat/);assert.match(ai,/OwnerAccessPolicy[\s\S]*currentGoogleIdToken/);});
+test("server router owns all providers",()=>{for(const x of ["groq","gemini","workers_ai","openrouter"])assert.match(router,new RegExp(x));assert.match(router,/openai\/gpt-oss-120b/);assert.match(router,/gemini-3\.6-flash/);assert.match(router,/@cf\/google\/gemma-4-26b-a4b-it/);assert.match(router,/openrouter\/free/);assert.match(router,/fallbackUsed/);});

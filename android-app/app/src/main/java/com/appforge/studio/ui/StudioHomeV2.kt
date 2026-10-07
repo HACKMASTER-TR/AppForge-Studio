@@ -141,20 +141,27 @@ fun StudioHomeV2(
             item {
                 HomeSectionTitle(
                     "Hızlı erişim",
-                    "Üretim, AI ve proje araçlarına hızlı ulaş."
+                    if (fullAdmin) {
+                        "Üretim, AI ve proje araçlarına hızlı ulaş."
+                    } else {
+                        "Üretim ve proje araçlarına hızlı ulaş."
+                    }
                 )
             }
-            item {
-                ModernHomeActionRow(
-                    "AI",
-                    "AppForge AI",
-                    "Projeyi analiz et ve düzelt.",
-                    onOpenAi,
-                    "AGENT",
-                    "AI ile Oluştur",
-                    "Anlatarak uygulama veya oyun oluştur.",
-                    onOpenUnifiedAgent
-                )
+
+            if (fullAdmin) {
+                item {
+                    ModernHomeActionRow(
+                        "AI",
+                        "AppForge AI",
+                        "Yönetici AI Router ile analiz et.",
+                        onOpenAi,
+                        "AGENT",
+                        "AI ile Oluştur",
+                        "Yönetici AI araçlarını aç.",
+                        onOpenUnifiedAgent
+                    )
+                }
             }
             item {
                 ModernHomeActionRow(

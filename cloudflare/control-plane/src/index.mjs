@@ -2,6 +2,7 @@ import { verifyGoogleIdToken, subjectSha256, InvalidIdentity, IdentityProviderUn
 import { handleAdminProCodes } from './admin_pro_codes.mjs';
 import { handleProRedemption } from './pro_redemption.mjs';
 import { handlePlayIntegritySecurityRoute } from './play_integrity_route.mjs';
+import { handleAdminAiChat } from './admin_ai_router.mjs';
 /**
  * AppForge accountless control-plane staging.
  * No normal-user login, registration, synthetic admin or Pro entitlement.
@@ -422,18 +423,23 @@ export async function handleRequest(request, env, dependencies = {}) {
           pathname
         );
 
+      const aiAdminRoute =
+        pathname === '/api/admin/ai/chat';
+
       // Admin alone is account-based. Normal users stay accountless.
       // An email, old bearer, device ID or Play purchase NEVER confers admin.
       if (
         pathname === '/api/admin/system-status' ||
         pathname === '/api/admin/google/verify' ||
         proAdminRoute ||
-        publisherSigningRoute
+        publisherSigningRoute ||
+        aiAdminRoute
       ) {
         if (
           (pathname === '/api/admin/system-status' && request.method !== 'GET') ||
           (pathname === '/api/admin/google/verify' && request.method !== 'POST') ||
-          (publisherSigningRoute && request.method !== 'POST')
+          (publisherSigningRoute && request.method !== 'POST') ||
+          (aiAdminRoute && request.method !== 'POST')
         ) {
           return fail('method_not_allowed', 405);
         }
@@ -502,6 +508,15 @@ export async function handleRequest(request, env, dependencies = {}) {
             request, env, verifiedAdminHash, pathname
           );
         }
+
+        if (aiAdminRoute) {
+          return handleAdminAiChat(
+            request,
+            env,
+            dependencies
+          );
+        }
+
         return json({ ok: true, adminVerified: true, expiresAt: identity.exp });
       }
       if (pathname === '/api/admin' || pathname.startsWith('/api/admin/')) {

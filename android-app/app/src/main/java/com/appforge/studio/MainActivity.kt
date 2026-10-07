@@ -809,7 +809,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { ONBOARDING, HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, OFFLINE_PACK_FIRST_RUN, OFFLINE_PACK, LEGAL, HELP, PLAY_GUIDE, PRO, PRO_SUPPORT, KEYSTORES, LANGUAGE }
+private enum class AppScreen { ONBOARDING, HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, ADMIN_AI, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, OFFLINE_PACK_FIRST_RUN, OFFLINE_PACK, LEGAL, HELP, PLAY_GUIDE, PRO, PRO_SUPPORT, KEYSTORES, LANGUAGE }
 
 /*
  * BUILD_SOURCE_ENGINE_REFRESH_V1
@@ -1117,22 +1117,42 @@ private fun AppForgeApp() {
         }
     }
 
-    /*
-     * Defense in depth:
-     * restored navigation state or an internal caller must never
-     * expose Terminal to a non-owner account.
-     */
+    /* Owner-only Terminal, Second Brain and AI surfaces. */
     LaunchedEffect(screen, terminalOwner) {
-        if ((screen == AppScreen.TERMINAL ||
-                screen == AppScreen.SECOND_BRAIN) && !terminalOwner) {
+        if (
+            screen == AppScreen.TERMINAL &&
+            !terminalOwner
+        ) {
             screen = AppScreen.HOME
+        } else {
+            val privilegedScreen =
+                screen == AppScreen.SECOND_BRAIN ||
+                screen == AppScreen.ADMIN_AI ||
+                screen == AppScreen.AI_ASSISTANT ||
+                screen == AppScreen.UNIFIED_AGENT
+
+            if (privilegedScreen && !terminalOwner) {
+                screen = AppScreen.HOME
+            }
         }
     }
 
-    // Credentials expire even if the user keeps a privileged screen open.
     LaunchedEffect(screen) {
-        if (screen == AppScreen.TERMINAL || screen == AppScreen.SECOND_BRAIN) {
-            while (screen == AppScreen.TERMINAL || screen == AppScreen.SECOND_BRAIN) {
+        val privilegedScreen =
+            screen == AppScreen.TERMINAL ||
+            screen == AppScreen.SECOND_BRAIN ||
+            screen == AppScreen.ADMIN_AI ||
+            screen == AppScreen.AI_ASSISTANT ||
+            screen == AppScreen.UNIFIED_AGENT
+
+        if (privilegedScreen) {
+            while (
+                screen == AppScreen.TERMINAL ||
+                screen == AppScreen.SECOND_BRAIN ||
+                screen == AppScreen.ADMIN_AI ||
+                screen == AppScreen.AI_ASSISTANT ||
+                screen == AppScreen.UNIFIED_AGENT
+            ) {
                 delay(60_000L)
                 adminRevision += 1
             }
@@ -5334,9 +5354,18 @@ private fun AppForgeApp() {
         Surface(Modifier.fillMaxSize(), color = Bg) {
             val visibleScreen =
                 if (
-                    screen ==
-                        AppScreen.TERMINAL &&
+                    screen == AppScreen.TERMINAL &&
                     !terminalOwner
+                ) {
+                    AppScreen.HOME
+                } else if (
+                    !terminalOwner &&
+                    (
+                        screen == AppScreen.SECOND_BRAIN ||
+                        screen == AppScreen.ADMIN_AI ||
+                        screen == AppScreen.AI_ASSISTANT ||
+                        screen == AppScreen.UNIFIED_AGENT
+                    )
                 ) {
                     AppScreen.HOME
                 } else {
@@ -5491,15 +5520,19 @@ private fun AppForgeApp() {
                         },
 
                         onOpenUnifiedAgent = {
-                            openWorkspaceScreen(
-                                AppScreen.UNIFIED_AGENT
-                            )
+                            if (terminalOwner) {
+                                openWorkspaceScreen(AppScreen.UNIFIED_AGENT)
+                            } else {
+                                screen = AppScreen.HOME
+                            }
                         },
 
                         onOpenAi = {
-                            openWorkspaceScreen(
-                                AppScreen.AI_ASSISTANT
-                            )
+                            if (terminalOwner) {
+                                openWorkspaceScreen(AppScreen.ADMIN_AI)
+                            } else {
+                                screen = AppScreen.HOME
+                            }
                         },
 
                         onOpenTasks = {
@@ -6387,6 +6420,11 @@ private fun AppForgeApp() {
                         session
                             ?.email
                             .orEmpty(),
+                    onOpenAi = {
+                        if (OwnerAccessPolicy.isActiveOwner(context)) {
+                            screen = AppScreen.ADMIN_AI
+                        }
+                    },
                     onOpenSecondBrain = {
                         if (OwnerAccessPolicy.isActiveOwner(context)) {
                             screen = AppScreen.SECOND_BRAIN
@@ -6404,6 +6442,26 @@ private fun AppForgeApp() {
                         screen = AppScreen.HOME
                     }
                 )
+
+
+                AppScreen.ADMIN_AI -> {
+                    if (isAdminOpsAccount) {
+                        AdminAiRouterScreen(
+                            serverUrl = DEFAULT_CONTROL_PLANE_URL,
+                            onAuthorizationLost = {
+                                adminRevision += 1
+                                screen = AppScreen.HOME
+                            },
+                            onBack = {
+                                screen = AppScreen.ADMIN_OPS
+                            }
+                        )
+                    } else {
+                        LaunchedEffect(Unit) {
+                            screen = AppScreen.HOME
+                        }
+                    }
+                }
 
 
                 AppScreen.TASKS ->

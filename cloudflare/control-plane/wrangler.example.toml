@@ -8,3 +8,18 @@ binding = "DB"
 database_name = "appforge-control-plane-db"
 database_id = "REPLACE_WITH_REAL_D1_DATABASE_ID"
 migrations_dir = "migrations"
+
+# Admin-only AppForge AI Router.
+[ai]
+binding = "AI"
+
+[vars]
+GROQ_MODEL = "openai/gpt-oss-120b"
+GEMINI_MODEL = "gemini-3.6-flash"
+WORKERS_AI_MODEL = "@cf/google/gemma-4-26b-a4b-it"
+OPENROUTER_MODEL = "openrouter/free"
+
+# Secrets are configured later in Cloudflare only:
+# GROQ_API_KEY
+# GEMINI_API_KEY
+# OPENROUTER_API_KEY
