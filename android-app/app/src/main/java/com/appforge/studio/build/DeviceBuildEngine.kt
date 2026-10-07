@@ -598,12 +598,15 @@ object DeviceBuildEngine {
                 SourceMode.URL
         ) {
             require(
-                draft.webUrl.startsWith(
-                    "https://",
-                    true
-                )
+                draft.webUrl.startsWith("https://", true) ||
+                draft.webUrl.startsWith("http://", true)
             ) {
-                "Web URL HTTPS olmalı."
+                "Web URL HTTP veya HTTPS olmalı."
+            }
+            if (draft.remoteBridgeAllowed) {
+                require(draft.webUrl.startsWith("https://", true)) {
+                    "Uzak Native Bridge yalnız HTTPS web kaynağında kullanılabilir."
+                }
             }
         }
 
@@ -2566,6 +2569,9 @@ object DeviceBuildEngine {
 
         }
         val orientation = draft.orientation.takeIf { it in setOf("portrait", "landscape", "unspecified") } ?: "unspecified"
+        val usesCleartextTraffic =
+            draft.sourceMode == SourceMode.URL &&
+            draft.webUrl.trim().startsWith("http://", true)
         val deepLink = if (draft.deepLinkEnabled) {
             """
             <intent-filter>
@@ -2586,7 +2592,7 @@ object DeviceBuildEngine {
                     android:hardwareAccelerated="true"
                     android:label="${xml(draft.appName.ifBlank { "AppForge App" })}"
                     android:theme="@android:style/Theme.Material.NoActionBar"
-                    android:usesCleartextTraffic="false">
+                    android:usesCleartextTraffic="$usesCleartextTraffic">
                     <activity
                         android:name="com.appforge.runtime.FastActivity"
                         android:exported="true"

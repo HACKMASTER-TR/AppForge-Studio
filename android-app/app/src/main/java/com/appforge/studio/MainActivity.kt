@@ -8500,7 +8500,7 @@ private fun QuickCreateScreen(
                                     true,
                                 placeholder = {
                                     Text(
-                                        "https://ornek.com"
+                                        "https://ornek.com veya http://10.6.20.25:8080/"
                                     )
                                 }
                             )
@@ -9519,11 +9519,7 @@ private fun QuickCreateScreen(
                     (
                         draft.sourceMode ==
                         SourceMode.URL &&
-                        draft.webUrl
-                            .startsWith(
-                                "https://",
-                                true
-                            )
+                        isSupportedWebSourceUrl(draft.webUrl)
                     )
                 ),
             modifier =
@@ -9552,6 +9548,18 @@ private fun QuickCreateScreen(
     }
 }
 
+
+private fun isSupportedWebSourceUrl(value: String): Boolean {
+    val normalized = value.trim()
+    if (!normalized.startsWith("https://", true) && !normalized.startsWith("http://", true)) {
+        return false
+    }
+    val parsed = runCatching { Uri.parse(normalized) }.getOrNull() ?: return false
+    return !parsed.host.isNullOrBlank()
+}
+
+private fun isCleartextWebSourceUrl(value: String): Boolean =
+    value.trim().startsWith("http://", true)
 
 private data class PreviewPreset(
     val key: String,
@@ -9654,11 +9662,7 @@ private fun productionChecks(
                     draft.startPage!!
                 ).exists()
         } else {
-            draft.webUrl
-                .startsWith(
-                    "https://",
-                    true
-                )
+            isSupportedWebSourceUrl(draft.webUrl)
         }
 
     checks +=
@@ -9962,13 +9966,9 @@ private fun AppPreviewScreen(
                     }
 
             SourceMode.URL ->
-                draft.webUrl
-                    .takeIf {
-                        it.startsWith(
-                            "https://",
-                            true
-                        )
-                    }
+                draft.webUrl.takeIf {
+                    isSupportedWebSourceUrl(it)
+                }
         }
 
     val expectedHost =
@@ -10265,7 +10265,7 @@ private fun AppPreviewScreen(
                             ) {
                                 "Bu proje ${draft.sourceTechnologyLabel} olarak algılandı. Native Android/Kotlin ve diğer native kaynaklar WebView ile önizlenmez. Üretim Merkezi ve Test Laboratuvarı'nı kullan."
                             } else {
-                                "Önizlenecek web kaynağı hazır değil. HTML/HTM seç veya URL modunda HTTPS adresi gir."
+                                "Önizlenecek web kaynağı hazır değil. HTML/HTM seç veya URL modunda HTTP ya da HTTPS adresi gir."
                             }
                         )
                     } else {
@@ -14256,8 +14256,13 @@ private fun validateDraft(d: ProjectDraft, serverUrl: String) {
     }
 
     if (d.sourceMode == SourceMode.URL) {
-        require(d.webUrl.startsWith("https://", true)) {
-            "URL https:// ile başlamalı."
+        require(isSupportedWebSourceUrl(d.webUrl)) {
+            "URL http:// veya https:// ile başlamalı ve geçerli bir host içermeli."
+        }
+        if (d.remoteBridgeAllowed) {
+            require(d.webUrl.startsWith("https://", true)) {
+                "Uzak Native Bridge yalnız HTTPS web kaynağında kullanılabilir."
+            }
         }
     }
 
@@ -14424,12 +14429,7 @@ private fun SourceStep(
         )
 
     val webUrlValid =
-        d.webUrl.trim()
-            .startsWith(
-                "https://",
-                ignoreCase = true
-            ) &&
-        d.webUrl.trim().length > 8
+        isSupportedWebSourceUrl(d.webUrl)
 
     val sourceValid =
         if (
@@ -15111,7 +15111,7 @@ private fun SourceStep(
                     },
                     placeholder = {
                         Text(
-                            "https://site.com"
+                            "https://site.com veya http://10.6.20.25:8080/"
                         )
                     },
                     singleLine = true,
@@ -15123,7 +15123,7 @@ private fun SourceStep(
                             d.webUrl.isBlank()
                         ) {
                             Text(
-                                "HTTPS web adresi gir."
+                                "HTTP veya HTTPS web adresi gir."
                             )
                         } else if (
                             webUrlValid
@@ -15133,7 +15133,7 @@ private fun SourceStep(
                             )
                         } else {
                             Text(
-                                "Adres https:// ile başlamalı."
+                                "Adres http:// veya https:// ile başlamalı ve geçerli bir host içermeli."
                             )
                         }
                     },
@@ -20892,7 +20892,7 @@ private fun BuildSettingsStep(
                 NoteCard(
                     "Windows Portable EXE bu proje türüyle uyumlu değil. " +
                     "C/C++ CMake projelerinde Native EXE seçeneğini kullanabilirsin. " +
-                    "Portable EXE için web tabanlı, Universal veya HTTPS URL kaynağı seç."
+                    "Portable EXE için web tabanlı, Universal veya HTTP/HTTPS URL kaynağı seç."
                 )
             }
         }

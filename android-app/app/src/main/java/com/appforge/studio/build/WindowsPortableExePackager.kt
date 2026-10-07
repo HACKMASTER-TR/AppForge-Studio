@@ -262,8 +262,16 @@ internal object WindowsPortableExePackager {
                         File(localSite, "index.html").isFile
                 ) { "Windows LOCAL proje index.html bulunamadı." }
             } else {
-                require(draft.webUrl.startsWith("https://", ignoreCase = true)) {
-                    "Windows URL modu HTTPS gerektirir."
+                require(
+                    draft.webUrl.startsWith("https://", ignoreCase = true) ||
+                    draft.webUrl.startsWith("http://", ignoreCase = true)
+                ) {
+                    "Windows URL modu HTTP veya HTTPS gerektirir."
+                }
+                if (draft.remoteBridgeAllowed) {
+                    require(draft.webUrl.startsWith("https://", ignoreCase = true)) {
+                        "Windows uzak Native Bridge yalnız HTTPS URL ile kullanılabilir."
+                    }
                 }
             }
 

@@ -2546,15 +2546,14 @@ public final class FastActivity extends Activity {
                     ""
                 );
 
-            if (
-                url.startsWith(
-                    "https://"
-                )
-            ) {
-                webView.loadUrl(
-                    url
-                );
+            Uri remote = Uri.parse(url);
+            String scheme = remote.getScheme();
 
+            if (
+                "https".equalsIgnoreCase(scheme) ||
+                "http".equalsIgnoreCase(scheme)
+            ) {
+                webView.loadUrl(url);
                 return;
             }
         }

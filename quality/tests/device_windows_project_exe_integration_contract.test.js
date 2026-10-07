@@ -61,13 +61,13 @@ test("node web output is reused for Windows and Android targets", () => {
   assert.match(block, /buildWebWrapper/);
 });
 
-test("project packager supports LOCAL and HTTPS URL manifests", () => {
+test("project packager supports LOCAL and HTTP HTTPS URL manifests", () => {
   const packager = read(
     "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt"
   );
   assert.match(packager, /suspend fun packageProject/);
   assert.match(packager, /SourceMode\.LOCAL/);
-  assert.match(packager, /Windows URL modu HTTPS gerektirir/);
+  assert.match(packager, /Windows URL modu HTTP veya HTTPS gerektirir/);
   assert.match(packager, /createProjectManifest/);
   assert.match(packager, /"webView"/);
   assert.match(packager, /"nativeBridge"/);
