@@ -67,7 +67,7 @@ internal object AiProjectContextCollector {
     )
 
     private val secretLinePattern = Regex(
-        """(api[_-]?key|secret|token|password|storepassword|keypassword|authorization)["']?\\s*[:=]""",
+        """(api[_-]?key|secret|token|password|storepassword|keypassword|authorization)["']?\s*[:=]""",
         RegexOption.IGNORE_CASE
     )
 
