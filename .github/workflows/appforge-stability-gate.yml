@@ -56,6 +56,17 @@ jobs:
       - name: Run device, Pro, Windows and Terminal contracts
         run: npm --prefix quality test
 
+      - name: Setup Python for local SQLite lifecycle tests
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Run Cloudflare control-plane behavioral regressions
+        run: node --test cloudflare/control-plane/tests/*.test.mjs
+
+      - name: Run local SQLite lifecycle regressions
+        run: python3 cloudflare/control-plane/tests/pro_lifecycle_sqlite.py
+
 
   android-regression:
     name: Android Regression
