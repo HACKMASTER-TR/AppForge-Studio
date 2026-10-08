@@ -47,6 +47,7 @@ class AiProjectContextCollectorTest {
             assertFalse(snapshot.tree.contains(".env"))
             assertFalse(snapshot.tree.contains("node_modules"))
             assertTrue(snapshot.files.any { it.path == "package.json" })
+            assertTrue(snapshot.files.any { it.path == "src/App.tsx" })
             assertFalse(snapshot.files.any { it.path == ".env" })
             assertTrue(
                 snapshot.files
@@ -63,4 +64,70 @@ class AiProjectContextCollectorTest {
             root.deleteRecursively()
         }
     }
+
+    @Test
+    fun htmlEntryPointIsIncludedWithoutLeakingSecretLikeLines() {
+        val root = createTempDirectory("appforge-ai-html-context-").toFile()
+
+        try {
+            File(root, "index.html")
+                .writeText(
+                    """
+                    <!doctype html>
+                    <html>
+                    <head>
+                      <title>Samuray Pro</title>
+                      <link rel="stylesheet" href="style.css">
+                    </head>
+                    <body>
+                      <main id="app">Samuray Arena</main>
+                      <script>
+                        const apiKey = "must_not_leave_device"
+                      </script>
+                      <script src="app.js"></script>
+                    </body>
+                    </html>
+                    """.trimIndent()
+                )
+
+            File(root, "style.css")
+                .writeText("body { margin: 0; }")
+
+            File(root, "app.js")
+                .writeText("document.body.dataset.ready = 'true'")
+
+            val snapshot = AiProjectContextCollector.collect(
+                projectId = "samuray-project",
+                draft = ProjectDraft(
+                    appName = "Samuray Pro",
+                    packageName = "com.appforgestudio.samuraypro",
+                    importedFolder = root.absolutePath,
+                    sourceTechnologyLabel = "HTML / CSS / JavaScript",
+                    sourceBuildEngine = "webview-static"
+                )
+            )
+
+            assertTrue(
+                snapshot.files.any {
+                    it.path == "index.html"
+                }
+            )
+
+            val html = snapshot.files
+                .first { it.path == "index.html" }
+                .content
+
+            assertTrue(html.contains("Samuray Pro"))
+            assertTrue(html.contains("Samuray Arena"))
+            assertTrue(
+                html.contains("[REDACTED_SECRET-LIKE LINE]")
+            )
+            assertFalse(
+                html.contains("must_not_leave_device")
+            )
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
 }

@@ -53,8 +53,21 @@ internal object AiProjectContextCollector {
         "app.json", "app.config.js", "app.config.ts"
     )
 
+    private val sourceFileExtensions = setOf(
+        "html", "htm",
+        "css", "scss", "sass", "less",
+        "js", "mjs", "cjs", "jsx",
+        "ts", "tsx",
+        "kt", "java",
+        "py",
+        "c", "cc", "cpp", "h", "hpp",
+        "cs", "dart",
+        "vue", "svelte",
+        "xml"
+    )
+
     private val secretLinePattern = Regex(
-        "(api[_-]?key|secret|token|password|storepassword|keypassword|authorization)\\s*[:=]",
+        """(api[_-]?key|secret|token|password|storepassword|keypassword|authorization)["']?\\s*[:=]""",
         RegexOption.IGNORE_CASE
     )
 
@@ -130,9 +143,15 @@ internal object AiProjectContextCollector {
                     visit(safe, depth + 1)
                 } else {
                     scannedFileCount += 1
+                    val normalizedName = safe.name.lowercase()
+                    val extension = safe.extension.lowercase()
+
                     if (
                         safe.length() in 1..MAX_FILE_BYTES &&
-                        safe.name.lowercase() in contextFileNames
+                        isContextCandidate(
+                            name = normalizedName,
+                            extension = extension
+                        )
                     ) {
                         candidates += safe
                     }
@@ -146,7 +165,7 @@ internal object AiProjectContextCollector {
         val files = candidates
             .distinctBy { runCatching { it.canonicalPath }.getOrDefault(it.absolutePath) }
             .sortedWith(
-                compareBy<File> { contextPriority(it.name.lowercase()) }
+                compareBy<File> { contextPriority(root, it) }
                     .thenBy { it.absolutePath.length }
                     .thenBy { it.name.lowercase() }
             )
@@ -208,16 +227,59 @@ internal object AiProjectContextCollector {
             normalized.split('/').any { it == ".secrets" || it == "secrets" }
     }
 
-    private fun contextPriority(name: String): Int = when (name) {
-        "package.json" -> 0
-        "settings.gradle.kts", "settings.gradle" -> 1
-        "build.gradle.kts", "build.gradle" -> 2
-        "androidmanifest.xml" -> 3
-        "vite.config.ts", "vite.config.js", "vite.config.mjs" -> 4
-        "app.json", "app.config.ts", "app.config.js" -> 5
-        "tsconfig.json", "jsconfig.json" -> 6
-        "cmakelists.txt" -> 7
-        else -> 20
+    private fun isContextCandidate(
+        name: String,
+        extension: String
+    ): Boolean =
+        name in contextFileNames ||
+            extension in sourceFileExtensions
+
+    private fun contextPriority(
+        root: File,
+        file: File
+    ): Int {
+        val name = file.name.lowercase()
+        val relative = runCatching {
+            file.relativeTo(root)
+                .invariantSeparatorsPath
+                .lowercase()
+        }.getOrDefault(name)
+
+        return when {
+            name == "index.html" ||
+                name == "index.htm" -> 0
+
+            name == "package.json" -> 1
+
+            name.startsWith("main.") ||
+                name.startsWith("app.") ||
+                name.startsWith("index.") -> 2
+
+            name == "settings.gradle.kts" ||
+                name == "settings.gradle" -> 3
+
+            name == "build.gradle.kts" ||
+                name == "build.gradle" -> 4
+
+            name == "androidmanifest.xml" -> 5
+
+            name == "vite.config.ts" ||
+                name == "vite.config.js" ||
+                name == "vite.config.mjs" -> 6
+
+            name == "app.json" ||
+                name == "app.config.ts" ||
+                name == "app.config.js" -> 7
+
+            name == "tsconfig.json" ||
+                name == "jsconfig.json" -> 8
+
+            name == "cmakelists.txt" -> 9
+
+            relative.startsWith("src/") -> 20
+
+            else -> 40
+        }
     }
 
     private fun redact(value: String): String {

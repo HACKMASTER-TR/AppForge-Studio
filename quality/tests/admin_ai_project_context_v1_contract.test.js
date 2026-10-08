@@ -22,6 +22,10 @@ test("context collector is bounded and secret-aware", () => {
   assert.match(collector, /node_modules/);
   assert.match(collector, /\.env/);
   assert.match(collector, /REDACTED_SECRET-LIKE LINE/);
+  assert.match(collector, /sourceFileExtensions/);
+  assert.match(collector, /"html"/);
+  assert.match(collector, /name == "index\.html"/);
+  assert.match(collector, /isContextCandidate/);
 });
 
 test("gateway treats repository context as untrusted and fails closed on invalid paths", () => {
