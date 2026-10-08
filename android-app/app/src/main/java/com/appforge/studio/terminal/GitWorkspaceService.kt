@@ -89,6 +89,51 @@ data class GitCredentials(
     }
 }
 object GitWorkspaceService {
+    /** Bounded index-to-worktree inspection, without parent discovery, environment,
+     * hooks, external diff, filters or mutation of Git excludes. */
+    internal suspend fun agentInspect(workspace: File, diff: Boolean, allowedPath: (String) -> File): String =
+        withContext(Dispatchers.IO) {
+            val root = workspace.canonicalFile
+            val gitDir = File(root, ".git")
+            require(gitDir.isDirectory && !java.nio.file.Files.isSymbolicLink(gitDir.toPath()) && gitDir.canonicalFile.parentFile == root)
+            require(!File(gitDir, "commondir").exists() && !File(gitDir, "objects/info/alternates").exists()) { "External Git object stores denied." }
+            val config = File(gitDir, "config")
+            require(config.isFile && config.length() <= 65536 && !config.readText().contains("[include", ignoreCase = true)) { "External Git configuration denied." }
+            var scanned = 0
+            fun verify(dir: File, depth: Int) {
+                require(depth <= 8)
+                java.nio.file.Files.newDirectoryStream(dir.toPath()).use { paths ->
+                    for (path in paths) {
+                        require(++scanned <= 10000 && !java.nio.file.Files.isSymbolicLink(path)) { "Unsafe Git metadata." }
+                        if (java.nio.file.Files.isDirectory(path)) verify(path.toFile(), depth + 1)
+                    }
+                }
+            }
+            verify(gitDir, 0)
+            FileRepositoryBuilder().setGitDir(gitDir).setWorkTree(root).setMustExist(true).build().use { repository ->
+                val index = repository.readDirCache()
+                require(index.entryCount <= 10000) { "Git index limit exceeded." }
+                val output = StringBuilder("INDEX ↔ WORKTREE (bounded; staged HEAD diff not included)\n")
+                for (i in 0 until index.entryCount) {
+                    if (output.length >= 14000) { output.append("[TRUNCATED]\n"); break }
+                    val entry = index.getEntry(i)
+                    if (entry.stage != 0) continue
+                    val target = runCatching { allowedPath(entry.pathString) }.getOrNull() ?: continue
+                    if (!target.exists()) { output.append("DELETED ${entry.pathString}\n"); continue }
+                    if (!target.isFile || target.length() > 65536 || entry.length > 65536) continue
+                    val loader = repository.open(entry.objectId)
+                    if (loader.size > 65536) continue
+                    val before = loader.getBytes(65536)
+                    val after = target.readBytes()
+                    if (after.size > 65536 || 0.toByte() in before || 0.toByte() in after || before.contentEquals(after)) continue
+                    output.append("MODIFIED ${entry.pathString}\n")
+                    if (diff) output.append("--- index\n").append(before.toString(Charsets.UTF_8).take(5000))
+                        .append("\n+++ worktree\n").append(after.toString(Charsets.UTF_8).take(5000)).append('\n')
+                }
+                output.toString().take(16000)
+            }
+        }
+
     suspend fun status(
         workspace: File
     ): String =

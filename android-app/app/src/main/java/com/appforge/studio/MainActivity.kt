@@ -6450,6 +6450,21 @@ private fun AppForgeApp() {
                             serverUrl = DEFAULT_CONTROL_PLANE_URL,
                             projectId = currentProjectId,
                             draft = draft,
+                            canStartBuild = { !buildBusy && !builderReentryUiGuard },
+                            onSelectProject = aiProjectSelect@{ id ->
+                                if (!OwnerAccessPolicy.isActiveOwner(context) ||
+                                    !prepareBuilderProjectNavigation()) return@aiProjectSelect false
+                                val savedDraft = ProjectLibrary.restore(context, id)
+                                    ?: return@aiProjectSelect false
+                                draft = savedDraft
+                                currentProjectId = id
+                                sourceAnalysis = savedDraft.importedFolder?.let { folder ->
+                                    runCatching { SourceCapabilityAnalyzer.analyze(File(folder)) }.getOrNull()
+                                }
+                                serverUrl = savedDraft.buildServiceUrl
+                                step = 1
+                                true
+                            },
                             onAuthorizationLost = {
                                 adminRevision += 1
                                 screen = AppScreen.HOME

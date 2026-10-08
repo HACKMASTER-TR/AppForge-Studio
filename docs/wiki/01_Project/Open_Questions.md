@@ -71,3 +71,13 @@ Tulpar with no payload-signature error.
 - Production publisher endpoint remains disabled.
 - Play Production remains untouched unless separately authorized.
 - `PRODUCTION_READY=NO`.
+
+
+## Admin AI coding agent acceptance (2026-10-08)
+
+- Physical runtime and exact-SHA Android CI/APK verification remain pending.
+- Safe execution of arbitrary project tests/lint/typecheck remains unresolved:
+  the existing packaged Linux `/proc` and `/dev` bindings are not an isolation
+  boundary for untrusted scripts. Those agent operations currently fail closed.
+- Native Windows/publisher-signing agent builds remain blocked; existing Studio
+  builds retain their established authorization and artifact flows.

@@ -33,12 +33,15 @@ internal object AiProjectContextCollector {
 
     private val ignoredDirectories = setOf(
         ".git", ".gradle", ".idea", ".next", ".appforge",
+        ".appforge-agent-v4", ".appforge-trash",
         "node_modules", "build", "dist", "out", "coverage", "target"
     )
 
     private val secretNames = setOf(
         ".env", "id_rsa", "credentials.json", "credential.json",
-        "secrets.json", "secret.json", "local.properties"
+        "secrets.json", "secret.json", "local.properties",
+        "id_ed25519", "google-services.json", "credentials", ".npmrc", ".netrc",
+        ".git-credentials", "signing.properties", "service-account.json"
     )
 
     private val secretExtensions = setOf(
@@ -218,13 +221,13 @@ internal object AiProjectContextCollector {
             candidatePath.startsWith(rootPath + File.separator)
     }
 
-    private fun isSecretPath(relative: String, file: File): Boolean {
+    internal fun isSecretPath(relative: String, file: File): Boolean {
         val normalized = relative.replace('\\', '/').lowercase()
         val name = file.name.lowercase()
         return name in secretNames ||
             name.startsWith(".env.") ||
             file.extension.lowercase() in secretExtensions ||
-            normalized.split('/').any { it == ".secrets" || it == "secrets" }
+            normalized.split('/').any { it in setOf(".secrets", "secrets", ".ssh", ".aws", ".azure", "gcloud") }
     }
 
     private fun isContextCandidate(
@@ -282,12 +285,13 @@ internal object AiProjectContextCollector {
         }
     }
 
-    private fun redact(value: String): String {
+    internal fun redact(value: String): String {
         if (privateKeyPattern.containsMatchIn(value)) {
             return "[REDACTED_SECRET_FILE]"
         }
 
         return value
+            .replace(Regex("(?:ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|Bearer\\s+[A-Za-z0-9._~+/=-]+|https?://[^/\\s:@]+:[^/@\\s]+@|eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,})", RegexOption.IGNORE_CASE), "[REDACTED]")
             .replace("\r\n", "\n")
             .replace('\r', '\n')
             .lineSequence()
