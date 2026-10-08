@@ -8,6 +8,10 @@
 - Builds and tests are evidence, not proof of device or production acceptance.
 - Commit, push, merge, deploy, release, and publishing require an explicit user request. `scripts/appforge autopilot` is the project's explicit full-delivery command when the user asks for that complete flow.
 
+## Default development workflow
+
+Follow `docs/wiki/00_Governance/ChatGPT_Codex_Development_Standard.md`: ChatGPT plans and independently verifies; Codex CLI implements only in the supplied isolated feature worktree. Verify exact branch/base SHA, HEAD and cleanliness before edits. No direct main edits or automatic push, merge, deploy, Play Production action or release. Current task authorization controls delivery; a Codex result alone is not PASS.
+
 ## FULL AUTOPILOT / FAIL-STOP
 
 `APPFORGE_ADMIN_SESSION=1 ./scripts/appforge autopilot` is the one-shot command for an explicitly requested full delivery chain. It must stop at the first mandatory failure; a failed CI check or active runtime blocker forbids later delivery stages.

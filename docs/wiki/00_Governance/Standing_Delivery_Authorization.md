@@ -3,8 +3,8 @@ type: maintenance
 status: active
 project: AppForge Studio
 created: 2026-09-27
-updated: 2026-09-27
-last_verified: 2026-09-27
+updated: 2026-10-08
+last_verified: 2026-10-08
 confidence: high
 tags:
   - governance
@@ -82,3 +82,12 @@ unsafe `wrangler d1 migrations apply` acceptable.
 
 Reconcile and verify migration history first, then apply only the intended,
 reviewed migration using the normal fail-stop delivery chain.
+
+## Codex development scope clarification — 2026-10-08
+
+The authorization history above is preserved. The approved default in
+[[ChatGPT_Codex_Development_Standard]] supplements delivery controls: this record
+does not grant Codex blanket push, merge, release or production authority.
+Current task restrictions take precedence; a feature-branch CI push requires
+explicit current-task approval and does not authorize a merge. Full delivery
+requires an explicit task request and all existing fail-stop gates.

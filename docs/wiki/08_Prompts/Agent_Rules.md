@@ -3,8 +3,8 @@ type: prompt
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-27
-last_verified: 2026-09-27
+updated: 2026-10-08
+last_verified: 2026-10-08
 confidence: high
 tags:
   - agent-rules
@@ -23,6 +23,10 @@ source_files:
 3. `Index.md`
 4. relevant 2-5 pages
 5. related source/config/test files
+
+## Default Development Workflow
+
+Follow [[ChatGPT_Codex_Development_Standard]] for the approved ChatGPT planning and independent evidence gate, scoped Codex CLI implementation, isolated worktree guards, authentication status reuse and exact-SHA stage reporting. Current task restrictions govern Codex delivery authority; standing authorization is not blanket Codex authority.
 
 ## Strict Rules
 
