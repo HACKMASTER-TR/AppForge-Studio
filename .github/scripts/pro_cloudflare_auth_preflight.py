@@ -81,17 +81,10 @@ if not re.fullmatch(
 print("SECRET_VALUES=NOT_PRINTED")
 print("IDENTIFIER_FORMATS=PASS")
 
-verification = get_json(
-    "accounts/" + ACCOUNT + "/tokens/verify"
-)
-
-if (
-    not isinstance(verification, dict)
-    or verification.get("status") != "active"
-):
-    stop("ACCOUNT_TOKEN_NOT_ACTIVE")
-
-print("ACCOUNT_TOKEN=ACTIVE")
+# This CI token is intentionally scoped to one existing Worker.
+# A Worker Editor token is proven by reading that Worker's settings
+# directly; account-wide token introspection is not required.
+print("TOKEN_AUTH_MODE=WORKER_RESOURCE")
 
 settings = get_json(
     "accounts/" + ACCOUNT +
