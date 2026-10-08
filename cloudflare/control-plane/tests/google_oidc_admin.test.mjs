@@ -178,3 +178,13 @@ test('Google admin POST binds an unguessable client nonce to signed ID token', a
     method: 'POST', body: JSON.stringify({ idToken: signedToken(), nonce: 'Y'.repeat(43) })
   }))).status, 401);
 });
+
+test('AI route requires verified active admin before validating provider input', async () => {
+  const ai = token => new Request('https://worker.test/api/admin/ai/chat', {
+    method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ prompt: '', provider: 'auto' })
+  });
+  assert.equal((await call(ai('obsolete-bearer'))).status, 401);
+  assert.equal((await call(ai(signedToken()), env('disabled'))).status, 403);
+  assert.equal((await call(ai(signedToken()))).status, 400);
+});

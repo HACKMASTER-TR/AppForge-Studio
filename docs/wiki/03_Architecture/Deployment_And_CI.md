@@ -3,8 +3,8 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-10-02
-last_verified: 2026-10-02
+updated: 2026-10-08
+last_verified: 2026-10-08
 confidence: high
 tags:
   - deployment
@@ -37,10 +37,33 @@ autoscaling are retired from the active project-build architecture.
 GitHub remains the source and CI authority.
 
 Android Debug validates Android application compilation. AppForge Stability
-Gate validates retained policy and feature contracts. Windows Portable Host has
+Gate validates retained policy, feature contracts and offline Cloudflare
+control-plane behavioral regressions. Windows Portable Host has
 its own Windows CI path.
 
 Google Play delivery is separate and must be explicitly authorized.
+
+## Global backend regression coverage (F17)
+
+On every pull request and push to `main`, the existing `backend-regression`
+job retains `npm --prefix quality test` and also runs:
+
+- `node --test cloudflare/control-plane/tests/*.test.mjs`
+- `python3 cloudflare/control-plane/tests/pro_lifecycle_sqlite.py`
+
+The first command includes BEHAVIORAL authorization, privilege boundaries,
+replay protection, AI gating/provider fallback and malformed-request tests,
+plus STATIC_CONTRACT source/schema assertions. Route/module INTEGRATION uses
+local injected D1, Google and provider fixtures; it does not prove live services.
+The SQLITE/D1_LOCAL harness applies repository migrations only to in-memory
+SQLite and checks lifecycle rollback, history and replay constraints. It does
+not test remote D1 or apply remote migrations.
+
+Both steps must pass for the existing global stability summary to succeed.
+The workflow wiring is CI_ONLY evidence. Neither these commands nor static
+contracts establish PHYSICAL_ACCEPTANCE, live deployment or Production readiness.
+No production credentials, deploys, signing or Play operations are required.
+Mutable action references (F18) remain outside this change.
 
 ## Cloudflare control plane
 
