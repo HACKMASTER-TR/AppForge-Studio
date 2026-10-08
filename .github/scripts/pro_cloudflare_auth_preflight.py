@@ -38,24 +38,68 @@ def get_json(path):
 
     opener = urllib.request.build_opener(NoRedirect)
 
-    try:
-        with opener.open(request, timeout=20) as response:
-            if response.status != 200:
-                stop("CLOUDFLARE_HTTP_STATUS")
-            payload = json.load(response)
-    except urllib.error.HTTPError as exc:
-        print("CLOUDFLARE_HTTP_STATUS=" + str(exc.code))
-        stop("CLOUDFLARE_READ_DENIED")
-    except (OSError, ValueError):
-        stop("CLOUDFLARE_READ_FAILED")
+    for attempt in range(1, 4):
+        try:
+            with opener.open(request, timeout=20) as response:
+                if response.status != 200:
+                    print(
+                        "CLOUDFLARE_HTTP_STATUS="
+                        + str(response.status)
+                    )
+                    stop("CLOUDFLARE_HTTP_STATUS")
 
-    if not isinstance(payload, dict):
-        stop("UNEXPECTED_API_RESPONSE")
+                try:
+                    payload = json.load(response)
+                except ValueError:
+                    print("CLOUDFLARE_FAILURE_KIND=INVALID_JSON")
+                    stop("CLOUDFLARE_INVALID_RESPONSE")
 
-    if payload.get("success") is not True:
-        stop("CLOUDFLARE_API_REJECTED")
+        except urllib.error.HTTPError as exc:
+            print("CLOUDFLARE_FAILURE_KIND=HTTP_ERROR")
+            print("CLOUDFLARE_HTTP_STATUS=" + str(exc.code))
+            stop("CLOUDFLARE_READ_DENIED")
 
-    return payload.get("result")
+        except urllib.error.URLError as exc:
+            reason = getattr(exc, "reason", None)
+
+            print("CLOUDFLARE_FAILURE_KIND=URL_ERROR")
+            print(
+                "CLOUDFLARE_NETWORK_ERROR="
+                + (
+                    type(reason).__name__
+                    if reason is not None
+                    else "Unknown"
+                )
+            )
+            print("CLOUDFLARE_ATTEMPT=" + str(attempt))
+
+            if attempt < 3:
+                continue
+
+            stop("CLOUDFLARE_READ_FAILED")
+
+        except OSError as exc:
+            print("CLOUDFLARE_FAILURE_KIND=OS_ERROR")
+            print(
+                "CLOUDFLARE_OS_ERROR="
+                + type(exc).__name__
+            )
+            print("CLOUDFLARE_ATTEMPT=" + str(attempt))
+
+            if attempt < 3:
+                continue
+
+            stop("CLOUDFLARE_READ_FAILED")
+
+        if not isinstance(payload, dict):
+            stop("UNEXPECTED_API_RESPONSE")
+
+        if payload.get("success") is not True:
+            stop("CLOUDFLARE_API_REJECTED")
+
+        return payload.get("result")
+
+    stop("CLOUDFLARE_READ_FAILED")
 
 
 print("=== APPFORGE CLOUDFLARE AUTH PREFLIGHT ===")
