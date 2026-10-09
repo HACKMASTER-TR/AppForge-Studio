@@ -171,11 +171,12 @@ def migration_state() -> tuple[int, str]:
 
     return (
         len(names),
-        "RECONCILED_0001_0005",
+        "RECORDED_RECONCILIATION_0001_0005__LIVE_TARGET_NOT_VERIFIED",
     )
 
 
 def verify_current_contract() -> None:
+    # Repository markers guard documented contracts, not current/live acceptance.
     require_marker(
         "docs/wiki/Hot_Context.md",
         "Normal project compilation remains device-local",
@@ -282,7 +283,7 @@ def build_snapshot() -> dict:
         "buildArchitecture":
             "DEVICE_LOCAL",
         "publisherAuthorization":
-            "STAGING_DEVICE_ACCEPTED",
+            "RECORDED_HISTORICAL_STAGING_DEVICE_ACCEPTANCE__CURRENT_HEAD_NOT_INFERRED",
         "d1Ledger":
             ledger,
         "d1Migrations":
@@ -296,7 +297,7 @@ def build_snapshot() -> dict:
         "releaseGate":
             "REVIEW_REQUIRED",
         "productionPublisherEndpoint":
-            "DISABLED",
+            "REPOSITORY_RECORDED_DISABLED_PENDING_REVIEW__LIVE_PRODUCTION_NOT_VERIFIED",
         "liveState":
             "NOT_LIVE_QUERY",
     }

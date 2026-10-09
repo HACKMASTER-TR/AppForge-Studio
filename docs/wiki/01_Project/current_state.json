@@ -395,6 +395,50 @@
       },
       "blockers": [],
       "nextAction": "PR #70 remains draft, open and unmerged; delivery awaits explicit authorization and parent-first stacked-PR handling."
+    },
+    {
+      "id": "sb04",
+      "title": "Snapshot status label evidence scoping",
+      "scope": "Scope status-like Second Brain snapshot labels as recorded/historical claims so repository freshness cannot imply current acceptance or live environment verification. sourceSha records the pre-implementation base only.",
+      "lifecycle": "ACTIVE",
+      "branch": "fix/second-brain-snapshot-labels-evidence-v1",
+      "baseBranch": "fix/second-brain-hot-context-currentness-v1",
+      "baseSha": "8c246a0cd376cd7cf2f96310af2baae28c6928f6",
+      "sourceSha": "8c246a0cd376cd7cf2f96310af2baae28c6928f6",
+      "stages": {
+        "implementation": {
+          "state": "NOT_RUN"
+        },
+        "targetedTests": {
+          "state": "NOT_RUN"
+        },
+        "fullQuality": {
+          "state": "NOT_RUN"
+        },
+        "secondBrain": {
+          "state": "NOT_RUN"
+        },
+        "hostedCI": {
+          "state": "NOT_RUN"
+        },
+        "physicalAcceptance": {
+          "state": "NOT_APPLICABLE",
+          "reason": "Build-time tooling/governance correction only; no physical device/runtime acceptance is being claimed."
+        },
+        "merge": {
+          "state": "NOT_RUN"
+        },
+        "release": {
+          "state": "NOT_RUN"
+        },
+        "deploy": {
+          "state": "NOT_RUN"
+        }
+      },
+      "blockers": [
+        "Implementation still requires independent external verification and exact implementation-SHA evidence."
+      ],
+      "nextAction": "Independent verification before commit/push/delivery."
     }
   ]
 }
