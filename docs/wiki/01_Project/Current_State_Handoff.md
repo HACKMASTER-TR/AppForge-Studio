@@ -167,6 +167,34 @@ Blockers / references: none recorded (not proof of blocker absence)
 
 Next action: PR #71 remains draft, open and unmerged; delivery awaits explicit authorization and parent-first stacked-PR handling.
 
+## sb05 — Second Brain integrity basis completeness
+
+Scope: Make snapshot counts and exact migration validation use a versioned canonical integrity basis with an explicitly limited attestation boundary. sourceSha records the pre-implementation base only.
+
+Lifecycle: **ACTIVE**
+
+- Branch: `fix/second-brain-integrity-basis-completeness-v1`
+- Base branch: `fix/second-brain-snapshot-labels-evidence-v1`
+- Base exact SHA: `94f5f830c5ff7955e62c2cff0097e191e0dbb55b`
+- Manifest-recorded source SHA: `94f5f830c5ff7955e62c2cff0097e191e0dbb55b`
+- Parent workstream: none recorded
+
+| Evidence stage | State | Binding / reference or reason |
+|---|---|---|
+| implementation | NOT_RUN |  |
+| targetedTests | NOT_RUN |  |
+| fullQuality | NOT_RUN |  |
+| secondBrain | NOT_RUN |  |
+| hostedCI | NOT_RUN |  |
+| physicalAcceptance | NOT_APPLICABLE | Build-time integrity-basis/tooling/governance correction only; no physical device/runtime acceptance is claimed. |
+| merge | NOT_RUN |  |
+| release | NOT_RUN |  |
+| deploy | NOT_RUN |  |
+
+Blockers / references: Independent external verification and exact implementation-SHA evidence are required.
+
+Next action: Independent verification before commit/push/delivery.
+
 ## sb12 — Runtime blocker fail-stop
 
 Scope: SB12 behavioral gate; targeted 20/20, related delivery tests and full quality 957/957 passed. PR #66 remained draft; main untouched.

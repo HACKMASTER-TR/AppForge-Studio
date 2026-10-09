@@ -400,3 +400,163 @@ with tempfile.TemporaryDirectory() as folder:
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assertScopedLabels(JSON.parse(result.stdout));
 });
+
+// Each probe owns a temporary Git repository; production evidence stays untouched.
+function basisFixtureProbe(extra) {
+  const result = probeGenerator({}, `
+import hashlib
+import subprocess
+import tempfile
+from pathlib import Path
+original_root = g.ROOT
+with tempfile.TemporaryDirectory() as folder:
+    g.ROOT = Path(folder)
+    def write(rel, content="fixture"):
+        target = g.ROOT / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=g.ROOT, check=True, capture_output=True)
+    git("init", "-q")
+    write(".gitignore", "ignored*\\n")
+    for name in g.EXPECTED_MIGRATIONS:
+        write("cloudflare/control-plane/migrations/" + name)
+    write("docs/wiki/tracked.md")
+    write("quality/tests/tracked.test.js")
+    write("android-app/app/src/test/Tracked.kt")
+    write(g.ASSET_REL)
+    git("add", ".")
+    write("docs/wiki/untracked.md")
+    g.verify_current_contract = lambda: None
+    g.require_marker = lambda *args: None
+    def inventory():
+        return g.canonical_basis_files(g.migration_files())
+    def snapshot():
+        return g.build_snapshot()
+    baseline = snapshot()
+    files = inventory()
+${extra}
+    g.ROOT = original_root
+`);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+}
+
+test("V2 basis policy version is committed into the source digest", () => {
+  basisFixtureProbe(`
+    assert g.BASIS_POLICY_VERSION == "SECOND_BRAIN_V2_BASIS_POLICY_V1"
+    digest = hashlib.sha256(b"SECOND_BRAIN_V2_BASIS_POLICY_V1\\0")
+    for rel in sorted(files):
+        digest.update(rel.encode("utf-8") + b"\\0")
+        digest.update(hashlib.sha256((g.ROOT / rel).read_bytes()).digest() + b"\\0")
+    assert baseline["sourceBasisSha256"] == digest.hexdigest()
+    g.BASIS_POLICY_VERSION = "synthetic-next-policy"
+    assert snapshot()["sourceBasisSha256"] != baseline["sourceBasisSha256"]
+`);
+});
+
+test("V2 inventory counts use only canonical basis regular files", () => {
+  basisFixtureProbe(`
+    assert baseline["sourceBasisFileCount"] == len(files)
+    assert baseline["wikiPages"] == 2
+    assert baseline["qualityContractFiles"] == 1
+    assert baseline["androidUnitTestFiles"] == 1
+    for key, prefix, suffix in [
+        ("wikiPages", "docs/wiki/", ".md"),
+        ("qualityContractFiles", "quality/tests/", ".test.js"),
+        ("androidUnitTestFiles", "android-app/app/src/test/", ".kt")
+    ]:
+        assert baseline[key] == sum(rel.startswith(prefix) and rel.endswith(suffix) for rel in files)
+    assert "docs/wiki/untracked.md" in files
+`);
+});
+
+test("V2 ignored count-like fixtures cannot inflate coverage counts", () => {
+  basisFixtureProbe(`
+    for rel in ["docs/wiki/ignored.md", "quality/tests/ignored.test.js", "android-app/app/src/test/ignored.kt"]:
+        write(rel)
+        assert rel not in inventory()
+    assert snapshot() == baseline
+`);
+});
+
+test("V2 matching directories cannot inflate coverage counts", () => {
+  basisFixtureProbe(`
+    for rel in ["docs/wiki/directory.md", "quality/tests/directory.test.js", "android-app/app/src/test/directory.kt", "cloudflare/control-plane/migrations/directory.sql"]:
+        (g.ROOT / rel).mkdir()
+        assert rel not in inventory()
+    assert snapshot() == baseline
+`);
+});
+
+test("V2 migration validation inventory is included in basis coverage", () => {
+  basisFixtureProbe(`
+    migration = "cloudflare/control-plane/migrations/" + g.EXPECTED_MIGRATIONS[0]
+    git("rm", "--cached", migration)
+    write(".gitignore", "ignored*\\n" + migration + "\\n")
+    assert migration not in g.repository_files()
+    assert migration in inventory()
+    assert set(g.migration_files()).issubset(inventory())
+    assert snapshot()["d1Migrations"] == len(g.migration_files()) == 5
+    original_state = g.migration_state
+    original_basis = g.canonical_basis_files
+    captured = []
+    def capture_basis(migrations):
+        captured.append(migrations)
+        return original_basis(migrations)
+    def capture_state(migrations):
+        assert migrations is captured[-1]
+        return original_state(migrations)
+    g.canonical_basis_files = capture_basis
+    g.migration_state = capture_state
+    payload = snapshot()
+    assert payload["sourceBasisFileCount"] == len(inventory())
+`);
+});
+
+test("V2 unexpected ignored migration remains fail closed", () => {
+  basisFixtureProbe(`
+    for name in ["ignored_unexpected.sql", "unexpected.sql"]:
+        rel = "cloudflare/control-plane/migrations/" + name
+        write(rel)
+        assert rel in inventory()
+        assert g.basis_hash(inventory()) != baseline["sourceBasisSha256"]
+        if name.startswith("ignored"):
+            assert rel not in g.repository_files()
+        try:
+            snapshot()
+        except SystemExit as error:
+            assert str(error) == "STOP: D1_MIGRATION_SET_NOT_EXACT"
+        else:
+            raise AssertionError("Unexpected migration accepted")
+        (g.ROOT / rel).unlink()
+`);
+});
+
+test("V2 migration content changes the source basis digest", () => {
+  basisFixtureProbe(`
+    write("cloudflare/control-plane/migrations/" + g.EXPECTED_MIGRATIONS[0], "changed migration bytes")
+    changed = snapshot()
+    assert changed["sourceBasisSha256"] != baseline["sourceBasisSha256"]
+    assert changed["sourceBasisFileCount"] == baseline["sourceBasisFileCount"]
+    assert changed["d1Migrations"] == 5
+`);
+});
+
+test("V2 limited attestation preserves intentional exclusions", () => {
+  basisFixtureProbe(`
+    # These paths may carry authoritative evidence; this digest deliberately covers a subset.
+    excluded = ["AGENTS.md", ".appforge/state.json", "unselected/evidence.md",
+        "docs/wiki/evidence.txt", "docs/wiki/ignored.md", "local.log", "build/artifact.bin", g.ASSET_REL]
+    for rel in excluded:
+        write(rel, "synthetic excluded fixture")
+    git("add", "AGENTS.md", ".appforge/state.json", "unselected/evidence.md", "docs/wiki/evidence.txt", "local.log", "build/artifact.bin")
+    for rel in excluded:
+        assert rel not in inventory()
+    assert snapshot() == baseline
+    for rel in excluded:
+        write(rel, "changed synthetic excluded fixture")
+    assert snapshot() == baseline
+    write("docs/wiki/tracked.md", "changed selected evidence")
+    assert snapshot()["sourceBasisSha256"] != baseline["sourceBasisSha256"]
+`);
+});

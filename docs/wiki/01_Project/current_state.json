@@ -461,6 +461,50 @@
       },
       "blockers": [],
       "nextAction": "PR #71 remains draft, open and unmerged; delivery awaits explicit authorization and parent-first stacked-PR handling."
+    },
+    {
+      "id": "sb05",
+      "title": "Second Brain integrity basis completeness",
+      "scope": "Make snapshot counts and exact migration validation use a versioned canonical integrity basis with an explicitly limited attestation boundary. sourceSha records the pre-implementation base only.",
+      "lifecycle": "ACTIVE",
+      "branch": "fix/second-brain-integrity-basis-completeness-v1",
+      "baseBranch": "fix/second-brain-snapshot-labels-evidence-v1",
+      "baseSha": "94f5f830c5ff7955e62c2cff0097e191e0dbb55b",
+      "sourceSha": "94f5f830c5ff7955e62c2cff0097e191e0dbb55b",
+      "stages": {
+        "implementation": {
+          "state": "NOT_RUN"
+        },
+        "targetedTests": {
+          "state": "NOT_RUN"
+        },
+        "fullQuality": {
+          "state": "NOT_RUN"
+        },
+        "secondBrain": {
+          "state": "NOT_RUN"
+        },
+        "hostedCI": {
+          "state": "NOT_RUN"
+        },
+        "physicalAcceptance": {
+          "state": "NOT_APPLICABLE",
+          "reason": "Build-time integrity-basis/tooling/governance correction only; no physical device/runtime acceptance is claimed."
+        },
+        "merge": {
+          "state": "NOT_RUN"
+        },
+        "release": {
+          "state": "NOT_RUN"
+        },
+        "deploy": {
+          "state": "NOT_RUN"
+        }
+      },
+      "blockers": [
+        "Independent external verification and exact implementation-SHA evidence are required."
+      ],
+      "nextAction": "Independent verification before commit/push/delivery."
     }
   ]
 }

@@ -8,6 +8,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+BASIS_POLICY_VERSION = "SECOND_BRAIN_V2_BASIS_POLICY_V1"
+
 ASSET_REL = (
     "android-app/app/src/main/assets/"
     "second_brain_snapshot.json"
@@ -126,8 +128,10 @@ def basis_hash(
     files: list[str],
 ) -> str:
     digest = hashlib.sha256()
+    digest.update(BASIS_POLICY_VERSION.encode("utf-8"))
+    digest.update(b"\0")
 
-    for rel in files:
+    for rel in sorted(files):
         path = ROOT / rel
 
         content_digest = hashlib.sha256(
@@ -144,7 +148,7 @@ def basis_hash(
     return digest.hexdigest()
 
 
-def migration_state() -> tuple[int, str]:
+def migration_files() -> list[str]:
     root = (
         ROOT
         / "cloudflare"
@@ -152,11 +156,19 @@ def migration_state() -> tuple[int, str]:
         / "migrations"
     )
 
-    names = sorted(
-        path.name
+    return sorted(
+        path.relative_to(ROOT).as_posix()
         for path in root.glob("*.sql")
         if path.is_file()
     )
+
+
+def canonical_basis_files(migrations: list[str]) -> list[str]:
+    return sorted(set(repository_files()) | set(migrations))
+
+
+def migration_state(files: list[str]) -> tuple[int, str]:
+    names = sorted(Path(rel).name for rel in files)
 
     if names != EXPECTED_MIGRATIONS:
         stop(
@@ -234,40 +246,27 @@ def verify_current_contract() -> None:
 def build_snapshot() -> dict:
     verify_current_contract()
 
-    evidence_files = repository_files()
+    migration_inventory = migration_files()
+    evidence_files = canonical_basis_files(migration_inventory)
 
     if not evidence_files:
         stop(
             "EVIDENCE_FILE_SET_EMPTY"
         )
 
-    migrations, ledger = migration_state()
+    migrations, ledger = migration_state(migration_inventory)
 
-    wiki_pages = len(
-        list(
-            (ROOT / "docs/wiki")
-            .rglob("*.md")
-        )
+    wiki_pages = sum(
+        rel.startswith("docs/wiki/") and rel.endswith(".md")
+        for rel in evidence_files
     )
-
-    quality_contract_files = len(
-        list(
-            (ROOT / "quality/tests")
-            .rglob("*.test.js")
-        )
+    quality_contract_files = sum(
+        rel.startswith("quality/tests/") and rel.endswith(".test.js")
+        for rel in evidence_files
     )
-
-    android_unit_test_files = len(
-        list(
-            (
-                ROOT
-                / "android-app"
-                / "app"
-                / "src"
-                / "test"
-            )
-            .rglob("*.kt")
-        )
+    android_unit_test_files = sum(
+        rel.startswith("android-app/app/src/test/") and rel.endswith(".kt")
+        for rel in evidence_files
     )
 
     return {
