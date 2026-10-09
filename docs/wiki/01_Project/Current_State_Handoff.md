@@ -83,6 +83,34 @@ Blockers / references: none recorded (not proof of blocker absence)
 
 Next action: PR #68 remains open and draft. Explicit delivery authorization is required before merge; no release, deployment or Play Production authorization is implied.
 
+## sb02 — Acceptance-page consistency correction
+
+Scope: SB02 corrects stale active Windows acceptance summaries without changing runtime behavior or promoting historical acceptance to the current checkout. sourceSha is the PRE-IMPLEMENTATION BASE ONLY, not implementation evidence.
+
+Lifecycle: **ACTIVE**
+
+- Branch: `fix/second-brain-acceptance-page-consistency-v1`
+- Base branch: `fix/second-brain-retired-backend-maps-v1`
+- Base exact SHA: `4b23c5f0c34b1376c12ca0ede561dcf4a9124f8d`
+- Manifest-recorded source SHA: `4b23c5f0c34b1376c12ca0ede561dcf4a9124f8d`
+- Parent workstream: none recorded
+
+| Evidence stage | State | Binding / reference or reason |
+|---|---|---|
+| implementation | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
+| targetedTests | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
+| fullQuality | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
+| secondBrain | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
+| hostedCI | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
+| physicalAcceptance | NOT_APPLICABLE | Documentation/governance-only consistency correction; no new physical device/runtime acceptance is being claimed. |
+| merge | NOT_RUN | No authorization or execution in this task. |
+| release | NOT_RUN | No authorization or execution in this task. |
+| deploy | NOT_RUN | No authorization or execution in this task. |
+
+Blockers / references: SB02 implementation still requires independent external verification and exact implementation-SHA evidence.
+
+Next action: Independent verification before commit/push/delivery.
+
 ## sb12 — Runtime blocker fail-stop
 
 Scope: SB12 behavioral gate; targeted 20/20, related delivery tests and full quality 957/957 passed. PR #66 remained draft; main untouched.

@@ -3,7 +3,7 @@
   "project": "AppForge Studio",
   "authority": "REPOSITORY_DERIVED",
   "generatedBy": "scripts/generate-second-brain-snapshot.py",
-  "sourceBasisSha256": "416603ec8b3e17f066f56c91611e1758db2b2a57d48b6613972d7b2f9840857f",
+  "sourceBasisSha256": "e4db56778bf1a34f04d622d0ba9125445672cb40ea3270b93244fe9e6d0092e4",
   "sourceBasisFileCount": 637,
   "buildArchitecture": "DEVICE_LOCAL",
   "publisherAuthorization": "STAGING_DEVICE_ACCEPTED",

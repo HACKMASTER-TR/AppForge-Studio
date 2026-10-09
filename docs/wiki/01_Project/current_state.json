@@ -261,6 +261,58 @@
       },
       "blockers": [],
       "nextAction": "PR #68 remains open and draft. Explicit delivery authorization is required before merge; no release, deployment or Play Production authorization is implied."
+    },
+    {
+      "id": "sb02",
+      "title": "Acceptance-page consistency correction",
+      "scope": "SB02 corrects stale active Windows acceptance summaries without changing runtime behavior or promoting historical acceptance to the current checkout. sourceSha is the PRE-IMPLEMENTATION BASE ONLY, not implementation evidence.",
+      "lifecycle": "ACTIVE",
+      "branch": "fix/second-brain-acceptance-page-consistency-v1",
+      "baseBranch": "fix/second-brain-retired-backend-maps-v1",
+      "baseSha": "4b23c5f0c34b1376c12ca0ede561dcf4a9124f8d",
+      "sourceSha": "4b23c5f0c34b1376c12ca0ede561dcf4a9124f8d",
+      "stages": {
+        "implementation": {
+          "state": "NOT_RUN",
+          "reason": "Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required."
+        },
+        "targetedTests": {
+          "state": "NOT_RUN",
+          "reason": "Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required."
+        },
+        "fullQuality": {
+          "state": "NOT_RUN",
+          "reason": "Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required."
+        },
+        "secondBrain": {
+          "state": "NOT_RUN",
+          "reason": "Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required."
+        },
+        "hostedCI": {
+          "state": "NOT_RUN",
+          "reason": "Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required."
+        },
+        "physicalAcceptance": {
+          "state": "NOT_APPLICABLE",
+          "reason": "Documentation/governance-only consistency correction; no new physical device/runtime acceptance is being claimed."
+        },
+        "merge": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution in this task."
+        },
+        "release": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution in this task."
+        },
+        "deploy": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution in this task."
+        }
+      },
+      "blockers": [
+        "SB02 implementation still requires independent external verification and exact implementation-SHA evidence."
+      ],
+      "nextAction": "Independent verification before commit/push/delivery."
     }
   ]
 }
