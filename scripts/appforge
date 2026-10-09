@@ -1428,6 +1428,8 @@ def active_runtime_blockers():
         data = json.loads(RUNTIME_BLOCKERS_PATH.read_text(encoding="utf-8"))
     except Exception as exc:
         block_pipeline("DEVICE_RUNTIME", "RUNTIME", f"runtime blocker registry unreadable: {exc}", exit_code=42)
+    if not isinstance(data, dict):
+        block_pipeline("DEVICE_RUNTIME", "RUNTIME", "runtime blocker registry must be an object", exit_code=42)
     active = data.get("active", [])
     if not isinstance(active, list):
         block_pipeline("DEVICE_RUNTIME", "RUNTIME", "runtime blocker registry active must be a list", exit_code=42)
@@ -1442,7 +1444,7 @@ def require_no_runtime_blockers():
     print("\nDEVICE RUNTIME BLOCKERS:")
     for item in blockers:
         print(" -", item.get("id", "UNKNOWN"), item.get("status", "BLOCKED"), ":", item.get("summary", ""))
-    block_pipeline("DEVICE_RUNTIME", "RUNTIME", f"{len(blockers)} active runtime blocker(s); deploy/release/publish forbidden", exit_code=42, blockers=blockers)
+    block_pipeline("DEVICE_RUNTIME", "RUNTIME", f"{len(blockers)} active runtime blocker(s); commit/push/PR/merge/cleanup/deploy/release/publish forbidden", exit_code=42, blockers=blockers)
 
 
 def app_version_from_text(text):
@@ -1612,6 +1614,7 @@ def ensure_versioned_release(main_sha):
         release_tag=tag,
     )
 
+    require_no_runtime_blockers()
     created = run(
         [
             gh_exec,
@@ -1664,6 +1667,7 @@ def ensure_versioned_release(main_sha):
     # This keeps the REST release payload
     # small and avoids the previous 422
     # target_commitish/generate-notes path.
+    require_no_runtime_blockers()
     tag_push = run(
         [
             git_exec,
@@ -1769,6 +1773,7 @@ def ensure_versioned_release(main_sha):
             ]
         )
 
+    require_no_runtime_blockers()
     api_created = run(
         api_args,
         check=False,
@@ -1996,6 +2001,7 @@ def merge_pr(num):
             "PR merge için HEAD SHA yok."
         )
 
+    require_no_runtime_blockers()
     result = run([
         "gh",
         "api",
@@ -2032,6 +2038,7 @@ def merge_pr(num):
         )
 
     if head_ref:
+        require_no_runtime_blockers()
         delete = run([
             "git",
             "push",
@@ -2863,6 +2870,7 @@ def autopilot():
         # Delivery capability must be known before Autopilot mutates
         # release/repository state.
         preflight = delivery_preflight_result()
+        require_no_runtime_blockers()
 
         state_write("TESTING", mode="FULL_AUTOPILOT")
         prepare_release_version()
@@ -2875,8 +2883,10 @@ def autopilot():
             safe_cached_diff_check()
             run(["./scripts/appforge-stability-gate", "local"])
             msg = os.environ.get("APPFORGE_COMMIT_MESSAGE") or default_commit_message()
+            require_no_runtime_blockers()
             state_write("COMMITTING", commit_message=msg, mode="FULL_AUTOPILOT")
             run(["git", "commit", "-m", msg])
+            require_no_runtime_blockers()
             state_write("PUSHING", mode="FULL_AUTOPILOT")
             run(["git", "push", "-u", "origin", branch])
             print("COMMIT/PUSH: SUCCESS")
@@ -2887,6 +2897,7 @@ def autopilot():
         source_files = branch_change_files()
         source_groups = classify(source_files)
         print("\n=== AUTO PR / CI ===")
+        require_no_runtime_blockers()
         state_write("OPENING_PR", mode="FULL_AUTOPILOT")
         num = ensure_pr()
         print(f"PR #{num}: READY")
@@ -2894,6 +2905,7 @@ def autopilot():
         ci_watch()
         print("PR REQUIRED CI: SUCCESS")
 
+        require_no_runtime_blockers()
         state_write("MERGING", pr=num, mode="FULL_AUTOPILOT")
         merge_pr(num)
         print(f"PR #{num}: AUTO MERGED ✅")
@@ -2909,12 +2921,10 @@ def autopilot():
             block_pipeline("MAIN_CI", "CI_ENVIRONMENT", "latest APK release is not READY", latest_release=rel)
         print("POST-MERGE MAIN CI: SUCCESS")
 
+        require_no_runtime_blockers()
         cleanup_result = run_github_cleanup(branch, num, main_sha)
 
-        # Hard shipping boundary. This is intentionally after merge/main CI so
-        # delivery infrastructure and fixes can land, but before deploy/release/publish.
         require_no_runtime_blockers()
-
         ci_result = wait_production_deploy(main_sha, required, ci_result)
         versioned_release = {"status": "NOT_APPLICABLE"}
         play_result = {"status": "NOT_APPLICABLE"}
@@ -2931,9 +2941,11 @@ def autopilot():
                 release_capability == "ELIGIBLE"
                 and play_capability == "ELIGIBLE"
             ):
+                require_no_runtime_blockers()
                 versioned_release = ensure_versioned_release(
                     main_sha
                 )
+                require_no_runtime_blockers()
                 play_result = wait_play_publish(
                     main_sha
                 )
