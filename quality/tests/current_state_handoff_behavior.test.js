@@ -41,7 +41,8 @@ test('UNKNOWN remains UNKNOWN with no inferred acceptance', t => {
   assert.equal(w.stages.hostedCI.state, 'UNKNOWN'); assert.equal(w.stages.merge.state, 'NOT_RUN');
 });
 test('NOT_RUN preserved distinctly', t => {
-  const f = fixture(t); assert.equal(shown(f).manifestRecorded[2].stages.fullQuality.state, 'NOT_RUN');
+  const f = fixture(t); f.data.workstreams[2].stages.fullQuality = { state: 'NOT_RUN' }; f.write();
+  assert.equal(shown(f).manifestRecorded[2].stages.fullQuality.state, 'NOT_RUN');
 });
 test('PASS requires exact-SHA evidence', t => reject(t, d => d.workstreams[2].stages.implementation = { state: 'PASS' }));
 test('hosted CI PASS requires run and workflow', t => {
@@ -97,7 +98,9 @@ test('show reports separate live Git identity, mismatch and freshness', t => {
   const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).stdout.trim();
   const branch = spawnSync('git', ['branch', '--show-current'], { cwd: repo, encoding: 'utf8' }).stdout.trim();
   assert.equal(report.liveGit.head, head); assert.equal(report.liveGit.branch, branch); assert.equal(report.handoffStale, false);
-  f.data.workstreams[2].sourceSha = 'a'.repeat(40); f.write(); const changed = shown(f);
+  const w = f.data.workstreams[2]; w.sourceSha = 'a'.repeat(40);
+  for (const stage of Object.values(w.stages)) if (stage.evidence) stage.evidence.sourceSha = w.sourceSha;
+  f.write(); const changed = shown(f);
   assert.equal(changed.evidenceMismatch, true); assert.equal(changed.manifestRecorded[2].sourceSha, 'a'.repeat(40)); assert.equal(changed.handoffStale, true);
 });
 test('prohibited fields and credential-bearing references rejected', t => {
