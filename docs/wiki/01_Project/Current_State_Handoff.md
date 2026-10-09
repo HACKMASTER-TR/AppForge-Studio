@@ -167,6 +167,34 @@ Blockers / references: none recorded (not proof of blocker absence)
 
 Next action: PR #71 remains draft, open and unmerged; delivery awaits explicit authorization and parent-first stacked-PR handling.
 
+## sb05 — Second Brain integrity basis completeness
+
+Scope: Make snapshot counts and exact migration validation use a versioned canonical integrity basis with an explicitly limited attestation boundary. sourceSha records the pre-implementation base only.
+
+Lifecycle: **ACTIVE**
+
+- Branch: `fix/second-brain-integrity-basis-completeness-v1`
+- Base branch: `fix/second-brain-snapshot-labels-evidence-v1`
+- Base exact SHA: `94f5f830c5ff7955e62c2cff0097e191e0dbb55b`
+- Manifest-recorded source SHA: `cd77794ccd27ecd47a0f5c8153c07dff68ba8799`
+- Parent workstream: none recorded
+
+| Evidence stage | State | Binding / reference or reason |
+|---|---|---|
+| implementation | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/pull/72; sourceSha: cd77794ccd27ecd47a0f5c8153c07dff68ba8799 |
+| targetedTests | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37912960671; sourceSha: cd77794ccd27ecd47a0f5c8153c07dff68ba8799 |
+| fullQuality | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37912960671; sourceSha: cd77794ccd27ecd47a0f5c8153c07dff68ba8799 |
+| secondBrain | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37912960671; sourceSha: cd77794ccd27ecd47a0f5c8153c07dff68ba8799 |
+| hostedCI | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37912960671; runId: 37912960671; sourceSha: cd77794ccd27ecd47a0f5c8153c07dff68ba8799; workflow: AppForge Stability Gate |
+| physicalAcceptance | NOT_APPLICABLE | Build-time integrity-basis/tooling/governance correction only; no physical device/runtime acceptance is claimed. |
+| merge | NOT_RUN |  |
+| release | NOT_RUN |  |
+| deploy | NOT_RUN |  |
+
+Blockers / references: none recorded (not proof of blocker absence)
+
+Next action: PR #72 remains draft, open and unmerged; delivery awaits explicit authorization and parent-first stacked-PR handling.
+
 ## sb12 — Runtime blocker fail-stop
 
 Scope: SB12 behavioral gate; targeted 20/20, related delivery tests and full quality 957/957 passed. PR #66 remained draft; main untouched.

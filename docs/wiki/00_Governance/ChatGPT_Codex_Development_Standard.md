@@ -175,3 +175,27 @@ coverage counts over wiki evidence. It is not a policy-text export or a live CI
 query. Do not hand-edit generated snapshot content or create a duplicate policy
 system. Future chats recover this standard through [[Index]], [[Agent_Rules]]
 and [[New_Session_Start_Prompt]] instead of relying on chat memory.
+
+## Second Brain V2 integrity basis policy
+
+`SECOND_BRAIN_V2_BASIS_POLICY_V1` defines `sourceBasisSha256` as a
+selected/versioned repository coverage attestation, not total project integrity.
+The canonical inventory preserves the generator's allowed evidence prefixes and
+extensions, selecting Git-tracked and nonignored untracked regular files.
+Every immediate regular `cloudflare/control-plane/migrations/*.sql` file is
+additionally included even if ignored, because that same inventory drives exact
+expected migration-set validation. Unexpected SQL files remain fail closed;
+this does not validate SQL semantics or reconcile live D1.
+
+The digest commits to the policy identifier, sorted repository-relative POSIX
+paths and file bytes. `sourceBasisFileCount` counts exactly those files;
+wiki, quality-contract and Android unit-test counts derive from that inventory.
+The generated snapshot excludes itself. `--check` separately verifies the exact
+generated rendering, including fields beyond the digest.
+
+Arbitrary files outside selected prefixes/extensions, AGENTS.md, `.appforge`
+operational state, secrets/credentials, local logs, build artifacts, Git-local
+or global configuration, device state and live GitHub/Cloudflare/D1/production
+state remain intentionally outside this attestation unless already selected by
+the canonical policy. Their exclusion does not diminish their authority.
+No live, device or hosted acceptance is inferred from the basis hash.
