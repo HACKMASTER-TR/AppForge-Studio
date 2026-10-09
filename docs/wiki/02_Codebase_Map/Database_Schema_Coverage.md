@@ -3,8 +3,8 @@ type: database
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-10-09
+last_verified: 2026-10-09
 confidence: high
 tags:
   - database
@@ -13,12 +13,16 @@ related:
   - "[[Database_Map]]"
   - "[[Worker_And_Artifact_Flow]]"
 source_files:
+  - "cloudflare/control-plane/wrangler.example.toml"
+  - "cloudflare/control-plane/src/index.mjs"
+  - "cloudflare/control-plane/migrations/0001_accountless_control_plane.sql"
+  - "cloudflare/control-plane/migrations/0005_pro_lifecycle.sql"
 ---
 
 # Database Schema Coverage
 
-`build-service/sql/` contains the numbered PostgreSQL migration history, while `src/db.js` is the service database access entry point. The migration set covers foundational users/projects/builds, teams/workers, security/storage, workspace/build control, entitlement/integrity, quotas, devices, and client hardening.
+The former PostgreSQL remote Build Service schema under `build-service/sql/` and its `src/db.js` access layer are historical/retired. They are not current schema authority, and their tables must not be assumed to exist in D1.
 
-Use the relevant migration sequence rather than only `001_init.sql` when establishing schema behavior. A migration is evidence of repository schema history; it does not prove that an authenticated database has been migrated, contains a record, or has matching production configuration.
+Current control-plane migration evidence is under `cloudflare/control-plane/migrations`. The active Cloudflare Worker uses the D1 `DB` binding documented in `cloudflare/control-plane/wrangler.example.toml`. This HTTPS control-plane persistence is separate from device-local compilation and local artifacts.
 
-Schema changes require review of the consuming backend module and regression tests. Keep table-level details in source or task-specific records unless they provide durable architectural value.
+Migration files prove repository schema intent, not live production state. They do not prove that an authenticated database has been migrated, contains a record, or matches production configuration. Review the relevant migration sequence, consuming Worker source and regression tests when establishing schema behavior.

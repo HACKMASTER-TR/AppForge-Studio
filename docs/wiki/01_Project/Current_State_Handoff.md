@@ -55,6 +55,34 @@ Blockers / references: none recorded (not proof of blocker absence)
 
 Next action: Independent verification and explicit authorization before any delivery.
 
+## sb01 — Retired backend introductory-map correction
+
+Scope: Documentation/governance-only: six stale introductory maps corrected; retirement regression coverage added; current-state behavioral coverage repaired for branch-order and detached-HEAD independence. Retirement contracts 22/22, current-state behavior 24/24, full quality 989/989 and Second Brain passed. Exact-SHA hosted Stability Gate run 37890174134 passed; historical run 37887768441 failed on earlier SHA 05ad784d233506d43c8c9d1cfbe9b65e68dff71c and is not accepted. PR #68 remains open and draft; no runtime source changed.
+
+Lifecycle: **ACTIVE**
+
+- Branch: `fix/second-brain-retired-backend-maps-v1`
+- Base branch: `feat/second-brain-current-state-handoff-v1`
+- Base exact SHA: `a749e0bb749fb17f1a123867fc43cfe9e54ba57a`
+- Manifest-recorded source SHA: `fe73f57b29abf84a525af3f9e436cd6d81b8801d`
+- Parent workstream: none recorded
+
+| Evidence stage | State | Binding / reference or reason |
+|---|---|---|
+| implementation | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/pull/68; sourceSha: fe73f57b29abf84a525af3f9e436cd6d81b8801d |
+| targetedTests | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37890174134; sourceSha: fe73f57b29abf84a525af3f9e436cd6d81b8801d |
+| fullQuality | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37890174134; sourceSha: fe73f57b29abf84a525af3f9e436cd6d81b8801d |
+| secondBrain | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37890174134; sourceSha: fe73f57b29abf84a525af3f9e436cd6d81b8801d |
+| hostedCI | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37890174134; runId: 37890174134; sourceSha: fe73f57b29abf84a525af3f9e436cd6d81b8801d; workflow: AppForge Stability Gate |
+| physicalAcceptance | NOT_APPLICABLE | Documentation/governance-only correction; no applicable physical device/runtime acceptance. |
+| merge | NOT_RUN | PR #68 remains open and draft; no merge authorization or execution has occurred. |
+| release | NOT_RUN | No release authorization or execution occurred. |
+| deploy | NOT_RUN | No deployment authorization or execution occurred. |
+
+Blockers / references: none recorded (not proof of blocker absence)
+
+Next action: PR #68 remains open and draft. Explicit delivery authorization is required before merge; no release, deployment or Play Production authorization is implied.
+
 ## sb12 — Runtime blocker fail-stop
 
 Scope: SB12 behavioral gate; targeted 20/20, related delivery tests and full quality 957/957 passed. PR #66 remained draft; main untouched.

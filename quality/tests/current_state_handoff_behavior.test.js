@@ -94,14 +94,32 @@ test('correct check passes read-only', t => {
   assert.equal(f.run('check').status, 0); assert.deepEqual(fs.readFileSync(f.output), before);
 });
 test('show reports separate live Git identity, mismatch and freshness', t => {
-  const f = fixture(t); f.run('generate'); const report = shown(f);
+  const f = fixture(t);
   const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).stdout.trim();
   const branch = spawnSync('git', ['branch', '--show-current'], { cwd: repo, encoding: 'utf8' }).stdout.trim();
+  const fixtureBranch = branch || 'detached-head-fixture';
+  const w = {
+    id: 'live-identity-fixture', title: 'Live identity fixture', scope: 'Temporary behavioral test',
+    lifecycle: 'ACTIVE', branch: fixtureBranch, baseBranch: fixtureBranch, baseSha: head, sourceSha: head,
+    stages: Object.fromEntries(['implementation', 'targetedTests', 'fullQuality', 'secondBrain',
+      'hostedCI', 'physicalAcceptance', 'merge', 'release', 'deploy'].map(name => [name, { state: 'NOT_RUN' }])),
+    blockers: [], nextAction: 'Verify live identity and freshness'
+  };
+  w.stages.implementation = { state: 'PASS', evidence: { sourceSha: head, reference: 'quality/tests/current_state_handoff_behavior.test.js' } };
+  f.data.workstreams = [w]; f.write();
+  assert.equal(f.run('validate').status, 0);
+  assert.equal(f.run('generate').status, 0);
+  const report = shown(f);
   assert.equal(report.liveGit.head, head); assert.equal(report.liveGit.branch, branch); assert.equal(report.handoffStale, false);
-  const w = f.data.workstreams[2]; w.sourceSha = 'a'.repeat(40);
+  assert.equal(report.evidenceMismatch, branch === '');
+  assert.equal(report.manifestRecorded.find(record => record.id === w.id).sourceSha, head);
+  const changedSha = (head.startsWith('a') ? 'b' : 'a') + head.slice(1);
+  w.sourceSha = changedSha;
   for (const stage of Object.values(w.stages)) if (stage.evidence) stage.evidence.sourceSha = w.sourceSha;
-  f.write(); const changed = shown(f);
-  assert.equal(changed.evidenceMismatch, true); assert.equal(changed.manifestRecorded[2].sourceSha, 'a'.repeat(40)); assert.equal(changed.handoffStale, true);
+  f.write(); assert.equal(f.run('validate').status, 0);
+  const changed = shown(f);
+  assert.equal(changed.liveGit.head, head); assert.equal(changed.liveGit.branch, branch);
+  assert.equal(changed.evidenceMismatch, true); assert.equal(changed.manifestRecorded.find(record => record.id === w.id).sourceSha, changedSha); assert.equal(changed.handoffStale, true);
 });
 test('prohibited fields and credential-bearing references rejected', t => {
   reject(t, d => d.workstreams[0].token = 'placeholder');
