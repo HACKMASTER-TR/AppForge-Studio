@@ -194,6 +194,58 @@
       "blockers": [],
       "nextAction": "PR #67 remains open and draft. Explicit delivery authorization is required before merge; no release, deploy or Play Production is authorized.",
       "parent": "sb12"
+    },
+    {
+      "id": "sb01",
+      "title": "Retired backend introductory-map correction",
+      "scope": "Narrow documentation-only SB01 correction in progress: six introductory maps, retirement regression contract and generated governance derivatives; no runtime changes or acceptance of uncommitted edits.",
+      "lifecycle": "ACTIVE",
+      "branch": "fix/second-brain-retired-backend-maps-v1",
+      "baseBranch": "feat/second-brain-current-state-handoff-v1",
+      "baseSha": "a749e0bb749fb17f1a123867fc43cfe9e54ba57a",
+      "sourceSha": "a749e0bb749fb17f1a123867fc43cfe9e54ba57a",
+      "stages": {
+        "implementation": {
+          "state": "NOT_RUN",
+          "reason": "Pending independent external gate and future exact implementation commit evidence cycle."
+        },
+        "targetedTests": {
+          "state": "NOT_RUN",
+          "reason": "Pending independent external gate and future exact implementation commit evidence cycle."
+        },
+        "fullQuality": {
+          "state": "NOT_RUN",
+          "reason": "Pending independent external gate and future exact implementation commit evidence cycle."
+        },
+        "secondBrain": {
+          "state": "NOT_RUN",
+          "reason": "Pending independent external gate and future exact implementation commit evidence cycle."
+        },
+        "hostedCI": {
+          "state": "NOT_RUN",
+          "reason": "Pending independent external gate and future exact implementation commit evidence cycle."
+        },
+        "merge": {
+          "state": "NOT_RUN",
+          "reason": "Pending independent external gate and future exact implementation commit evidence cycle."
+        },
+        "release": {
+          "state": "NOT_RUN",
+          "reason": "Pending independent external gate and future exact implementation commit evidence cycle."
+        },
+        "deploy": {
+          "state": "NOT_RUN",
+          "reason": "Pending independent external gate and future exact implementation commit evidence cycle."
+        },
+        "physicalAcceptance": {
+          "state": "NOT_APPLICABLE",
+          "reason": "Documentation/governance-only correction; no device/runtime acceptance applicable."
+        }
+      },
+      "blockers": [
+        "SB01 implementation external gate pending; no exact implementation commit evidence exists yet. The recorded source SHA is only the supplied pre-implementation base."
+      ],
+      "nextAction": "Independently verify the narrow implementation before commit/push/merge; delivery requires explicit authorization."
     }
   ]
 }

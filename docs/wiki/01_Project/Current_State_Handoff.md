@@ -55,6 +55,34 @@ Blockers / references: none recorded (not proof of blocker absence)
 
 Next action: Independent verification and explicit authorization before any delivery.
 
+## sb01 — Retired backend introductory-map correction
+
+Scope: Narrow documentation-only SB01 correction in progress: six introductory maps, retirement regression contract and generated governance derivatives; no runtime changes or acceptance of uncommitted edits.
+
+Lifecycle: **ACTIVE**
+
+- Branch: `fix/second-brain-retired-backend-maps-v1`
+- Base branch: `feat/second-brain-current-state-handoff-v1`
+- Base exact SHA: `a749e0bb749fb17f1a123867fc43cfe9e54ba57a`
+- Manifest-recorded source SHA: `a749e0bb749fb17f1a123867fc43cfe9e54ba57a`
+- Parent workstream: none recorded
+
+| Evidence stage | State | Binding / reference or reason |
+|---|---|---|
+| implementation | NOT_RUN | Pending independent external gate and future exact implementation commit evidence cycle. |
+| targetedTests | NOT_RUN | Pending independent external gate and future exact implementation commit evidence cycle. |
+| fullQuality | NOT_RUN | Pending independent external gate and future exact implementation commit evidence cycle. |
+| secondBrain | NOT_RUN | Pending independent external gate and future exact implementation commit evidence cycle. |
+| hostedCI | NOT_RUN | Pending independent external gate and future exact implementation commit evidence cycle. |
+| physicalAcceptance | NOT_APPLICABLE | Documentation/governance-only correction; no device/runtime acceptance applicable. |
+| merge | NOT_RUN | Pending independent external gate and future exact implementation commit evidence cycle. |
+| release | NOT_RUN | Pending independent external gate and future exact implementation commit evidence cycle. |
+| deploy | NOT_RUN | Pending independent external gate and future exact implementation commit evidence cycle. |
+
+Blockers / references: SB01 implementation external gate pending; no exact implementation commit evidence exists yet. The recorded source SHA is only the supplied pre-implementation base.
+
+Next action: Independently verify the narrow implementation before commit/push/merge; delivery requires explicit authorization.
+
 ## sb12 — Runtime blocker fail-stop
 
 Scope: SB12 behavioral gate; targeted 20/20, related delivery tests and full quality 957/957 passed. PR #66 remained draft; main untouched.
