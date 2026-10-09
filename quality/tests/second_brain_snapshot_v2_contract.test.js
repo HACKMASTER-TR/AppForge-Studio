@@ -443,8 +443,8 @@ ${extra}
 
 test("V2 basis policy version is committed into the source digest", () => {
   basisFixtureProbe(`
-    assert g.BASIS_POLICY_VERSION == "SECOND_BRAIN_V2_BASIS_POLICY_V1"
-    digest = hashlib.sha256(b"SECOND_BRAIN_V2_BASIS_POLICY_V1\\0")
+    assert g.BASIS_POLICY_VERSION == "SECOND_BRAIN_V2_BASIS_POLICY_V2"
+    digest = hashlib.sha256(b"SECOND_BRAIN_V2_BASIS_POLICY_V2\\0")
     for rel in sorted(files):
         digest.update(rel.encode("utf-8") + b"\\0")
         digest.update(hashlib.sha256((g.ROOT / rel).read_bytes()).digest() + b"\\0")
@@ -558,5 +558,204 @@ test("V2 limited attestation preserves intentional exclusions", () => {
     assert snapshot() == baseline
     write("docs/wiki/tracked.md", "changed selected evidence")
     assert snapshot()["sourceBasisSha256"] != baseline["sourceBasisSha256"]
+`);
+});
+
+function sb07Probe(extra) {
+  basisFixtureProbe(`
+    import os
+    def rejects(action, marker, rel=None):
+        try:
+            action()
+        except SystemExit as error:
+            message = str(error)
+            assert marker in message, message
+            if rel is not None:
+                assert rel in message, message
+        else:
+            raise AssertionError("SB07 mutation accepted")
+${extra}
+`);
+}
+
+test("V2 rejects tracked symlink basis candidates", () => {
+  sb07Probe(`
+    rel = "docs/wiki/tracked.md"
+    (g.ROOT / rel).unlink()
+    (g.ROOT / rel).symlink_to("untracked.md")
+    rejects(inventory, "SECOND_BRAIN_SYMLINK_NOT_ALLOWED", rel)
+`);
+});
+
+test("V2 rejects nonignored untracked symlink basis candidates", () => {
+  sb07Probe(`
+    rel = "quality/tests/new.test.js"
+    (g.ROOT / rel).symlink_to("tracked.test.js")
+    rejects(inventory, "SECOND_BRAIN_SYMLINK_NOT_ALLOWED", rel)
+`);
+});
+
+test("V2 rejects internal and external symlink targets without dereferencing them", () => {
+  sb07Probe(`
+    original_open = g.os.open
+    def forbidden_open(*args, **kwargs):
+        raise AssertionError("Symlink target opened")
+    with tempfile.TemporaryDirectory() as external:
+        target = Path(external) / "harmless.txt"
+        target.write_text("synthetic external bytes")
+        for destination in [g.ROOT / "docs/wiki/untracked.md", target]:
+            rel = "docs/wiki/link.md"
+            (g.ROOT / rel).symlink_to(destination)
+            g.os.open = forbidden_open
+            try:
+                rejects(inventory, "SECOND_BRAIN_SYMLINK_NOT_ALLOWED", rel)
+                rejects(lambda: g.stable_read(rel), "SECOND_BRAIN_SYMLINK_NOT_ALLOWED", rel)
+            finally:
+                g.os.open = original_open
+                (g.ROOT / rel).unlink()
+`);
+});
+
+test("V2 rejects broken and directory symlink candidates", () => {
+  sb07Probe(`
+    for prefix, suffix in [("docs/wiki/", ".md"), ("cloudflare/control-plane/migrations/", ".sql")]:
+        for destination in [g.ROOT / "absent", g.ROOT / "quality/tests"]:
+            rel = prefix + "candidate" + suffix
+            (g.ROOT / rel).symlink_to(destination)
+            if prefix.startswith("docs"):
+                git("add", rel)
+            rejects(inventory, "SECOND_BRAIN_SYMLINK_NOT_ALLOWED", rel)
+            (g.ROOT / rel).unlink()
+`);
+});
+
+test("V2 rejects symlinked path components", () => {
+  sb07Probe(`
+    rel = "docs/wiki/nested/page.md"
+    write(rel)
+    git("add", rel)
+    directory = g.ROOT / "docs/wiki/nested"
+    directory.rename(g.ROOT / "harmless-directory")
+    directory.symlink_to(g.ROOT / "harmless-directory", target_is_directory=True)
+    rejects(inventory, "SECOND_BRAIN_SYMLINK_NOT_ALLOWED", rel)
+    rejects(lambda: g.stable_read(rel), "SECOND_BRAIN_SYMLINK_NOT_ALLOWED", rel)
+    migration_dir = g.ROOT / "cloudflare/control-plane/migrations"
+    migration_dir.rename(g.ROOT / "harmless-migrations")
+    migration_dir.symlink_to(g.ROOT / "harmless-migrations", target_is_directory=True)
+    rejects(g.migration_files, "SECOND_BRAIN_SYMLINK_NOT_ALLOWED")
+`);
+});
+
+test("V2 stable read rejects path replacement before read", () => {
+  sb07Probe(`
+    rel = "docs/wiki/tracked.md"
+    original_open = g.os.open
+    original_fdopen = g.os.fdopen
+    with tempfile.TemporaryDirectory() as external:
+        target = Path(external) / "harmless.txt"
+        target.write_text("replacement target bytes must never be read")
+        for replacement in ["symlink", "regular"]:
+            write(rel, "original")
+            def swap_open(path, flags, *args, **kwargs):
+                Path(path).unlink()
+                if replacement == "symlink":
+                    Path(path).symlink_to(target)
+                else:
+                    Path(path).write_text("different object")
+                # Remove NOFOLLOW to exercise the identity defense independently.
+                return original_open(path, flags & ~getattr(os, "O_NOFOLLOW", 0), *args, **kwargs)
+            class NeverRead:
+                def __init__(self, fd): self.fd = fd
+                def __enter__(self): return self
+                def __exit__(self, *args): os.close(self.fd)
+                def fileno(self): return self.fd
+                def read(self): raise AssertionError("Replacement bytes read")
+            g.os.open = swap_open
+            g.os.fdopen = lambda fd, mode: NeverRead(fd)
+            rejects(lambda: g.stable_read(rel), "SECOND_BRAIN_INPUT_CHANGED_DURING_READ", rel)
+            g.os.open = original_open
+            g.os.fdopen = original_fdopen
+            (g.ROOT / rel).unlink()
+`);
+});
+
+test("V2 stable read rejects concurrent content mutation", () => {
+  sb07Probe(`
+    rel = "docs/wiki/tracked.md"
+    original_fdopen = g.os.fdopen
+    class MutatingRead:
+        def __init__(self, fd, mode): self.stream = original_fdopen(fd, mode)
+        def __enter__(self): return self
+        def __exit__(self, *args): self.stream.close()
+        def fileno(self): return self.stream.fileno()
+        def read(self):
+            content = self.stream.read()
+            write(rel, "changed size during read")
+            return content
+    g.os.fdopen = MutatingRead
+    rejects(lambda: g.stable_read(rel), "SECOND_BRAIN_INPUT_CHANGED_DURING_READ", rel)
+    g.os.fdopen = original_fdopen
+`);
+});
+
+test("V2 pre-publication revalidation rejects changed selected bytes", () => {
+  sb07Probe(`
+    original_hash = g.basis_hash
+    def mutate_after_hash(files, observations=None):
+        digest = original_hash(files, observations)
+        write("docs/wiki/tracked.md", "changed after hashing")
+        return digest
+    g.basis_hash = mutate_after_hash
+    g.ASSET = g.ROOT / g.ASSET_REL
+    before = g.ASSET.read_bytes()
+    for arguments in [[], ["--check"]]:
+        write("docs/wiki/tracked.md", "fixture")
+        sys.argv = ["generator", *arguments]
+        rejects(g.main, "SECOND_BRAIN_INPUT_CHANGED_AFTER_HASH", "docs/wiki/tracked.md")
+        assert g.ASSET.read_bytes() == before
+    g.basis_hash = original_hash
+`);
+});
+
+test("V2 pre-publication revalidation rejects selected inventory changes", () => {
+  sb07Probe(`
+    original_hash = g.basis_hash
+    g.ASSET = g.ROOT / g.ASSET_REL
+    before = g.ASSET.read_bytes()
+    for change in ["add", "remove", "migration"]:
+        def change_after_hash(files, observations=None):
+            digest = original_hash(files, observations)
+            if change == "add": write("quality/tests/added.test.js")
+            elif change == "remove": (g.ROOT / "docs/wiki/untracked.md").unlink()
+            else: write("cloudflare/control-plane/migrations/ignored_new.sql")
+            return digest
+        g.basis_hash = change_after_hash
+        for arguments in [[], ["--check"]]:
+            sys.argv = ["generator", *arguments]
+            rejects(g.main, "SECOND_BRAIN_INPUT_SET_CHANGED")
+            assert g.ASSET.read_bytes() == before
+            if change == "add": (g.ROOT / "quality/tests/added.test.js").unlink()
+            elif change == "remove": write("docs/wiki/untracked.md")
+            else: (g.ROOT / "cloudflare/control-plane/migrations/ignored_new.sql").unlink()
+    g.basis_hash = original_hash
+`);
+});
+
+test("V2 SB07 hardening preserves canonical count and migration contracts", () => {
+  sb07Probe(`
+    assert baseline["schemaVersion"] == 2
+    assert g.BASIS_POLICY_VERSION == "SECOND_BRAIN_V2_BASIS_POLICY_V2"
+    for rel in ["docs/wiki/ignored.md", "quality/tests/ignored.test.js", "android-app/app/src/test/ignored.kt"]:
+        write(rel)
+    (g.ROOT / "docs/wiki/directory.md").mkdir()
+    migration = "cloudflare/control-plane/migrations/" + g.EXPECTED_MIGRATIONS[0]
+    git("rm", "--cached", migration)
+    write(".gitignore", "ignored*\\n" + migration + "\\n")
+    assert snapshot() == baseline
+    assert migration in inventory() and migration not in g.repository_files()
+    assert baseline["wikiPages"] == 2
+    assert baseline["qualityContractFiles"] == baseline["androidUnitTestFiles"] == 1
+    write("cloudflare/control-plane/migrations/ignored_unexpected.sql")
+    rejects(snapshot, "D1_MIGRATION_SET_NOT_EXACT")
 `);
 });

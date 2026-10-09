@@ -178,7 +178,7 @@ and [[New_Session_Start_Prompt]] instead of relying on chat memory.
 
 ## Second Brain V2 integrity basis policy
 
-`SECOND_BRAIN_V2_BASIS_POLICY_V1` defines `sourceBasisSha256` as a
+`SECOND_BRAIN_V2_BASIS_POLICY_V2` defines `sourceBasisSha256` as a
 selected/versioned repository coverage attestation, not total project integrity.
 The canonical inventory preserves the generator's allowed evidence prefixes and
 extensions, selecting Git-tracked and nonignored untracked regular files.
@@ -199,3 +199,17 @@ or global configuration, device state and live GitHub/Cloudflare/D1/production
 state remain intentionally outside this attestation unless already selected by
 the canonical policy. Their exclusion does not diminish their authority.
 No live, device or hosted acceptance is inferred from the basis hash.
+
+Schema remains V2 under the SB07 basis policy. Selected basis objects must be
+non-symlink regular repository files; lexical candidate symlinks (including
+broken, directory, internal and external targets) and symlinked path components
+fail closed without reading target bytes. Stable reads compare pre-open and
+opened identity/type, then post-read identity, size and modification metadata.
+Selected paths, migration inventory and per-file content digests are revalidated
+before publication or successful check comparison.
+
+This is best-effort selected-workspace attestation, not an atomic whole-repository
+filesystem snapshot. Hostile change-and-restore outside observation windows is
+not guaranteed to be detected. Hosted CI on a clean checkout remains the stronger
+acceptance environment. `sourceBasisSha256` remains selected-basis attestation,
+not whole-repository, live-state or physical-device attestation.

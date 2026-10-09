@@ -195,6 +195,34 @@ Blockers / references: none recorded (not proof of blocker absence)
 
 Next action: PR #72 remains draft, open and unmerged; delivery awaits explicit authorization and parent-first stacked-PR handling.
 
+## sb07 — Second Brain symlink and concurrent-read hardening
+
+Scope: Fail closed on symlink boundaries and observable selected-input mutations; retain schema V2 and canonical count/migration contracts. Git stacking on the SB05 evidence-record SHA does not satisfy the logical-parent exact-source contract: SB05 canonical implementation source is cd77794ccd27ecd47a0f5c8153c07dff68ba8799.
+
+Lifecycle: **ACTIVE**
+
+- Branch: `fix/second-brain-symlink-concurrency-boundary-v1`
+- Base branch: `fix/second-brain-integrity-basis-completeness-v1`
+- Base exact SHA: `a35300c6e775242e06f6bd527f1fe4ee846f366c`
+- Manifest-recorded source SHA: `b586ac7b2a65bca21da9798ed8e56395883afdf5`
+- Parent workstream: none recorded
+
+| Evidence stage | State | Binding / reference or reason |
+|---|---|---|
+| implementation | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/pull/73; sourceSha: b586ac7b2a65bca21da9798ed8e56395883afdf5 |
+| targetedTests | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37924697931; sourceSha: b586ac7b2a65bca21da9798ed8e56395883afdf5 |
+| fullQuality | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37924697931; sourceSha: b586ac7b2a65bca21da9798ed8e56395883afdf5 |
+| secondBrain | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37924697931; sourceSha: b586ac7b2a65bca21da9798ed8e56395883afdf5 |
+| hostedCI | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37924697931; runId: 37924697931; sourceSha: b586ac7b2a65bca21da9798ed8e56395883afdf5; workflow: AppForge Stability Gate |
+| physicalAcceptance | NOT_APPLICABLE | SB07 changes build-time Second Brain generator integrity boundaries only and does not alter application/device runtime behavior. |
+| merge | NOT_RUN | PR #73 remains draft, open and unmerged; no merge authorization or execution occurred. |
+| release | NOT_RUN | No release authorization or execution occurred. |
+| deploy | NOT_RUN | No deployment authorization or execution occurred. |
+
+Blockers / references: none recorded (not proof of blocker absence)
+
+Next action: PR #73 remains draft, open and unmerged; delivery awaits explicit authorization and parent-first stacked-PR handling.
+
 ## sb12 — Runtime blocker fail-stop
 
 Scope: SB12 behavioral gate; targeted 20/20, related delivery tests and full quality 957/957 passed. PR #66 remained draft; main untouched.
