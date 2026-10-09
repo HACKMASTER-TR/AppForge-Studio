@@ -44,7 +44,9 @@ source_files:
 
 # Current Status
 
-## Authoritative checkpoint — 2026-10-03
+## Historical checkpoint — 2026-10-03
+
+For current cross-workstream claims use [[Current_State_Handoff]] and `01_Project/current_state.json`, subordinate to Git and actual evidence. This page preserves release-integration checkpoint history; its PASS claims do not transfer to newer source SHAs.
 
 Release Integration V1 remains the active integration line.
 

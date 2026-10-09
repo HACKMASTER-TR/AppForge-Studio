@@ -22,6 +22,7 @@ Follow `docs/wiki/00_Governance/ChatGPT_Codex_Development_Standard.md`: ChatGPT 
 
 - `docs/wiki` is the project memory. Write it in English unless the user requests another language.
 - For meaningful or ambiguous work, read `AGENTS.md`, `docs/wiki/Hot_Context.md`, `docs/wiki/Index.md`, only 2-5 relevant wiki pages, then the related source/config/test files.
+- Recover cross-workstream claims through `docs/wiki/01_Project/Current_State_Handoff.md` and its canonical `current_state.json`; run `python3 scripts/current-state.py show` for separate live Git identity. The handoff is generated, claims remain subordinate to evidence, and no stage authorizes delivery.
 - The wiki is a map, not proof. If it conflicts with source, configuration, migrations, tests, CI, or runtime evidence, trust the authoritative evidence and update the wiki.
 - Keep `source_files` focused, project-relative, and existing. Follow relevant imports, schemas, configs, middleware, hooks, tests, and adjacent modules when a task needs more evidence.
 - Add memory only when it preserves a durable architecture, decision, integration, status, or reusable problem-resolution lesson. Put uncertainty in `01_Project/Open_Questions.md`.

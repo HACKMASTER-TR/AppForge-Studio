@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "repository": "HACKMASTER-TR/AppForge-Studio",
+  "authority": "REPOSITORY_CLAIMS_SUBORDINATE_TO_GIT_AND_EVIDENCE",
+  "workstreams": [
+    {
+      "id": "codex-standard",
+      "title": "ChatGPT + Codex development standard",
+      "scope": "Repository governance; implementation committed and pushed. Local external gate and freshness passed.",
+      "lifecycle": "ACTIVE",
+      "branch": "chore/second-brain-codex-dev-standard-v1",
+      "baseBranch": "feat/admin-ai-coding-agent-master-v1-20261008",
+      "baseSha": "f94fc5244a9bdcd15fdb3a6800fcda5c4be2ffb7",
+      "sourceSha": "99ec079167e16c324284cb24235c785f6baeb65b",
+      "stages": {
+        "implementation": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "99ec079167e16c324284cb24235c785f6baeb65b",
+            "reference": "docs/wiki/00_Governance/ChatGPT_Codex_Development_Standard.md"
+          }
+        },
+        "targetedTests": {
+          "state": "UNKNOWN",
+          "reason": "Local external gate passed; separate targeted test result not established."
+        },
+        "fullQuality": {
+          "state": "UNKNOWN",
+          "reason": "Full-suite result not established for this workstream."
+        },
+        "secondBrain": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "99ec079167e16c324284cb24235c785f6baeb65b",
+            "reference": "docs/wiki/00_Governance/ChatGPT_Codex_Development_Standard.md"
+          }
+        },
+        "hostedCI": {
+          "state": "UNKNOWN",
+          "reason": "Hosted CI not established for this workstream."
+        },
+        "physicalAcceptance": {
+          "state": "NOT_APPLICABLE",
+          "reason": "Repository governance/tooling only; no device/runtime acceptance claimed."
+        },
+        "merge": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution in this task."
+        },
+        "release": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution in this task."
+        },
+        "deploy": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution in this task."
+        }
+      },
+      "blockers": [],
+      "nextAction": "Independent verification and explicit authorization before any delivery."
+    },
+    {
+      "id": "sb12",
+      "title": "Runtime blocker fail-stop",
+      "scope": "SB12 behavioral gate; targeted 20/20, related delivery tests and full quality 957/957 passed. PR #66 remained draft; main untouched.",
+      "lifecycle": "ACTIVE",
+      "branch": "fix/delivery-runtime-blocker-fail-stop-v1",
+      "baseBranch": "chore/second-brain-codex-dev-standard-v1",
+      "baseSha": "99ec079167e16c324284cb24235c785f6baeb65b",
+      "sourceSha": "ddb46d6f0d047a33fb3d87c2790db12a10119121",
+      "stages": {
+        "implementation": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "ddb46d6f0d047a33fb3d87c2790db12a10119121",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/pull/66"
+          }
+        },
+        "targetedTests": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "ddb46d6f0d047a33fb3d87c2790db12a10119121",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/pull/66"
+          }
+        },
+        "fullQuality": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "ddb46d6f0d047a33fb3d87c2790db12a10119121",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/pull/66"
+          }
+        },
+        "secondBrain": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "ddb46d6f0d047a33fb3d87c2790db12a10119121",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/pull/66"
+          }
+        },
+        "hostedCI": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "ddb46d6f0d047a33fb3d87c2790db12a10119121",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37881067437",
+            "runId": 37881067437,
+            "workflow": "AppForge Stability Gate"
+          }
+        },
+        "physicalAcceptance": {
+          "state": "NOT_APPLICABLE",
+          "reason": "Repository governance/tooling only; no device/runtime acceptance claimed."
+        },
+        "merge": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution in this task."
+        },
+        "release": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution in this task."
+        },
+        "deploy": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution in this task."
+        }
+      },
+      "blockers": [],
+      "nextAction": "Independent verification and explicit authorization before any delivery.",
+      "parent": "codex-standard"
+    },
+    {
+      "id": "sb14",
+      "title": "Current-state handoff",
+      "scope": "OPTION_A_MINIMAL repository governance/tooling; active uncommitted implementation. Recorded source is the supplied base, not acceptance of these edits.",
+      "lifecycle": "ACTIVE",
+      "branch": "feat/second-brain-current-state-handoff-v1",
+      "baseBranch": "fix/delivery-runtime-blocker-fail-stop-v1",
+      "baseSha": "ddb46d6f0d047a33fb3d87c2790db12a10119121",
+      "sourceSha": "ddb46d6f0d047a33fb3d87c2790db12a10119121",
+      "stages": {
+        "implementation": {
+          "state": "NOT_RUN"
+        },
+        "targetedTests": {
+          "state": "NOT_RUN"
+        },
+        "fullQuality": {
+          "state": "NOT_RUN"
+        },
+        "secondBrain": {
+          "state": "NOT_RUN"
+        },
+        "hostedCI": {
+          "state": "NOT_RUN"
+        },
+        "physicalAcceptance": {
+          "state": "NOT_APPLICABLE",
+          "reason": "Repository governance/tooling only; no device/runtime acceptance claimed."
+        },
+        "merge": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution in this task."
+        },
+        "release": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution in this task."
+        },
+        "deploy": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution in this task."
+        }
+      },
+      "blockers": [
+        "Independent external implementation gate pending; no SB14 commit or hosted evidence."
+      ],
+      "nextAction": "Verify uncommitted allowed-path diff and local checks externally. Do not commit, push, merge, release, deploy or touch Play Production.",
+      "parent": "sb12"
+    }
+  ]
+}
