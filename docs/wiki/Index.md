@@ -18,6 +18,8 @@ source_files: []
 
 ## Start Here
 
+- [[Current_State_Handoff]] — generated recovery view; `01_Project/current_state.json` is the canonical claim registry, subordinate to Git/evidence.
+
 - [[Hot_Context]]
 - [[ChatGPT_Codex_Development_Standard]]
 - [[Standing_Delivery_Authorization]]

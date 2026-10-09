@@ -34,6 +34,8 @@ source_files:
 
 ## Current Focus
 
+Cross-workstream recovery starts at [[Current_State_Handoff]] and `01_Project/current_state.json`. Check live Git separately with `python3 scripts/current-state.py show`. The checkpoint facts below belong to the 2026-10-03 release-integration history; they do not establish acceptance for later workstream SHAs.
+
 - Release Integration V1 remains the active integration line.
 - Full Quality is `826/826 PASS`.
 - Tulpar Windows Portable persistence/relaunch/relocation/crash physical retest
