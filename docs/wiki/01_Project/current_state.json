@@ -328,6 +328,58 @@
       },
       "blockers": [],
       "nextAction": "PR #69 remains open and draft. Explicit delivery authorization is required before merge. No release, deployment or Play Production authorization is implied."
+    },
+    {
+      "id": "sb03",
+      "title": "Hot Context recovery routing correction",
+      "scope": "Documentation/governance-only: update Hot Context recovery routing while preserving the October 3 historical checkpoint and avoiding duplication of mutable canonical state. sourceSha records the pre-implementation base only.",
+      "lifecycle": "ACTIVE",
+      "branch": "fix/second-brain-hot-context-currentness-v1",
+      "baseBranch": "fix/second-brain-acceptance-page-consistency-v1",
+      "baseSha": "84be078956453d04e99e4a67648a2c2b07c9343c",
+      "sourceSha": "84be078956453d04e99e4a67648a2c2b07c9343c",
+      "stages": {
+        "implementation": {
+          "state": "NOT_RUN",
+          "reason": "Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required."
+        },
+        "targetedTests": {
+          "state": "NOT_RUN",
+          "reason": "Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required."
+        },
+        "fullQuality": {
+          "state": "NOT_RUN",
+          "reason": "Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required."
+        },
+        "secondBrain": {
+          "state": "NOT_RUN",
+          "reason": "Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required."
+        },
+        "hostedCI": {
+          "state": "NOT_RUN",
+          "reason": "Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required."
+        },
+        "physicalAcceptance": {
+          "state": "NOT_APPLICABLE",
+          "reason": "Documentation/governance-only recovery-routing correction; no physical device/runtime acceptance is being claimed."
+        },
+        "merge": {
+          "state": "NOT_RUN",
+          "reason": "Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required."
+        },
+        "release": {
+          "state": "NOT_RUN",
+          "reason": "Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required."
+        },
+        "deploy": {
+          "state": "NOT_RUN",
+          "reason": "Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required."
+        }
+      },
+      "blockers": [
+        "SB03 implementation still requires independent external verification and exact implementation-SHA evidence."
+      ],
+      "nextAction": "Independent verification before commit/push/delivery."
     }
   ]
 }

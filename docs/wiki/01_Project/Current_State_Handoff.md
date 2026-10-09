@@ -111,6 +111,34 @@ Blockers / references: none recorded (not proof of blocker absence)
 
 Next action: PR #69 remains open and draft. Explicit delivery authorization is required before merge. No release, deployment or Play Production authorization is implied.
 
+## sb03 — Hot Context recovery routing correction
+
+Scope: Documentation/governance-only: update Hot Context recovery routing while preserving the October 3 historical checkpoint and avoiding duplication of mutable canonical state. sourceSha records the pre-implementation base only.
+
+Lifecycle: **ACTIVE**
+
+- Branch: `fix/second-brain-hot-context-currentness-v1`
+- Base branch: `fix/second-brain-acceptance-page-consistency-v1`
+- Base exact SHA: `84be078956453d04e99e4a67648a2c2b07c9343c`
+- Manifest-recorded source SHA: `84be078956453d04e99e4a67648a2c2b07c9343c`
+- Parent workstream: none recorded
+
+| Evidence stage | State | Binding / reference or reason |
+|---|---|---|
+| implementation | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
+| targetedTests | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
+| fullQuality | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
+| secondBrain | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
+| hostedCI | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
+| physicalAcceptance | NOT_APPLICABLE | Documentation/governance-only recovery-routing correction; no physical device/runtime acceptance is being claimed. |
+| merge | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
+| release | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
+| deploy | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
+
+Blockers / references: SB03 implementation still requires independent external verification and exact implementation-SHA evidence.
+
+Next action: Independent verification before commit/push/delivery.
+
 ## sb12 — Runtime blocker fail-stop
 
 Scope: SB12 behavioral gate; targeted 20/20, related delivery tests and full quality 957/957 passed. PR #66 remained draft; main untouched.
