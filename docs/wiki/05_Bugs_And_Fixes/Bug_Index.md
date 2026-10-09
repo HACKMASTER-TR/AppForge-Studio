@@ -58,13 +58,14 @@ detail is preserved in [[archive/Bug_Index_History_2026-10-02]].
   silently publishing unsigned output;
 - Play Production must remain fail-closed outside its strict release contract.
 
-## Pending physical release checks
+## Release-sensitive acceptance scope
 
-These are release gates, not active runtime blockers:
-
-- Portable Windows persistence/relaunch/relocation/crash retest;
-- real Authenticode end-to-end signing;
-- signed-publisher verification and negative signing tests.
+Later historical scenario acceptance is recorded for Portable persistence and
+recovery, Authenticode execution and verification, and negative signing tests.
+See [[Windows_Publisher_Authorization#Acceptance scope matrix]]. Historical
+acceptance does not automatically bind the current checkout. These scope
+qualifications are not active runtime blockers; unresolved production endpoint,
+Play Production access and protected-main integration gates remain separate.
 
 One-off visual defects should not be added here unless they establish reusable
 debugging knowledge.

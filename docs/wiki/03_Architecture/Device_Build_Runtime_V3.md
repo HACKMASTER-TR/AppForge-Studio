@@ -122,9 +122,17 @@ ambiguous artifacts.
 
 ## Open gates
 
-- Portable physical Windows persistence/relaunch/relocation/crash retest.
-- Authenticode release-signing acceptance.
-- final release integration.
+Later historical physical acceptance is recorded for Portable persistence,
+relaunch, relocation and forced-termination recovery, Authenticode end-to-end
+execution, cryptographic verification and negative signing scenarios. See
+[[Windows_Publisher_Authorization#Acceptance scope matrix]] for their scope and
+evidence. Current-head physical acceptance is not inferred from those records.
+
+Production public publisher trust is not established by debug self-signed
+verification. The production custom-domain publisher endpoint decision, Play
+Production access and final protected-main release integration remain pending
+and separate from historical physical acceptance. Any new acceptance claim for
+a newer source requires separate exact source/artifact binding.
 
 Full historical architecture and acceptance chronology:
 [[archive/Device_Build_Runtime_V3_History_2026-10-02]].

@@ -261,6 +261,73 @@
       },
       "blockers": [],
       "nextAction": "PR #68 remains open and draft. Explicit delivery authorization is required before merge; no release, deployment or Play Production authorization is implied."
+    },
+    {
+      "id": "sb02",
+      "title": "Acceptance-page consistency correction",
+      "scope": "Documentation/governance-only correction: five stale acceptance conflicts reconciled and canonical Windows acceptance scope matrix added. Historical physical acceptance was not promoted to current HEAD; runtime source was not changed. Targeted Windows contracts passed 17/17, current-state behavior passed 24/24, full quality passed 989/989 and Second Brain passed. Exact-SHA hosted Stability Gate run 37894171858 passed. PR #69 remains open and draft; production public publisher trust is not claimed.",
+      "lifecycle": "ACTIVE",
+      "branch": "fix/second-brain-acceptance-page-consistency-v1",
+      "baseBranch": "fix/second-brain-retired-backend-maps-v1",
+      "baseSha": "4b23c5f0c34b1376c12ca0ede561dcf4a9124f8d",
+      "sourceSha": "96c479dd938e569f1fd2e625e256e8d9b4166ad1",
+      "stages": {
+        "implementation": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "96c479dd938e569f1fd2e625e256e8d9b4166ad1",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/pull/69"
+          }
+        },
+        "targetedTests": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "96c479dd938e569f1fd2e625e256e8d9b4166ad1",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37894171858"
+          }
+        },
+        "fullQuality": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "96c479dd938e569f1fd2e625e256e8d9b4166ad1",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37894171858"
+          }
+        },
+        "secondBrain": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "96c479dd938e569f1fd2e625e256e8d9b4166ad1",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37894171858"
+          }
+        },
+        "hostedCI": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "96c479dd938e569f1fd2e625e256e8d9b4166ad1",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37894171858",
+            "runId": 37894171858,
+            "workflow": "AppForge Stability Gate"
+          }
+        },
+        "physicalAcceptance": {
+          "state": "NOT_APPLICABLE",
+          "reason": "This is a documentation/governance consistency correction. No new physical device/runtime acceptance was executed or claimed."
+        },
+        "merge": {
+          "state": "NOT_RUN",
+          "reason": "PR #69 remains open and draft; no merge authorization or execution has occurred."
+        },
+        "release": {
+          "state": "NOT_RUN",
+          "reason": "No release authorization or execution occurred."
+        },
+        "deploy": {
+          "state": "NOT_RUN",
+          "reason": "No deployment authorization or execution occurred."
+        }
+      },
+      "blockers": [],
+      "nextAction": "PR #69 remains open and draft. Explicit delivery authorization is required before merge. No release, deployment or Play Production authorization is implied."
     }
   ]
 }

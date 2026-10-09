@@ -38,6 +38,44 @@ source_files:
 
 # Windows Publisher Authorization
 
+<!-- APPFORGE_WINDOWS_ACCEPTANCE_SCOPE_MATRIX -->
+
+## Acceptance scope matrix
+
+This is the canonical active explanation of Windows publisher / Portable
+acceptance scope. Later historical records in [[Current_Status]],
+[[Hot_Context]] and [[Open_Questions]], and the dated evidence below, reconcile
+earlier pending summaries without rewriting those historical checkpoints.
+`HISTORICAL_RECORDED_PASS` describes recorded historical scenario acceptance
+only. `CURRENT_HEAD_NOT_INFERRED` means that acceptance is not promoted to the
+current checkout. No physical testing was re-executed in this documentation task;
+source tests and hosted CI alone cannot establish physical acceptance. Any new
+acceptance claim for a newer source requires separate exact source/artifact
+binding and physical evidence.
+
+| Scenario | Acceptance status / scope | Historical evidence or unresolved gate |
+|---|---|---|
+| Portable persistence / relaunch / relocation / forced-termination recovery | `HISTORICAL_RECORDED_PASS`; `CURRENT_HEAD_NOT_INFERRED` | Later records report Tulpar localStorage and IndexedDB sequence `1 → 2 → 3 → 4 → 5` PASS. The inspected active record does not provide a complete exact source/artifact binding suitable for promoting that PASS to the current checkout. |
+| Real Authenticode signed Portable end-to-end execution | `HISTORICAL_RECORDED_PASS`; `CURRENT_HEAD_NOT_INFERRED` | Physical build `AF-0000001057` rendered the embedded project on Tulpar with launch counter `2`; exact historical Android and host evidence is listed below. |
+| Cryptographic signer / timestamp / debug self-signed verification | `HISTORICAL_RECORDED_PASS`; `CURRENT_HEAD_NOT_INFERRED`; `PRODUCTION_PUBLIC_TRUST_NOT_CLAIMED` | Dated physical records document SHA-256 Authenticode, embedded signer, Code Signing EKU, DigiCert RFC3161 timestamp and cryptographic verification using a debug-only self-signed certificate. This does not establish production public publisher trust. |
+| Missing provider fail-closed negative acceptance | `HISTORICAL_RECORDED_PASS`; `CURRENT_HEAD_NOT_INFERRED` | Historical physical build `AF-0000001058` failed with requested signing and unavailable certificate/provider material; the final EXE was deleted. |
+| Non-admin signing negative acceptance | `HISTORICAL_RECORDED_PASS`; `CURRENT_HEAD_NOT_INFERRED` | Historical physical build `AF-0000001059` failed with `Owner access denied.` and deleted the final EXE. |
+| Production custom-domain publisher endpoint | `PENDING` | Endpoint remains disabled pending a separate enablement decision/review. |
+| Play Production access | `PENDING` | Access approval remains unresolved; no Play Production readiness is claimed. |
+| Protected-main release integration | `PENDING` | Final release integration remains unresolved; no protected-main integration is claimed. |
+
+The Authenticode end-to-end historical evidence binds Android exact source
+`252875794e5c288953da369a81dc4074625499b8` to Android CI run `37144740820`
+and records physical build `AF-0000001057`. Its Windows host identity is
+`windows-host-v1-c7e4b2a`, host SHA-256
+`f4aa9c8bee1b919cfb7e3cd6e8073ab4097b0b8e050bc8fb3758f5a198b98c1e`,
+and host size `375039759` bytes. These identifiers scope historical evidence;
+they do not bind acceptance to the current checkout or infer physical PASS
+from CI. The negative builds remain the separately recorded historical
+scenarios above.
+
+`PRODUCTION_READY=NO`.
+
 ## Authoritative security contract
 
 Windows publisher signing is owner-only and fail-closed.

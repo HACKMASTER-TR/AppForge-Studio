@@ -107,14 +107,16 @@ acceptance are separate gates.
 
 ## Remaining Release Gates
 
+Later historical acceptance records exist for Portable persistence/relaunch/
+relocation/forced-termination recovery, real Authenticode end-to-end execution,
+cryptographic publisher verification, and both negative signing scenarios.
+See [[Windows_Publisher_Authorization#Acceptance scope matrix]] for evidence
+and scope. These historical passes do not establish physical acceptance of the
+current checkout; any new acceptance claim for a newer source must be separately
+bound to its exact source and artifact evidence.
+
 Still pending:
 
-- Windows Portable physical persistence/relaunch/relocation/crash retest on the
-  intended Windows acceptance machine;
-- real Windows Authenticode end-to-end physical signing;
-- signed publisher verification;
-- non-admin signing negative acceptance;
-- missing certificate/provider fail-closed physical acceptance;
 - production custom-domain publisher endpoint decision;
 - Play Production access approval;
 - final release integration into protected `main`.
@@ -136,5 +138,5 @@ This integration does not:
 `PRODUCTION_READY=NO`
 
 The two audited code gaps are closed on the release integration branch, but
-physical, infrastructure, external-access and final-main-integration gates
-remain open.
+infrastructure, external-access and final-main-integration gates remain open.
+Historical physical acceptance does not transfer to the current checkout.
