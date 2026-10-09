@@ -3,8 +3,8 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-10-03
-last_verified: 2026-10-03
+updated: 2026-10-09
+last_verified: 2026-10-09
 confidence: high
 tags:
   - hot-context
@@ -32,59 +32,61 @@ source_files:
 
 # Hot Context
 
+<!-- APPFORGE_HOT_CONTEXT_CURRENT_RECOVERY -->
 ## Current Focus
 
-Cross-workstream recovery starts at [[Current_State_Handoff]] and `01_Project/current_state.json`. Check live Git separately with `python3 scripts/current-state.py show`. The checkpoint facts below belong to the 2026-10-03 release-integration history; they do not establish acceptance for later workstream SHAs.
+Recover repository-tracked workstreams through [[01_Project/Current_State_Handoff]].
+`current_state.json` is the canonical cross-workstream claim registry;
+Current_State_Handoff is its generated readable derivative. Git and exact external
+evidence remain authoritative. Draft/open PR does not mean merged; hosted CI does
+not mean physical acceptance. An evidence-record/meta commit is distinct from the
+canonical implementation SHA; later checkouts do not inherit acceptance.
 
-- Release Integration V1 remains the active integration line.
-- Full Quality is `826/826 PASS`.
-- Tulpar Windows Portable persistence/relaunch/relocation/crash physical retest
-  is PASS.
-- Authenticode crypto, Code Signing EKU, RFC3161 timestamp, final signed
-  artifact preservation and embedded Portable project runtime are physically
-  PASS.
-- `REAL_AUTHENTICODE_END_TO_END=PASS`.
-- Protected `main` remains untouched.
+- Admin AI: [[02_Codebase_Map/Local_AI_And_Agent_Map]]. Implementation exists;
+  Android/physical acceptance and constrained native Windows/publisher-signing
+  execution remain separately evidenced.
+- Google Play: [[06_Product_And_Features/Google_Play_Platform_V1]]. Newer isolated
+  staging / Integrity / Internal-track work exists beyond the historical
+  checkpoint. Play Production remains a separate protected gate; partial
+  evidence does not establish Production acceptance.
+
+## Historical checkpoint — 2026-10-03
+
+October 3 release-integration evidence is historical, not current-checkout PASS:
+Release Integration V1, Full Quality `826/826 PASS`, Tulpar Portable persistence,
+relaunch, relocation and crash retest PASS; Authenticode crypto, Code Signing EKU,
+RFC3161 timestamp, signed-artifact preservation and embedded runtime physically
+PASS; `REAL_AUTHENTICODE_END_TO_END=PASS`. Protected `main` was untouched.
 
 ## Must Know
 
+At the historical checkpoint:
+
 - Normal project compilation remains device-local.
-- D1 migration ledger reconciliation is complete for migrations 0001 through
-  0005.
-- Portable and Native EXE are distinct artifact identities.
-- Portable post-sign flow must not execute the Native-only x86-64 validator.
-- Signed Portable payload lookup must resolve logical EOF from the PE Security
-  Directory rather than assume the physical file end is the AppForge footer.
-- Native Android CMake and real Windows x64 launch are physically PASS.
-- Production publisher endpoint remains DISABLED.
-- `PRODUCTION_READY=NO`.
+- D1 migration ledger reconciliation is complete for migrations 0001–0005.
+- Portable and Native EXE identities were distinct; Portable must avoid the
+  Native-only x86-64 validator and resolve logical EOF through PE Security Directory.
+- Native Android CMake and Windows x64 launch were physically PASS.
+- Production publisher endpoint was DISABLED; `PRODUCTION_READY=NO`.
 
 ## Recent Important Changes
 
-- Portable localStorage and IndexedDB survived physical relaunch, EXE
-  relocation and forced termination with sequence `1 → 2 → 3 → 4 → 5`.
-- Physical publisher signing consumed the server grant, produced a valid
-  debug-only self-signed Authenticode signature and verified the DigiCert
-  RFC3161 timestamp.
-- The Native-only validator regression is fixed and the next signed artifact
-  was preserved.
-- That preserved EXE proved a second runtime regression: Authenticode's
-  Certificate Table moved physical EOF beyond the AppForge footer.
-- Windows Host CI run `37143822118` passed; Android pins exact staging host
-  `windows-host-v1-c7e4b2a`.
-- Exact-head Android Debug run `37144740820` passed.
-- Physical build `AF-0000001057` rendered the project on Tulpar without the
-  former payload-signature error; launch counter reached `2`.
-- `AF-0000001058` physically proved missing-provider/certificate fail-closed;
-  the final EXE was deleted.
-- `AF-0000001059` physically proved non-admin signing denial with
-  `Owner access denied.`; the final EXE was deleted.
-- Both publisher-signing negative physical gates are PASS.
+Historical October 3 references:
+
+- Portable storage survived relaunch/relocation/termination, sequence `1 → 2 → 3 → 4 → 5`.
+- Debug-only self-signed Authenticode consumed the server grant; DigiCert RFC3161
+  verified. Validator and Certificate Table/footer regressions were resolved.
+- Windows Host CI `37143822118`, host `windows-host-v1-c7e4b2a`; Android Debug `37144740820`.
+- Tulpar `AF-0000001057` rendered successfully, counter `2`.
+- `AF-0000001058` missing-provider/certificate and `AF-0000001059` non-admin denial
+  proved fail-closed; final EXEs were deleted. Both negative physical gates PASS.
 
 ## Current Risks / Open Questions
 
-- Production publisher endpoint: DISABLED pending review.
-- Play Production access and final protected-main integration: PENDING.
+- Publisher authority: [[Windows_Publisher_Authorization]].
+- Play Production: [[06_Product_And_Features/Google_Play_Platform_V1]].
+- Delivery requires scoped evidence and authorization: [[01_Project/Current_State_Handoff]],
+  [[ChatGPT_Codex_Development_Standard]].
 
 ## Read Next
 

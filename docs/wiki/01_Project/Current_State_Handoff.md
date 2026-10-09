@@ -111,6 +111,34 @@ Blockers / references: none recorded (not proof of blocker absence)
 
 Next action: PR #69 remains open and draft. Explicit delivery authorization is required before merge. No release, deployment or Play Production authorization is implied.
 
+## sb03 — Hot Context recovery routing correction
+
+Scope: Documentation/governance-only: update Hot Context recovery routing while preserving the October 3 historical checkpoint and avoiding duplication of mutable canonical state. sourceSha records the pre-implementation base only.
+
+Lifecycle: **ACTIVE**
+
+- Branch: `fix/second-brain-hot-context-currentness-v1`
+- Base branch: `fix/second-brain-acceptance-page-consistency-v1`
+- Base exact SHA: `84be078956453d04e99e4a67648a2c2b07c9343c`
+- Manifest-recorded source SHA: `05d81e62ec6164a3c7cc9dc3149fea774f50d30e`
+- Parent workstream: none recorded
+
+| Evidence stage | State | Binding / reference or reason |
+|---|---|---|
+| implementation | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/pull/70; sourceSha: 05d81e62ec6164a3c7cc9dc3149fea774f50d30e |
+| targetedTests | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37900299276; sourceSha: 05d81e62ec6164a3c7cc9dc3149fea774f50d30e |
+| fullQuality | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37900299276; sourceSha: 05d81e62ec6164a3c7cc9dc3149fea774f50d30e |
+| secondBrain | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37900299276; sourceSha: 05d81e62ec6164a3c7cc9dc3149fea774f50d30e |
+| hostedCI | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37900299276; runId: 37900299276; sourceSha: 05d81e62ec6164a3c7cc9dc3149fea774f50d30e; workflow: AppForge Stability Gate |
+| physicalAcceptance | NOT_APPLICABLE | Documentation/governance-only recovery-routing correction; no physical device/runtime acceptance is being claimed. |
+| merge | NOT_RUN | PR #70 remains open and draft; no merge authorization or execution has occurred. |
+| release | NOT_RUN | No release authorization or execution occurred. |
+| deploy | NOT_RUN | No deployment authorization or execution occurred. |
+
+Blockers / references: none recorded (not proof of blocker absence)
+
+Next action: PR #70 remains draft, open and unmerged; delivery awaits explicit authorization and parent-first stacked-PR handling.
+
 ## sb12 — Runtime blocker fail-stop
 
 Scope: SB12 behavioral gate; targeted 20/20, related delivery tests and full quality 957/957 passed. PR #66 remained draft; main untouched.

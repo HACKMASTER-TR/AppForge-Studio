@@ -328,6 +328,73 @@
       },
       "blockers": [],
       "nextAction": "PR #69 remains open and draft. Explicit delivery authorization is required before merge. No release, deployment or Play Production authorization is implied."
+    },
+    {
+      "id": "sb03",
+      "title": "Hot Context recovery routing correction",
+      "scope": "Documentation/governance-only: update Hot Context recovery routing while preserving the October 3 historical checkpoint and avoiding duplication of mutable canonical state. sourceSha records the pre-implementation base only.",
+      "lifecycle": "ACTIVE",
+      "branch": "fix/second-brain-hot-context-currentness-v1",
+      "baseBranch": "fix/second-brain-acceptance-page-consistency-v1",
+      "baseSha": "84be078956453d04e99e4a67648a2c2b07c9343c",
+      "sourceSha": "05d81e62ec6164a3c7cc9dc3149fea774f50d30e",
+      "stages": {
+        "implementation": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "05d81e62ec6164a3c7cc9dc3149fea774f50d30e",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/pull/70"
+          }
+        },
+        "targetedTests": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "05d81e62ec6164a3c7cc9dc3149fea774f50d30e",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37900299276"
+          }
+        },
+        "fullQuality": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "05d81e62ec6164a3c7cc9dc3149fea774f50d30e",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37900299276"
+          }
+        },
+        "secondBrain": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "05d81e62ec6164a3c7cc9dc3149fea774f50d30e",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37900299276"
+          }
+        },
+        "hostedCI": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "05d81e62ec6164a3c7cc9dc3149fea774f50d30e",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37900299276",
+            "runId": 37900299276,
+            "workflow": "AppForge Stability Gate"
+          }
+        },
+        "physicalAcceptance": {
+          "state": "NOT_APPLICABLE",
+          "reason": "Documentation/governance-only recovery-routing correction; no physical device/runtime acceptance is being claimed."
+        },
+        "merge": {
+          "state": "NOT_RUN",
+          "reason": "PR #70 remains open and draft; no merge authorization or execution has occurred."
+        },
+        "release": {
+          "state": "NOT_RUN",
+          "reason": "No release authorization or execution occurred."
+        },
+        "deploy": {
+          "state": "NOT_RUN",
+          "reason": "No deployment authorization or execution occurred."
+        }
+      },
+      "blockers": [],
+      "nextAction": "PR #70 remains draft, open and unmerged; delivery awaits explicit authorization and parent-first stacked-PR handling."
     }
   ]
 }
