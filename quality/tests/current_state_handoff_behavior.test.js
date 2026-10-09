@@ -97,9 +97,10 @@ test('show reports separate live Git identity, mismatch and freshness', t => {
   const f = fixture(t);
   const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).stdout.trim();
   const branch = spawnSync('git', ['branch', '--show-current'], { cwd: repo, encoding: 'utf8' }).stdout.trim();
+  const fixtureBranch = branch || 'detached-head-fixture';
   const w = {
     id: 'live-identity-fixture', title: 'Live identity fixture', scope: 'Temporary behavioral test',
-    lifecycle: 'ACTIVE', branch, baseBranch: branch, baseSha: head, sourceSha: head,
+    lifecycle: 'ACTIVE', branch: fixtureBranch, baseBranch: fixtureBranch, baseSha: head, sourceSha: head,
     stages: Object.fromEntries(['implementation', 'targetedTests', 'fullQuality', 'secondBrain',
       'hostedCI', 'physicalAcceptance', 'merge', 'release', 'deploy'].map(name => [name, { state: 'NOT_RUN' }])),
     blockers: [], nextAction: 'Verify live identity and freshness'
@@ -110,7 +111,7 @@ test('show reports separate live Git identity, mismatch and freshness', t => {
   assert.equal(f.run('generate').status, 0);
   const report = shown(f);
   assert.equal(report.liveGit.head, head); assert.equal(report.liveGit.branch, branch); assert.equal(report.handoffStale, false);
-  assert.equal(report.evidenceMismatch, false);
+  assert.equal(report.evidenceMismatch, branch === '');
   assert.equal(report.manifestRecorded.find(record => record.id === w.id).sourceSha, head);
   const changedSha = (head.startsWith('a') ? 'b' : 'a') + head.slice(1);
   w.sourceSha = changedSha;
