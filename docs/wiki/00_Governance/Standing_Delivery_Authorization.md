@@ -55,6 +55,15 @@ continuing later stages.
 
 A build or CI pass is not a substitute for required physical-device acceptance.
 
+Full Autopilot checks the runtime blocker ledger before release-version
+preparation, then rechecks before commit, push, PR creation, merge, GitHub
+cleanup, and each shipping stage. Merge also rechecks after remote PR metadata
+is read and before remote branch deletion. Release creation and fallback tag/API
+mutations recheck after remote probes. An unreadable or invalid registry stops
+delivery. Local diagnostics and repair edits remain available; there is no
+implicit exception allowing blocker fixes to merge while a blocker is active.
+Resolve the blocker with acceptance evidence before requesting delivery.
+
 ## Termux delivery convention
 
 Prefer one pasteable Termux command for each delivery cycle.
