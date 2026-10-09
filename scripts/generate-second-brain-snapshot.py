@@ -3,12 +3,14 @@
 import argparse
 import hashlib
 import json
+import os
+import stat
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-BASIS_POLICY_VERSION = "SECOND_BRAIN_V2_BASIS_POLICY_V1"
+BASIS_POLICY_VERSION = "SECOND_BRAIN_V2_BASIS_POLICY_V2"
 
 ASSET_REL = (
     "android-app/app/src/main/assets/"
@@ -57,18 +59,58 @@ def stop(code: str) -> None:
 
 
 def text(rel: str) -> str:
-    path = ROOT / rel
+    return stable_read(rel).decode("utf-8", errors="strict")
 
-    if not path.is_file():
-        stop(
-            "REQUIRED_SOURCE_MISSING_"
-            + rel.replace("/", "_")
-        )
 
-    return path.read_text(
-        encoding="utf-8",
-        errors="strict",
-    )
+def lexical_stat(rel: str):
+    path = Path(rel)
+    if path.is_absolute() or ".." in path.parts:
+        stop("SECOND_BRAIN_NON_REGULAR_INPUT " + rel)
+    current = ROOT
+    for part in path.parts:
+        current = current / part
+        observed = current.lstat()
+        if stat.S_ISLNK(observed.st_mode):
+            stop("SECOND_BRAIN_SYMLINK_NOT_ALLOWED " + rel)
+    return observed
+
+
+def metadata(observed):
+    return (observed.st_dev, observed.st_ino, observed.st_mode,
+            observed.st_size, observed.st_mtime_ns, observed.st_ctime_ns)
+
+
+def stable_read(rel: str) -> bytes:
+    """Best-effort stable observation; not a global atomic filesystem snapshot."""
+    try:
+        before = lexical_stat(rel)
+        if not stat.S_ISREG(before.st_mode):
+            stop("SECOND_BRAIN_NON_REGULAR_INPUT " + rel)
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        fd = os.open(ROOT / rel, flags)
+        with os.fdopen(fd, "rb") as stream:
+            opened = os.fstat(stream.fileno())
+            if not stat.S_ISREG(opened.st_mode) or metadata(before) != metadata(opened):
+                stop("SECOND_BRAIN_INPUT_CHANGED_DURING_READ " + rel)
+            if metadata(lexical_stat(rel)) != metadata(opened):
+                stop("SECOND_BRAIN_INPUT_CHANGED_DURING_READ " + rel)
+            content = stream.read()
+            if (metadata(os.fstat(stream.fileno())) != metadata(opened)
+                    or metadata(lexical_stat(rel)) != metadata(opened)
+                    or len(content) != opened.st_size):
+                stop("SECOND_BRAIN_INPUT_CHANGED_DURING_READ " + rel)
+        return content
+    except OSError:
+        stop("SECOND_BRAIN_INPUT_CHANGED_DURING_READ " + rel)
+
+
+def candidate_regular(rel: str) -> bool:
+    try:
+        return stat.S_ISREG(lexical_stat(rel).st_mode)
+    except FileNotFoundError:
+        return False
+    except OSError:
+        stop("SECOND_BRAIN_INPUT_CHANGED_DURING_READ " + rel)
 
 
 def require_marker(
@@ -113,9 +155,8 @@ def repository_files() -> list[str]:
         path = ROOT / rel
 
         if (
-            path.is_file()
-            and path.suffix.lower()
-            in EVIDENCE_EXTENSIONS
+            path.suffix.lower() in EVIDENCE_EXTENSIONS
+            and candidate_regular(rel)
         ):
             files.append(rel)
 
@@ -126,17 +167,16 @@ def repository_files() -> list[str]:
 
 def basis_hash(
     files: list[str],
+    observations: dict | None = None,
 ) -> str:
     digest = hashlib.sha256()
     digest.update(BASIS_POLICY_VERSION.encode("utf-8"))
     digest.update(b"\0")
 
     for rel in sorted(files):
-        path = ROOT / rel
-
-        content_digest = hashlib.sha256(
-            path.read_bytes()
-        ).digest()
+        content_digest = hashlib.sha256(stable_read(rel)).digest()
+        if observations is not None:
+            observations[rel] = content_digest
 
         digest.update(
             rel.encode("utf-8")
@@ -156,15 +196,30 @@ def migration_files() -> list[str]:
         / "migrations"
     )
 
+    # Check the directory boundary before glob can traverse it.
+    try:
+        lexical_stat("cloudflare/control-plane/migrations")
+    except FileNotFoundError:
+        return []
     return sorted(
         path.relative_to(ROOT).as_posix()
         for path in root.glob("*.sql")
-        if path.is_file()
+        if candidate_regular(path.relative_to(ROOT).as_posix())
     )
 
 
 def canonical_basis_files(migrations: list[str]) -> list[str]:
     return sorted(set(repository_files()) | set(migrations))
+
+
+def revalidate_inputs(files: list[str], migrations: list[str], observations: dict) -> None:
+    current_migrations = migration_files()
+    current_files = canonical_basis_files(current_migrations)
+    if current_files != files or current_migrations != migrations:
+        stop("SECOND_BRAIN_INPUT_SET_CHANGED")
+    for rel in files:
+        if hashlib.sha256(stable_read(rel)).digest() != observations[rel]:
+            stop("SECOND_BRAIN_INPUT_CHANGED_AFTER_HASH " + rel)
 
 
 def migration_state(files: list[str]) -> tuple[int, str]:
@@ -243,7 +298,7 @@ def verify_current_contract() -> None:
         )
 
 
-def build_snapshot() -> dict:
+def build_snapshot(read_context: list | None = None) -> dict:
     verify_current_contract()
 
     migration_inventory = migration_files()
@@ -269,14 +324,16 @@ def build_snapshot() -> dict:
         for rel in evidence_files
     )
 
-    return {
+    observations = {}
+    source_basis = basis_hash(evidence_files, observations)
+    payload = {
         "schemaVersion": 2,
         "project": "AppForge Studio",
         "authority": "REPOSITORY_DERIVED",
         "generatedBy":
             "scripts/generate-second-brain-snapshot.py",
         "sourceBasisSha256":
-            basis_hash(evidence_files),
+            source_basis,
         "sourceBasisFileCount":
             len(evidence_files),
         "buildArchitecture":
@@ -301,11 +358,16 @@ def build_snapshot() -> dict:
             "NOT_LIVE_QUERY",
     }
 
+    revalidate_inputs(evidence_files, migration_inventory, observations)
+    if read_context is not None:
+        read_context[:] = [evidence_files, migration_inventory, observations]
+    return payload
 
-def rendered() -> str:
+
+def rendered(read_context: list | None = None) -> str:
     return (
         json.dumps(
-            build_snapshot(),
+            build_snapshot(read_context),
             ensure_ascii=False,
             indent=2,
         )
@@ -323,7 +385,8 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    expected = rendered()
+    read_context = []
+    expected = rendered(read_context)
 
     if args.check:
         if not ASSET.is_file():
@@ -339,6 +402,8 @@ def main() -> None:
             stop(
                 "SNAPSHOT_OUT_OF_DATE"
             )
+
+        revalidate_inputs(*read_context)
 
         payload = json.loads(
             current
@@ -400,6 +465,8 @@ def main() -> None:
         parents=True,
         exist_ok=True,
     )
+
+    revalidate_inputs(*read_context)
 
     ASSET.write_text(
         expected,

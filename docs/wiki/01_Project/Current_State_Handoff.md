@@ -195,6 +195,34 @@ Blockers / references: none recorded (not proof of blocker absence)
 
 Next action: PR #72 remains draft, open and unmerged; delivery awaits explicit authorization and parent-first stacked-PR handling.
 
+## sb07 — Second Brain symlink and concurrent-read hardening
+
+Scope: Fail closed on symlink boundaries and observable selected-input mutations; retain schema V2 and canonical count/migration contracts. Git stacking on the SB05 evidence-record SHA does not satisfy the logical-parent exact-source contract: SB05 canonical implementation source is cd77794ccd27ecd47a0f5c8153c07dff68ba8799.
+
+Lifecycle: **ACTIVE**
+
+- Branch: `fix/second-brain-symlink-concurrency-boundary-v1`
+- Base branch: `fix/second-brain-integrity-basis-completeness-v1`
+- Base exact SHA: `a35300c6e775242e06f6bd527f1fe4ee846f366c`
+- Manifest-recorded source SHA: `a35300c6e775242e06f6bd527f1fe4ee846f366c`
+- Parent workstream: none recorded
+
+| Evidence stage | State | Binding / reference or reason |
+|---|---|---|
+| implementation | NOT_RUN | External evidence has not yet been recorded. |
+| targetedTests | NOT_RUN | External evidence has not yet been recorded. |
+| fullQuality | NOT_RUN | External evidence has not yet been recorded. |
+| secondBrain | NOT_RUN | External evidence has not yet been recorded. |
+| hostedCI | NOT_RUN | External evidence has not yet been recorded. |
+| physicalAcceptance | NOT_APPLICABLE | SB07 changes build-time Second Brain generator integrity boundaries only and does not alter application/device runtime behavior. |
+| merge | NOT_RUN | External evidence has not yet been recorded. |
+| release | NOT_RUN | External evidence has not yet been recorded. |
+| deploy | NOT_RUN | External evidence has not yet been recorded. |
+
+Blockers / references: Implementation/external/hosted evidence has not yet been recorded.
+
+Next action: External verification of the narrow SB07 implementation, followed by commit and later explicit push authorization.
+
 ## sb12 — Runtime blocker fail-stop
 
 Scope: SB12 behavioral gate; targeted 20/20, related delivery tests and full quality 957/957 passed. PR #66 remained draft; main untouched.
