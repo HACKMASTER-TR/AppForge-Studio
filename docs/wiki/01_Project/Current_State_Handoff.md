@@ -85,31 +85,31 @@ Next action: PR #68 remains open and draft. Explicit delivery authorization is r
 
 ## sb02 — Acceptance-page consistency correction
 
-Scope: SB02 corrects stale active Windows acceptance summaries without changing runtime behavior or promoting historical acceptance to the current checkout. sourceSha is the PRE-IMPLEMENTATION BASE ONLY, not implementation evidence.
+Scope: Documentation/governance-only correction: five stale acceptance conflicts reconciled and canonical Windows acceptance scope matrix added. Historical physical acceptance was not promoted to current HEAD; runtime source was not changed. Targeted Windows contracts passed 17/17, current-state behavior passed 24/24, full quality passed 989/989 and Second Brain passed. Exact-SHA hosted Stability Gate run 37894171858 passed. PR #69 remains open and draft; production public publisher trust is not claimed.
 
 Lifecycle: **ACTIVE**
 
 - Branch: `fix/second-brain-acceptance-page-consistency-v1`
 - Base branch: `fix/second-brain-retired-backend-maps-v1`
 - Base exact SHA: `4b23c5f0c34b1376c12ca0ede561dcf4a9124f8d`
-- Manifest-recorded source SHA: `4b23c5f0c34b1376c12ca0ede561dcf4a9124f8d`
+- Manifest-recorded source SHA: `96c479dd938e569f1fd2e625e256e8d9b4166ad1`
 - Parent workstream: none recorded
 
 | Evidence stage | State | Binding / reference or reason |
 |---|---|---|
-| implementation | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
-| targetedTests | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
-| fullQuality | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
-| secondBrain | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
-| hostedCI | NOT_RUN | Pre-implementation record; independent external verification and exact implementation-SHA evidence remain required. |
-| physicalAcceptance | NOT_APPLICABLE | Documentation/governance-only consistency correction; no new physical device/runtime acceptance is being claimed. |
-| merge | NOT_RUN | No authorization or execution in this task. |
-| release | NOT_RUN | No authorization or execution in this task. |
-| deploy | NOT_RUN | No authorization or execution in this task. |
+| implementation | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/pull/69; sourceSha: 96c479dd938e569f1fd2e625e256e8d9b4166ad1 |
+| targetedTests | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37894171858; sourceSha: 96c479dd938e569f1fd2e625e256e8d9b4166ad1 |
+| fullQuality | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37894171858; sourceSha: 96c479dd938e569f1fd2e625e256e8d9b4166ad1 |
+| secondBrain | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37894171858; sourceSha: 96c479dd938e569f1fd2e625e256e8d9b4166ad1 |
+| hostedCI | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/37894171858; runId: 37894171858; sourceSha: 96c479dd938e569f1fd2e625e256e8d9b4166ad1; workflow: AppForge Stability Gate |
+| physicalAcceptance | NOT_APPLICABLE | This is a documentation/governance consistency correction. No new physical device/runtime acceptance was executed or claimed. |
+| merge | NOT_RUN | PR #69 remains open and draft; no merge authorization or execution has occurred. |
+| release | NOT_RUN | No release authorization or execution occurred. |
+| deploy | NOT_RUN | No deployment authorization or execution occurred. |
 
-Blockers / references: SB02 implementation still requires independent external verification and exact implementation-SHA evidence.
+Blockers / references: none recorded (not proof of blocker absence)
 
-Next action: Independent verification before commit/push/delivery.
+Next action: PR #69 remains open and draft. Explicit delivery authorization is required before merge. No release, deployment or Play Production authorization is implied.
 
 ## sb12 — Runtime blocker fail-stop
 
