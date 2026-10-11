@@ -37,9 +37,9 @@ fun StudioHomeV2(
     onOpenUnifiedAgent: () -> Unit,
     onOpenTemplates: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenOfflinePack: () -> Unit,
     onOpenTasks: () -> Unit,
     onOpenTerminal: () -> Unit,
-    onOpenOtherApps: () -> Unit,
     onImportProject: () -> Unit,
     onExportAllProjects: () -> Unit,
     onExportAllAndroidProjects: () -> Unit,
@@ -91,6 +91,20 @@ fun StudioHomeV2(
                 ),
                 title = { HomeTopTitle() },
                 actions = {
+                    if (fullAdmin) {
+                        TextButton(onClick = onOpenAdmin) {
+                            Text("Yönetici")
+                        }
+                    }
+
+                    /*
+                     * HOME_PRO_TOP_APP_BAR_V1_2
+                     * Keep PRO as a compact peer of Yönetici/Ayarlar.
+                     */
+                    TextButton(onClick = onOpenPro) {
+                        Text("PRO")
+                    }
+
                     TextButton(onClick = onOpenSettings) {
                         Text("Ayarlar")
                     }
@@ -118,27 +132,36 @@ fun StudioHomeV2(
                     projectCount = allProjects.size,
                     buildCount = builds.size,
                     proUnlocked = proUnlocked,
+                    onOpenOfflinePack = onOpenOfflinePack,
                     onCreateQuick = onCreateQuick,
                     onCreateAdvanced = onCreateAdvanced
                 )
             }
+
             item {
                 HomeSectionTitle(
                     "Hızlı erişim",
-                    "Üretim, AI ve proje araçlarına hızlı ulaş."
+                    if (fullAdmin) {
+                        "Üretim, AI ve proje araçlarına hızlı ulaş."
+                    } else {
+                        "Üretim ve proje araçlarına hızlı ulaş."
+                    }
                 )
             }
-            item {
-                ModernHomeActionRow(
-                    "AI",
-                    "AppForge AI",
-                    "Projeyi analiz et ve düzelt.",
-                    onOpenAi,
-                    "AGENT",
-                    "AI ile Oluştur",
-                    "Anlatarak uygulama veya oyun oluştur.",
-                    onOpenUnifiedAgent
-                )
+
+            if (fullAdmin) {
+                item {
+                    ModernHomeActionRow(
+                        "AI",
+                        "AppForge AI",
+                        "Yönetici AI Router ile analiz et.",
+                        onOpenAi,
+                        "AGENT",
+                        "AI ile Oluştur",
+                        "Yönetici AI araçlarını aç.",
+                        onOpenUnifiedAgent
+                    )
+                }
             }
             item {
                 ModernHomeActionRow(
@@ -209,16 +232,14 @@ fun StudioHomeV2(
             }
             item {
                 HomeToolRow(
-                    "Uygulamalar",
-                    onOpenOtherApps,
                     "Geri Dönüşüm",
-                    onOpenTrash
+                    onOpenTrash,
+                    "Tümünü dışa aktar",
+                    onExportAllProjects
                 )
             }
             item {
-                HomeToolRow(
-                    "Tümünü dışa aktar",
-                    onExportAllProjects,
+                HomeToolSingle(
                     "Android dışa aktar",
                     onExportAllAndroidProjects
                 )

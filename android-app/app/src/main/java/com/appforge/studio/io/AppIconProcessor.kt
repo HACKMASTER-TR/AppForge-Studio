@@ -26,14 +26,28 @@ data class PreparedAppIcon(
 
 object AppIconProcessor {
     private const val OUTPUT_SIZE = 1024
-    // Full-width, aspect-preserving master; no synthetic cyan outline.
-    private const val SAFE_CONTENT_SIZE = OUTPUT_SIZE
-    private const val MAX_DECODE_SIZE = 2048
 
+    /*
+     * SAFE_CONTENT_SIZE is intentionally equal to OUTPUT_SIZE.
+     * This preserves the established no-double-padding contract while
+     * V1.5 adds explicit Fill/Fit/Zoom editing on top of the full canvas.
+     */
+    private const val SAFE_CONTENT_SIZE = OUTPUT_SIZE
+    private const val MAX_DECODE_SIZE = 4096
+
+    /*
+     * APPFORGE_ICON_EDITOR_V1_5
+     *
+     * fillCanvas=true  -> center-crop / full launcher canvas.
+     * fillCanvas=false -> preserve all artwork and fill remaining canvas.
+     * zoom is applied after the selected base mode.
+     */
     fun prepare(
         context: Context,
         source: Uri,
-        backgroundColor: String
+        backgroundColor: String,
+        fillCanvas: Boolean = true,
+        zoom: Float = 1f
     ): PreparedAppIcon {
         val decoded =
             decode(
@@ -62,19 +76,43 @@ object AppIconProcessor {
             )
 
         val canvas =
-            Canvas(output)
+            Canvas(
+                output
+            )
 
         canvas.drawColor(
             masterBackgroundColor(decoded, backgroundColor)
         )
 
+        val widthScale =
+            OUTPUT_SIZE.toFloat() /
+                decoded.width
+
+        val heightScale =
+            OUTPUT_SIZE.toFloat() /
+                decoded.height
+
+        val baseScale =
+            if (
+                fillCanvas
+            ) {
+                maxOf(
+                    widthScale,
+                    heightScale
+                )
+            } else {
+                minOf(
+                    widthScale,
+                    heightScale
+                )
+            }
+
         val scale =
-            minOf(
-                SAFE_CONTENT_SIZE.toFloat() /
-                    decoded.width,
-                SAFE_CONTENT_SIZE.toFloat() /
-                    decoded.height
-            )
+            baseScale *
+                zoom.coerceIn(
+                    1f,
+                    1.6f
+                )
 
         val targetWidth =
             max(
@@ -197,7 +235,8 @@ object AppIconProcessor {
                     )
 
                 if (
-                    longest > MAX_DECODE_SIZE
+                    longest >
+                        MAX_DECODE_SIZE
                 ) {
                     val ratio =
                         MAX_DECODE_SIZE.toFloat() /
@@ -228,11 +267,14 @@ object AppIconProcessor {
 
         val bounds =
             BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
+                inJustDecodeBounds =
+                    true
             }
 
         context.contentResolver
-            .openInputStream(uri)
+            .openInputStream(
+                uri
+            )
             ?.use {
                 BitmapFactory.decodeStream(
                     it,
@@ -255,7 +297,8 @@ object AppIconProcessor {
             max(
                 bounds.outWidth / sample,
                 bounds.outHeight / sample
-            ) > MAX_DECODE_SIZE
+            ) >
+                MAX_DECODE_SIZE
         ) {
             sample *=
                 2
@@ -263,13 +306,16 @@ object AppIconProcessor {
 
         val bitmap =
             context.contentResolver
-                .openInputStream(uri)
+                .openInputStream(
+                    uri
+                )
                 ?.use {
                     BitmapFactory.decodeStream(
                         it,
                         null,
                         BitmapFactory.Options().apply {
-                            inSampleSize = sample
+                            inSampleSize =
+                                sample
                         }
                     )
                 }
@@ -279,9 +325,13 @@ object AppIconProcessor {
 
         val orientation =
             context.contentResolver
-                .openInputStream(uri)
+                .openInputStream(
+                    uri
+                )
                 ?.use {
-                    ExifInterface(it)
+                    ExifInterface(
+                        it
+                    )
                         .getAttributeInt(
                             ExifInterface.TAG_ORIENTATION,
                             ExifInterface.ORIENTATION_NORMAL
@@ -300,7 +350,8 @@ object AppIconProcessor {
             }
 
         if (
-            rotation == 0f
+            rotation ==
+                0f
         ) {
             return bitmap
         }
@@ -322,29 +373,51 @@ object AppIconProcessor {
         }
     }
 
-    /**
-     * An opaque wide logo already has a background in its source artwork.
-     * Match its corner colour so the square master's remaining bars do not
-     * become the unrelated UI primary colour (seen as a cyan/white frame).
-     * Transparent artwork continues to use the explicitly selected colour.
-     * Preserve aspect ratio and ALL of the original design; do not crop text.
-     */
-    private fun masterBackgroundColor(bitmap: Bitmap, fallback: String): Int {
-        val corners = listOf(
-            bitmap.getPixel(0, 0),
-            bitmap.getPixel(bitmap.width - 1, 0),
-            bitmap.getPixel(0, bitmap.height - 1),
-            bitmap.getPixel(bitmap.width - 1, bitmap.height - 1)
-        )
-        if (corners.count { Color.alpha(it) >= 240 } < 3) {
-            return parseColor(fallback)
+    private fun masterBackgroundColor(
+        bitmap: Bitmap,
+        fallback: String
+    ): Int {
+        val corners =
+            listOf(
+                bitmap.getPixel(0, 0),
+                bitmap.getPixel(bitmap.width - 1, 0),
+                bitmap.getPixel(0, bitmap.height - 1),
+                bitmap.getPixel(bitmap.width - 1, bitmap.height - 1)
+            )
+
+        if (
+            corners.count {
+                Color.alpha(it) >= 240
+            } <
+                3
+        ) {
+            return parseColor(
+                fallback
+            )
         }
-        fun median(channel: (Int) -> Int): Int =
-            corners.map(channel).sorted()[corners.size / 2]
+
+        fun median(
+            channel: (Int) -> Int
+        ): Int {
+            val sorted =
+                corners.map(channel).sorted()
+
+            return sorted[
+                corners.size /
+                    2
+            ]
+        }
+
         return Color.rgb(
-            median(Color::red),
-            median(Color::green),
-            median(Color::blue)
+            median(
+                Color::red
+            ),
+            median(
+                Color::green
+            ),
+            median(
+                Color::blue
+            )
         )
     }
 
@@ -355,11 +428,12 @@ object AppIconProcessor {
             Color.parseColor(
                 value
             )
-        }.getOrDefault(
-            Color.rgb(
-                7,
-                16,
-                31
+        }
+            .getOrDefault(
+                Color.rgb(
+                    7,
+                    16,
+                    31
+                )
             )
-        )
 }

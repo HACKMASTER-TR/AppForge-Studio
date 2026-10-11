@@ -1,0 +1,235 @@
+name: AppForge Play App Recovery V3
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Recovery operation"
+        required: true
+        type: choice
+        default: list
+        options:
+          - list
+          - create_draft
+          - deploy
+          - cancel
+      version_code:
+        description: "Target versionCode; required for list/create_draft"
+        required: false
+        type: string
+      recovery_id:
+        description: "Recovery action ID; required for deploy/cancel"
+        required: false
+        type: string
+      confirm:
+        description: "Exact confirmation token for mutating actions"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  APPFORGE_PACKAGE: "com.appforge.studio"
+  APPFORGE_GCP_PROJECT_ID: "appforge-18a5a"
+  APPFORGE_PLAY_WIF_PROVIDER: "projects/564043752274/locations/global/workloadIdentityPools/appforge-github/providers/appforge-github-oidc"
+  APPFORGE_PLAY_SERVICE_ACCOUNT: "appforge-play-publisher@appforge-18a5a.iam.gserviceaccount.com"
+
+jobs:
+  recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Recovery fail-closed gate
+        shell: bash
+        env:
+          ACTION: ${{ inputs.action }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          RECOVERY_ID: ${{ inputs.recovery_id }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+
+          case "$ACTION" in
+            list)
+              [[ "$VERSION_CODE" =~ ^[1-9][0-9]{0,9}$ ]] || exit 1
+              echo "APP_RECOVERY_MUTATION=false" >> "$GITHUB_ENV"
+              echo "APP_RECOVERY_GATE=READ_ONLY"
+              ;;
+
+            create_draft)
+              [[ "$VERSION_CODE" =~ ^[1-9][0-9]{0,9}$ ]] || exit 1
+
+              EXPECTED="APPFORGE_RECOVERY_CREATE_DRAFT_${VERSION_CODE}"
+
+              [ "$CONFIRM" = "$EXPECTED" ] || {
+                echo "APP_RECOVERY_CONFIRMATION=FAIL"
+                echo "EXPECTED_CONFIRMATION=$EXPECTED"
+                exit 1
+              }
+
+              echo "APP_RECOVERY_MUTATION=true" >> "$GITHUB_ENV"
+              echo "APP_RECOVERY_CONFIRMATION=PASS"
+              ;;
+
+            deploy|cancel)
+              [[ "$RECOVERY_ID" =~ ^[1-9][0-9]{0,19}$ ]] || exit 1
+
+              ACTION_UPPER="${ACTION^^}"
+              EXPECTED="APPFORGE_RECOVERY_${ACTION_UPPER}_${RECOVERY_ID}"
+
+              [ "$CONFIRM" = "$EXPECTED" ] || {
+                echo "APP_RECOVERY_CONFIRMATION=FAIL"
+                echo "EXPECTED_CONFIRMATION=$EXPECTED"
+                exit 1
+              }
+
+              echo "APP_RECOVERY_MUTATION=true" >> "$GITHUB_ENV"
+              echo "APP_RECOVERY_CONFIRMATION=PASS"
+              ;;
+
+            *)
+              echo "APP_RECOVERY_OPERATION=FAIL"
+              exit 1
+              ;;
+          esac
+
+      - name: Authenticate Android Publisher API
+        id: google-auth
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.APPFORGE_GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.APPFORGE_PLAY_WIF_PROVIDER }}
+          service_account: ${{ env.APPFORGE_PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+
+      - name: List recovery actions
+        if: inputs.action == 'list'
+        shell: bash
+        env:
+          ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          set -euo pipefail
+
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --header "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${APPFORGE_PACKAGE}/appRecoveries?versionCode=${VERSION_CODE}" \
+            > app-recovery-list.json
+
+          echo "APP_RECOVERY_LIST=PASS"
+          echo "APP_RECOVERY_MUTATION=NONE"
+
+      - name: Create exact-version recovery draft
+        if: inputs.action == 'create_draft'
+        shell: bash
+        env:
+          ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          version = os.environ[
+              "VERSION_CODE"
+          ]
+
+          body = {
+              "targeting": {
+                  "allUsers": {
+                      "isAllUsersRequested": True
+                  },
+                  "versionList": {
+                      "versionCodes": [
+                          version
+                      ]
+                  }
+              },
+              "remoteInAppUpdate": {
+                  "isRemoteInAppUpdateRequested": True
+              }
+          }
+
+          Path(
+              "app-recovery-create.json"
+          ).write_text(
+              json.dumps(
+                  body,
+                  indent=2
+              ) + "\n",
+              encoding="utf-8"
+          )
+          PY
+
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --request POST \
+            --header "Authorization: Bearer $ACCESS_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data-binary "@app-recovery-create.json" \
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${APPFORGE_PACKAGE}/appRecoveries" \
+            > app-recovery-created.json
+
+          echo "APP_RECOVERY_DRAFT_CREATE=PASS"
+          echo "APP_RECOVERY_DEPLOYED=NO"
+
+      - name: Deploy recovery action
+        if: inputs.action == 'deploy'
+        shell: bash
+        env:
+          ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+          RECOVERY_ID: ${{ inputs.recovery_id }}
+        run: |
+          set -euo pipefail
+
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --request POST \
+            --header "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${APPFORGE_PACKAGE}/appRecoveries/${RECOVERY_ID}:deploy"
+
+          echo "APP_RECOVERY_DEPLOY=PASS"
+
+      - name: Cancel recovery action
+        if: inputs.action == 'cancel'
+        shell: bash
+        env:
+          ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+          RECOVERY_ID: ${{ inputs.recovery_id }}
+        run: |
+          set -euo pipefail
+
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --request POST \
+            --header "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${APPFORGE_PACKAGE}/appRecoveries/${RECOVERY_ID}:cancel"
+
+          echo "APP_RECOVERY_CANCEL=PASS"
+
+      - name: Preserve Recovery evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: AppForge-App-Recovery-${{ github.run_id }}
+          path: |
+            app-recovery-list.json
+            app-recovery-create.json
+            app-recovery-created.json
+          if-no-files-found: ignore
+          retention-days: 14

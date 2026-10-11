@@ -44,6 +44,12 @@ fun SecondBrainScreen(
                             reader.readText()
                         )
                     }
+                    .takeIf {
+                        it.optInt(
+                            "schemaVersion",
+                            -1
+                        ) == 2
+                    }
             }.getOrNull()
         }
 
@@ -65,16 +71,21 @@ fun SecondBrainScreen(
                     bottom = 140.dp
                 ),
         verticalArrangement =
-            Arrangement.spacedBy(12.dp)
+            Arrangement.spacedBy(
+                12.dp
+            )
     ) {
         Row(
             modifier =
-                Modifier.fillMaxWidth(),
+                Modifier
+                    .fillMaxWidth(),
             horizontalArrangement =
-                Arrangement.SpaceBetween
+                Arrangement
+                    .SpaceBetween
         ) {
             Text(
-                text = "Second Brain",
+                text =
+                    "Second Brain",
                 style =
                     MaterialTheme
                         .typography
@@ -84,67 +95,97 @@ fun SecondBrainScreen(
             )
 
             Button(
-                onClick = onBack
+                onClick =
+                    onBack
             ) {
-                Text("Geri")
+                Text(
+                    "Geri"
+                )
             }
         }
 
-        if (snapshot == null) {
+        if (
+            snapshot ==
+                null
+        ) {
             Card(
                 modifier =
-                    Modifier.fillMaxWidth()
+                    Modifier
+                        .fillMaxWidth()
             ) {
                 Text(
                     text =
-                        "Second Brain snapshot bulunamadı. " +
-                        "Repo içinde ./scripts/brain all komutunu çalıştırıp " +
-                        "uygulamayı yeniden derle.",
+                        "Second Brain V2 snapshot eksik veya geçersiz. " +
+                            "Repo içinde " +
+                            "python3 scripts/generate-second-brain-snapshot.py " +
+                            "çalıştırıp uygulamayı yeniden derle.",
                     modifier =
-                        Modifier.padding(16.dp)
+                        Modifier
+                            .padding(
+                                16.dp
+                            )
                 )
             }
-        } else {
-            BrainCard(
-                title = "Durum",
-                lines =
-                    listOf(
-                        "Sürüm: ${snapshot.optString("version", "?")}",
-                        "Branch: ${snapshot.optString("branch", "?")}",
-                        "HEAD: ${snapshot.optString("head", "?")}"
-                    )
-            )
 
-            BrainCard(
-                title = "Güvenlik ve Risk",
-                lines =
-                    listOf(
-                        "Karar: ${snapshot.optString("risk", "UNKNOWN")}",
-                        "Risk: ${snapshot.optInt("riskScore", -1)}/100",
-                        "Security: ${snapshot.optString("security", "UNKNOWN")}",
-                        "Release gate: ${snapshot.optString("release", "UNKNOWN")}"
-                    )
-            )
-
-            BrainCard(
-                title = "Proje Haritası",
-                lines =
-                    listOf(
-                        "API route: ${snapshot.optInt("apiRoutes", 0)}",
-                        "DB tablo: ${snapshot.optInt("databaseTables", 0)}",
-                        "Migration: ${snapshot.optInt("migrations", 0)}",
-                        "Test: ${snapshot.optInt("tests", 0)}"
-                    )
-            )
-
-            BrainCard(
-                title = "Canlı Sistem",
-                lines =
-                    listOf(
-                        "GitHub: ${snapshot.optString("liveGithub", "NOT_CHECKED")}"
-                    )
-            )
+            return@Column
         }
+
+        val basis =
+            snapshot
+                .optString(
+                    "sourceBasisSha256",
+                    "?"
+                )
+                .take(
+                    16
+                )
+
+        BrainCard(
+            title =
+                "Snapshot V2",
+            lines =
+                listOf(
+                    "Şema: ${snapshot.optInt("schemaVersion", -1)}",
+                    "Otorite: ${snapshot.optString("authority", "UNKNOWN")}",
+                    "Kaynak özeti: $basis",
+                    "Kanıt dosyası: ${snapshot.optInt("sourceBasisFileCount", 0)}"
+                )
+        )
+
+        BrainCard(
+            title =
+                "Mimari Durum",
+            lines =
+                listOf(
+                    "Build: ${snapshot.optString("buildArchitecture", "UNKNOWN")}",
+                    "Publisher auth: ${snapshot.optString("publisherAuthorization", "UNKNOWN")}",
+                    "D1 ledger: ${snapshot.optString("d1Ledger", "UNKNOWN")}",
+                    "Production publisher: ${snapshot.optString("productionPublisherEndpoint", "UNKNOWN")}"
+                )
+        )
+
+        BrainCard(
+            title =
+                "Doğrulanabilir Kapsam",
+            lines =
+                listOf(
+                    "Wiki sayfası: ${snapshot.optInt("wikiPages", 0)}",
+                    "Quality contract dosyası: ${snapshot.optInt("qualityContractFiles", 0)}",
+                    "Android unit test dosyası: ${snapshot.optInt("androidUnitTestFiles", 0)}",
+                    "D1 migration: ${snapshot.optInt("d1Migrations", 0)}"
+                )
+        )
+
+        BrainCard(
+            title =
+                "Canlı Sistem Sınırı",
+            lines =
+                listOf(
+                    "Durum: ${snapshot.optString("liveState", "UNKNOWN")}",
+                    "Release gate: ${snapshot.optString("releaseGate", "UNKNOWN")}",
+                    "Bu snapshot canlı GitHub veya Cloudflare sorgusu değildir."
+                )
+        )
     }
 }
 
@@ -155,22 +196,34 @@ private fun BrainCard(
 ) {
     Card(
         modifier =
-            Modifier.fillMaxWidth()
+            Modifier
+                .fillMaxWidth()
     ) {
         Column(
             modifier =
-                Modifier.padding(16.dp),
+                Modifier
+                    .padding(
+                        16.dp
+                    ),
             verticalArrangement =
-                Arrangement.spacedBy(6.dp)
+                Arrangement
+                    .spacedBy(
+                        6.dp
+                    )
         ) {
             Text(
-                text = title,
+                text =
+                    title,
                 fontWeight =
                     FontWeight.Bold
             )
 
-            lines.forEach { line ->
-                Text(line)
+            lines.forEach {
+                line ->
+
+                Text(
+                    line
+                )
             }
         }
     }

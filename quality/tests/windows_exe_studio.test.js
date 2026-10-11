@@ -54,7 +54,7 @@ test(
       const marker of [
         '"exe"',
         "Windows EXE",
-        "WINDOWS EXE'Yİ İNDİR",
+        "windowsExeDownloadButtonText",
         'createDownloadTicket('
       ]
     ) {
@@ -252,8 +252,8 @@ test(
         "val exeSaveLauncher",
         "ActivityResultContracts.CreateDocument(",
         "downloadArtifactToUri(",
-        '"Windows EXE indiriliyor..."',
-        '"✅ Windows EXE başarıyla kaydedildi."'
+        '"$windowsExeArtifactLabel indiriliyor..."',
+        '"✅ $windowsExeArtifactLabel başarıyla kaydedildi."'
       ]
     ) {
       assert.equal(

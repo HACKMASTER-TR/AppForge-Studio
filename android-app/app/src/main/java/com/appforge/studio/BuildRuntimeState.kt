@@ -145,18 +145,10 @@ internal class BuildRuntimeState {
             snapshot.status
 
         progress.intValue =
-            if (
-                normalized ==
-                "success"
-            ) {
-                100
-            } else {
+            AppForgeBuildProgress.visible(
+                snapshot.status,
                 snapshot.progress
-                    .coerceIn(
-                        0,
-                        100
-                    )
-            }
+            )
 
         val restoredStartedAt =
             startedAtMs

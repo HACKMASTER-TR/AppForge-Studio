@@ -13,6 +13,11 @@ related:
   - "[[Android_App_Map]]"
   - "[[Terminal_And_Developer_Tools]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/AdminAiRouterScreen.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ai/AdminAiAgentSession.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/ai/AdminAiAgentRuntime.kt"
+  - "cloudflare/control-plane/src/admin_ai_agent_contract.mjs"
+  - "scripts/test-admin-ai-agent.py"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeLocalAssistant.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeAssistantIntegration.kt"
   - "android-app/app/src/main/java/com/appforge/studio/ai/AppForgeUnifiedAgentStudioScreen.kt"
@@ -88,3 +93,61 @@ lost `DeviceBuildEngine.jobs`. Canonical nonempty artifact path and build number
 must match; missing or ambiguous files fail closed. UI hides detailed quality,
 checkpoint, release and raw log output behind explicit technical disclosure,
 not by destroying diagnostic evidence. Device acceptance remains open.
+
+## Admin AI controlled coding session (2026-10-08)
+
+The Admin AI screen now selects only account-scoped saved `ProjectLibrary`
+projects and updates MainActivity's actual draft/project ID through the existing
+project navigation/build guard. Context, model replies, approvals and activity
+are scoped to the selected project. Leaving the screen cancels the transient
+session. Saved projects without a source folder retain legacy read-only chat
+and cannot acquire a scratch workspace for code edits. Reset clears task history and recollects bounded context; local undo
+checkpoints survive task reset within the same screen/project.
+
+The local `AdminAiAgentSession` owns typed requests, narrow operation approval,
+terminal task states, bounded evidence, stale hash conflicts and checkpointed
+single-file mutations. It reuses `AppForgeAgentStructuredPatch`,
+`AppForgeAgentWorkspaceTransaction` and the two-attempt repair policy. The
+existing blueprint autonomous pipeline and Unified Agent project-memory store
+were inspected but not wired: they generate projects or require their own
+canonical Unified Agent workspace roots. Saved-project editing must not
+silently enter those flows. Source edits are limited to 16,000-character files
+and 120 changed lines; secret-like content is rejected rather than edited from
+redacted context. Undo checks current hashes before restoring a checkpoint. Transactions retain
+recovery checkpoints after partial commits and guard restoration of committed
+paths; recovery conflicts remain failures. Generic WorkspaceFileService was
+not used as an AI authority because it exposes unfiltered paths, a larger
+editor bound and complete directory enumeration. Its existing UI remains
+unchanged; the agent reuses the canonical workspace resolver and context
+secret policy with stricter bounded reads.
+
+`AdminAiAgentRuntime` uses existing `LinuxShellEngine`, `BuildApiClient` and
+`DeviceBuildEngine`; it does not introduce a shell or remote build server.
+Terminal requests currently permit only `pwd`. Git inspection uses a bounded
+index-to-worktree adapter in `GitWorkspaceService` without parent discovery,
+environment settings, hooks or external diff. This is not a full staged HEAD
+diff. Build approval uses local debug sources, existing runtime preflight and
+exact build-ID artifact resolution, with artifact size/SHA-256 evidence.
+Publisher signing and native Windows agent requests remain blocked; the
+existing Studio/native/publisher build flows are unchanged.
+
+The packaged Linux launcher binds `/proc` and `/dev`; it is not proven to
+isolate untrusted project scripts. Consequently arbitrary terminal commands
+and project-script lint/test/typecheck operations fail closed. This is an
+implementation limit, not a successful verification result. Source mutation
+cannot complete as verified without a real successful guarded build and
+requested artifact evidence. Builds themselves still require explicit approval
+because the existing runtime executes project build code. Cloudflare only
+validates/routs structured planner responses and keeps the verified admin gate
+and AUTO fallback. Legacy read-only chat remains available. Streaming is not
+implemented because the current gateway returns bounded non-streaming JSON.
+
+Structured patch normalization preserves literal escaped `\r\n` source
+strings while normalizing actual CRLF text.
+
+Host JVM behavioral checks compile actual session/patch/transaction/repair and
+shell sources with documented Android launcher/service fixtures; they are not
+Android unit, APK, CI or physical acceptance. The Android UI and actual device
+runtime remain pending external exact-SHA CI and physical testing. See
+`scripts/test-admin-ai-agent.py`, `quality/kotlin/AdminAiAgentBehavior.kt`, and
+`cloudflare/control-plane/tests/admin_ai_agent.test.mjs` for reproducible checks.

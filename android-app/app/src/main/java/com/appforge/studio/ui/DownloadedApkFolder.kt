@@ -82,6 +82,16 @@ private fun typeFromLocalFile(
             ) ->
             BuildArtifactType.ANDROID_APK
 
+        lower.endsWith(
+            "_windows-native.exe"
+        ) ->
+            BuildArtifactType.WINDOWS_NATIVE_EXE
+
+        lower.endsWith(
+            "_windows-portable.exe"
+        ) ->
+            BuildArtifactType.WINDOWS_PORTABLE_EXE
+
         mime ==
             "application/vnd.microsoft.portable-executable" ||
             mime ==
@@ -89,6 +99,9 @@ private fun typeFromLocalFile(
             lower.endsWith(
                 ".exe"
             ) ->
+            /*
+             * Legacy generic EXE files are intentionally treated as Portable.
+             */
             BuildArtifactType.WINDOWS_PORTABLE_EXE
 
         lower.endsWith(

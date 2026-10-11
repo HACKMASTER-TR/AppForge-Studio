@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "updated": "2026-09-28",
+  "scope": "Exact accepted fixtures and prepared offline dependencies only; this matrix does not imply arbitrary imported dependency sets are offline-ready.",
+  "androidFixtures": [
+    {
+      "id": "static-html-js",
+      "technology": "Static HTML/CSS/JavaScript",
+      "engine": "webview-static",
+      "support": "READY",
+      "deviceApk": "PASS",
+      "deviceAab": "PASS",
+      "offlineApk": "PASS",
+      "offlineAab": "PASS",
+      "runtimeEvidence": "Physical offline APK/AAB acceptance recorded in the device-build acceptance sequence."
+    },
+    {
+      "id": "react-vite",
+      "technology": "React / Vite",
+      "engine": "node-web",
+      "support": "READY",
+      "deviceApk": "PASS",
+      "deviceAab": "PASS",
+      "offlineApk": "PASS",
+      "offlineAab": "PASS",
+      "runtimeEvidence": "APPFORGE_REACT_VITE_JS_PASS"
+    },
+    {
+      "id": "native-java",
+      "technology": "Native Android Java",
+      "engine": "android-gradle",
+      "support": "READY",
+      "deviceApk": "PASS",
+      "deviceAab": "PASS",
+      "offlineApk": "PASS",
+      "offlineAab": "PASS",
+      "runtimeEvidence": "APPFORGE_NATIVE_JAVA_PASS"
+    },
+    {
+      "id": "native-kotlin",
+      "technology": "Native Android Kotlin",
+      "engine": "android-gradle",
+      "support": "READY",
+      "deviceApk": "PASS",
+      "deviceAab": "PASS",
+      "offlineApk": "PASS",
+      "offlineAab": "PASS",
+      "runtimeEvidence": "APPFORGE_NATIVE_KOTLIN_PASS"
+    },
+    {
+      "id": "python-chaquopy",
+      "technology": "Python / Chaquopy",
+      "engine": "python-android",
+      "support": "READY",
+      "deviceApk": "PASS",
+      "deviceAab": "PASS",
+      "offlineApk": "PASS",
+      "offlineAab": "PASS",
+      "runtimeEvidence": "APPFORGE_PYTHON_CHAQUOPY_PASS; Chaquopy 17.0.0; Python 3.12"
+    },
+    {
+      "id": "expo-sdk54-rn0814",
+      "technology": "Expo SDK 54 / React Native 0.81.4",
+      "engine": "expo",
+      "support": "READY",
+      "deviceApk": "PASS",
+      "deviceAab": "PASS",
+      "offlineApk": "PASS",
+      "offlineAab": "PASS",
+      "runtimeEvidence": "APPFORGE_EXPO54_OFFLINE_PASS",
+      "note": "Controlled internet-off physical acceptance passed after one online cache-prime build. The offline run produced APK+AAB and the installed APK rendered APPFORGE_EXPO54_OFFLINE_PASS. Acceptance remains scoped to this prepared Expo SDK54/RN0.81.4 fixture/cache and does not imply arbitrary cold dependency sets.",
+      "deviceRuntimeEvidence": "APPFORGE_EXPO54_DEVICE_PASS",
+      "onlinePrimeBuildNo": "AF-0000001018",
+      "offlineBuildNo": "AF-0000001019",
+      "offlineBuildDuration": "03:07",
+      "fixtureSha256": "0804ac6f58d9419f211e24e1f812eb95a05910fa70b261e98792718fb1916833"
+    }
+  ],
+  "windowsPortable": {
+    "supportedEngines": [
+      "webview-static",
+      "node-web"
+    ],
+    "deviceLocalOfflinePackaging": "PASS",
+    "physicalWindowsExecution": "PASS",
+    "runtimeEvidence": "JAVASCRIPT_OK",
+    "v23CiPersistentProfileRelaunch": "PASS",
+    "v23CiRun": "36388524930",
+    "v23PhysicalPersistentProfileRelaunch": "PENDING",
+    "v23PhysicalSameAppExeUpdatePersistence": "PENDING"
+  },
+  "notAcceptedOffline": [
+    {
+      "engine": "android-ndk",
+      "support": "EXPERIMENTAL"
+    },
+    {
+      "engine": "react-native",
+      "support": "EXPERIMENTAL"
+    },
+    {
+      "engine": "flutter",
+      "support": "PLANNED"
+    },
+    {
+      "engine": "dotnet-android",
+      "support": "PLANNED"
+    },
+    {
+      "engine": "dotnet-maui",
+      "support": "PLANNED"
+    },
+    {
+      "engine": "windows-web",
+      "support": "PLANNED"
+    },
+    {
+      "engine": "unity",
+      "support": "EXTERNAL_TOOL_REQUIRED"
+    }
+  ]
+}

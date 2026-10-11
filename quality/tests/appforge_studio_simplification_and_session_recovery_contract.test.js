@@ -30,8 +30,27 @@ test("version code can be cleared while its numeric build value remains positive
   assert.match(main, /digits.toIntOrNull\(\)\?\.takeIf \{ it >= 1 \}/);
   assert.match(main, /versionCodeInput.toIntOrNull\(\)\?\.let \{ it >= 1 \} == true/);
 });
-test("admin discovery is private UI only and server verification remains mandatory", () => {
-  assert.doesNotMatch(home, /TextButton\(onClick = onOpenAdmin\)|OwnerAdminCard\(/);
+test("verified admin discovery is conditional and server verification remains mandatory", () => {
+  assert.match(
+    home,
+    /val fullAdmin[\s\S]{0,220}?OwnerAccessPolicy\.isActiveOwner/
+  );
+
+  assert.match(
+    home,
+    /if\s*\(fullAdmin\)[\s\S]{0,180}?TextButton\(onClick = onOpenAdmin\)[\s\S]{0,120}?Yönetici/
+  );
+
+  assert.doesNotMatch(
+    home,
+    /OwnerAdminCard\(/
+  );
+
+  assert.doesNotMatch(
+    home,
+    /YÖNETİCİ GİRİŞİ/
+  );
+
   assert.match(settings, /versionTapCount >= 7/);
   assert.match(settings, /onOpenAdmin\(\)/);
   assert.match(admin, /restoreStoredAdminSession/);

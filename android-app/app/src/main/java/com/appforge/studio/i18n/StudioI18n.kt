@@ -119,16 +119,16 @@ object StudioI18n {
             "ar" to "الترقية إلى Pro"
         ),
         "choose_plan" to mapOf(
-            "tr" to "İhtiyacına uygun planı seç",
-            "en" to "Choose the plan that fits you",
-            "de" to "Wähle den passenden Plan",
-            "ar" to "اختر الخطة المناسبة لك"
+            "tr" to "Pro Ömür Boyu seçeneğini görüntüle",
+            "en" to "View Pro Lifetime",
+            "de" to "Pro Lifetime anzeigen",
+            "ar" to "عرض Pro مدى الحياة"
         ),
         "pro_lifetime" to mapOf(
-            "tr" to "Pro",
-            "en" to "Pro",
-            "de" to "Pro",
-            "ar" to "Pro"
+            "tr" to "Pro Ömür Boyu",
+            "en" to "Pro Lifetime",
+            "de" to "Pro Lifetime",
+            "ar" to "Pro مدى الحياة"
         ),
         "pro_lifetime_desc" to mapOf(
             "tr" to "Tek seferlik satın alma",
@@ -136,29 +136,11 @@ object StudioI18n {
             "de" to "Einmaliger Kauf",
             "ar" to "شراء لمرة واحدة"
         ),
-        "pro_monthly" to mapOf(
-            "tr" to "Pro Aylık",
-            "en" to "Pro Monthly",
-            "de" to "Pro Monatlich",
-            "ar" to "Pro شهري"
-        ),
-        "pro_monthly_desc" to mapOf(
-            "tr" to "Otomatik yenilenen abonelik, istediğin zaman iptal et",
-            "en" to "Auto-renewing subscription, cancel anytime",
-            "de" to "Automatisch verlängerndes Abo, jederzeit kündbar",
-            "ar" to "اشتراك يتجدد تلقائيًا، ويمكن إلغاؤه في أي وقت"
-        ),
         "buy_once" to mapOf(
             "tr" to "TEK SEFERLİK PRO AL",
             "en" to "BUY PRO ONCE",
             "de" to "PRO EINMALIG KAUFEN",
             "ar" to "شراء PRO مرة واحدة"
-        ),
-        "subscribe_monthly" to mapOf(
-            "tr" to "PRO AYLIK'A ABONE OL",
-            "en" to "SUBSCRIBE TO PRO MONTHLY",
-            "de" to "PRO MONATLICH ABONNIEREN",
-            "ar" to "الاشتراك في PRO الشهري"
         ),
         "back" to mapOf(
             "tr" to "Geri",

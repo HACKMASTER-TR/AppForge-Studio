@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,7 +40,9 @@ internal fun TerminalUltimatePanel(
     onOpenConnections: () -> Unit,
     onOpenSsh: () -> Unit,
     onOpenBuilder: () -> Unit,
-    onOpenAi: () -> Unit
+    onOpenAi: () -> Unit,
+    requestedLinuxSessionId: String? = null,
+    onRequestedSessionConsumed: () -> Unit = {}
 ) {
     var mode by
         remember {
@@ -47,6 +50,17 @@ internal fun TerminalUltimatePanel(
                 TerminalUltimateMode.EASY
             )
         }
+
+    LaunchedEffect(
+        requestedLinuxSessionId
+    ) {
+        if (
+            !requestedLinuxSessionId.isNullOrBlank()
+        ) {
+            mode =
+                TerminalUltimateMode.LINUX
+        }
+    }
 
     var pendingAction by
         remember {
@@ -622,7 +636,11 @@ internal fun TerminalUltimatePanel(
                 item {
                     LinuxRuntimePanel(
                         workspace = workspace,
-                        onOpenSsh = onOpenSsh
+                        onOpenSsh = onOpenSsh,
+                        requestedSessionId =
+                            requestedLinuxSessionId,
+                        onRequestedSessionConsumed =
+                            onRequestedSessionConsumed
                     )
                 }
 

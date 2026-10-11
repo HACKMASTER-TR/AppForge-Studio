@@ -1,0 +1,90 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+const read = path =>
+  fs.readFileSync(
+    new URL("../../" + path, import.meta.url),
+    "utf8"
+  );
+
+const service = read(
+  "android-app/app/src/main/java/com/appforge/studio/BuildProgressService.kt"
+);
+
+const main = read(
+  "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+);
+
+const api = read(
+  "android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt"
+);
+
+
+test("build notification starts from track without foreground visibility gate", () => {
+  assert.match(service, /FOREGROUND_NOTIFICATION_IMMEDIATE_V1/);
+
+  const track = service.slice(
+    service.indexOf("fun track("),
+    service.indexOf("fun trackBatch(")
+  );
+
+  assert.match(track, /startPending\(context\)/);
+  assert.doesNotMatch(track, /!hostForeground/);
+  assert.doesNotMatch(service, /private var hostForeground/);
+});
+
+test("completed build keeps exact restore reference until result persistence", () => {
+  assert.doesNotMatch(service, /foregroundSuppressed/);
+  assert.doesNotMatch(service, /hostForeground/);
+  assert.doesNotMatch(service, /clear\(this@BuildProgressService\)/);
+  assert.match(
+    service,
+    /if\s*\(\s*!active\s*\)[\s\S]*stopForeground\(\s*STOP_FOREGROUND_DETACH\s*\)[\s\S]*stopSelf\(\s*startId\s*\)/
+  );
+});
+
+test("notification tap hydrates without stopping active build tracker", () => {
+  const create = main.slice(
+    main.indexOf("override fun onCreate"),
+    main.indexOf("override fun onNewIntent")
+  );
+  assert.doesNotMatch(create, /BuildProgressService\.stop\(this\)/);
+
+  const intent = main.slice(
+    main.indexOf("override fun onNewIntent"),
+    main.indexOf("override fun onResume")
+  );
+  assert.doesNotMatch(intent, /BuildProgressService\.stop\(this\)/);
+
+  const rebind = main.indexOf("ACTIVE_BUILD_NOTIFICATION_REBIND_V2");
+  assert.ok(rebind >= 0);
+
+  const block = main.slice(
+    rebind,
+    main.indexOf("var conversionApkUri", rebind)
+  );
+
+  assert.match(block, /ACTIVE_BUILD_NOTIFICATION_TAP_PERSIST_V1_2/);
+  assert.match(block, /restoreFromEngine/);
+  assert.doesNotMatch(block, /BuildProgressService\.stop\(context\)/);
+  assert.match(
+    block,
+    /setOf\("success", "failed", "cancelled", "canceled"\)[\s\S]*BuildProgressService\.clear\(context\)/
+  );
+});
+
+test("terminal build result is persisted before tracker clear", () => {
+  const save = main.indexOf("ProjectLibrary.saveBuild(");
+  assert.ok(save >= 0);
+
+  const clear = main.indexOf("BuildProgressService.clear(", save);
+  assert.ok(clear > save);
+});
+
+test("completed local build can restore exact persisted artifact availability", () => {
+  assert.match(api, /NOTIFICATION_RESULT_RESTORE_V1/);
+  assert.match(api, /ProjectLibrary[\s\S]*loadBuilds/);
+  assert.match(api, /persistedDeviceArtifact\([\s\S]*"apk"/);
+  assert.match(api, /persistedDeviceArtifact\([\s\S]*"aab"/);
+});

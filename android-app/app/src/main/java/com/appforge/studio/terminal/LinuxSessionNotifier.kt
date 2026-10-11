@@ -19,6 +19,7 @@ internal object LinuxSessionNotifier {
 
     fun notifyCompleted(
         context: Context,
+        sessionId: String,
         title: String,
         exitCode: Int
     ) {
@@ -46,7 +47,7 @@ internal object LinuxSessionNotifier {
         val openIntent =
             PendingIntent.getActivity(
                 appContext,
-                title.hashCode(),
+                sessionId.hashCode(),
                 Intent(
                     appContext,
                     MainActivity::class.java
@@ -54,6 +55,16 @@ internal object LinuxSessionNotifier {
                     flags =
                         Intent.FLAG_ACTIVITY_SINGLE_TOP or
                             Intent.FLAG_ACTIVITY_CLEAR_TOP
+
+                    putExtra(
+                        LinuxTerminalJobService.EXTRA_OPEN_TERMINAL,
+                        true
+                    )
+
+                    putExtra(
+                        LinuxTerminalJobService.EXTRA_TERMINAL_SESSION_ID,
+                        sessionId
+                    )
                 },
                 PendingIntent.FLAG_UPDATE_CURRENT or
                     PendingIntent.FLAG_IMMUTABLE
@@ -83,16 +94,39 @@ internal object LinuxSessionNotifier {
                 .setPriority(
                     NotificationCompat.PRIORITY_DEFAULT
                 )
-                .setAutoCancel(true)
+                .setOngoing(true)
+                .setAutoCancel(false)
                 .setContentIntent(openIntent)
                 .build()
 
         manager.notify(
-            NOTIFICATION_BASE +
-                (title.hashCode() and 0x0fff),
+            notificationId(
+                sessionId
+            ),
             notification
         )
     }
+
+    fun dismissCompletedNotification(
+        context: Context,
+        sessionId: String
+    ) {
+        context.applicationContext
+            .getSystemService(
+                NotificationManager::class.java
+            )
+            ?.cancel(
+                notificationId(
+                    sessionId
+                )
+            )
+    }
+
+    private fun notificationId(
+        sessionId: String
+    ): Int =
+        NOTIFICATION_BASE +
+            (sessionId.hashCode() and 0x0fff)
 
     private fun ensureChannel(
         manager: NotificationManager

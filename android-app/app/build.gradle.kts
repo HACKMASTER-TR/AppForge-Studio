@@ -197,6 +197,75 @@ val appforgeProRecoveryTest = providers.gradleProperty("appforgeProRecoveryTest"
 val appforgeProSecondDevice = providers.gradleProperty("appforgeProSecondDevice").orNull == "true"
 val appforgeProProcessDeathTest = providers.gradleProperty("appforgeProProcessDeathTest").orNull == "true"
 
+val appforgeBaseVersionCode =
+    529
+
+// Debug-only, explicit opt-in for the B05+V3 upgrade acceptance APK.
+// Does not change normal debug, release, or Play Integrity version policy.
+val appforgeIntegrationDebugVersionCode =
+    providers.gradleProperty("appforgeIntegrationDebugVersionCode")
+        .orNull
+        ?.trim()
+        ?.let { requested ->
+            require(requested == "533") {
+                "B05+V3 isolated debug upgrade only permits versionCode 533."
+            }
+            533
+        }
+
+val appforgePlayIntegrityAcceptance =
+    providers.gradleProperty("appforgePlayIntegrityAcceptance")
+        .orNull == "true"
+
+val appforgePlayIntegrityAcceptanceBaseUrl =
+    providers.gradleProperty("appforgePlayIntegrityAcceptanceBaseUrl")
+        .orNull
+        ?.trim()
+        .orEmpty()
+
+val appforgePlayIntegrityAcceptanceVersionCode =
+    providers.gradleProperty(
+        "appforgePlayIntegrityAcceptanceVersionCode"
+    )
+        .orNull
+        ?.trim()
+        ?.takeIf {
+            it.isNotEmpty()
+        }
+        ?.toIntOrNull()
+
+
+val appforgePlayIntegrityStagingUrl =
+    Regex(
+        "^https://appforge-integrity-staging\\.[A-Za-z0-9.-]+\\.workers\\.dev$"
+    )
+
+require(
+    appforgePlayIntegrityAcceptanceBaseUrl.isBlank() ||
+        appforgePlayIntegrityStagingUrl.matches(
+            appforgePlayIntegrityAcceptanceBaseUrl
+        )
+) {
+    "Play Integrity acceptance URL must target only the isolated staging Worker."
+}
+
+require(
+    !appforgePlayIntegrityAcceptance ||
+        appforgePlayIntegrityAcceptanceBaseUrl.isNotBlank()
+) {
+    "Play Integrity acceptance harness requires the isolated staging URL."
+}
+
+require(
+    appforgePlayIntegrityAcceptanceVersionCode == null ||
+        appforgePlayIntegrityAcceptanceVersionCode in
+            1..2_100_000_000
+) {
+    "Play Integrity acceptance versionCode is invalid."
+}
+
+
+
 require(
     !appforgeProProcessDeathTest ||
         (!appforgeProRecoveryTest && !appforgeProSecondDevice)
@@ -217,7 +286,16 @@ android {
         applicationId = "com.appforge.studio"
         minSdk = 26
         targetSdk = 37
-        versionCode = 529
+        versionCode =
+            if (
+                appforgePlayIntegrityAcceptance
+            ) {
+                appforgePlayIntegrityAcceptanceVersionCode
+                    ?: appforgeBaseVersionCode
+            } else {
+                appforgeBaseVersionCode
+            }
+
         versionName = "5.0.29"
     }
 
@@ -303,6 +381,18 @@ android {
             "APPFORGE_GOOGLE_WEB_CLIENT_ID",
             "\"564043752274-ortqs7ep6cbhh7ji3taf4s41g8trnome.apps.googleusercontent.com\""
         )
+
+        buildConfigField(
+            "boolean",
+            "PLAY_INTEGRITY_ACCEPTANCE_HARNESS",
+            appforgePlayIntegrityAcceptance.toString()
+        )
+
+        buildConfigField(
+            "String",
+            "PLAY_INTEGRITY_ACCEPTANCE_BASE_URL",
+            "\"$appforgePlayIntegrityAcceptanceBaseUrl\""
+        )
     }
 
     buildTypes {
@@ -339,8 +429,23 @@ android {
                 "false"
             )
             ciReleaseSigning?.let { signingConfig = it }
-            isMinifyEnabled = true
-            isShrinkResources = true
+            /*
+             * PLAY_INTEGRITY_PHYSICAL_ACCEPTANCE_V4_7_4
+             *
+             * The special Internal App Sharing acceptance build must remain
+             * unminified. A physical Play-installed release exposed a
+             * pre-Activity AndroidX Startup / WorkManager / WorkDatabase
+             * initialization crash only after R8 processing.
+             *
+             * Normal release builds do not pass
+             * appforgePlayIntegrityAcceptance and therefore remain minified
+             * and resource-shrunk exactly as before.
+             */
+            isMinifyEnabled =
+                !appforgePlayIntegrityAcceptance
+
+            isShrinkResources =
+                !appforgePlayIntegrityAcceptance
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -377,6 +482,23 @@ android {
     }
 }
 
+// Build a tiny unsigned shell at AppForge CI build time; users never download toolchains.
+val generateFastHtmlTemplate = tasks.register<Copy>("generateFastHtmlTemplate") {
+    dependsOn(":html-apk-template:assembleRelease")
+    from(project(":html-apk-template").layout.buildDirectory.file("outputs/apk/release/html-apk-template-release-unsigned.apk"))
+    into(layout.buildDirectory.dir("generated/html-template/assets"))
+    rename { "html-apk-template.apk" }
+    doLast {
+        val built = layout.buildDirectory.file("generated/html-template/assets/html-apk-template.apk").get().asFile
+        check(built.isFile && built.length() > 1_024L) { "CI şablonu hazırlanamadı: $built" }
+    }
+}
+
+android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/html-template/assets").get().asFile)
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+    dependsOn(generateFastHtmlTemplate)
+}
+
 androidComponents {
     onVariants { variant ->
         variant.sources.jniLibs?.addGeneratedSourceDirectory(
@@ -384,9 +506,19 @@ androidComponents {
             AppForgeProrootPrepareTask::jniLibsDirectory
         )
     }
+
+    onVariants(selector().withBuildType("debug")) { variant ->
+        appforgeIntegrationDebugVersionCode?.let { code ->
+            variant.outputs.forEach { output ->
+                output.versionCode.set(code)
+                output.versionName.set("5.0.33-b05-v3-debug")
+            }
+        }
+    }
 }
 
 dependencies {
+    implementation("com.android.tools.build:apksig:9.1.1")
     implementation(project(":termux-terminal-view"))
 
     val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
@@ -404,6 +536,13 @@ dependencies {
     implementation("com.google.android.play:integrity:1.6.0")
     implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.google.android.play:app-update-ktx:2.1.0")
+    implementation("com.google.android.play:review:2.0.2")
+    implementation("com.google.android.play:review-ktx:2.0.2")
+    implementation("com.android.installreferrer:installreferrer:2.2")
+    implementation("com.google.android.play:feature-delivery:2.1.0")
+    implementation("com.google.android.play:feature-delivery-ktx:2.1.0")
+    implementation("com.google.android.play:asset-delivery:2.3.0")
+    implementation("com.google.android.play:asset-delivery-ktx:2.3.0")
     implementation("com.android.billingclient:billing-ktx:9.1.0")
     implementation("androidx.credentials:credentials:1.6.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
@@ -420,13 +559,9 @@ dependencies {
     // for org.json during host-side unit tests, so use the real JVM library.
     testImplementation("org.json:json:20250517")
 
-    // VideoForge V4.1.2
-    implementation("androidx.appcompat:appcompat:1.7.1")
+
     implementation("androidx.activity:activity-ktx:1.13.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
-    implementation("com.google.mlkit:language-id:17.0.6")
-    implementation("com.google.mlkit:translate:17.0.3")
-    implementation("com.github.k2-fsa:sherpa-onnx:v1.13.4")
     implementation("org.apache.commons:commons-compress:1.27.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

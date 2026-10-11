@@ -111,18 +111,123 @@ class BuildApiClient(
     }
 
     fun getBuild(buildId: String): BuildStatusResult {
-        val state = DeviceBuildEngine.snapshot(buildId)
-            ?: throw BuildApiException(404, "LOCAL_BUILD_NOT_FOUND", null, null, "Yerel derleme bulunamadı.")
+        val state =
+            DeviceBuildEngine.snapshot(
+                buildId
+            )
+
+        if (state != null) {
+            return BuildStatusResult(
+                buildId = state.id,
+                buildNo = state.buildNo,
+                status = state.status,
+                progress = state.progress,
+                logs = state.logs,
+                preflight = state.preflight,
+                apkAvailable =
+                    state.apk?.isFile == true &&
+                        (state.apk?.length() ?: 0L) > 0L,
+                aabAvailable =
+                    state.aab?.isFile == true &&
+                        (state.aab?.length() ?: 0L) > 0L,
+                exeAvailable = state.exe?.isFile == true &&
+                    (state.exe?.length() ?: 0L) > 0L
+            )
+        }
+
+        /*
+         * NOTIFICATION_RESULT_RESTORE_V1
+         *
+         * DeviceBuildEngine.jobs is process-local. A completed build,
+         * however, has a persistent history record and canonical artifact.
+         * Notification return must therefore restore from those exact
+         * persistent records instead of reporting LOCAL_BUILD_NOT_FOUND.
+         */
+        val saved =
+            ProjectLibrary
+                .loadBuilds(
+                    context
+                )
+                .firstOrNull {
+                    it.id ==
+                        buildId
+                }
+                ?: throw BuildApiException(
+                    404,
+                    "LOCAL_BUILD_NOT_FOUND",
+                    null,
+                    null,
+                    "Yerel derleme bulunamadı."
+                )
+
+        val apkAvailable =
+            !saved.apkUrl.isNullOrBlank() &&
+                persistedDeviceArtifact(
+                    buildId,
+                    "apk"
+                ) != null
+
+        val aabAvailable =
+            !saved.aabUrl.isNullOrBlank() &&
+                persistedDeviceArtifact(
+                    buildId,
+                    "aab"
+                ) != null
+
+        val windowsKind =
+            if (
+                saved.buildOutput
+                    .trim()
+                    .lowercase() in
+                    setOf(
+                        "native-exe",
+                        "windows-native-exe"
+                    )
+            ) {
+                "native-exe"
+            } else {
+                "exe"
+            }
+
+        val exeAvailable =
+            !saved.exeUrl.isNullOrBlank() &&
+                persistedDeviceArtifact(
+                    buildId,
+                    windowsKind
+                ) != null
+
         return BuildStatusResult(
-            buildId = state.id,
-            buildNo = state.buildNo,
-            status = state.status,
-            progress = state.progress,
-            logs = state.logs,
-            preflight = state.preflight,
-            apkAvailable = state.apk?.isFile == true,
-            aabAvailable = state.aab?.isFile == true,
-            exeAvailable = state.exe?.isFile == true
+            buildId =
+                saved.id,
+            buildNo =
+                saved.buildNo,
+            status =
+                saved.status,
+            progress =
+                if (
+                    saved.status.equals(
+                        "success",
+                        ignoreCase = true
+                    )
+                ) {
+                    100
+                } else {
+                    0
+                },
+            logs =
+                listOf(
+                    "ℹ️ Kalıcı cihaz-build kaydından geri yüklendi."
+                ),
+            preflight =
+                listOf(
+                    "✅ Exact Build ID ve canonical artifact dizini doğrulandı."
+                ),
+            apkAvailable =
+                apkAvailable,
+            aabAvailable =
+                aabAvailable,
+            exeAvailable =
+                exeAvailable
         )
     }
 
@@ -144,6 +249,61 @@ class BuildApiClient(
         )
     }
 
+    private fun normalizedArtifactTicketKind(
+        kind: String
+    ): String? =
+        when (
+            kind
+                .trim()
+                .lowercase()
+        ) {
+            "apk" ->
+                "apk"
+
+            "aab" ->
+                "aab"
+
+            "exe",
+            "windows-exe",
+            "portable-exe",
+            "windows-portable-exe" ->
+                "exe"
+
+            "native-exe",
+            "windows-native-exe" ->
+                "native-exe"
+
+            else ->
+                null
+        }
+
+
+    private fun savedWindowsArtifactTicketKind(
+        buildOutput: String
+    ): String? =
+        when (
+            buildOutput
+                .trim()
+                .lowercase()
+        ) {
+            "",
+            "exe",
+            "windows-exe",
+            "portable-exe",
+            "windows-portable-exe",
+            "all",
+            "apk+aab+exe" ->
+                "exe"
+
+            "native-exe",
+            "windows-native-exe" ->
+                "native-exe"
+
+            else ->
+                null
+        }
+
+
     /**
      * A process restart clears DeviceBuildEngine.jobs but not the successful
      * history record or its canonical artifact. Resolve only that exact build
@@ -155,26 +315,78 @@ class BuildApiClient(
                 return@runCatching null
             }
 
-            val extension = when (kind.trim().lowercase()) {
-                "apk" -> "apk"
-                "aab" -> "aab"
-                "exe", "windows-exe" -> "exe"
-                else -> return@runCatching null
-            }
+            val ticketKind =
+                normalizedArtifactTicketKind(
+                    kind
+                )
+                    ?: return@runCatching null
 
-            val saved = ProjectLibrary.loadBuilds(context)
-                .firstOrNull { it.id == buildId }
-                ?: return@runCatching null
+            val extension =
+                when (
+                    ticketKind
+                ) {
+                    "apk" ->
+                        "apk"
 
-            if (!saved.status.equals("success", ignoreCase = true)) {
+                    "aab" ->
+                        "aab"
+
+                    else ->
+                        "exe"
+                }
+
+            val saved =
+                ProjectLibrary
+                    .loadBuilds(
+                        context
+                    )
+                    .firstOrNull {
+                        it.id ==
+                            buildId
+                    }
+                    ?: return@runCatching null
+
+            if (
+                !saved.status.equals(
+                    "success",
+                    ignoreCase = true
+                )
+            ) {
                 return@runCatching null
             }
 
-            val advertised = when (extension) {
-                "apk" -> saved.apkUrl
-                "aab" -> saved.aabUrl
-                else -> saved.exeUrl
+            if (
+                ticketKind ==
+                    "exe" ||
+                ticketKind ==
+                    "native-exe"
+            ) {
+                val savedWindowsKind =
+                    savedWindowsArtifactTicketKind(
+                        saved.buildOutput
+                    )
+
+                if (
+                    savedWindowsKind !=
+                        ticketKind
+                ) {
+                    return@runCatching null
+                }
             }
+
+            val advertised =
+                when (
+                    ticketKind
+                ) {
+                    "apk" ->
+                        saved.apkUrl
+
+                    "aab" ->
+                        saved.aabUrl
+
+                    else ->
+                        saved.exeUrl
+                }
             if (advertised.isNullOrBlank()) {
                 return@runCatching null
             }
@@ -203,12 +415,37 @@ class BuildApiClient(
             if (!Regex("^local-[0-9a-f]{20}$").matches(buildId)) {
                 return@runCatching null
             }
-            val extension = when (kind.trim().lowercase()) {
-                "apk" -> "apk"
-                "aab" -> "aab"
-                "exe", "windows-exe" -> "exe"
-                else -> return@runCatching null
+            val ticketKind =
+                normalizedArtifactTicketKind(
+                    kind
+                )
+                    ?: return@runCatching null
+
+            /*
+             * Legacy Unified Agent history predates Native EXE typing.
+             * Generic historical EXE records are Portable only.
+             */
+            if (
+                ticketKind ==
+                    "native-exe"
+            ) {
+                return@runCatching null
             }
+
+            val extension =
+                when (
+                    ticketKind
+                ) {
+                    "apk" ->
+                        "apk"
+
+                    "aab" ->
+                        "aab"
+
+                    else ->
+                        "exe"
+                }
+
             val store = AppForgeAgentSessionStore(
                 File(context.filesDir, "unified-agent-session")
             )

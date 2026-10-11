@@ -17,7 +17,7 @@ jobs:
     if: >-
       github.repository == 'HACKMASTER-TR/AppForge-Studio' &&
       github.ref == 'refs/heads/feat/cloudflare-control-plane-v1-20260919'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     steps:

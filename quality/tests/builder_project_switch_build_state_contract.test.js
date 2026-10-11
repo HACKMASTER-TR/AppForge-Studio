@@ -155,9 +155,19 @@ test(
 test(
   "active build blocks project replacement",
   () => {
+    /*
+     * V25.1 must also block project replacement during the short
+     * Builder re-entry window where the persisted active Build ID
+     * exists but the first engine snapshot has not been rebound yet.
+     */
     assert.match(
       main,
-      /if \(\s*buildBusy\s*\)[\s\S]*Derleme devam ederken proje değiştirilemez/
+      /if \(\s*buildBusy\s*\|\|\s*builderReentryUiGuard\s*\)[\s\S]*Derleme devam ederken proje değiştirilemez/
+    );
+
+    assert.match(
+      main,
+      /builderReentryUiGuard\s*=\s*builderActiveBuildReentryGuard\s*\|\|/
     );
   }
 );

@@ -3,74 +3,95 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-25
-last_verified: 2026-09-25
+updated: 2026-10-09
+last_verified: 2026-10-09
 confidence: high
 tags:
   - hot-context
+  - release-integration
   - device-build
-  - runtime-v3
+  - windows
 related:
   - "[[Index]]"
-  - "[[Device_Build_Runtime_V3]]"
   - "[[Current_Status]]"
-  - "[[Bug_Index]]"
+  - "[[Release_Integration_V1]]"
+  - "[[Windows_Output_Artifact_Flow_V2]]"
+  - "[[Windows_Publisher_Authorization]]"
+  - "[[Open_Questions]]"
 source_files:
-  - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt"
+  - "windows-host/payload.cjs"
+  - ".github/workflows/android-play-release.yml"
+  - ".github/workflows/windows-portable-host.yml"
+  - "windows-host/main.cjs"
+  - "quality/tests/appforge_play_distribution_contract.test.js"
+  - "quality/tests/windows_portable_persistence_contract.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
-  - "android-app/app/src/main/java/com/appforge/studio/terminal/LinuxShellEngine.kt"
-  - "android-app/app/src/main/assets/device-build/python-template/app/src/main/java/com/appforge/pythonruntime/MainActivity.kt"
-  - "quality/tests/device_build_cancel_reader_contract.test.js"
-  - "quality/tests/device_build_active_state_restore_contract.test.js"
-  - "quality/tests/python_template_system_bars_contract.test.js"
+  - "quality/tests/windows_publisher_signing_provider_contract.test.js"
 ---
 
 # Hot Context
 
+<!-- APPFORGE_HOT_CONTEXT_CURRENT_RECOVERY -->
 ## Current Focus
 
-- Device Build Runtime V3 physical offline acceptance is complete for the current React/Vite, native Android Java, native Android Kotlin and Python/Chaquopy fixtures.
-- Normal project compilation remains device-local and separate from Terminal Linux.
-- PR #56 remains Draft until an explicit merge decision.
+Recover repository-tracked workstreams through [[01_Project/Current_State_Handoff]].
+`current_state.json` is the canonical cross-workstream claim registry;
+Current_State_Handoff is its generated readable derivative. Git and exact external
+evidence remain authoritative. Draft/open PR does not mean merged; hosted CI does
+not mean physical acceptance. An evidence-record/meta commit is distinct from the
+canonical implementation SHA; later checkouts do not inherit acceptance.
 
-## Verified 2026-09-25
+- Admin AI: [[02_Codebase_Map/Local_AI_And_Agent_Map]]. Implementation exists;
+  Android/physical acceptance and constrained native Windows/publisher-signing
+  execution remain separately evidenced.
+- Google Play: [[06_Product_And_Features/Google_Play_Platform_V1]]. Newer isolated
+  staging / Integrity / Internal-track work exists beyond the historical
+  checkpoint. Play Production remains a separate protected gate; partial
+  evidence does not establish Production acceptance.
 
-- React/Vite node-web: offline APK+AAB and runtime launch passed.
-- Native Java: offline APK+AAB and APPFORGE_NATIVE_JAVA_PASS.
-- Native Kotlin: offline APK+AAB and APPFORGE_NATIVE_KOTLIN_PASS.
-- Python/Chaquopy: offline APK+AAB, Chaquopy 17.0.0, Python 3.12 and APPFORGE_PYTHON_CHAQUOPY_PASS.
-- Python system-bar safe-area correction passed physical re-test.
-- Device build cancellation no longer crashes AppForge.
-- Active-build restoration no longer falls back to Hazır / 0.
-- Project switching and source-engine refresh passed the current acceptance sequence.
+## Historical checkpoint — 2026-10-03
 
-## Recent Important Changes
-
-- Physical offline acceptance is complete for the current React/Vite, native Java, native Kotlin and Python/Chaquopy fixtures.
-- Python generated runtime safe-area handling, safe build cancellation and active-build lifecycle restoration passed device re-test.
+October 3 release-integration evidence is historical, not current-checkout PASS:
+Release Integration V1, Full Quality `826/826 PASS`, Tulpar Portable persistence,
+relaunch, relocation and crash retest PASS; Authenticode crypto, Code Signing EKU,
+RFC3161 timestamp, signed-artifact preservation and embedded runtime physically
+PASS; `REAL_AUTHENTICODE_END_TO_END=PASS`. Protected `main` was untouched.
 
 ## Must Know
 
-- Source, tests, CI and observed runtime behavior override wiki claims.
-- Acceptance applies to the exact tested fixtures and prepared offline caches; arbitrary dependency sets are not automatically accepted.
-- Railway, Render and Supabase are not normal AppForge project-build infrastructure.
-- GitHub remains repository and CI infrastructure.
+At the historical checkpoint:
+
+- Normal project compilation remains device-local.
+- D1 migration ledger reconciliation is complete for migrations 0001–0005.
+- Portable and Native EXE identities were distinct; Portable must avoid the
+  Native-only x86-64 validator and resolve logical EOF through PE Security Directory.
+- Native Android CMake and Windows x64 launch were physically PASS.
+- Production publisher endpoint was DISABLED; `PRODUCTION_READY=NO`.
+
+## Recent Important Changes
+
+Historical October 3 references:
+
+- Portable storage survived relaunch/relocation/termination, sequence `1 → 2 → 3 → 4 → 5`.
+- Debug-only self-signed Authenticode consumed the server grant; DigiCert RFC3161
+  verified. Validator and Certificate Table/footer regressions were resolved.
+- Windows Host CI `37143822118`, host `windows-host-v1-c7e4b2a`; Android Debug `37144740820`.
+- Tulpar `AF-0000001057` rendered successfully, counter `2`.
+- `AF-0000001058` missing-provider/certificate and `AF-0000001059` non-admin denial
+  proved fail-closed; final EXEs were deleted. Both negative physical gates PASS.
 
 ## Current Risks / Open Questions
 
-- Acceptance covers the exact tested fixtures and prepared offline caches; unprepared dependency versions can still fail offline.
-- PR #56 remains Draft and no production delivery step has started.
-
-## Safety Boundaries
-
-- Do not merge PR #56 without explicit approval.
-- Do not start Play Production.
-- Do not deploy Cloudflare or apply D1 migrations during this sequence.
-- Do not modify the verified Windows Host.
-- Preserve .appforge backups and device acceptance evidence.
+- Publisher authority: [[Windows_Publisher_Authorization]].
+- Play Production: [[06_Product_And_Features/Google_Play_Platform_V1]].
+- Delivery requires scoped evidence and authorization: [[01_Project/Current_State_Handoff]],
+  [[ChatGPT_Codex_Development_Standard]].
 
 ## Read Next
 
-- [[Device_Build_Runtime_V3]]
 - [[Current_Status]]
-- [[Bug_Index]]
+- [[Release_Integration_V1]]
+- [[Windows_Output_Artifact_Flow_V2]]
+- [[Windows_Publisher_Authorization]]
+- [[Open_Questions]]

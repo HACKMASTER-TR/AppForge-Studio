@@ -78,6 +78,7 @@ fun AdminOpsScreen(
     serverUrl: String,
     apiKey: String,
     accountEmail: String,
+    onOpenAi: () -> Unit,
     onOpenSecondBrain: () -> Unit,
     onOpenTerminal: () -> Unit,
     onAdminChanged: () -> Unit,
@@ -355,6 +356,15 @@ fun AdminOpsScreen(
         if (
             authorized
         ) {
+            item {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onOpenAi
+                ) {
+                    Text("APPFORGE AI")
+                }
+            }
+
             item {
                 AdminProCodesPanel(
                     serverUrl = serverUrl

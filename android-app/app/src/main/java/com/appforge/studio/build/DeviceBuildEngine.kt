@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
+import com.appforge.studio.AppForgeBuildNumberStore
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
@@ -11,12 +12,12 @@ import com.appforge.studio.terminal.LinuxShellEngine
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import java.io.File
+import java.io.RandomAccessFile
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 
 internal data class DeviceBuildStart(
     val id: String,
@@ -64,14 +65,20 @@ object DeviceBuildEngine {
         @Volatile var apk: File? = null,
         @Volatile var aab: File? = null,
         @Volatile var exe: File? = null,
+        @Volatile var windowsArtifactKind: DeviceArtifactKind? = null,
         @Volatile var shell: LinuxShellEngine? = null,
         @Volatile var shellSessionId: String? = null
     )
 
     private val jobs = ConcurrentHashMap<String, JobState>()
-    private val buildNumbers = AtomicLong(System.currentTimeMillis() / 1000L)
     private val executor = Executors.newFixedThreadPool(2) { runnable ->
         Thread(runnable, "AppForgeDeviceBuild").apply { isDaemon = true }
+    }
+
+    /* APPFORGE_EVENT_DRIVEN_BUILD_PROGRESS_V1 */
+    private fun advanceProgress(state: JobState, value: Int, status: String? = null) {
+        state.progress = maxOf(state.progress, value.coerceIn(0, 99))
+        if (status != null) state.status = status
     }
 
     internal fun start(
@@ -79,8 +86,19 @@ object DeviceBuildEngine {
         draft: ProjectDraft,
         projectZip: File?
     ): DeviceBuildStart {
+
+        /*
+         * OFFLINE_BUILD_PREFLIGHT_GATE_V1
+         */
+        OfflineBuildPackManager
+            .requireReadyForBuild(
+                context.applicationContext,
+                draft
+            )
+
         val id = "local-" + UUID.randomUUID().toString().replace("-", "").take(20)
-        val buildNo = buildNumbers.incrementAndGet()
+        val buildNo =
+            AppForgeBuildNumberStore.next(context.applicationContext)
         val state = JobState(id = id, buildNo = buildNo)
         jobs[id] = state
 
@@ -112,23 +130,45 @@ object DeviceBuildEngine {
         }
 
     fun artifact(id: String, kind: String): File? {
-        val state = jobs[id] ?: return null
+        val state =
+            jobs[id]
+                ?: return null
+
+        val normalizedKind =
+            kind
+                .trim()
+                .lowercase()
 
         val file =
             when (
-                kind
-                    .trim()
-                    .lowercase()
+                normalizedKind
             ) {
+                "apk" ->
+                    state.apk
+
                 "aab" ->
                     state.aab
 
                 "exe",
-                "windows-exe" ->
+                "windows-exe",
+                "portable-exe",
+                "windows-portable-exe" ->
                     state.exe
+                        ?.takeIf {
+                            state.windowsArtifactKind ==
+                                DeviceArtifactKind.WINDOWS_EXE
+                        }
+
+                "native-exe",
+                "windows-native-exe" ->
+                    state.exe
+                        ?.takeIf {
+                            state.windowsArtifactKind ==
+                                DeviceArtifactKind.WINDOWS_NATIVE_EXE
+                        }
 
                 else ->
-                    state.apk
+                    null
             }
 
         return file
@@ -179,14 +219,28 @@ object DeviceBuildEngine {
 
             validateCapabilities(draft)
 
+            // FAST_HTML_APK_V1: no rootfs, SDK, JDK, Gradle, or download manager.
+            // Never fall back silently to a network toolchain on an eligible HTML/URL project.
+            if (FastHtmlApkPolicy.isCandidate(draft)) {
+                FastHtmlApkPolicy.requireSupported(draft)
+                state.preflight.add("✅ HTML/HTTPS Hızlı APK • internet ve ek araç paketi yok.")
+                state.preflight.add("✅ APK cihazda imzalanacak; AAB ve özel anahtar desteklenmiyor.")
+                workspace.deleteRecursively()
+                advanceProgress(state, 15, "HTML APK şablonu hazırlanıyor")
+                checkCancelled(state)
+                val apk = FastHtmlApkPackager.build(context, draft, workspace)
+                checkCancelled(state)
+                state.apk = apk
+                state.progress = 100
+                state.status = "success"
+                state.logs.add("✅ HTML/HTTPS APK hazır • sıfır ek araç indirme.")
+                return
+            }
+
             val sourceEngine =
-                draft
-                    .sourceBuildEngine
-                    .trim()
-                    .lowercase()
-                    .ifBlank {
-                        "webview-static"
-                    }
+                effectiveSourceEngine(
+                    draft
+                )
 
             val requestedOutputs =
                 DeviceBuildCapabilities
@@ -197,6 +251,23 @@ object DeviceBuildEngine {
             val wantsWindowsExe =
                 DeviceArtifactKind.WINDOWS_EXE in
                     requestedOutputs
+
+            val toolchainEngine =
+                if (
+                    sourceEngine ==
+                        "universal-cross-platform"
+                ) {
+                    if (
+                        DeviceArtifactKind.APK in requestedOutputs ||
+                        DeviceArtifactKind.AAB in requestedOutputs
+                    ) {
+                        "android-gradle"
+                    } else {
+                        "webview-static"
+                    }
+                } else {
+                    sourceEngine
+                }
 
             if (
                 wantsWindowsExe
@@ -212,6 +283,31 @@ object DeviceBuildEngine {
                 }
             }
 
+            val wantsWindowsNativeExe =
+                DeviceArtifactKind.WINDOWS_NATIVE_EXE in
+                    requestedOutputs
+
+            check(
+                !(
+                    wantsWindowsExe &&
+                    wantsWindowsNativeExe
+                )
+            ) {
+                "Portable EXE ve Native EXE aynı artifact kanalını paylaşamaz."
+            }
+
+            state.windowsArtifactKind =
+                when {
+                    wantsWindowsNativeExe ->
+                        DeviceArtifactKind.WINDOWS_NATIVE_EXE
+
+                    wantsWindowsExe ->
+                        DeviceArtifactKind.WINDOWS_EXE
+
+                    else ->
+                        null
+                }
+
             state.preflight.add("✅ Build cihaz üzerinde çalışacak.")
             state.preflight.add("✅ Worker / queue / cloud build kullanılmıyor.")
             state.preflight.add("✅ Clean Device Build Runtime V3 • Terminal Linux ortamından izole.")
@@ -221,6 +317,14 @@ object DeviceBuildEngine {
             ) {
                 state.preflight.add(
                     "✅ Windows Portable EXE • doğrulanmış generic host ile cihaz-local paketleme."
+                )
+            }
+
+            if (
+                wantsWindowsNativeExe
+            ) {
+                state.preflight.add(
+                    "🧪 Windows Native EXE • CMake + MinGW-w64 x64 • EXPERIMENTAL kabul hattı."
                 )
             }
 
@@ -239,8 +343,8 @@ object DeviceBuildEngine {
             }
 
             checkCancelled(state)
-            state.progress = 8
-            state.status = "Hazırlanıyor"
+            advanceProgress(state, 8, "Kaynak hazır")
+            advanceProgress(state, 10, "Runtime hazırlanıyor")
 
             val rootfs =
                 runBlocking {
@@ -254,29 +358,97 @@ object DeviceBuildEngine {
                         }
                 }
 
+            advanceProgress(state, 12, "Araçlar hazırlanıyor")
             val shell =
                 LinuxShellEngine(
                     context
                 )
             state.shell = shell
+            advanceProgress(state, 15, "Toolchain hazırlanıyor")
 
-            runShellBlocking(
-                shell = shell,
-                rootfs = rootfs,
-                workspace = workspace,
-                state = state,
-                command = "chmod +x /workspace/runtime/install-toolchain.sh /workspace/runtime/build-node.sh && APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} /bin/sh /workspace/runtime/install-toolchain.sh ${sh(sourceEngine)}",
-                suffix = "toolchain"
-            )
+            val toolchainCommand =
+                if (
+                    sourceEngine ==
+                        "windows-native"
+                ) {
+                    "chmod +x /workspace/runtime/install-windows-native-toolchain.sh " +
+                        "/workspace/runtime/build-windows-native.sh && " +
+                        "APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} " +
+                        "/bin/sh /workspace/runtime/install-windows-native-toolchain.sh"
+                } else {
+                    "chmod +x /workspace/runtime/install-toolchain.sh /workspace/runtime/build-node.sh && " +
+                        "APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} " +
+                        "/bin/sh /workspace/runtime/install-toolchain.sh ${sh(toolchainEngine)}"
+                }
+
+            /*
+             * APPFORGE_FAST_WEB_TOOLCHAIN_REUSE_V1_4
+             *
+             * HTML/URL wrappers are intentionally the only engine allowed
+             * to bypass install-toolchain.sh when the pinned Android/JDK/
+             * Gradle set is already complete inside Runtime V3.
+             *
+             * Expo, Python, native Android, universal and Windows engines
+             * keep their existing preparation path unchanged.
+             */
+            val fastWebToolchainReuse =
+                sourceEngine ==
+                    "webview-static" ||
+                sourceEngine.isBlank() ||
+                sourceEngine ==
+                    "unknown"
+
+            if (
+                fastWebToolchainReuse &&
+                staticWebToolchainReady(
+                    rootfs
+                )
+            ) {
+                state.logs.add(
+                    "⚡ Fast Web • hazır Android/JDK/Gradle araçları yeniden kullanılıyor."
+                )
+                advanceProgress(
+                    state,
+                    25,
+                    "Fast Web araçları hazır"
+                )
+            } else {
+                runShellBlocking(
+                    shell = shell,
+                    rootfs = rootfs,
+                    workspace = workspace,
+                    state = state,
+                    command = toolchainCommand,
+                    suffix =
+                        if (
+                            sourceEngine ==
+                                "windows-native"
+                        ) {
+                            "windows-native-toolchain"
+                        } else {
+                            "toolchain"
+                        }
+                )
+            }
 
             checkCancelled(state)
-            state.progress = 25
-            state.status = "Derleniyor"
+            advanceProgress(state, 25, "Derleniyor")
 
             when (sourceEngine) {
                 "node-web" -> buildNodeWeb(context, draft, workspace, rootfs, shell, state)
+                "universal-cross-platform" ->
+                    buildUniversalProject(
+                        context,
+                        draft,
+                        workspace,
+                        rootfs,
+                        shell,
+                        state
+                    )
                 "android-gradle" -> buildAndroidProject(context, draft, workspace, rootfs, shell, state)
+                "expo" -> buildExpoProject(context, draft, workspace, rootfs, shell, state)
                 "python-android" -> buildPythonProject(context, draft, workspace, rootfs, shell, state)
+                "windows-native" -> buildWindowsNative(context, draft, workspace, rootfs, shell, state)
                 "webview-static", "", "unknown" ->
                     buildStaticWeb(
                         context,
@@ -290,8 +462,7 @@ object DeviceBuildEngine {
             }
 
             checkCancelled(state)
-            state.status = "Çıktılar doğrulanıyor"
-            state.progress = 94
+            advanceProgress(state, 96, "Çıktılar doğrulanıyor")
 
             val missingOutputs =
                 requestedOutputs
@@ -308,6 +479,9 @@ object DeviceBuildEngine {
 
                             DeviceArtifactKind.WINDOWS_EXE ->
                                 state.exe == null
+
+                            DeviceArtifactKind.WINDOWS_NATIVE_EXE ->
+                                state.exe == null
                         }
                     }
 
@@ -321,13 +495,98 @@ object DeviceBuildEngine {
                         )
             }
 
+            val finalWindowsExe =
+                state.exe
+
+            if (
+                finalWindowsExe != null &&
+                WindowsPublisherSigningPolicy
+                    .signingRequested(
+                        context
+                    )
+            ) {
+                try {
+                    WindowsPublisherSigningPolicy
+                        .applyIfRequested(
+                            context = context,
+                            target = finalWindowsExe,
+                            rootfs = rootfs,
+                            shell = shell,
+                            buildId = state.id,
+                            offline = state.offline
+                        ) {
+                            detail ->
+                            state.logs.add(
+                                detail
+                            )
+                        }
+
+                    /*
+                     * WINDOWS_SIGNED_ARTIFACT_POST_VERIFY_V2
+                     *
+                     * verifyWindowsX64Pe is the Native C/C++ artifact
+                     * architecture contract. Portable EXE uses the
+                     * separately verified AppForge Generic Host and its
+                     * Authenticode signature has already been verified
+                     * by the signing provider.
+                     *
+                     * Applying the Native PE-machine contract to the
+                     * Portable artifact here can incorrectly reject an
+                     * otherwise successfully signed Portable EXE.
+                     */
+                    if (
+                        state.windowsArtifactKind ==
+                            DeviceArtifactKind.WINDOWS_NATIVE_EXE
+                    ) {
+                        verifyWindowsX64Pe(
+                            finalWindowsExe
+                        )
+
+                    } else if (
+                        state.windowsArtifactKind ==
+                            DeviceArtifactKind.WINDOWS_EXE
+                    ) {
+                        /*
+                         * WINDOWS_SIGNED_PORTABLE_PAYLOAD_VERIFY_V1
+                         *
+                         * Authenticode verification alone is not enough:
+                         * signing appends a PE Certificate Table after the
+                         * AppForge overlay payload. Revalidate the logical
+                         * AppForge payload boundary before publishing the
+                         * final signed Portable EXE.
+                         */
+                        WindowsPortableExePackager
+                            .verifyFinalArtifact(
+                                finalWindowsExe
+                            )
+
+                        state.logs.add(
+                            "✅ Windows Portable EXE • Authenticode sonrası payload doğrulandı."
+                        )
+                    }
+                } catch (
+                    signingFailure: Throwable
+                ) {
+                    finalWindowsExe
+                        .delete()
+
+                    state.exe =
+                        null
+
+                    state.logs.add(
+                        "🔒 Windows publisher signing fail-closed • final EXE artifact silindi."
+                    )
+
+                    throw signingFailure
+                }
+            }
+
             state.status = "success"
             state.progress = 100
             state.logs.add("✅ Hazır • Derleme tamamen cihaz üzerinde tamamlandı.")
         } catch (t: Throwable) {
             if (state.cancelled.get()) {
                 state.status = "cancelled"
-                state.progress = 0
             } else {
                 state.status = "failed"
                 state.logs.add("❌ ${t.message ?: t.javaClass.simpleName}")
@@ -343,40 +602,82 @@ object DeviceBuildEngine {
         require(draft.packageName.matches(Regex("""^[A-Za-z_]\w*(\.[A-Za-z_]\w*)+$"""))) {
             "Geçersiz Android package name."
         }
-        require(draft.minSdk in 26..37 && draft.targetSdk in 26..37 && draft.minSdk <= draft.targetSdk) {
+
+        require(
+            draft.minSdk in 26..37 &&
+                draft.targetSdk in 26..37 &&
+                draft.minSdk <= draft.targetSdk
+        ) {
             "Android SDK aralığı geçersiz."
         }
-        if (draft.sourceMode == SourceMode.URL) {
-            require(draft.webUrl.startsWith("https://", true)) { "Web URL HTTPS olmalı." }
-        }
 
-        val unsupported = buildList {
-            if (draft.qrScanner) add("QR Scanner")
-            if (draft.mediaPlayerBridge) add("Media3")
-            if (draft.admobEnabled) add("AdMob")
-            if (draft.billingEnabled) add("uygulama içi Billing enjeksiyonu")
-            if (draft.firebaseAnalyticsEnabled || draft.firebaseCrashlyticsEnabled || draft.firebaseMessagingEnabled) {
-                add("Firebase otomatik enjeksiyonu")
+        if (
+            draft.sourceMode ==
+                SourceMode.URL
+        ) {
+            require(
+                draft.webUrl.startsWith("https://", true) ||
+                draft.webUrl.startsWith("http://", true)
+            ) {
+                "Web URL HTTP veya HTTPS olmalı."
+            }
+            if (draft.remoteBridgeAllowed) {
+                require(draft.webUrl.startsWith("https://", true)) {
+                    "Uzak Native Bridge yalnız HTTPS web kaynağında kullanılabilir."
+                }
             }
         }
-        require(unsupported.isEmpty()) {
-            "Cihaz motorunda henüz taşınmamış eklentiler: ${unsupported.joinToString(", ")}"
+
+        val unsupported =
+            buildList {
+                if (draft.qrScanner) add("QR Scanner")
+                if (draft.mediaPlayerBridge) add("Media3")
+                if (draft.admobEnabled) add("AdMob")
+                if (draft.billingEnabled) add("uygulama içi Billing enjeksiyonu")
+
+                if (
+                    draft.firebaseAnalyticsEnabled ||
+                    draft.firebaseCrashlyticsEnabled ||
+                    draft.firebaseMessagingEnabled
+                ) {
+                    add("Firebase otomatik enjeksiyonu")
+                }
+            }
+
+        require(
+            unsupported.isEmpty()
+        ) {
+            "Cihaz motorunda henüz taşınmamış eklentiler: " +
+                unsupported.joinToString(", ")
         }
 
         val sourceEngine =
-            draft
-                .sourceBuildEngine
-                .trim()
-                .lowercase()
-                .ifBlank {
-                    "webview-static"
-                }
+            effectiveSourceEngine(
+                draft
+            )
 
         val technologyCapability =
-            DeviceBuildCapabilities
-                .forTechnology(
-                    draft.sourceTechnology
-                )
+            if (
+                sourceEngine ==
+                    "windows-native"
+            ) {
+                null
+            } else {
+                DeviceBuildCapabilities
+                    .forTechnology(
+                        draft.sourceTechnology
+                    )
+            }
+
+        /*
+         * Preserve the accepted current Expo path from the Universal branch.
+         * Native EXE must not weaken the Expo physical-acceptance gate.
+         */
+        if (sourceEngine == "expo") {
+            require(draft.sourceBuildReady) {
+                "Expo cihaz-local READY yolu yalnız fiziksel kabulü geçen Expo SDK 54 / React Native 0.81 kaynakları için açıktır."
+            }
+        }
 
         if (
             technologyCapability != null &&
@@ -390,18 +691,37 @@ object DeviceBuildEngine {
         }
 
         val capability =
-            technologyCapability
-                ?: DeviceBuildCapabilities
+            if (
+                sourceEngine ==
+                    "windows-native"
+            ) {
+                DeviceBuildCapabilities
                     .forEngine(
                         sourceEngine
                     )
+            } else {
+                technologyCapability
+                    ?: DeviceBuildCapabilities
+                        .forEngine(
+                            sourceEngine
+                        )
+            }
                 ?: error(
                     "${draft.sourceTechnologyLabel} için cihaz-build capability kaydı yok."
                 )
 
-        require(
+        val sourceExecutable =
             capability.support ==
-                DeviceBuildSupport.READY
+                DeviceBuildSupport.READY ||
+                (
+                    sourceEngine ==
+                        "windows-native" &&
+                    capability.support ==
+                        DeviceBuildSupport.EXPERIMENTAL
+                )
+
+        require(
+            sourceExecutable
         ) {
             capability.note
         }
@@ -430,6 +750,65 @@ object DeviceBuildEngine {
     }
 
 
+    private fun effectiveSourceEngine(
+        draft: ProjectDraft
+    ): String {
+        val outputs =
+            DeviceBuildCapabilities
+                .requestedOutputs(
+                    draft.buildOutput
+                )
+
+        if (
+            DeviceArtifactKind.WINDOWS_NATIVE_EXE in
+                outputs
+        ) {
+            require(
+                draft.sourceMode ==
+                    SourceMode.LOCAL
+            ) {
+                "Windows Native EXE yalnız yerel C/C++ kaynak projelerinden üretilebilir."
+            }
+
+            val technology =
+                draft.sourceTechnology
+                    .trim()
+                    .lowercase()
+
+            val declaredEngine =
+                draft.sourceBuildEngine
+                    .trim()
+                    .lowercase()
+
+            require(
+                technology in
+                    setOf(
+                        "cpp",
+                        "c",
+                        "cmake"
+                    ) ||
+                    declaredEngine in
+                        setOf(
+                            "android-ndk",
+                            "windows-native"
+                        )
+            ) {
+                "Windows Native EXE için C/C++ CMake projesi gerekli."
+            }
+
+            return "windows-native"
+        }
+
+        return draft
+            .sourceBuildEngine
+            .trim()
+            .lowercase()
+            .ifBlank {
+                "webview-static"
+            }
+    }
+
+
     private fun requestedOutputs(
         draft: ProjectDraft
     ): Set<DeviceArtifactKind> =
@@ -449,6 +828,262 @@ object DeviceBuildEngine {
         return DeviceArtifactKind.APK in outputs ||
             DeviceArtifactKind.AAB in outputs
     }
+
+    private fun buildUniversalProject(
+        context: Context,
+        draft: ProjectDraft,
+        workspace: File,
+        rootfs: File,
+        shell: LinuxShellEngine,
+        state: JobState
+    ) {
+        val sourceRoot =
+            File(
+                workspace,
+                "source"
+            ).canonicalFile
+
+        val manifestFile =
+            File(
+                sourceRoot,
+                "appforge.universal.json"
+            ).canonicalFile
+
+        require(
+            manifestFile.isFile &&
+                manifestFile.parentFile ==
+                    sourceRoot
+        ) {
+            "appforge.universal.json bulunamadı."
+        }
+
+        val manifest =
+            JSONObject(
+                manifestFile.readText(
+                    Charsets.UTF_8
+                )
+            )
+
+        require(
+            manifest.optString(
+                "format"
+            ) ==
+                "appforge-universal" &&
+            manifest.optInt(
+                "formatVersion",
+                0
+            ) ==
+                1
+        ) {
+            "AppForge Universal proje manifesti geçersiz."
+        }
+
+        val targets =
+            manifest.optJSONObject(
+                "targets"
+            )
+                ?: error(
+                    "Universal hedef tanımları bulunamadı."
+                )
+
+        fun targetRoot(
+            targetName: String
+        ): File {
+            val target =
+                targets.optJSONObject(
+                    targetName
+                )
+                    ?: error(
+                        "Universal $targetName hedefi bulunamadı."
+                    )
+
+            val relative =
+                target.optString(
+                    "root",
+                    ""
+                )
+                    .replace(
+                        '\\',
+                        '/'
+                    )
+                    .trim()
+
+            require(
+                relative.isNotBlank() &&
+                    !relative.startsWith(
+                        "/"
+                    ) &&
+                    !Regex(
+                        """^[A-Za-z]:"""
+                    ).containsMatchIn(
+                        relative
+                    )
+            ) {
+                "Universal $targetName hedef yolu geçersiz."
+            }
+
+            val parts =
+                relative
+                    .split(
+                        '/'
+                    )
+                    .filter {
+                        it.isNotBlank()
+                    }
+
+            require(
+                parts.isNotEmpty() &&
+                    parts.none {
+                        it ==
+                            "." ||
+                        it ==
+                            ".."
+                    }
+            ) {
+                "Universal $targetName hedefinde path traversal engellendi."
+            }
+
+            val resolved =
+                File(
+                    sourceRoot,
+                    parts.joinToString(
+                        File.separator
+                    )
+                ).canonicalFile
+
+            require(
+                resolved.isDirectory &&
+                    resolved.path.startsWith(
+                        sourceRoot.path +
+                            File.separator
+                    )
+            ) {
+                "Universal $targetName hedef klasörü bulunamadı."
+            }
+
+            return resolved
+        }
+
+        if (
+            wantsAndroidOutputs(
+                draft
+            )
+        ) {
+            val androidProject =
+                targetRoot(
+                    "android"
+                )
+
+            require(
+                File(
+                    androidProject,
+                    "settings.gradle"
+                ).isFile ||
+                File(
+                    androidProject,
+                    "settings.gradle.kts"
+                ).isFile
+            ) {
+                "Universal Android hedefinde settings.gradle(.kts) bulunamadı."
+            }
+
+            DeviceProjectIcon.install(
+                context,
+                draft,
+                androidProject
+            )
+
+            writeSdkFiles(
+                androidProject
+            )
+
+            val gradleVersion =
+                detectGradleVersion(
+                    androidProject
+                )
+
+            state.logs.add(
+                "🌐 Universal proje • Android native hedefi • Gradle $gradleVersion"
+            )
+
+            buildGradleProject(
+                context = context,
+                draft = draft,
+                project = androidProject,
+                workspace = androidProject,
+                rootfs = rootfs,
+                shell = shell,
+                state = state,
+                gradleVersion = gradleVersion
+            )
+        }
+
+        if (
+            DeviceArtifactKind.WINDOWS_EXE in
+                requestedOutputs(
+                    draft
+                )
+        ) {
+            val windowsSite =
+                targetRoot(
+                    "windows"
+                )
+
+            require(
+                File(
+                    windowsSite,
+                    "index.html"
+                ).isFile
+            ) {
+                "Universal Windows hedefinde index.html bulunamadı."
+            }
+
+            state.logs.add(
+                "🌐 Universal proje • Windows Portable EXE hedefi"
+            )
+
+            buildWindowsIfRequested(
+                context =
+                    context,
+                draft =
+                    draft,
+                siteRoot =
+                    windowsSite,
+                state =
+                    state
+            )
+        }
+    }
+
+
+    private fun staticWebToolchainReady(
+        rootfs: File
+    ): Boolean {
+        val base =
+            File(
+                rootfs,
+                "opt/appforge-device"
+            )
+
+        val requiredFiles =
+            listOf(
+                File(base, ".ready-v5"),
+                File(base, ".android-sdk-license-20260428"),
+                File(base, "android-sdk/platforms/android-37.0/android.jar"),
+                File(base, "android-sdk/build-tools/36.0.0/aapt2"),
+                File(base, "jdk-17/bin/java"),
+                File(base, "jdk-17/bin/javac"),
+                File(base, "gradle-9.3.1/bin/gradle"),
+                File(base, "ensure-gradle")
+            )
+
+        return requiredFiles.all {
+            it.isFile &&
+                it.length() >
+                    0L
+        }
+    }
+
 
     private fun buildStaticWeb(
         context: Context,
@@ -470,13 +1105,14 @@ object DeviceBuildEngine {
             )
         ) {
             buildWebWrapper(
-                context,
-                draft,
-                workspace,
-                rootfs,
-                shell,
-                state,
-                siteRoot
+                context = context,
+                draft = draft,
+                workspace = workspace,
+                rootfs = rootfs,
+                shell = shell,
+                state = state,
+                siteRoot = siteRoot,
+                fastWebBuild = true
             )
         }
 
@@ -487,6 +1123,296 @@ object DeviceBuildEngine {
             state = state
         )
     }
+
+    private fun buildWindowsNative(
+        context: Context,
+        draft: ProjectDraft,
+        workspace: File,
+        rootfs: File,
+        shell: LinuxShellEngine,
+        state: JobState
+    ) {
+        require(
+            DeviceArtifactKind.WINDOWS_NATIVE_EXE in
+                requestedOutputs(
+                    draft
+                )
+        ) {
+            "Windows Native build çağrıldı ancak Native EXE çıktısı seçilmedi."
+        }
+
+        require(
+            draft.sourceMode ==
+                SourceMode.LOCAL
+        ) {
+            "Windows Native EXE yalnız yerel kaynak için kullanılabilir."
+        }
+
+        val canonicalWorkspace =
+            workspace
+                .canonicalFile
+
+        val copiedSource =
+            File(
+                canonicalWorkspace,
+                "source"
+            ).canonicalFile
+
+        val cmakeLists =
+            copiedSource
+                .walkTopDown()
+                .maxDepth(8)
+                .firstOrNull {
+                    it.isFile &&
+                        it.name.equals(
+                            "CMakeLists.txt",
+                            ignoreCase = true
+                        )
+                }
+                ?: error(
+                    "Windows Native EXE için CMakeLists.txt bulunamadı."
+                )
+
+        val sourceRoot =
+            cmakeLists
+                .parentFile
+                .canonicalFile
+
+        require(
+            sourceRoot.path ==
+                copiedSource.path ||
+                sourceRoot.path.startsWith(
+                    copiedSource.path +
+                        File.separator
+                )
+        ) {
+            "Windows Native kaynak kökü çalışma alanı dışına çıktı."
+        }
+
+        val relative =
+            sourceRoot
+                .relativeTo(
+                    canonicalWorkspace
+                )
+                .invariantSeparatorsPath
+
+        require(
+            relative ==
+                "source" ||
+                relative.startsWith(
+                    "source/"
+                )
+        ) {
+            "Windows Native kaynak yolu /workspace/source altında değil."
+        }
+
+        state.logs.add(
+            "🪟 Windows Native EXE • CMake/MinGW-w64 x64 derleme başlıyor."
+        )
+
+        state.progress =
+            maxOf(
+                state.progress,
+                40
+            )
+
+        runShellBlocking(
+            shell = shell,
+            rootfs = rootfs,
+            workspace = workspace,
+            state = state,
+            command =
+                "APPFORGE_WINDOWS_NATIVE_SOURCE=${sh("/workspace/$relative")} " +
+                    "/bin/sh /workspace/runtime/build-windows-native.sh",
+            suffix =
+                "windows-native-build"
+        )
+
+        val marker =
+            File(
+                workspace,
+                ".appforge-windows-native-output"
+            )
+
+        require(
+            marker.isFile &&
+                marker.length() in
+                    1L..4096L
+        ) {
+            "Windows Native çıktı işaretçisi bulunamadı."
+        }
+
+        val relativeOutput =
+            marker
+                .readText(
+                    Charsets.UTF_8
+                )
+                .trim()
+
+        require(
+            relativeOutput.isNotBlank() &&
+                !relativeOutput.startsWith(
+                    "/"
+                ) &&
+                !relativeOutput.contains(
+                    ".."
+                )
+        ) {
+            "Windows Native çıktı yolu geçersiz."
+        }
+
+        val sourceExe =
+            File(
+                canonicalWorkspace,
+                relativeOutput
+            ).canonicalFile
+
+        require(
+            sourceExe.path.startsWith(
+                canonicalWorkspace.path +
+                    File.separator
+            ) &&
+                sourceExe.isFile &&
+                sourceExe.length() >
+                    0L
+        ) {
+            "Windows Native EXE çalışma alanında bulunamadı."
+        }
+
+        verifyWindowsX64Pe(
+            sourceExe
+        )
+
+        val artifactRoot =
+            File(
+                context.filesDir,
+                "device-build/artifacts/${state.id}"
+            ).apply {
+                mkdirs()
+            }
+
+        val target =
+            File(
+                artifactRoot,
+                "${safeName(draft.appName)}-${state.buildNo}.exe"
+            )
+
+        sourceExe.copyTo(
+            target,
+            overwrite = true
+        )
+
+        verifyWindowsX64Pe(
+            target
+        )
+
+        state.exe =
+            target
+
+        state.progress =
+            maxOf(
+                state.progress,
+                90
+            )
+
+        state.logs.add(
+            "✅ Windows Native x64 EXE hazır • fiziksel Windows kabulü ayrıca yapılmalı."
+        )
+    }
+
+
+    private fun verifyWindowsX64Pe(
+        file: File
+    ) {
+        require(
+            file.isFile &&
+                file.length() >=
+                    256L
+        ) {
+            "Windows Native EXE boş veya eksik."
+        }
+
+        RandomAccessFile(
+            file,
+            "r"
+        ).use {
+            pe ->
+
+            fun u16(
+                at: Long
+            ): Int {
+                pe.seek(
+                    at
+                )
+
+                val lo =
+                    pe.readUnsignedByte()
+
+                val hi =
+                    pe.readUnsignedByte()
+
+                return lo or
+                    (hi shl 8)
+            }
+
+            fun u32(
+                at: Long
+            ): Long =
+                u16(
+                    at
+                ).toLong() or
+                    (
+                        u16(
+                            at +
+                                2L
+                        ).toLong() shl
+                            16
+                    )
+
+            require(
+                u16(
+                    0L
+                ) ==
+                    0x5A4D
+            ) {
+                "Windows Native MZ başlığı geçersiz."
+            }
+
+            val nt =
+                u32(
+                    0x3cL
+                )
+
+            require(
+                nt in
+                    64L..
+                    (file.length() -
+                        24L)
+            ) {
+                "Windows Native PE offset geçersiz."
+            }
+
+            require(
+                u32(
+                    nt
+                ) ==
+                    0x00004550L
+            ) {
+                "Windows Native PE imzası geçersiz."
+            }
+
+            require(
+                u16(
+                    nt +
+                        4L
+                ) ==
+                    0x8664
+            ) {
+                "Windows Native çıktı x86-64 PE değil."
+            }
+        }
+    }
+
 
     private fun buildWindowsIfRequested(
         context: Context,
@@ -644,7 +1570,8 @@ object DeviceBuildEngine {
         shell: LinuxShellEngine,
         state: JobState,
         siteRoot: File?,
-        nodeWebAssets: Boolean = false
+        nodeWebAssets: Boolean = false,
+        fastWebBuild: Boolean = false
     ) {
         val project = File(workspace, "android-wrapper")
         project.deleteRecursively()
@@ -701,10 +1628,25 @@ object DeviceBuildEngine {
             writeText(webManifest(draft))
         }
         DeviceProjectIcon.install(context, draft, project)
-        writeSdkFiles(project)
+        writeSdkFiles(
+            project = project,
+            enableBuildCache =
+                fastWebBuild
+        )
 
         state.logs.add("🤖 Android paketi cihazda oluşturuluyor.")
-        buildGradleProject(context, draft, project, workspace, rootfs, shell, state, "9.3.1")
+        buildGradleProject(
+            context = context,
+            draft = draft,
+            project = project,
+            workspace = workspace,
+            rootfs = rootfs,
+            shell = shell,
+            state = state,
+            gradleVersion = "9.3.1",
+            useBuildCache =
+                fastWebBuild
+        )
     }
 
     private fun buildAndroidProject(
@@ -725,6 +1667,75 @@ object DeviceBuildEngine {
         state.logs.add("🤖 Native Android proje • Gradle $gradleVersion")
         buildGradleProject(context, draft, project, workspace, rootfs, shell, state, gradleVersion)
     }
+
+    private fun buildExpoProject(
+        context: Context,
+        draft: ProjectDraft,
+        workspace: File,
+        rootfs: File,
+        shell: LinuxShellEngine,
+        state: JobState
+    ) {
+        state.logs.add(
+            "🧪 Expo 54 / React Native 0.81 cihaz motoru hazırlanıyor."
+        )
+        advanceProgress(state, 32, "Expo kaynakları hazırlanıyor")
+
+        runShellBlocking(
+            shell = shell,
+            rootfs = rootfs,
+            workspace = workspace,
+            state = state,
+            command =
+                "APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} " +
+                    "/bin/sh /workspace/runtime/build-expo.sh",
+            suffix = "expo-prebuild"
+        )
+        advanceProgress(state, 52, "Expo Android projesi hazır")
+
+        val project =
+            File(
+                workspace,
+                "source/android"
+            )
+
+        require(
+            File(project, "settings.gradle").isFile
+        ) {
+            "Expo prebuild Android settings.gradle üretmedi."
+        }
+
+        writeSdkFiles(
+            project = project,
+            sdkRoot = "/opt/appforge-device/expo-sdk-36"
+        )
+
+        state.logs.add(
+            "🧪 Expo native Android proje Gradle ile derleniyor."
+        )
+
+        state.logs.add(
+            "APPFORGE_EXPO_STANDALONE_VARIANT=AppforgeAcceptance"
+        )
+
+        state.logs.add(
+            "APPFORGE_EXPO_GRADLE_SDK_ROOT=/opt/appforge-device/expo-sdk-36"
+        )
+
+        buildGradleProject(
+            context = context,
+            draft = draft,
+            project = project,
+            workspace = workspace,
+            rootfs = rootfs,
+            shell = shell,
+            state = state,
+            gradleVersion = detectGradleVersion(project),
+            nodeRequired = true,
+            variantOverride = "AppforgeAcceptance"
+        )
+    }
+
 
     private fun buildPythonProject(
         context: Context,
@@ -795,20 +1806,72 @@ object DeviceBuildEngine {
         rootfs: File,
         shell: LinuxShellEngine,
         state: JobState,
-        gradleVersion: String
+        gradleVersion: String,
+        nodeRequired: Boolean = false,
+        variantOverride: String? = null,
+        useBuildCache: Boolean = false
     ) {
-        val relativeProject = project.relativeTo(workspace).invariantSeparatorsPath
+        val safeWorkspace =
+            workspace
+                .canonicalFile
+
+        val safeProject =
+            project
+                .canonicalFile
+
+        require(
+            safeProject == safeWorkspace ||
+                safeProject.path.startsWith(
+                    safeWorkspace.path +
+                        File.separator
+                )
+        ) {
+            "Gradle proje kökü çalışma alanı dışında."
+        }
+
+        val relativeProject =
+            safeProject
+                .relativeTo(
+                    safeWorkspace
+                )
+                .invariantSeparatorsPath
+                .ifBlank {
+                    "."
+                }
+
+        state.logs.add(
+            "APPFORGE_GRADLE_MOUNT_SCOPE=" +
+                if (
+                    safeProject ==
+                        safeWorkspace
+                ) {
+                    "PROJECT_ROOT"
+                } else {
+                    "WORKSPACE_ROOT"
+                }
+        )
+
+        state.logs.add(
+            "APPFORGE_GRADLE_PROJECT_REL=" +
+                relativeProject
+        )
+        advanceProgress(state, 56, "Gradle hazırlanıyor")
         val gradlePath = runShellBlocking(
             shell,
             rootfs,
-            workspace,
+            safeWorkspace,
             state,
             "APPFORGE_DEVICE_OFFLINE=${if (state.offline) 1 else 0} /opt/appforge-device/ensure-gradle ${sh(gradleVersion)}",
             "gradle-$gradleVersion"
         ).lineSequence().lastOrNull { it.isNotBlank() }?.trim()
             ?: error("Gradle hazırlanamadı.")
+        advanceProgress(state, 60, "Gradle hazır")
 
-        val variant = if (draft.signingMode == SigningMode.CUSTOM) "Release" else "Debug"
+        val variant =
+            variantOverride
+                ?: if (
+                    draft.signingMode == SigningMode.CUSTOM
+                ) "Release" else "Debug"
 
         val requestedArtifacts =
             requestedOutputs(
@@ -837,7 +1900,7 @@ object DeviceBuildEngine {
         }
 
         val signingArgs = if (draft.signingMode == SigningMode.CUSTOM) {
-            val key = copyKeystore(context, draft, workspace)
+            val key = copyKeystore(context, draft, safeWorkspace)
             listOf(
                 "-Pandroid.injected.signing.store.file=/workspace/${key.name}",
                 "-Pandroid.injected.signing.store.password=${draft.storePassword}",
@@ -846,42 +1909,429 @@ object DeviceBuildEngine {
             ).joinToString(" ") { sh(it) }
         } else ""
 
-        state.progress = 65
+        val androidSdkRoot =
+            if (nodeRequired) {
+                "/opt/appforge-device/expo-sdk-36"
+            } else {
+                "/opt/appforge-device/android-sdk"
+            }
+
+        advanceProgress(state, 65, "Native derleme çalışıyor")
 
         val command = buildString {
             append("export JAVA_HOME=/opt/appforge-device/jdk-17; ")
-            append("export PATH=/opt/appforge-device/jdk-17/bin:\$PATH; ")
-            append("export ANDROID_SDK_ROOT=/opt/appforge-device/android-sdk; ")
-            append("export ANDROID_HOME=/opt/appforge-device/android-sdk; ")
+            if (nodeRequired) {
+                append("export PATH=/opt/appforge-device/node-22.23.3/bin:/opt/appforge-device/jdk-17/bin:\$PATH; ")
+                append("export NODE_ENV=production; ")
+                append("export CI=1; ")
+                append("export EXPO_NO_TELEMETRY=1; ")
+            } else {
+                append("export PATH=/opt/appforge-device/jdk-17/bin:\$PATH; ")
+            }
+            append("export ANDROID_SDK_ROOT=${sh(androidSdkRoot)}; ")
+            append("export ANDROID_HOME=${sh(androidSdkRoot)}; ")
             append("export GRADLE_USER_HOME=/root/.gradle-appforge; ")
+
+            if (nodeRequired) {
+                append(
+                    "APPFORGE_EXPO_NATIVE_ROOT=\$(grep -o " +
+                        "'/opt/appforge-device/expo-native-gradle-work/[0-9][0-9]*' " +
+                        sh("/workspace/$relativeProject/build.gradle") +
+                        " | tail -n 1); "
+                )
+
+                append(
+                    "if [ -z \"\$APPFORGE_EXPO_NATIVE_ROOT\" ]; then " +
+                        "echo APPFORGE_EXPO_NATIVE_ROOT_DISCOVERY=FAIL; " +
+                        "exit 88; " +
+                        "fi; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_NATIVE_ROOT=\$APPFORGE_EXPO_NATIVE_ROOT\"; "
+                )
+
+                append(
+                    "export APPFORGE_EXPO_NATIVE_ROOT; "
+                )
+
+                append(
+                    "APPFORGE_EXPO_EXEC_PROBE=" +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT/.appforge-exec-probe-\$\$\"; "
+                )
+
+                append(
+                    "printf '#!/bin/sh\\nexit 0\\n' > " +
+                        "\"\$APPFORGE_EXPO_EXEC_PROBE\"; "
+                )
+
+                append(
+                    "chmod 0755 \"\$APPFORGE_EXPO_EXEC_PROBE\"; "
+                )
+
+                append(
+                    "if \"\$APPFORGE_EXPO_EXEC_PROBE\"; then " +
+                        "echo APPFORGE_EXPO_ROOTFS_EXEC_PROBE=PASS; " +
+                        "else " +
+                        "echo APPFORGE_EXPO_ROOTFS_EXEC_PROBE=FAIL; " +
+                        "stat -c 'APPFORGE_EXPO_ROOTFS_PROBE_MODE=%a' " +
+                        "\"\$APPFORGE_EXPO_EXEC_PROBE\" 2>/dev/null || true; " +
+                        "rm -f \"\$APPFORGE_EXPO_EXEC_PROBE\"; " +
+                        "exit 89; " +
+                        "fi; "
+                )
+
+                append(
+                    "rm -f \"\$APPFORGE_EXPO_EXEC_PROBE\"; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_NATIVE_ROOT_MODE=\$(stat -c '%a' \"\$APPFORGE_EXPO_NATIVE_ROOT\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                append("set +e; ")
+            }
+
+            append(
+                "echo APPFORGE_GRADLE_WORKSPACE_MOUNT=/workspace; "
+            )
+
+            append("APPFORGE_GRADLE_PROJECT_DIR=")
+            append(
+                sh(
+                    "/workspace/$relativeProject"
+                )
+            )
+            append("; ")
+
+            append(
+                "test -d \"\$APPFORGE_GRADLE_PROJECT_DIR\" || { " +
+                    "echo APPFORGE_GRADLE_PROJECT_DIR_MISSING; " +
+                    "exit 90; " +
+                    "}; "
+            )
+
+            append(
+                "if [ ! -f \"\$APPFORGE_GRADLE_PROJECT_DIR/settings.gradle\" ] && " +
+                    "[ ! -f \"\$APPFORGE_GRADLE_PROJECT_DIR/settings.gradle.kts\" ]; then " +
+                    "echo APPFORGE_GRADLE_SETTINGS_MISSING; " +
+                    "exit 91; " +
+                    "fi; "
+            )
+
+            append(
+                "cd \"\$APPFORGE_GRADLE_PROJECT_DIR\"; "
+            )
+
+            append(
+                "echo \"APPFORGE_GRADLE_PROJECT_CWD=\$(pwd)\"; "
+            )
+
             append(sh(gradlePath))
-            append(" -p ")
-            append(sh("/workspace/$relativeProject"))
-            append(" --no-daemon --stacktrace ")
+            append(" -p . --no-daemon --stacktrace ")
+
+            if (useBuildCache) {
+                append("--build-cache ")
+            }
+
+            if (nodeRequired) {
+                // APPFORGE_EXPO_AGP_RUNTIME_INIT_V1
+                append(
+                    "--init-script " +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT/appforge-agp-runtime.init.gradle\" "
+                )
+
+                // APPFORGE_EXPO_PREFAB_EXEC_SECURITY_SHIM_V1
+                append(
+                    "--init-script " +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT/appforge-prefab-exec-shim.init.gradle\" "
+                )
+            }
+
             if (state.offline) append("--offline ")
             append(tasks.joinToString(" "))
             if (signingArgs.isNotBlank()) append(" $signingArgs")
+
+            if (nodeRequired) {
+                append("; APPFORGE_GRADLE_RC=\$?; ")
+
+                append(
+                    "if [ \"\$APPFORGE_GRADLE_RC\" -ne 0 ]; then "
+                )
+
+                append(
+                    "APPFORGE_EXPO_PREFAB_COMMAND=\$(find " +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT\" " +
+                        "-type f -name prefab_command -print 2>/dev/null | head -n 1); "
+                )
+
+                append(
+                    "if [ -n \"\$APPFORGE_EXPO_PREFAB_COMMAND\" ]; then "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_COMMAND_PATH=\$APPFORGE_EXPO_PREFAB_COMMAND\"; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_MODE=\$(stat -c '%a' \"\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_MODE_LONG=\$(stat -c '%A' \"\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_OWNER=\$(stat -c '%U:%G' \"\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_PARENT_MODE=\$(stat -c '%a' \"\$(dirname \"\$APPFORGE_EXPO_PREFAB_COMMAND\")\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                append(
+                    "if [ -x \"\$APPFORGE_EXPO_PREFAB_COMMAND\" ]; then " +
+                        "echo APPFORGE_EXPO_PREFAB_EXECUTABLE=YES; " +
+                        "else " +
+                        "echo APPFORGE_EXPO_PREFAB_EXECUTABLE=NO; " +
+                        "fi; "
+                )
+
+                append(
+                    "if [ -r \"\$APPFORGE_EXPO_PREFAB_COMMAND\" ]; then " +
+                        "echo APPFORGE_EXPO_PREFAB_READABLE=YES; " +
+                        "else " +
+                        "echo APPFORGE_EXPO_PREFAB_READABLE=NO; " +
+                        "fi; "
+                )
+
+                append(
+                    "if [ \"\$(head -c 2 \"\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null || true)\" = '#!' ]; then " +
+                        "echo APPFORGE_EXPO_PREFAB_SHEBANG=YES; " +
+                        "else " +
+                        "echo APPFORGE_EXPO_PREFAB_SHEBANG=NO; " +
+                        "fi; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_FILE_TYPE=\$(file -b \"\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                // APPFORGE_EXPO_PREFAB_EXECUTION_DIAGNOSTICS_V1
+
+                append(
+                    "APPFORGE_EXPO_AGP_VERSION_FILE=" +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT/appforge-agp-runtime-version.txt\"; "
+                )
+
+                append(
+                    "if [ -s \"\$APPFORGE_EXPO_AGP_VERSION_FILE\" ]; then " +
+                        "echo \"APPFORGE_EXPO_AGP_RUNTIME_VERSION=\$(tr -d '\\r\\n' < \"\$APPFORGE_EXPO_AGP_VERSION_FILE\")\"; " +
+                        "else " +
+                        "echo APPFORGE_EXPO_AGP_RUNTIME_VERSION=UNKNOWN; " +
+                        "fi; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_LINE_COUNT=\$(wc -l < \"\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null || echo unknown)\"; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_SHA256=\$(sha256sum \"\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null | cut -d ' ' -f 1)\"; "
+                )
+
+                append(
+                    "APPFORGE_EXPO_PREFAB_FIRST_LINE=\$(head -n 1 " +
+                        "\"\$APPFORGE_EXPO_PREFAB_COMMAND\" 2>/dev/null | " +
+                        "sed 's#/opt/appforge-device#[DEVICE]#g; " +
+                        "s#/workspace/source#[SOURCE]#g' | cut -c 1-240); "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_PREFAB_FIRST_LINE=\$APPFORGE_EXPO_PREFAB_FIRST_LINE\"; "
+                )
+
+                append(
+                    "APPFORGE_EXPO_PREFAB_CWD=" +
+                        "/workspace/source/node_modules/expo-modules-core/android; "
+                )
+
+                append(
+                    "APPFORGE_EXPO_JAVA_PROBE=" +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT/AppForgeProcessProbe.java\"; "
+                )
+
+                append(
+                    "APPFORGE_EXPO_JAVA_PROBE_LOG=" +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT/appforge-java-prefab-probe.log\"; "
+                )
+
+                append(
+                    "set +e; " +
+                        "\"\$JAVA_HOME/bin/java\" " +
+                        "\"\$APPFORGE_EXPO_JAVA_PROBE\" " +
+                        "\"\$APPFORGE_EXPO_PREFAB_COMMAND\" " +
+                        "\"\$APPFORGE_EXPO_PREFAB_CWD\" " +
+                        "> \"\$APPFORGE_EXPO_JAVA_PROBE_LOG\" 2>&1; " +
+                        "APPFORGE_EXPO_JAVA_PROBE_RC=\$?; "
+                )
+
+                append(
+                    "grep '^APPFORGE_EXPO_JAVA_PREFAB_' " +
+                        "\"\$APPFORGE_EXPO_JAVA_PROBE_LOG\" 2>/dev/null || true; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_JAVA_PREFAB_PROBE_RC=\$APPFORGE_EXPO_JAVA_PROBE_RC\"; "
+                )
+
+                append(
+                    "rm -f \"\$APPFORGE_EXPO_JAVA_PROBE_LOG\"; "
+                )
+
+                append(
+                    "APPFORGE_EXPO_SH_PROBE_LOG=" +
+                        "\"\$APPFORGE_EXPO_NATIVE_ROOT/appforge-sh-prefab-probe.log\"; "
+                )
+
+                append(
+                    "(cd \"\$APPFORGE_EXPO_PREFAB_CWD\" && " +
+                        "/bin/sh \"\$APPFORGE_EXPO_PREFAB_COMMAND\") " +
+                        "> \"\$APPFORGE_EXPO_SH_PROBE_LOG\" 2>&1; " +
+                        "APPFORGE_EXPO_SH_PROBE_RC=\$?; "
+                )
+
+                append(
+                    "echo \"APPFORGE_EXPO_SH_PREFAB_PROBE_RC=\$APPFORGE_EXPO_SH_PROBE_RC\"; "
+                )
+
+                append(
+                    "if [ \"\$APPFORGE_EXPO_SH_PROBE_RC\" -eq 0 ]; then " +
+                        "echo APPFORGE_EXPO_SH_PREFAB_PROBE=PASS; " +
+                        "else " +
+                        "echo APPFORGE_EXPO_SH_PREFAB_PROBE=FAIL; " +
+                        "echo APPFORGE_EXPO_SH_PREFAB_LOG_BEGIN; " +
+                        "sed 's#/opt/appforge-device#[DEVICE]#g; " +
+                        "s#/workspace/source#[SOURCE]#g' " +
+                        "\"\$APPFORGE_EXPO_SH_PROBE_LOG\" 2>/dev/null | " +
+                        "head -n 20 || true; " +
+                        "echo APPFORGE_EXPO_SH_PREFAB_LOG_END; " +
+                        "fi; "
+                )
+
+                append(
+                    "rm -f \"\$APPFORGE_EXPO_SH_PROBE_LOG\"; "
+                )
+
+                append(
+                    "else " +
+                        "echo APPFORGE_EXPO_PREFAB_COMMAND=NOT_FOUND; " +
+                        "fi; "
+                )
+
+                append("fi; ")
+                append("exit \"\$APPFORGE_GRADLE_RC\"")
+            }
         }
 
-        runShellBlocking(shell, rootfs, workspace, state, command, "android-build")
-        state.progress = 90
+        runShellBlocking(shell, rootfs, safeWorkspace, state, command, "android-build")
+        advanceProgress(state, 90, "Gradle tamamlandı")
 
-        val artifactFiles = project.walkTopDown().maxDepth(14).filter {
-            it.isFile && (it.extension.equals("apk", true) || it.extension.equals("aab", true))
-        }.toList()
+        /*
+         * APPFORGE_DETERMINISTIC_GRADLE_ARTIFACT_SELECTION_V22
+         *
+         * Gradle was previously followed by a project-wide APK/AAB scan
+         * and max(lastModified). That could select a stale artifact from
+         * another module or variant.
+         *
+         * Selection is now scoped to the exact :app Gradle outputs and
+         * requested variant.
+         */
+        val artifactRoot =
+            File(
+                context.filesDir,
+                "device-build/artifacts/${state.id}"
+            )
+                .apply {
+                    mkdirs()
+                }
 
-        val artifactRoot = File(context.filesDir, "device-build/artifacts/${state.id}").apply { mkdirs() }
+        if (
+            DeviceArtifactKind.APK in
+                requestedArtifacts
+        ) {
+            GradleArtifactSelector
+                .selectApk(
+                    project =
+                        project,
+                    variant =
+                        variant
+                )
+                ?.let {
+                    source ->
 
-        artifactFiles.filter { it.extension.equals("apk", true) }.maxByOrNull { it.lastModified() }?.let { source ->
-            val target = File(artifactRoot, "${safeName(draft.appName)}-${state.buildNo}.apk")
-            source.copyTo(target, overwrite = true)
-            state.apk = target
+                    state.logs.add(
+                        "📦 Deterministik APK • " +
+                            source
+                                .relativeTo(
+                                    project
+                                )
+                                .invariantSeparatorsPath
+                    )
+
+                    val target =
+                        File(
+                            artifactRoot,
+                            "${safeName(draft.appName)}-${state.buildNo}.apk"
+                        )
+
+                    source.copyTo(
+                        target,
+                        overwrite = true
+                    )
+
+                    state.apk =
+                        target
+                }
         }
 
-        artifactFiles.filter { it.extension.equals("aab", true) }.maxByOrNull { it.lastModified() }?.let { source ->
-            val target = File(artifactRoot, "${safeName(draft.appName)}-${state.buildNo}.aab")
-            source.copyTo(target, overwrite = true)
-            state.aab = target
+        if (
+            DeviceArtifactKind.AAB in
+                requestedArtifacts
+        ) {
+            GradleArtifactSelector
+                .selectAab(
+                    project =
+                        project,
+                    variant =
+                        variant
+                )
+                ?.let {
+                    source ->
+
+                    state.logs.add(
+                        "📦 Deterministik AAB • " +
+                            source
+                                .relativeTo(
+                                    project
+                                )
+                                .invariantSeparatorsPath
+                    )
+
+                    val target =
+                        File(
+                            artifactRoot,
+                            "${safeName(draft.appName)}-${state.buildNo}.aab"
+                        )
+
+                    source.copyTo(
+                        target,
+                        overwrite = true
+                    )
+
+                    state.aab =
+                        target
+                }
         }
 
         if (
@@ -903,19 +2353,98 @@ object DeviceBuildEngine {
                 "Gradle tamamlandı ancak AAB bulunamadı."
             }
         }
+        advanceProgress(state, 93, "Artefaktlar hazır")
     }
 
-    private fun copyKeystore(context: Context, draft: ProjectDraft, workspace: File): File {
-        val uri = draft.keystoreUri ?: error("Release keystore seçilmedi.")
-        require(draft.keyAlias.isNotBlank() && draft.storePassword.isNotBlank() && draft.keyPassword.isNotBlank()) {
+    /*
+     * MANAGED_KEYSTORE_BUILD_SOURCE_V1_5
+     *
+     * Builder can select SAF content:// or AppForge-vault file:// sources.
+     */
+    private fun copyKeystore(
+        context: Context,
+        draft: ProjectDraft,
+        workspace: File
+    ): File {
+        val rawUri =
+            draft.keystoreUri
+                ?: error(
+                    "Release keystore seçilmedi."
+                )
+
+        require(
+            draft.keyAlias.isNotBlank() &&
+                draft.storePassword.isNotBlank() &&
+                draft.keyPassword.isNotBlank()
+        ) {
             "Release signing bilgileri eksik."
         }
 
-        val target = File(workspace, "appforge-release.keystore")
-        context.contentResolver.openInputStream(Uri.parse(uri))?.use { input ->
-            target.outputStream().use { output -> input.copyTo(output) }
-        } ?: error("Keystore açılamadı.")
-        require(target.length() > 0L) { "Keystore boş." }
+        val target =
+            File(
+                workspace,
+                "appforge-release.keystore"
+            )
+
+        val parsed =
+            Uri.parse(
+                rawUri
+            )
+
+        val input =
+            if (
+                parsed.scheme.equals(
+                    "file",
+                    ignoreCase = true
+                )
+            ) {
+                val source =
+                    File(
+                        parsed.path
+                            ?: error(
+                                "Yönetilen keystore yolu geçersiz."
+                            )
+                    )
+
+                require(
+                    source.isFile &&
+                        source.length() >
+                            0L
+                ) {
+                    "Yönetilen keystore dosyası bulunamadı."
+                }
+
+                source.inputStream()
+            } else {
+                context.contentResolver
+                    .openInputStream(
+                        parsed
+                    )
+                    ?: error(
+                        "Keystore açılamadı."
+                    )
+            }
+
+        input.use {
+            source ->
+
+            target.outputStream()
+                .use {
+                    output ->
+
+                    source.copyTo(
+                        output
+                    )
+                }
+        }
+
+        require(
+            target.length() >
+                0L
+        ) {
+            "Keystore boş."
+        }
+
         return target
     }
 
@@ -950,20 +2479,30 @@ object DeviceBuildEngine {
         )
     }
 
-    private fun writeSdkFiles(project: File) {
-        File(project, "local.properties").writeText("sdk.dir=/opt/appforge-device/android-sdk\n")
+    private fun writeSdkFiles(
+        project: File,
+        sdkRoot: String = "/opt/appforge-device/android-sdk",
+        enableBuildCache: Boolean = false
+    ) {
+        File(project, "local.properties").writeText("sdk.dir=$sdkRoot\n")
         val gradleProperties = File(project, "gradle.properties")
         val existing = if (gradleProperties.isFile) gradleProperties.readText() else ""
         val filtered = existing.lineSequence().filterNot {
             it.startsWith("android.aapt2FromMavenOverride=") ||
                 it.startsWith("org.gradle.workers.max=") ||
-                it.startsWith("org.gradle.jvmargs=")
+                it.startsWith("org.gradle.jvmargs=") ||
+                it.startsWith("org.gradle.caching=")
         }.joinToString("\n")
         gradleProperties.writeText(
             filtered.trimEnd() + "\n" +
-                "android.aapt2FromMavenOverride=/opt/appforge-device/android-sdk/build-tools/36.0.0/aapt2\n" +
+                "android.aapt2FromMavenOverride=$sdkRoot/build-tools/36.0.0/aapt2\n" +
                 "org.gradle.workers.max=2\n" +
-                "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\n"
+                "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\n" +
+                if (enableBuildCache) {
+                    "org.gradle.caching=true\n"
+                } else {
+                    ""
+                }
         )
     }
 
@@ -1048,6 +2587,9 @@ object DeviceBuildEngine {
 
         }
         val orientation = draft.orientation.takeIf { it in setOf("portrait", "landscape", "unspecified") } ?: "unspecified"
+        val usesCleartextTraffic =
+            draft.sourceMode == SourceMode.URL &&
+            draft.webUrl.trim().startsWith("http://", true)
         val deepLink = if (draft.deepLinkEnabled) {
             """
             <intent-filter>
@@ -1068,7 +2610,7 @@ object DeviceBuildEngine {
                     android:hardwareAccelerated="true"
                     android:label="${xml(draft.appName.ifBlank { "AppForge App" })}"
                     android:theme="@android:style/Theme.Material.NoActionBar"
-                    android:usesCleartextTraffic="false">
+                    android:usesCleartextTraffic="$usesCleartextTraffic">
                     <activity
                         android:name="com.appforge.runtime.FastActivity"
                         android:exported="true"
@@ -1128,13 +2670,91 @@ object DeviceBuildEngine {
         )
         state.shellSessionId = null
 
-        result.output.lineSequence()
-            .filter { it.isNotBlank() }
-            .toList()
-            .takeLast(120)
-            .forEach {
-            state.logs.add(it.take(700))
+        val outputLines =
+            result.output
+                .lineSequence()
+                .filter {
+                    it.isNotBlank()
+                }
+                .toList()
+
+        /*
+         * Long Gradle/Kotlin stack traces can push the original compiler
+         * diagnostics out of the normal 120-line UI tail. Preserve the
+         * earliest useful compiler errors before adding the regular tail.
+         */
+        val compilerDiagnostics =
+            if (
+                result.exitCode !=
+                    0
+            ) {
+                outputLines
+                    .filter {
+                        line ->
+                        val value =
+                            line.trim()
+
+                        value.startsWith("e:") ||
+                            value.startsWith("error:") ||
+                            value.contains("Unresolved reference") ||
+                            value.contains("Cannot access") ||
+                            value.contains("Type mismatch") ||
+                            value.contains("Cannot infer type") ||
+                            value.contains("Overload resolution ambiguity") ||
+                            value.contains("None of the following candidates") ||
+                            value.contains("Execution failed for task") ||
+                            value.contains("Compilation error") ||
+                            value.contains("CMake Error", ignoreCase = true) ||
+                            value.contains("[CXX", ignoreCase = true) ||
+                            value.startsWith("ninja:", ignoreCase = true) ||
+                            value.contains("NDK", ignoreCase = true) ||
+                            value.contains("cmake", ignoreCase = true) ||
+                            value.contains("Exec format error", ignoreCase = true) ||
+                            value.contains("No such file or directory", ignoreCase = true) ||
+                            value.contains("A problem occurred starting process", ignoreCase = true) ||
+                            value.contains("Process 'command", ignoreCase = true) ||
+                            value.startsWith("Caused by:")
+                    }
+                    .take(
+                        80
+                    )
+            } else {
+                emptyList()
+            }
+
+        if (
+            compilerDiagnostics
+                .isNotEmpty()
+        ) {
+            state.logs.add(
+                "🔎 APPFORGE_COMPILER_DIAGNOSTICS_BEGIN"
+            )
+
+            compilerDiagnostics
+                .forEach {
+                    line ->
+                    state.logs.add(
+                        "DIAG ${line.take(700)}"
+                    )
+                }
+
+            state.logs.add(
+                "🔎 APPFORGE_COMPILER_DIAGNOSTICS_END"
+            )
         }
+
+        outputLines
+            .takeLast(
+                120
+            )
+            .forEach {
+                line ->
+                state.logs.add(
+                    line.take(
+                        700
+                    )
+                )
+            }
 
         check(!result.timedOut) { "Cihaz build komutu zaman aşımına uğradı." }
         check(result.exitCode == 0) {

@@ -42,7 +42,8 @@ internal object AppForgeAgentWorkspaceTransaction {
 
     fun apply(
         workspace: File,
-        project: AppForgeGeneratedProject
+        project: AppForgeGeneratedProject,
+        expectedHashes: Map<String, String?>? = null
     ): AppForgeWorkspaceApplyResult {
         val root = requireWorkspace(workspace)
         require(project.files.isNotEmpty()) { "Uygulanacak proje dosyası yok." }
@@ -61,13 +62,18 @@ internal object AppForgeAgentWorkspaceTransaction {
         }
 
         val id = UUID.randomUUID().toString()
-        val control = File(root, CONTROL_DIR).apply { mkdirs() }
+        val control = File(root, CONTROL_DIR)
+        require(!Files.isSymbolicLink(control.toPath()) && control.canonicalFile.parentFile == root) { "Unsafe checkpoint directory." }
+        control.mkdirs()
+        require(!Files.isSymbolicLink(File(control, "staging").toPath()) && !Files.isSymbolicLink(File(control, "checkpoints").toPath())) { "Unsafe checkpoint parent." }
         val staging = File(control, "staging/$id")
         val checkpointDir = File(control, "checkpoints/$id")
         val backupRoot = File(checkpointDir, "backup")
         require(staging.mkdirs()) { "Staging klasörü oluşturulamadı." }
         require(backupRoot.mkdirs()) { "Checkpoint klasörü oluşturulamadı." }
 
+        var recoveryCheckpoint: AppForgeWorkspaceCheckpoint? = null
+        val committedHashes = linkedMapOf<String, String?>()
         try {
             files.forEach { (relative, generated) ->
                 val staged = safeResolve(staging, relative)
@@ -83,6 +89,9 @@ internal object AppForgeAgentWorkspaceTransaction {
 
             files.forEach { (relative, _) ->
                 val target = safeResolve(root, relative)
+                expectedHashes?.let { guards ->
+                    require(guards.containsKey(relative) && currentDigest(target) == guards[relative]) { "Stale file conflict: $relative" }
+                }
                 val existed = target.exists()
                 require(!existed || target.isFile) {
                     "Hedef normal dosya değil: $relative"
@@ -113,18 +122,24 @@ internal object AppForgeAgentWorkspaceTransaction {
 
             val manifest = File(checkpointDir, "manifest.tsv")
             manifest.writeText(manifestLines.joinToString("\n", postfix = "\n"), Charsets.UTF_8)
+            recoveryCheckpoint = AppForgeWorkspaceCheckpoint(id, root.canonicalPath,
+                manifest.canonicalPath, project.digestSha256)
 
             files.forEach { (relative, generated) ->
                 val staged = safeResolve(staging, relative)
                 val target = safeResolve(root, relative)
+                expectedHashes?.let { guards ->
+                    require(currentDigest(target) == guards[relative]) { "Stale file conflict before commit: $relative" }
+                }
                 target.parentFile?.mkdirs()
 
                 val temporary = File(target.parentFile, ".${target.name}.appforge-${id.take(8)}.tmp")
-                temporary.writeText(generated.content, Charsets.UTF_8)
+                Files.write(temporary.toPath(), generated.content.toByteArray(Charsets.UTF_8), java.nio.file.StandardOpenOption.CREATE_NEW, java.nio.file.StandardOpenOption.WRITE)
                 require(sha256(temporary.readBytes()) == sha256(staged.readBytes())) {
                     "Commit öncesi içerik doğrulaması başarısız: $relative"
                 }
                 moveReplacing(temporary, target)
+                committedHashes[relative] = sha256(generated.content.toByteArray(Charsets.UTF_8))
             }
 
             val checkpoint = AppForgeWorkspaceCheckpoint(
@@ -141,16 +156,30 @@ internal object AppForgeAgentWorkspaceTransaction {
             )
         } catch (error: Throwable) {
             staging.deleteRecursively()
-            checkpointDir.deleteRecursively()
+            if (committedHashes.isEmpty()) {
+                checkpointDir.deleteRecursively()
+            } else {
+                // Preserve recovery evidence; never erase a checkpoint after a partial commit.
+                try {
+                    rollback(requireNotNull(recoveryCheckpoint), committedHashes, committedHashes.keys)
+                } catch (recoveryError: Throwable) {
+                    File(checkpointDir, "state.txt").writeText("RECOVERY_REQUIRED\n", Charsets.UTF_8)
+                    error.addSuppressed(recoveryError)
+                }
+            }
             throw error
         } finally {
             staging.deleteRecursively()
         }
     }
 
-    fun rollback(checkpoint: AppForgeWorkspaceCheckpoint) {
+    fun rollback(checkpoint: AppForgeWorkspaceCheckpoint, expectedHashes: Map<String, String?>? = null, pathsToRestore: Set<String>? = null) {
         val root = requireWorkspace(File(checkpoint.workspacePath))
+        val controls = File(root, CONTROL_DIR)
+        require(!Files.isSymbolicLink(controls.toPath()) && controls.canonicalFile.parentFile == root &&
+            !Files.isSymbolicLink(File(controls, "checkpoints").toPath())) { "Unsafe checkpoint root." }
         val manifest = File(checkpoint.manifestPath)
+        require(!Files.isSymbolicLink(manifest.toPath())) { "Unsafe checkpoint manifest." }
         require(manifest.isFile) { "Rollback manifesti bulunamadı." }
 
         val checkpointDir = manifest.parentFile
@@ -168,8 +197,15 @@ internal object AppForgeAgentWorkspaceTransaction {
                 Triple(validateRelativePath(parts[0]), parts[1], parts[2])
             }
 
-        rows.asReversed().forEach { (relative, existedFlag, digest) ->
+        val selectedRows = rows.filter { pathsToRestore == null || it.first in pathsToRestore }
+        expectedHashes?.let { guards ->
+            selectedRows.forEach { (relative, _, _) ->
+                require(guards.containsKey(relative) && currentDigest(safeResolve(root, relative)) == guards[relative]) { "Undo stale conflict: $relative" }
+            }
+        }
+        selectedRows.asReversed().forEach { (relative, existedFlag, digest) ->
             val target = safeResolve(root, relative)
+            expectedHashes?.let { guards -> require(guards.containsKey(relative) && currentDigest(target) == guards[relative]) { "Undo stale conflict: $relative" } }
             when (existedFlag) {
                 "1" -> {
                     val backup = safeResolve(backupRoot, relative)
@@ -219,7 +255,7 @@ internal object AppForgeAgentWorkspaceTransaction {
         }
 
         val leaf = parts.last().lowercase()
-        require(leaf !in forbiddenLeafNames) { "Hassas dosya hedefi yasak: $path" }
+        require(leaf !in forbiddenLeafNames && !leaf.startsWith(".env.")) { "Hassas dosya hedefi yasak: $path" }
         val extension = leaf.substringAfterLast('.', missingDelimiterValue = "")
         require(extension !in forbiddenExtensions) { "Hassas dosya uzantısı yasak: $path" }
 
@@ -228,7 +264,9 @@ internal object AppForgeAgentWorkspaceTransaction {
 
     private fun safeResolve(root: File, relative: String): File {
         val canonicalRoot = root.canonicalFile
-        val candidate = File(canonicalRoot, relative).canonicalFile
+        var lexical = canonicalRoot
+        relative.split('/').forEach { part -> lexical = File(lexical, part); require(!Files.isSymbolicLink(lexical.toPath())) { "Symlink target denied." } }
+        val candidate = lexical.canonicalFile
         val prefix = canonicalRoot.path.trimEnd(File.separatorChar) + File.separator
         require(candidate.path.startsWith(prefix)) {
             "Workspace dışına yazma girişimi engellendi: $relative"
@@ -252,6 +290,8 @@ internal object AppForgeAgentWorkspaceTransaction {
             )
         }
     }
+
+    private fun currentDigest(file: File): String? = if (file.isFile) sha256(file.readBytes()) else null
 
     private fun sha256(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256")

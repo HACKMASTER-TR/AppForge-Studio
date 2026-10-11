@@ -35,11 +35,21 @@ class AppForgeApplication : Application() {
                     if (activity !is MainActivity) return
 
                     val original = activity.intent
-                    val notificationEntry =
-                        original?.getBooleanExtra("appforge_open_builds", false) == true &&
-                            original.getBooleanExtra("appforge_gate_checked", false) != true
 
-                    if (UpdateGateSession.isApproved() && !notificationEntry) return
+                    /*
+                     * BUILD_NOTIFICATION_GATE_SESSION_BYPASS_V21_5
+                     *
+                     * A notification tap that returns to an already-approved
+                     * in-process Studio session must not be redirected back to
+                     * UpdateGateActivity or finish MainActivity. If the process
+                     * was recreated, approval is false and the normal gate still
+                     * runs before MainActivity is allowed through.
+                     */
+                    if (
+                        UpdateGateSession.isApproved()
+                    ) {
+                        return
+                    }
 
                     val gate = Intent(
                         activity,

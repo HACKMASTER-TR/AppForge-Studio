@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
+import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.terminal.LinuxArchitecture
 import com.appforge.studio.terminal.LinuxDistribution
 import com.appforge.studio.terminal.LinuxRuntimeLayout
@@ -17,6 +18,8 @@ internal data class OfflineBuildPackStatus(
     val androidCoreReady: Boolean,
     val nodeToolchainReady: Boolean,
     val pythonAndroidReady: Boolean,
+    val expoToolchainReady: Boolean,
+    val windowsNativeToolchainReady: Boolean,
     val windowsHostReady: Boolean,
     val windowsExeReady: Boolean
 ) {
@@ -24,13 +27,21 @@ internal data class OfflineBuildPackStatus(
         get() =
             androidCoreReady &&
                 nodeToolchainReady &&
-                pythonAndroidReady
+                pythonAndroidReady &&
+                expoToolchainReady
 
     val completeTargetReady: Boolean
         get() =
             currentAndroidEnginesReady &&
+                windowsNativeToolchainReady &&
                 windowsExeReady
 }
+
+internal data class OfflineBuildRequirementCheck(
+    val ready: Boolean,
+    val engine: String,
+    val missing: List<String>
+)
 
 internal object OfflineBuildPackManager {
 
@@ -83,6 +94,8 @@ internal object OfflineBuildPackManager {
                 androidCoreReady = false,
                 nodeToolchainReady = false,
                 pythonAndroidReady = false,
+                expoToolchainReady = false,
+                windowsNativeToolchainReady = false,
                 windowsHostReady =
                     windowsHostReady,
                 windowsExeReady =
@@ -122,6 +135,22 @@ internal object OfflineBuildPackManager {
                     )
                 ),
 
+            expoToolchainReady =
+                markerReady(
+                    File(
+                        pack,
+                        "expo.ready"
+                    )
+                ),
+
+            windowsNativeToolchainReady =
+                markerReady(
+                    File(
+                        pack,
+                        "windows-native.ready"
+                    )
+                ),
+
             windowsHostReady =
                 windowsHostReady,
 
@@ -133,6 +162,161 @@ internal object OfflineBuildPackManager {
                 windowsHostReady &&
                     WINDOWS_EXE_ACCEPTED
         )
+    }
+
+    fun checkBuildRequirements(
+        context: Context,
+        draft: ProjectDraft
+    ): OfflineBuildRequirementCheck {
+
+        // HTML (.html) and HTTPS URL APKs never require the optional offline pack.
+        // A dedicated, bundled template produces and signs their APKs locally.
+        if (FastHtmlApkPolicy.isCandidate(draft)) {
+            val reason = runCatching { FastHtmlApkPolicy.requireSupported(draft) }
+                .exceptionOrNull()?.message
+            return OfflineBuildRequirementCheck(
+                ready = reason == null,
+                engine = "fast-html-apk",
+                missing = listOfNotNull(reason)
+            )
+        }
+
+        val current =
+            status(
+                context
+            )
+
+        val outputs =
+            DeviceBuildCapabilities
+                .requestedOutputs(
+                    draft.buildOutput
+                )
+
+        val engine =
+            if (
+                DeviceArtifactKind.WINDOWS_NATIVE_EXE in
+                    outputs
+            ) {
+                "windows-native"
+            } else {
+                draft.sourceBuildEngine
+                    .trim()
+                    .lowercase()
+                    .ifBlank {
+                        "webview-static"
+                    }
+            }
+
+        val missing =
+            linkedSetOf<String>()
+
+        if (
+            engine in
+                setOf(
+                    "webview-static",
+                    "node-web",
+                    "android-gradle",
+                    "python-android",
+                    "expo",
+                    "universal-cross-platform"
+                ) &&
+            !current.androidCoreReady
+        ) {
+            missing +=
+                "Android SDK + JDK + Gradle"
+        }
+
+        if (
+            engine ==
+                "node-web" &&
+            !current.nodeToolchainReady
+        ) {
+            missing +=
+                "Node.js + npm"
+        }
+
+        if (
+            engine ==
+                "python-android" &&
+            !current.pythonAndroidReady
+        ) {
+            missing +=
+                "Python + Chaquopy"
+        }
+
+        if (
+            engine ==
+                "expo"
+        ) {
+            if (
+                !current.nodeToolchainReady
+            ) {
+                missing +=
+                    "Node.js + npm"
+            }
+
+            if (
+                !current.expoToolchainReady
+            ) {
+                missing +=
+                    "Expo SDK 54 + NDK/CMake"
+            }
+        }
+
+        if (
+            DeviceArtifactKind.WINDOWS_NATIVE_EXE in
+                outputs &&
+            !current.windowsNativeToolchainReady
+        ) {
+            missing +=
+                "Windows Native C/C++ toolchain"
+        }
+
+        if (
+            DeviceArtifactKind.WINDOWS_EXE in
+                outputs &&
+            !current.windowsExeReady
+        ) {
+            missing +=
+                "Windows Portable EXE Host"
+        }
+
+        return OfflineBuildRequirementCheck(
+            ready =
+                missing.isEmpty(),
+
+            engine =
+                engine,
+
+            missing =
+                missing.toList()
+        )
+    }
+
+    fun requireReadyForBuild(
+        context: Context,
+        draft: ProjectDraft
+    ) {
+        if (FastHtmlApkPolicy.isCandidate(draft)) {
+            FastHtmlApkPolicy.requireSupported(draft)
+            return
+        }
+        val check =
+            checkBuildRequirements(
+                context,
+                draft
+            )
+
+        require(
+            check.ready
+        ) {
+            "APPFORGE_OFFLINE_BUILD_PACK_REQUIRED: " +
+                check.missing.joinToString(
+                    ", "
+                ) +
+                ". Ayarlar > Tam Çevrimdışı Derleme Paketi bölümünden " +
+                "gerekli bileşenleri indir."
+        }
     }
 
     suspend fun installReadyComponents(
@@ -210,7 +394,7 @@ internal object OfflineBuildPackManager {
                     }
 
                 onProgress(
-                    "1/4 • Android SDK, JDK ve Gradle hazırlanıyor..."
+                    "1/6 • Android SDK, JDK ve Gradle hazırlanıyor..."
                 )
 
                 execute(
@@ -251,7 +435,7 @@ internal object OfflineBuildPackManager {
                 )
 
                 onProgress(
-                    "2/4 • Node.js ve npm hazırlanıyor..."
+                    "2/6 • Node.js ve npm hazırlanıyor..."
                 )
 
                 execute(
@@ -284,7 +468,7 @@ internal object OfflineBuildPackManager {
                 )
 
                 onProgress(
-                    "3/4 • Python ve Chaquopy hazırlanıyor..."
+                    "3/6 • Python ve Chaquopy hazırlanıyor..."
                 )
 
                 execute(
@@ -317,7 +501,52 @@ internal object OfflineBuildPackManager {
                 )
 
                 onProgress(
-                    "4/4 • Windows Portable Host hazırlanıyor..."
+                    "4/6 • Expo SDK 54, Node 22, NDK ve CMake hazırlanıyor..."
+                )
+
+                execute(
+                    shell = shell,
+                    rootfs = rootfs,
+                    workspace = workspace,
+                    suffix = "expo-toolchain",
+                    command =
+                        "APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED=1 " +
+                            "APPFORGE_DEVICE_OFFLINE=0 " +
+                            "/bin/sh /workspace/runtime/install-toolchain.sh " +
+                            "expo"
+                )
+
+                writeMarker(
+                    File(
+                        packDirectory,
+                        "expo.ready"
+                    )
+                )
+
+                onProgress(
+                    "5/6 • Windows Native C/C++ toolchain hazırlanıyor..."
+                )
+
+                execute(
+                    shell = shell,
+                    rootfs = rootfs,
+                    workspace = workspace,
+                    suffix = "windows-native-toolchain",
+                    command =
+                        "chmod +x /workspace/runtime/install-windows-native-toolchain.sh && " +
+                            "APPFORGE_DEVICE_OFFLINE=0 " +
+                            "/bin/sh /workspace/runtime/install-windows-native-toolchain.sh"
+                )
+
+                writeMarker(
+                    File(
+                        packDirectory,
+                        "windows-native.ready"
+                    )
+                )
+
+                onProgress(
+                    "6/6 • Windows Portable Host hazırlanıyor..."
                 )
 
                 WindowsPortableHostStore
@@ -340,8 +569,8 @@ internal object OfflineBuildPackManager {
                 )
 
                 onProgress(
-                    "Android, Node, Python ve Windows Portable EXE " +
-                        "tam çevrimdışı kullanım için hazır."
+                    "Android, Node, Python, Expo, Windows Native toolchain ve Windows Portable EXE " +
+                        "cihazda hazır. Native EXE fiziksel Windows kabulü tamamlanana kadar EXPERIMENTAL kalır."
                 )
 
                 status(

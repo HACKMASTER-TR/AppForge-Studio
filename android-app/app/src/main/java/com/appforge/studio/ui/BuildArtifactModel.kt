@@ -24,6 +24,13 @@ internal enum class BuildArtifactType(
         mimeType = "application/vnd.microsoft.portable-executable"
     ),
 
+    WINDOWS_NATIVE_EXE(
+        ticketKind = "native-exe",
+        extension = "exe",
+        label = "Windows Native EXE",
+        mimeType = "application/vnd.microsoft.portable-executable"
+    ),
+
     ANDROID_AAB(
         ticketKind = "aab",
         extension = "aab",
@@ -90,10 +97,28 @@ internal fun SavedBuild.availableArtifacts():
         }
 
         if (!exeUrl.isNullOrBlank()) {
+            val windowsArtifactType =
+                when (
+                    buildOutput
+                        .trim()
+                        .lowercase()
+                ) {
+                    "native-exe",
+                    "windows-native-exe" ->
+                        BuildArtifactType.WINDOWS_NATIVE_EXE
+
+                    else ->
+                        /*
+                         * Historical build records did not persist buildOutput.
+                         * Generic legacy .exe records remain Portable.
+                         */
+                        BuildArtifactType.WINDOWS_PORTABLE_EXE
+                }
+
             add(
                 BuildArtifactRecord(
                     this@availableArtifacts,
-                    BuildArtifactType.WINDOWS_PORTABLE_EXE
+                    windowsArtifactType
                 )
             )
         }
@@ -155,8 +180,24 @@ internal fun buildArtifactFileName(
                 Locale.ROOT
             )
 
+    val windowsSuffix =
+        when (
+            record.type
+        ) {
+            BuildArtifactType.WINDOWS_PORTABLE_EXE ->
+                "_windows-portable"
+
+            BuildArtifactType.WINDOWS_NATIVE_EXE ->
+                "_windows-native"
+
+            else ->
+                ""
+        }
+
     return (
-        "${project}_${safeBuild}." +
+        "${project}_${safeBuild}" +
+            windowsSuffix +
+            "." +
             record.type.extension
     )
 }

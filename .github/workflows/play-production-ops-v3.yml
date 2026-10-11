@@ -1,0 +1,482 @@
+name: AppForge Play Production Ops V3
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Production operation"
+        required: true
+        type: choice
+        default: audit
+        options:
+          - audit
+          - start_5
+          - advance_20
+          - advance_50
+          - halt
+          - resume
+          - complete
+      version_code:
+        description: "Exact Production versionCode for mutation operations"
+        required: false
+        type: string
+      confirm:
+        description: "Exact confirmation token; audit requires none"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  APPFORGE_PACKAGE: "com.appforge.studio"
+  APPFORGE_GCP_PROJECT_ID: "appforge-18a5a"
+  APPFORGE_PLAY_WIF_PROVIDER: "projects/564043752274/locations/global/workloadIdentityPools/appforge-github/providers/appforge-github-oidc"
+  APPFORGE_PLAY_SERVICE_ACCOUNT: "appforge-play-publisher@appforge-18a5a.iam.gserviceaccount.com"
+
+jobs:
+  production-ops:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Fail-closed operation gate
+        shell: bash
+        env:
+          ACTION: ${{ inputs.action }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+
+          case "$ACTION" in
+            audit)
+              echo "PLAY_MUTATION=false" >> "$GITHUB_ENV"
+              echo "PLAY_PRODUCTION_OPERATION=AUDIT"
+              exit 0
+              ;;
+
+            start_5|advance_20|advance_50|halt|resume|complete)
+              ;;
+
+            *)
+              echo "PLAY_OPERATION_GATE=FAIL"
+              exit 1
+              ;;
+          esac
+
+          if [[ ! "$VERSION_CODE" =~ ^[1-9][0-9]{0,9}$ ]]; then
+            echo "PLAY_VERSION_CODE_GATE=FAIL"
+            exit 1
+          fi
+
+          ACTION_UPPER="${ACTION^^}"
+          EXPECTED="APPFORGE_PLAY_${ACTION_UPPER}_${VERSION_CODE}"
+
+          if [ "$CONFIRM" != "$EXPECTED" ]; then
+            echo "PLAY_EXPLICIT_CONFIRMATION=FAIL"
+            echo "EXPECTED_CONFIRMATION=$EXPECTED"
+            exit 1
+          fi
+
+          echo "PLAY_MUTATION=true" >> "$GITHUB_ENV"
+          echo "APPFORGE_TARGET_VERSION=$VERSION_CODE" >> "$GITHUB_ENV"
+
+          echo "PLAY_OPERATION_GATE=PASS"
+          echo "PLAY_EXPLICIT_CONFIRMATION=PASS"
+
+      - name: Authenticate to Android Publisher API
+        id: google-auth
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.APPFORGE_GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.APPFORGE_PLAY_WIF_PROVIDER }}
+          service_account: ${{ env.APPFORGE_PLAY_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+
+      - name: Read Production releases
+        shell: bash
+        env:
+          ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+
+          test -n "$ACCESS_TOKEN"
+
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --header "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${APPFORGE_PACKAGE}/tracks/production/releases" \
+            > production-releases-before.json
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(
+              Path(
+                  "production-releases-before.json"
+              ).read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          releases = data.get(
+              "releases",
+              []
+          )
+
+          print(
+              "PRODUCTION_RELEASE_READ=PASS"
+          )
+          print(
+              "PRODUCTION_RELEASE_COUNT="
+              + str(len(releases))
+          )
+          PY
+
+      - name: Audit complete
+        if: inputs.action == 'audit'
+        shell: bash
+        run: |
+          echo "PLAY_PRODUCTION_AUDIT=PASS"
+          echo "PLAY_PRODUCTION_MUTATION=NONE"
+
+      - name: Create fresh edit
+        if: inputs.action != 'audit'
+        shell: bash
+        env:
+          ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --request POST \
+            --header "Authorization: Bearer $ACCESS_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '{}' \
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${APPFORGE_PACKAGE}/edits" \
+            > edit.json
+
+          EDIT_ID="$(
+            python3 - <<'PY'
+          import json
+
+          with open(
+              "edit.json",
+              encoding="utf-8"
+          ) as f:
+              data = json.load(f)
+
+          value = str(
+              data.get(
+                  "id",
+                  ""
+              )
+          )
+
+          if not value:
+              raise SystemExit(
+                  "EDIT_ID=FAIL"
+              )
+
+          print(value)
+          PY
+          )"
+
+          echo "APPFORGE_PLAY_EDIT_ID=$EDIT_ID" >> "$GITHUB_ENV"
+          echo "PLAY_EDIT_CREATE=PASS"
+
+      - name: Read exact Production track state
+        if: inputs.action != 'audit'
+        shell: bash
+        env:
+          ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --header "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${APPFORGE_PACKAGE}/edits/${APPFORGE_PLAY_EDIT_ID}/tracks/production" \
+            > production-track-before.json
+
+          echo "PRODUCTION_TRACK_READ=PASS"
+
+      - name: Build exact desired staged state
+        if: inputs.action != 'audit'
+        shell: bash
+        env:
+          ACTION: ${{ inputs.action }}
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import json
+          import math
+          import os
+          from pathlib import Path
+
+          action = os.environ["ACTION"]
+          version = os.environ["VERSION_CODE"]
+
+          track = json.loads(
+              Path(
+                  "production-track-before.json"
+              ).read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          releases = track.get(
+              "releases",
+              []
+          )
+
+          matches = [
+              release
+              for release in releases
+              if version in [
+                  str(v)
+                  for v in release.get(
+                      "versionCodes",
+                      []
+                  )
+              ]
+          ]
+
+          if len(matches) != 1:
+              raise SystemExit(
+                  "TARGET_RELEASE_EXACT_MATCH=FAIL"
+              )
+
+          release = matches[0]
+
+          status = release.get(
+              "status",
+              ""
+          )
+
+          fraction = release.get(
+              "userFraction"
+          )
+
+          def exact_fraction(
+              expected
+          ):
+              return (
+                  isinstance(
+                      fraction,
+                      (int, float)
+                  )
+                  and math.isclose(
+                      float(fraction),
+                      expected,
+                      rel_tol=0,
+                      abs_tol=0.000001
+                  )
+              )
+
+          if action == "start_5":
+              if status != "draft":
+                  raise SystemExit(
+                      "ROLLOUT_START_STATE_GUARD=FAIL"
+                  )
+
+              release["status"] = (
+                  "inProgress"
+              )
+
+              release["userFraction"] = (
+                  0.05
+              )
+
+          elif action == "advance_20":
+              if (
+                  status != "inProgress"
+                  or not exact_fraction(
+                      0.05
+                  )
+              ):
+                  raise SystemExit(
+                      "ROLLOUT_20_PREDECESSOR_GUARD=FAIL"
+                  )
+
+              release["userFraction"] = (
+                  0.20
+              )
+
+          elif action == "advance_50":
+              if (
+                  status != "inProgress"
+                  or not exact_fraction(
+                      0.20
+                  )
+              ):
+                  raise SystemExit(
+                      "ROLLOUT_50_PREDECESSOR_GUARD=FAIL"
+                  )
+
+              release["userFraction"] = (
+                  0.50
+              )
+
+          elif action == "halt":
+              if (
+                  status != "inProgress"
+                  or fraction is None
+              ):
+                  raise SystemExit(
+                      "ROLLOUT_HALT_STATE_GUARD=FAIL"
+                  )
+
+              release["status"] = (
+                  "halted"
+              )
+
+          elif action == "resume":
+              if (
+                  status != "halted"
+                  or fraction is None
+              ):
+                  raise SystemExit(
+                      "ROLLOUT_RESUME_STATE_GUARD=FAIL"
+                  )
+
+              release["status"] = (
+                  "inProgress"
+              )
+
+          elif action == "complete":
+              if (
+                  status != "inProgress"
+                  or not exact_fraction(
+                      0.50
+                  )
+              ):
+                  raise SystemExit(
+                      "ROLLOUT_COMPLETE_PREDECESSOR_GUARD=FAIL"
+                  )
+
+              release["status"] = (
+                  "completed"
+              )
+
+              release.pop(
+                  "userFraction",
+                  None
+              )
+
+          else:
+              raise SystemExit(
+                  "UNKNOWN_OPERATION=FAIL"
+              )
+
+          Path(
+              "production-track-desired.json"
+          ).write_text(
+              json.dumps(
+                  track,
+                  ensure_ascii=False,
+                  indent=2
+              )
+              + "\n",
+              encoding="utf-8"
+          )
+
+          print(
+              "TARGET_RELEASE_EXACT_MATCH=PASS"
+          )
+          print(
+              "DESIRED_STAGED_STATE=PASS"
+          )
+          PY
+
+      - name: Update Production track edit
+        if: inputs.action != 'audit'
+        shell: bash
+        env:
+          ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --request PUT \
+            --header "Authorization: Bearer $ACCESS_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data-binary "@production-track-desired.json" \
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${APPFORGE_PACKAGE}/edits/${APPFORGE_PLAY_EDIT_ID}/tracks/production" \
+            > production-track-updated.json
+
+          echo "PLAY_TRACK_UPDATE_IN_EDIT=PASS"
+
+      - name: Validate edit
+        if: inputs.action != 'audit'
+        shell: bash
+        env:
+          ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --request POST \
+            --header "Authorization: Bearer $ACCESS_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '{}' \
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${APPFORGE_PACKAGE}/edits/${APPFORGE_PLAY_EDIT_ID}:validate" \
+            > edit-validate.json
+
+          echo "PLAY_EDIT_VALIDATE=PASS"
+
+      - name: Commit explicitly gated Production edit
+        if: inputs.action != 'audit'
+        shell: bash
+        env:
+          ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --request POST \
+            --header "Authorization: Bearer $ACCESS_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '{}' \
+            "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${APPFORGE_PACKAGE}/edits/${APPFORGE_PLAY_EDIT_ID}:commit" \
+            > edit-commit.json
+
+          echo "PLAY_PRODUCTION_MUTATION=EXPLICITLY_CONFIRMED"
+          echo "PLAY_PRODUCTION_EDIT_COMMIT=PASS"
+
+      - name: Preserve operation evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: AppForge-Play-Production-Ops-${{ github.run_id }}
+          path: |
+            production-releases-before.json
+            production-track-before.json
+            production-track-desired.json
+            production-track-updated.json
+            edit.json
+            edit-validate.json
+            edit-commit.json
+          if-no-files-found: ignore
+          retention-days: 14

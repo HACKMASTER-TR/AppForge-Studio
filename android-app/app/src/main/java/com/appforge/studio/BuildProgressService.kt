@@ -6,10 +6,13 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.appforge.studio.build.BuildApiClient
+import com.appforge.studio.build.DeviceBuildEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,11 +46,25 @@ class BuildProgressService : Service() {
     private var monitorJob: Job? =
         null
 
+    /*
+     * BUILD_TERMINAL_NOTIFICATION_PERSIST_V1_1
+     *
+     * Terminal build result becomes a normal tappable notification and
+     * must survive Service teardown.
+     */
+    private var preserveTerminalNotificationOnDestroy =
+        false
+
     override fun onStartCommand(
         intent: Intent?,
         flags: Int,
         startId: Int
     ): Int {
+
+        /* FOREGROUND_NOTIFICATION_IMMEDIATE_V1
+         * Active build tracking is foreground from the moment the user
+         * starts the build. App visibility must not delay the FGS.
+         */
 
         val prefs =
             getSharedPreferences(
@@ -107,8 +124,7 @@ class BuildProgressService : Service() {
         createChannel()
 
         if (mode == MODE_BATCH) {
-            startForeground(
-                NOTIFICATION_ID,
+            startBuildForeground(
                 notification(
                     appName =
                         "AppForge Studio",
@@ -135,13 +151,20 @@ class BuildProgressService : Service() {
                         return START_NOT_STICKY
                     }
 
-            startForeground(
-                NOTIFICATION_ID,
+            val initialSnapshot = DeviceBuildEngine.snapshot(buildId)
+            val initialProgress = initialSnapshot?.let {
+                AppForgeBuildProgress.visible(it.status, it.progress)
+            } ?: 0
+
+            startBuildForeground(
                 notification(
                     appName = appName,
-                    text =
-                        "Derleme arka planda hazırlanıyor",
-                    progress = 0,
+                    text = if (initialSnapshot != null) {
+                        "Derleme devam ediyor • %$initialProgress"
+                    } else {
+                        "Derleme arka planda hazırlanıyor"
+                    },
+                    progress = initialProgress,
                     ongoing = true,
                     buildId = buildId,
                     serverUrl = serverUrl
@@ -200,60 +223,46 @@ class BuildProgressService : Service() {
         buildId: String,
         serverUrl: String
     ) {
+        var lastVisibleProgress = DeviceBuildEngine.snapshot(buildId)?.let {
+            AppForgeBuildProgress.visible(it.status, it.progress)
+        } ?: 0
+
         while (true) {
             try {
-                val status =
-                    client.getBuild(
-                        buildId
-                    )
+                val status = client.getBuild(buildId)
+                val normalized = status.status.trim().lowercase()
+                val active = normalized !in TERMINAL_STATES
+                val visibleProgress =
+                    AppForgeBuildProgress.visible(status.status, status.progress)
+                lastVisibleProgress = visibleProgress
 
-                val normalized =
-                    status.status
-                        .trim()
-                        .lowercase()
-
-                val active =
-                    normalized !in
-                        TERMINAL_STATES
-
-                val text =
-                    if (active) {
-                        "Derleme devam ediyor • %${status.progress}"
-                    } else {
-                        when (normalized) {
-                            "success" ->
-                                "Derleme hazır. Çıktıyı AppForge Studio'dan indirebilirsin."
-
-                            "cancelled",
-                            "canceled" ->
-                                "Derleme iptal edildi."
-
-                            else ->
-                                "Derleme tamamlanamadı. Ayrıntılar için AppForge Studio'yu aç."
-                        }
+                val text = if (active) {
+                    "Derleme devam ediyor • %$visibleProgress"
+                } else {
+                    when (normalized) {
+                        "success" -> "Derleme hazır. Çıktıyı AppForge Studio'dan indirebilirsin."
+                        "cancelled", "canceled" -> "Derleme iptal edildi • %$visibleProgress"
+                        else -> "Derleme tamamlanamadı • %$visibleProgress • ayrıntılar için AppForge Studio'yu aç."
                     }
+                }
 
                 showNotification(
                     appName = appName,
                     text = text,
-                    progress =
-                        if (
-                            normalized ==
-                            "success"
-                        ) {
-                            100
-                        } else {
-                            status.progress
-                        },
+                    progress = visibleProgress,
                     ongoing = active,
                     buildId = buildId,
                     serverUrl = serverUrl
                 )
 
                 if (!active) {
-                    clear(
-                        this@BuildProgressService
-                    )
+                    /*
+                     * BUILD_TERMINAL_NOTIFICATION_PERSIST_V1_1
+                     * showNotification() has already converted the active
+                     * progress entry into a terminal result notification.
+                     */
+                    preserveTerminalNotificationOnDestroy =
+                        true
 
                     stopForeground(
                         STOP_FOREGROUND_DETACH
@@ -268,18 +277,14 @@ class BuildProgressService : Service() {
             } catch (_: Throwable) {
                 showNotification(
                     appName = appName,
-                    text =
-                        "Derleme sunucuda devam ediyor • bağlantı yeniden denenecek",
-                    progress = 0,
+                    text = "Derleme cihazda devam ediyor • %$lastVisibleProgress • durum yeniden okunacak",
+                    progress = lastVisibleProgress,
                     ongoing = true,
                     buildId = buildId,
                     serverUrl = serverUrl
                 )
             }
-
-            delay(
-                5_000L
-            )
+            delay(1_000L)
         }
     }
 
@@ -367,11 +372,10 @@ class BuildProgressService : Service() {
                         ) {
                             100
                         } else {
-                            status.progress
-                                .coerceIn(
-                                    0,
-                                    100
-                                )
+                            AppForgeBuildProgress.visible(
+                                status.status,
+                                status.progress
+                            )
                         }
 
                     when (normalized) {
@@ -437,6 +441,9 @@ class BuildProgressService : Service() {
                     serverUrl = serverUrl
                 )
 
+                preserveTerminalNotificationOnDestroy =
+                    true
+
                 clear(
                     this@BuildProgressService
                 )
@@ -483,8 +490,76 @@ class BuildProgressService : Service() {
         }
     }
 
+    /*
+     * APPFORGE_FGS_POLICY_ALIGNMENT_V2
+     *
+     * Android 15+ limits dataSync foreground service time.
+     * Stop immediately when the platform reports the timeout.
+     * Persisted build identity is deliberately kept so the UI can
+     * reconcile the real DeviceBuildEngine state when reopened.
+     */
+    override fun onTimeout(
+        startId: Int,
+        fgsType: Int
+    ) {
+        monitorJob?.cancel()
+
+        preserveTerminalNotificationOnDestroy =
+            false
+
+        runCatching {
+            stopForeground(
+                STOP_FOREGROUND_REMOVE
+            )
+        }
+
+        getSystemService(
+            NotificationManager::class.java
+        )
+            .cancel(
+                NOTIFICATION_ID
+            )
+
+        serviceScope.cancel()
+
+        stopSelf(
+            startId
+        )
+    }
+
     override fun onDestroy() {
         monitorJob?.cancel()
+
+        /*
+         * BUILD_TERMINAL_NOTIFICATION_PERSIST_V1_1
+         *
+         * Normal Service teardown removes an active progress notification.
+         * A proven terminal result is detached and deliberately preserved
+         * so the user can tap it after the build has completed.
+         */
+        if (
+            preserveTerminalNotificationOnDestroy
+        ) {
+            runCatching {
+                stopForeground(
+                    Service.STOP_FOREGROUND_DETACH
+                )
+            }
+        } else {
+            runCatching {
+                stopForeground(
+                    Service.STOP_FOREGROUND_REMOVE
+                )
+            }
+
+            getSystemService(
+                NotificationManager::class.java
+            )
+                .cancel(
+                    NOTIFICATION_ID
+                )
+        }
+
         serviceScope.cancel()
 
         super.onDestroy()
@@ -494,6 +569,17 @@ class BuildProgressService : Service() {
         intent: Intent?
     ): IBinder? =
         null
+
+    private fun startBuildForeground(
+        notification: android.app.Notification
+    ) {
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
+    }
 
     private fun createChannel() {
         getSystemService(
@@ -571,8 +657,9 @@ class BuildProgressService : Service() {
                         serverUrl
                     )
 
+                    // ACTIVE_BUILD_NOTIFICATION_RETURN_V2
                     addFlags(
-                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
                             Intent.FLAG_ACTIVITY_SINGLE_TOP
                     )
                 },
@@ -589,7 +676,13 @@ class BuildProgressService : Service() {
                 android.R.drawable.stat_sys_upload
             )
             .setContentTitle(
-                appName
+                if (
+                    ongoing
+                ) {
+                    "$appName • %${progress.coerceIn(0, 100)}"
+                } else {
+                    appName
+                }
             )
             .setContentText(
                 text
@@ -599,6 +692,10 @@ class BuildProgressService : Service() {
             )
             .setOnlyAlertOnce(
                 true
+            )
+            /* BUILD_NOTIFICATION_IMMEDIATE_DISPLAY_V21_4 */
+            .setForegroundServiceBehavior(
+                NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE
             )
             .setOngoing(
                 ongoing
@@ -721,6 +818,9 @@ class BuildProgressService : Service() {
                     EXTRA_BATCH_TOTAL
                 )
                 .apply()
+
+            /* FOREGROUND_NOTIFICATION_IMMEDIATE_V1 */
+            startPending(context)
         }
 
         fun trackBatch(
@@ -769,6 +869,9 @@ class BuildProgressService : Service() {
                     EXTRA_STARTED_AT_MS
                 )
                 .apply()
+
+            /* FOREGROUND_NOTIFICATION_IMMEDIATE_V1 */
+            startPending(context)
         }
 
         fun addBatchBuild(
@@ -884,6 +987,10 @@ class BuildProgressService : Service() {
         fun startPending(
             context: Context
         ) {
+            /* FOREGROUND_NOTIFICATION_IMMEDIATE_V1
+             * Foreground visibility no longer suppresses the build FGS.
+             */
+
             val prefs =
                 context.getSharedPreferences(
                     PREFS,
@@ -955,16 +1062,39 @@ class BuildProgressService : Service() {
                 )
         }
 
+        /* FOREGROUND_NOTIFICATION_IMMEDIATE_V1
+         * Visibility changes do not own the foreground-service lifecycle.
+         * The build itself owns it.
+         */
+        fun onHostResumed(
+            @Suppress("UNUSED_PARAMETER")
+            context: Context
+        ) = Unit
+
+        fun onHostPaused(
+            @Suppress("UNUSED_PARAMETER")
+            context: Context
+        ) = Unit
+
         fun stop(
             context: Context
         ) {
             context.stopService(
-                Intent(
-                    context,
-                    BuildProgressService::class.java
-                )
+                Intent(context, BuildProgressService::class.java)
             )
+            context.getSystemService(NotificationManager::class.java)
+                .cancel(NOTIFICATION_ID)
+        }
 
+        /*
+         * BUILD_TERMINAL_NOTIFICATION_ACK_V1_3
+         *
+         * Terminal result notifications survive Service teardown, then are
+         * dismissed after the user taps the terminal result.
+         */
+        fun dismissTerminalResultNotification(
+            context: Context
+        ) {
             context
                 .getSystemService(
                     NotificationManager::class.java

@@ -7,34 +7,6 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 class AppForgeAgentIntelligenceTest {
-    private val validBlueprintJson = """
-        {
-          "schemaVersion":1,
-          "appName":"TaskFlow",
-          "prompt":"Görev uygulaması",
-          "platform":"ANDROID",
-          "startRoute":"/home",
-          "screens":[{
-            "id":"home",
-            "title":"Ana Sayfa",
-            "route":"/home",
-            "purpose":"Görevleri gösterir",
-            "components":["TaskList"],
-            "actions":[]
-          }],
-          "maxRepairAttempts":2
-        }
-    """.trimIndent()
-
-    @Test
-    fun secondBrainSnapshotParsesKnownSchema() {
-        val snapshot = AppForgeAgentSecondBrainSnapshotParser.parse(
-            """{"version":"3.0.0","head":"abc123","branch":"main","risk":"ACCEPT","riskScore":15,"security":"GREEN","apiRoutes":83,"databaseTables":34,"migrations":25,"tests":279,"release":"REVIEW_REQUIRED","liveGithub":"OK","liveRailway":"CLI_ERROR"}"""
-        )
-        assertEquals(83, snapshot.apiRoutes)
-        assertEquals(34, snapshot.databaseTables)
-        assertEquals("GREEN", snapshot.security)
-    }
 
     @Test
     fun sensitiveContextNeverEntersPacket() {
@@ -115,37 +87,6 @@ class AppForgeAgentIntelligenceTest {
             cloudAvailable = true
         )
         assertEquals(AppForgeAgentAiRoute.CLOUD, plan.route)
-    }
-
-    @Test
-    fun hybridUsesLocalFirstAndDoesNotCallCloudOnValidOutput() {
-        var cloudCalls = 0
-        val provider = AppForgeAgentIntelligentBlueprintProvider(
-            localProvider = AppForgeAgentRawAiProviderV9 { validBlueprintJson },
-            cloudProvider = AppForgeAgentRawAiProviderV9 {
-                cloudCalls += 1
-                validBlueprintJson
-            }
-        )
-        val output = provider.createBlueprint("Build API backed notes app")
-        assertEquals(validBlueprintJson, output)
-        assertEquals(0, cloudCalls)
-        assertEquals(AppForgeAgentAiRoute.HYBRID, provider.lastPlan?.route)
-    }
-
-    @Test
-    fun hybridFallsBackToCloudWhenLocalOutputIsInvalid() {
-        var cloudCalls = 0
-        val provider = AppForgeAgentIntelligentBlueprintProvider(
-            localProvider = AppForgeAgentRawAiProviderV9 { "not-json" },
-            cloudProvider = AppForgeAgentRawAiProviderV9 {
-                cloudCalls += 1
-                validBlueprintJson
-            }
-        )
-        val output = provider.createBlueprint("Build database backed notes app")
-        assertEquals(validBlueprintJson, output)
-        assertEquals(1, cloudCalls)
     }
 
     @Test

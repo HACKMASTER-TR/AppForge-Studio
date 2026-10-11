@@ -78,6 +78,9 @@ test("uploaded photos become orientation-safe adaptive launcher PNGs", async () 
 
   assert.doesNotMatch(processor, /SAFE_CONTENT_SIZE\\s*=\\s*640\\b/);
 
-  assert.equal(ui.includes('arrayOf("image/*")'), true);
+  assert.match(
+    ui,
+    /arrayOf\(\s*"image\/\*"\s*\)/
+  );
   assert.equal(ui.includes("AppIconProcessor"), true);
 });

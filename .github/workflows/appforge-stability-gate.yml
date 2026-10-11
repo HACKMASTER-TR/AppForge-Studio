@@ -13,7 +13,7 @@ jobs:
 
   policy:
     name: Second Brain / Policy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -27,7 +27,7 @@ jobs:
           node-version: "22"
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -42,7 +42,7 @@ jobs:
 
   backend-regression:
     name: Device Feature Contracts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -59,7 +59,7 @@ jobs:
 
   android-regression:
     name: Android Regression
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -109,7 +109,7 @@ jobs:
 
   static-smoke:
     name: Static Smoke
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -126,7 +126,7 @@ jobs:
 
   stability-summary:
     name: AppForge Stability Summary
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: always()
 
     needs:

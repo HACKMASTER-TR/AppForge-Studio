@@ -22,7 +22,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,6 +77,7 @@ internal fun ModernHomeHero(
     projectCount: Int,
     buildCount: Int,
     proUnlocked: Boolean,
+    onOpenOfflinePack: () -> Unit,
     onCreateQuick: () -> Unit,
     onCreateAdvanced: () -> Unit
 ) {
@@ -161,14 +164,13 @@ internal fun ModernHomeHero(
                     Modifier.weight(1f)
                 )
 
-                HomeStat(
-                    if (proUnlocked) {
-                        "PRO"
-                    } else {
-                        "FREE"
-                    },
-                    "Plan",
-                    Modifier.weight(1f)
+                OfflinePackHomeStat(
+                    onClick =
+                        onOpenOfflinePack,
+                    modifier =
+                        Modifier.weight(
+                            1f
+                        )
                 )
             }
 
@@ -256,6 +258,72 @@ private fun HomeStat(
                         .onSurfaceVariant,
                 fontSize =
                     11.sp
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun OfflinePackHomeStat(
+    onClick: () -> Unit,
+    modifier: Modifier
+) {
+    /*
+     * HOME_OFFLINE_PACK_ENTRY_V1_3
+     * Replaces the old PRO/Plan statistic with the requested direct entry.
+     */
+    Surface(
+        modifier =
+            modifier.clickable {
+                onClick()
+            },
+        shape =
+            RoundedCornerShape(
+                18.dp
+            ),
+        color =
+            MaterialTheme
+                .colorScheme
+                .surface
+                .copy(
+                    alpha =
+                        0.70f
+                )
+    ) {
+        Column(
+            modifier =
+                Modifier.padding(
+                    horizontal =
+                        8.dp,
+                    vertical =
+                        12.dp
+                ),
+            horizontalAlignment =
+                Alignment.CenterHorizontally
+        ) {
+            Text(
+                "Tam Çevrimdışı",
+                fontWeight =
+                    FontWeight.Black,
+                fontSize =
+                    12.sp,
+                maxLines =
+                    2,
+                textAlign =
+                    TextAlign.Center
+            )
+
+            Text(
+                "Derleme Paketi",
+                color =
+                    MaterialTheme
+                        .colorScheme
+                        .onSurfaceVariant,
+                fontSize =
+                    11.sp,
+                textAlign =
+                    TextAlign.Center
             )
         }
     }
@@ -621,6 +689,25 @@ internal fun HomeToolRow(
 }
 
 @Composable
+internal fun HomeToolSingle(
+    label: String,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier =
+            Modifier.fillMaxWidth()
+    ) {
+        Text(
+            label,
+            maxLines = 1,
+            overflow =
+                TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
 internal fun ModernProCard(
     proUnlocked: Boolean,
     onClick: () -> Unit
@@ -633,51 +720,122 @@ internal fun ModernProCard(
                     onClick()
                 },
         shape =
-            RoundedCornerShape(22.dp)
+            RoundedCornerShape(
+                24.dp
+            ),
+        colors =
+            CardDefaults
+                .elevatedCardColors(
+                    containerColor =
+                        Color(
+                            0xFF080808
+                        )
+                ),
+        elevation =
+            CardDefaults
+                .elevatedCardElevation(
+                    defaultElevation =
+                        4.dp
+                )
     ) {
         Row(
             modifier =
-                Modifier.padding(18.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        20.dp
+                    ),
             verticalAlignment =
                 Alignment.CenterVertically
         ) {
-            Column(
-                modifier =
-                    Modifier.weight(1f)
+            Surface(
+                shape =
+                    RoundedCornerShape(
+                        16.dp
+                    ),
+                color =
+                    Color(
+                        0xFF2A2500
+                    )
             ) {
                 Text(
-                    if (proUnlocked) {
-                        "AppForge Pro aktif"
-                    } else {
-                        "AppForge Pro"
-                    },
+                    "PRO",
+                    modifier =
+                        Modifier.padding(
+                            horizontal =
+                                14.dp,
+                            vertical =
+                                11.dp
+                        ),
+                    color =
+                        Color(
+                            0xFFFFD400
+                        ),
                     fontWeight =
-                        FontWeight.Bold
+                        FontWeight.Black
+                )
+            }
+
+            Column(
+                modifier =
+                    Modifier
+                        .weight(
+                            1f
+                        )
+                        .padding(
+                            start =
+                                14.dp
+                        )
+            ) {
+                Text(
+                    if (
+                        proUnlocked
+                    ) {
+                        "AppForge PRO Aktif"
+                    } else {
+                        "Pro'ya Yükselt"
+                    },
+                    color =
+                        Color.White,
+                    fontWeight =
+                        FontWeight.Black,
+                    fontSize =
+                        18.sp
                 )
 
                 Text(
-                    if (proUnlocked) {
-                        "Pro özelliklerin kullanıma hazır."
+                    if (
+                        proUnlocked
+                    ) {
+                        "PRO dünyanı ve destek merkezini aç."
                     } else {
-                        "Planını ve özelliklerini görüntüle."
+                        "Ömür boyu PRO avantajlarını görüntüle."
                     },
                     color =
-                        MaterialTheme
-                            .colorScheme
-                            .onSurfaceVariant,
+                        Color(
+                            0xFFB8B8B8
+                        ),
                     fontSize =
-                        13.sp
+                        12.sp
                 )
             }
 
             Text(
-                "Aç",
+                if (
+                    proUnlocked
+                ) {
+                    "AÇ"
+                } else {
+                    "YÜKSELT"
+                },
                 color =
-                    MaterialTheme
-                        .colorScheme
-                        .primary,
+                    Color(
+                        0xFFFFD400
+                    ),
                 fontWeight =
-                    FontWeight.Bold
+                    FontWeight.Black,
+                fontSize =
+                    12.sp
             )
         }
     }

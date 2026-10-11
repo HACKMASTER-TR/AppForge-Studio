@@ -36,6 +36,7 @@ data class SavedBuild(
     val apkUrl: String?,
     val aabUrl: String?,
     val exeUrl: String? = null,
+    val buildOutput: String = "",
     val buildNo: Long? = null
 )
 
@@ -601,7 +602,7 @@ object ProjectLibrary {
                     File(it)
                 }
                 ?.takeIf {
-                    it.isFile
+                    it.exists()
                 }
 
         val detectedStartPage =
@@ -628,13 +629,27 @@ object ProjectLibrary {
                             }
                 }
 
+        /*
+         * LOCAL_SOURCE_DIRECTORY_RESTORE_V1
+         *
+         * Native Android / React Native / Expo projects may use the
+         * imported project directory itself as the source root.
+         */
         val restoredStartPage =
             storedStartPage
                 ?: detectedStartPage
+                ?: restoredFolder
 
         return ProjectDraft(
             appName = obj.optString("appName"),
             packageName = restoredPackageName,
+            sourceUri =
+                obj.optString(
+                    "sourceUri"
+                ).takeIf {
+                    it.isNotBlank() &&
+                    it != "null"
+                },
             sourceLabel =
                 obj.optString(
                     "sourceLabel"
@@ -1002,6 +1017,7 @@ object ProjectLibrary {
                 apkUrl = apkUrl,
                 aabUrl = aabUrl,
                 exeUrl = exeUrl,
+                buildOutput = draft.buildOutput,
                 buildNo = buildNo
             )
         )
@@ -1018,6 +1034,7 @@ object ProjectLibrary {
                     put("apkUrl", b.apkUrl)
                     put("aabUrl", b.aabUrl)
                     put("exeUrl", b.exeUrl)
+                    put("buildOutput", b.buildOutput)
                     put("buildNo", b.buildNo)
                 }
             )
@@ -1044,6 +1061,7 @@ object ProjectLibrary {
                             apkUrl = o.optString("apkUrl").takeIf { it.isNotBlank() && it != "null" },
                             aabUrl = o.optString("aabUrl").takeIf { it.isNotBlank() && it != "null" },
                             exeUrl = o.optString("exeUrl").takeIf { it.isNotBlank() && it != "null" },
+                            buildOutput = o.optString("buildOutput", ""),
                             buildNo =
                                 o.optLong(
                                     "buildNo",
@@ -1344,6 +1362,7 @@ object ProjectLibrary {
             // LOCAL kaynak uygulamanın özel depolamasına kopyalandığı için
             // bu yollar uygulama yeniden açıldığında güvenle kullanılabilir.
             put("sourceLabel", d.sourceLabel)
+            put("sourceUri", d.sourceUri)
             put("importedFolder", d.importedFolder)
             put("startPage", d.startPage)
 

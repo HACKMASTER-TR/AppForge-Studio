@@ -54,6 +54,10 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|uiMode" />
 
         <activity
+            android:name=".PlayIntegrityAcceptanceActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ProPurchasesActivity"
             android:exported="false" />
 
@@ -81,17 +85,5 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/apk_file_paths" />
         </provider>
-
-        <!-- AppForge > Diğer Uygulamalar > VideoForge -->
-        <activity
-            android:name="com.hackmaster.videoforge.VideoForgeActivity"
-            android:exported="false"
-            android:screenOrientation="unspecified"
-            android:theme="@style/VideoForgeTheme" />
-
-        <service
-            android:name="com.hackmaster.videoforge.DubForegroundService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
     </application>
 </manifest>

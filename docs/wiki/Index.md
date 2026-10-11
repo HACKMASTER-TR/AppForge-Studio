@@ -3,8 +3,8 @@ type: context
 status: active
 project: AppForge Studio
 created: 2026-09-15
-updated: 2026-09-15
-last_verified: 2026-09-15
+updated: 2026-10-08
+last_verified: 2026-10-08
 confidence: high
 tags:
   - index
@@ -18,7 +18,11 @@ source_files: []
 
 ## Start Here
 
+- [[Current_State_Handoff]] — generated recovery view; `01_Project/current_state.json` is the canonical claim registry, subordinate to Git/evidence.
+
 - [[Hot_Context]]
+- [[ChatGPT_Codex_Development_Standard]]
+- [[Standing_Delivery_Authorization]]
 - [[Current_Status]]
 - [[Project_Overview]]
 - [[Open_Questions]]
@@ -28,9 +32,11 @@ source_files: []
 | Task Type | Read First | Then Read | Then Inspect |
 |---|---|---|---|
 | Android UI or local feature | [[Android_App_Map]] | [[Feature_Overview]], [[Security_And_Entitlements]] | Android Kotlin and tests |
-| Build API, queue, or artifact | [[Build_Service_Map]] | [[Build_And_Worker_Architecture]], [[Database_Map]] | Express routes and service modules |
+| Build, artifact, or engine | [[Build_And_Worker_Architecture]] | [[Worker_And_Artifact_Flow]], [[Device_Build_Runtime_V3]] | DeviceBuildEngine, BuildApiClient and build contracts |
+| Windows artifact identity or download | [[Windows_Output_Artifact_Flow_V2]] | [[Device_Build_Runtime_V3]], [[Windows_Publisher_Authorization]] | BuildArtifactModel, BuildApiClient, DownloadedApkFolder and Windows artifact contracts |
 | Auth, billing, or account | [[Security_And_Entitlements]] | [[Integration_Index]], [[Database_Map]] | Auth, Play, and client hardening code |
-| Worker or deployment | [[Deployment_And_CI]] | [[Build_And_Worker_Architecture]], [[Current_Status]] | Docker, worker, and workflow files |
+| Windows publisher signing | [[Windows_Publisher_Authorization]] | [[Security_And_Entitlements]], [[Deployment_And_CI]] | Publisher authorization client/provider, control plane and contracts |
+| Control plane or deployment | [[Deployment_And_CI]] | [[Backend_API_Domains]], [[Current_Status]] | Cloudflare control plane and workflow files |
 | Terminal or developer tools | [[Terminal_And_Developer_Tools]] | [[Android_App_Map]], [[Account_And_Security_Map]] | terminal Kotlin modules and contracts |
 | Bug or test failure | [[Bug_Index]] | [[Current_Status]], [[Open_Questions]] | named test and its source files |
 | Architecture change | [[System_Architecture]] | [[Decision_Index]], affected maps | related source, config, migrations, and tests |
@@ -38,12 +44,14 @@ source_files: []
 
 ## Core Pages
 
+- [[Windows_Publisher_Authorization]]
 - [[Pro_Code_Lifecycle_Staging]]
 - [[Project_Overview]]
 - [[Current_Status]]
 - [[Feature_Overview]]
 - [[System_Architecture]]
-- [[Build_Service_Map]]
+- [[Backend_API_Domains]]
+- [[Build_Service_Map]] — historical / retired
 - [[Android_App_Map]]
 - [[Terminal_And_Developer_Tools]]
 - [[Local_AI_And_Agent_Map]]
@@ -52,3 +60,5 @@ source_files: []
 - [[Bug_Index]]
 - [[Decision_Index]]
 - [[Device_Build_Runtime_V3]]
+- [[Windows_Output_Artifact_Flow_V2]]
+- [[Release_Integration_V1]]

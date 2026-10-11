@@ -21,6 +21,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -44,7 +45,9 @@ import java.io.File
 
 @Composable
 internal fun OfflineBuildPackScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    firstRun: Boolean = false,
+    onFirstRunComplete: ((Boolean) -> Unit)? = null
 ) {
     val context =
         LocalContext.current
@@ -68,6 +71,14 @@ internal fun OfflineBuildPackScreen(
             )
         }
 
+
+    var showFirstRunSkipDialog by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
     var detail by
         remember {
             mutableStateOf(
@@ -79,12 +90,12 @@ internal fun OfflineBuildPackScreen(
                     status.currentAndroidEnginesReady &&
                     status.windowsHostReady
                 ) {
-                    "Android / Node / Python ve Windows Host hazır. " +
+                    "Android / Node / Python / Expo ve Windows Host hazır. " +
                         "Cihaz EXE paketleme kabulü bekliyor."
                 } else if (
                     status.currentAndroidEnginesReady
                 ) {
-                    "Android / Node / Python paketi hazır. " +
+                    "Android / Node / Python / Expo paketi hazır. " +
                         "Windows Host kurulumu bekliyor."
                 } else {
                     "Paket henüz kurulmadı."
@@ -262,7 +273,7 @@ internal fun OfflineBuildPackScreen(
                         } else if (
                             it.windowsHostReady
                         ) {
-                            "Android / Node / Python ve Windows Host hazır. " +
+                            "Android / Node / Python / Expo ve Windows Host hazır. " +
                                 "Cihaz-local EXE paketleme kabulü bekliyor."
                         } else {
                             "Hazır Android bileşenleri kuruldu. " +
@@ -282,6 +293,64 @@ internal fun OfflineBuildPackScreen(
             installing =
                 false
         }
+    }
+
+    if (
+        showFirstRunSkipDialog
+    ) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = {
+                showFirstRunSkipDialog =
+                    false
+            },
+
+            title = {
+                Text(
+                    "Çevrimdışı paketleri atla?"
+                )
+            },
+
+            text = {
+                Text(
+                    "Uygulamayı kullanmaya devam edebilirsin. " +
+                        "Ancak Device / Offline Build gerektiren projeler, " +
+                        "gerekli paketler kurulana kadar cihaz üzerinde " +
+                        "derlenemez. Paketleri daha sonra Ayarlar > " +
+                        "Tam Çevrimdışı Derleme Paketi bölümünden kurabilirsin."
+                )
+            },
+
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        showFirstRunSkipDialog =
+                            false
+
+                        onFirstRunComplete
+                            ?.invoke(
+                                true
+                            )
+                    }
+                ) {
+                    Text(
+                        "YİNE DE DEVAM ET"
+                    )
+                }
+            },
+
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        showFirstRunSkipDialog =
+                            false
+                    }
+                ) {
+                    Text(
+                        "GERİ DÖN VE İNDİR"
+                    )
+                }
+            }
+        )
     }
 
     if (
@@ -407,20 +476,30 @@ internal fun OfflineBuildPackScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Tam Çevrimdışı Derleme Paketi",
+                        if (
+                            firstRun
+                        ) {
+                            "Çevrimdışı Derleme Kurulumu"
+                        } else {
+                            "Tam Çevrimdışı Derleme Paketi"
+                        },
                         fontWeight =
                             FontWeight.Bold
                     )
                 },
 
                 navigationIcon = {
-                    IconButton(
-                        onClick =
-                            onBack
+                    if (
+                        !firstRun
                     ) {
-                        Text(
-                            "←"
-                        )
+                        IconButton(
+                            onClick =
+                                onBack
+                        ) {
+                            Text(
+                                "←"
+                            )
+                        }
                     }
                 },
 
@@ -493,13 +572,13 @@ internal fun OfflineBuildPackScreen(
 
                         Text(
                             "Hedef paket; Android SDK, JDK, Gradle, " +
-                                "Node.js/npm, Python/Chaquopy ve Portable EXE " +
+                                "Node.js/npm, Python/Chaquopy, Windows Native C/C++ ve Portable EXE " +
                                 "araçlarını cihazda tutacak."
                         )
 
                         Text(
-                            "Tahmini indirme: 1,5–2,3 GB • " +
-                                "hedef cihaz kullanımı: yaklaşık 4–6 GB"
+                            "İndirme boyutu cihaz mimarisi ve mevcut cache'e göre değişir. " +
+                                "Expo/NDK dahil tam paket birkaç GB depolama alanı kullanabilir."
                         )
 
                         Text(
@@ -559,6 +638,62 @@ internal fun OfflineBuildPackScreen(
                                 )
                             }
                         }
+
+
+                        if (
+                            firstRun
+                        ) {
+                            Text(
+                                "Bu paketleri indirmezsen AppForge'u " +
+                                    "kullanmaya devam edebilirsin; ancak " +
+                                    "Device / Offline Build gerektiren projeler " +
+                                    "paketler kurulana kadar cihaz üzerinde " +
+                                    "derlenemez."
+                            )
+
+                            val firstRunPackReady =
+                                status.completeTargetReady
+
+                            if (
+                                firstRunPackReady
+                            ) {
+                                Button(
+                                    modifier =
+                                        Modifier.fillMaxWidth(),
+
+                                    enabled =
+                                        !installing,
+
+                                    onClick = {
+                                        onFirstRunComplete
+                                            ?.invoke(
+                                                false
+                                            )
+                                    }
+                                ) {
+                                    Text(
+                                        "DEVAM ET"
+                                    )
+                                }
+                            }
+
+                            OutlinedButton(
+                                modifier =
+                                    Modifier.fillMaxWidth(),
+
+                                enabled =
+                                    !installing,
+
+                                onClick = {
+                                    showFirstRunSkipDialog =
+                                        true
+                                }
+                            ) {
+                                Text(
+                                    "ŞİMDİLİK ATLA"
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -601,6 +736,38 @@ internal fun OfflineBuildPackScreen(
 
                     ready =
                         status.pythonAndroidReady
+                )
+            }
+
+            item {
+                OfflinePackComponentCard(
+                    title =
+                        "Expo SDK 54 / React Native 0.81",
+
+                    subtitle =
+                        "Node 22 + Android API 36 + NDK 27.1 + CMake/Ninja " +
+                            "cihaz toolchain'i. Projeye özel npm bağımlılıkları " +
+                            "ayrıca cache kontrolünden geçer.",
+
+                    ready =
+                        status.expoToolchainReady
+                )
+            }
+
+            item {
+                OfflinePackComponentCard(
+                    title =
+                        "Windows Native EXE Toolchain",
+
+                    subtitle =
+                        "CMake + Ninja + MinGW-w64 x64 • C/C++ native PE üretimi. " +
+                            "Kaynak/CI ve gerçek Windows kabulü tamamlanana kadar EXPERIMENTAL.",
+
+                    ready =
+                        status.windowsNativeToolchainReady,
+
+                    pendingText =
+                        "KURULMADI"
                 )
             }
 

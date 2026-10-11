@@ -495,7 +495,8 @@ class LinuxTerminalJobService : Service() {
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("$title • ${statusLabel(status)}")
                 .setContentText(text)
-                .setAutoCancel(true)
+                .setOngoing(true)
+                .setAutoCancel(false)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setContentIntent(openAppIntent(sessionId))
                 .build()
@@ -513,6 +514,16 @@ class LinuxTerminalJobService : Service() {
                 flags =
                     Intent.FLAG_ACTIVITY_SINGLE_TOP or
                         Intent.FLAG_ACTIVITY_CLEAR_TOP
+
+                putExtra(
+                    EXTRA_OPEN_TERMINAL,
+                    true
+                )
+
+                putExtra(
+                    EXTRA_TERMINAL_SESSION_ID,
+                    sessionId
+                )
             },
             PendingIntent.FLAG_UPDATE_CURRENT or
                 PendingIntent.FLAG_IMMUTABLE
@@ -585,6 +596,25 @@ class LinuxTerminalJobService : Service() {
             "com.appforge.studio.terminal.CANCEL_LINUX_JOB"
         internal const val EXTRA_SESSION_ID =
             "session_id"
+
+        internal const val EXTRA_OPEN_TERMINAL =
+            "appforge_open_terminal"
+
+        internal const val EXTRA_TERMINAL_SESSION_ID =
+            "appforge_terminal_session_id"
+
+        /* OWNER_TERMINAL_RESULT_NOTIFICATION_V1_4 */
+        internal fun dismissResultNotification(
+            context: Context,
+            sessionId: String
+        ) {
+            context.getSystemService(
+                NotificationManager::class.java
+            )?.cancel(
+                RESULT_NOTIFICATION_BASE +
+                    (sessionId.hashCode() and 0x1fff)
+            )
+        }
 
         private const val CHANNEL_ID =
             "appforge-linux-background-jobs"

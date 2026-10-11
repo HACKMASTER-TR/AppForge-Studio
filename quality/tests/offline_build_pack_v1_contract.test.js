@@ -374,17 +374,17 @@ test(
 
     assert.match(
       store,
-      /windows-host-v1-a8c5323/
+      /windows-host-v1-c7e4b2a/
     );
 
     assert.match(
       store,
-      /699e5e13a157b9e436f8c19d0d6bca6264b510a71939a741d756078148d56c03/
+      /f4aa9c8bee1b919cfb7e3cd6e8073ab4097b0b8e050bc8fb3758f5a198b98c1e/
     );
 
     assert.match(
       store,
-      /375_025_483L/
+      /375_039_759L/
     );
 
     assert.match(

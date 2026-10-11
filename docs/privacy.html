@@ -2,11 +2,15 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
   <title>AppForge Studio - Gizlilik Politikası</title>
+
   <style>
     body {
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: system-ui,-apple-system,sans-serif;
       max-width: 900px;
       margin: 0 auto;
       padding: 32px 20px;
@@ -14,8 +18,15 @@
       background: #0b0d10;
       color: #e8edf2;
     }
-    h1, h2 { color: #ffffff; }
-    a { color: #8cc9f6; }
+
+    h1,h2 {
+      color: #fff;
+    }
+
+    a {
+      color: #8cc9f6;
+    }
+
     .card {
       background: #141920;
       border: 1px solid #29313b;
@@ -23,168 +34,239 @@
       padding: 20px;
       margin: 18px 0;
     }
-    .muted { color: #aab3bd; }
+
+    .muted {
+      color: #aab3bd;
+    }
   </style>
 </head>
 
 <body>
-  <h1>AppForge Studio Gizlilik Politikası</h1>
-  <p class="muted">Son güncelleme: 7 Eylül 2026</p>
 
-  <div class="card">
-    <p>
-      Bu Gizlilik Politikası, AppForge Studio uygulamasının kullanıcı
-      bilgilerini ve uygulama tarafından işlenen verileri nasıl kullandığını
-      açıklar.
-    </p>
-  </div>
+<h1>AppForge Studio Gizlilik Politikası</h1>
 
-  <h2>1. İşlenebilen bilgiler</h2>
+<p class="muted">
+  Son güncelleme: 6 Ekim 2026
+</p>
+
+<div class="card">
+  <strong>Hesapsız normal kullanım</strong>
+
   <p>
-    AppForge Studio'nun kullanılan özelliklerine bağlı olarak aşağıdaki
-    bilgiler işlenebilir:
-  </p>
-  <ul>
-    <li>Hesap e-posta adresi, görünen ad ve oturum bilgileri.</li>
-    <li>Uygulama oluşturma projeleri ve proje ayarları.</li>
-    <li>Uygulama adı, paket adı, sürüm ve build yapılandırmaları.</li>
-    <li>Kullanıcının açıkça seçtiği HTML, ZIP ve diğer proje dosyaları.</li>
-    <li>Kullanıcının seçtiği uygulama ikonu ve yapılandırma dosyaları.</li>
-    <li>Build işlemlerine ait durum, günlük ve çıktı bilgileri.</li>
-    <li>Google Play satın alma ve abonelik durum bilgileri.</li>
-    <li>Kullanıcı isteğiyle bağlanan GitHub hesabının görünen kimliği, verilen kapsamlar ve erişim tokenı.</li>
-  </ul>
-
-  <h2>2. Yerel olarak saklanan veriler</h2>
-  <p>
-    Hesap oturumu, isteğe bağlı GitHub bağlantı tokenı ve
-    diğer hassas yerel uygulama verileri desteklenen Android
-    cihazlarda Android Keystore kullanılarak şifreli biçimde
-    cihazda saklanır.
+    AppForge Studio'nun normal kullanımı için AppForge kullanıcı
+    hesabı oluşturulmaz ve e-posta/parola ile giriş yapılması
+    gerekmez.
   </p>
 
   <p>
-    Yerel projeler, build çıktıları, indirilen yerel yapay zeka
-    modeli ve kullanıcı tarafından içe aktarılan dosyalar ilgili
-    özellik kullanıldığında cihazda saklanabilir.
+    Owner/admin özellikleri için kullanılan Google doğrulaması
+    normal kullanıcı hesabından ayrı bir yönetici güvenlik
+    mekanizmasıdır.
   </p>
+</div>
 
-  <h2>3. Cihazda build işlemleri</h2>
-  <p>
-    AppForge Studio'nun normal build yolu cihaz üzerinde çalışır.
-    Desteklenen proje kaynakları uzak bir build worker'ına gönderilmez.
-    APK ve AAB çıktıları cihazdaki yerel build altyapısı tarafından
-    oluşturulur.
-  </p>
+<h2>1. İşlenebilen veriler</h2>
 
-  <p>
-    Kullanıcı özel imzalama seçeneğini kullanırsa keystore ve gerekli
-    imzalama bilgileri cihazdaki yerel build işlemi için kullanılır.
-  </p>
+<p>
+  Kullanılan özelliğe göre aşağıdaki veriler cihaz üzerinde
+  işlenebilir:
+</p>
 
-  <h2>4. GitHub bağlantısı</h2>
-  <p>
-    Kullanıcı Bağlantılar ekranından açıkça yetki verdiğinde
-    AppForge Studio, GitHub'ın resmi HTTPS yetkilendirme ve API
-    uç noktalarıyla iletişim kurabilir. GitHub parolası AppForge
-    Studio tarafından alınmaz ve OAuth client secret uygulama
-    paketine eklenmez.
-  </p>
-  <p>
-    GitHub erişim tokenı Android Keystore ile korunan şifreli
-    hesap kasasında tutulur ve yalnız kullanıcının başlattığı
-    Git/GitHub işlemleri için kullanılır.
-  </p>
-  <p>
-    Kullanıcı GitHub bağlantısını uygulamadan kaldırabilir.
-    Bu işlem cihazdaki şifreli kaydı siler; GitHub tarafındaki
-    uygulama izni GitHub hesap ayarlarından ayrıca iptal edilebilir.
-  </p>
+<ul>
+  <li>Yerel AppForge projeleri ve proje ayarları.</li>
+  <li>Uygulama adı, paket adı, sürüm ve build ayarları.</li>
+  <li>
+    Kullanıcının açıkça seçtiği HTML, ZIP, kaynak kod,
+    ikon, görsel, video, ses, altyazı ve benzeri dosyalar.
+  </li>
+  <li>Build günlükleri, durum bilgileri ve üretilen çıktılar.</li>
+  <li>Kullanıcı tarafından içe aktarılan yerel yapay zeka modelleri.</li>
+  <li>
+    Kullanıcı açıkça GitHub bağlantısı kurarsa gerekli
+    bağlantı kimliği, kapsamlar ve erişim belirteci.
+  </li>
+  <li>
+    Pro Ömür Boyu satın alımının doğrulanması için gerekli
+    Google Play satın alma durumu.
+  </li>
+  <li>
+    Yalnız owner/admin özellikleri kullanıldığında Google
+    yönetici kimliği doğrulaması için gereken teknik veriler.
+  </li>
+  <li>
+    Güvenlik, bütünlük ve sürüm kontrolü için gerekli sınırlı
+    cihaz/uygulama teknik bilgileri.
+  </li>
+</ul>
 
-  <h2>5. Google Play hizmetleri</h2>
-  <p>
-    AppForge Studio aşağıdaki Google Play hizmetlerini kullanabilir:
-  </p>
-  <ul>
-    <li>Google Play Billing — uygulama içi satın alma ve abonelikler.</li>
-    <li>Google Play Integrity — uygulama ve cihaz bütünlüğü kontrolleri.</li>
-    <li>Google Play dağıtım ve güncelleme altyapısı.</li>
-  </ul>
+<h2>2. Yerel veri saklama</h2>
 
-  <p>
-    Ödeme kartı bilgileriniz AppForge Studio tarafından doğrudan alınmaz.
-    Ödeme işlemleri Google Play tarafından gerçekleştirilir.
-  </p>
+<p>
+  AppForge Studio projeleri, build çıktıları, yerel modeller
+  ve kullanıcı tarafından içe aktarılan çalışma dosyaları
+  normal olarak cihaz üzerinde tutulur.
+</p>
 
-  <h2>6. İzinler</h2>
-  <p>
-    Google Play sürümü internet erişimi, ağ durumunu kontrol etme ve kullanıcı
-    tarafından izin verilmesi halinde bildirim gönderme yetkilerini
-    kullanabilir.
-  </p>
+<p>
+  Desteklenen hassas bağlantı bilgileri Android Keystore
+  tabanlı koruma kullanılarak cihazda şifreli biçimde
+  saklanabilir.
+</p>
 
-  <p>
-    Dosya erişimi gereken özelliklerde kullanıcı Android sistem dosya
-    seçicisini kullanarak hangi dosyanın uygulamayla paylaşılacağını kendisi
-    belirler.
-  </p>
+<h2>3. Cihaz üzerinde build</h2>
 
-  <h2>7. Verilerin kullanım amaçları</h2>
-  <ul>
-    <li>APK, AAB ve desteklenen diğer uygulama çıktılarının oluşturulması.</li>
-    <li>Kullanıcı hesabının ve oturumunun yönetilmesi.</li>
-    <li>Pro özelliklerinin ve satın almaların doğrulanması.</li>
-    <li>Güvenlik ve bütünlük kontrollerinin gerçekleştirilmesi.</li>
-    <li>Build geçmişi ve build çıktılarının kullanıcıya sunulması.</li>
-    <li>Uygulamanın çalışması ve teknik sorunların giderilmesi.</li>
-  </ul>
+<p>
+  AppForge Studio'nun normal build yolu cihaz üzerinde
+  çalışır. Desteklenen normal proje kaynakları uzak bir
+  build worker'ına gönderilmeden cihazda APK, AAB ve
+  desteklenen diğer çıktılara dönüştürülür.
+</p>
 
-  <h2>8. Veri saklama</h2>
-  <p>
-    Cihazda saklanan projeler, build çıktıları, bağlantı verileri
-    ve diğer yerel veriler kullanıcı tarafından silinene,
-    uygulama verileri temizlenene veya uygulama kaldırılana kadar
-    cihazda kalabilir.
-  </p>
+<p>
+  Özel imzalama kullanıldığında seçilen keystore ve gerekli
+  imzalama bilgileri ilgili yerel build işlemi için kullanılır.
+</p>
 
-  <p>
-    Hesap ve Google Play işlemleriyle ilişkili kayıtların saklama
-    süresi ilgili hizmetin işlevi ve yasal gerekliliklere göre
-    değişebilir.
-  </p>
+<h2>4. GitHub bağlantısı</h2>
 
-  <h2>9. Veri güvenliği</h2>
-  <p>
-    AppForge Studio hassas yerel hesap bilgilerinin korunması için Android
-    Keystore tabanlı şifreleme kullanır. Özel imzalama bilgileri cihazdaki yerel build akışında kullanılır.
-  </p>
+<p>
+  GitHub bağlantısı isteğe bağlıdır. Kullanıcı açıkça
+  bağlantı kurduğunda AppForge Studio GitHub'ın resmi HTTPS
+  yetkilendirme ve API uç noktalarıyla iletişim kurabilir.
+</p>
 
-  <h2>10. Kullanıcı kontrolü</h2>
-  <p>
-    Kullanıcı uygulama içindeki hesabından çıkabilir, yerel proje ve
-    dosyalarını silebilir, Android ayarlarından uygulama izinlerini
-    değiştirebilir ve uygulama verilerini temizleyebilir.
-    AppForge Studio hesabı ve hesapla ilişkili sunucu verileri,
-    <a href="delete-account.html">Hesap Silme</a> sayfasından veya
-    uygulamanın Hesap bölümündeki "Hesabımı Sil" seçeneğinden kalıcı
-    olarak silinebilir.
-  </p>
+<p>
+  GitHub parolası AppForge Studio tarafından alınmaz.
+  Bağlantı belirteci yalnız kullanıcının başlattığı ilgili
+  Git/GitHub işlemleri için kullanılır.
+</p>
 
-  <h2>11. Politika değişiklikleri</h2>
-  <p>
-    AppForge Studio'nun özellikleri veya veri işleme yöntemleri değiştiğinde
-    bu Gizlilik Politikası güncellenebilir. Güncel sürüm her zaman bu sayfada
-    yayınlanır.
-  </p>
+<p>
+  Kullanıcı GitHub bağlantısını uygulamadan kaldırabilir.
+</p>
 
-  <h2>12. İletişim</h2>
-  <p>
-    Gizlilik veya AppForge Studio ile ilgili sorular için:
-  </p>
-  <p>
-    <a href="https://github.com/HACKMASTER-TR/AppForge-Studio/issues">
-      AppForge Studio GitHub destek sayfası
-    </a>
-  </p>
+<h2>5. Google Play</h2>
+
+<p>
+  AppForge Studio aşağıdaki Google Play özelliklerini
+  kullanabilir:
+</p>
+
+<ul>
+  <li>
+    Google Play Billing — tek seferlik Pro Ömür Boyu
+    satın alımının gerçekleştirilmesi ve geri yüklenmesi.
+  </li>
+  <li>
+    Google Play Integrity — uygulama ve cihaz bütünlüğü
+    kontrolleri.
+  </li>
+  <li>
+    Google Play dağıtım ve uygulama güncelleme altyapısı.
+  </li>
+</ul>
+
+<p>
+  AppForge Studio aylık Pro aboneliği veya ek kota paketi
+  satmaz.
+</p>
+
+<p>
+  Ödeme kartı bilgileri AppForge Studio tarafından doğrudan
+  alınmaz. Ödeme Google Play tarafından gerçekleştirilir.
+</p>
+
+<h2>6. Owner/Admin Google doğrulaması</h2>
+
+<p>
+  Owner/admin araçları normal kullanıcılardan ayrıdır.
+  Yetkili yönetici bu alanı açıkça kullanırsa Google kimliği
+  sunucu tarafında doğrulanabilir.
+</p>
+
+<p>
+  Bu işlem normal kullanıcı için AppForge hesabı oluşturmaz
+  ve normal uygulama kullanımında Google yönetici girişi
+  gerekmez.
+</p>
+
+<h2>7. İzinler</h2>
+
+<p>
+  AppForge Studio yalnız kullanılan özellik için gereken
+  Android izinlerini isteyebilir.
+</p>
+
+<p>
+  Dosya gereken özelliklerde kullanıcı Android sistem dosya
+  seçicisi üzerinden paylaşılacak dosyayı kendisi seçer.
+</p>
+
+<h2>8. Verilerin kullanım amaçları</h2>
+
+<ul>
+  <li>Yerel projelerin oluşturulması ve düzenlenmesi.</li>
+  <li>APK, AAB, EXE ve desteklenen diğer çıktıların oluşturulması.</li>
+  <li>Pro Ömür Boyu erişiminin doğrulanması.</li>
+  <li>İsteğe bağlı GitHub işlemlerinin gerçekleştirilmesi.</li>
+  <li>Owner/admin yetkisinin güvenli biçimde doğrulanması.</li>
+  <li>Güvenlik ve bütünlük kontrollerinin yapılması.</li>
+  <li>Build geçmişi ve sonuçlarının kullanıcıya gösterilmesi.</li>
+</ul>
+
+<h2>9. Veri saklama ve kullanıcı kontrolü</h2>
+
+<p>
+  Cihazdaki projeler, build çıktıları ve diğer yerel AppForge
+  verileri kullanıcı tarafından silinene, uygulama verileri
+  temizlenene veya uygulama kaldırılana kadar cihazda
+  kalabilir.
+</p>
+
+<p>
+  GitHub bağlantısı uygulama içinden kaldırılabilir.
+  Android izinleri cihaz ayarlarından değiştirilebilir.
+</p>
+
+<p>
+  Google Play satın alma geçmişi Google hesabı ve Google Play
+  kurallarına tabidir.
+</p>
+
+<h2>10. Veri silme</h2>
+
+<p>
+  Normal AppForge kullanımı e-posta/parola hesabı
+  oluşturmadığından silinecek bir normal AppForge kullanıcı
+  hesabı bulunmaz.
+</p>
+
+<p>
+  Yerel AppForge verilerinin nasıl kaldırılacağı:
+  <a href="delete-account.html">
+    Veri Silme ve Hesapsız Kullanım
+  </a>
+  sayfasında açıklanır.
+</p>
+
+<h2>11. Politika değişiklikleri</h2>
+
+<p>
+  AppForge Studio'nun gerçek özellikleri veya veri işleme
+  yöntemleri değişirse bu politika da güncellenir.
+</p>
+
+<h2>12. İletişim</h2>
+
+<p>
+  Gizlilik veya AppForge Studio ile ilgili sorular için:
+</p>
+
+<p>
+  <a href="https://github.com/HACKMASTER-TR/AppForge-Studio/issues">
+    AppForge Studio GitHub destek sayfası
+  </a>
+</p>
+
 </body>
 </html>

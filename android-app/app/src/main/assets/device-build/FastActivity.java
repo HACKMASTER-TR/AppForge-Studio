@@ -81,8 +81,6 @@ public final class FastActivity extends Activity {
             getIntent()
         );
 
-        configureWindow();
-
         FrameLayout root = new FrameLayout(this);
 
         webView = new WebView(this);
@@ -122,9 +120,31 @@ public final class FastActivity extends Activity {
 
         setContentView(root);
 
-
+        /*
+         * APPFORGE_ANDROID_WINDOW_LIFECYCLE_V1_5
+         *
+         * WindowInsetsController requires an installed DecorView.
+         * Shared HTML/URL/Node-Web wrappers configure system bars only
+         * after setContentView().
+         */
+        configureWindow();
         applyAppForgeSystemBarInsets();
-requestConfiguredPermissions();
+
+        /*
+         * APPFORGE_SYSTEM_BARS_PHYSICAL_V1_6
+         *
+         * setContentView() creates the content hierarchy, but the final
+         * window attachment/focus can still happen after onCreate().
+         * Re-apply the requested system-bar state on the UI queue so
+         * normal mode cannot inherit a hidden status bar.
+         */
+        getWindow()
+            .getDecorView()
+            .post(
+                this::applyAppForgeSystemBarMode
+            );
+
+        requestConfiguredPermissions();
 
         if (splashView != null) {
             splashView.postDelayed(
@@ -524,40 +544,231 @@ requestConfiguredPermissions();
         Window window =
             getWindow();
 
-        window.setStatusBarColor(
+        int statusBarColor =
             parseColor(
                 config.optString(
                     "statusBarColor",
                     "#07101F"
                 ),
                 Color.BLACK
-            )
-        );
+            );
 
-        window.setNavigationBarColor(
+        int navigationBarColor =
             parseColor(
                 config.optString(
                     "navigationBarColor",
                     "#07101F"
                 ),
                 Color.BLACK
-            )
+            );
+
+        window.setStatusBarColor(
+            statusBarColor
         );
 
-        if (
+        window.setNavigationBarColor(
+            navigationBarColor
+        );
+
+        applyAppForgeSystemBarMode();
+    }
+
+    /*
+     * APPFORGE_SYSTEM_BARS_PHYSICAL_V1_6
+     *
+     * System-bar state is deliberately idempotent.
+     *
+     * Normal:
+     * - status bar visible
+     * - navigation bar visible
+     * - no immersive/fullscreen flags
+     * - icon foreground explicitly contrasted against configured colors
+     *
+     * Fullscreen:
+     * - system bars hidden
+     * - transient reveal by swipe
+     *
+     * This method is safe to call from onCreate, onResume and
+     * onWindowFocusChanged.
+     */
+    private void applyAppForgeSystemBarMode() {
+        if (config == null) {
+            return;
+        }
+
+        Window window =
+            getWindow();
+
+        View decor =
+            window.getDecorView();
+
+        if (decor == null) {
+            return;
+        }
+
+        boolean fullscreen =
             config.optBoolean(
                 "fullscreen",
                 false
+            );
+
+        int statusBarColor =
+            parseColor(
+                config.optString(
+                    "statusBarColor",
+                    "#07101F"
+                ),
+                Color.BLACK
+            );
+
+        int navigationBarColor =
+            parseColor(
+                config.optString(
+                    "navigationBarColor",
+                    "#07101F"
+                ),
+                Color.BLACK
+            );
+
+        if (!fullscreen) {
+            window.clearFlags(
+                android.view.WindowManager
+                    .LayoutParams
+                    .FLAG_FULLSCREEN
+            );
+        }
+
+        if (
+            Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.R
+        ) {
+            /*
+             * Android 15+ enforces edge-to-edge for modern target SDKs.
+             * Keep the existing AppForge inset contract and explicitly
+             * control visibility instead of relying on theme defaults.
+             */
+            window.setDecorFitsSystemWindows(
+                false
+            );
+
+            android.view.WindowInsetsController controller =
+                window.getInsetsController();
+
+            if (controller == null) {
+                return;
+            }
+
+            if (fullscreen) {
+                controller.hide(
+                    android.view.WindowInsets.Type.systemBars()
+                );
+
+                controller.setSystemBarsBehavior(
+                    android.view.WindowInsetsController
+                        .BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                );
+
+                return;
+            }
+
+            /*
+             * Do not use only systemBars() here.
+             * Keep the physical acceptance contract explicit so the two
+             * independently visible bars cannot silently diverge.
+             */
+            controller.show(
+                android.view.WindowInsets.Type.statusBars()
+            );
+
+            controller.show(
+                android.view.WindowInsets.Type.navigationBars()
+            );
+
+            int appearance =
+                0;
+
+            int appearanceMask =
+                android.view.WindowInsetsController
+                    .APPEARANCE_LIGHT_STATUS_BARS
+                |
+                android.view.WindowInsetsController
+                    .APPEARANCE_LIGHT_NAVIGATION_BARS;
+
+            if (
+                isLightSystemBarColor(
+                    statusBarColor
+                )
+            ) {
+                appearance |=
+                    android.view.WindowInsetsController
+                        .APPEARANCE_LIGHT_STATUS_BARS;
+            }
+
+            if (
+                isLightSystemBarColor(
+                    navigationBarColor
+                )
+            ) {
+                appearance |=
+                    android.view.WindowInsetsController
+                        .APPEARANCE_LIGHT_NAVIGATION_BARS;
+            }
+
+            controller.setSystemBarsAppearance(
+                appearance,
+                appearanceMask
+            );
+
+            return;
+        }
+
+        int flags =
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+
+        if (fullscreen) {
+            flags |=
+                View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+        }
+
+        if (
+            !fullscreen &&
+            Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.M &&
+            isLightSystemBarColor(
+                statusBarColor
             )
         ) {
-            window
-                .getDecorView()
-                .setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                );
+            flags |=
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
         }
+
+        if (
+            !fullscreen &&
+            Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.O &&
+            isLightSystemBarColor(
+                navigationBarColor
+            )
+        ) {
+            flags |=
+                View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        }
+
+        decor.setSystemUiVisibility(
+            flags
+        );
+    }
+
+    private boolean isLightSystemBarColor(
+        int color
+    ) {
+        return Color.luminance(
+            color
+        ) > 0.5d;
     }
 
     private int parseColor(
@@ -2335,15 +2546,14 @@ requestConfiguredPermissions();
                     ""
                 );
 
-            if (
-                url.startsWith(
-                    "https://"
-                )
-            ) {
-                webView.loadUrl(
-                    url
-                );
+            Uri remote = Uri.parse(url);
+            String scheme = remote.getScheme();
 
+            if (
+                "https".equalsIgnoreCase(scheme) ||
+                "http".equalsIgnoreCase(scheme)
+            ) {
+                webView.loadUrl(url);
                 return;
             }
         }
@@ -2762,6 +2972,39 @@ requestConfiguredPermissions();
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (config != null) {
+            getWindow()
+                .getDecorView()
+                .post(
+                    this::applyAppForgeSystemBarMode
+                );
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(
+        boolean hasFocus
+    ) {
+        super.onWindowFocusChanged(
+            hasFocus
+        );
+
+        if (
+            hasFocus &&
+            config != null
+        ) {
+            getWindow()
+                .getDecorView()
+                .post(
+                    this::applyAppForgeSystemBarMode
+                );
+        }
+    }
+
+    @Override
     public void onBackPressed() {
         if (
             webView != null
@@ -2796,6 +3039,21 @@ requestConfiguredPermissions();
             return;
         }
 
+        if (
+            config.optBoolean(
+                "fullscreen",
+                false
+            )
+        ) {
+            content.setPadding(
+                0,
+                0,
+                0,
+                0
+            );
+            return;
+        }
+
         final int baseLeft =
             content.getPaddingLeft();
         final int baseTop =
@@ -2814,15 +3072,40 @@ requestConfiguredPermissions();
                     return null;
                 }
 
+                int left;
+                int top;
+                int right;
+                int bottom;
+
+                if (
+                    Build.VERSION.SDK_INT >=
+                        Build.VERSION_CODES.R
+                ) {
+                    android.graphics.Insets bars =
+                        insets.getInsets(
+                            android.view.WindowInsets.Type.systemBars()
+                        );
+
+                    left = bars.left;
+                    top = bars.top;
+                    right = bars.right;
+                    bottom = bars.bottom;
+                } else {
+                    left =
+                        insets.getSystemWindowInsetLeft();
+                    top =
+                        insets.getSystemWindowInsetTop();
+                    right =
+                        insets.getSystemWindowInsetRight();
+                    bottom =
+                        insets.getSystemWindowInsetBottom();
+                }
+
                 view.setPadding(
-                    baseLeft +
-                        insets.getSystemWindowInsetLeft(),
-                    baseTop +
-                        insets.getSystemWindowInsetTop(),
-                    baseRight +
-                        insets.getSystemWindowInsetRight(),
-                    baseBottom +
-                        insets.getSystemWindowInsetBottom()
+                    baseLeft + left,
+                    baseTop + top,
+                    baseRight + right,
+                    baseBottom + bottom
                 );
 
                 return insets;

@@ -5,7 +5,8 @@ internal enum class DeviceArtifactKind(
 ) {
     APK("Android APK"),
     AAB("Android AAB"),
-    WINDOWS_EXE("Windows Portable EXE")
+    WINDOWS_EXE("Windows Portable EXE"),
+    WINDOWS_NATIVE_EXE("Windows Native EXE")
 }
 
 internal enum class DeviceBuildSupport {
@@ -28,6 +29,29 @@ internal object DeviceBuildCapabilities {
     val all:
         List<DeviceBuildCapability> =
         listOf(
+
+
+            DeviceBuildCapability(
+                engine =
+                    "universal-cross-platform",
+                technologies =
+                    setOf(
+                        "appforge-universal",
+                        "universal-cross-platform",
+                        "multi-target"
+                    ),
+                readyOutputs =
+                    setOf(
+                        DeviceArtifactKind.APK,
+                        DeviceArtifactKind.AAB,
+                        DeviceArtifactKind.WINDOWS_EXE
+                    ),
+                support =
+                    DeviceBuildSupport.READY,
+                note =
+                    "Tek AppForge Universal proje paketi, native Android alt projesinden APK/AAB ve statik Windows alt projesinden Portable EXE üretebilir."
+            ),
+
 
             DeviceBuildCapability(
                 engine =
@@ -136,6 +160,24 @@ internal object DeviceBuildCapabilities {
 
             DeviceBuildCapability(
                 engine =
+                    "windows-native",
+                technologies =
+                    setOf(
+                        "windows-native",
+                        "windows-native-cpp"
+                    ),
+                readyOutputs =
+                    setOf(
+                        DeviceArtifactKind.WINDOWS_NATIVE_EXE
+                    ),
+                support =
+                    DeviceBuildSupport.EXPERIMENTAL,
+                note =
+                    "Native Windows C/C++ CMake motoru cihaz-local MinGW-w64 ile x64 PE üretir. Kaynak/CI doğrulaması tamamlanmadan ve gerçek Windows kabulü geçmeden READY ilan edilmez."
+            ),
+
+            DeviceBuildCapability(
+                engine =
                     "react-native",
                 technologies =
                     setOf(
@@ -144,9 +186,9 @@ internal object DeviceBuildCapabilities {
                 readyOutputs =
                     emptySet(),
                 support =
-                    DeviceBuildSupport.PLANNED,
+                    DeviceBuildSupport.EXPERIMENTAL,
                 note =
-                    "React Native için Node + Android + NDK/Hermes katmanı ayrı V3 toolchain olarak hazırlanacak."
+                    "React Native native Android build için Node + Android + NDK/CMake/Hermes gerekir. Android-hosted ARM64 Linux üzerinde resmi NDK host kabulü bulunmadığından APK/AAB çıktıları fiziksel toolchain kabulüne kadar kapalıdır."
             ),
 
             DeviceBuildCapability(
@@ -157,11 +199,14 @@ internal object DeviceBuildCapabilities {
                         "expo"
                     ),
                 readyOutputs =
-                    emptySet(),
+                    setOf(
+                        DeviceArtifactKind.APK,
+                        DeviceArtifactKind.AAB
+                    ),
                 support =
-                    DeviceBuildSupport.PLANNED,
+                    DeviceBuildSupport.READY,
                 note =
-                    "Expo prebuild/device-native pipeline doğrulanmadan yerel build açılmayacak."
+                    "Expo SDK 54 / React Native 0.81.4 yolu ARM64 cihazda 4/4 ardışık APK+AAB build ve final install/launch/UI kabulünü geçti. READY kapsamı yalnız bu sürüm ailesidir."
             ),
 
             DeviceBuildCapability(
@@ -316,9 +361,17 @@ internal object DeviceBuildCapabilities {
                 )
 
             "exe",
-            "windows-exe" ->
+            "windows-exe",
+            "portable-exe",
+            "windows-portable-exe" ->
                 setOf(
                     DeviceArtifactKind.WINDOWS_EXE
+                )
+
+            "native-exe",
+            "windows-native-exe" ->
+                setOf(
+                    DeviceArtifactKind.WINDOWS_NATIVE_EXE
                 )
 
             "all",

@@ -1,6 +1,12 @@
 name: AppForge Play Release
 
 on:
+  push:
+    branches:
+      - feat/google-play-platform-v1-20261004
+    paths:
+      - .github/.play-integrity-internal-track-acceptance-request
+
   workflow_dispatch:
   release:
     types:
@@ -19,11 +25,260 @@ env:
 
 jobs:
   build-play-aab:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Guard physical acceptance Internal track marker
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MARKER=".github/.play-integrity-internal-track-acceptance-request"
+
+          test "$GITHUB_REPOSITORY" = "HACKMASTER-TR/AppForge-Studio"
+          test "$GITHUB_REF" = "refs/heads/feat/google-play-platform-v1-20261004"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+          test "$(git show -s --format=%s HEAD)" = \
+            "share(internal-track): Play Integrity physical acceptance"
+
+          CHANGED="$(
+            git diff \
+              --name-only \
+              HEAD^ \
+              HEAD
+          )"
+
+          test "$CHANGED" = "$MARKER"
+          test -s "$MARKER"
+
+          test "$(tr -d '\r\n' < "$MARKER")" = \
+            "$(git rev-parse HEAD^)"
+
+          echo "PHYSICAL_ACCEPTANCE_INTERNAL_TRACK_MARKER_GUARD=PASS"
+          echo "SOURCE_CHANGE_IN_ACCEPTANCE_COMMIT=NONE"
+          echo "PLAY_TRACK=internal"
+          echo "PLAY_PRODUCTION_MUTATION=NONE"
+
+      - name: Resolve fail-closed Play track
+        id: play-production-gate
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || '' }}
+          RELEASE_DRAFT: ${{ github.event.release.draft || false }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease || false }}
+        run: |
+          set -euo pipefail
+
+          fail_gate() {
+            echo "PLAY_PRODUCTION_GATE=FAIL"
+            echo "Reason: $1"
+            exit 1
+          }
+
+          if [ "$EVENT_NAME" = "push" ]; then
+            echo "APPFORGE_PLAY_TRACK=internal" >> "$GITHUB_ENV"
+            echo "APPFORGE_PLAY_RELEASE_MODE=integrity_acceptance_internal_completed" >> "$GITHUB_ENV"
+            echo "APPFORGE_PLAY_INTEGRITY_ACCEPTANCE=true" >> "$GITHUB_ENV"
+            echo "APPFORGE_PLAY_INTEGRITY_STAGING_BASE_URL=https://appforge-integrity-staging.28550040284a.workers.dev" >> "$GITHUB_ENV"
+            echo "APPFORGE_PLAY_INTEGRITY_ACCEPTANCE_VERSION_CODE=530" >> "$GITHUB_ENV"
+
+            echo "PLAY_PRODUCTION_GATE=PHYSICAL_ACCEPTANCE_INTERNAL_ONLY"
+            echo "PLAY_INTERNAL_ACCEPTANCE_VERSION_CODE=530"
+            echo "PLAY_PRODUCTION_MUTATION=NONE"
+            exit 0
+          fi
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "APPFORGE_PLAY_TRACK=internal" >> "$GITHUB_ENV"
+            echo "APPFORGE_PLAY_RELEASE_MODE=internal_completed" >> "$GITHUB_ENV"
+            echo "APPFORGE_PLAY_INTEGRITY_ACCEPTANCE=false" >> "$GITHUB_ENV"
+            echo "PLAY_PRODUCTION_GATE=MANUAL_INTERNAL_ONLY"
+            exit 0
+          fi
+
+          [ "$EVENT_NAME" = "release" ] ||             fail_gate "Unsupported event."
+
+          [ "$RELEASE_DRAFT" = "false" ] ||             fail_gate "Draft release cannot publish to Production."
+
+          [ "$RELEASE_PRERELEASE" = "false" ] ||             fail_gate "Prerelease cannot publish to Production."
+
+          if [[ ! "$RELEASE_TAG" =~ ^appforge-v([0-9]+)\.([0-9]+)\.([0-9]+)-([0-9]+)$ ]]; then
+            fail_gate "Release tag is not an AppForge production version tag."
+          fi
+
+          git fetch             --force             --no-tags             origin             "+refs/heads/main:refs/remotes/origin/main"
+
+          git fetch             --force             origin             "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+
+          MAIN_SHA="$(
+            git rev-parse               "refs/remotes/origin/main^{commit}"
+          )"
+
+          TAG_SHA="$(
+            git rev-parse               "refs/tags/$RELEASE_TAG^{commit}"
+          )"
+
+          echo "PLAY_MAIN_SHA=$MAIN_SHA"
+          echo "PLAY_TAG_SHA=$TAG_SHA"
+
+          [ "$TAG_SHA" = "$MAIN_SHA" ] ||             fail_gate "Release tag does not point to current protected main."
+
+          python3 - "$RELEASE_TAG" <<'PY_VERSION'
+          import re
+          import sys
+          from pathlib import Path
+
+          tag = sys.argv[1]
+
+          tag_match = re.fullmatch(
+              r"appforge-v(\d+)\.(\d+)\.(\d+)-(\d+)",
+              tag,
+          )
+
+          if not tag_match:
+              raise SystemExit(
+                  "PLAY_VERSION_TAG_VERIFY=FAIL"
+              )
+
+          expected_name = ".".join(
+              tag_match.groups()[:3]
+          )
+
+          expected_code = int(
+              tag_match.group(4)
+          )
+
+          source = Path(
+              "android-app/app/build.gradle.kts"
+          ).read_text(
+              encoding="utf-8"
+          )
+
+          code_match = re.search(
+              r"\bappforgeBaseVersionCode\s*=\s*(\d+)",
+              source,
+          )
+
+          name_match = re.search(
+              r'\bversionName\s*=\s*"([^"]+)"',
+              source,
+          )
+
+          if not code_match or not name_match:
+              raise SystemExit(
+                  "PLAY_VERSION_SOURCE_VERIFY=FAIL"
+              )
+
+          actual_name = name_match.group(1)
+          actual_code = int(
+              code_match.group(1)
+          )
+
+          print(
+              f"TAG_VERSION={expected_name}"
+          )
+          print(
+              f"TAG_VERSION_CODE={expected_code}"
+          )
+          print(
+              f"SOURCE_VERSION={actual_name}"
+          )
+          print(
+              f"SOURCE_VERSION_CODE={actual_code}"
+          )
+
+          if actual_name != expected_name:
+              raise SystemExit(
+                  "PLAY_VERSION_NAME_MATCH=FAIL"
+              )
+
+          if actual_code != expected_code:
+              raise SystemExit(
+                  "PLAY_VERSION_CODE_MATCH=FAIL"
+              )
+
+          print(
+              "PLAY_VERSION_NAME_MATCH=PASS"
+          )
+          print(
+              "PLAY_VERSION_CODE_MATCH=PASS"
+          )
+          PY_VERSION
+
+          echo "APPFORGE_PLAY_TRACK=production" >> "$GITHUB_ENV"
+          echo "APPFORGE_PLAY_RELEASE_MODE=production_draft_then_staged" >> "$GITHUB_ENV"
+          echo "PLAY_PRODUCTION_INITIAL_STATE=DRAFT"
+          echo "PLAY_PRODUCTION_GATE=PASS"
+
+      - name: Verify isolated Integrity staging target
+        if: env.APPFORGE_PLAY_INTEGRITY_ACCEPTANCE == 'true'
+        shell: bash
+        env:
+          STAGING_BASE_URL: ${{ env.APPFORGE_PLAY_INTEGRITY_STAGING_BASE_URL }}
+        run: |
+          set -euo pipefail
+
+          python3 - "$STAGING_BASE_URL" <<'PYSTAGING'
+          import re
+          import sys
+
+          value = sys.argv[1].strip()
+
+          if not re.fullmatch(
+              r"https://"
+              r"appforge-integrity-staging"
+              r"\.[A-Za-z0-9.-]+"
+              r"\.workers\.dev",
+              value,
+          ):
+              raise SystemExit(
+                  "INTERNAL_TRACK_STAGING_URL_GUARD=FAIL"
+              )
+
+          print(
+              "INTERNAL_TRACK_STAGING_URL_GUARD=PASS"
+          )
+          PYSTAGING
+
+          HEALTH="$(
+            curl \
+              --silent \
+              --show-error \
+              --fail-with-body \
+              "$STAGING_BASE_URL/health"
+          )"
+
+          python3 - "$HEALTH" <<'PYHEALTH'
+          import json
+          import sys
+
+          data = json.loads(sys.argv[1])
+
+          if (
+              data.get("ok") is not True
+              or data.get("service")
+              != "appforge-integrity-staging"
+              or data.get("database")
+              != "not_bound"
+          ):
+              raise SystemExit(
+                  "INTERNAL_TRACK_STAGING_PREFLIGHT=FAIL"
+              )
+
+          print(
+              "INTERNAL_TRACK_STAGING_PREFLIGHT=PASS"
+          )
+          PYHEALTH
+
+          echo "PLAY_PRODUCTION_MUTATION=NONE"
 
       - name: Authenticate to Google Cloud with GitHub OIDC
         id: google-auth
@@ -72,8 +327,17 @@ jobs:
             APPFORGE_RELEASE_KEYSTORE_B64
             APPFORGE_RELEASE_STORE_PASSWORD
             APPFORGE_RELEASE_KEY_PASSWORD
-            APPFORGE_GITHUB_OAUTH_CLIENT_ID
           )
+
+          if test "${APPFORGE_PLAY_INTEGRITY_ACCEPTANCE:-false}" != "true"; then
+            required+=(
+              APPFORGE_GITHUB_OAUTH_CLIENT_ID
+            )
+
+            echo "GITHUB_OAUTH_SECRET_REQUIREMENT=NORMAL_RELEASE_REQUIRED"
+          else
+            echo "GITHUB_OAUTH_SECRET_REQUIREMENT=PHYSICAL_ACCEPTANCE_NOT_REQUIRED"
+          fi
 
           missing=0
 
@@ -156,7 +420,7 @@ jobs:
           ).read_text(encoding="utf-8")
 
           code_match = re.search(
-              r"\bversionCode\s*=\s*(\d+)",
+              r"\bappforgeBaseVersionCode\s*=\s*(\d+)",
               source
           )
 
@@ -170,8 +434,39 @@ jobs:
                   "versionCode/versionName bulunamadı."
               )
 
-          version_code = code_match.group(1)
+          source_version_code = code_match.group(1)
           version_name = name_match.group(1)
+
+          acceptance_enabled = (
+              os.environ.get(
+                  "APPFORGE_PLAY_INTEGRITY_ACCEPTANCE",
+                  "false",
+              )
+              == "true"
+          )
+
+          if acceptance_enabled:
+              override = os.environ.get(
+                  "APPFORGE_PLAY_INTEGRITY_ACCEPTANCE_VERSION_CODE",
+                  "",
+              ).strip()
+
+              if (
+                  not override.isdigit()
+                  or int(override) <= int(source_version_code)
+              ):
+                  raise SystemExit(
+                      "PLAY_ACCEPTANCE_VERSION_CODE_GUARD=FAIL"
+                  )
+
+              version_code = override
+
+              print(
+                  "PLAY_ACCEPTANCE_VERSION_CODE_GUARD=PASS"
+              )
+
+          else:
+              version_code = source_version_code
 
           aab_name = (
               f"AppForgeStudio-Play-"
@@ -265,14 +560,33 @@ jobs:
           APPFORGE_RELEASE_KEY_ALIAS: appforge-release
           APPFORGE_RELEASE_KEY_PASSWORD: ${{ secrets.APPFORGE_RELEASE_KEY_PASSWORD }}
           APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
+          INTEGRITY_ACCEPTANCE: ${{ env.APPFORGE_PLAY_INTEGRITY_ACCEPTANCE }}
+          INTEGRITY_STAGING_BASE_URL: ${{ env.APPFORGE_PLAY_INTEGRITY_STAGING_BASE_URL }}
+          INTEGRITY_ACCEPTANCE_VERSION_CODE: ${{ env.APPFORGE_PLAY_INTEGRITY_ACCEPTANCE_VERSION_CODE }}
         run: |
           set -euo pipefail
+
+          EXTRA_GRADLE_ARGS=()
+
+          if test "$INTEGRITY_ACCEPTANCE" = "true"; then
+            EXTRA_GRADLE_ARGS+=(
+              "-PappforgePlayIntegrityAcceptance=true"
+              "-PappforgePlayIntegrityAcceptanceBaseUrl=$INTEGRITY_STAGING_BASE_URL"
+              "-PappforgePlayIntegrityAcceptanceVersionCode=$INTEGRITY_ACCEPTANCE_VERSION_CODE"
+            )
+
+            echo "PHYSICAL_ACCEPTANCE_INTERNAL_TRACK_BUILD=ENABLED"
+            echo "PHYSICAL_ACCEPTANCE_INTERNAL_TRACK_VERSION_CODE=$INTEGRITY_ACCEPTANCE_VERSION_CODE"
+          else
+            echo "PHYSICAL_ACCEPTANCE_INTERNAL_TRACK_BUILD=DISABLED"
+          fi
 
           gradle \
             -p android-app \
             :app:testDebugUnitTest \
             :app:signingReport \
             :app:bundleRelease \
+            "${EXTRA_GRADLE_ARGS[@]}" \
             --stacktrace
 
       - name: Verify Play Store permissions
@@ -339,11 +653,23 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload signed AAB to Google Play
+      - name: Upload signed AAB to Google Play Internal
+        if: env.APPFORGE_PLAY_TRACK == 'internal'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: ${{ steps.google-auth.outputs.credentials_file_path }}
           packageName: com.appforge.studio
           releaseFiles: ${{ env.APPFORGE_PLAY_AAB_NAME }}
-          track: ${{ github.event_name == 'release' && 'production' || vars.APPFORGE_PLAY_TRACK || 'internal' }}
+          track: internal
           status: completed
+
+      - name: Upload signed AAB to Google Play Production as draft
+        if: env.APPFORGE_PLAY_TRACK == 'production'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ steps.google-auth.outputs.credentials_file_path }}
+          packageName: com.appforge.studio
+          releaseFiles: ${{ env.APPFORGE_PLAY_AAB_NAME }}
+          track: production
+          status: draft
+          inAppUpdatePriority: 2

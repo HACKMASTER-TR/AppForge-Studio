@@ -70,21 +70,39 @@ test(
 );
 
 test(
-  "local data cannot consume successful-project quota",
+  "local project data cannot reintroduce retired project-quota UI",
   () => {
+    /*
+     * Local project persistence must never claim or consume the
+     * retired successful-project quota.
+     */
     assert.doesNotMatch(
       main,
       /\.claimFreeProjectSlot\(/
     );
 
-    assert.match(
-      main,
-      /projectQuota/
-    );
-
-    assert.match(
+    /*
+     * The current accountless product no longer exposes the
+     * historical server/local trial counter to normal users.
+     */
+    assert.doesNotMatch(
       main,
       /serverFreeProjectUsed/
+    );
+
+    assert.doesNotMatch(
+      main,
+      /Deneme Hakkı/
+    );
+
+    assert.doesNotMatch(
+      main,
+      /yeni proje hakkın kaldı/
+    );
+
+    assert.doesNotMatch(
+      main,
+      /Ücretsiz denemede toplam/
     );
   }
 );

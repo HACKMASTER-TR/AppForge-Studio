@@ -38,7 +38,8 @@ Major packages:
 - `terminal/`: local and Linux PTY, workspace files, Git, SSH, OAuth connections, editor, and terminal UI.
 - `io/`: project persistence, import/export, icons, keystore handling, source analysis, and templates.
 - `security/`: account storage, device identity, billing, signature verification, and owner policy.
-- `net/` and `build/`: Build Service clients.
+- `build/`: device-local build orchestration and client compatibility through `BuildApiClient`, `DeviceBuildEngine` and `DeviceBuildRuntimeV3`, with local artifact persistence. The former remote Build Service is retired.
+- `net/`: HTTPS product/control-plane clients where applicable, separate from normal local compilation. The current Cloudflare Worker/D1 control plane retains server-verified responsibilities.
 
 The manifest declares networking, notifications, biometric, foreground-service, wake-lock, and package-install permissions. Verify every permission-dependent feature against the manifest and the related Kotlin implementation.
 

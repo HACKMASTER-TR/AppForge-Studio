@@ -110,17 +110,34 @@ test("admin screen has no autoscale or real build stress controls", () => {
   assert.match(admin, /https:\/\//);
 });
 
-test("admin accounts auto-load from HTTPS service", () => {
-  const accounts = read(
+test("retired admin accounts screen stays removed", () => {
+  const legacyPath = path.join(
+    root,
     "android-app/app/src/main/java/com/appforge/studio/AdminAccountsScreen.kt"
   );
 
-  assert.match(
-    accounts,
-    /LaunchedEffect\(\s*serverUrl\s*,\s*apiKey\s*\)[\s\S]{0,250}?refresh\(\)/
+  const main = read(
+    "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
   );
-  assert.match(accounts, /\/api\/admin\/users/);
-  assert.match(accounts, /controlPlaneBaseUrl/);
+
+  const admin = read(
+    "android-app/app/src/main/java/com/appforge/studio/AdminOpsScreen.kt"
+  );
+
+  assert.equal(
+    fs.existsSync(legacyPath),
+    false
+  );
+
+  assert.doesNotMatch(
+    main,
+    /AdminAccountsScreen|ADMIN_ACCOUNTS/
+  );
+
+  assert.doesNotMatch(
+    admin,
+    /AdminAccountsScreen|ADMIN_ACCOUNTS|onOpenAdminAccounts|onOpenAccounts/
+  );
 });
 
 test("Pro status remains server verified", () => {
@@ -133,21 +150,33 @@ test("Pro status remains server verified", () => {
   assert.match(security, /https:\/\//);
 });
 
-test("update failure keeps an offline continuation path", () => {
+test("update failure keeps a Play-visible fail-open continuation path", () => {
   const update = read(
     "android-app/app/src/main/java/com/appforge/studio/UpdateGateActivity.kt"
   );
 
   assert.match(
     update,
-    /GateUiState\.Error[\s\S]{0,500}?canContinueOffline\s*=\s*true/
+    /UPDATE_GATE_PLAY_FALLBACK_V1/
   );
+
+  assert.match(
+    update,
+    /backendUnavailableStudioUpdatePolicy/
+  );
+
+  assert.match(
+    update,
+    /applyPlayVisiblePolicy\([\s\S]{0,600}?backendUnavailableStudioUpdatePolicy/
+  );
+
+  assert.match(
+    update,
+    /\.addOnFailureListener[\s\S]{0,1800}?openStudio\(\)/
+  );
+
   assert.match(
     update,
     /onContinue\s*=\s*::openStudio/
-  );
-  assert.match(
-    update,
-    /Çevrimdışı devam et/
   );
 });

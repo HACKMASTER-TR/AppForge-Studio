@@ -1,0 +1,1680 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import test from "node:test";
+
+const engine =
+  fs.readFileSync(
+    new URL(
+      "../../android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt",
+      import.meta.url
+    ),
+    "utf8"
+  );
+
+const installer =
+  fs.readFileSync(
+    new URL(
+      "../../android-app/app/src/main/assets/device-build/install-toolchain.sh",
+      import.meta.url
+    ),
+    "utf8"
+  );
+
+const expo =
+  fs.readFileSync(
+    new URL(
+      "../../android-app/app/src/main/assets/device-build/build-expo.sh",
+      import.meta.url
+    ),
+    "utf8"
+  );
+
+const capabilities =
+  fs.readFileSync(
+    new URL(
+      "../../android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildCapabilities.kt",
+      import.meta.url
+    ),
+    "utf8"
+  );
+
+test(
+  "Expo SDK54 uses the normal READY engine gate after physical acceptance",
+  () => {
+    assert.doesNotMatch(
+      engine,
+      /BuildConfig\.DEBUG[\s\S]{0,180}sourceEngine == "expo"/
+    );
+
+    assert.doesNotMatch(
+      engine,
+      /expoAcceptanceProbe/
+    );
+
+    assert.match(
+      engine,
+      /draft\.sourceBuildReady/
+    );
+
+    assert.match(
+      engine,
+      /"expo" -> buildExpoProject/
+    );
+  }
+);
+
+test(
+  "Expo acceptance artifact embeds JS and runs without Metro",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_STANDALONE_ACCEPTANCE_V1/
+    );
+
+    assert.match(
+      expo,
+      /appforgeAcceptance/
+    );
+
+    assert.match(
+      expo,
+      /initWith debug/
+    );
+
+    assert.match(
+      expo,
+      /debuggable false/
+    );
+
+    assert.match(
+      expo,
+      /signingConfig signingConfigs\.debug/
+    );
+
+    assert.match(
+      expo,
+      /matchingFallbacks/
+    );
+
+    assert.match(
+      expo,
+      /debuggableVariants = \["debug", "appforgeAcceptance"\]/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_ACCEPTANCE_VARIANT_GUARD_V11_1/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_ACCEPTANCE_RN_VARIANT_GUARD=PASS/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /grep -Fq[\s\S]{0,120}'debuggableVariants = \["debug"\]'/
+    );
+
+    assert.match(
+      engine,
+      /variantOverride\s*=\s*"AppforgeAcceptance"/
+    );
+
+    assert.match(
+      engine,
+      /variantOverride[\s\S]{0,120}\?:/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_STANDALONE_VARIANT=AppforgeAcceptance/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_MANUAL_HERMES_BUNDLE_V2/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_MANUAL_BUNDLE_EMBED_V2=PASS/
+    );
+
+    assert.match(
+      expo,
+      /android\/app\/src\/main\/assets\/index\.android\.bundle/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_HOST_AOT=SKIPPED/
+    );
+  }
+);
+
+test(
+  "Expo standalone bundler uses pinned Node and a fail-fast export embed probe",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_BUNDLE_PREFLIGHT_V1/
+    );
+
+    assert.match(
+      expo,
+      /nodeExecutableAndArgs = \["\/opt\/appforge-device\/node-22\.23\.3\/bin\/node"\]/
+    );
+
+    assert.match(
+      expo,
+      /export:embed/
+    );
+
+    assert.match(
+      expo,
+      /expo\/scripts\/resolveAppEntry/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_BUNDLE_PREFLIGHT=PASS/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_BUNDLE_LOG_BEGIN/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_BUNDLE_LOG_END/
+    );
+
+    assert.match(
+      engine,
+      /export NODE_ENV=production/
+    );
+
+    assert.match(
+      engine,
+      /export CI=1/
+    );
+
+    assert.match(
+      engine,
+      /export EXPO_NO_TELEMETRY=1/
+    );
+  }
+);
+
+test(
+  "Expo SDK 54 carries stable Android API 36 beside the API 37 minor platform",
+  () => {
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_STABLE_API36_PLATFORM_V1/
+    );
+
+    assert.match(
+      installer,
+      /platform-36_r02\.zip/
+    );
+
+    assert.match(
+      installer,
+      /2c1a80dd4d9f7d0e6dd336ec603d9b5c55a6f576/
+    );
+
+    assert.match(
+      installer,
+      /platforms\/android-36\/android\.jar/
+    );
+
+    assert.match(
+      installer,
+      /AndroidVersion\.ApiLevel=36/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ANDROID_36_PLATFORM=PASS/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ANDROID_36_AAPT2_SMOKE=PASS/
+    );
+
+    assert.match(
+      installer,
+      /platforms\/android-37\.0\/android\.jar/
+    );
+  }
+);
+
+test(
+  "Expo Gradle sees an isolated API 36 SDK and not the API 37 minor platform",
+  () => {
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_SDK36_VIEW_V1/
+    );
+
+    assert.match(
+      installer,
+      /EXPO_SDK="\$ROOT\/expo-sdk-36"/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_SDK_VIEW_PLATFORM=android-36/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_SDK_VIEW_PLATFORM_COUNT=1/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_SDK36_ISOLATION_SMOKE=PASS/
+    );
+
+    assert.match(
+      engine,
+      /sdkRoot: String = "\/opt\/appforge-device\/android-sdk"/
+    );
+
+    assert.match(
+      engine,
+      /sdk\.dir=\$sdkRoot/
+    );
+
+    assert.match(
+      engine,
+      /android\.aapt2FromMavenOverride=\$sdkRoot\/build-tools\/36\.0\.0\/aapt2/
+    );
+
+    assert.match(
+      engine,
+      /sdkRoot = "\/opt\/appforge-device\/expo-sdk-36"/
+    );
+
+    assert.match(
+      engine,
+      /val androidSdkRoot =[\s\S]{0,180}expo-sdk-36/
+    );
+
+    assert.match(
+      engine,
+      /export ANDROID_SDK_ROOT=\$\{sh\(androidSdkRoot\)\}/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_GRADLE_SDK_ROOT=\/opt\/appforge-device\/expo-sdk-36/
+    );
+  }
+);
+
+test(
+  "Expo physical acceptance emits startup crash evidence to public Downloads",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_RUNTIME_CRASH_PROBE_V1/
+    );
+
+    assert.match(
+      expo,
+      /AppForgeExpoRuntimeProbe\.kt/
+    );
+
+    assert.match(
+      expo,
+      /AppForgeExpoRuntimeProbe\.install\(this\)/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_BEFORE_SUPER/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_AFTER_SUPER/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_ACTIVITY_GUARD_V12/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_INIT/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_ATTACH_ENTER/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_ATTACH_RETURN/
+    );
+
+    assert.match(
+      expo,
+      /ACTIVITY_PRE_CREATED/
+    );
+
+    assert.match(
+      expo,
+      /ACTIVITY_CREATED/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_ACTIVITY_IDENTITY_V14_1/
+    );
+
+    assert.match(
+      expo,
+      /stage \+ "_CLASS="/
+    );
+
+    assert.match(
+      expo,
+      /stage \+ "_COMPONENT="/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_ACTIVITY_IDENTITY_VERIFY_V14_1_1=PASS/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_COMPONENT_FACTORY_V15/
+    );
+
+    assert.match(
+      expo,
+      /AppForgeExpoComponentFactory/
+    );
+
+    assert.match(
+      expo,
+      /COMPONENT_FACTORY_BEFORE/
+    );
+
+    assert.match(
+      expo,
+      /COMPONENT_FACTORY_THROWABLE_STACK_BEGIN/
+    );
+
+    assert.match(
+      expo,
+      /android:appComponentFactory/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_COMPONENT_FACTORY_CAPTURE_V15=PASS/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_STARTUP_CAPTURE_V16/
+    );
+
+    assert.match(
+      expo,
+      /COMPONENT_FACTORY_APPLICATION_BEFORE/
+    );
+
+    assert.match(
+      expo,
+      /COMPONENT_FACTORY_EARLY_FLUSH_COUNT=/
+    );
+
+    assert.match(
+      expo,
+      /UNCAUGHT_HANDLER_READY_VERIFY=/
+    );
+
+    assert.match(
+      expo,
+      /installCrashHandler/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_JAVA_CRASH_CAPTURE_V17/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_LOOPER_PROBE=INSTALLED/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_LOOPER_FRONT_QUEUE=PASS/
+    );
+
+    assert.match(
+      expo,
+      /uncaughtExceptionHandler =/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_LAUNCH_TRANSACTION_V18/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_LOOPER_EXECUTE_TRANSACTION_SEEN=PASS/
+    );
+
+    assert.match(
+      expo,
+      /PROCESS_ALIVE_3000MS=PASS/
+    );
+
+    assert.match(
+      expo,
+      /getLaunchIntentForPackage/
+    );
+
+    assert.match(
+      expo,
+      /queryIntentActivities/
+    );
+
+    assert.match(
+      expo,
+      /ACTIVITY_EVENT_COUNT_3000MS=/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_NATIVE_PACKAGE_REGISTRATION_V19/
+    );
+
+    assert.match(
+      expo,
+      /expo\.modules\.ExpoModulesPackage\(\)/
+    );
+
+    assert.match(
+      expo,
+      /none \{ it\.javaClass\.name == "expo\.modules\.ExpoModulesPackage" \}/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_DISABLE_PCH_V20/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_CORE_ANDROID="\$SOURCE\/node_modules\/expo-modules-core\/android"/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PCH_FILE_MANIFEST_V20_3/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PCH_FILE_MANIFEST=/
+    );
+
+    assert.match(
+      expo,
+      /grep -RIl/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PCH_FILE_COUNT=/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /fs\.readdirSync/
+    );
+
+    assert.match(
+      expo,
+      /target_precompile_headers/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PCH_REMAINING=0/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PCH_MODE=DISABLED_ARM64_HOST/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PCH_POST_NPM_V20_1=PASS/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PCH_SCAN_ROOT=/
+    );
+
+    const expoVersionProbe =
+      expo.indexOf(
+        'APPFORGE_EXPO_VERSION='
+      );
+
+    const pchPatch =
+      expo.indexOf(
+        '# APPFORGE_EXPO_DISABLE_PCH_V20'
+      );
+
+    assert.ok(
+      expoVersionProbe >= 0 &&
+        pchPatch > expoVersionProbe,
+      "Expo PCH patch must run after npm install/version verification"
+    );
+
+    assert.match(
+      expo,
+      /ACTIVITY_CALLBACKS_REGISTERED=PASS/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_ACTIVITY_BOUNDARY_V14=PASS/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_FULL_ONCREATE_GUARD_V13/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_ONCREATE_ENTER/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_ONCREATE_CATCH/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_ONCREATE_RETURN/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_FULL_ONCREATE_CAPTURE_V13=PASS/
+    );
+
+    assert.match(
+      expo,
+      /getHistoricalProcessExitReasons/
+    );
+
+    assert.match(
+      expo,
+      /PREVIOUS_EXIT_COUNT=/
+    );
+
+    assert.match(
+      expo,
+      /MAIN_ACTIVITY_THROWABLE_CLASS=/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_RUNTIME_EXIT_PROBE_V12=PASS/
+    );
+
+    assert.match(
+      expo,
+      /BUNDLE_ASSET=index\.android\.bundle/
+    );
+
+    assert.match(
+      expo,
+      /NATIVE_LIBS=/
+    );
+
+    assert.match(
+      expo,
+      /STACKTRACE_BEGIN/
+    );
+
+    assert.match(
+      expo,
+      /MediaStore\.Downloads\.EXTERNAL_CONTENT_URI/
+    );
+
+    assert.match(
+      expo,
+      /Downloads\/AppForgeStudio\/ExpoCrash/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_RUNTIME_CRASH_PROBE=PASS/
+    );
+  }
+);
+
+test(
+  "Expo acceptance packages Hermes runtime without invoking host Hermes AOT",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_RUNTIME_NO_HOST_AOT_V1/
+    );
+
+    assert.match(
+      expo,
+      /override val isHermesEnabled: Boolean = true/
+    );
+
+    assert.match(
+      expo,
+      /const newArchProperty\s*=/
+    );
+
+    assert.match(
+      expo,
+      /isNewArchEnabled/
+    );
+
+    assert.match(
+      expo,
+      /else if \(newArchProperty\.test\(application\)\)/
+    );
+
+    assert.match(
+      expo,
+      /MainApplication Hermes\/new-arch anchor missing/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_RUNTIME_DEPENDENCY_V1/
+    );
+
+    assert.match(
+      expo,
+      /implementation\("com\.facebook\.react:hermes-android"\)/
+    );
+
+    assert.match(
+      expo,
+      /set_prop_native\s+\\?\n?\s*hermesEnabled\s+\\?\n?\s*true/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_BUILD_AOT=DISABLED/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_RUNTIME=ENABLED/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_NATIVE_PACKAGE_V11=ENABLED/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_HERMES_GRADLE_PROPERTY=TRUE/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_MANUAL_BUNDLE_EMBED_V2/
+    );
+
+    assert.match(
+      expo,
+      /HERMES_FACTORY_CLASS=/
+    );
+
+    assert.match(
+      expo,
+      /HERMES_NATIVE_LOAD=/
+    );
+  }
+);
+
+test(
+  "Expo SDK54 capability is physically accepted APK AAB READY",
+  () => {
+    const start = capabilities.indexOf('engine =\n                    "expo"');
+    assert.ok(start >= 0);
+    const block = capabilities.slice(start, start + 1200);
+    assert.match(block, /DeviceArtifactKind\.APK/);
+    assert.match(block, /DeviceArtifactKind\.AAB/);
+    assert.match(block, /DeviceBuildSupport\.READY/);
+    assert.match(block, /4\/4 ardışık APK\+AAB build/);
+  }
+);
+
+test(
+  "device runtime pins verified Node 22.23.3",
+  () => {
+    assert.match(
+      installer,
+      /NODE_VERSION="22\.23\.3"/
+    );
+
+    assert.match(
+      installer,
+      /a44aeb94849a299b22df10b9e622ec2f605c2183501bc40590705131de7c740f/
+    );
+
+    assert.match(
+      installer,
+      /df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de/
+    );
+  }
+);
+
+test(
+  "Expo 54 probe disables native architecture risks before Gradle",
+  () => {
+    assert.match(
+      expo,
+      /expo\.startsWith\("54\."\)/
+    );
+
+    assert.match(
+      expo,
+      /rn\.startsWith\("0\.81\."\)/
+    );
+
+    assert.match(
+      expo,
+      /newArchEnabled[\s\S]{0,100}false/
+    );
+
+    assert.match(
+      expo,
+      /hermesEnabled[\s\S]{0,100}false/
+    );
+
+    assert.match(
+      expo,
+      /reactNativeArchitectures[\s\S]{0,100}arm64-v8a/
+    );
+  }
+);
+
+test(
+  "Expo prebuild uses rootfs-native staging instead of the PRoot workspace bind",
+  () => {
+    assert.match(
+      expo,
+      /PREBUILD_ROOT="\$ROOT\/expo-prebuild-work"/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PREBUILD_FS=NATIVE_ROOTFS/
+    );
+
+    assert.match(
+      expo,
+      /--exclude='\.\/node_modules'/
+    );
+
+    assert.match(
+      expo,
+      /ln -s[\s\S]{0,120}SOURCE\/node_modules[\s\S]{0,120}PREBUILD\/node_modules/
+    );
+
+    assert.match(
+      expo,
+      /MainApplication\.kt/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_MAIN_APPLICATION=PASS/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_ANDROID_COPYBACK=PASS/
+    );
+  }
+);
+
+test(
+  "Expo properties are finalized on native staging before Android copyback",
+  () => {
+    assert.match(
+      expo,
+      /set_prop_native\(\)/
+    );
+
+    assert.match(
+      expo,
+      /file="\$PREBUILD\/android\/gradle\.properties"/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /^[ \t]*sed[ \t]+-i(?:[ \t]|$)/m
+    );
+
+    const nativeMarker =
+      expo.indexOf(
+        "APPFORGE_EXPO_NATIVE_PROPERTIES=PASS"
+      );
+
+    const copybackMarker =
+      expo.indexOf(
+        "APPFORGE_EXPO_ANDROID_COPYBACK=PASS"
+      );
+
+    assert.ok(nativeMarker >= 0);
+    assert.ok(copybackMarker > nativeMarker);
+
+    assert.match(
+      expo,
+      /newArchEnabled=false/
+    );
+
+    assert.match(
+      expo,
+      /hermesEnabled=true/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /set_prop_native\\s*\\\\\\n\\s*hermesEnabled\\s*\\\\\\n\\s*false/
+    );
+
+    assert.match(
+      expo,
+      /reactNativeArchitectures=arm64-v8a/
+    );
+  }
+);
+
+test(
+  "failed Kotlin builds preserve compiler diagnostics before the normal log tail",
+  () => {
+    assert.match(
+      engine,
+      /val compilerDiagnostics/
+    );
+
+    assert.match(
+      engine,
+      /value\.startsWith\("e:"\)/
+    );
+
+    assert.match(
+      engine,
+      /value\.contains\("Unresolved reference"\)/
+    );
+
+    assert.match(
+      engine,
+      /CMake Error/
+    );
+
+    assert.match(
+      engine,
+      /\[CXX/
+    );
+
+    assert.match(
+      engine,
+      /Exec format error/
+    );
+
+    assert.match(
+      engine,
+      /A problem occurred starting process/
+    );
+
+    assert.match(
+      engine,
+      /value\.contains\("NDK"/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_COMPILER_DIAGNOSTICS_BEGIN/
+    );
+
+    assert.match(
+      engine,
+      /\.take\(\s*80\s*\)/
+    );
+
+    assert.match(
+      engine,
+      /\.takeLast\(\s*120\s*\)/
+    );
+  }
+);
+
+test(
+  "Expo final Android project forces the final node_modules autolinking root",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_SEARCH_PATHS_V2/
+    );
+
+    assert.match(
+      expo,
+      /expoAutolinking\.searchPaths = \[\\"..\/node_modules\/expo\\", \\"..\/node_modules\/expo-modules-core\\"\]/
+    );
+
+    const searchPath =
+      expo.indexOf(
+        'expoAutolinking.searchPaths = [\\"../node_modules/expo\\", \\"../node_modules/expo-modules-core\\"]'
+      );
+
+    const useExpoModules =
+      expo.indexOf(
+        "expoAutolinking.useExpoModules"
+      );
+
+    assert.ok(
+      searchPath >= 0
+    );
+
+    assert.ok(
+      useExpoModules >= 0
+    );
+  }
+);
+
+test(
+  "Expo final root must resolve expo and expo-modules-core before Gradle",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_FINAL_AUTOLINK_RESOLVE_V2/
+    );
+
+    assert.match(
+      expo,
+      /resolve[\s\S]{0,240}--platform android[\s\S]{0,240}--json[\s\S]{0,240}\.\.\/node_modules\/expo[\s\S]{0,160}\.\.\/node_modules\/expo-modules-core/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_AUTOLINK_EXPO/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_AUTOLINK_CORE/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_FINAL_AUTOLINK=PASS/
+    );
+
+    assert.match(
+      expo,
+      /Missing Expo autolink module/
+    );
+
+    assert.match(
+      expo,
+      /retained deleted prebuild path/
+    );
+  }
+);
+
+test(
+  "Expo module resolver proves the expo Gradle project before app classpath bridge",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_GRADLE_PROJECT_EXPO=PASS/
+    );
+
+    assert.match(
+      expo,
+      /project\.name \|\| ""/
+    );
+
+    assert.match(
+      expo,
+      /=== "expo"/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_APP_CLASSPATH_AUTHORITY=EXPO_MODULE_RESOLVER/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /APPFORGE_EXPO_RN_AUTOLINK_VERIFY_V1/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /React Native autolinking did not expose Expo Android dependency/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_APP_CLASSPATH_BRIDGE_V1/
+    );
+
+    assert.match(
+      expo,
+      /autolinkLibrariesWithApp\(\)/
+    );
+
+    assert.match(
+      expo,
+      /implementation\(project\(":expo"\)\)/
+    );
+
+    const finalResolve =
+      expo.indexOf(
+        "APPFORGE_EXPO_FINAL_AUTOLINK=PASS"
+      );
+
+    const projectProof =
+      expo.indexOf(
+        "APPFORGE_EXPO_GRADLE_PROJECT_EXPO=PASS"
+      );
+
+    const bridge =
+      expo.indexOf(
+        "APPFORGE_EXPO_APP_CLASSPATH_BRIDGE_V1"
+      );
+
+    assert.ok(
+      projectProof >= 0
+    );
+
+    assert.ok(
+      finalResolve > projectProof
+    );
+
+    assert.ok(
+      bridge > finalResolve
+    );
+  }
+);
+
+
+test(
+  "Expo avoids broad PRoot node_modules enumeration",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_AUTOLINK_SEARCH_MODE=EXACT_MODULES/
+    );
+
+    assert.match(
+      expo,
+      /\.\.\/node_modules\/expo/
+    );
+
+    assert.match(
+      expo,
+      /\.\.\/node_modules\/expo-modules-core/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /expoAutolinking\.searchPaths = \[\\"..\/node_modules\\"\]/
+    );
+  }
+);
+
+test(
+  "Expo npm and prebuild run explicitly with pinned Node 22",
+  () => {
+    assert.match(
+      expo,
+      /NPM_CLI="\$NODE_HOME\/lib\/node_modules\/npm\/bin\/npm-cli\.js"/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_NODE22_EXECUTION=PASS/
+    );
+
+    assert.match(
+      expo,
+      /"\$NODE_HOME\/bin\/node" "\$NPM_CLI" ci/
+    );
+
+    assert.match(
+      expo,
+      /"\$NODE_HOME\/bin\/node" "\$NPM_CLI" install/
+    );
+
+    assert.match(
+      expo,
+      /"\$NODE_HOME\/bin\/node"[\s\S]{0,160}"\$PREBUILD\/node_modules\/expo\/bin\/cli"[\s\S]{0,100}prebuild/
+    );
+  }
+);
+
+test(
+  "Expo native module intermediates and CMake staging use rootfs-native storage",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR_V1/
+    );
+
+    assert.match(
+      expo,
+      /expo-native-gradle-work/
+    );
+
+    assert.match(
+      expo,
+      /EXPO_NATIVE_BUILD_ROOT/
+    );
+
+    assert.match(
+      expo,
+      /subproject\.path != ":app"/
+    );
+
+    assert.match(
+      expo,
+      /subproject\.buildDir/
+    );
+
+    assert.match(
+      expo,
+      /new File/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR=PASS/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_NATIVE_CXX_STAGING_V2/
+    );
+
+    assert.match(
+      expo,
+      /buildStagingDirectory/
+    );
+
+    assert.match(
+      expo,
+      /EXPO_NATIVE_BUILD_ROOT.*\/cxx\//
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_CXX_STAGING=/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_NATIVE_CXX_STAGING=PASS/
+    );
+
+    const classpathBridge =
+      expo.indexOf(
+        "APPFORGE_EXPO_APP_CLASSPATH_BRIDGE=PASS"
+      );
+
+    const nativeBuildDir =
+      expo.indexOf(
+        "APPFORGE_EXPO_NATIVE_MODULE_BUILD_DIR=PASS"
+      );
+
+    assert.ok(
+      classpathBridge >= 0
+    );
+
+    assert.ok(
+      nativeBuildDir > classpathBridge
+    );
+  }
+);
+
+test(
+  "Expo Gradle failure reports rootfs and Prefab executable semantics",
+  () => {
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_ROOTFS_EXEC_PROBE=PASS/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_NATIVE_ROOT_MODE/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_COMMAND_PATH/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_MODE=/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_MODE_LONG/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_OWNER/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_PARENT_MODE/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_EXECUTABLE=YES/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_EXECUTABLE=NO/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_SHEBANG=YES/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_SHEBANG=NO/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_FILE_TYPE/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_GRADLE_RC/
+    );
+  }
+);
+
+test(
+  "Expo Prefab shell variables remain literal shell dollars in Kotlin",
+  () => {
+    const doubleSlashDollar =
+      String.fromCharCode(92, 92, 36) + "APPFORGE_";
+
+    const singleSlashNativeRoot =
+      String.fromCharCode(92, 36) +
+      "APPFORGE_EXPO_NATIVE_ROOT";
+
+    const singleSlashGradleRc =
+      String.fromCharCode(92, 36) +
+      "APPFORGE_GRADLE_RC";
+
+    assert.equal(
+      engine.includes(doubleSlashDollar),
+      false
+    );
+
+    assert.equal(
+      engine.includes(singleSlashNativeRoot),
+      true
+    );
+
+    assert.equal(
+      engine.includes(singleSlashGradleRc),
+      true
+    );
+  }
+);
+
+test(
+  "Expo applies a scoped pre-exec shebang shim to the proven AGP Prefab command",
+  () => {
+    assert.doesNotMatch(
+      expo,
+      /APPFORGE_EXPO_AGP_87_COMPAT_V1/
+    );
+
+    assert.doesNotMatch(
+      expo,
+      /AGP_COMPAT_VERSION="8\.7\.3"/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PREFAB_EXEC_SECURITY_SHIM_V1/
+    );
+
+    assert.match(
+      expo,
+      /appforge-prefab-exec-shim\.init\.gradle/
+    );
+
+    assert.match(
+      expo,
+      /class AppForgePrefabExecSecurityManager extends SecurityManager/
+    );
+
+    assert.match(
+      expo,
+      /void checkExec/
+    );
+
+    assert.match(
+      expo,
+      /target\.name !=[\s\S]*"prefab_command"/
+    );
+
+    assert.match(
+      expo,
+      /#!\/bin\/sh/
+    );
+
+    assert.match(
+      expo,
+      /\/opt\/appforge-device\/jdk-17\/bin\/java/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PREFAB_EXEC_SHIM=ARMED/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PREFAB_EXEC_SHIM=PATCHED/
+    );
+
+    assert.match(
+      engine,
+      /export APPFORGE_EXPO_NATIVE_ROOT/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_EXEC_SECURITY_SHIM_V1/
+    );
+
+    assert.match(
+      engine,
+      /appforge-prefab-exec-shim\.init\.gradle/
+    );
+  }
+);
+
+test(
+  "Expo records actual AGP and compares Java direct Prefab launch with shell interpretation",
+  () => {
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_PREFAB_EXECUTION_PROOF_V1/
+    );
+
+    assert.match(
+      expo,
+      /appforge-agp-runtime\.init\.gradle/
+    );
+
+    assert.match(
+      expo,
+      /APPFORGE_EXPO_AGP_RUNTIME_VERSION/
+    );
+
+    assert.match(
+      expo,
+      /AppForgeProcessProbe/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_AGP_RUNTIME_INIT_V1/
+    );
+
+    assert.match(
+      engine,
+      /--init-script/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_EXECUTION_DIAGNOSTICS_V1/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_LINE_COUNT/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_SHA256/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_PREFAB_FIRST_LINE/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_JAVA_PREFAB_PROBE_RC/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_SH_PREFAB_PROBE_RC/
+    );
+
+    assert.match(
+      engine,
+      /APPFORGE_EXPO_SH_PREFAB_PROBE=PASS/
+    );
+
+    assert.match(
+      engine,
+      /\/bin\/sh/
+    );
+  }
+);
+
+test(
+  "Expo ARM64 uses executable host CMake and Ninja instead of the x86 SDK payload",
+  () => {
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_CMAKE_HOST_V2/
+    );
+
+    assert.match(
+      installer,
+      /EXPO_ARM64_CMAKE_MARKER/
+    );
+
+    assert.match(
+      installer,
+      /cmake[\s\S]{0,160}ninja-build/
+    );
+
+    assert.match(
+      installer,
+      /\/usr\/bin\/cmake/
+    );
+
+    assert.match(
+      installer,
+      /\/usr\/bin\/ninja/
+    );
+
+    assert.match(
+      installer,
+      /\$SDK\/cmake\/3\.22\.1\/bin\/cmake/
+    );
+
+    assert.match(
+      installer,
+      /\$SDK\/cmake\/3\.22\.1\/bin\/ninja/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_CMAKE_HOST=PASS/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_CMAKE_SMOKE=PASS/
+    );
+
+    const ready =
+      installer.indexOf(
+        'EXPO_ARM64_CMAKE_MARKER'
+      );
+
+    const installerMarker =
+      installer.indexOf(
+        'APPFORGE_EXPO_ARM64_CMAKE_HOST_V2'
+      );
+
+    assert.ok(ready >= 0);
+    assert.ok(installerMarker >= 0);
+  }
+);
+
+
+test(
+  "Expo ARM64 NDK forces compiler-rt on Ubuntu ARM64 host",
+  () => {
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_HOST_V3/
+    );
+
+    assert.match(
+      installer,
+      /EXPO_ARM64_NDK_VERSION="27\.1\.12297006"/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_CLANG_WRAPPER_V3/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_CLANG18_WRAPPER_V3/
+    );
+
+    assert.match(
+      installer,
+      /android-ndk-\$EXPO_ARM64_NDK_RELEASE-linux\.zip/
+    );
+
+    assert.match(
+      installer,
+      /6fc476b2e57d7c01ac0c95817746b927035b9749/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_NDK_PAYLOAD_REUSE=PASS/
+    );
+
+    assert.match(
+      installer,
+      /--rtlib=compiler-rt/
+    );
+
+    assert.match(
+      installer,
+      /--unwindlib=libunwind/
+    );
+
+    assert.match(
+      installer,
+      /libclang_rt\.builtins-aarch64-android\.a/
+    );
+
+    assert.match(
+      installer,
+      /lib\/linux\/aarch64\/libunwind\.a/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_COMPILER_RT_LINK=PASS/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_CXX_LINK=PASS/
+    );
+
+    assert.match(
+      installer,
+      /aarch64-linux-android24/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_C_LINK=PASS/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_CPP_COMPILE=PASS/
+    );
+
+    assert.match(
+      installer,
+      /APPFORGE_EXPO_ARM64_NDK_HOST_V3_SMOKE=PASS/
+    );
+  }
+);

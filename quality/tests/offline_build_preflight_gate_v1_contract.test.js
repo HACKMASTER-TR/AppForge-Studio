@@ -1,0 +1,211 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+
+const here =
+  path.dirname(
+    fileURLToPath(
+      import.meta.url
+    )
+  );
+
+const root =
+  path.resolve(
+    here,
+    "../.."
+  );
+
+const read =
+  relative =>
+    fs.readFileSync(
+      path.join(
+        root,
+        relative
+      ),
+      "utf8"
+    );
+
+const main = read(
+  "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
+);
+
+const engine = read(
+  "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt"
+);
+
+const manager = read(
+  "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
+);
+
+const screen = read(
+  "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
+);
+
+test(
+  "normal device build is blocked before build allocation when pack is missing",
+  () => {
+    const gate =
+      engine.indexOf(
+        "requireReadyForBuild"
+      );
+
+    const buildNumber =
+      engine.indexOf(
+        "AppForgeBuildNumberStore.next"
+      );
+
+    assert.ok(
+      gate >= 0
+    );
+
+    assert.ok(
+      buildNumber >= 0
+    );
+
+    assert.ok(
+      gate < buildNumber
+    );
+  }
+);
+
+test(
+  "builder performs a user-visible offline-pack preflight",
+  () => {
+    assert.match(
+      main,
+      /checkBuildRequirements/
+    );
+
+    assert.match(
+      main,
+      /BUILD_BLOCKED=YES/
+    );
+
+    assert.match(
+      main,
+      /OFFLINE_BUILD_READY=NO/
+    );
+
+    assert.match(
+      main,
+      /MISSING=/
+    );
+
+    assert.match(
+      main,
+      /openWorkspaceScreen\(\s*AppScreen\.OFFLINE_PACK\s*\)/
+    );
+  }
+);
+
+test(
+  "offline pack requirements are engine and output aware",
+  () => {
+    assert.match(
+      manager,
+      /Android SDK \+ JDK \+ Gradle/
+    );
+
+    assert.match(
+      manager,
+      /Node\.js \+ npm/
+    );
+
+    assert.match(
+      manager,
+      /Python \+ Chaquopy/
+    );
+
+    assert.match(
+      manager,
+      /Expo SDK 54 \+ NDK\/CMake/
+    );
+
+    assert.match(
+      manager,
+      /Windows Native C\/C\+\+ toolchain/
+    );
+
+    assert.match(
+      manager,
+      /Windows Portable EXE Host/
+    );
+  }
+);
+
+test(
+  "Expo base toolchain is part of the installable offline pack",
+  () => {
+    assert.match(
+      manager,
+      /expoToolchainReady/
+    );
+
+    assert.match(
+      manager,
+      /expo\.ready/
+    );
+
+    assert.match(
+      manager,
+      /expo-toolchain/
+    );
+
+    assert.match(
+      screen,
+      /Expo SDK 54 \/ React Native 0\.81/
+    );
+
+    assert.match(
+      screen,
+      /status\.expoToolchainReady/
+    );
+  }
+);
+
+test(
+  "complete target readiness includes Expo Windows native and portable",
+  () => {
+    assert.match(
+      manager,
+      /currentAndroidEnginesReady[\s\S]*expoToolchainReady/
+    );
+
+    assert.match(
+      manager,
+      /completeTargetReady[\s\S]{0,180}windowsNativeToolchainReady[\s\S]{0,180}windowsExeReady/
+    );
+  }
+);
+
+test(
+  "offline pack returns to the exact screen that opened it",
+  () => {
+    assert.match(
+      main,
+      /OFFLINE_PACK_RETURN_ISOLATION_V1_3/
+    );
+
+    assert.match(
+      main,
+      /fun openOfflinePack\(\)[\s\S]*offlinePackReturnScreen\s*=\s*screen[\s\S]*screen\s*=\s*AppScreen\.OFFLINE_PACK/
+    );
+
+    assert.match(
+      main,
+      /AppScreen\.OFFLINE_PACK ->[\s\S]{0,320}screen\s*=\s*offlinePackReturnScreen/
+    );
+  }
+);
+
+test(
+  "Terminal workspace is not modified by this feature",
+  () => {
+    assert.doesNotMatch(
+      screen,
+      /TerminalWorkspaceScreen/
+    );
+  }
+);

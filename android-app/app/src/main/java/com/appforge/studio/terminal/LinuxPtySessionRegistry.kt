@@ -377,6 +377,7 @@ internal object LinuxPtySessionRegistry {
                     if (notify) {
                         LinuxSessionNotifier.notifyCompleted(
                             context = appContext,
+                            sessionId = id,
                             title = record.title,
                             exitCode = exitCode
                         )

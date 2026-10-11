@@ -154,11 +154,16 @@ test('invalid HTTP method or oversized identity body does not grant admin', asyn
 });
 
 test('Google admin cannot accidentally enable Pro, accounts or remote builds', async () => {
-  for (const path of ['/api/pro/activate', '/api/security/config', '/api/builds']) {
+  for (const path of ['/api/pro/activate', '/api/builds']) {
     assert.equal((await call(new Request(`https://worker.test${path}`, {
       method: 'POST', headers: { Authorization: `Bearer ${signedToken()}` }, body: '{}'
     }))).status, 503);
   }
+
+  assert.equal((await call(new Request('https://worker.test/api/security/config', {
+    method: 'POST', headers: { Authorization: `Bearer ${signedToken()}` }, body: '{}'
+  }))).status, 405);
+
   assert.equal((await call(new Request('https://worker.test/api/auth/login', {
     method: 'POST', body: '{}'
   }))).status, 410);

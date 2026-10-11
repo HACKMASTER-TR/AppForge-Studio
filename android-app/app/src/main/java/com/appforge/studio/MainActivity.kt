@@ -29,6 +29,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
 import androidx.core.content.FileProvider
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
@@ -54,6 +57,7 @@ import com.appforge.studio.build.BuildApiClient
 import com.appforge.studio.build.BuildApiException
 import com.appforge.studio.build.BuildCompareResult
 import com.appforge.studio.build.TestLabResult
+import com.appforge.studio.build.WindowsPublisherSigningPolicy
 import com.appforge.studio.ai.AppForgeKnowledgeBase
 import com.appforge.studio.ai.AppForgeProjectAdvisor
 import com.appforge.studio.ai.AppForgeBuildErrorAdvisor
@@ -102,12 +106,12 @@ import com.appforge.studio.security.AppSignatureVerifier
 import com.appforge.studio.security.ProStatus
 import com.appforge.studio.security.StudioSecurityClient
 import com.appforge.studio.security.StudioBillingManager
+import com.appforge.studio.play.PlayReviewGate
 import com.appforge.studio.security.SecureAccountStore
 import com.appforge.studio.security.OwnerAccessPolicy
 import com.appforge.studio.security.StudioPlanPrice
 import com.appforge.studio.task.AppForgeTaskManager
 import com.appforge.studio.terminal.OwnerArtifactReferenceStore
-import com.hackmaster.videoforge.AppVisibility
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -117,18 +121,18 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.DateFormat
 import java.util.Date
+import kotlin.math.roundToInt
 import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
-    override fun onStart() {
-        super.onStart()
-        AppVisibility.activityStarted()
+    /* BUILD_NOTIFICATION_HOST_OWNERSHIP_V21_4 */
+    override fun onPause() {
+        BuildProgressService.onHostPaused(this)
+        super.onPause()
     }
 
     override fun onStop() {
-        AppVisibility.activityStopped()
         com.appforge.studio.terminal.LocalPtySessionRegistry.persistNow()
-        BuildProgressService.startPending(this)
         super.onStop()
     }
 
@@ -142,6 +146,16 @@ class MainActivity : ComponentActivity() {
         private set
 
     var buildNotificationSequence by mutableIntStateOf(0)
+        private set
+
+    /* OWNER_TERMINAL_RESULT_NAV_V1_4 */
+    var openTerminalFromNotification by mutableStateOf(false)
+        private set
+
+    var terminalSessionIdFromNotification by mutableStateOf<String?>(null)
+        private set
+
+    var terminalNotificationSequence by mutableIntStateOf(0)
         private set
 
     var accountActionUri by mutableStateOf<Uri?>(null)
@@ -175,6 +189,53 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun captureTerminalNotification(
+        sourceIntent: Intent?
+    ) {
+        if (
+            sourceIntent?.getBooleanExtra(
+                com.appforge.studio.terminal
+                    .LinuxTerminalJobService
+                    .EXTRA_OPEN_TERMINAL,
+                false
+            ) != true
+        ) {
+            return
+        }
+
+        val sessionId =
+            sourceIntent.getStringExtra(
+                com.appforge.studio.terminal
+                    .LinuxTerminalJobService
+                    .EXTRA_TERMINAL_SESSION_ID
+            )
+                ?.takeIf {
+                    it.matches(
+                        Regex(
+                            "^[0-9a-fA-F-]{36}$"
+                        )
+                    )
+                }
+                ?: return
+
+        openTerminalFromNotification =
+            true
+
+        terminalSessionIdFromNotification =
+            sessionId
+
+        terminalNotificationSequence +=
+            1
+    }
+
+    fun consumeTerminalNotificationNavigation() {
+        openTerminalFromNotification =
+            false
+
+        terminalSessionIdFromNotification =
+            null
+    }
+
     fun consumeAccountAction() {
         accountActionUri =
             null
@@ -189,6 +250,10 @@ class MainActivity : ComponentActivity() {
             intent
         )
 
+        captureTerminalNotification(
+            intent
+        )
+
         openBuildFromNotification =
             intent?.getBooleanExtra("appforge_open_builds", false) == true
 
@@ -199,6 +264,11 @@ class MainActivity : ComponentActivity() {
             intent?.getStringExtra("appforge_build_server_url")
 
         if (openBuildFromNotification) {
+            /*
+             * NOTIFICATION_RESULT_RESTORE_V1
+             * Do not stop foreground tracking before the exact Build ID
+             * has hydrated BuildRuntimeState and artifact availability.
+             */
             buildNotificationSequence += 1
         }
 
@@ -261,6 +331,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
 
         captureAccountAction(intent)
+        captureTerminalNotification(intent)
 
         if (
             intent.getBooleanExtra(
@@ -268,6 +339,7 @@ class MainActivity : ComponentActivity() {
                 false
             )
         ) {
+            /* NOTIFICATION_RESULT_RESTORE_V1 */
             buildIdFromNotification =
                 intent.getStringExtra(
                     "appforge_build_id"
@@ -285,7 +357,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        BuildProgressService.stop(this)
+        // ACTIVE_BUILD_NOTIFICATION_RETURN_V2
+        BuildProgressService.onHostResumed(this)
 
         /*
          * APK yükleme izni ekranından döndüğünde
@@ -440,6 +513,99 @@ private fun formatDownloadedArtifactSize(
  */
 private const val BUILD_TIMER_UI_TICK_MS =
     1_000L
+
+
+private const val WINDOWS_PUBLISHER_CERT_MAX_BYTES =
+    10 * 1024 * 1024
+
+private fun readBoundedDocumentBytes(
+    context: Context,
+    uri: Uri,
+    maxBytes: Int =
+        WINDOWS_PUBLISHER_CERT_MAX_BYTES
+): ByteArray {
+    require(
+        maxBytes > 0
+    ) {
+        "Dosya boyutu sınırı geçersiz."
+    }
+
+    val input =
+        context
+            .contentResolver
+            .openInputStream(
+                uri
+            )
+            ?: error(
+                "Sertifika dosyası açılamadı."
+            )
+
+    val temporary =
+        ByteArray(
+            maxBytes + 1
+        )
+
+    var total =
+        0
+
+    try {
+        input.use {
+            stream ->
+
+            while (
+                total <
+                    temporary.size
+            ) {
+                val read =
+                    stream.read(
+                        temporary,
+                        total,
+                        temporary.size -
+                            total
+                    )
+
+                if (
+                    read <
+                        0
+                ) {
+                    break
+                }
+
+                if (
+                    read ==
+                        0
+                ) {
+                    continue
+                }
+
+                total +=
+                    read
+            }
+        }
+
+        require(
+            total >
+                0
+        ) {
+            "Sertifika dosyası boş."
+        }
+
+        require(
+            total <=
+                maxBytes
+        ) {
+            "PFX/P12 dosyası 10 MB sınırını aşıyor."
+        }
+
+        return temporary.copyOf(
+            total
+        )
+    } finally {
+        temporary.fill(
+            0
+        )
+    }
+}
 
 private fun persistReadUriPermission(
     context: Context,
@@ -643,7 +809,7 @@ private suspend fun <T> retryInitialBuildRequest(
 }
 
 
-private enum class AppScreen { ONBOARDING, HOME, OTHER_APPS, EXCEL_TOOLS, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, OFFLINE_PACK, LEGAL, HELP, PLAY_GUIDE, PRO, KEYSTORES, LANGUAGE }
+private enum class AppScreen { ONBOARDING, HOME, MODE_SELECT, CONVERSION, QUICK, BUILDER, PREVIEW, PRODUCTION, TEST_LAB, ADMIN_OPS, ADMIN_AI, AI_ASSISTANT, UNIFIED_AGENT, SECOND_BRAIN, TERMINAL, TASKS, LIBRARY, HISTORY, TRASH, ACCOUNT, TEMPLATES, SETTINGS, OFFLINE_PACK_FIRST_RUN, OFFLINE_PACK, LEGAL, HELP, PLAY_GUIDE, PRO, PRO_SUPPORT, KEYSTORES, LANGUAGE }
 
 /*
  * BUILD_SOURCE_ENGINE_REFRESH_V1
@@ -781,19 +947,67 @@ private fun AppForgeApp() {
             )
         }
     var screen by rememberSaveable {
-        mutableStateOf(
-            if (
-                context.getSharedPreferences(
-                    "appforge_onboarding",
-                    Context.MODE_PRIVATE
-                ).getBoolean(
-                    "completed",
-                    false
+        val onboardingPreferences =
+            context.getSharedPreferences(
+                "appforge_onboarding",
+                Context.MODE_PRIVATE
+            )
+
+        val offlinePackPreferences =
+            context.getSharedPreferences(
+                "appforge_offline_pack",
+                Context.MODE_PRIVATE
+            )
+
+        val onboardingCompleted =
+            onboardingPreferences.getBoolean(
+                "completed",
+                false
+            )
+
+        /*
+         * OFFLINE_PACK_FIRST_RUN_GATE_V1
+         *
+         * Only a genuinely fresh AppForge installation receives the
+         * required marker here. Existing installations have already
+         * completed onboarding, so upgrading AppForge does not suddenly
+         * force the new screen on them.
+         */
+        if (
+            !onboardingCompleted
+        ) {
+            offlinePackPreferences
+                .edit()
+                .putBoolean(
+                    "first_run_gate_required_v1",
+                    true
                 )
-            ) {
-                AppScreen.HOME
-            } else {
-                AppScreen.ONBOARDING
+                .apply()
+        }
+
+        val offlinePackGateRequired =
+            offlinePackPreferences.getBoolean(
+                "first_run_gate_required_v1",
+                false
+            )
+
+        val offlinePackGateCompleted =
+            offlinePackPreferences.getBoolean(
+                "first_run_gate_completed_v1",
+                false
+            )
+
+        mutableStateOf(
+            when {
+                !onboardingCompleted ->
+                    AppScreen.ONBOARDING
+
+                offlinePackGateRequired &&
+                    !offlinePackGateCompleted ->
+                    AppScreen.OFFLINE_PACK_FIRST_RUN
+
+                else ->
+                    AppScreen.HOME
             }
         )
     }
@@ -889,12 +1103,7 @@ private fun AppForgeApp() {
         }
     }
 
-    LaunchedEffect(hostActivity?.buildNotificationSequence) {
-        if (hostActivity?.consumeBuildNotificationNavigation() == true) {
-            screen = AppScreen.BUILDER
-            step = 10
-        }
-    }
+    /* NOTIFICATION_NAVIGATION_AFTER_HYDRATE_V21_4 */
 
     LaunchedEffect(
         hostActivity?.accountActionSequence
@@ -908,22 +1117,42 @@ private fun AppForgeApp() {
         }
     }
 
-    /*
-     * Defense in depth:
-     * restored navigation state or an internal caller must never
-     * expose Terminal to a non-owner account.
-     */
+    /* Owner-only Terminal, Second Brain and AI surfaces. */
     LaunchedEffect(screen, terminalOwner) {
-        if ((screen == AppScreen.TERMINAL ||
-                screen == AppScreen.SECOND_BRAIN) && !terminalOwner) {
+        if (
+            screen == AppScreen.TERMINAL &&
+            !terminalOwner
+        ) {
             screen = AppScreen.HOME
+        } else {
+            val privilegedScreen =
+                screen == AppScreen.SECOND_BRAIN ||
+                screen == AppScreen.ADMIN_AI ||
+                screen == AppScreen.AI_ASSISTANT ||
+                screen == AppScreen.UNIFIED_AGENT
+
+            if (privilegedScreen && !terminalOwner) {
+                screen = AppScreen.HOME
+            }
         }
     }
 
-    // Credentials expire even if the user keeps a privileged screen open.
     LaunchedEffect(screen) {
-        if (screen == AppScreen.TERMINAL || screen == AppScreen.SECOND_BRAIN) {
-            while (screen == AppScreen.TERMINAL || screen == AppScreen.SECOND_BRAIN) {
+        val privilegedScreen =
+            screen == AppScreen.TERMINAL ||
+            screen == AppScreen.SECOND_BRAIN ||
+            screen == AppScreen.ADMIN_AI ||
+            screen == AppScreen.AI_ASSISTANT ||
+            screen == AppScreen.UNIFIED_AGENT
+
+        if (privilegedScreen) {
+            while (
+                screen == AppScreen.TERMINAL ||
+                screen == AppScreen.SECOND_BRAIN ||
+                screen == AppScreen.ADMIN_AI ||
+                screen == AppScreen.AI_ASSISTANT ||
+                screen == AppScreen.UNIFIED_AGENT
+            ) {
                 delay(60_000L)
                 adminRevision += 1
             }
@@ -948,6 +1177,19 @@ private fun AppForgeApp() {
             )
         }
 
+    /*
+     * OFFLINE_PACK_RETURN_ISOLATION_V1_3
+     *
+     * Offline Pack keeps its own return destination so opening it from
+     * Settings cannot overwrite Settings' Home return target.
+     */
+    var offlinePackReturnScreen by
+        rememberSaveable {
+            mutableStateOf(
+                AppScreen.HOME
+            )
+        }
+
     var terminalReturnScreen by
         rememberSaveable {
             mutableStateOf(
@@ -961,6 +1203,82 @@ private fun AppForgeApp() {
                 1
             )
         }
+
+    var requestedLinuxSessionId by
+        rememberSaveable {
+            mutableStateOf<String?>(
+                null
+            )
+        }
+
+    LaunchedEffect(
+        hostActivity?.terminalNotificationSequence,
+        terminalOwner
+    ) {
+        val activity =
+            hostActivity
+                ?: return@LaunchedEffect
+
+        if (
+            !activity.openTerminalFromNotification
+        ) {
+            return@LaunchedEffect
+        }
+
+        val requested =
+            activity.terminalSessionIdFromNotification
+
+        if (
+            terminalOwner &&
+            !requested.isNullOrBlank()
+        ) {
+            if (
+                screen !=
+                    AppScreen.TERMINAL
+            ) {
+                terminalReturnScreen =
+                    screen
+
+                terminalReturnStep =
+                    step
+            }
+
+            requestedLinuxSessionId =
+                requested
+
+            screen =
+                AppScreen.TERMINAL
+
+            runCatching {
+                com.appforge.studio.terminal
+                    .LinuxPtySessionRegistry
+                    .markActivated(
+                        requested
+                    )
+            }
+        }
+
+        if (
+            !requested.isNullOrBlank()
+        ) {
+            com.appforge.studio.terminal
+                .LinuxTerminalJobService
+                .dismissResultNotification(
+                    context,
+                    requested
+                )
+
+            com.appforge.studio.terminal
+                .LinuxSessionNotifier
+                .dismissCompletedNotification(
+                    context,
+                    requested
+                )
+        }
+
+        activity
+            .consumeTerminalNotificationNavigation()
+    }
 
     fun openWorkspaceScreen(
         target: AppScreen
@@ -998,6 +1316,14 @@ private fun AppForgeApp() {
             step =
                 workspaceReturnStep
         }
+    }
+
+    fun openOfflinePack() {
+        offlinePackReturnScreen =
+            screen
+
+        screen =
+            AppScreen.OFFLINE_PACK
     }
 
     /*
@@ -1048,7 +1374,9 @@ private fun AppForgeApp() {
 
         if (
             screen ==
-                AppScreen.ONBOARDING
+                AppScreen.ONBOARDING ||
+            screen ==
+                AppScreen.OFFLINE_PACK_FIRST_RUN
         ) {
             return
         }
@@ -1190,6 +1518,21 @@ private fun AppForgeApp() {
     var proSecurityMessage by remember { mutableStateOf("") }
     var keystoreRefresh by remember { mutableIntStateOf(0) }
 
+    /* KEYSTORE_MANAGER_RETURN_V1_5 */
+    var keystoreManagerReturnScreen by
+        remember {
+            mutableStateOf(
+                AppScreen.SETTINGS
+            )
+        }
+
+    var keystoreManagerReturnStep by
+        remember {
+            mutableIntStateOf(
+                8
+            )
+        }
+
     var projectQuota by
         remember {
             mutableStateOf<
@@ -1247,11 +1590,6 @@ private fun AppForgeApp() {
             }
     }
 
-    val effectiveFreeProjectLimit =
-        projectQuota
-            ?.limit
-            ?: 5
-
     /*
      * One stable holder owns the high-frequency build runtime state.
      *
@@ -1266,29 +1604,80 @@ private fun AppForgeApp() {
                 )
         }
 
+    /*
+     * TERMINAL_NOTIFICATION_SYNC_RESTORE_V21_1
+     *
+     * A completed foreground-service notification can outlive the
+     * SharedPreferences tracker entry. When the Activity is opened from
+     * that terminal notification, seed BuildRuntimeState synchronously
+     * from the notification Build ID before Builder step 10 is rendered.
+     *
+     * Without this seed the first frame used BuildRuntimeState defaults
+     * ("Hazır" / 0) and the later LaunchedEffect snapshot rebind corrected
+     * it only after the UI had already flashed the wrong state.
+     */
+    /* NOTIFICATION_BUILD_ID_STABLE_RESTORE_V21_2 */
+    val notificationBuildRestoreId =
+        hostActivity
+            ?.buildIdFromNotification
+            ?.takeIf {
+                it.isNotBlank()
+            }
+
+    val notificationBuildRestoreServerUrl =
+        hostActivity
+            ?.buildServerUrlFromNotification
+            ?.takeIf {
+                it.isNotBlank()
+            }
+
+    val initialBuildRestoreId =
+        restoredBuildReference
+            ?.buildId
+            ?: notificationBuildRestoreId
+
+    /* BUILD_RUNTIME_SINGLE_OWNER_V21_4 */
     val buildRuntime =
-        remember(
-            restoredBuildReference
-                ?.buildId
-        ) {
+        remember {
             BuildRuntimeState()
                 .also {
                     runtime ->
 
-                    restoredBuildReference
+                    initialBuildRestoreId
                         ?.let {
-                            reference ->
+                            restoreId ->
+
+                            val trackedReference =
+                                restoredBuildReference
+                                    ?.takeIf {
+                                        it.buildId ==
+                                            restoreId
+                                    }
+
+                            val restoreServerUrl =
+                                trackedReference
+                                    ?.serverUrl
+                                    ?.takeIf {
+                                        it.isNotBlank()
+                                    }
+                                    ?: notificationBuildRestoreServerUrl
+                                    ?: serverUrl
+
+                            val restoreApiKey =
+                                trackedReference
+                                    ?.apiKey
+                                    ?: apiKey
 
                             runCatching {
                                 BuildApiClient(
                                     context = context,
                                     baseUrl =
-                                        reference.serverUrl,
+                                        restoreServerUrl,
                                     apiKey =
-                                        reference.apiKey
+                                        restoreApiKey
                                 )
                                     .getBuild(
-                                        reference.buildId
+                                        restoreId
                                     )
                             }
                                 .getOrNull()
@@ -1300,9 +1689,11 @@ private fun AppForgeApp() {
                                             snapshot =
                                                 snapshot,
                                             projectKey =
-                                                reference.projectKey,
+                                                trackedReference
+                                                    ?.projectKey,
                                             startedAtMs =
-                                                reference.startedAtMs
+                                                trackedReference
+                                                    ?.startedAtMs
                                         )
                                 }
                         }
@@ -1365,6 +1756,83 @@ private fun AppForgeApp() {
 
     var queueEstimate by
         buildRuntime.queueEstimate
+
+    /*
+     * BUILDER_ACTIVE_BUILD_REENTRY_GUARD_V25_1
+     *
+     * Activity recreation was already covered by V21 lifecycle restore,
+     * but normal Builder navigation can happen without recreating
+     * AppForgeApp. Never trust only the in-memory buildBusy flag when
+     * entering step 10. BuildProgressService owns a persisted reference to
+     * the real active build and is the fail-safe source for re-entry.
+     *
+     * The synchronous reference read protects the very first Builder frame:
+     * while the real snapshot is being restored the UI must not render
+     * "Hazır / %0" as an idle state or expose another build action.
+     */
+    var builderReentryPendingBuildId by
+        remember {
+            mutableStateOf<String?>(
+                null
+            )
+        }
+
+    val builderRuntimeProjectKey =
+        remember(
+            draft.packageName,
+            draft.importedFolder,
+            draft.sourceUri
+        ) {
+            "${draft.packageName}|" +
+                "${draft.importedFolder.orEmpty()}|" +
+                draft.sourceUri.orEmpty()
+        }
+
+    val builderActiveBuildReference =
+        remember(
+            screen,
+            step,
+            buildBusy,
+            buildId,
+            builderRuntimeProjectKey
+        ) {
+            if (
+                screen ==
+                    AppScreen.BUILDER &&
+                step == 10
+            ) {
+                BuildProgressService
+                    .activeSingleBuild(
+                        context
+                    )
+                    ?.takeIf {
+                        reference ->
+
+                        reference.projectKey
+                            .isNullOrBlank() ||
+                        reference.projectKey ==
+                            builderRuntimeProjectKey ||
+                        buildBusy
+                    }
+            } else {
+                null
+            }
+        }
+
+    val builderActiveBuildReentryGuard =
+        builderActiveBuildReference !=
+            null &&
+        (
+            !buildBusy ||
+            buildId !=
+                builderActiveBuildReference
+                    .buildId
+        )
+
+    val builderReentryUiGuard =
+        builderActiveBuildReentryGuard ||
+        builderReentryPendingBuildId !=
+            null
 
     /*
      * ACTIVE_DEVICE_BUILD_RESTORE_V1
@@ -1468,6 +1936,220 @@ private fun AppForgeApp() {
             delay(
                 1_000L
             )
+        }
+    }
+
+
+    /*
+     * BUILDER_ACTIVE_BUILD_REENTRY_V25_1
+     *
+     * Normal navigation away from and back to Builder step 10 gets its own
+     * rebind path. It always reconnects to the persisted Build ID; it never
+     * creates a replacement build.
+     *
+     * The pending guard remains active until the first real engine snapshot
+     * arrives, so the UI never advertises an idle build state during the
+     * rebind window.
+     */
+    LaunchedEffect(
+        screen,
+        step,
+        builderActiveBuildReference
+            ?.buildId
+    ) {
+        if (
+            screen !=
+                AppScreen.BUILDER ||
+            step != 10
+        ) {
+            return@LaunchedEffect
+        }
+
+        val reference =
+            builderActiveBuildReference
+                ?: return@LaunchedEffect
+
+        if (
+            buildBusy &&
+            buildId ==
+                reference.buildId
+        ) {
+            return@LaunchedEffect
+        }
+
+        builderReentryPendingBuildId =
+            reference.buildId
+
+        try {
+            val reentryServerUrl =
+                reference.serverUrl
+                    .takeIf {
+                        it.isNotBlank()
+                    }
+                    ?: serverUrl
+
+            if (
+                reentryServerUrl
+                    .isBlank()
+            ) {
+                logs =
+                    (
+                        logs +
+                            "Aktif build bağlantı bilgisi bulunamadı."
+                    ).takeLast(
+                        120
+                    )
+
+                return@LaunchedEffect
+            }
+
+            serverUrl =
+                reentryServerUrl
+
+            /*
+             * Seed only identity/busy state here.
+             * Progress is intentionally not invented; the first real
+             * DeviceBuildEngine snapshot replaces it below.
+             */
+            buildId =
+                reference.buildId
+
+            buildProjectKey =
+                reference.projectKey
+                    ?: buildProjectKey
+
+            buildStartedAtMs =
+                reference.startedAtMs
+                    ?: buildStartedAtMs
+
+            buildTimerRunning =
+                true
+
+            buildBusy =
+                true
+
+            status =
+                "running"
+
+            val client =
+                BuildApiClient(
+                    context = context,
+                    baseUrl =
+                        reentryServerUrl,
+                    apiKey =
+                        reference.apiKey
+                            .ifBlank {
+                                apiKey
+                            }
+                )
+
+            while (true) {
+                val snapshot =
+                    try {
+                        withContext(
+                            Dispatchers.IO
+                        ) {
+                            client.getBuild(
+                                reference.buildId
+                            )
+                        }
+                    } catch (
+                        t: Throwable
+                    ) {
+                        if (
+                            t is
+                                BuildApiException &&
+                            t.errorCode ==
+                                "LOCAL_BUILD_NOT_FOUND"
+                        ) {
+                            BuildProgressService
+                                .clear(
+                                    context
+                                )
+
+                            buildRuntime
+                                .resetForProjectChange()
+
+                            return@LaunchedEffect
+                        }
+
+                        status =
+                            "running"
+
+                        logs =
+                            (
+                                logs +
+                                    "Aktif build yeniden bağlanmayı bekliyor: ${t.message.orEmpty()}"
+                            ).takeLast(
+                                120
+                            )
+
+                        delay(
+                            1_000L
+                        )
+
+                        continue
+                    }
+
+                val normalized =
+                    snapshot.status
+                        .trim()
+                        .lowercase()
+
+                val terminal =
+                    normalized in
+                        setOf(
+                            "success",
+                            "failed",
+                            "cancelled",
+                            "canceled"
+                        )
+
+                /*
+                 * Clear the persisted tracker before restoring a terminal
+                 * snapshot. This prevents a terminal build from briefly
+                 * becoming a new re-entry guard during recomposition.
+                 */
+                if (
+                    terminal
+                ) {
+                    BuildProgressService
+                        .clear(
+                            context
+                        )
+                }
+
+                buildRuntime
+                    .restoreFromEngine(
+                        snapshot =
+                            snapshot,
+                        projectKey =
+                            reference.projectKey,
+                        startedAtMs =
+                            reference.startedAtMs
+                    )
+
+                builderReentryPendingBuildId =
+                    null
+
+                if (
+                    terminal
+                ) {
+                    return@LaunchedEffect
+                }
+
+                delay(
+                    1_500L
+                )
+            }
+        } finally {
+            if (
+                builderReentryPendingBuildId ==
+                    reference.buildId
+            ) {
+                builderReentryPendingBuildId =
+                    null
+            }
         }
     }
 
@@ -1634,17 +2316,6 @@ private fun AppForgeApp() {
 
         delay(1200L)
 
-        val canSaveProject =
-            proStatus?.active == true ||
-            true
-
-        if (!canSaveProject) {
-            status =
-                "Ücretsiz denemede toplam $effectiveFreeProjectLimit farklı proje hakkın doldu. " +
-                "Bu projedeki ilk değişikliği kaydetmek için Pro veya Pro Aylık gerekli."
-            return@LaunchedEffect
-        }
-
         ProjectLibrary.save(
             context,
             draft,
@@ -1655,25 +2326,18 @@ private fun AppForgeApp() {
             projectId to draft
     }
 
+    /* ACTIVE_BUILD_NOTIFICATION_REBIND_V2 */
     LaunchedEffect(hostActivity?.buildNotificationSequence) {
-        val activity =
-            hostActivity
-                ?: return@LaunchedEffect
-
-        if (activity.buildNotificationSequence <= 0) {
-            return@LaunchedEffect
-        }
+        val activity = hostActivity ?: return@LaunchedEffect
+        if (activity.buildNotificationSequence <= 0) return@LaunchedEffect
 
         val notificationBuildId =
-            activity
-                .buildIdFromNotification
-                ?.takeIf { it.isNotBlank() }
+            activity.buildIdFromNotification?.takeIf { it.isNotBlank() }
                 ?: return@LaunchedEffect
-
+        val reference = BuildProgressService.activeSingleBuild(context)
         val notificationServerUrl =
-            activity
-                .buildServerUrlFromNotification
-                ?.takeIf { it.isNotBlank() }
+            activity.buildServerUrlFromNotification?.takeIf { it.isNotBlank() }
+                ?: reference?.serverUrl
                 ?: serverUrl
 
         if (notificationServerUrl.isBlank()) {
@@ -1682,85 +2346,51 @@ private fun AppForgeApp() {
         }
 
         serverUrl = notificationServerUrl
-        buildId = notificationBuildId
-        status = "Derleme durumu yükleniyor..."
-
-        val notificationClient =
-            BuildApiClient(
-                context,
-                notificationServerUrl,
-                apiKey
-            )
-
-        while (true) {
-            try {
-                val s =
-                    withContext(Dispatchers.IO) {
-                        notificationClient.getBuild(
-                            notificationBuildId
-                        )
-                    }
-
-                buildId = s.buildId
-                buildNo = s.buildNo
-                status = s.status
-                progress = if (s.status == "success") 100 else s.progress
-                logs = s.logs
-                preflight = s.preflight
-
-                queuePosition =
-                    s.queuePosition
-
-                queueAhead =
-                    s.queueAhead
-
-                queueWorkerSlots =
-                    s.queueCompatibleWorkerSlots
-
-                queueEtaSeconds =
-                    s.queueEstimatedWaitSeconds
-
-                queueEstimate =
-                    s.queueEstimate
-
-                apkUrl =
-                    if (s.apkAvailable) {
-                        "available"
-                    } else {
-                        null
-                    }
-
-                aabUrl =
-                    if (s.aabAvailable) {
-                        "available"
-                    } else {
-                        null
-                    }
-
-                exeUrl =
-                    if (s.exeAvailable) {
-                        "available"
-                    } else {
-                        null
-                    }
-
-                val active =
-                    s.status == "queued" ||
-                        s.status == "building"
-
-                if (!active) {
-                    BuildProgressService.clear(context)
-                    break
-                }
-
-                delay(1_000L)
-            } catch (t: Throwable) {
-                status = "Derleme durumu alınamadı"
-                logs =
-                    logs +
-                        "Bildirimden build yeniden yüklenemedi: ${t.message.orEmpty()}"
-                break
+        val snapshot = try {
+            withContext(Dispatchers.IO) {
+                BuildApiClient(
+                    context,
+                    notificationServerUrl,
+                    reference?.apiKey ?: apiKey
+                ).getBuild(notificationBuildId)
             }
+        } catch (t: Throwable) {
+            status = "Derleme durumu alınamadı"
+            logs = (logs + "Bildirimden aktif build yeniden bağlanamadı: ${t.message.orEmpty()}")
+                .takeLast(120)
+            screen = AppScreen.BUILDER
+            step = 10
+            activity.consumeBuildNotificationNavigation()
+            return@LaunchedEffect
+        }
+
+        buildRuntime.restoreFromEngine(
+            snapshot = snapshot,
+            projectKey = reference?.projectKey ?: buildProjectKey,
+            startedAtMs = reference?.startedAtMs ?: buildStartedAtMs
+        )
+
+        /*
+         * NOTIFICATION_RETURN_ATOMIC_HANDOFF_V21_4
+         * ACTIVE_BUILD_NOTIFICATION_TAP_PERSIST_V1_2
+         *
+         * Opening the exact build from its notification only hydrates and
+         * navigates the UI. The active build owns BuildProgressService;
+         * notification navigation must never stop/cancel that tracker.
+         */
+        screen = AppScreen.BUILDER
+        step = 10
+        activity.consumeBuildNotificationNavigation()
+
+        if (
+            snapshot.status.trim().lowercase() in
+                setOf("success", "failed", "cancelled", "canceled")
+        ) {
+            BuildProgressService.clear(context)
+            BuildProgressService
+                .dismissTerminalResultNotification(
+                    context
+                )
         }
     }
 
@@ -1865,7 +2495,8 @@ private fun AppForgeApp() {
     fun prepareBuilderProjectNavigation(): Boolean {
 
         if (
-            buildBusy
+            buildBusy ||
+            builderReentryUiGuard
         ) {
             status =
                 "Derleme devam ederken proje değiştirilemez. " +
@@ -2005,6 +2636,16 @@ private fun AppForgeApp() {
 
             if (uri != null) {
                 /*
+                 * SOURCE_DOCUMENT_PERMISSION_V1
+                 *
+                 * Preserve original document access as a recovery path.
+                 */
+                persistReadUriPermission(
+                    context,
+                    uri
+                )
+
+                /*
                  * Snapshot project identity before leaving the UI
                  * dispatcher. A slow import must never overwrite a
                  * different project opened while it was running.
@@ -2015,16 +2656,53 @@ private fun AppForgeApp() {
                 val baseProjectId =
                     currentProjectId
 
-                val key =
+                /*
+                 * SOURCE_PROJECT_STORAGE_ISOLATION_V1
+                 *
+                 * Source storage must not depend only on packageName.
+                 */
+                val existingSourceKey =
                     baseDraft
-                        .packageName
-                        .replace(
-                            ".",
-                            "_"
-                        )
-                        .ifBlank {
-                            "project"
+                        .importedFolder
+                        ?.let(::File)
+                        ?.takeIf {
+                            file ->
+                            file.parentFile
+                                ?.name ==
+                                "projects"
                         }
+                        ?.name
+                        ?.takeIf {
+                            name ->
+                            name.startsWith(
+                                "saved_"
+                            ) ||
+                            name.startsWith(
+                                "draft_"
+                            )
+                        }
+
+                val key =
+                    existingSourceKey
+                        ?: baseProjectId
+                            ?.let {
+                                id ->
+                                "saved_" +
+                                    id.replace(
+                                        "-",
+                                        ""
+                                    )
+                            }
+                        ?: (
+                            "draft_" +
+                                java.util.UUID
+                                    .randomUUID()
+                                    .toString()
+                                    .replace(
+                                        "-",
+                                        ""
+                                    )
+                        )
 
                 status =
                     "Kaynak proje kuyruğa alındı..."
@@ -2145,6 +2823,16 @@ private fun AppForgeApp() {
                                     sourceBuildReady =
                                         analysis
                                             .buildReady,
+
+                                    buildOutput =
+                                        if (
+                                            analysis.buildEngine ==
+                                                "universal-cross-platform"
+                                        ) {
+                                            "all"
+                                        } else {
+                                            baseDraft.buildOutput
+                                        },
 
                                     camera =
                                         analysis.camera,
@@ -2294,55 +2982,308 @@ private fun AppForgeApp() {
         }
     }
 
-    val iconPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-            if (uri != null) {
+    /*
+     * APPFORGE_ICON_EDITOR_V1_5
+     */
+    var pendingIconUri by
+        remember {
+            mutableStateOf<Uri?>(
+                null
+            )
+        }
+
+    var pendingIconFill by
+        remember {
+            mutableStateOf(
+                true
+            )
+        }
+
+    var pendingIconZoom by
+        remember {
+            mutableFloatStateOf(
+                1f
+            )
+        }
+
+    val iconPicker =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts
+                    .OpenDocument()
+        ) {
+            uri: Uri? ->
+
+            if (
+                uri !=
+                    null
+            ) {
                 persistReadUriPermission(
                     context,
                     uri
                 )
-            }
 
-        if (uri != null) {
-            persistReadUriPermission(
-                context,
-                uri
-            )
-            status =
-                "Uygulama ikonu hazırlanıyor..."
+                pendingIconUri =
+                    uri
 
-            scope.launch {
-                try {
-                    val prepared =
-                        withContext(
-                            Dispatchers.IO
-                        ) {
-                            AppIconProcessor
-                                .prepare(
-                                    context = context,
-                                    source = uri,
-                                    backgroundColor =
-                                        draft.primaryColor
-                                )
-                        }
+                pendingIconFill =
+                    true
 
-                    draft =
-                        draft.copy(
-                            iconUri = prepared.uri,
-                            iconName = prepared.name
-                        )
+                pendingIconZoom =
+                    1f
 
-                    status =
-                        "İkon hazırlandı: ${prepared.sourceWidth}×${prepared.sourceHeight} → güvenli 1024×1024 PNG"
-                } catch (
-                    t: Throwable
-                ) {
-                    status =
-                        "İkon hazırlanamadı: ${t.message}"
-                }
+                status =
+                    "İkon düzenleme hazır."
             }
         }
+
+    fun applyPendingIconEdit() {
+        val source =
+            pendingIconUri
+                ?: return
+
+        val fill =
+            pendingIconFill
+
+        val zoom =
+            pendingIconZoom
+
+        pendingIconUri =
+            null
+
+        status =
+            "Uygulama ikonu yüksek kaliteli launcher çıktısına hazırlanıyor..."
+
+        scope.launch {
+            try {
+                val prepared =
+                    withContext(
+                        Dispatchers.IO
+                    ) {
+                        AppIconProcessor
+                            .prepare(
+                                context =
+                                    context,
+                                source =
+                                    source,
+                                backgroundColor =
+                                    draft.primaryColor,
+                                fillCanvas =
+                                    fill,
+                                zoom =
+                                    zoom
+                            )
+                    }
+
+                draft =
+                    draft.copy(
+                        iconUri =
+                            prepared.uri,
+                        iconName =
+                            prepared.name
+                    )
+
+                status =
+                    "İkon hazırlandı: " +
+                        "${prepared.sourceWidth}×${prepared.sourceHeight} → " +
+                        "1024×1024 launcher master"
+
+            } catch (
+                t: Throwable
+            ) {
+                status =
+                    "İkon hazırlanamadı: ${t.message}"
+            }
+        }
+    }
+
+    val iconEditUri =
+        pendingIconUri
+
+    if (
+        iconEditUri !=
+            null
+    ) {
+        val previewBitmap =
+            remember(
+                iconEditUri
+            ) {
+                runCatching {
+                    context.contentResolver
+                        .openInputStream(
+                            iconEditUri
+                        )
+                        ?.use {
+                            android.graphics.BitmapFactory
+                                .decodeStream(
+                                    it
+                                )
+                        }
+                }.getOrNull()
+            }
+
+        AlertDialog(
+            onDismissRequest = {
+                pendingIconUri =
+                    null
+            },
+            title = {
+                Text(
+                    "Uygulama ikonunu düzenle"
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            10.dp
+                        )
+                ) {
+                    AndroidView(
+                        factory = {
+                            android.widget.ImageView(
+                                it
+                            )
+                        },
+                        update = {
+                            view ->
+
+                            view.setImageBitmap(
+                                previewBitmap
+                            )
+
+                            view.scaleType =
+                                if (
+                                    pendingIconFill
+                                ) {
+                                    android.widget.ImageView
+                                        .ScaleType
+                                        .CENTER_CROP
+                                } else {
+                                    android.widget.ImageView
+                                        .ScaleType
+                                        .FIT_CENTER
+                                }
+
+                            view.scaleX =
+                                pendingIconZoom
+
+                            view.scaleY =
+                                pendingIconZoom
+                        },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(
+                                    190.dp
+                                )
+                    )
+
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(
+                                8.dp
+                            )
+                    ) {
+                        FilterChip(
+                            selected =
+                                pendingIconFill,
+                            onClick = {
+                                pendingIconFill =
+                                    true
+                            },
+                            label = {
+                                Text(
+                                    "Doldur"
+                                )
+                            },
+                            modifier =
+                                Modifier.weight(
+                                    1f
+                                )
+                        )
+
+                        FilterChip(
+                            selected =
+                                !pendingIconFill,
+                            onClick = {
+                                pendingIconFill =
+                                    false
+                            },
+                            label = {
+                                Text(
+                                    "Sığdır"
+                                )
+                            },
+                            modifier =
+                                Modifier.weight(
+                                    1f
+                                )
+                        )
+                    }
+
+                    Text(
+                        "Yakınlaştırma • ${"%.2f".format(java.util.Locale.US, pendingIconZoom)}x",
+                        fontSize =
+                            12.sp,
+                        color =
+                            TextSecondary
+                    )
+
+                    Slider(
+                        value =
+                            pendingIconZoom,
+                        onValueChange = {
+                            pendingIconZoom =
+                                it
+                        },
+                        valueRange =
+                            1f..1.6f
+                    )
+
+                    OutlinedButton(
+                        onClick = {
+                            iconPicker.launch(
+                                arrayOf(
+                                    "image/*"
+                                )
+                            )
+                        },
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "DOSYAYI DEĞİŞTİR"
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        applyPendingIconEdit()
+                    }
+                ) {
+                    Text(
+                        "UYGULA"
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingIconUri =
+                            null
+                    }
+                ) {
+                    Text(
+                        "İPTAL"
+                    )
+                }
+            }
+        )
     }
 
     val firebasePicker = rememberLauncherForActivityResult(
@@ -2861,6 +3802,76 @@ private fun AppForgeApp() {
             }
         }
 
+
+    /*
+     * KEYSTORE_DEVICE_BACKUP_PICKER_V1_5
+     *
+     * Scoped storage prevents silent whole-device crawling. The Android
+     * multi-document picker lets the user reveal/select device backups.
+     */
+    val managedKeystoreBackupPicker =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts
+                    .OpenMultipleDocuments()
+        ) {
+            uris ->
+
+            if (
+                uris.isEmpty()
+            ) {
+                status =
+                    "Keystore yedeği seçilmedi."
+
+                return@rememberLauncherForActivityResult
+            }
+
+            var importedCount =
+                0
+
+            var failedCount =
+                0
+
+            uris.forEach {
+                uri ->
+
+                runCatching {
+                    KeystoreVault
+                        .importFromUri(
+                            context,
+                            uri
+                        )
+                }
+                    .onSuccess {
+                        importedCount +=
+                            1
+                    }
+                    .onFailure {
+                        failedCount +=
+                            1
+                    }
+            }
+
+            keystoreRefresh +=
+                1
+
+            status =
+                buildString {
+                    append(
+                        "$importedCount keystore yedeği kasaya eklendi."
+                    )
+
+                    if (
+                        failedCount >
+                            0
+                    ) {
+                        append(
+                            " $failedCount dosya okunamadı."
+                        )
+                    }
+                }
+        }
+
     /*
      * Local AI is intentionally cold until the user actually opens AI.
      *
@@ -3342,7 +4353,8 @@ private fun AppForgeApp() {
         buildStart@{ buildDraft ->
 
         if (
-            buildBusy
+            buildBusy ||
+            builderReentryUiGuard
         ) {
             status =
                 "Bir derleme zaten devam ediyor."
@@ -3369,6 +4381,72 @@ private fun AppForgeApp() {
                 .sourceTechnology !=
                 buildDraft
                     .sourceTechnology
+
+        /*
+         * OFFLINE_BUILD_PREFLIGHT_GATE_V1
+         */
+        val offlinePackCheck =
+            com.appforge.studio.build
+                .OfflineBuildPackManager
+                .checkBuildRequirements(
+                    context,
+                    verifiedBuildDraft
+                )
+
+        if (
+            !offlinePackCheck.ready
+        ) {
+            status =
+                "Çevrimdışı derleme paketi eksik."
+
+            progress =
+                0
+
+            logs =
+                listOf(
+                    "⛔ Derleme başlatılmadı • gerekli cihaz toolchain paketi eksik."
+                )
+
+            preflight =
+                listOf(
+                    "BUILD_BLOCKED=YES",
+                    "OFFLINE_BUILD_READY=NO",
+                    "ENGINE=${offlinePackCheck.engine}"
+                ) +
+                    offlinePackCheck.missing.map {
+                        "MISSING=$it"
+                    }
+
+            buildProjectKey =
+                null
+
+            buildId =
+                null
+
+            buildNo =
+                null
+
+            apkUrl =
+                null
+
+            aabUrl =
+                null
+
+            exeUrl =
+                null
+
+            screen =
+                AppScreen.BUILDER
+
+            step =
+                10
+
+            openWorkspaceScreen(
+                AppScreen.OFFLINE_PACK
+            )
+
+            return@buildStart
+        }
 
         buildBusy =
             true
@@ -3672,7 +4750,11 @@ private fun AppForgeApp() {
                     status =
                         s.status
 
-                    progress = if (s.status == "success") 100 else s.progress
+                    progress =
+                        AppForgeBuildProgress.visible(
+                            s.status,
+                            s.progress
+                        )
                     buildNo =
                         s.buildNo
                             ?: buildNo
@@ -3733,7 +4815,6 @@ private fun AppForgeApp() {
                         s.status ==
                             "cancelled"
                     ) {
-                        BuildProgressService.clear(context)
                         if (
                             s.status ==
                                 "success"
@@ -3760,6 +4841,18 @@ private fun AppForgeApp() {
                                         context,
                                         effectiveBuildDraft,
                                         existingProjectId
+                                    )
+                            }
+
+                            hostActivity?.let {
+                                activity ->
+
+                                PlayReviewGate
+                                    .recordSuccessfulBuildAndMaybeRequest(
+                                        activity =
+                                            activity,
+                                        buildId =
+                                            created.buildId
                                     )
                             }
                         }
@@ -3794,6 +4887,15 @@ private fun AppForgeApp() {
                                 s.buildNo
                         )
 
+                        /*
+                         * NOTIFICATION_RESULT_RESTORE_V1
+                         * Persist terminal result/artifact metadata first.
+                         * Only then may the active tracker be cleared.
+                         */
+                        BuildProgressService.clear(
+                            context
+                        )
+
                         break
                     }
                 }
@@ -3817,13 +4919,12 @@ private fun AppForgeApp() {
                         "FREE_PROJECT_LIMIT_REACHED" -> {
 
                         proSecurityMessage =
-                            "Ücretsiz kotan doldu. " +
-                            "Devam etmek için aşağıdan " +
-                            "Pro Aylık paketine geç."
+                            "Eski sunucu kota yanıtı algılandı. " +
+                            "Bu sürüm normal kullanıcıya proje kotası satmıyor. " +
+                            "Build'i tekrar dene."
 
                         status =
-                            "Ücretsiz kota doldu • " +
-                            "Pro'ya yükselt."
+                            "Eski kota yanıtı • tekrar dene."
 
                         progress =
                             0
@@ -3840,14 +4941,13 @@ private fun AppForgeApp() {
                         "PRO_MONTHLY_BUILD_LIMIT_REACHED" -> {
 
                         proSecurityMessage =
-                            "Pro Aylık kotan doldu. " +
-                            "Devam etmek için aşağıdan " +
-                            "+10, +25 veya +50 ek kota " +
-                            "paketlerinden birini seç."
+                            "Eski kota türü algılandı. " +
+                            "AppForge artık aylık Pro veya ek kota paketi sunmuyor. " +
+                            "Pro Ömür Boyu durumunu yenileyip tekrar dene."
 
                         status =
-                            "Pro kotası doldu • " +
-                            "ek kota paketi seç."
+                            "Eski kota yanıtı • " +
+                            "Pro durumunu yenile."
 
                         progress =
                             0
@@ -3860,8 +4960,9 @@ private fun AppForgeApp() {
                         status =
                             "Hata: ${t.message}"
 
-                        progress =
-                            0
+                        if (buildId == null) {
+                            progress = 0
+                        }
 
                         screen =
                             AppScreen.BUILDER
@@ -4253,9 +5354,18 @@ private fun AppForgeApp() {
         Surface(Modifier.fillMaxSize(), color = Bg) {
             val visibleScreen =
                 if (
-                    screen ==
-                        AppScreen.TERMINAL &&
+                    screen == AppScreen.TERMINAL &&
                     !terminalOwner
+                ) {
+                    AppScreen.HOME
+                } else if (
+                    !terminalOwner &&
+                    (
+                        screen == AppScreen.SECOND_BRAIN ||
+                        screen == AppScreen.ADMIN_AI ||
+                        screen == AppScreen.AI_ASSISTANT ||
+                        screen == AppScreen.UNIFIED_AGENT
+                    )
                 ) {
                     AppScreen.HOME
                 } else {
@@ -4280,7 +5390,7 @@ private fun AppForgeApp() {
                                 .apply()
 
                             screen =
-                                AppScreen.HOME
+                                AppScreen.OFFLINE_PACK_FIRST_RUN
                         }
                     )
 
@@ -4410,15 +5520,19 @@ private fun AppForgeApp() {
                         },
 
                         onOpenUnifiedAgent = {
-                            openWorkspaceScreen(
-                                AppScreen.UNIFIED_AGENT
-                            )
+                            if (terminalOwner) {
+                                openWorkspaceScreen(AppScreen.UNIFIED_AGENT)
+                            } else {
+                                screen = AppScreen.HOME
+                            }
                         },
 
                         onOpenAi = {
-                            openWorkspaceScreen(
-                                AppScreen.AI_ASSISTANT
-                            )
+                            if (terminalOwner) {
+                                openWorkspaceScreen(AppScreen.ADMIN_AI)
+                            } else {
+                                screen = AppScreen.HOME
+                            }
                         },
 
                         onOpenTasks = {
@@ -4456,9 +5570,8 @@ private fun AppForgeApp() {
                             )
                         },
 
-                        onOpenOtherApps = {
-                            screen =
-                                AppScreen.OTHER_APPS
+                        onOpenOfflinePack = {
+                            openOfflinePack()
                         },
 
                         onImportProject = {
@@ -4530,8 +5643,15 @@ private fun AppForgeApp() {
                         },
 
                         onOpenAdmin = {
-                            screen =
-                                AppScreen.ADMIN_OPS
+                            if (
+                                OwnerAccessPolicy
+                                    .isActiveOwner(
+                                        context
+                                    )
+                            ) {
+                                screen =
+                                    AppScreen.ADMIN_OPS
+                            }
                         },
 
                         onOpenPro = {
@@ -4540,43 +5660,6 @@ private fun AppForgeApp() {
                         }
                     )
                     }
-
-                AppScreen.OTHER_APPS ->
-                    com.appforge.studio.ui.OtherAppsScreen(
-                        onBack = {
-                            screen =
-                                AppScreen.HOME
-                        },
-                        onOpenExcelTools = {
-                            screen =
-                                AppScreen.EXCEL_TOOLS
-                        },
-                        proUnlocked =
-                            proStatus?.active == true,
-                                                serverUrl =
-                            DEFAULT_CONTROL_PLANE_URL,
-onOpenPro = {
-                            screen =
-                                AppScreen.PRO
-                        }
-                    )
-
-                AppScreen.EXCEL_TOOLS ->
-                    com.appforge.studio.tools.excel.ExcelToolsScreen(
-                        onBack = {
-                            screen =
-                                AppScreen.OTHER_APPS
-                        },
-                        proUnlocked =
-                            proStatus?.active == true,
-                                                serverUrl =
-                            DEFAULT_CONTROL_PLANE_URL,
-onOpenPro = {
-                            screen =
-                                AppScreen.PRO
-                        }
-                    )
-
                 AppScreen.MODE_SELECT ->
                     CreateModeSelectionScreen(
                         onQuick = {
@@ -4710,11 +5793,6 @@ onOpenPro = {
                     )
 
                 AppScreen.LIBRARY -> ProjectLibraryScreen(
-                    proUnlocked = proStatus?.active == true,
-                    freeProjectLimit =
-                        effectiveFreeProjectLimit,
-                    serverFreeProjectUsed =
-                        projectQuota?.used,
                     onBack = { screen = AppScreen.HOME },
                     onLoad = libraryLoad@{ saved ->
 
@@ -4985,28 +6063,17 @@ onOpenPro = {
                                 generated != null
                             ) {
                                 configuredDraft.copy(
+                                    // A local template creates a new project:
+                                    // do not inherit the previous draft identity.
                                     appName =
-                                        configuredDraft
-                                            .appName
-                                            .ifBlank {
-                                                template.name
-                                            },
+                                        template.name,
                                     packageName =
-                                        if (
-                                            configuredDraft
-                                                .packageName
-                                                .isBlank() ||
-                                            configuredDraft
-                                                .packageName ==
-                                                "com.example.myapp"
-                                        ) {
-                                            quickPackageName(
-                                                template.name
-                                            )
-                                        } else {
-                                            configuredDraft
-                                                .packageName
-                                        },
+                                        uniqueTemplatePackageName(
+                                            template.name,
+                                            ProjectLibrary.load(context)
+                                                .map { it.packageName.lowercase() }
+                                                .toSet()
+                                        ),
                                     sourceMode =
                                         SourceMode.LOCAL,
                                     sourceUri =
@@ -5054,9 +6121,17 @@ onOpenPro = {
                         returnFromWorkspace()
                     },
                     onOpenLanguage = { screen = AppScreen.LANGUAGE },
-                    onOpenKeystore = { screen = AppScreen.KEYSTORES },
+                    onOpenKeystore = {
+                        keystoreManagerReturnScreen =
+                            AppScreen.SETTINGS
+
+                        screen =
+                            AppScreen.KEYSTORES
+                    },
                     onOpenPro = { screen = AppScreen.PRO },
-                    onOpenOfflinePack = { screen = AppScreen.OFFLINE_PACK },
+                    onOpenOfflinePack = {
+                        openOfflinePack()
+                    },
                     onOpenHowTo = { screen = AppScreen.HELP },
                     onOpenPlayGuide = { screen = AppScreen.PLAY_GUIDE },
                     onOpenLegal = { screen = AppScreen.LEGAL },
@@ -5079,11 +6154,53 @@ onOpenPro = {
                     onOpenAdmin = { screen = AppScreen.ADMIN_OPS }
                 )
 
+                AppScreen.OFFLINE_PACK_FIRST_RUN ->
+                    OfflineBuildPackScreen(
+                        firstRun =
+                            true,
+
+                        onFirstRunComplete = {
+                            skipped ->
+
+                            context
+                                .getSharedPreferences(
+                                    "appforge_offline_pack",
+                                    Context.MODE_PRIVATE
+                                )
+                                .edit()
+                                .putBoolean(
+                                    "first_run_gate_completed_v1",
+                                    true
+                                )
+                                .putBoolean(
+                                    "first_run_gate_skipped_v1",
+                                    skipped
+                                )
+                                .putLong(
+                                    "first_run_gate_completed_at",
+                                    System.currentTimeMillis()
+                                )
+                                .apply()
+
+                            screen =
+                                AppScreen.HOME
+                        },
+
+                        onBack = {
+                            /*
+                             * First-run setup cannot be bypassed by the
+                             * top-app-bar or Android system back button.
+                             * The user must install or explicitly choose
+                             * "Şimdilik atla".
+                             */
+                        }
+                    )
+
                 AppScreen.OFFLINE_PACK ->
                     OfflineBuildPackScreen(
                         onBack = {
                             screen =
-                                AppScreen.SETTINGS
+                                offlinePackReturnScreen
                         }
                     )
 
@@ -5117,7 +6234,17 @@ onOpenPro = {
                     session = session,
                     currentStatus = proStatus,
                     securityMessage = proSecurityMessage,
-                    onBack = { screen = AppScreen.SETTINGS },
+                    onBack = {
+                        navigateAppSystemBack()
+                    },
+                    onStart = {
+                        screen =
+                            AppScreen.HOME
+                    },
+                    onSupport = {
+                        screen =
+                            AppScreen.PRO_SUPPORT
+                    },
                     onVerified = { result ->
                         proStatus = result
                         proSecurityMessage =
@@ -5132,14 +6259,38 @@ onOpenPro = {
                     }
                 )
 
+                AppScreen.PRO_SUPPORT ->
+                    com.appforge.studio.ui
+                        .DeveloperSupportScreenV1(
+                            onBack = {
+                                navigateAppSystemBack()
+                            }
+                        )
+
                 AppScreen.KEYSTORES -> KeystoreManagerScreen(
                     languageCode = prefs.languageCode,
                     refreshKey = keystoreRefresh,
-                    onBack = { screen = AppScreen.SETTINGS },
+                    canGenerate =
+                        proStatus?.active ==
+                            true ||
+                        terminalOwner,
+                    onBack = {
+                        screen =
+                            keystoreManagerReturnScreen
+
+                        if (
+                            keystoreManagerReturnScreen ==
+                                AppScreen.BUILDER
+                        ) {
+                            step =
+                                keystoreManagerReturnStep
+                        }
+                    },
                     onImport = {
                         if (
                             proStatus?.active ==
-                            true
+                                true ||
+                            terminalOwner
                         ) {
                             managedKeystorePicker.launch(
                                 arrayOf(
@@ -5151,11 +6302,39 @@ onOpenPro = {
                         } else {
                             status =
                                 "Özel keystore içe aktarma için sunucu doğrulamalı Pro gerekli."
+
                             screen =
                                 AppScreen.PRO
                         }
                     },
-                    onMessage = { status = it }
+                    onFindBackups = {
+                        if (
+                            proStatus?.active ==
+                                true ||
+                            terminalOwner
+                        ) {
+                            status =
+                                "Cihazdaki keystore yedeklerini seç."
+
+                            managedKeystoreBackupPicker.launch(
+                                arrayOf(
+                                    "application/x-java-keystore",
+                                    "application/octet-stream",
+                                    "*/*"
+                                )
+                            )
+                        } else {
+                            status =
+                                "Keystore yedeklerini içe aktarma için AppForge PRO gereklidir."
+
+                            screen =
+                                AppScreen.PRO
+                        }
+                    },
+                    onMessage = {
+                        status =
+                            it
+                    }
                 )
 
 
@@ -5230,6 +6409,11 @@ onOpenPro = {
                         session
                             ?.email
                             .orEmpty(),
+                    onOpenAi = {
+                        if (OwnerAccessPolicy.isActiveOwner(context)) {
+                            screen = AppScreen.ADMIN_AI
+                        }
+                    },
                     onOpenSecondBrain = {
                         if (OwnerAccessPolicy.isActiveOwner(context)) {
                             screen = AppScreen.SECOND_BRAIN
@@ -5247,6 +6431,43 @@ onOpenPro = {
                         screen = AppScreen.HOME
                     }
                 )
+
+
+                AppScreen.ADMIN_AI -> {
+                    if (isAdminOpsAccount) {
+                        AdminAiRouterScreen(
+                            serverUrl = DEFAULT_CONTROL_PLANE_URL,
+                            projectId = currentProjectId,
+                            draft = draft,
+                            canStartBuild = { !buildBusy && !builderReentryUiGuard },
+                            onSelectProject = aiProjectSelect@{ id ->
+                                if (!OwnerAccessPolicy.isActiveOwner(context) ||
+                                    !prepareBuilderProjectNavigation()) return@aiProjectSelect false
+                                val savedDraft = ProjectLibrary.restore(context, id)
+                                    ?: return@aiProjectSelect false
+                                draft = savedDraft
+                                currentProjectId = id
+                                sourceAnalysis = savedDraft.importedFolder?.let { folder ->
+                                    runCatching { SourceCapabilityAnalyzer.analyze(File(folder)) }.getOrNull()
+                                }
+                                serverUrl = savedDraft.buildServiceUrl
+                                step = 1
+                                true
+                            },
+                            onAuthorizationLost = {
+                                adminRevision += 1
+                                screen = AppScreen.HOME
+                            },
+                            onBack = {
+                                screen = AppScreen.ADMIN_OPS
+                            }
+                        )
+                    } else {
+                        LaunchedEffect(Unit) {
+                            screen = AppScreen.HOME
+                        }
+                    }
+                }
 
 
                 AppScreen.TASKS ->
@@ -5271,7 +6492,18 @@ onOpenPro = {
                                 ?.email
                                 .orEmpty(),
 
+                        requestedLinuxSessionId =
+                            requestedLinuxSessionId,
+
+                        onRequestedSessionConsumed = {
+                            requestedLinuxSessionId =
+                                null
+                        },
+
                         onBack = {
+                            requestedLinuxSessionId =
+                                null
+
                             screen =
                                 terminalReturnScreen
 
@@ -5752,9 +6984,51 @@ onOpenPro = {
                                 sourceAnalysis
                             ) { draft = it }
 
-                            4 -> AppearanceStep(draft, { draft = it }) {
-                                iconPicker.launch(arrayOf("image/*"))
-                            }
+                            4 -> AppearanceStep(
+                                d = draft,
+                                update = {
+                                    draft = it
+                                },
+                                onPickIcon = {
+                                    val currentIcon =
+                                        draft.iconUri
+
+                                    if (
+                                        currentIcon
+                                            .isNullOrBlank()
+                                    ) {
+                                        iconPicker.launch(
+                                            arrayOf(
+                                                "image/*"
+                                            )
+                                        )
+                                    } else {
+                                        pendingIconUri =
+                                            Uri.parse(
+                                                currentIcon
+                                            )
+
+                                        pendingIconFill =
+                                            true
+
+                                        pendingIconZoom =
+                                            1f
+
+                                        status =
+                                            "Mevcut ikon düzenleme için açıldı."
+                                    }
+                                },
+                                onRemoveIcon = {
+                                    draft =
+                                        draft.copy(
+                                            iconUri = null,
+                                            iconName = ""
+                                        )
+
+                                    status =
+                                        "Özel uygulama ikonu kaldırıldı."
+                                }
+                            )
 
                             5 -> NativeBridgeStep(
                                 d = draft,
@@ -5822,9 +7096,20 @@ onOpenPro = {
                                     keystorePicker.launch(
                                         arrayOf(
                                             "application/octet-stream",
-                                            "application/x-java-keystore"
+                                            "application/x-java-keystore",
+                                            "*/*"
                                         )
                                     )
+                                },
+                                onOpenKeystoreManager = {
+                                    keystoreManagerReturnScreen =
+                                        AppScreen.BUILDER
+
+                                    keystoreManagerReturnStep =
+                                        8
+
+                                    screen =
+                                        AppScreen.KEYSTORES
                                 }
                             )
 
@@ -5856,27 +7141,12 @@ onOpenPro = {
                                         )
                                 },
                                 onSave = {
-                                    val packageName =
-                                        draft.packageName
-                                            .trim()
-
-                                    val canUseSlot =
-                                        proStatus?.active ==
-                                            true ||
-                                        true
-
-                                    if (!canUseSlot) {
-                                        status =
-                                            "Ücretsiz denemede toplam $effectiveFreeProjectLimit farklı proje hakkın doldu. Proje silmek yeni hak açmaz. Yeni proje için Pro veya Pro Aylık gerekli."
-                                    } else {
-                                        currentProjectId =
-                                            ProjectLibrary.save(
-                                                context,
-                                                draft,
-                                                currentProjectId
-                                            )
-
-                                    }
+                                    currentProjectId =
+                                        ProjectLibrary.save(
+                                            context,
+                                            draft,
+                                            currentProjectId
+                                        )
                                 }
                             )
 
@@ -5896,6 +7166,8 @@ onOpenPro = {
                                         retryDraft
                                     )
                                 },
+                                reentryPending =
+                                    builderReentryUiGuard,
                                 serverUrl =
                                     serverUrl,
                                 apiKey =
@@ -6053,6 +7325,10 @@ onOpenPro = {
                             }
                         }
 
+                        val builderEffectiveBuildBusy =
+                            buildBusy ||
+                                builderReentryUiGuard
+
                         val builderCurrentProjectKey =
                             remember(
                                 draft.packageName,
@@ -6068,7 +7344,7 @@ onOpenPro = {
                             buildProjectKey !=
                                 null &&
                             (
-                                buildBusy ||
+                                builderEffectiveBuildBusy ||
                                 buildProjectKey ==
                                     builderCurrentProjectKey
                             )
@@ -6094,7 +7370,7 @@ onOpenPro = {
                                                         enabled =
                                                             !(
                                                                 step == 10 &&
-                                                                buildBusy
+                                                                builderEffectiveBuildBusy
                                                             ),
                                                         onClick = {
                                                             if (step < 10) {
@@ -6121,7 +7397,7 @@ onOpenPro = {
                                                                 step < 10 ->
                                                                     "Devam"
 
-                                                                buildBusy ->
+                                                                builderEffectiveBuildBusy ->
                                                                     if (builderCompact) {
                                                                         "DERLENİYOR"
                                                                     } else {
@@ -6207,6 +7483,7 @@ private fun BuildRuntimeStep(
     draft: ProjectDraft,
     onDraftChange: (ProjectDraft) -> Unit,
     onRetryBuild: (ProjectDraft) -> Unit,
+    reentryPending: Boolean,
     serverUrl: String,
     apiKey: String
 ) {
@@ -6281,6 +7558,8 @@ private fun BuildRuntimeStep(
             buildTimerRunning,
         buildBusy =
             buildBusy,
+        reentryPending =
+            reentryPending,
         logs =
             logs,
         preflight =
@@ -6347,6 +7626,22 @@ private fun quickPackageName(
         }
 
     return "com.appforge.$safeName"
+}
+
+// Applies only to newly materialized local templates; Quick Create manual
+// overrides and existing saved projects remain unchanged.
+private fun uniqueTemplatePackageName(
+    templateName: String,
+    existingPackages: Set<String>
+): String {
+    val base = quickPackageName(templateName)
+    var proposed = base
+    var suffix = 2
+    while (proposed in existingPackages) {
+        proposed = "$base$suffix"
+        suffix++
+    }
+    return proposed
 }
 
 private fun createQuickDraft(
@@ -6912,6 +8207,8 @@ private fun QuickCreateScreen(
     onOpenPro: () -> Unit
 ) {
     var extraFeaturesExpanded by remember { mutableStateOf(false) }
+    // Manual package IDs must not be silently replaced by app-name edits.
+    var quickPackageManualOverride by rememberSaveable { mutableStateOf(false) }
     var proFeatureRequest by
         remember {
             mutableStateOf<String?>(
@@ -7053,9 +8350,23 @@ private fun QuickCreateScreen(
                         OutlinedTextField(
                             value =
                                 draft.appName,
-                            onValueChange = {
+                            onValueChange = { entered ->
+                                val automaticBefore = quickPackageName(draft.appName)
+                                val shouldSyncPackage = !quickPackageManualOverride &&
+                                    draft.packageName in setOf(
+                                        automaticBefore,
+                                        "com.appforgestudio.myapp",
+                                        "com.example.myapp"
+                                    )
                                 onDraftChange(
-                                    draft.copy(appName = it)
+                                    draft.copy(
+                                        appName = entered,
+                                        packageName = if (shouldSyncPackage) {
+                                            quickPackageName(entered)
+                                        } else {
+                                            draft.packageName
+                                        }
+                                    )
                                 )
                             },
                             modifier =
@@ -7073,6 +8384,7 @@ private fun QuickCreateScreen(
                         OutlinedTextField(
                             value = draft.packageName,
                             onValueChange = { entered ->
+                                quickPackageManualOverride = true
                                 onDraftChange(
                                     draft.copy(packageName = entered.trim().lowercase())
                                 )
@@ -7227,7 +8539,7 @@ private fun QuickCreateScreen(
                                     true,
                                 placeholder = {
                                     Text(
-                                        "https://ornek.com"
+                                        "https://ornek.com veya http://10.6.20.25:8080/"
                                     )
                                 }
                             )
@@ -8246,11 +9558,7 @@ private fun QuickCreateScreen(
                     (
                         draft.sourceMode ==
                         SourceMode.URL &&
-                        draft.webUrl
-                            .startsWith(
-                                "https://",
-                                true
-                            )
+                        isSupportedWebSourceUrl(draft.webUrl)
                     )
                 ),
             modifier =
@@ -8279,6 +9587,18 @@ private fun QuickCreateScreen(
     }
 }
 
+
+private fun isSupportedWebSourceUrl(value: String): Boolean {
+    val normalized = value.trim()
+    if (!normalized.startsWith("https://", true) && !normalized.startsWith("http://", true)) {
+        return false
+    }
+    val parsed = runCatching { Uri.parse(normalized) }.getOrNull() ?: return false
+    return !parsed.host.isNullOrBlank()
+}
+
+private fun isCleartextWebSourceUrl(value: String): Boolean =
+    value.trim().startsWith("http://", true)
 
 private data class PreviewPreset(
     val key: String,
@@ -8381,11 +9701,7 @@ private fun productionChecks(
                     draft.startPage!!
                 ).exists()
         } else {
-            draft.webUrl
-                .startsWith(
-                    "https://",
-                    true
-                )
+            isSupportedWebSourceUrl(draft.webUrl)
         }
 
     checks +=
@@ -8689,13 +10005,9 @@ private fun AppPreviewScreen(
                     }
 
             SourceMode.URL ->
-                draft.webUrl
-                    .takeIf {
-                        it.startsWith(
-                            "https://",
-                            true
-                        )
-                    }
+                draft.webUrl.takeIf {
+                    isSupportedWebSourceUrl(it)
+                }
         }
 
     val expectedHost =
@@ -8992,7 +10304,7 @@ private fun AppPreviewScreen(
                             ) {
                                 "Bu proje ${draft.sourceTechnologyLabel} olarak algılandı. Native Android/Kotlin ve diğer native kaynaklar WebView ile önizlenmez. Üretim Merkezi ve Test Laboratuvarı'nı kullan."
                             } else {
-                                "Önizlenecek web kaynağı hazır değil. HTML/HTM seç veya URL modunda HTTPS adresi gir."
+                                "Önizlenecek web kaynağı hazır değil. HTML/HTM seç veya URL modunda HTTP ya da HTTPS adresi gir."
                             }
                         )
                     } else {
@@ -12983,8 +14295,13 @@ private fun validateDraft(d: ProjectDraft, serverUrl: String) {
     }
 
     if (d.sourceMode == SourceMode.URL) {
-        require(d.webUrl.startsWith("https://", true)) {
-            "URL https:// ile başlamalı."
+        require(isSupportedWebSourceUrl(d.webUrl)) {
+            "URL http:// veya https:// ile başlamalı ve geçerli bir host içermeli."
+        }
+        if (d.remoteBridgeAllowed) {
+            require(d.webUrl.startsWith("https://", true)) {
+                "Uzak Native Bridge yalnız HTTPS web kaynağında kullanılabilir."
+            }
         }
     }
 
@@ -13106,7 +14423,7 @@ private fun SourceStep(
                 "app$segment"
         }
 
-        return "com.example.$segment"
+        return "com.appforgestudio.$segment"
     }
 
     val packageRegex =
@@ -13122,20 +14439,36 @@ private fun SourceStep(
             d.packageName.trim()
         )
 
+    /*
+     * LOCAL_SOURCE_VALIDATION_V2
+     *
+     * Native Android / React Native / Expo projects do not require
+     * index.html. A preserved imported project directory is sufficient.
+     */
+    val importedSourceValid =
+        d.importedFolder
+            ?.let(::File)
+            ?.isDirectory ==
+            true
+
+    val restoredStartValid =
+        d.startPage
+            ?.let(::File)
+            ?.exists() ==
+            true
+
     val localSourceValid =
-        !d.startPage.isNullOrBlank() &&
+        importedSourceValid ||
         (
-            !d.sourceUri.isNullOrBlank() ||
-            !d.importedFolder.isNullOrBlank()
+            restoredStartValid &&
+            (
+                !d.sourceUri.isNullOrBlank() ||
+                !d.importedFolder.isNullOrBlank()
+            )
         )
 
     val webUrlValid =
-        d.webUrl.trim()
-            .startsWith(
-                "https://",
-                ignoreCase = true
-            ) &&
-        d.webUrl.trim().length > 8
+        isSupportedWebSourceUrl(d.webUrl)
 
     val sourceValid =
         if (
@@ -13237,6 +14570,13 @@ private fun SourceStep(
                             d.appName
                         )
 
+                    val oldLegacyAutoPackage =
+                        oldAutoPackage
+                            .replace(
+                                "com.appforgestudio.",
+                                "com.example."
+                            )
+
                     val autoMode =
                         currentPackage.isBlank() ||
                         currentPackage ==
@@ -13244,13 +14584,24 @@ private fun SourceStep(
                         currentPackage ==
                             "com.appforgestudio.myapp" ||
                         currentPackage ==
-                            oldAutoPackage
+                            oldAutoPackage ||
+                        currentPackage ==
+                            oldLegacyAutoPackage
 
+                    /*
+                     * AUTO_PACKAGE_FROM_APP_NAME_V1
+                     *
+                     * expo test -> com.appforgestudio.expotest
+                     *
+                     * A manually edited package name remains untouched.
+                     */
                     val nextPackage =
                         if (
                             autoMode
                         ) {
-                            "com.appforgestudio.myapp"
+                            autoPackageName(
+                                appName
+                            )
                         } else {
                             d.packageName
                         }
@@ -13799,7 +15150,7 @@ private fun SourceStep(
                     },
                     placeholder = {
                         Text(
-                            "https://site.com"
+                            "https://site.com veya http://10.6.20.25:8080/"
                         )
                     },
                     singleLine = true,
@@ -13811,7 +15162,7 @@ private fun SourceStep(
                             d.webUrl.isBlank()
                         ) {
                             Text(
-                                "HTTPS web adresi gir."
+                                "HTTP veya HTTPS web adresi gir."
                             )
                         } else if (
                             webUrlValid
@@ -13821,7 +15172,7 @@ private fun SourceStep(
                             )
                         } else {
                             Text(
-                                "Adres https:// ile başlamalı."
+                                "Adres http:// veya https:// ile başlamalı ve geçerli bir host içermeli."
                             )
                         }
                     },
@@ -14911,7 +16262,8 @@ private fun FeatureToggleCard(
 private fun AppearanceStep(
     d: ProjectDraft,
     update: (ProjectDraft) -> Unit,
-    onPickIcon: () -> Unit
+    onPickIcon: () -> Unit,
+    onRemoveIcon: () -> Unit
 ) {
     val formCompact =
         LocalConfiguration.current
@@ -15015,21 +16367,55 @@ private fun AppearanceStep(
                             13.sp
                     )
 
-                    Button(
-                        onClick =
-                            onPickIcon,
-                        modifier =
-                            Modifier.fillMaxWidth()
+                    /* ICON_EDIT_ACTIONS_V1_4 */
+                    if (
+                        d.iconName.isBlank()
                     ) {
-                        Text(
-                            if (
-                                d.iconName.isBlank()
-                            ) {
+                        Button(
+                            onClick =
+                                onPickIcon,
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        ) {
+                            Text(
                                 "PNG Uygulama İkonu Seç"
-                            } else {
-                                "İkonu değiştir"
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            horizontalArrangement =
+                                Arrangement.spacedBy(
+                                    8.dp
+                                )
+                        ) {
+                            Button(
+                                onClick =
+                                    onPickIcon,
+                                modifier =
+                                    Modifier.weight(
+                                        1f
+                                    )
+                            ) {
+                                Text(
+                                    "İkonu düzenle / değiştir"
+                                )
                             }
-                        )
+
+                            OutlinedButton(
+                                onClick =
+                                    onRemoveIcon,
+                                modifier =
+                                    Modifier.weight(
+                                        1f
+                                    )
+                            ) {
+                                Text(
+                                    "İkonu kaldır"
+                                )
+                            }
+                        }
                     }
 
                     Text(
@@ -17487,12 +18873,249 @@ private fun SigningStep(
     update: (ProjectDraft) -> Unit,
     isPro: Boolean,
     onOpenPro: () -> Unit,
-    onPickKeystore: () -> Unit
+    onPickKeystore: () -> Unit,
+    onOpenKeystoreManager: () -> Unit
 ) {
     var showProRequired by
         remember {
             mutableStateOf(false)
         }
+
+    val signingContext =
+        LocalContext.current
+
+    var managedKeystoreRevision by
+        remember {
+            mutableIntStateOf(
+                0
+            )
+        }
+
+    var showManagedKeystores by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+    val managedKeystores =
+        remember(
+            managedKeystoreRevision,
+            showManagedKeystores
+        ) {
+            KeystoreVault
+                .load(
+                    signingContext
+                )
+        }
+
+    if (
+        showManagedKeystores
+    ) {
+        AlertDialog(
+            onDismissRequest = {
+                showManagedKeystores =
+                    false
+            },
+            title = {
+                Text(
+                    "AppForge Keystore Kasası"
+                )
+            },
+            text = {
+                if (
+                    managedKeystores
+                        .isEmpty()
+                ) {
+                    Text(
+                        "Kasada keystore yok. Yeni oluşturabilir veya cihazdan içe aktarabilirsin."
+                    )
+                } else {
+                    LazyColumn(
+                        modifier =
+                            Modifier.heightIn(
+                                max =
+                                    360.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                8.dp
+                            )
+                    ) {
+                        items(
+                            managedKeystores,
+                            key = {
+                                it.id
+                            }
+                        ) {
+                            item ->
+
+                            Card(
+                                colors =
+                                    CardDefaults.cardColors(
+                                        containerColor =
+                                            Card2
+                                    ),
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier =
+                                        Modifier.padding(
+                                            10.dp
+                                        ),
+                                    verticalArrangement =
+                                        Arrangement.spacedBy(
+                                            6.dp
+                                        )
+                                ) {
+                                    Text(
+                                        item.name,
+                                        fontWeight =
+                                            FontWeight.Bold
+                                    )
+
+                                    Text(
+                                        item.originalFileName,
+                                        color =
+                                            TextSecondary,
+                                        fontSize =
+                                            11.sp
+                                    )
+
+                                    Row(
+                                        modifier =
+                                            Modifier.fillMaxWidth(),
+                                        horizontalArrangement =
+                                            Arrangement.spacedBy(
+                                                8.dp
+                                            )
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                val selectedUri =
+                                                    Uri.fromFile(
+                                                        File(
+                                                            item.savedPath
+                                                        )
+                                                    )
+                                                        .toString()
+
+                                                update(
+                                                    d.copy(
+                                                        signingMode =
+                                                            SigningMode.CUSTOM,
+                                                        keystoreUri =
+                                                            selectedUri,
+                                                        keystoreName =
+                                                            item.originalFileName,
+                                                        keyAlias =
+                                                            item.alias.ifBlank {
+                                                                d.keyAlias
+                                                            },
+                                                        storePassword =
+                                                            "",
+                                                        keyPassword =
+                                                            ""
+                                                    )
+                                                )
+
+                                                showManagedKeystores =
+                                                    false
+                                            },
+                                            modifier =
+                                                Modifier.weight(
+                                                    1f
+                                                )
+                                        ) {
+                                            Text(
+                                                "SEÇ"
+                                            )
+                                        }
+
+                                        OutlinedButton(
+                                            onClick = {
+                                                val selectedUri =
+                                                    Uri.fromFile(
+                                                        File(
+                                                            item.savedPath
+                                                        )
+                                                    )
+                                                        .toString()
+
+                                                KeystoreVault
+                                                    .delete(
+                                                        signingContext,
+                                                        item.id
+                                                    )
+
+                                                if (
+                                                    d.keystoreUri ==
+                                                        selectedUri
+                                                ) {
+                                                    update(
+                                                        d.copy(
+                                                            keystoreUri =
+                                                                null,
+                                                            keystoreName =
+                                                                "",
+                                                            keyAlias =
+                                                                "",
+                                                            storePassword =
+                                                                "",
+                                                            keyPassword =
+                                                                ""
+                                                        )
+                                                    )
+                                                }
+
+                                                managedKeystoreRevision +=
+                                                    1
+                                            },
+                                            modifier =
+                                                Modifier.weight(
+                                                    1f
+                                                )
+                                        ) {
+                                            Text(
+                                                "SİL"
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showManagedKeystores =
+                            false
+
+                        onOpenKeystoreManager()
+                    }
+                ) {
+                    Text(
+                        "YENİ OLUŞTUR / YÖNET"
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showManagedKeystores =
+                            false
+                    }
+                ) {
+                    Text(
+                        "KAPAT"
+                    )
+                }
+            }
+        )
+    }
 
     if (
         showProRequired
@@ -17755,6 +19378,46 @@ private fun SigningStep(
             }
 
             item {
+                /* BUILDER_MANAGED_KEYSTORE_V1_5 */
+                Row(
+                    modifier =
+                        Modifier.fillMaxWidth(),
+                    horizontalArrangement =
+                        Arrangement.spacedBy(
+                            8.dp
+                        )
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            showManagedKeystores =
+                                true
+                        },
+                        modifier =
+                            Modifier.weight(
+                                1f
+                            )
+                    ) {
+                        Text(
+                            "KASADAN SEÇ"
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick =
+                            onOpenKeystoreManager,
+                        modifier =
+                            Modifier.weight(
+                                1f
+                            )
+                    ) {
+                        Text(
+                            "OLUŞTUR / YÖNET"
+                        )
+                    }
+                }
+            }
+
+            item {
                 Card(
                     colors =
                         CardDefaults.cardColors(
@@ -17961,6 +19624,645 @@ private fun SigningStep(
     }
 }
 
+
+@Composable
+private fun WindowsPublisherSigningAdminCard(
+    formCompact: Boolean
+) {
+    val context =
+        LocalContext.current
+
+    val scope =
+        rememberCoroutineScope()
+
+    var refresh by
+        remember {
+            mutableIntStateOf(
+                0
+            )
+        }
+
+    var pendingCertificateUri by
+        remember {
+            mutableStateOf<Uri?>(
+                null
+            )
+        }
+
+    var pendingCertificateName by
+        remember {
+            mutableStateOf(
+                ""
+            )
+        }
+
+    var certificatePassword by
+        remember {
+            mutableStateOf(
+                ""
+            )
+        }
+
+    var signingMessage by
+        remember {
+            mutableStateOf(
+                ""
+            )
+        }
+
+    var showRemoveConfirmation by
+        remember {
+            mutableStateOf(
+                false
+            )
+        }
+
+    /*
+     * refresh is intentionally observed so a successful import,
+     * enable/disable or removal recomposes the status immediately.
+     */
+    @Suppress("UNUSED_VARIABLE")
+    val refreshSnapshot =
+        refresh
+
+    val configured =
+        WindowsPublisherSigningPolicy
+            .providerConfigured(
+                context
+            )
+
+    val provider =
+        WindowsPublisherSigningPolicy
+            .configuredProvider(
+                context
+            )
+
+    val enabled =
+        WindowsPublisherSigningPolicy
+            .signingRequested(
+                context
+            )
+
+    val certificatePicker =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts
+                    .OpenDocument()
+        ) {
+            uri: Uri? ->
+
+            if (
+                uri != null
+            ) {
+                pendingCertificateUri =
+                    uri
+
+                pendingCertificateName =
+                    uri.lastPathSegment
+                        ?.substringAfterLast(
+                            "/"
+                        )
+                        ?.take(
+                            120
+                        )
+                        ?: "publisher.pfx"
+
+                certificatePassword =
+                    ""
+
+                signingMessage =
+                    "PFX/P12 seçildi • parola gerekli."
+            }
+        }
+
+    if (
+        pendingCertificateUri !=
+            null
+    ) {
+        AlertDialog(
+            onDismissRequest = {
+                certificatePassword =
+                    ""
+
+                pendingCertificateUri =
+                    null
+            },
+            title = {
+                Text(
+                    if (
+                        configured
+                    ) {
+                        "Yayıncı sertifikasını değiştir"
+                    } else {
+                        "Yayıncı sertifikasını içe aktar"
+                    }
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(
+                            10.dp
+                        )
+                ) {
+                    Text(
+                        pendingCertificateName,
+                        fontSize =
+                            12.sp,
+                        color =
+                            TextSecondary
+                    )
+
+                    OutlinedTextField(
+                        value =
+                            certificatePassword,
+                        onValueChange = {
+                            certificatePassword =
+                                it
+                        },
+                        label = {
+                            Text(
+                                "PFX / P12 parolası"
+                            )
+                        },
+                        visualTransformation =
+                            PasswordVisualTransformation(),
+                        singleLine =
+                            true,
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    Text(
+                        "Sertifika ve private key doğrulanır; başarılı olursa Android Keystore korumalı kasaya alınır.",
+                        fontSize =
+                            11.sp,
+                        color =
+                            TextSecondary
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled =
+                        certificatePassword
+                            .isNotEmpty(),
+                    onClick = {
+                        val uri =
+                            pendingCertificateUri
+                                ?: return@TextButton
+
+                        val passwordChars =
+                            certificatePassword
+                                .toCharArray()
+
+                        certificatePassword =
+                            ""
+
+                        pendingCertificateUri =
+                            null
+
+                        signingMessage =
+                            "Yayıncı sertifikası doğrulanıyor..."
+
+                        scope.launch {
+                            var certificateBytes:
+                                ByteArray? =
+                                null
+
+                            try {
+                                val loadedBytes =
+                                    withContext(
+                                        Dispatchers.IO
+                                    ) {
+                                        readBoundedDocumentBytes(
+                                            context =
+                                                context,
+                                            uri =
+                                                uri
+                                        )
+                                    }
+
+                                certificateBytes =
+                                    loadedBytes
+
+                                withContext(
+                                    Dispatchers.IO
+                                ) {
+                                    WindowsPublisherSigningPolicy
+                                        .configureLocalPkcs12(
+                                            context =
+                                                context,
+                                            pkcs12Bytes =
+                                                loadedBytes,
+                                            password =
+                                                passwordChars
+                                        )
+                                }
+
+                                refresh +=
+                                    1
+
+                                signingMessage =
+                                    "Yayıncı sertifikası güvenli kasaya alındı • imzalama AÇIK."
+                            } catch (
+                                error: Throwable
+                            ) {
+                                signingMessage =
+                                    "Sertifika içe aktarılamadı: ${error.message}"
+                            } finally {
+                                certificateBytes
+                                    ?.fill(
+                                        0
+                                    )
+
+                                passwordChars.fill(
+                                    '\u0000'
+                                )
+                            }
+                        }
+                    }
+                ) {
+                    Text(
+                        if (
+                            configured
+                        ) {
+                            "DEĞİŞTİR"
+                        } else {
+                            "İÇE AKTAR"
+                        }
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        certificatePassword =
+                            ""
+
+                        pendingCertificateUri =
+                            null
+                    }
+                ) {
+                    Text(
+                        "İPTAL"
+                    )
+                }
+            }
+        )
+    }
+
+    if (
+        showRemoveConfirmation
+    ) {
+        AlertDialog(
+            onDismissRequest = {
+                showRemoveConfirmation =
+                    false
+            },
+            title = {
+                Text(
+                    "Yayıncı sertifikası kaldırılsın mı?"
+                )
+            },
+            text = {
+                Text(
+                    "Şifreli PFX/P12, kayıtlı parola ve bu sertifikaya ait Android Keystore anahtarı cihazdan kaldırılacak. Bu işlem projeleri veya üretilmiş EXE dosyalarını silmez."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showRemoveConfirmation =
+                            false
+
+                        runCatching {
+                            WindowsPublisherSigningPolicy
+                                .clearConfiguration(
+                                    context
+                                )
+                        }.onSuccess {
+                            refresh +=
+                                1
+
+                            signingMessage =
+                                "Yayıncı sertifikası kaldırıldı • imzalama KAPALI."
+                        }.onFailure {
+                            error ->
+
+                            signingMessage =
+                                "Sertifika kaldırılamadı: ${error.message}"
+                        }
+                    }
+                ) {
+                    Text(
+                        "KALDIR"
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showRemoveConfirmation =
+                            false
+                    }
+                ) {
+                    Text(
+                        "VAZGEÇ"
+                    )
+                }
+            }
+        )
+    }
+
+    Card(
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    Card2
+            ),
+        shape =
+            RoundedCornerShape(
+                18.dp
+            ),
+        modifier =
+            Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier =
+                Modifier.padding(
+                    if (
+                        formCompact
+                    ) {
+                        12.dp
+                    } else {
+                        16.dp
+                    }
+                ),
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    10.dp
+                )
+        ) {
+            Text(
+                "Windows Yayıncı İmzası • Yönetici",
+                fontWeight =
+                    FontWeight.Bold
+            )
+
+            Text(
+                "Yalnız doğrulanmış owner/admin oturumu sertifika ekleyebilir, kaldırabilir veya EXE imzalamayı değiştirebilir.",
+                color =
+                    TextSecondary,
+                fontSize =
+                    12.sp
+            )
+
+            HorizontalDivider()
+
+            Text(
+                if (
+                    configured
+                ) {
+                    "Sertifika: HAZIR • ${provider ?: "local-pkcs12-v1"}"
+                } else {
+                    "Sertifika: YAPILANDIRILMADI"
+                },
+                color =
+                    if (
+                        configured
+                    ) {
+                        Color(0xFF4CAF50)
+                    } else {
+                        Accent
+                    },
+                fontSize =
+                    12.sp,
+                fontWeight =
+                    FontWeight.Medium
+            )
+
+            Row(
+                modifier =
+                    Modifier.fillMaxWidth(),
+                verticalAlignment =
+                    Alignment.CenterVertically,
+                horizontalArrangement =
+                    Arrangement.SpaceBetween
+            ) {
+                Column(
+                    modifier =
+                        Modifier.weight(
+                            1f
+                        )
+                ) {
+                    Text(
+                        "EXE'leri yayıncı olarak imzala",
+                        fontWeight =
+                            FontWeight.Medium
+                    )
+
+                    Text(
+                        if (
+                            enabled
+                        ) {
+                            "AÇIK • final EXE imzasız bırakılamaz."
+                        } else {
+                            "KAPALI"
+                        },
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            11.sp
+                    )
+                }
+
+                Switch(
+                    checked =
+                        enabled,
+                    enabled =
+                        configured ||
+                            enabled,
+                    onCheckedChange = {
+                        checked ->
+
+                        runCatching {
+                            WindowsPublisherSigningPolicy
+                                .setSigningEnabled(
+                                    context =
+                                        context,
+                                    enabled =
+                                        checked
+                                )
+                        }.onSuccess {
+                            refresh +=
+                                1
+
+                            signingMessage =
+                                if (
+                                    checked
+                                ) {
+                                    "Windows yayıncı imzası AÇIK."
+                                } else {
+                                    "Windows yayıncı imzası KAPALI."
+                                }
+                        }.onFailure {
+                            error ->
+
+                            signingMessage =
+                                "İmzalama durumu değiştirilemedi: ${error.message}"
+                        }
+                    }
+                )
+            }
+
+            Button(
+                onClick = {
+                    certificatePicker.launch(
+                        arrayOf(
+                            "*/*"
+                        )
+                    )
+                },
+                modifier =
+                    Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    if (
+                        configured
+                    ) {
+                        "PFX / P12 SERTİFİKASINI DEĞİŞTİR"
+                    } else {
+                        "PFX / P12 İÇE AKTAR"
+                    }
+                )
+            }
+
+            if (
+                configured
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        showRemoveConfirmation =
+                            true
+                    },
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "SERTİFİKAYI KALDIR"
+                    )
+                }
+            }
+
+            Text(
+                "Private key/PFX kaynak koda, GitHub'a, proje ZIP'ine veya build loglarına yazılmaz.",
+                color =
+                    TextSecondary,
+                fontSize =
+                    11.sp
+            )
+
+            if (
+                signingMessage.isNotBlank()
+            ) {
+                Text(
+                    signingMessage,
+                    color =
+                        Accent,
+                    fontSize =
+                        11.sp
+                )
+            }
+        }
+    }
+}
+
+private fun windowsExeModeLabel(
+    buildOutput: String
+): String =
+    when (
+        buildOutput
+            .trim()
+            .lowercase()
+    ) {
+        "native-exe",
+        "windows-native-exe" ->
+            "Windows Native EXE"
+
+        else ->
+            "Windows Portable EXE"
+    }
+
+
+private fun windowsExeModeRoute(
+    buildOutput: String
+): String =
+    when (
+        buildOutput
+            .trim()
+            .lowercase()
+    ) {
+        "native-exe",
+        "windows-native-exe" ->
+            "NATIVE • C/C++ • CMake + MinGW-w64 • Windows x64 PE"
+
+        else ->
+            "PORTABLE • AppForge Generic Host • Windows 10/11 x64"
+    }
+
+
+private fun windowsExeModeState(
+    buildOutput: String
+): String =
+    when (
+        buildOutput
+            .trim()
+            .lowercase()
+    ) {
+        "native-exe",
+        "windows-native-exe" ->
+            "EXPERIMENTAL"
+
+        else ->
+            "READY"
+    }
+
+
+private fun windowsExeDownloadButtonLabel(
+    buildOutput: String
+): String =
+    when (
+        buildOutput
+            .trim()
+            .lowercase()
+    ) {
+        "native-exe",
+        "windows-native-exe" ->
+            "NATIVE EXE'Yİ İNDİR"
+
+        else ->
+            "PORTABLE EXE'Yİ İNDİR"
+    }
+
+
+private fun windowsExeDownloadTicketType(
+    buildOutput: String
+): String =
+    when (
+        buildOutput
+            .trim()
+            .lowercase()
+    ) {
+        "native-exe",
+        "windows-native-exe" ->
+            "native-exe"
+
+        else ->
+            "exe"
+    }
+
+
 @Composable
 private fun BuildSettingsStep(
     draft: ProjectDraft,
@@ -17979,6 +20281,15 @@ private fun BuildSettingsStep(
     val apiKeyReady =
         apiKey.isNotBlank()
 
+    val context =
+        LocalContext.current
+
+    val windowsSigningAdmin =
+        OwnerAccessPolicy
+            .isActiveOwner(
+                context
+            )
+
     val releaseSigning =
         draft.signingMode ==
             SigningMode.CUSTOM
@@ -17988,13 +20299,20 @@ private fun BuildSettingsStep(
             draft.buildOutput
         ) {
             "exe" ->
-                "Windows EXE"
+                "Windows Portable EXE"
+
+            "native-exe" ->
+                "Windows Native EXE"
 
             "aab" ->
                 "AAB"
 
             "both" ->
                 "APK + AAB"
+
+            "all",
+            "apk+aab+exe" ->
+                "APK + AAB + Windows Portable EXE"
 
             else ->
                 "APK"
@@ -18005,13 +20323,20 @@ private fun BuildSettingsStep(
             draft.buildOutput
         ) {
             "exe" ->
-                "EXE • Windows x64 • Electron Portable"
+                "PORTABLE EXE • Windows x64 • AppForge Generic Host"
+
+            "native-exe" ->
+                "NATIVE EXE • Windows x64 • CMake + MinGW-w64"
 
             "aab" ->
                 "AAB • Gradle bundleRelease"
 
             "both" ->
                 "BOTH • FAST APK uygunsa Hybrid + AAB"
+
+            "all",
+            "apk+aab+exe" ->
+                "TÜMÜ • APK + AAB + Windows Portable EXE"
 
             else ->
                 "APK • Uygunsa FAST BUILD"
@@ -18210,29 +20535,103 @@ private fun BuildSettingsStep(
                 horizontalArrangement =
                     Arrangement.spacedBy(if (formCompact) 6.dp else 8.dp),
                 modifier =
-                    Modifier.fillMaxWidth()
+                    Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(
+                            rememberScrollState()
+                        )
             ) {
-                listOf(
-                    "apk",
-                    "aab",
-                    "both",
-                    "exe"
-                ).forEach {
-                    output ->
-                    val windowsExeCompatible =
-                        draft.sourceMode ==
-                            SourceMode.URL ||
-                        draft.sourceBuildEngine
+                val normalizedEngine =
+                    draft.sourceBuildEngine
+                        .trim()
+                        .lowercase()
+
+                val universalProject =
+                    normalizedEngine ==
+                        "universal-cross-platform"
+
+                val windowsExeCompatible =
+                    draft.sourceMode ==
+                        SourceMode.URL ||
+                    normalizedEngine in
+                        setOf(
+                            "webview-static",
+                            "node-web",
+                            "universal-cross-platform"
+                        )
+
+                val windowsNativeCompatible =
+                    draft.sourceMode ==
+                        SourceMode.LOCAL &&
+                    (
+                        draft.sourceTechnology
                             .trim()
                             .lowercase() in
                             setOf(
-                                "webview-static",
-                                "node-web"
+                                "cpp",
+                                "c",
+                                "cmake"
+                            ) ||
+                        normalizedEngine in
+                            setOf(
+                                "android-ndk",
+                                "windows-native"
                             )
+                    )
 
+                val outputOptions =
+                    buildList {
+                        add("apk")
+                        add("aab")
+                        add("both")
+                        add("exe")
+                        add("native-exe")
+
+                        if (
+                            universalProject
+                        ) {
+                            add("all")
+                        }
+                    }
+
+                outputOptions.forEach {
+                    output ->
                     val outputEnabled =
-                        output != "exe" ||
-                            windowsExeCompatible
+                        when (
+                            output
+                        ) {
+                            "exe" ->
+                                windowsExeCompatible
+
+                            "native-exe" ->
+                                windowsNativeCompatible
+
+                            "all" ->
+                                universalProject
+
+                            else ->
+                                true
+                        }
+
+                    val outputText =
+                        when (
+                            output
+                        ) {
+                            "exe" ->
+                                "PORTABLE EXE"
+
+                            "native-exe" ->
+                                "NATIVE EXE"
+
+                            "both" ->
+                                "APK+AAB"
+
+                            "all" ->
+                                "TÜMÜ"
+
+                            else ->
+                                output.uppercase()
+                        }
 
                     FilterChip(
                         selected =
@@ -18254,14 +20653,89 @@ private fun BuildSettingsStep(
                         },
                         label = {
                             Text(
-                                output.uppercase()
+                                outputText
                             )
-                        },
-                        modifier =
-                            Modifier.weight(
-                                1f
-                            )
+                        }
                     )
+                }
+            }
+        }
+
+        if (
+            draft.buildOutput ==
+                "exe" ||
+            draft.buildOutput ==
+                "native-exe"
+        ) {
+            item {
+                Card(
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Card2
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            18.dp
+                        ),
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                if (formCompact) 12.dp else 16.dp
+                            ),
+                        verticalArrangement =
+                            Arrangement.spacedBy(
+                                6.dp
+                            )
+                    ) {
+                        Text(
+                            "Windows EXE motoru",
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            windowsExeModeLabel(
+                                draft.buildOutput
+                            ),
+                            color =
+                                Accent,
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            windowsExeModeRoute(
+                                draft.buildOutput
+                            ),
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+
+                        Text(
+                            "Durum: ${
+                                windowsExeModeState(
+                                    draft.buildOutput
+                                )
+                            }",
+                            fontSize =
+                                11.sp,
+                            color =
+                                if (
+                                    draft.buildOutput ==
+                                        "native-exe"
+                                ) {
+                                    Accent
+                                } else {
+                                    TextSecondary
+                                }
+                        )
+                    }
                 }
             }
         }
@@ -18295,9 +20769,34 @@ private fun BuildSettingsStep(
                     when (
                         draft.buildOutput
                     ) {
+                        "all",
+                        "apk+aab+exe" -> {
+                            Text(
+                                "APK + AAB + Windows Portable EXE",
+                                fontWeight =
+                                    FontWeight.Medium
+                            )
+
+                            Text(
+                                "Universal projede Android APK/AAB ve Windows Portable EXE aynı kaynak paketinden birlikte oluşturulur.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "Tek proje • üç çıktı • cihaz üzerinde derleme/paketleme",
+                                color =
+                                    Accent,
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+
                         "exe" -> {
                             Text(
-                                "Windows EXE",
+                                "Windows Portable EXE",
                                 fontWeight =
                                     FontWeight.Medium
                             )
@@ -18312,6 +20811,30 @@ private fun BuildSettingsStep(
 
                             Text(
                                 "Windows 10/11 x64 için taşınabilir çıktı hazırlanır.",
+                                color =
+                                    Accent,
+                                fontSize =
+                                    11.sp
+                            )
+                        }
+
+                        "native-exe" -> {
+                            Text(
+                                "Windows Native EXE",
+                                fontWeight =
+                                    FontWeight.Medium
+                            )
+
+                            Text(
+                                "C/C++ CMake projesini Windows x64 PE olarak doğrudan derler; WebView/Electron host kullanmaz.",
+                                color =
+                                    TextSecondary,
+                                fontSize =
+                                    12.sp
+                            )
+
+                            Text(
+                                "EXPERIMENTAL • Gerçek Windows fiziksel kabulü tamamlanana kadar READY sayılmaz.",
                                 color =
                                     Accent,
                                 fontSize =
@@ -18388,7 +20911,11 @@ private fun BuildSettingsStep(
         }
 
         if (
-            draft.buildOutput == "exe" &&
+            (
+                draft.buildOutput == "exe" ||
+                draft.buildOutput == "all" ||
+                draft.buildOutput == "apk+aab+exe"
+            ) &&
             draft.sourceMode !=
                 SourceMode.URL &&
             draft.sourceBuildEngine
@@ -18396,14 +20923,63 @@ private fun BuildSettingsStep(
                 .lowercase() !in
                 setOf(
                     "webview-static",
-                    "node-web"
+                    "node-web",
+                    "universal-cross-platform"
                 )
         ) {
             item {
                 NoteCard(
-                    "Windows EXE bu proje türüyle uyumlu değil. " +
-                    "Native Android/Flutter/React Native kaynakları için APK/AAB kullan. " +
-                    "EXE için web tabanlı veya HTTPS URL kaynağı seç."
+                    "Windows Portable EXE bu proje türüyle uyumlu değil. " +
+                    "C/C++ CMake projelerinde Native EXE seçeneğini kullanabilirsin. " +
+                    "Portable EXE için web tabanlı, Universal veya HTTP/HTTPS URL kaynağı seç."
+                )
+            }
+        }
+
+        if (
+            draft.buildOutput ==
+                "native-exe" &&
+            !(
+                draft.sourceMode ==
+                    SourceMode.LOCAL &&
+                (
+                    draft.sourceTechnology
+                        .trim()
+                        .lowercase() in
+                        setOf(
+                            "cpp",
+                            "c",
+                            "cmake"
+                        ) ||
+                    draft.sourceBuildEngine
+                        .trim()
+                        .lowercase() in
+                        setOf(
+                            "android-ndk",
+                            "windows-native"
+                        )
+                )
+            )
+        ) {
+            item {
+                NoteCard(
+                    "Windows Native EXE için yerel C/C++ CMake projesi gerekli."
+                )
+            }
+        }
+
+        if (
+            windowsSigningAdmin &&
+            draft.buildOutput in
+                setOf(
+                    "exe",
+                    "native-exe"
+                )
+        ) {
+            item {
+                WindowsPublisherSigningAdminCard(
+                    formCompact =
+                        formCompact
                 )
             }
         }
@@ -18519,7 +21095,11 @@ private fun BuildSettingsStep(
                 draft.buildOutput ==
                     "aab" ||
                 draft.buildOutput ==
-                    "both"
+                    "both" ||
+                draft.buildOutput ==
+                    "all" ||
+                draft.buildOutput ==
+                    "apk+aab+exe"
             )
         ) {
             item {
@@ -18561,6 +21141,82 @@ private fun BuildSettingsStep(
 }
 
 @Composable
+private fun BuildArtifactIcon(
+    iconUri: String?
+) {
+    val context =
+        LocalContext.current
+
+    val bitmap =
+        remember(
+            iconUri
+        ) {
+            iconUri
+                ?.takeIf {
+                    it.isNotBlank()
+                }
+                ?.let {
+                    raw ->
+
+                    runCatching {
+                        context.contentResolver
+                            .openInputStream(
+                                Uri.parse(
+                                    raw
+                                )
+                            )
+                            ?.use {
+                                android.graphics.BitmapFactory
+                                    .decodeStream(
+                                        it
+                                    )
+                            }
+                    }
+                        .getOrNull()
+                }
+        }
+
+    AndroidView(
+        factory = {
+            android.widget.ImageView(
+                it
+            ).apply {
+                scaleType =
+                    android.widget.ImageView
+                        .ScaleType
+                        .CENTER_CROP
+            }
+        },
+        update = {
+            view ->
+
+            if (
+                bitmap !=
+                    null
+            ) {
+                view.setImageBitmap(
+                    bitmap
+                )
+            } else {
+                view.setImageDrawable(
+                    runCatching {
+                        context.packageManager
+                            .getApplicationIcon(
+                                context.packageName
+                            )
+                    }.getOrNull()
+                )
+            }
+        },
+        modifier =
+            Modifier.size(
+                72.dp
+            )
+    )
+}
+
+
+@Composable
 private fun BuildStep(
     draft: ProjectDraft,
     onDraftChange: (ProjectDraft) -> Unit,
@@ -18570,6 +21226,7 @@ private fun BuildStep(
     buildElapsedMs: Long,
     buildTimerRunning: Boolean,
     buildBusy: Boolean,
+    reentryPending: Boolean,
     logs: List<String>,
     preflight: List<String>,
     buildProjectKey: String?,
@@ -18597,6 +21254,16 @@ private fun BuildStep(
 
     val scope =
         rememberCoroutineScope()
+
+    val windowsExeArtifactLabel =
+        windowsExeModeLabel(
+            buildOutput
+        )
+
+    val windowsExeDownloadButtonText =
+        windowsExeDownloadButtonLabel(
+            buildOutput
+        )
 
     var showBuildTechnicalDetails by
         rememberSaveable {
@@ -18721,7 +21388,7 @@ private fun BuildStep(
                 scope.launch {
                     try {
                         downloadMessage =
-                            "Windows EXE indiriliyor..."
+                            "$windowsExeArtifactLabel indiriliyor..."
 
                         val ticket =
                             withContext(
@@ -18733,7 +21400,7 @@ private fun BuildStep(
                                     apiKey
                                 ).createDownloadTicket(
                                     id,
-                                    "exe"
+                                    windowsExeDownloadTicketType(buildOutput)
                                 )
                             }
 
@@ -18748,13 +21415,13 @@ private fun BuildStep(
                         }
 
                         downloadMessage =
-                            "✅ Windows EXE başarıyla kaydedildi."
+                            "✅ $windowsExeArtifactLabel başarıyla kaydedildi."
 
                     } catch (
                         t: Throwable
                     ) {
                         downloadMessage =
-                            "EXE indirme hatası: ${t.message}"
+                            "$windowsExeArtifactLabel indirme hatası: ${t.message}"
                     }
                 }
             }
@@ -18789,14 +21456,21 @@ private fun BuildStep(
             mutableStateOf("")
         }
 
-    val backendProgress =
-        progress.coerceIn(
-            0,
-            100
-        )
+    val effectiveBuildBusy =
+        buildBusy ||
+            reentryPending
+
+    val effectiveStatus =
+        if (
+            reentryPending
+        ) {
+            "running"
+        } else {
+            status
+        }
 
     val normalizedStatus =
-        status
+        effectiveStatus
             .trim()
             .lowercase()
 
@@ -18812,14 +21486,87 @@ private fun BuildStep(
                 "hata:"
             )
 
-    // UI animations must never invent build progress.
-    // The device build engine is the source of truth.
+    // Raw progress remains the exact engine milestone shared with notification.
     val safeProgress =
-        if (normalizedStatus == "success") {
-            100
-        } else {
-            backendProgress.coerceAtMost(99)
+        AppForgeBuildProgress.visible(
+            effectiveStatus,
+            progress
+        )
+
+    /*
+     * BUILD_PROGRESS_SOFT_VISUAL_V21_6
+     *
+     * Never invent build progress ahead of DeviceBuildEngine. The visual
+     * layer only eases from the last rendered value up to a newly proven
+     * milestone. A reset/decrease snaps immediately so a new build never
+     * animates backwards from an old result.
+     */
+    val visualProgress =
+        remember(buildId) {
+            Animatable(
+                safeProgress.toFloat()
+            )
         }
+
+    LaunchedEffect(
+        buildId,
+        safeProgress
+    ) {
+        val targetProgress =
+            safeProgress
+                .toFloat()
+                .coerceIn(
+                    0f,
+                    100f
+                )
+
+        if (
+            buildId == null ||
+            targetProgress <=
+                visualProgress.value
+        ) {
+            visualProgress.snapTo(
+                targetProgress
+            )
+        } else {
+            val distance =
+                targetProgress -
+                    visualProgress.value
+
+            val durationMs =
+                (
+                    240f +
+                        distance *
+                            12f
+                )
+                    .roundToInt()
+                    .coerceIn(
+                        260,
+                        850
+                    )
+
+            visualProgress.animateTo(
+                targetValue =
+                    targetProgress,
+                animationSpec =
+                    tween(
+                        durationMillis =
+                            durationMs,
+                        easing =
+                            FastOutSlowInEasing
+                    )
+            )
+        }
+    }
+
+    val displayProgress =
+        visualProgress
+            .value
+            .roundToInt()
+            .coerceIn(
+                0,
+                100
+            )
 
     val queueWaitLabel =
         when {
@@ -18913,22 +21660,25 @@ private fun BuildStep(
                 "success" ->
                 "Tamamlandı"
 
-            backendProgress >= 100 ->
+            reentryPending ->
+                "Aktif derleme geri yükleniyor"
+
+            safeProgress >= 100 ->
                 "Tamamlandı"
 
-            backendProgress >= 90 ->
+            safeProgress >= 90 ->
                 "Çıktılar hazırlanıyor"
 
-            backendProgress >= 70 ->
+            safeProgress >= 70 ->
                 "Uygulama paketleniyor"
 
-            backendProgress >= 40 ->
+            safeProgress >= 40 ->
                 "Kaynaklar derleniyor"
 
-            backendProgress >= 15 ->
+            safeProgress >= 15 ->
                 "Proje hazırlanıyor"
 
-            backendProgress > 0 ->
+            safeProgress > 0 ->
                 "Build başlatılıyor"
 
             else ->
@@ -18949,7 +21699,7 @@ private fun BuildStep(
     val buildMatchesCurrentProject =
         buildProjectKey != null &&
             (
-                buildBusy ||
+                effectiveBuildBusy ||
                 buildProjectKey ==
                     currentProjectKey
             )
@@ -18959,6 +21709,22 @@ private fun BuildStep(
         buildMatchesCurrentProject &&
         normalizedStatus ==
             "success"
+
+    /*
+     * ARTIFACT_PUBLICATION_GATE_V1
+     *
+     * Artifact availability is not publication readiness.
+     *
+     * DeviceBuildEngine may expose APK/AAB/EXE availability while the
+     * final verification/signing stage is still running. Never expose
+     * user download actions until the exact build has reached terminal
+     * success, proven 100% progress and the active build coroutine has
+     * fully left its busy state.
+     */
+    val artifactPublicationReady =
+        buildSucceeded &&
+        safeProgress == 100 &&
+        !effectiveBuildBusy
 
     val buildFailed =
         buildId != null &&
@@ -19057,9 +21823,92 @@ private fun BuildStep(
      */
     val visibleLocalBuildLogs =
         remember(logs) {
-            logs
-                .takeLast(80)
-                .map { line ->
+            /*
+             * COMPILER_DIAGNOSTIC_UI_PRESERVATION_V1
+             *
+             * DeviceBuildEngine intentionally places the earliest useful
+             * compiler diagnostics before the normal Gradle tail.
+             *
+             * Do not lose that diagnostic block when the normal UI keeps
+             * only the final log lines.
+             */
+            val diagnosticsBegin =
+                logs.indexOfFirst {
+                    line ->
+
+                    line.contains(
+                        "APPFORGE_COMPILER_DIAGNOSTICS_BEGIN"
+                    )
+                }
+
+            val compilerDiagnostics =
+                if (
+                    diagnosticsBegin >=
+                        0
+                ) {
+                    val relativeEnd =
+                        logs
+                            .drop(
+                                diagnosticsBegin +
+                                    1
+                            )
+                            .indexOfFirst {
+                                line ->
+
+                                line.contains(
+                                    "APPFORGE_COMPILER_DIAGNOSTICS_END"
+                                )
+                            }
+
+                    val diagnosticsEnd =
+                        if (
+                            relativeEnd >=
+                                0
+                        ) {
+                            diagnosticsBegin +
+                                1 +
+                                relativeEnd
+                        } else {
+                            -1
+                        }
+
+                    if (
+                        diagnosticsEnd >=
+                            diagnosticsBegin
+                    ) {
+                        logs.subList(
+                            diagnosticsBegin,
+                            diagnosticsEnd +
+                                1
+                        )
+                    } else {
+                        /*
+                         * Fail bounded if an interrupted build never emitted
+                         * the closing marker.
+                         */
+                        logs
+                            .drop(
+                                diagnosticsBegin
+                            )
+                            .take(
+                                82
+                            )
+                    }
+                } else {
+                    emptyList()
+                }
+
+            val visibleLogs =
+                (
+                    compilerDiagnostics +
+                        logs.takeLast(
+                            80
+                        )
+                ).distinct()
+
+            visibleLogs
+                .map {
+                    line ->
 
                     val sensitive =
                         listOf(
@@ -19080,10 +21929,14 @@ private fun BuildStep(
                             )
                         }
 
-                    if (sensitive) {
+                    if (
+                        sensitive
+                    ) {
                         "••• Hassas log satırı gizlendi •••"
                     } else {
-                        line.take(1400)
+                        line.take(
+                            1400
+                        )
                     }
                 }
         }
@@ -19092,21 +21945,162 @@ private fun BuildStep(
         remember(
             visibleLocalBuildLogs
         ) {
+            /*
+             * Prefer the exact Kotlin compiler diagnostic over Gradle's
+             * generic CompilationErrorException wrapper.
+             */
             visibleLocalBuildLogs
                 .firstOrNull {
                     line ->
 
-                    val lower =
-                        line.lowercase()
+                    val value =
+                        line.trimStart()
 
-                    lower.contains("error") ||
-                        lower.contains("exception") ||
-                        lower.contains("failed") ||
-                        lower.contains("hata") ||
-                        lower.startsWith("❌")
+                    value.startsWith(
+                        "DIAG e:",
+                        ignoreCase = true
+                    ) ||
+                        value.startsWith(
+                            "DIAG error:",
+                            ignoreCase = true
+                        )
                 }
                 ?: visibleLocalBuildLogs
+                    .firstOrNull {
+                        line ->
+
+                        val lower =
+                            line.lowercase()
+
+                        lower.contains(
+                            "unresolved reference"
+                        ) ||
+                            lower.contains(
+                                "type mismatch"
+                            ) ||
+                            lower.contains(
+                                "cannot access"
+                            ) ||
+                            lower.contains(
+                                "cannot infer type"
+                            )
+                    }
+                ?: visibleLocalBuildLogs
+                    .firstOrNull {
+                        line ->
+
+                        val lower =
+                            line.lowercase()
+
+                        lower.contains("error") ||
+                            lower.contains("exception") ||
+                            lower.contains("failed") ||
+                            lower.contains("hata") ||
+                            lower.startsWith("❌")
+                    }
+                ?: visibleLocalBuildLogs
                     .lastOrNull()
+        }
+
+    /*
+     * ADMIN_BUILD_ERROR_COPY_V1
+     *
+     * OwnerAccessPolicy grants access only while the memory-only
+     * server-verified Google admin token is active.
+     *
+     * The UI visibility gate is convenience only. The click action
+     * revalidates OwnerAccessPolicy again before clipboard access.
+     */
+    val adminBuildErrorCopyVisible =
+        OwnerAccessPolicy
+            .isActiveOwner(
+                context
+            ) &&
+            !firstLocalBuildError
+                .isNullOrBlank()
+
+    var adminBuildErrorCopyMessage by
+        remember(
+            buildId
+        ) {
+            mutableStateOf(
+                ""
+            )
+        }
+
+    val adminBuildErrorCopyPayload =
+        remember(
+            adminBuildErrorCopyVisible,
+            buildId,
+            buildNo,
+            draft.sourceBuildEngine,
+            draft.sourceTechnologyLabel,
+            status,
+            firstLocalBuildError,
+            visibleLocalBuildLogs
+        ) {
+            if (
+                !adminBuildErrorCopyVisible
+            ) {
+                ""
+            } else {
+                buildString {
+                    appendLine(
+                        "=== APPFORGE BUILD ERROR ==="
+                    )
+
+                    appendLine(
+                        "BUILD_ID=${buildId.orEmpty()}"
+                    )
+
+                    appendLine(
+                        "BUILD_NO=${buildNo ?: 0L}"
+                    )
+
+                    appendLine(
+                        "ENGINE=${draft.sourceBuildEngine}"
+                    )
+
+                    appendLine(
+                        "TECHNOLOGY=${draft.sourceTechnologyLabel}"
+                    )
+
+                    appendLine(
+                        "STATUS=$status"
+                    )
+
+                    appendLine()
+
+                    appendLine(
+                        "=== ERROR SUMMARY ==="
+                    )
+
+                    appendLine(
+                        firstLocalBuildError.orEmpty()
+                    )
+
+                    appendLine()
+
+                    appendLine(
+                        "=== TECHNICAL DIAGNOSTICS ==="
+                    )
+
+                    /*
+                     * visibleLocalBuildLogs has already passed the
+                     * credential/token/password redaction layer.
+                     */
+                    visibleLocalBuildLogs
+                        .forEach {
+                            line ->
+
+                            appendLine(
+                                line
+                            )
+                        }
+                }.take(
+                    32_000
+                )
+            }
         }
 
     val buildDiagnosis =
@@ -19353,7 +22347,13 @@ private fun BuildStep(
                     )
 
                     Text(
-                        "$stageLabel • %$safeProgress",
+                        if (
+                            reentryPending
+                        ) {
+                            stageLabel
+                        } else {
+                            "$stageLabel • %$displayProgress"
+                        },
                         color =
                             TextSecondary,
                         fontSize =
@@ -19367,7 +22367,7 @@ private fun BuildStep(
                     ) {
                         LinearProgressIndicator(
                             progress = {
-                                (safeProgress / 25f)
+                                (displayProgress / 25f)
                                     .coerceIn(0f, 1f)
                             },
                             modifier = Modifier.weight(25f),
@@ -19379,7 +22379,7 @@ private fun BuildStep(
 
                         LinearProgressIndicator(
                             progress = {
-                                ((safeProgress - 25) / 65f)
+                                ((displayProgress - 25) / 65f)
                                     .coerceIn(0f, 1f)
                             },
                             modifier = Modifier.weight(65f),
@@ -19391,7 +22391,7 @@ private fun BuildStep(
 
                         LinearProgressIndicator(
                             progress = {
-                                ((safeProgress - 90) / 10f)
+                                ((displayProgress - 90) / 10f)
                                     .coerceIn(0f, 1f)
                             },
                             modifier = Modifier.weight(10f),
@@ -19716,13 +22716,48 @@ private fun BuildStep(
                         verticalArrangement =
                             Arrangement.spacedBy(if (formCompact) 5.dp else 7.dp)
                     ) {
-                        Text(
-                            "✅ Derleme tamamlandı",
-                            color =
-                                Accent,
-                            fontWeight =
-                                FontWeight.Bold
-                        )
+                        /* BUILD_RESULT_APP_ICON_V1_5 */
+                        Row(
+                            modifier =
+                                Modifier.fillMaxWidth(),
+                            verticalAlignment =
+                                Alignment.CenterVertically,
+                            horizontalArrangement =
+                                Arrangement.spacedBy(
+                                    12.dp
+                                )
+                        ) {
+                            BuildArtifactIcon(
+                                iconUri =
+                                    draft.iconUri
+                            )
+
+                            Column(
+                                modifier =
+                                    Modifier.weight(
+                                        1f
+                                    )
+                            ) {
+                                Text(
+                                    "✅ Derleme tamamlandı",
+                                    color =
+                                        Accent,
+                                    fontWeight =
+                                        FontWeight.Bold
+                                )
+
+                                Text(
+                                    draft.appName
+                                        .ifBlank {
+                                            "AppForge Uygulaması"
+                                        },
+                                    color =
+                                        TextSecondary,
+                                    fontSize =
+                                        12.sp
+                                )
+                            }
+                        }
 
                         Text(
                             "$availableOutputs çıktı indirilmeye hazır.",
@@ -19756,7 +22791,7 @@ private fun BuildStep(
                             exeUrl != null
                         ) {
                             Text(
-                                "✓ Windows EXE hazır",
+                                "✓ $windowsExeArtifactLabel hazır",
                                 fontSize =
                                     12.sp
                             )
@@ -19876,6 +22911,87 @@ private fun BuildStep(
                                 lineHeight =
                                     16.sp
                             )
+
+                            /*
+                             * ADMIN_BUILD_ERROR_COPY_BUTTON_V1
+                             *
+                             * Never render for ordinary users.
+                             * Revalidate the verified owner session again
+                             * immediately before touching the clipboard.
+                             */
+                            if (
+                                adminBuildErrorCopyVisible
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        val stillVerifiedOwner =
+                                            OwnerAccessPolicy
+                                                .isActiveOwner(
+                                                    context
+                                                )
+
+                                        when {
+                                            !stillVerifiedOwner -> {
+                                                adminBuildErrorCopyMessage =
+                                                    "Yönetici doğrulamasının süresi doldu."
+                                            }
+
+                                            adminBuildErrorCopyPayload
+                                                .isBlank() -> {
+                                                adminBuildErrorCopyMessage =
+                                                    "Kopyalanabilecek hata ayrıntısı bulunamadı."
+                                            }
+
+                                            else -> {
+                                                val clipboard =
+                                                    context
+                                                        .getSystemService(
+                                                            Context.CLIPBOARD_SERVICE
+                                                        ) as? ClipboardManager
+
+                                                if (
+                                                    clipboard ==
+                                                        null
+                                                ) {
+                                                    adminBuildErrorCopyMessage =
+                                                        "Pano servisine erişilemedi."
+                                                } else {
+                                                    clipboard
+                                                        .setPrimaryClip(
+                                                            ClipData
+                                                                .newPlainText(
+                                                                    "AppForge build error",
+                                                                    adminBuildErrorCopyPayload
+                                                                )
+                                                        )
+
+                                                    adminBuildErrorCopyMessage =
+                                                        "✅ Hata panoya kopyalandı."
+                                                }
+                                            }
+                                        }
+                                    },
+                                    modifier =
+                                        Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        "HATAYI KOPYALA"
+                                    )
+                                }
+
+                                if (
+                                    adminBuildErrorCopyMessage
+                                        .isNotBlank()
+                                ) {
+                                    Text(
+                                        adminBuildErrorCopyMessage,
+                                        color =
+                                            TextSecondary,
+                                        fontSize =
+                                            11.sp
+                                    )
+                                }
+                            }
                         }
 
                         if (
@@ -20016,6 +23132,7 @@ private fun BuildStep(
         }
 
         if (
+            artifactPublicationReady &&
             apkUrl != null
         ) {
             item {
@@ -20288,6 +23405,29 @@ private fun BuildStep(
         }
 
         if (
+            apkCachedPath !=
+                null
+        ) {
+            item {
+                OutlinedButton(
+                    onClick = {
+                        downloadMessage =
+                            openAppForgeDownloadsFolder(
+                                context
+                            )
+                    },
+                    modifier =
+                        Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "KLASÖRDE GÖSTER"
+                    )
+                }
+            }
+        }
+
+        if (
+            artifactPublicationReady &&
             aabUrl != null
         ) {
             item {
@@ -20402,6 +23542,7 @@ private fun BuildStep(
         }
 
         if (
+            artifactPublicationReady &&
             exeUrl != null
         ) {
             item {
@@ -20427,7 +23568,7 @@ private fun BuildStep(
                             scope.launch {
                                 try {
                                     downloadMessage =
-                                        "Windows EXE indiriliyor..."
+                                        "$windowsExeArtifactLabel indiriliyor..."
 
                                     val ticket =
                                         withContext(
@@ -20440,7 +23581,7 @@ private fun BuildStep(
                                             )
                                                 .createDownloadTicket(
                                                     id,
-                                                    "exe"
+                                                    windowsExeDownloadTicketType(buildOutput)
                                                 )
                                         }
 
@@ -20476,11 +23617,11 @@ private fun BuildStep(
                                             Build.VERSION_CODES.Q
                                     ) {
                                         downloadMessage =
-                                            "✅ Windows EXE indirildi • Downloads/AppForgeStudio ve " +
+                                            "✅ $windowsExeArtifactLabel indirildi • Downloads/AppForgeStudio ve " +
                                                 "AppForge Dosyaları/APK bölümüne kaydedildi."
                                     } else {
                                         downloadMessage =
-                                            "✅ Windows EXE özel kopyası kaydedildi. Public hedefi seç..."
+                                            "✅ $windowsExeArtifactLabel özel kopyası kaydedildi. Public hedefi seç..."
 
                                         exeSaveLauncher.launch(
                                             fileName
@@ -20491,7 +23632,7 @@ private fun BuildStep(
                                     t: Throwable
                                 ) {
                                     downloadMessage =
-                                        "EXE indirme hatası: ${t.message}"
+                                        "$windowsExeArtifactLabel indirme hatası: ${t.message}"
                                 }
                             }
 
@@ -20502,7 +23643,7 @@ private fun BuildStep(
                             scope.launch {
                                 try {
                                     downloadMessage =
-                                        "Windows EXE indiriliyor..."
+                                        "$windowsExeArtifactLabel indiriliyor..."
 
                                     val ticket =
                                         withContext(
@@ -20514,7 +23655,7 @@ private fun BuildStep(
                                                 apiKey
                                             ).createDownloadTicket(
                                                 id,
-                                                "exe"
+                                                windowsExeDownloadTicketType(buildOutput)
                                             )
                                         }
 
@@ -20529,13 +23670,13 @@ private fun BuildStep(
                                     }
 
                                     downloadMessage =
-                                        "✅ Windows EXE Downloads/AppForgeStudio klasörüne kaydedildi."
+                                        "✅ $windowsExeArtifactLabel Downloads/AppForgeStudio klasörüne kaydedildi."
 
                                 } catch (
                                     t: Throwable
                                 ) {
                                     downloadMessage =
-                                        "EXE indirme hatası: ${t.message}"
+                                        "$windowsExeArtifactLabel indirme hatası: ${t.message}"
                                 }
                             }
                         } else {
@@ -20548,7 +23689,7 @@ private fun BuildStep(
                         Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        "WINDOWS EXE'Yİ İNDİR"
+                        windowsExeDownloadButtonText
                     )
                 }
             }
@@ -20859,6 +24000,182 @@ private fun downloadArtifactToOwnerVault(
 }
 
 
+/*
+ * ARTIFACT_DUPLICATE_EXTENSION_ORDER_V21_7
+ *
+ * MediaStore aynı isimli artifact için dosya adını
+ * kendi değiştirmeden önce AppForge collision'ı çözer.
+ *
+ * app.apk -> app (1).apk -> app (2).apk
+ * app.aab -> app (1).aab -> app (2).aab
+ * app.exe -> app (1).exe -> app (2).exe
+ *
+ * Mevcut dosyalar yeniden adlandırılmaz.
+ */
+@androidx.annotation.RequiresApi(
+    Build.VERSION_CODES.Q
+)
+private fun uniqueArtifactDownloadName(
+    context: Context,
+    requestedFileName: String
+): String {
+
+    val safeName =
+        File(
+            requestedFileName
+        ).name
+
+    require(
+        safeName.isNotBlank() &&
+            safeName ==
+                requestedFileName
+    ) {
+        "Artifact filename invalid."
+    }
+
+    val relativePath =
+        "${Environment.DIRECTORY_DOWNLOADS}/" +
+            "$APPFORGE_DOWNLOAD_FOLDER/"
+
+    val selection =
+        if (
+            Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.R
+        ) {
+            "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ? AND " +
+                "${MediaStore.MediaColumns.IS_TRASHED}=0"
+        } else {
+            "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
+        }
+
+    val existingNames =
+        mutableSetOf<String>()
+
+    context
+        .contentResolver
+        .query(
+            MediaStore.Downloads
+                .EXTERNAL_CONTENT_URI,
+            arrayOf(
+                MediaStore.MediaColumns
+                    .DISPLAY_NAME
+            ),
+            selection,
+            arrayOf(
+                "$relativePath%"
+            ),
+            null
+        )
+        ?.use {
+            cursor ->
+
+            val nameIndex =
+                cursor
+                    .getColumnIndexOrThrow(
+                        MediaStore.MediaColumns
+                            .DISPLAY_NAME
+                    )
+
+            while (
+                cursor.moveToNext()
+            ) {
+                cursor
+                    .getString(
+                        nameIndex
+                    )
+                    ?.trim()
+                    ?.takeIf {
+                        it.isNotBlank()
+                    }
+                    ?.lowercase(
+                        java.util.Locale.ROOT
+                    )
+                    ?.let {
+                        existingNames.add(
+                            it
+                        )
+                    }
+            }
+        }
+
+    fun isAvailable(
+        candidate: String
+    ): Boolean =
+        candidate
+            .lowercase(
+                java.util.Locale.ROOT
+            ) !in existingNames
+
+    if (
+        isAvailable(
+            safeName
+        )
+    ) {
+        return safeName
+    }
+
+    val extensionIndex =
+        safeName
+            .lastIndexOf(
+                '.'
+            )
+
+    val hasExtension =
+        extensionIndex > 0 &&
+            extensionIndex <
+                safeName.lastIndex
+
+    val stem =
+        if (
+            hasExtension
+        ) {
+            safeName.substring(
+                0,
+                extensionIndex
+            )
+        } else {
+            safeName
+        }
+
+    val extension =
+        if (
+            hasExtension
+        ) {
+            safeName.substring(
+                extensionIndex
+            )
+        } else {
+            ""
+        }
+
+    var index =
+        1
+
+    while (
+        index <=
+            9999
+    ) {
+        val candidate =
+            "$stem ($index)$extension"
+
+        if (
+            isAvailable(
+                candidate
+            )
+        ) {
+            return candidate
+        }
+
+        index +=
+            1
+    }
+
+    error(
+        "Artifact için boş dosya adı bulunamadı."
+    )
+}
+
+
 @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
 private fun downloadArtifactToDownloads(
     context: Context,
@@ -20876,11 +24193,19 @@ private fun downloadArtifactToDownloads(
     val resolver =
         context.contentResolver
 
+    val displayName =
+        uniqueArtifactDownloadName(
+            context =
+                context,
+            requestedFileName =
+                fileName
+        )
+
     val values =
         ContentValues().apply {
             put(
                 MediaStore.MediaColumns.DISPLAY_NAME,
-                fileName
+                displayName
             )
 
             put(
@@ -21334,6 +24659,14 @@ private fun publishApkToDownloads(
     val resolver =
         context.contentResolver
 
+    val displayName =
+        uniqueArtifactDownloadName(
+            context =
+                context,
+            requestedFileName =
+                fileName
+        )
+
     val values =
         android.content.ContentValues()
             .apply {
@@ -21341,7 +24674,7 @@ private fun publishApkToDownloads(
                     android.provider.MediaStore
                         .MediaColumns
                         .DISPLAY_NAME,
-                    fileName
+                    displayName
                 )
 
                 put(
@@ -21468,6 +24801,94 @@ private fun publishApkToDownloads(
 }
 
 
+
+
+/*
+ * BUILD_RESULT_SHOW_FOLDER_V1_5
+ */
+private fun openAppForgeDownloadsFolder(
+    context: Context
+): String {
+    return runCatching {
+        val folderUri =
+            android.provider.DocumentsContract
+                .buildDocumentUri(
+                    "com.android.externalstorage.documents",
+                    "primary:Download/AppForgeStudio"
+                )
+
+        val direct =
+            Intent(
+                Intent.ACTION_VIEW
+            ).apply {
+                setDataAndType(
+                    folderUri,
+                    "vnd.android.document/directory"
+                )
+
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+
+                if (
+                    context !is
+                        android.app.Activity
+                ) {
+                    addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK
+                    )
+                }
+            }
+
+        if (
+            direct.resolveActivity(
+                context.packageManager
+            ) !=
+                null
+        ) {
+            context.startActivity(
+                direct
+            )
+        } else {
+            val fallback =
+                Intent(
+                    Intent.ACTION_OPEN_DOCUMENT_TREE
+                ).apply {
+                    if (
+                        Build.VERSION.SDK_INT >=
+                            Build.VERSION_CODES.O
+                    ) {
+                        putExtra(
+                            android.provider.DocumentsContract
+                                .EXTRA_INITIAL_URI,
+                            folderUri
+                        )
+                    }
+
+                    if (
+                        context !is
+                            android.app.Activity
+                    ) {
+                        addFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK
+                        )
+                    }
+                }
+
+            context.startActivity(
+                fallback
+            )
+        }
+
+        "✅ Downloads/AppForgeStudio klasörü açıldı."
+
+    }.getOrElse {
+        "Klasör açılamadı: ${
+            it.message
+                ?: it.javaClass.simpleName
+        }"
+    }
+}
 
 
 private fun installCachedApk(
@@ -21992,9 +25413,6 @@ private fun installDownloadedApk(
 
 @Composable
 private fun ProjectLibraryScreen(
-    proUnlocked: Boolean,
-    freeProjectLimit: Int,
-    serverFreeProjectUsed: Int?,
     onBack: () -> Unit,
     onLoad: (SavedProject) -> Unit
 ) {
@@ -22040,23 +25458,6 @@ private fun ProjectLibraryScreen(
             )
         }
 
-    var trialSlotsUsed by
-        remember {
-            mutableIntStateOf(
-                ProjectLibrary
-                    .freeProjectSlotsUsed(
-                        context
-                    )
-            )
-        }
-
-    val effectiveTrialSlotsUsed =
-        maxOf(
-            trialSlotsUsed,
-            serverFreeProjectUsed
-                ?: 0
-        )
-
     Column(
         Modifier.fillMaxSize()
     ) {
@@ -22099,65 +25500,6 @@ private fun ProjectLibraryScreen(
             verticalArrangement =
                 Arrangement.spacedBy(if (libraryCompact) 7.dp else 10.dp)
         ) {
-            item {
-                Card(
-                    colors =
-                        CardDefaults
-                            .cardColors(
-                                containerColor =
-                                    if (
-                                        proUnlocked
-                                    ) {
-                                        Color(
-                                            0xFF173929
-                                        )
-                                    } else {
-                                        Card2
-                                    }
-                            ),
-                    shape =
-                        RoundedCornerShape(if (libraryCompact) 17.dp else 20.dp)
-                ) {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(if (libraryCompact) 12.dp else 16.dp),
-                        verticalArrangement =
-                            Arrangement
-                                .spacedBy(
-                                    5.dp
-                                )
-                    ) {
-                        Text(
-                            if (
-                                proUnlocked
-                            ) {
-                                "Proje Hakkı • SINIRSIZ"
-                            } else {
-                                "Deneme Hakkı • $effectiveTrialSlotsUsed / $freeProjectLimit"
-                            },
-                            fontWeight =
-                                FontWeight.Bold,
-                            fontSize =
-                                18.sp
-                        )
-
-                        Text(
-                            if (
-                                proUnlocked
-                            ) {
-                                "${projects.size} kayıtlı proje • Pro ve Pro Aylık'ta proje sınırı yok."
-                            } else {
-                                "${(freeProjectLimit - effectiveTrialSlotsUsed).coerceAtLeast(0)} yeni proje hakkın kaldı. Proje silmek hakkı geri getirmez."
-                            },
-                            color =
-                                TextSecondary
-                        )
-                    }
-                }
-            }
-
             if (
                 projects.isEmpty()
             ) {
@@ -22250,11 +25592,6 @@ private fun ProjectLibraryScreen(
                                                 context
                                             )
 
-                                    trialSlotsUsed =
-                                        ProjectLibrary
-                                            .freeProjectSlotsUsed(
-                                                context
-                                            )
                                 },
                                 modifier =
                                     Modifier
@@ -22354,6 +25691,24 @@ private fun BuildHistoryScreen(onBack: () -> Unit) {
                                 fontSize = 12.sp
                             )
                             Text("Durum: ${b.status}", color = TextSecondary)
+
+                            if (
+                                b.exeUrl != null &&
+                                b.buildOutput.isNotBlank()
+                            ) {
+                                Text(
+                                    "Windows motoru: ${
+                                        windowsExeModeLabel(
+                                            b.buildOutput
+                                        )
+                                    }",
+                                    color =
+                                        Accent,
+                                    fontSize =
+                                        11.sp
+                                )
+                            }
+
                             Text(
                                 DateFormat.getDateTimeInstance().format(Date(b.createdAt)),
                                 color = TextSecondary,
@@ -22385,9 +25740,11 @@ private fun AccountScreen(
     }
     Column(Modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("AppForge Hesapsız Kullanım", style = MaterialTheme.typography.headlineSmall)
-        Text("AppForge hesabı oluşturman veya e-posta/parola ile giriş yapman gerekmiyor.")
-        Text("Pro Ömür Boyu satın alımları Google Play üzerinden yönetilir.")
+        Text("AppForge Studio", style = MaterialTheme.typography.headlineSmall)
+        Text("Projelerini cihazında yönetebilirsin; temel özellikler için üyelik zorunlu değildir.")
+        Text("Projeler, build geçmişi ve normal çalışma verileri cihazında yerel olarak tutulur.")
+        Text("Pro Ömür Boyu satın alımı Google Play üzerinden yönetilir.")
+        Text("Google ile yönetici doğrulaması yalnız owner/admin özellikleri içindir; normal kullanıcı hesabı değildir.")
         OutlinedButton(onClick = onBack) { Text("Geri") }
     }
 }
@@ -22657,42 +26014,34 @@ private fun TemplatesScreen(
     val scope = rememberCoroutineScope()
     val catalog = remember { templateCategoryCatalog() }
 
-    var templates by remember { mutableStateOf<List<RemoteTemplate>>(emptyList()) }
+    var templates by remember { mutableStateOf(com.appforge.studio.io.LocalTemplateCatalog.templates) }
     var message by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var selectedCategoryKey by remember { mutableStateOf<String?>(null) }
 
     fun load() {
-        val current = session
-
-        if (current == null) {
-            templates = emptyList()
-            message =
-                "Sunucudaki gerçek şablonları almak için hesabına giriş yap. Kategorileri yine de gezebilirsin."
+        // Restore the catalog already bundled in TemplateProjectFactory.
+        // No account, server access or download is needed for local templates.
+        val local = com.appforge.studio.io.LocalTemplateCatalog.templates
+        templates = local
+        message = ""
+        val current = session ?: run {
+            loading = false
             return
         }
 
         loading = true
-
         scope.launch {
             try {
-                templates =
-                    withContext(
-                        Dispatchers.IO
-                    ) {
-                        WorkspaceClient(
-                            context,
-                            serverUrl,
-                            current.token
-                        ).listTemplates()
-                    }
-
-                message =
-                    "${templates.size} şablon yüklendi."
-            } catch (t: Throwable) {
-                message =
-                    "Hata: ${t.message}"
+                val remote = withContext(Dispatchers.IO) {
+                    WorkspaceClient(context, serverUrl, current.token).listTemplates()
+                }
+                templates = (local + remote).distinctBy { it.slug }
+                message = "${templates.size} şablon hazır."
+            } catch (_: Throwable) {
+                templates = local
+                message = "Yerel şablonlar kullanılabilir."
             } finally {
                 loading = false
             }
@@ -22851,10 +26200,6 @@ private fun TemplatesScreen(
                                 value = templates.size.toString()
                             )
 
-                            TemplateStatPill(
-                                label = "Giriş",
-                                value = if (session != null) "Açık" else "Kapalı"
-                            )
                         }
 
                         OutlinedTextField(
@@ -22906,7 +26251,7 @@ private fun TemplatesScreen(
                 if (matchedTemplates.isEmpty()) {
                     item {
                         NoteCard(
-                            "Aramana uyan sunucu şablonu bulunamadı."
+                            "Aramana uyan hazır şablon bulunamadı."
                         )
                     }
                 } else {
@@ -22949,11 +26294,7 @@ private fun TemplatesScreen(
                 if (selectedTemplates.isEmpty()) {
                     item {
                         NoteCard(
-                            if (session == null) {
-                                "Bu kategorideki gerçek sunucu şablonlarını görmek için önce hesabına giriş yap."
-                            } else {
-                                "Bu kategoride henüz sunucudan gelen hazır şablon bulunmuyor."
-                            }
+                            "Bu kategoride henüz uygulanabilir hazır şablon bulunmuyor."
                         )
                     }
 
@@ -23269,9 +26610,34 @@ private fun ProUpgradeScreen(
     currentStatus: ProStatus?,
     securityMessage: String,
     onBack: () -> Unit,
+    onStart: () -> Unit,
+    onSupport: () -> Unit,
     onVerified: (ProStatus) -> Unit,
     onSecurityMessage: (String) -> Unit
 ) {
+    /*
+     * PRO_HOME_EXPERIENCE_V1_1
+     *
+     * Billing/security remains unchanged. Active PRO users now see the
+     * requested celebration and developer-support experience.
+     */
+    if (
+        currentStatus?.active ==
+            true
+    ) {
+        com.appforge.studio.ui
+            .ProWelcomeScreenV1(
+                onBack =
+                    onBack,
+                onStart =
+                    onStart,
+                onSupport =
+                    onSupport
+            )
+
+        return
+    }
+
     val context = LocalContext.current
     val activity = context as? android.app.Activity
     val scope = rememberCoroutineScope()
@@ -23585,8 +26951,10 @@ private fun ProPlanCard(
 private fun KeystoreManagerScreen(
     languageCode: String,
     refreshKey: Int,
+    canGenerate: Boolean,
     onBack: () -> Unit,
     onImport: () -> Unit,
+    onFindBackups: () -> Unit,
     onMessage: (String) -> Unit
 ) {
     val keystoreConfiguration =
@@ -23620,37 +26988,235 @@ private fun KeystoreManagerScreen(
             else -> 16.dp
         }
 
-    val context = LocalContext.current
-    var keys by remember(refreshKey) { mutableStateOf(KeystoreVault.load(context)) }
+    val context =
+        LocalContext.current
+
+    val scope =
+        rememberCoroutineScope()
+
+    var keys by
+        remember(refreshKey) {
+            mutableStateOf(
+                KeystoreVault.load(
+                    context
+                )
+            )
+        }
+
+    var pendingExport by
+        remember {
+            mutableStateOf<ManagedKeystore?>(
+                null
+            )
+        }
+
+    var createDialog by
+        remember {
+            mutableStateOf(false)
+        }
+
+    var recreateTarget by
+        remember {
+            mutableStateOf<ManagedKeystore?>(
+                null
+            )
+        }
+
+    var generating by
+        remember {
+            mutableStateOf(false)
+        }
 
     fun reload() {
-        keys = KeystoreVault.load(context)
+        keys =
+            KeystoreVault.load(
+                context
+            )
+    }
+
+    val exportLauncher =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts.CreateDocument(
+                    "application/octet-stream"
+                )
+        ) {
+            destination: Uri? ->
+
+            val item =
+                pendingExport
+
+            pendingExport =
+                null
+
+            if (
+                destination == null ||
+                item == null
+            ) {
+                return@rememberLauncherForActivityResult
+            }
+
+            scope.launch {
+                runCatching {
+                    withContext(
+                        Dispatchers.IO
+                    ) {
+                        val source =
+                            File(
+                                item.savedPath
+                            )
+
+                        require(
+                            source.isFile &&
+                                source.length() >
+                                    0L
+                        ) {
+                            "Keystore dosyası bulunamadı."
+                        }
+
+                        context.contentResolver
+                            .openOutputStream(
+                                destination,
+                                "w"
+                            )
+                            ?.use { output ->
+                                source.inputStream()
+                                    .use { input ->
+                                        input.copyTo(
+                                            output
+                                        )
+                                    }
+                            }
+                            ?: error(
+                                "Hedef dosya açılamadı."
+                            )
+                    }
+                }.onSuccess {
+                    onMessage(
+                        "Keystore dosyası kaydedildi: ${item.originalFileName}"
+                    )
+                }.onFailure {
+                    onMessage(
+                        "Keystore kaydedilemedi: ${it.message}"
+                    )
+                }
+            }
+        }
+
+    fun generate(
+        name: String,
+        alias: String,
+        password: String,
+        recreateId: String?
+    ) {
+        if (!canGenerate) {
+            onMessage(
+                "Release keystore oluşturma ve yeniden oluşturma için AppForge PRO gereklidir."
+            )
+            return
+        }
+
+        if (generating) {
+            return
+        }
+
+        generating =
+            true
+
+        scope.launch {
+            runCatching {
+                KeystoreVault.createGenerated(
+                    context = context,
+                    displayName = name,
+                    alias = alias,
+                    password = password,
+                    recreateId = recreateId
+                )
+            }.onSuccess {
+                reload()
+                onMessage(
+                    if (
+                        recreateId == null
+                    ) {
+                        "Yeni release keystore oluşturuldu. Parolanızı güvenli bir yerde saklayın."
+                    } else {
+                        "Keystore yeni bir imza anahtarıyla yeniden oluşturuldu."
+                    }
+                )
+            }.onFailure {
+                onMessage(
+                    "Keystore oluşturulamadı: ${it.message}"
+                )
+            }
+
+            generating =
+                false
+        }
     }
 
     LaunchedEffect(refreshKey) {
         reload()
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(
+        Modifier.fillMaxSize()
+    ) {
         TopAppBar(
-            title = { Text(t(languageCode, "keystore_manager"), fontWeight = FontWeight.Bold) },
-            navigationIcon = { IconButton(onClick = onBack) { Text("←") } },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Bg)
+            title = {
+                Text(
+                    t(
+                        languageCode,
+                        "keystore_manager"
+                    ),
+                    fontWeight =
+                        FontWeight.Bold
+                )
+            },
+            navigationIcon = {
+                IconButton(
+                    onClick = onBack
+                ) {
+                    Text("←")
+                }
+            },
+            colors =
+                TopAppBarDefaults
+                    .topAppBarColors(
+                        containerColor = Bg
+                    )
         )
 
         LazyColumn(
             modifier =
                 Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .widthIn(max = keystoreContentMaxWidth)
-                    .fillMaxWidth().weight(1f),
+                    .align(
+                        Alignment.CenterHorizontally
+                    )
+                    .widthIn(
+                        max =
+                            keystoreContentMaxWidth
+                    )
+                    .fillMaxWidth()
+                    .weight(1f),
             contentPadding =
                 PaddingValues(
-                    horizontal = keystoreHorizontalPadding,
+                    horizontal =
+                        keystoreHorizontalPadding,
                     vertical =
-                        if (keystoreCompact) 10.dp else 16.dp
+                        if (keystoreCompact) {
+                            10.dp
+                        } else {
+                            16.dp
+                        }
                 ),
-            verticalArrangement = Arrangement.spacedBy(if (keystoreCompact) 9.dp else 14.dp)
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    if (keystoreCompact) {
+                        9.dp
+                    } else {
+                        14.dp
+                    }
+                )
         ) {
             item {
                 LegalInfoCard(
@@ -23664,7 +27230,7 @@ private fun KeystoreManagerScreen(
                 LegalInfoCard(
                     icon = "💡",
                     title = "Önemli İpucu",
-                    body = "Varsayılan keystore otomatik olarak oluşturulur. Pro sürümde özel keystore içe aktarabilir ve mevcut imzanızı koruyabilirsiniz."
+                    body = "Oluşturduğunuz veya içe aktardığınız release keystore'u ayrıca dışa kaydedin. Yeniden oluşturma aynı anahtarı geri getirmez; yeni bir imza kimliği üretir."
                 )
             }
 
@@ -23680,30 +27246,90 @@ private fun KeystoreManagerScreen(
             item {
                 Text(
                     "Keystore'larınız",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = if (keystoreCompact) 18.sp else 22.sp
+                    fontWeight =
+                        FontWeight.Bold,
+                    fontSize =
+                        if (keystoreCompact) {
+                            18.sp
+                        } else {
+                            22.sp
+                        }
                 )
             }
 
             if (keys.isEmpty()) {
                 item {
-                    NoteCard("Henüz içe aktarılmış keystore yok.")
+                    NoteCard(
+                        "Henüz kayıtlı keystore yok."
+                    )
                 }
             } else {
-                items(keys, key = { it.id }) { item ->
+                items(
+                    keys,
+                    key = {
+                        it.id
+                    }
+                ) {
+                    item ->
+
                     ManagedKeystoreCard(
                         item = item,
-                        languageCode = languageCode,
-                        onCopy = { text, label ->
+                        languageCode =
+                            languageCode,
+                        onCopy = {
+                            text,
+                            label ->
+
                             val clipboard =
-                                context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
-                            onMessage("$label panoya kopyalandı.")
+                                context.getSystemService(
+                                    Context.CLIPBOARD_SERVICE
+                                ) as ClipboardManager
+
+                            clipboard.setPrimaryClip(
+                                ClipData.newPlainText(
+                                    label,
+                                    text
+                                )
+                            )
+
+                            onMessage(
+                                "$label panoya kopyalandı."
+                            )
                         },
+                        onSave = {
+                            pendingExport =
+                                item
+
+                            exportLauncher.launch(
+                                item.originalFileName
+                            )
+                        },
+                        onRecreate =
+                            if (
+                                item.generated
+                            ) {
+                                {
+                                    if (canGenerate) {
+                                        recreateTarget =
+                                            item
+                                    } else {
+                                        onMessage(
+                                            "Keystore yeniden oluşturma için AppForge PRO gereklidir."
+                                        )
+                                    }
+                                }
+                            } else {
+                                null
+                            },
                         onDelete = {
-                            KeystoreVault.delete(context, item.id)
+                            KeystoreVault.delete(
+                                context,
+                                item.id
+                            )
                             reload()
-                            onMessage("Keystore silindi: ${item.name}")
+                            onMessage(
+                                "Keystore silindi: ${item.name}"
+                            )
                         }
                     )
                 }
@@ -23713,35 +27339,358 @@ private fun KeystoreManagerScreen(
         Column(
             modifier =
                 Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .widthIn(max = keystoreContentMaxWidth)
+                    .align(
+                        Alignment.CenterHorizontally
+                    )
+                    .widthIn(
+                        max =
+                            keystoreContentMaxWidth
+                    )
                     .fillMaxWidth()
                     .padding(
-                        horizontal = keystoreHorizontalPadding,
-                        vertical = if (keystoreCompact) 10.dp else 14.dp
-                    )
+                        horizontal =
+                            keystoreHorizontalPadding,
+                        vertical =
+                            if (keystoreCompact) {
+                                10.dp
+                            } else {
+                                14.dp
+                            }
+                    ),
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    10.dp
+                )
         ) {
             Button(
+                enabled =
+                    !generating,
                 onClick = {
-                    reload()
-                    onMessage("${KeystoreVault.count(context)} keystore bulundu.")
+                    if (canGenerate) {
+                        createDialog =
+                            true
+                    } else {
+                        onMessage(
+                            "Yeni release keystore oluşturmak için AppForge PRO gereklidir."
+                        )
+                    }
                 },
-                modifier = Modifier.fillMaxWidth().height(if (keystoreCompact) 48.dp else 52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9ACEFF), contentColor = Color(0xFF0D213D))
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(
+                            if (keystoreCompact) {
+                                48.dp
+                            } else {
+                                52.dp
+                            }
+                        )
             ) {
-                Text(t(languageCode, "find_backups"), fontWeight = FontWeight.Bold)
+                Text(
+                    if (generating) {
+                        "KEYSTORE OLUŞTURULUYOR…"
+                    } else if (canGenerate) {
+                        "YENİ KEYSTORE OLUŞTUR"
+                    } else {
+                        "YENİ KEYSTORE OLUŞTUR • PRO"
+                    },
+                    fontWeight =
+                        FontWeight.Bold
+                )
             }
 
-            Spacer(Modifier.height(10.dp))
+            Button(
+                onClick = {
+                    /* KEYSTORE_DEVICE_BACKUP_PICKER_V1_5 */
+                    onFindBackups()
+                },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(
+                            if (keystoreCompact) {
+                                48.dp
+                            } else {
+                                52.dp
+                            }
+                        ),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor =
+                            Color(
+                                0xFF9ACEFF
+                            ),
+                        contentColor =
+                            Color(
+                                0xFF0D213D
+                            )
+                    )
+            ) {
+                Text(
+                    t(
+                        languageCode,
+                        "find_backups"
+                    ),
+                    fontWeight =
+                        FontWeight.Bold
+                )
+            }
 
             Button(
-                onClick = onImport,
-                modifier = Modifier.fillMaxWidth().height(if (keystoreCompact) 48.dp else 52.dp)
+                onClick =
+                    onImport,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(
+                            if (keystoreCompact) {
+                                48.dp
+                            } else {
+                                52.dp
+                            }
+                        )
             ) {
-                Text(t(languageCode, "import_keystore"), fontWeight = FontWeight.Bold)
+                Text(
+                    t(
+                        languageCode,
+                        "import_keystore"
+                    ),
+                    fontWeight =
+                        FontWeight.Bold
+                )
             }
         }
     }
+
+    if (createDialog) {
+        GeneratedKeystoreDialog(
+            title =
+                "Yeni Release Keystore",
+            initialName =
+                "appforge-release",
+            initialAlias =
+                "appforge-release",
+            warning =
+                "Gerçek RSA 3072 / PKCS12 imza anahtarı üretilecek. Parola AppForge tarafından kaydedilmez.",
+            onDismiss = {
+                createDialog =
+                    false
+            },
+            onConfirm = {
+                name,
+                alias,
+                password ->
+
+                createDialog =
+                    false
+
+                generate(
+                    name = name,
+                    alias = alias,
+                    password = password,
+                    recreateId = null
+                )
+            }
+        )
+    }
+
+    recreateTarget?.let {
+        target ->
+
+        GeneratedKeystoreDialog(
+            title =
+                "Keystore'u Yeniden Oluştur",
+            initialName =
+                target.name,
+            initialAlias =
+                target.alias.ifBlank {
+                    "appforge-release"
+                },
+            warning =
+                "Bu işlem aynı anahtarı kurtarmaz; yeni bir imza kimliği üretir ve mevcut dosyanın yerini alır.",
+            onDismiss = {
+                recreateTarget =
+                    null
+            },
+            onConfirm = {
+                name,
+                alias,
+                password ->
+
+                val id =
+                    target.id
+
+                recreateTarget =
+                    null
+
+                generate(
+                    name = name,
+                    alias = alias,
+                    password = password,
+                    recreateId = id
+                )
+            }
+        )
+    }
+}
+
+@Composable
+private fun GeneratedKeystoreDialog(
+    title: String,
+    initialName: String,
+    initialAlias: String,
+    warning: String,
+    onDismiss: () -> Unit,
+    onConfirm: (
+        String,
+        String,
+        String
+    ) -> Unit
+) {
+    var name by
+        remember(initialName) {
+            mutableStateOf(
+                initialName
+            )
+        }
+
+    var alias by
+        remember(initialAlias) {
+            mutableStateOf(
+                initialAlias
+            )
+        }
+
+    var password by
+        remember {
+            mutableStateOf("")
+        }
+
+    var confirmation by
+        remember {
+            mutableStateOf("")
+        }
+
+    val valid =
+        name.isNotBlank() &&
+            alias.isNotBlank() &&
+            password.length >=
+                8 &&
+            password ==
+                confirmation
+
+    AlertDialog(
+        onDismissRequest =
+            onDismiss,
+        title = {
+            Text(
+                title
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement =
+                    Arrangement.spacedBy(
+                        10.dp
+                    )
+            ) {
+                Text(
+                    warning,
+                    color =
+                        TextSecondary,
+                    fontSize =
+                        12.sp
+                )
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = {
+                        name = it
+                    },
+                    label = {
+                        Text(
+                            "Keystore adı"
+                        )
+                    },
+                    singleLine =
+                        true
+                )
+
+                OutlinedTextField(
+                    value = alias,
+                    onValueChange = {
+                        alias = it
+                    },
+                    label = {
+                        Text(
+                            "Key alias"
+                        )
+                    },
+                    singleLine =
+                        true
+                )
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = {
+                        password = it
+                    },
+                    label = {
+                        Text(
+                            "Parola • en az 8 karakter"
+                        )
+                    },
+                    singleLine =
+                        true,
+                    visualTransformation =
+                        PasswordVisualTransformation()
+                )
+
+                OutlinedTextField(
+                    value = confirmation,
+                    onValueChange = {
+                        confirmation = it
+                    },
+                    label = {
+                        Text(
+                            "Parolayı tekrar gir"
+                        )
+                    },
+                    singleLine =
+                        true,
+                    visualTransformation =
+                        PasswordVisualTransformation()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled =
+                    valid,
+                onClick = {
+                    onConfirm(
+                        name,
+                        alias,
+                        password
+                    )
+                }
+            ) {
+                Text(
+                    "Oluştur"
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick =
+                    onDismiss
+            ) {
+                Text(
+                    "İptal"
+                )
+            }
+        }
+    )
 }
 
 @Composable
@@ -23749,65 +27698,246 @@ private fun ManagedKeystoreCard(
     item: ManagedKeystore,
     languageCode: String,
     onCopy: (String, String) -> Unit,
+    onSave: () -> Unit,
+    onRecreate: (() -> Unit)?,
     onDelete: () -> Unit
 ) {
     val managedKeyCompact =
         LocalConfiguration.current.screenWidthDp < 380
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Card2),
-        shape = RoundedCornerShape(if (managedKeyCompact) 18.dp else 22.dp)
+        colors =
+            CardDefaults.cardColors(
+                containerColor = Card2
+            ),
+        shape =
+            RoundedCornerShape(
+                if (managedKeyCompact) {
+                    18.dp
+                } else {
+                    22.dp
+                }
+            )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(if (managedKeyCompact) 12.dp else 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        if (managedKeyCompact) {
+                            12.dp
+                        } else {
+                            16.dp
+                        }
+                    ),
+            verticalArrangement =
+                Arrangement.spacedBy(
+                    10.dp
+                )
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment =
+                    Alignment.CenterVertically
+            ) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF23344E)),
-                    shape = RoundedCornerShape(if (managedKeyCompact) 13.dp else 16.dp)
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                Color(
+                                    0xFF23344E
+                                )
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            if (managedKeyCompact) {
+                                13.dp
+                            } else {
+                                16.dp
+                            }
+                        )
                 ) {
                     Box(
-                        modifier = Modifier.size(if (managedKeyCompact) 42.dp else 50.dp),
-                        contentAlignment = Alignment.Center
+                        modifier =
+                            Modifier.size(
+                                if (managedKeyCompact) {
+                                    42.dp
+                                } else {
+                                    50.dp
+                                }
+                            ),
+                        contentAlignment =
+                            Alignment.Center
                     ) {
-                        Text("🔒", fontSize = if (managedKeyCompact) 20.sp else 24.sp)
+                        Text(
+                            "🔒",
+                            fontSize =
+                                if (managedKeyCompact) {
+                                    20.sp
+                                } else {
+                                    24.sp
+                                }
+                        )
                     }
                 }
 
-                Spacer(Modifier.width(if (managedKeyCompact) 9.dp else 12.dp))
-
-                Column(Modifier.weight(1f)) {
-                    Text(
-                    item.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = if (managedKeyCompact) 17.sp else 20.sp
+                Spacer(
+                    Modifier.width(
+                        if (managedKeyCompact) {
+                            9.dp
+                        } else {
+                            12.dp
+                        }
+                    )
                 )
-                    Text(item.algorithm, color = TextSecondary, fontSize = 12.sp)
-                    Text(item.savedPath, color = TextSecondary, fontSize = 12.sp)
+
+                Column(
+                    Modifier.weight(
+                        1f
+                    )
+                ) {
+                    Text(
+                        item.name,
+                        fontWeight =
+                            FontWeight.Bold,
+                        fontSize =
+                            if (managedKeyCompact) {
+                                17.sp
+                            } else {
+                                20.sp
+                            }
+                    )
+
+                    Text(
+                        item.algorithm,
+                        color =
+                            TextSecondary,
+                        fontSize =
+                            12.sp
+                    )
+
+                    if (
+                        item.alias.isNotBlank()
+                    ) {
+                        Text(
+                            "Alias: ${item.alias}",
+                            color =
+                                TextSecondary,
+                            fontSize =
+                                12.sp
+                        )
+                    }
                 }
 
-                TextButton(onClick = onDelete) {
-                    Text(t(languageCode, "delete"))
+                TextButton(
+                    onClick =
+                        onDelete
+                ) {
+                    Text(
+                        t(
+                            languageCode,
+                            "delete"
+                        )
+                    )
                 }
             }
 
-            Text("Sertifika parmak izleri", fontWeight = FontWeight.Bold)
-            FingerprintBox("SHA-1", item.sha1)
-            FingerprintBox("SHA-256", item.sha256)
-
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        8.dp
+                    )
+            ) {
                 OutlinedButton(
-                    onClick = { onCopy(item.sha1, "SHA-1") },
-                    modifier = Modifier.weight(1f)
+                    onClick =
+                        onSave,
+                    modifier =
+                        Modifier.weight(
+                            1f
+                        )
                 ) {
-                    Text(t(languageCode, "copy_sha1"))
+                    Text(
+                        "Dosyaya Kaydet"
+                    )
                 }
+
+                onRecreate?.let {
+                    recreate ->
+
+                    OutlinedButton(
+                        onClick =
+                            recreate,
+                        modifier =
+                            Modifier.weight(
+                                1f
+                            )
+                    ) {
+                        Text(
+                            "Yeniden Oluştur"
+                        )
+                    }
+                }
+            }
+
+            Text(
+                "Dosya parmak izleri",
+                fontWeight =
+                    FontWeight.Bold
+            )
+
+            FingerprintBox(
+                "SHA-1",
+                item.sha1
+            )
+
+            FingerprintBox(
+                "SHA-256",
+                item.sha256
+            )
+
+            Row(
+                horizontalArrangement =
+                    Arrangement.spacedBy(
+                        10.dp
+                    )
+            ) {
                 OutlinedButton(
-                    onClick = { onCopy(item.sha256, "SHA-256") },
-                    modifier = Modifier.weight(1f)
+                    onClick = {
+                        onCopy(
+                            item.sha1,
+                            "SHA-1"
+                        )
+                    },
+                    modifier =
+                        Modifier.weight(
+                            1f
+                        )
                 ) {
-                    Text(t(languageCode, "copy_sha256"))
+                    Text(
+                        t(
+                            languageCode,
+                            "copy_sha1"
+                        )
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        onCopy(
+                            item.sha256,
+                            "SHA-256"
+                        )
+                    },
+                    modifier =
+                        Modifier.weight(
+                            1f
+                        )
+                ) {
+                    Text(
+                        t(
+                            languageCode,
+                            "copy_sha256"
+                        )
+                    )
                 }
             }
         }

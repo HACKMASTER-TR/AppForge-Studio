@@ -89,11 +89,10 @@ test("Admin Ops requires verified owner", () => {
         /val fullAdmin[\s\S]{0,300}?OwnerAccessPolicy\.isActiveOwner/
     );
 
-    // Admin discovery moved to the private Settings entry.
-    // The public Home must not expose the old admin button or card.
-    assert.doesNotMatch(
+    // Home may expose Yönetici only inside the verified-owner gate.
+    assert.match(
         home,
-        /TextButton\(onClick = onOpenAdmin\)/
+        /if\s*\(fullAdmin\)[\s\S]{0,180}?TextButton\(onClick = onOpenAdmin\)[\s\S]{0,120}?Yönetici/
     );
 
     assert.doesNotMatch(

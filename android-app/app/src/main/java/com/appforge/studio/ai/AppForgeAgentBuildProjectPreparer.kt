@@ -83,10 +83,17 @@ internal object AppForgeAgentBuildProjectPreparer {
             val expectedEngine = when (blueprint.platform) {
                 AppForgeAgentPlatform.ANDROID -> "android-gradle"
                 AppForgeAgentPlatform.FLUTTER -> "flutter"
-                AppForgeAgentPlatform.REACT_NATIVE -> "expo-android"
+                AppForgeAgentPlatform.REACT_NATIVE -> "expo"
                 AppForgeAgentPlatform.WEB -> "webview-static"
             }
 
+            /*
+             * Unified Agent generated React Native source is the pinned
+             * Expo SDK 54 / React Native 0.81 family. That exact family
+             * is physically accepted and must pass the normal READY gate.
+             * Standalone react-native remains experimental and is not
+             * emitted by this preparer path.
+             */
             require(analysis.buildReady) {
                 "Üretilen proje AppForge build için hazır değil: ${analysis.technologyReason.orEmpty()}"
             }

@@ -132,7 +132,8 @@ internal object AppForgeAgentStructuredPatch {
 
         val result = AppForgeAgentWorkspaceTransaction.apply(
             workspace = root,
-            project = transactionProject
+            project = transactionProject,
+            expectedHashes = plan.operations.associate { validatePath(it.path) to it.baseSha256 }
         )
 
         return AppForgeAgentPatchApplyResult(
@@ -174,9 +175,9 @@ internal object AppForgeAgentStructuredPatch {
         return candidate
     }
 
-    private fun normalizeContent(value: String): String =
+    internal fun normalizeContent(value: String): String =
         value
-            .replace("\\r\\n", "\\n")
+            .replace("\r\n", "\n")
             .replace('\r', '\n')
             .let { if (it.endsWith('\n')) it else "$it\n" }
 

@@ -1,0 +1,268 @@
+name: AppForge Production Signing Physical APK
+
+on:
+  push:
+    branches:
+      - feat/release-integration-v1-20261002
+    paths:
+      - .github/workflows/windows-signing-production-physical-apk.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build production-endpoint physical acceptance APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout exact feature source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Guard exact acceptance base
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EXPECTED_BRANCH="feat/release-integration-v1-20261002"
+          EXPECTED_BASE="64cc8c085181b6a0bccc54b2a530befe38b0be08"
+
+          test "${GITHUB_REF_NAME}" = "${EXPECTED_BRANCH}" || {
+            echo "BRANCH_GUARD=FAIL"
+            exit 10
+          }
+
+          ACTUAL_BASE="$(git rev-parse HEAD^)"
+
+          test "${ACTUAL_BASE}" = "${EXPECTED_BASE}" || {
+            echo "BASE_GUARD=FAIL"
+            echo "ACTUAL_BASE=${ACTUAL_BASE}"
+            exit 11
+          }
+
+          echo "BRANCH_GUARD=PASS"
+          echo "BASE_GUARD=PASS"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.3.1"
+
+      - name: Install deterministic Android native toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SDKMANAGER="$(
+            find "$ANDROID_HOME/cmdline-tools" \
+              -type f \
+              -name sdkmanager \
+              | sort -V \
+              | tail -n 1
+          )"
+
+          test -x "$SDKMANAGER"
+
+          "$SDKMANAGER" \
+            "ndk;28.2.13676358" \
+            "cmake;3.22.1"
+
+          echo "ANDROID_NATIVE_TOOLCHAIN=PASS"
+
+      - name: Restore existing CI signing identity
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.APPFORGE_DEBUG_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.APPFORGE_DEBUG_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          test -n "$KEYSTORE_B64"
+          test -n "$STORE_PASSWORD"
+
+          printf '%s' "$KEYSTORE_B64" \
+            | base64 --decode \
+            > "$RUNNER_TEMP/appforge-existing-debug.p12"
+
+          chmod 600 "$RUNNER_TEMP/appforge-existing-debug.p12"
+
+          keytool -list \
+            -storetype PKCS12 \
+            -keystore "$RUNNER_TEMP/appforge-existing-debug.p12" \
+            -storepass "$STORE_PASSWORD" \
+            -alias appforge-debug \
+            > /dev/null
+
+          echo "SOURCE_SIGNING_IDENTITY=PASS"
+
+      - name: Convert same signing identity to release test JKS
+        shell: bash
+        env:
+          STORE_PASSWORD: ${{ secrets.APPFORGE_DEBUG_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          keytool -importkeystore \
+            -srckeystore "$RUNNER_TEMP/appforge-existing-debug.p12" \
+            -srcstoretype PKCS12 \
+            -srcstorepass "$STORE_PASSWORD" \
+            -srcalias appforge-debug \
+            -srckeypass "$STORE_PASSWORD" \
+            -destkeystore "$RUNNER_TEMP/appforge-production-test.jks" \
+            -deststoretype JKS \
+            -deststorepass "$STORE_PASSWORD" \
+            -destalias appforge-debug \
+            -destkeypass "$STORE_PASSWORD" \
+            -noprompt
+
+          test -s "$RUNNER_TEMP/appforge-production-test.jks"
+
+          SRC_CERT="$(
+            keytool -list -v \
+              -storetype PKCS12 \
+              -keystore "$RUNNER_TEMP/appforge-existing-debug.p12" \
+              -storepass "$STORE_PASSWORD" \
+              -alias appforge-debug \
+              | grep -m1 'SHA256:' \
+              | sed 's/.*SHA256:[[:space:]]*//'
+          )"
+
+          DST_CERT="$(
+            keytool -list -v \
+              -storetype JKS \
+              -keystore "$RUNNER_TEMP/appforge-production-test.jks" \
+              -storepass "$STORE_PASSWORD" \
+              -alias appforge-debug \
+              | grep -m1 'SHA256:' \
+              | sed 's/.*SHA256:[[:space:]]*//'
+          )"
+
+          test -n "$SRC_CERT"
+          test "$SRC_CERT" = "$DST_CERT"
+
+          echo "SAME_ANDROID_SIGNING_CERTIFICATE=PASS"
+          echo "APP_DATA_PRESERVATION_SIGNATURE_CONTRACT=PASS"
+
+      - name: Build acceptance-only release APK
+        shell: bash
+        env:
+          APPFORGE_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/appforge-production-test.jks
+          APPFORGE_RELEASE_STORE_PASSWORD: ${{ secrets.APPFORGE_DEBUG_STORE_PASSWORD }}
+          APPFORGE_RELEASE_KEY_ALIAS: appforge-debug
+          APPFORGE_RELEASE_KEY_PASSWORD: ${{ secrets.APPFORGE_DEBUG_STORE_PASSWORD }}
+          APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+
+          gradle \
+            -p android-app \
+            :app:testDebugUnitTest \
+            :app:assembleRelease \
+            --stacktrace
+
+          echo "RELEASE_ACCEPTANCE_BUILD=PASS"
+
+      - name: Verify production endpoint APK contract
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APK="$(
+            find android-app/app/build/outputs/apk/release \
+              -maxdepth 1 \
+              -type f \
+              -name '*.apk' \
+              -print \
+              | head -n 1
+          )"
+
+          test -n "$APK"
+          test -s "$APK"
+
+          APKSIGNER="$(
+            find "$ANDROID_HOME/build-tools" \
+              -type f \
+              -name apksigner \
+              | sort -V \
+              | tail -n 1
+          )"
+
+          AAPT="$(
+            find "$ANDROID_HOME/build-tools" \
+              -type f \
+              -name aapt \
+              | sort -V \
+              | tail -n 1
+          )"
+
+          test -x "$APKSIGNER"
+          test -x "$AAPT"
+
+          "$APKSIGNER" verify \
+            --verbose \
+            --print-certs \
+            "$APK"
+
+          BADGING="$("$AAPT" dump badging "$APK")"
+
+          echo "$BADGING" \
+            | grep -F "package: name='com.appforge.studio'"
+
+          if echo "$BADGING" | grep -q "application-debuggable"; then
+            echo "RELEASE_DEBUGGABLE_GUARD=FAIL"
+            exit 20
+          fi
+
+          echo "RELEASE_DEBUGGABLE_GUARD=PASS"
+
+          unzip -p "$APK" classes.dex \
+            | strings \
+            | grep -F \
+              "https://api.appforgecloud.com" \
+            > /dev/null
+
+          echo "PRODUCTION_ENDPOINT_EMBEDDED=PASS"
+
+          cp \
+            "$APK" \
+            AppForgeStudio-production-signing-physical-test.apk
+
+          sha256sum \
+            AppForgeStudio-production-signing-physical-test.apk \
+            > AppForgeStudio-production-signing-physical-test.apk.sha256
+
+          echo "PACKAGE_NAME=com.appforge.studio"
+          echo "BUILD_CONFIG_DEBUG=FALSE"
+          echo "CONTROL_PLANE=https://api.appforgecloud.com"
+          echo "PLAY_PUBLISH=NONE"
+          echo "MAIN=UNTOUCHED"
+          echo "PHYSICAL_ACCEPTANCE_APK=PASS"
+
+      - name: Upload physical acceptance APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: AppForgeStudio-Production-Signing-Physical-${{ github.sha }}
+          path: |
+            AppForgeStudio-production-signing-physical-test.apk
+            AppForgeStudio-production-signing-physical-test.apk.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Final safety boundary
+        shell: bash
+        run: |
+          echo "PLAY_PRODUCTION=UNTOUCHED"
+          echo "PLAY_INTERNAL=UNTOUCHED"
+          echo "PRODUCTION_ROUTES=UNTOUCHED"
+          echo "D1_WRITES=NONE_DURING_BUILD"
+          echo "MAIN=UNTOUCHED"
