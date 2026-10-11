@@ -8,6 +8,16 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = 'android-app/app/src/main/java/com/appforge/studio/build/';
 
+test('generated HTML template assets are Gradle 9 compatible', () => {
+ const gradle = read('android-app/app/build.gradle.kts');
+ assert.match(gradle, /assets\.srcDir\(layout\.buildDirectory\.dir\("generated\/html-template\/assets"\)\.get\(\)\.asFile\)/);
+ assert.match(gradle, /dependsOn\(generateFastHtmlTemplate\)/);
+ assert.doesNotMatch(gradle, /assets\.srcDir\(layout\.buildDirectory\.dir\("generated\/html-template\/assets"\)\)/);
+ const shell = read('android-app/html-apk-template/src/main/java/com/appforge/htmlstub/TinyHtmlActivity.java');
+ assert.match(shell, /setDomStorageEnabled\(true\)/);
+ assert.doesNotMatch(shell, /setDomStorageEnabled\(false\)/);
+});
+
 test('fast HTML/URL APK bypasses rootfs and offline package without touching other engines', () => {
   const engine = read(source + 'DeviceBuildEngine.kt');
   const offline = read(source + 'OfflineBuildPackManager.kt');

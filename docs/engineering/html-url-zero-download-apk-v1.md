@@ -27,3 +27,15 @@ Only applies to a **new local feature worktree**. The wrapper never pushes, merg
 **Do not install, distribute, publish or merge based solely on source/static tests.**
 
 Note: `apksig:9.1.1` is a candidate build-time dependency and must be resolved in CI. A modern AGP and Java toolchain will be needed to produce the embedded shell only *at AppForge application-build time*; the phone downloading tools is not required.
+
+## Android Debug CI configuration failure (2026-10-11)
+
+GitHub Actions run `38166458210` failed before Android source compilation at
+`android-app/app/build.gradle.kts:497`: AGP 9.1 rejects a `Provider<Directory>`
+passed directly to the legacy `AndroidSourceSet.assets.srcDir` API.
+The feature-only repair resolves the generated assets location to `File`
+(`.get().asFile`) and keeps the existing explicit `merge*Assets` dependency
+on `generateFastHtmlTemplate` so task ordering is maintained. This is a
+configuration compatibility fix, not evidence of Android compilation or
+physical APK acceptance. The HTML WebView shell also retains DOM Storage
+enabled for JavaScript pages without adding a native JavaScript bridge.

@@ -494,7 +494,7 @@ val generateFastHtmlTemplate = tasks.register<Copy>("generateFastHtmlTemplate") 
     }
 }
 
-android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/html-template/assets"))
+android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/html-template/assets").get().asFile)
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
     dependsOn(generateFastHtmlTemplate)
 }
