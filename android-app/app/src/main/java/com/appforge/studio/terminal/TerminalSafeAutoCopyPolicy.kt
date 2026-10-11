@@ -93,11 +93,11 @@ internal class TerminalSafeAutoCopyPolicy {
     }
 }
 
-/** Applied only to a fresh response from the app's authenticated HTTPS admin endpoint. */
+/** Only a fresh Google ID token checked against the active server admin allowlist. */
 internal object TerminalAdminCopyDecision {
-    fun permits(ok: Boolean, role: String, fullAccess: Boolean, email: String, sessionEmail: String): Boolean =
-        ok && role == "admin" && fullAccess && sessionEmail.isNotBlank() &&
-            email.equals(sessionEmail, ignoreCase = true)
+    fun permits(ok: Boolean, adminVerified: Boolean, expiresAtSeconds: Long, nowSeconds: Long): Boolean =
+        ok && adminVerified && nowSeconds > 0 && expiresAtSeconds > nowSeconds &&
+            expiresAtSeconds - nowSeconds <= 3_700L
 }
 
 /** Immutable, shipped help text: no paths, project data, commands or stdout are interpolated. */

@@ -43,35 +43,40 @@ object SystemClock {
 }
 ''',
     'Model.kt': '''package com.appforge.studio.model
-const val DEFAULT_BUILD_SERVICE_URL = "https://inert-autocopy.example.invalid"
+val DEFAULT_CONTROL_PLANE_URL = "https://inert-autocopy.example.invalid"
 ''',
     'Session.kt': '''package com.appforge.studio.net
 data class Session(val userId: String, val token: String, val email: String)
 ''',
     'Security.kt': '''package com.appforge.studio.security
 import android.content.Context
-import com.appforge.studio.net.Session
-object SecureAccountStore {
-    var session: Session? = Session("inert-user", "INERT_TEST_NOT_A_TOKEN", "admin@example.invalid")
-    fun loadSession(context: Context) = session
+object OwnerAccessPolicy {
+    var token: String? = "INERT_GOOGLE_ID_TOKEN_" + "X".repeat(64)
+    var active: Boolean = true
+    fun isActiveOwner(context: Context): Boolean = active && token != null
+    fun currentGoogleIdToken(): String? = token
 }
-object StudioDeviceIdentity { fun value(context: Context) = "INERT_TEST_DEVICE" }
 ''',
     'Json.kt': '''package org.json
-// Host adapter only. Real Android uses org.json; fixtures contain no real account data.
 class JSONObject(private val text: String) {
-    fun optJSONObject(name: String): JSONObject? = if (text.contains("account")) this else null
-    fun optBoolean(name: String, fallback: Boolean): Boolean =
-        Regex("\\\"" + name + "\\\"\\\\s*:\\\\s*true").containsMatchIn(text)
-    fun optString(name: String): String =
-        Regex("\\\"" + name + "\\\"\\\\s*:\\\\s*\\\"([^\\\"]*)\\\"").find(text)?.groupValues?.get(1).orEmpty()
+    fun optBoolean(name: String, fallback: Boolean): Boolean {
+        val value = text.substringAfter(name, "").substringAfter(":", "").trimStart()
+        return when {
+            value.startsWith("true") -> true
+            value.startsWith("false") -> false
+            else -> fallback
+        }
+    }
+    fun optLong(name: String, fallback: Long): Long =
+        text.substringAfter(name, "").substringAfter(":", "")
+            .takeWhile { it.isDigit() }.toLongOrNull() ?: fallback
 }
 ''',
 }
 
 HARNESS = r'''package com.appforge.studio.terminal
 import android.content.Context
-import com.appforge.studio.security.SecureAccountStore
+import com.appforge.studio.security.OwnerAccessPolicy
 import kotlinx.coroutines.*
 import java.net.*
 import javax.net.ssl.HttpsURLConnection
@@ -80,9 +85,11 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 private object Wire {
-    var role = "admin"
+    var adminVerified = true
+    var ok = true
     var code = 200
     var fail = false
+    var expiresAt = System.currentTimeMillis() / 1000L + 1_800L
     var entered: CountDownLatch? = null
     var release: CountDownLatch? = null
     var requests = 0
@@ -98,6 +105,8 @@ private class InertConnection(url: URL): HttpsURLConnection(url) {
         check(!instanceFollowRedirects)
         check(url.host == "inert-autocopy.example.invalid")
         check(url.path == "/api/admin/system-status")
+        check(getRequestProperty("Authorization")?.startsWith("Bearer INERT_GOOGLE_") == true)
+        check(getRequestProperty("X-AppForge-Device-ID") == null)
         Wire.requests++
         Wire.entered?.countDown()
         check(Wire.release?.await(10, TimeUnit.SECONDS) != false)
@@ -105,11 +114,11 @@ private class InertConnection(url: URL): HttpsURLConnection(url) {
         return Wire.code
     }
     override fun getInputStream() = ByteArrayInputStream(
-        """{"ok":true,"account":{"role":"${Wire.role}","fullAccess":true,"email":"admin@example.invalid"}}""".toByteArray())
+        """{"ok":${Wire.ok},"adminVerified":${Wire.adminVerified},"expiresAt":${Wire.expiresAt}}""".toByteArray())
 }
 
 fun main() = runBlocking {
-    // Run the actual in-repo Kotlin test methods, not a duplicate keyword/regex policy.
+    // Run production Kotlin tests plus intercepted-HTTPS clipboard boundary checks.
     val tests = TerminalSafeAutoCopyPolicyTest()
     var count = 0
     tests.javaClass.declaredMethods.filter { it.getAnnotation(org.junit.Test::class.java) != null }
@@ -124,22 +133,24 @@ fun main() = runBlocking {
     var active = true
     val context = Context()
     val sink = TerminalSafeAutoCopy(context, { terminal }, { active }, Dispatchers.Unconfined)
-    val originalSession = SecureAccountStore.session
+    val originalToken = OwnerAccessPolicy.token
     fun result(command: String = "runtime") = TerminalCopyResult.execute(command) {}!!
     suspend fun enable() {
-        Wire.role = "admin"; Wire.code = 200; Wire.fail = false
-        active = true; terminal = "one"; SecureAccountStore.session = originalSession
+        Wire.adminVerified = true; Wire.ok = true; Wire.code = 200; Wire.fail = false
+        Wire.expiresAt = System.currentTimeMillis() / 1000L + 1_800L
+        active = true; terminal = "one"
+        OwnerAccessPolicy.token = originalToken; OwnerAccessPolicy.active = true
         check(sink.enable())
     }
     check(!sink.enabled)
     check(sink.begin("runtime", "one") == null)
-    Wire.role = "pro"
+    Wire.adminVerified = false
     check(!sink.enable())
     enable()
     val safe = sink.begin("runtime", "one")!!
     val before = Wire.requests
     check(sink.copyCompleted(safe, result()))
-    check(Wire.requests == before + 1) // Fresh verification at the clipboard boundary.
+    check(Wire.requests == before + 1) // Fresh server check at each copy.
     check(context.clipboard.writes == listOf("Araç durumu ekranı açıldı."))
     check(!sink.copyCompleted(safe, result())) // No replay.
     suspend fun denied(mutate: () -> Unit) {
@@ -150,12 +161,17 @@ fun main() = runBlocking {
         check(!sink.copyCompleted(ticket, result()))
         check(context.clipboard.writes.size == size)
     }
-    denied { Wire.role = "pro" }
+    denied { Wire.adminVerified = false }
     check(!sink.enabled)
+    denied { Wire.ok = false }
+    denied { Wire.expiresAt = System.currentTimeMillis() / 1000L - 10L }
+    denied { Wire.expiresAt = System.currentTimeMillis() / 1000L + 20_000L }
+    denied { Wire.code = 401 }
     denied { Wire.code = 403 }
     denied { Wire.code = 302 }
     denied { Wire.fail = true }
-    denied { SecureAccountStore.session = originalSession!!.copy(token = "INERT_CHANGED_SESSION") }
+    denied { OwnerAccessPolicy.token = "INERT_GOOGLE_CHANGED_" + "X".repeat(64) }
+    denied { OwnerAccessPolicy.active = false }
     denied { terminal = "two" }
     denied { active = false }
     denied { sink.disable() }
@@ -169,7 +185,8 @@ fun main() = runBlocking {
     denied { context.onLookup = { android.os.SystemClock.offset = 6_001L } }
     context.onLookup = {}; android.os.SystemClock.offset = 0L
 
-    suspend fun pending(mutate: () -> Unit, cancel: Boolean = false, timeout: Boolean = false, enabling: Boolean = false) {
+    suspend fun pending(mutate: () -> Unit, cancel: Boolean = false, timeout: Boolean = false,
+                        enabling: Boolean = false) {
         enable()
         val ticket = sink.begin("runtime", "one")!!
         Wire.entered = CountDownLatch(1); Wire.release = CountDownLatch(1)
@@ -191,15 +208,17 @@ fun main() = runBlocking {
     pending({ sink.disable() })
     pending({ terminal = "two" })
     pending({ active = false })
-    pending({ SecureAccountStore.session = originalSession!!.copy(userId = "inert-other") })
+    pending({ OwnerAccessPolicy.token = "INERT_GOOGLE_CHANGED_" + "X".repeat(64) })
+    pending({ OwnerAccessPolicy.active = false })
     pending({}, cancel = true)
     pending({}, timeout = true)
     pending({ active = false }, enabling = true)
     pending({ terminal = "two" }, enabling = true)
     pending({ sink.disable() }, enabling = true)
     pending({}, cancel = true, enabling = true)
-    println("Host Kotlin policy and clipboard-boundary checks passed; Android runtime deferred.")
+    println("Host Kotlin Google-admin policy and clipboard-boundary checks passed; Android runtime deferred.")
 }
+
 '''
 
 
@@ -255,10 +274,13 @@ class TerminalAutoCopyContractTest(unittest.TestCase):
         self.assertNotIn('termux-clipboard-set', boundary)
         self.assertNotIn('result.output', boundary)
         self.assertIn('connection.instanceFollowRedirects = false', boundary)
-        self.assertIn('URL(DEFAULT_BUILD_SERVICE_URL', boundary)
-        self.assertIn('policy.consume(ticket, result, authorized, currentTerminalSession().orEmpty())', boundary)
-        self.assertIn('role = account.optString("role")', boundary)
+        self.assertIn('URL(DEFAULT_CONTROL_PLANE_URL', boundary)
+        self.assertIn('policy.consume(ticket, result, authorized, currentTerminalSession().orEmpty())', ' '.join(boundary.split()))
+        self.assertIn('adminVerified = response.optBoolean("adminVerified", false)', boundary)
         self.assertIn('TerminalAdminCopyDecision.permits(', boundary)
+        self.assertIn('OwnerAccessPolicy.currentGoogleIdToken()', boundary)
+        self.assertNotIn('SecureAccountStore', boundary)
+        self.assertNotIn('DEFAULT_BUILD_SERVICE_URL', boundary)
         self.assertIn('event == Lifecycle.Event.ON_STOP', screen)
         self.assertNotIn('LaunchedEffect(showSafeHelp)', screen)
 

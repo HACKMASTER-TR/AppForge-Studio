@@ -36,13 +36,18 @@ class TerminalSafeAutoCopyPolicyTest {
         assertFalse(policy.permits(ticket, result(), false, "one"))
     }
 
-    @Test fun adminResponseMustMatchAuthenticatedAccountAndCurrentRole() {
-        assertTrue(TerminalAdminCopyDecision.permits(true, "admin", true, "admin@example.invalid", "admin@example.invalid"))
-        assertFalse(TerminalAdminCopyDecision.permits(false, "admin", true, "a", "a"))
-        assertFalse(TerminalAdminCopyDecision.permits(true, "pro", true, "a", "a"))
-        assertFalse(TerminalAdminCopyDecision.permits(true, "admin", false, "a", "a"))
-        assertFalse(TerminalAdminCopyDecision.permits(true, "admin", true, "a", "b"))
-        assertFalse(TerminalAdminCopyDecision.permits(true, "admin", true, "", ""))
+    @Test fun googleAdminResponseRequiresVerifiedFreshServerAuthorization() {
+        val now = 1_700_000_000L
+        fun allowed(ok: Boolean, verified: Boolean, expires: Long) =
+            TerminalAdminCopyDecision.permits(ok, verified, expires, now)
+        assertTrue(allowed(true, true, now + 1_800))
+        assertFalse(allowed(false, true, now + 1_800))
+        assertFalse(allowed(true, false, now + 1_800))
+        assertFalse(allowed(true, true, now))
+        assertFalse(allowed(true, true, now - 1))
+        assertFalse(allowed(true, true, 0))
+        assertFalse(allowed(true, true, now + 3_701))
+        assertFalse(TerminalAdminCopyDecision.permits(true, true, now + 1_800, 0))
     }
 
     @Test fun disablingOrReenablingInvalidatesInFlightEvents() {
