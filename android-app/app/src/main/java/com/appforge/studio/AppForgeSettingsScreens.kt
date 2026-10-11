@@ -365,7 +365,7 @@ internal fun LegalCenterScreen(
         Triple(
             "🔐",
             settingsT(languageCode, "privacy_policy"),
-            "Normal AppForge kullanımı hesapsızdır; e-posta veya parola ile AppForge kullanıcı hesabı oluşturulmaz. Projeler ve normal build geçmişi cihazda tutulur. Parolalar, API anahtarları ve keystore parolaları Yerel AI bağlamına eklenmez. Google ile yönetici doğrulaması, GitHub bağlantısı ve Google Play satın alma doğrulaması yalnız ilgili özellik kullanıldığında kendi ayrı güvenlik akışları üzerinden çalışır."
+            "Temel özellikler için üyelik zorunlu değildir; e-posta veya parola ile AppForge kullanıcı hesabı oluşturulmaz. Projeler ve normal build geçmişi cihazda tutulur. Parolalar, API anahtarları ve keystore parolaları Yerel AI bağlamına eklenmez. Google ile yönetici doğrulaması, GitHub bağlantısı ve Google Play satın alma doğrulaması yalnız ilgili özellik kullanıldığında kendi ayrı güvenlik akışları üzerinden çalışır."
         ),
         Triple(
             "🛒",

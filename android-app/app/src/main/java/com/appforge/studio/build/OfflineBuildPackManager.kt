@@ -169,6 +169,18 @@ internal object OfflineBuildPackManager {
         draft: ProjectDraft
     ): OfflineBuildRequirementCheck {
 
+        // HTML (.html) and HTTPS URL APKs never require the optional offline pack.
+        // A dedicated, bundled template produces and signs their APKs locally.
+        if (FastHtmlApkPolicy.isCandidate(draft)) {
+            val reason = runCatching { FastHtmlApkPolicy.requireSupported(draft) }
+                .exceptionOrNull()?.message
+            return OfflineBuildRequirementCheck(
+                ready = reason == null,
+                engine = "fast-html-apk",
+                missing = listOfNotNull(reason)
+            )
+        }
+
         val current =
             status(
                 context
@@ -285,6 +297,10 @@ internal object OfflineBuildPackManager {
         context: Context,
         draft: ProjectDraft
     ) {
+        if (FastHtmlApkPolicy.isCandidate(draft)) {
+            FastHtmlApkPolicy.requireSupported(draft)
+            return
+        }
         val check =
             checkBuildRequirements(
                 context,

@@ -20,17 +20,23 @@ test(
         "android-app/app/src/main/java/com/appforge/studio/MainActivity.kt"
       );
 
+    // Keep normal user access available without showing account status slogans.
     assert.match(
       main,
-      /AppForge Hesapsız Kullanım/
+      /Text\("AppForge Studio", style = MaterialTheme\.typography\.headlineSmall\)/
     );
 
     assert.match(
       main,
-      /Normal kullanım için AppForge hesabı oluşturulmaz/
+      /temel özellikler için üyelik zorunlu değildir/
     );
 
-    assert.match(
+    assert.doesNotMatch(
+      main,
+      /AppForge Hesapsız Kullanım|Hesapsız kullanım aktif/
+    );
+
+    assert.doesNotMatch(
       main,
       /label = "Kullanım"[\s\S]*?value = "Hesapsız"/
     );

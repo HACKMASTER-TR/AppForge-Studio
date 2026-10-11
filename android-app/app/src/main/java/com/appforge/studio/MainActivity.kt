@@ -8202,6 +8202,8 @@ private fun QuickCreateScreen(
     onOpenPro: () -> Unit
 ) {
     var extraFeaturesExpanded by remember { mutableStateOf(false) }
+    // Manual package IDs must not be silently replaced by app-name edits.
+    var quickPackageManualOverride by rememberSaveable { mutableStateOf(false) }
     var proFeatureRequest by
         remember {
             mutableStateOf<String?>(
@@ -8343,9 +8345,23 @@ private fun QuickCreateScreen(
                         OutlinedTextField(
                             value =
                                 draft.appName,
-                            onValueChange = {
+                            onValueChange = { entered ->
+                                val automaticBefore = quickPackageName(draft.appName)
+                                val shouldSyncPackage = !quickPackageManualOverride &&
+                                    draft.packageName in setOf(
+                                        automaticBefore,
+                                        "com.appforgestudio.myapp",
+                                        "com.example.myapp"
+                                    )
                                 onDraftChange(
-                                    draft.copy(appName = it)
+                                    draft.copy(
+                                        appName = entered,
+                                        packageName = if (shouldSyncPackage) {
+                                            quickPackageName(entered)
+                                        } else {
+                                            draft.packageName
+                                        }
+                                    )
                                 )
                             },
                             modifier =
@@ -8363,6 +8379,7 @@ private fun QuickCreateScreen(
                         OutlinedTextField(
                             value = draft.packageName,
                             onValueChange = { entered ->
+                                quickPackageManualOverride = true
                                 onDraftChange(
                                     draft.copy(packageName = entered.trim().lowercase())
                                 )
@@ -25718,8 +25735,8 @@ private fun AccountScreen(
     }
     Column(Modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("AppForge Hesapsız Kullanım", style = MaterialTheme.typography.headlineSmall)
-        Text("Normal kullanım için AppForge hesabı oluşturulmaz; e-posta veya parola ile giriş yapman gerekmez.")
+        Text("AppForge Studio", style = MaterialTheme.typography.headlineSmall)
+        Text("Projelerini cihazında yönetebilirsin; temel özellikler için üyelik zorunlu değildir.")
         Text("Projeler, build geçmişi ve normal çalışma verileri cihazında yerel olarak tutulur.")
         Text("Pro Ömür Boyu satın alımı Google Play üzerinden yönetilir.")
         Text("Google ile yönetici doğrulaması yalnız owner/admin özellikleri içindir; normal kullanıcı hesabı değildir.")
@@ -25992,42 +26009,34 @@ private fun TemplatesScreen(
     val scope = rememberCoroutineScope()
     val catalog = remember { templateCategoryCatalog() }
 
-    var templates by remember { mutableStateOf<List<RemoteTemplate>>(emptyList()) }
+    var templates by remember { mutableStateOf(com.appforge.studio.io.LocalTemplateCatalog.templates) }
     var message by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var selectedCategoryKey by remember { mutableStateOf<String?>(null) }
 
     fun load() {
-        val current = session
-
-        if (current == null) {
-            templates = emptyList()
-            message =
-                "Hesapsız kullanım aktif. Şablon kataloğunu giriş yapmadan gezebilirsin; bu sürümde normal kullanıcı hesabı gerektiren sunucu şablonları kullanılmıyor."
+        // Restore the catalog already bundled in TemplateProjectFactory.
+        // No account, server access or download is needed for local templates.
+        val local = com.appforge.studio.io.LocalTemplateCatalog.templates
+        templates = local
+        message = ""
+        val current = session ?: run {
+            loading = false
             return
         }
 
         loading = true
-
         scope.launch {
             try {
-                templates =
-                    withContext(
-                        Dispatchers.IO
-                    ) {
-                        WorkspaceClient(
-                            context,
-                            serverUrl,
-                            current.token
-                        ).listTemplates()
-                    }
-
-                message =
-                    "${templates.size} şablon yüklendi."
-            } catch (t: Throwable) {
-                message =
-                    "Hata: ${t.message}"
+                val remote = withContext(Dispatchers.IO) {
+                    WorkspaceClient(context, serverUrl, current.token).listTemplates()
+                }
+                templates = (local + remote).distinctBy { it.slug }
+                message = "${templates.size} şablon hazır."
+            } catch (_: Throwable) {
+                templates = local
+                message = "Yerel şablonlar kullanılabilir."
             } finally {
                 loading = false
             }
@@ -26186,10 +26195,6 @@ private fun TemplatesScreen(
                                 value = templates.size.toString()
                             )
 
-                            TemplateStatPill(
-                                label = "Kullanım",
-                                value = "Hesapsız"
-                            )
                         }
 
                         OutlinedTextField(
@@ -26284,11 +26289,7 @@ private fun TemplatesScreen(
                 if (selectedTemplates.isEmpty()) {
                     item {
                         NoteCard(
-                            if (session == null) {
-                                "Bu kategoride henüz uygulanabilir hazır şablon yok. Normal kullanımda giriş yapman gerekmez."
-                            } else {
-                                "Bu kategoride henüz uygulanabilir hazır şablon bulunmuyor."
-                            }
+                            "Bu kategoride henüz uygulanabilir hazır şablon bulunmuyor."
                         )
                     }
 

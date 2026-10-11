@@ -42,7 +42,8 @@ test(
   "Legal Center matches accountless device-local lifetime product",
   () => {
     assert.match(settings, /Cihazda build ve proje verileri/);
-    assert.match(settings, /Normal AppForge kullanımı hesapsızdır/);
+    assert.match(settings, /Temel özellikler için üyelik zorunlu değildir; e-posta veya parola ile AppForge kullanıcı hesabı oluşturulmaz/);
+    assert.doesNotMatch(settings, /Normal AppForge kullanımı hesapsızdır/);
     assert.match(settings, /AppForge Pro Ömür Boyu tek seferlik Google Play satın alımıdır/);
 
     assert.doesNotMatch(

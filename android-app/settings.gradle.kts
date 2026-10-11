@@ -15,5 +15,6 @@ dependencyResolutionManagement {
 }
 rootProject.name = "AppForgeStudio"
 include(":app")
+include(":html-apk-template")
 include(":termux-terminal-emulator")
 include(":termux-terminal-view")

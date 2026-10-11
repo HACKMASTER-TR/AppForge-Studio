@@ -219,6 +219,24 @@ object DeviceBuildEngine {
 
             validateCapabilities(draft)
 
+            // FAST_HTML_APK_V1: no rootfs, SDK, JDK, Gradle, or download manager.
+            // Never fall back silently to a network toolchain on an eligible HTML/URL project.
+            if (FastHtmlApkPolicy.isCandidate(draft)) {
+                FastHtmlApkPolicy.requireSupported(draft)
+                state.preflight.add("✅ HTML/HTTPS Hızlı APK • internet ve ek araç paketi yok.")
+                state.preflight.add("✅ APK cihazda imzalanacak; AAB ve özel anahtar desteklenmiyor.")
+                workspace.deleteRecursively()
+                advanceProgress(state, 15, "HTML APK şablonu hazırlanıyor")
+                checkCancelled(state)
+                val apk = FastHtmlApkPackager.build(context, draft, workspace)
+                checkCancelled(state)
+                state.apk = apk
+                state.progress = 100
+                state.status = "success"
+                state.logs.add("✅ HTML/HTTPS APK hazır • sıfır ek araç indirme.")
+                return
+            }
+
             val sourceEngine =
                 effectiveSourceEngine(
                     draft

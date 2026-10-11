@@ -482,6 +482,23 @@ android {
     }
 }
 
+// Build a tiny unsigned shell at AppForge CI build time; users never download toolchains.
+val generateFastHtmlTemplate = tasks.register<Copy>("generateFastHtmlTemplate") {
+    dependsOn(":html-apk-template:assembleRelease")
+    from(project(":html-apk-template").layout.buildDirectory.file("outputs/apk/release/html-apk-template-release-unsigned.apk"))
+    into(layout.buildDirectory.dir("generated/html-template/assets"))
+    rename { "html-apk-template.apk" }
+    doLast {
+        val built = layout.buildDirectory.file("generated/html-template/assets/html-apk-template.apk").get().asFile
+        check(built.isFile && built.length() > 1_024L) { "CI şablonu hazırlanamadı: $built" }
+    }
+}
+
+android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/html-template/assets"))
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+    dependsOn(generateFastHtmlTemplate)
+}
+
 androidComponents {
     onVariants { variant ->
         variant.sources.jniLibs?.addGeneratedSourceDirectory(
@@ -501,6 +518,7 @@ androidComponents {
 }
 
 dependencies {
+    implementation("com.android.tools.build:apksig:9.1.1")
     implementation(project(":termux-terminal-view"))
 
     val composeBom = platform("androidx.compose:compose-bom:2026.08.00")

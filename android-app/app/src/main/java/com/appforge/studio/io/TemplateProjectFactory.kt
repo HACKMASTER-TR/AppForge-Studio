@@ -35,11 +35,10 @@ object TemplateProjectFactory {
         val projectDir =
             File(
                 context.filesDir,
-                "projects/template_$safeSlug"
+                "projects/template_${safeSlug}_${java.util.UUID.randomUUID().toString().take(8)}"
             )
 
-        projectDir.deleteRecursively()
-        projectDir.mkdirs()
+        check(projectDir.mkdirs()) { "Yeni şablon çalışma alanı oluşturulamadı." }
 
         val startPage =
             File(

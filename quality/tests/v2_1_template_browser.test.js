@@ -73,8 +73,9 @@ test("template bottom sheet and direct apply exist", async () => {
     true
   );
 
-  assert.equal(
-    text.includes("Hesapsız kullanım aktif. Şablon kataloğunu giriş yapmadan gezebilirsin"),
-    true
-  );
+  // The catalog must be populated locally rather than blanked for unsigned sessions.
+  assert.match(text, /LocalTemplateCatalog\.templates/);
+  assert.match(text, /templates = local/);
+  assert.match(text, /TemplateProjectFactory/);
+  assert.doesNotMatch(text, /Hesapsız kullanım aktif/);
 });
