@@ -198,7 +198,7 @@ val appforgeProSecondDevice = providers.gradleProperty("appforgeProSecondDevice"
 val appforgeProProcessDeathTest = providers.gradleProperty("appforgeProProcessDeathTest").orNull == "true"
 
 val appforgeBaseVersionCode =
-    529
+    534
 
 // Debug-only, explicit opt-in for the B05+V3 upgrade acceptance APK.
 // Does not change normal debug, release, or Play Integrity version policy.
@@ -296,7 +296,7 @@ android {
                 appforgeBaseVersionCode
             }
 
-        versionName = "5.0.29"
+        versionName = "5.0.34"
     }
 
     fun oauthClientId(name: String): String {

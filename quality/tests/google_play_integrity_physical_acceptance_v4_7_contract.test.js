@@ -431,7 +431,7 @@ test(
   () => {
     assert.match(
       gradle,
-      /val appforgeBaseVersionCode\s*=\s*529/
+      /val appforgeBaseVersionCode\s*=\s*534/
     );
 
     assert.match(
