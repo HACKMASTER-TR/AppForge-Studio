@@ -530,6 +530,70 @@
       },
       "blockers": [],
       "nextAction": "PR #72 remains draft, open and unmerged; delivery awaits explicit authorization and parent-first stacked-PR handling."
+    },
+    {
+      "id": "pty-autocopy-v3",
+      "title": "Terminal Bash PTY Auto-Copy V3 Hardening 5.0.32",
+      "scope": "Android debug exact-SHA hardening acceptance. Six base scenarios physically reported on earlier 47caec9; 512 KiB overflow and 20,100-line history overflow physically confirmed on 0893806. These are not an all-scenario exact-SHA retest or certification.",
+      "lifecycle": "ACTIVE",
+      "branch": "feat/terminal-pty-autocopy-v3-20261011",
+      "baseBranch": "main",
+      "baseSha": "da7e6095ada38e46ebe362fb3012c166ffa79fa7",
+      "sourceSha": "0893806d86ca8154d634dced87b9d6a16dad2dba",
+      "stages": {
+        "implementation": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "0893806d86ca8154d634dced87b9d6a16dad2dba",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/commit/0893806d86ca8154d634dced87b9d6a16dad2dba"
+          }
+        },
+        "targetedTests": {
+          "state": "UNKNOWN",
+          "reason": "15 Kotlin tests reported PASS; exact-SHA independent raw execution log not established in this record."
+        },
+        "fullQuality": {
+          "state": "UNKNOWN",
+          "reason": "V1/V2 and stability PASS reported; exact-SHA full-suite record not independently established here."
+        },
+        "secondBrain": {
+          "state": "NOT_RUN",
+          "reason": "V3 branch lacks B05 current-state handoff; B05 documentation preparation is separate."
+        },
+        "hostedCI": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "0893806d86ca8154d634dced87b9d6a16dad2dba",
+            "reference": "https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/38133654003",
+            "runId": 38133654003,
+            "workflow": "Android Debug"
+          }
+        },
+        "physicalAcceptance": {
+          "state": "PASS",
+          "evidence": {
+            "sourceSha": "0893806d86ca8154d634dced87b9d6a16dad2dba",
+            "reference": "docs/wiki/01_Project/PTY_Auto_Copy_V3_Physical_Acceptance_20261011.md",
+            "scenario": "Android 0893806 hardening: 600 KiB OUTPUT_LIMIT and 20,100-line OUTPUT_INCOMPLETE with prior clipboard sentinel preserved and terminal usable."
+          }
+        },
+        "merge": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution."
+        },
+        "release": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution."
+        },
+        "deploy": {
+          "state": "NOT_RUN",
+          "reason": "No authorization or execution."
+        }
+      },
+      "blockers": [
+        "B05 and V3 are divergent; their integration has not been authorized."
+      ],
+      "nextAction": "Review evidence record in isolation and plan guarded integration only after explicit authorization."
     }
   ]
 }

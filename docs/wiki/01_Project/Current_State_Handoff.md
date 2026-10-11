@@ -55,6 +55,34 @@ Blockers / references: none recorded (not proof of blocker absence)
 
 Next action: Independent verification and explicit authorization before any delivery.
 
+## pty-autocopy-v3 — Terminal Bash PTY Auto-Copy V3 Hardening 5.0.32
+
+Scope: Android debug exact-SHA hardening acceptance. Six base scenarios physically reported on earlier 47caec9; 512 KiB overflow and 20,100-line history overflow physically confirmed on 0893806. These are not an all-scenario exact-SHA retest or certification.
+
+Lifecycle: **ACTIVE**
+
+- Branch: `feat/terminal-pty-autocopy-v3-20261011`
+- Base branch: `main`
+- Base exact SHA: `da7e6095ada38e46ebe362fb3012c166ffa79fa7`
+- Manifest-recorded source SHA: `0893806d86ca8154d634dced87b9d6a16dad2dba`
+- Parent workstream: none recorded
+
+| Evidence stage | State | Binding / reference or reason |
+|---|---|---|
+| implementation | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/commit/0893806d86ca8154d634dced87b9d6a16dad2dba; sourceSha: 0893806d86ca8154d634dced87b9d6a16dad2dba |
+| targetedTests | UNKNOWN | 15 Kotlin tests reported PASS; exact-SHA independent raw execution log not established in this record. |
+| fullQuality | UNKNOWN | V1/V2 and stability PASS reported; exact-SHA full-suite record not independently established here. |
+| secondBrain | NOT_RUN | V3 branch lacks B05 current-state handoff; B05 documentation preparation is separate. |
+| hostedCI | PASS | reference: https://github.com/HACKMASTER-TR/AppForge-Studio/actions/runs/38133654003; runId: 38133654003; sourceSha: 0893806d86ca8154d634dced87b9d6a16dad2dba; workflow: Android Debug |
+| physicalAcceptance | PASS | reference: docs/wiki/01_Project/PTY_Auto_Copy_V3_Physical_Acceptance_20261011.md; scenario: Android 0893806 hardening: 600 KiB OUTPUT_LIMIT and 20,100-line OUTPUT_INCOMPLETE with prior clipboard sentinel preserved and terminal usable.; sourceSha: 0893806d86ca8154d634dced87b9d6a16dad2dba |
+| merge | NOT_RUN | No authorization or execution. |
+| release | NOT_RUN | No authorization or execution. |
+| deploy | NOT_RUN | No authorization or execution. |
+
+Blockers / references: B05 and V3 are divergent; their integration has not been authorized.
+
+Next action: Review evidence record in isolation and plan guarded integration only after explicit authorization.
+
 ## sb01 — Retired backend introductory-map correction
 
 Scope: Documentation/governance-only: six stale introductory maps corrected; retirement regression coverage added; current-state behavioral coverage repaired for branch-order and detached-HEAD independence. Retirement contracts 22/22, current-state behavior 24/24, full quality 989/989 and Second Brain passed. Exact-SHA hosted Stability Gate run 37890174134 passed; historical run 37887768441 failed on earlier SHA 05ad784d233506d43c8c9d1cfbe9b65e68dff71c and is not accepted. PR #68 remains open and draft; no runtime source changed.
