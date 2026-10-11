@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const source = readFileSync(
-  'android-app/app/src/main/java/com/appforge/studio/MainActivity.kt',
+  path.join(repoRoot, 'android-app/app/src/main/java/com/appforge/studio/MainActivity.kt'),
   'utf8'
 );
 
