@@ -1433,6 +1433,26 @@ fun TerminalWorkspaceScreen(
                 when (selectedTab) {
                     TerminalWorkspaceTab.TERMINAL ->
                         LocalPtyTerminalPanel(
+                            // APPFORGE_V3_BEGIN:SCREEN_CALLBACK
+                            ptyAutoCopyEnabled = autoCopyEnabled,
+                            onPtyAutoCopyCompleted = { event ->
+                                scope.launch {
+                                    if (safeAutoCopy.enabled && event.reason != null) {
+                                        autoCopyMessage = when (event.reason) {
+                                            "OUTPUT_LIMIT" -> "PTY çıktısı 512 KiB sınırını aştı; otomatik kopyalanmadı."
+                                            "SENSITIVE_OUTPUT" -> "Olası gizli bilgi içeren çıktı otomatik kopyalanmadı."
+                                            else -> "PTY çıktısı güvenli biçimde kopyalanamadı."
+                                        }
+                                    } else {
+                                        val copied = safeAutoCopy.copyPtyCompleted(event) {
+                                            LocalPtySessionRegistry.isAutoCopyResultCurrent(event)
+                                        }
+                                        autoCopyEnabled = safeAutoCopy.enabled
+                                        if (copied) autoCopyMessage = "Bash komut çıktısı panoya kopyalandı."
+                                    }
+                                }
+                            },
+                            // APPFORGE_V3_END:SCREEN_CALLBACK
                             onCopyContextInvalidated = {
                                 safeAutoCopy.disable()
                                 autoCopyEnabled = false

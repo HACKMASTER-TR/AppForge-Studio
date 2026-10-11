@@ -2,6 +2,7 @@
 No Android/device acceptance; HTTPS is intercepted in-process, never sent to a network.
 Generated compiler files are confined to the allowed terminal test source tree.
 """
+import re
 import pathlib
 import shutil
 import subprocess
@@ -233,7 +234,9 @@ class TerminalAutoCopyContractTest(unittest.TestCase):
                 (directory / name).write_text(source)
             (directory / 'Harness.kt').write_text(HARNESS)
             jar = directory / 'tests.jar'
+            # Compile the V3 sink with its REAL dependent production sources, not mocked classes.
             sources = [PACKAGE / 'TerminalSafeAutoCopyPolicy.kt', PACKAGE / 'TerminalSafeAutoCopy.kt',
+                       PACKAGE / 'TerminalPtyCopyCapture.kt', PACKAGE / 'AnsiTerminalBuffer.kt',
                        TESTS / 'TerminalSafeAutoCopyPolicyTest.kt', *directory.glob('*.kt')]
             subprocess.run(['kotlinc', *map(str, sources), '-cp', str(coroutines),
                             '-include-runtime', '-d', str(jar)], check=True, timeout=120)
@@ -249,7 +252,15 @@ class TerminalAutoCopyContractTest(unittest.TestCase):
             baseline = subprocess.check_output(['git', 'show', BASE + ':' + relative], cwd=ROOT).decode()
             current = path.read_text()
             if name == 'LocalPtyTerminalPanel.kt':
-                # Only the new synchronous session-invalidation callback may differ.
+                # Preserve the original full-file regression by stripping ONLY
+                # V3-marked additive blocks, then the V2 known callback changes.
+                v3_blocks = re.findall(
+                    r'(?m)^ *// APPFORGE_V3_BEGIN:([A-Z_]+)\n[\s\S]*?^ *// APPFORGE_V3_END:\1\n',
+                    current)
+                self.assertGreaterEqual(len(v3_blocks), 10)
+                current = re.sub(
+                    r'(?m)^ *// APPFORGE_V3_BEGIN:([A-Z_]+)\n[\s\S]*?^ *// APPFORGE_V3_END:\1\n',
+                    '', current)
                 current = current.replace('    onHistoryIndex: (Int) -> Unit,\n'
                                           '    onCopyContextInvalidated: () -> Unit = {}',
                                           '    onHistoryIndex: (Int) -> Unit')

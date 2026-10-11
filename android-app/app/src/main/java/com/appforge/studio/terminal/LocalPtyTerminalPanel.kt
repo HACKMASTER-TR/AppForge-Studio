@@ -52,6 +52,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+// APPFORGE_V3_BEGIN:IMPORT
+import androidx.compose.runtime.rememberUpdatedState
+// APPFORGE_V3_END:IMPORT
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
@@ -168,6 +171,10 @@ internal object LocalPtySessionRegistry {
         val workspace: File,
         var workingDirectory: File,
         val session: LocalInteractivePtySession,
+        // APPFORGE_V3_BEGIN:RECORD
+        val copyCapture: TerminalPtyCopyCapture =
+            TerminalPtyCopyCapture(session.copyProtocolToken),
+        // APPFORGE_V3_END:RECORD
         val buffer: AnsiTerminalBuffer,
         var running: Boolean,
         var starting: Boolean,
@@ -180,6 +187,10 @@ internal object LocalPtySessionRegistry {
         var pendingOutputChars: Long
     )
 
+    // APPFORGE_V3_BEGIN:REGISTRY_STATE
+    private val autoCopyObservers =
+        HashMap<String, Pair<Any, (TerminalPtyCopyEvent) -> Unit>>()
+    // APPFORGE_V3_END:REGISTRY_STATE
     private val lock = Any()
 
     /*
@@ -307,6 +318,34 @@ internal object LocalPtySessionRegistry {
         )
     }
 
+    // APPFORGE_V3_BEGIN:REGISTRY_API
+    fun observeAutoCopyResult(
+        sessionId: String,
+        callback: (TerminalPtyCopyEvent) -> Unit
+    ): AutoCloseable {
+        val token = Any()
+        synchronized(lock) {
+            if (records.containsKey(sessionId)) {
+                records[sessionId]?.copyCapture?.reset()
+                autoCopyObservers[sessionId] = token to callback
+            }
+        }
+        return AutoCloseable {
+            synchronized(lock) {
+                if (autoCopyObservers[sessionId]?.first === token) autoCopyObservers.remove(sessionId)
+            }
+        }
+    }
+
+    fun isAutoCopyResultCurrent(event: TerminalPtyCopyEvent): Boolean =
+        synchronized(lock) {
+            activeSessionId == event.sessionId &&
+                records[event.sessionId]?.let { record ->
+                    record.running && record.copyCapture.latestSequence == event.sequence
+                } == true
+        }
+
+    // APPFORGE_V3_END:REGISTRY_API
     fun createSession(
         context: Context,
         workspace: File,
@@ -442,6 +481,9 @@ internal object LocalPtySessionRegistry {
                     "PTY oturumu zaten çalışıyor."
                 }
 
+                // APPFORGE_V3_BEGIN:RESET
+                current.copyCapture.reset()
+                // APPFORGE_V3_END:RESET
                 current.starting = true
                 current.exitCode = null
                 if (!current.restored) {
@@ -480,6 +522,10 @@ internal object LocalPtySessionRegistry {
                             chunk
                         )
 
+                    // APPFORGE_V3_BEGIN:OUTPUT_EVENT_LOCAL
+                    var copyEvents: List<TerminalPtyCopyEvent> = emptyList()
+                    var copyObserver: ((TerminalPtyCopyEvent) -> Unit)? = null
+                    // APPFORGE_V3_END:OUTPUT_EVENT_LOCAL
                     var shouldMirrorOutput =
                         false
 
@@ -491,6 +537,21 @@ internal object LocalPtySessionRegistry {
                         current.buffer.feed(
                             safeChunk
                         )
+                        // APPFORGE_V3_BEGIN:OUTPUT_PARSE
+                        // Parse OSC before display redaction modifies the marker.
+                        // Redact the completed text before sending to the UI.
+                        copyObserver = autoCopyObservers[id]?.second
+                        // No auto-copy parsing cost when the opt-in is OFF.
+                        if (copyObserver != null) {
+                            copyEvents = current.copyCapture.feed(chunk).map { completed ->
+                                TerminalPtyCopyEvent(
+                                    id, completed.sequence,
+                                    TerminalSecretMasker.redact(completed.output),
+                                    completed.exitCode, completed.reason
+                                )
+                            }
+                        }
+                        // APPFORGE_V3_END:OUTPUT_PARSE
                         current.outputRevision += 1L
 
                         current.pendingOutputChars =
@@ -544,6 +605,9 @@ internal object LocalPtySessionRegistry {
                                     safeChunk
                             )
                     }
+                    // APPFORGE_V3_BEGIN:NOTIFY
+                    copyEvents.forEach { event -> runCatching { copyObserver?.invoke(event) } }
+                    // APPFORGE_V3_END:NOTIFY
                 },
                 onExit = { exitCode ->
                     synchronized(lock) {
@@ -596,6 +660,11 @@ internal object LocalPtySessionRegistry {
             }
                 ?: return
 
+        // APPFORGE_V3_BEGIN:INTERRUPTION
+        if (text.contains('\u0003')) {
+            synchronized(lock) { records[id]?.copyCapture?.cancel() }
+        }
+        // APPFORGE_V3_END:INTERRUPTION
         if (
             text.isEmpty()
         ) {
@@ -750,6 +819,9 @@ internal object LocalPtySessionRegistry {
                 val current =
                     records.remove(id)
 
+                // APPFORGE_V3_BEGIN:SESSION_REMOVE
+                autoCopyObservers.remove(id)
+                // APPFORGE_V3_END:SESSION_REMOVE
                 pendingOutputPublishes
                     .remove(id)
 
@@ -1447,6 +1519,9 @@ private class LocalInteractivePtySession(
 
     private val workingDirectoryTracker =
         TerminalWorkingDirectoryTracker()
+    // APPFORGE_V3_BEGIN:TOKEN
+    val copyProtocolToken: String = UUID.randomUUID().toString().replace("-", "")
+    // APPFORGE_V3_END:TOKEN
 
     @Volatile
     private var linuxRootfs:
@@ -1643,6 +1718,16 @@ private class LocalInteractivePtySession(
                                 }
                             }
 
+                        // APPFORGE_V3_BEGIN:BASH_HOOK
+                        // Only Bash interprets PS0 and PROMPT_COMMAND. Non-Bash skips auto-copy.
+                        environment["PS0"] =
+                            "\\e]777;afcopy-begin=$copyProtocolToken\\a"
+                        environment["PROMPT_COMMAND"] =
+                            "__af_exit=\$?; if [ -n \"\$(jobs -pr)\" ]; then __af_exit=bg; fi; " +
+                                "printf '\\033]777;afcopy-end=$copyProtocolToken;%s\\007' " +
+                                "\"\$__af_exit\"; " + APPFORGE_CWD_PROMPT_COMMAND
+
+                        // APPFORGE_V3_END:BASH_HOOK
                         AppForgePtyBridge.spawn(
                             executable =
                                 launcher.absolutePath,
@@ -2027,6 +2112,10 @@ internal fun LocalPtyTerminalPanel(
     onRunCommand: (String) -> Unit,
     onCancel: () -> Unit,
     onHistoryIndex: (Int) -> Unit,
+    // APPFORGE_V3_BEGIN:UI_PARAM
+    ptyAutoCopyEnabled: Boolean = false,
+    onPtyAutoCopyCompleted: (TerminalPtyCopyEvent) -> Unit = {},
+    // APPFORGE_V3_END:UI_PARAM
     onCopyContextInvalidated: () -> Unit = {}
 ) {
     val context =
@@ -2200,6 +2289,20 @@ internal fun LocalPtyTerminalPanel(
             .firstOrNull {
                 it.id == activePtyId
             }
+    // APPFORGE_V3_BEGIN:UI_OBSERVER
+
+    val currentAutoCopyCallback by rememberUpdatedState(onPtyAutoCopyCompleted)
+    androidx.compose.runtime.DisposableEffect(activePtyId, workspacePath, ptyAutoCopyEnabled) {
+        val subscription = activePtyId?.takeIf { ptyAutoCopyEnabled }?.let { id ->
+            LocalPtySessionRegistry.observeAutoCopyResult(id) { event ->
+                scope.launch(Dispatchers.Main.immediate) {
+                    currentAutoCopyCallback(event)
+                }
+            }
+        }
+        onDispose { subscription?.close() }
+    }
+    // APPFORGE_V3_END:UI_OBSERVER
 
     var terminalCopyMode by
         remember(activePtyId) {

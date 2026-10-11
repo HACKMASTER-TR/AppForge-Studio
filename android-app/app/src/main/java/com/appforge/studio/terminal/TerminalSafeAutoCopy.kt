@@ -110,6 +110,52 @@ internal class TerminalSafeAutoCopy(
         }
     }
 
+    /** V3: only complete Bash/PTY messages may be copied; never a raw PTY frame. */
+    suspend fun copyPtyCompleted(
+        event: TerminalPtyCopyEvent,
+        stillCurrent: () -> Boolean
+    ): Boolean {
+        if (!policy.enabled || !lifecycleActive() || !stillCurrent() || event.reason != null) return false
+        if (event.output.isBlank() ||
+            event.output.toByteArray(Charsets.UTF_8).size > TerminalPtyCopyCapture.MAX_COPY_BYTES ||
+            event.output.any { it == '\u0000' || it == '\u001b' }) return false
+        val revision = policy.revision
+        val logicalSession = currentTerminalSession() ?: return false
+        val token = enabledGoogleIdToken ?: return false
+        if (activeGoogleAdminToken() != token) {
+            disable()
+            return false
+        }
+        val verificationStarted = SystemClock.elapsedRealtime()
+        val authorized = freshAdmin(token)
+        return withContext(clipboardDispatcher) {
+            currentCoroutineContext().ensureActive()
+            if (!authorized || activeGoogleAdminToken() != token || !lifecycleActive()) {
+                if (revision == policy.revision) disable()
+                return@withContext false
+            }
+            if (!policy.enabled || revision != policy.revision ||
+                enabledGoogleIdToken != token || currentTerminalSession() != logicalSession ||
+                !stillCurrent() ||
+                SystemClock.elapsedRealtime() - verificationStarted !in 0L..6_000L)
+                return@withContext false
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                ?: return@withContext false
+            try {
+                currentCoroutineContext().ensureActive()
+                if (!policy.enabled || revision != policy.revision ||
+                    activeGoogleAdminToken() != token || !lifecycleActive() || !stillCurrent())
+                    return@withContext false
+                clipboard.setPrimaryClip(ClipData.newPlainText("AppForge PTY result", event.output))
+                true
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: RuntimeException) {
+                false
+            }
+        }
+    }
+
     private suspend fun freshAdmin(token: String): Boolean {
         val started = SystemClock.elapsedRealtime()
         val allowed = withTimeoutOrNull(6_000L) { verifyGoogleAdmin(token) } ?: false
