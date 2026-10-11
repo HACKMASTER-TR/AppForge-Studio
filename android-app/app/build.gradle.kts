@@ -494,9 +494,44 @@ val generateFastHtmlTemplate = tasks.register<Copy>("generateFastHtmlTemplate") 
     }
 }
 
+// P1 only: CI-prebuilt static HTML AAB shell asset; runtime bundling is gated.
+val generateFastHtmlAabTemplate = tasks.register<Copy>("generateFastHtmlAabTemplate") {
+    dependsOn(":html-apk-template:bundleRelease")
+    val bundleDirectory =
+        project(":html-apk-template").layout.buildDirectory.dir("outputs/bundle/release")
+    from(bundleDirectory) {
+        include("*.aab")
+    }
+    into(layout.buildDirectory.dir("generated/html-aab-template/assets"))
+    rename { "html-aab-template.aab" }
+    doFirst {
+        val bundles =
+            bundleDirectory.get().asFile.listFiles()
+                ?.filter { it.isFile && it.extension == "aab" }
+                .orEmpty()
+        check(bundles.size == 1) {
+            "Expected exactly one built HTML shell AAB, found ${bundles.size}."
+        }
+    }
+    doLast {
+        val file =
+            layout.buildDirectory.file(
+                "generated/html-aab-template/assets/html-aab-template.aab"
+            ).get().asFile
+        check(file.isFile && file.length() > 1_024L) {
+            "Gömülü HTML AAB şablonu üretilemedi: $file"
+        }
+    }
+}
+
+android.sourceSets.getByName("main").assets.srcDir(
+    layout.buildDirectory.dir("generated/html-aab-template/assets").get().asFile
+)
+
 android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/html-template/assets").get().asFile)
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
     dependsOn(generateFastHtmlTemplate)
+    dependsOn(generateFastHtmlAabTemplate)
 }
 
 androidComponents {

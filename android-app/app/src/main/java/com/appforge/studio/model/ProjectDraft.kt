@@ -26,7 +26,7 @@ data class ProjectDraft(
     var versionName: String = "1.0.0",
     var versionCode: Int = 1,
     var autoVersionCode: Boolean = false,
-    var buildOutput: String = "both",
+    var buildOutput: String = "apk",
 
     // Android SDK
     var minSdk: Int = 26,

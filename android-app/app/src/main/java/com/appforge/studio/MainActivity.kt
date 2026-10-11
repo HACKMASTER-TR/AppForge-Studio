@@ -4396,21 +4396,36 @@ private fun AppForgeApp() {
         if (
             !offlinePackCheck.ready
         ) {
+            val fastHtmlSettingsBlocked =
+                offlinePackCheck.engine == "fast-html-apk"
             status =
-                "Çevrimdışı derleme paketi eksik."
+                if (fastHtmlSettingsBlocked) {
+                    offlinePackCheck.missing.firstOrNull()
+                        ?: "Hızlı HTML APK ayarları uygun değil."
+                } else {
+                    "Çevrimdışı derleme paketi eksik."
+                }
 
             progress =
                 0
 
             logs =
                 listOf(
-                    "⛔ Derleme başlatılmadı • gerekli cihaz toolchain paketi eksik."
+                    if (fastHtmlSettingsBlocked) {
+                        "⛔ Hızlı HTML APK ayarları desteklenmiyor. Çıktı APK, varsayılan imza, varsayılan ikon ve ek Android izni olmamalı."
+                    } else {
+                        "⛔ Derleme başlatılmadı • gerekli cihaz toolchain paketi eksik."
+                    }
                 )
 
             preflight =
                 listOf(
                     "BUILD_BLOCKED=YES",
-                    "OFFLINE_BUILD_READY=NO",
+                    if (fastHtmlSettingsBlocked) {
+                        "FAST_HTML_APK_SETTINGS_REQUIRED=YES"
+                    } else {
+                        "OFFLINE_BUILD_READY=NO"
+                    },
                     "ENGINE=${offlinePackCheck.engine}"
                 ) +
                     offlinePackCheck.missing.map {
@@ -4441,9 +4456,11 @@ private fun AppForgeApp() {
             step =
                 10
 
-            openWorkspaceScreen(
-                AppScreen.OFFLINE_PACK
-            )
+            if (!fastHtmlSettingsBlocked) {
+                openWorkspaceScreen(
+                    AppScreen.OFFLINE_PACK
+                )
+            }
 
             return@buildStart
         }
@@ -6067,6 +6084,8 @@ private fun AppForgeApp() {
                                     // do not inherit the previous draft identity.
                                     appName =
                                         template.name,
+                                    buildOutput =
+                                        "apk",
                                     packageName =
                                         uniqueTemplatePackageName(
                                             template.name,
@@ -7685,7 +7704,7 @@ private fun createQuickDraft(
         fullscreen =
             false,
         notifications =
-            true,
+            false,
         camera =
             false,
         location =
