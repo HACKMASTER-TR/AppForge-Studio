@@ -6063,28 +6063,17 @@ private fun AppForgeApp() {
                                 generated != null
                             ) {
                                 configuredDraft.copy(
+                                    // A local template creates a new project:
+                                    // do not inherit the previous draft identity.
                                     appName =
-                                        configuredDraft
-                                            .appName
-                                            .ifBlank {
-                                                template.name
-                                            },
+                                        template.name,
                                     packageName =
-                                        if (
-                                            configuredDraft
-                                                .packageName
-                                                .isBlank() ||
-                                            configuredDraft
-                                                .packageName ==
-                                                "com.example.myapp"
-                                        ) {
-                                            quickPackageName(
-                                                template.name
-                                            )
-                                        } else {
-                                            configuredDraft
-                                                .packageName
-                                        },
+                                        uniqueTemplatePackageName(
+                                            template.name,
+                                            ProjectLibrary.load(context)
+                                                .map { it.packageName.lowercase() }
+                                                .toSet()
+                                        ),
                                     sourceMode =
                                         SourceMode.LOCAL,
                                     sourceUri =
@@ -7637,6 +7626,22 @@ private fun quickPackageName(
         }
 
     return "com.appforge.$safeName"
+}
+
+// Applies only to newly materialized local templates; Quick Create manual
+// overrides and existing saved projects remain unchanged.
+private fun uniqueTemplatePackageName(
+    templateName: String,
+    existingPackages: Set<String>
+): String {
+    val base = quickPackageName(templateName)
+    var proposed = base
+    var suffix = 2
+    while (proposed in existingPackages) {
+        proposed = "$base$suffix"
+        suffix++
+    }
+    return proposed
 }
 
 private fun createQuickDraft(

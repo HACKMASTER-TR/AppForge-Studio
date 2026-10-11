@@ -14,3 +14,16 @@ Acceptance: Node.js target tests, full quality suite, Kotlin/Android compile, re
 HTML/CSS/JavaScript extension: `.html` entry plus relative `.css`, `.js`, `.mjs` and allowlisted static images/fonts are copied unchanged into the bundled APK under `assets/site/`. Android WebView runs JS using its system runtime, without introducing Node/npm or changing React/Vite build routing. File:// cross-origin permissions remain disabled and the HTML APK shell does not expose native JS bridges. Caps: 250 eligible files, 24 MiB project assets, 5 MiB HTML entry. HTTPS URL continues to load online at application runtime; APK generation needs no internet. This is not a compilation pipeline for CSS preprocessors, TypeScript, JSX, npm, or frameworks. Real-device APK acceptance pending.
 
 Template restoration uses a distinct folder for each created template project; preexisting template projects are not wiped.
+
+## Physical acceptance: local template package identity (2026-10-11)
+
+On-device acceptance confirmed local templates appear and materialize, Quick
+Create works, and account labels are corrected. The local template flow still
+inherited `ProjectDraft.packageName` except when blank or `com.example.myapp`,
+which misses the actual default `com.appforgestudio.myapp` and also carries
+a previous project's name. The isolated repair makes each newly materialized
+local template adopt `template.name`, derives a package name with the established
+Quick Create normalizer, and appends a numeric suffix when a saved project's
+package is already taken. This applies only to `generated != null` (local
+template creation); remote configuration templates and manual Quick Create
+overrides are unaffected. Physical regression acceptance remains required.
