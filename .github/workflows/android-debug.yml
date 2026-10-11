@@ -18,6 +18,11 @@ on:
         type: boolean
         required: false
         default: false
+      integration_debug_version_code:
+        description: "B05+V3 isolated debug upgrade APK only; enter 533 or leave blank"
+        type: string
+        required: false
+        default: ""
       publish_latest_release:
         description: "Explicit approval required; may trigger Play Production"
         type: boolean
@@ -117,6 +122,7 @@ jobs:
           APPFORGE_DEBUG_KEY_ALIAS: appforge-debug
           APPFORGE_DEBUG_KEY_PASSWORD: ${{ secrets.APPFORGE_DEBUG_STORE_PASSWORD }}
           APPFORGE_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.APPFORGE_GITHUB_OAUTH_CLIENT_ID }}
+          APPFORGE_INTEGRATION_DEBUG_VERSION_CODE: ${{ inputs.integration_debug_version_code }}
         run: |
           EXTRA=()
 
@@ -140,6 +146,21 @@ jobs:
             EXTRA=(-PappforgeProSecondDevice=true)
           elif [ "${{ inputs.pro_process_death_test }}" = "true" ]; then
             EXTRA=(-PappforgeProProcessDeathTest=true)
+          fi
+
+          if [ -n "$APPFORGE_INTEGRATION_DEBUG_VERSION_CODE" ]; then
+            if [ "$APPFORGE_INTEGRATION_DEBUG_VERSION_CODE" != "533" ] ||
+               [ "$GITHUB_REF" != "refs/heads/feat/b05-pty-v3-integration-20261011" ]; then
+              echo "STOP: Debug upgrade 533 is permitted only on the integration branch."
+              exit 1
+            fi
+            if [ "${{ inputs.pro_recovery_test }}" = "true" ] ||
+               [ "${{ inputs.pro_second_device }}" = "true" ] ||
+               [ "${{ inputs.pro_process_death_test }}" = "true" ]; then
+              echo "STOP: Debug upgrade 533 cannot be combined with isolated Pro modes."
+              exit 1
+            fi
+            EXTRA+=("-PappforgeIntegrationDebugVersionCode=533")
           fi
 
           gradle \
@@ -167,6 +188,8 @@ jobs:
 
       - name: Verify APK package SDK and signature
         shell: bash
+        env:
+          APPFORGE_INTEGRATION_DEBUG_VERSION_CODE: ${{ inputs.integration_debug_version_code }}
         run: |
           set -euo pipefail
 
@@ -223,6 +246,11 @@ jobs:
           echo "$BADGING" \
             | grep -F \
               "targetSdkVersion:'37'"
+
+          if [ "$APPFORGE_INTEGRATION_DEBUG_VERSION_CODE" = "533" ]; then
+            echo "$BADGING" | grep -F "versionCode='533'"
+            echo "$BADGING" | grep -F "versionName='5.0.33-b05-v3-debug'"
+          fi
 
           echo "APK metadata + signature verified."
 

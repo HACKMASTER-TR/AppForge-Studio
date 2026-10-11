@@ -200,6 +200,19 @@ val appforgeProProcessDeathTest = providers.gradleProperty("appforgeProProcessDe
 val appforgeBaseVersionCode =
     529
 
+// Debug-only, explicit opt-in for the B05+V3 upgrade acceptance APK.
+// Does not change normal debug, release, or Play Integrity version policy.
+val appforgeIntegrationDebugVersionCode =
+    providers.gradleProperty("appforgeIntegrationDebugVersionCode")
+        .orNull
+        ?.trim()
+        ?.let { requested ->
+            require(requested == "533") {
+                "B05+V3 isolated debug upgrade only permits versionCode 533."
+            }
+            533
+        }
+
 val appforgePlayIntegrityAcceptance =
     providers.gradleProperty("appforgePlayIntegrityAcceptance")
         .orNull == "true"
@@ -475,6 +488,15 @@ androidComponents {
             prepareAppForgeProrootRuntime,
             AppForgeProrootPrepareTask::jniLibsDirectory
         )
+    }
+
+    onVariants(selector().withBuildType("debug")) { variant ->
+        appforgeIntegrationDebugVersionCode?.let { code ->
+            variant.outputs.forEach { output ->
+                output.versionCode.set(code)
+                output.versionName.set("5.0.33-b05-v3-debug")
+            }
+        }
     }
 }
 
