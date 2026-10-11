@@ -2026,7 +2026,8 @@ internal fun LocalPtyTerminalPanel(
     onCloseSession: (String) -> Unit,
     onRunCommand: (String) -> Unit,
     onCancel: () -> Unit,
-    onHistoryIndex: (Int) -> Unit
+    onHistoryIndex: (Int) -> Unit,
+    onCopyContextInvalidated: () -> Unit = {}
 ) {
     val context =
         LocalContext.current
@@ -2114,6 +2115,7 @@ internal fun LocalPtyTerminalPanel(
                         workspaceRoot
                     )
             }.onSuccess {
+                onCopyContextInvalidated()
                 if (
                     activePtyId == null
                 ) {
@@ -2185,6 +2187,7 @@ internal fun LocalPtyTerminalPanel(
                 it.id == activePtyId
             }
         ) {
+            onCopyContextInvalidated()
             activePtyId =
                 ptySessions
                     .firstOrNull()
@@ -2265,6 +2268,7 @@ internal fun LocalPtyTerminalPanel(
                         activePtyId ==
                             closing
                     ) {
+                        onCopyContextInvalidated()
                         activePtyId =
                             ptySessions
                                 .firstOrNull {
@@ -2277,6 +2281,7 @@ internal fun LocalPtyTerminalPanel(
                 if (selected) {
                     Button(
                         onClick = {
+                            onCopyContextInvalidated()
                             activePtyId =
                                 session.id
                             LocalPtySessionRegistry
@@ -2315,6 +2320,7 @@ internal fun LocalPtyTerminalPanel(
                 } else {
                     OutlinedButton(
                         onClick = {
+                            onCopyContextInvalidated()
                             activePtyId =
                                 session.id
                             LocalPtySessionRegistry
@@ -2388,6 +2394,7 @@ internal fun LocalPtyTerminalPanel(
                              * Select the tab immediately. PTY startup can
                              * continue after the new session is visible.
                              */
+                            onCopyContextInvalidated()
                             activePtyId = id
                             message = null
 

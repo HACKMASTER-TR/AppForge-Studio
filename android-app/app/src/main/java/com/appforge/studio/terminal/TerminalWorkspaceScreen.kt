@@ -50,6 +50,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.appforge.studio.io.ProjectLibrary
 import com.appforge.studio.io.SavedProject
 import com.appforge.studio.model.ProjectDraft
@@ -601,6 +604,38 @@ fun TerminalWorkspaceScreen(
             it.id == activeSessionId
         } ?: sessions.first()
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    // Opt-in is scoped to this screen, account and terminal workspace.
+    val safeAutoCopy = remember(context.applicationContext, accountEmail, workspace.absolutePath, lifecycleOwner) {
+        TerminalSafeAutoCopy(context.applicationContext,
+            currentTerminalSession = { activeSessionId },
+            lifecycleActive = {
+                lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+            })
+    }
+    var autoCopyEnabled by remember(safeAutoCopy) { mutableStateOf(false) }
+    var autoCopyChecking by remember(safeAutoCopy) { mutableStateOf(false) }
+    var autoCopyMessage by remember(safeAutoCopy) { mutableStateOf<String?>(null) }
+    var showSafeHelp by remember(safeAutoCopy) { mutableStateOf(false) }
+    DisposableEffect(safeAutoCopy, lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) {
+                safeAutoCopy.disable()
+                autoCopyEnabled = false
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            safeAutoCopy.disable()
+        }
+    }
+    DisposableEffect(safeAutoCopy, workspace.absolutePath, activeSessionId) {
+        safeAutoCopy.disable()
+        autoCopyEnabled = false
+        onDispose { safeAutoCopy.disable() }
+    }
+
     var selectedTab by
         rememberSaveable {
             mutableStateOf(
@@ -674,26 +709,7 @@ fun TerminalWorkspaceScreen(
         }
     }
 
-    fun appForgeHelp(): String =
-        """
-        AppForge özel komutları
-        • appforge status     Proje ve çalışma alanı bilgisi
-        • appforge projects   Kayıtlı projeleri listele
-        • appforge build      Builder / APK-AAB ekranını aç
-        • appforge ai         Projeye bağlı AI Asistanı aç
-        • appforge downloads  İndirilenler bölümünü aç
-        • appforge import     Telefondan dosya seçip içe aktar
-        • appforge connect    GitHub bağlantısını aç
-        • runtime             Yerel araç durumunu göster
-
-        Yerel kabuk örnekleri
-        • pwd, ls -la, find ., cat dosya.txt
-        • mkdir klasor, touch dosya.txt
-
-        Git komutları
-        • git init, git status, git add ., git log
-        • Commit, pull, push ve clone için Git sekmesini kullanın.
-        """.trimIndent()
+    fun appForgeHelp(): String = TerminalSafeHelp.text
 
     fun runCommand(
         sessionId: String,
@@ -771,8 +787,10 @@ fun TerminalWorkspaceScreen(
             )
         }
 
+        val copyTicket = safeAutoCopy.begin(command, sessionId)
         val job =
             scope.launch {
+                var completedCopyResult: TerminalCopyResult? = null
                 try {
                     when {
                         command == "clear" ->
@@ -783,12 +801,15 @@ fun TerminalWorkspaceScreen(
                             }
 
                         command == "appforge help" ||
-                            command == "help" ->
-                            appendLines(
-                                sessionId,
-                                appForgeHelp(),
-                                TerminalLineKind.INFO
-                            )
+                            command == "help" -> {
+                            completedCopyResult = TerminalCopyResult.execute(command) { safeText ->
+                                appendLines(
+                                    sessionId,
+                                    safeText,
+                                    TerminalLineKind.INFO
+                                )
+                            }
+                        }
 
                         command == "appforge status" -> {
                             val draft =
@@ -867,14 +888,15 @@ fun TerminalWorkspaceScreen(
                         }
 
                         command == "appforge downloads" -> {
-                            appendLines(
-                                sessionId,
-                                "İndirilenler bölümü açılıyor…",
-                                TerminalLineKind.SUCCESS
-                            )
-
-                            selectedTab =
-                                TerminalWorkspaceTab.DOWNLOADS
+                            completedCopyResult = TerminalCopyResult.execute(command) { safeText ->
+                                appendLines(
+                                    sessionId,
+                                    safeText,
+                                    TerminalLineKind.SUCCESS
+                                )
+                                selectedTab =
+                                    TerminalWorkspaceTab.DOWNLOADS
+                            }
                         }
 
                         command == "appforge import" ||
@@ -893,26 +915,28 @@ fun TerminalWorkspaceScreen(
                         }
 
                         command == "runtime" -> {
-                            appendLines(
-                                sessionId,
-                                "Araç durumu ekranı açıldı.",
-                                TerminalLineKind.INFO
-                            )
-
-                            selectedTab =
-                                TerminalWorkspaceTab.TOOLS
+                            completedCopyResult = TerminalCopyResult.execute(command) { safeText ->
+                                appendLines(
+                                    sessionId,
+                                    safeText,
+                                    TerminalLineKind.INFO
+                                )
+                                selectedTab =
+                                    TerminalWorkspaceTab.TOOLS
+                            }
                         }
 
                         command == "appforge connect" ||
                             command == "connections" -> {
-                            appendLines(
-                                sessionId,
-                                "Hesap bağlantıları açıldı.",
-                                TerminalLineKind.INFO
-                            )
-
-                            selectedTab =
-                                TerminalWorkspaceTab.CONNECTIONS
+                            completedCopyResult = TerminalCopyResult.execute(command) { safeText ->
+                                appendLines(
+                                    sessionId,
+                                    safeText,
+                                    TerminalLineKind.INFO
+                                )
+                                selectedTab =
+                                    TerminalWorkspaceTab.CONNECTIONS
+                            }
                         }
 
                         command.startsWith("git ") ||
@@ -1053,6 +1077,12 @@ fun TerminalWorkspaceScreen(
 
                     commandJobs.remove(sessionId)
                 }
+                // Copy only completed first-party fixed-text actions, never shell/PTY output.
+                val result = completedCopyResult
+                if (result != null && copyTicket != null) {
+                    safeAutoCopy.copyCompleted(copyTicket, result)
+                    autoCopyEnabled = safeAutoCopy.enabled
+                }
             }
 
         commandJobs[sessionId] =
@@ -1062,6 +1092,8 @@ fun TerminalWorkspaceScreen(
     fun cancelCommand(
         sessionId: String
     ) {
+        safeAutoCopy.disable()
+        autoCopyEnabled = false
         localEngine.cancel(sessionId)
         commandJobs.remove(sessionId)
             ?.cancel()
@@ -1196,6 +1228,17 @@ fun TerminalWorkspaceScreen(
             )
         }
 
+    if (showSafeHelp) {
+        AlertDialog(
+            onDismissRequest = { showSafeHelp = false },
+            title = { Text("AppForge Help") },
+            text = { Text(TerminalSafeHelp.text) },
+            confirmButton = {
+                TextButton(onClick = { showSafeHelp = false }) { Text("Kapat") }
+            }
+        )
+    }
+
     Scaffold(
         containerColor =
             TerminalBackground,
@@ -1249,6 +1292,47 @@ fun TerminalWorkspaceScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
         ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(
+                        modifier = Modifier.weight(1f),
+                        enabled = !autoCopyChecking,
+                        onClick = {
+                            if (autoCopyEnabled) {
+                                safeAutoCopy.disable()
+                                autoCopyEnabled = false
+                                autoCopyMessage = null
+                            } else {
+                                autoCopyChecking = true
+                                scope.launch {
+                                    try {
+                                        autoCopyEnabled = safeAutoCopy.enable()
+                                        autoCopyMessage = if (autoCopyEnabled) null else
+                                            "Yönetici yetkisi doğrulanamadı. Otomatik kopyalama KAPALI."
+                                    } finally {
+                                        autoCopyChecking = false
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        Text("Güvenli otomatik kopya: " +
+                            if (autoCopyChecking) "Kontrol…" else if (autoCopyEnabled) "AÇIK" else "KAPALI")
+                    }
+                    TextButton(onClick = {
+                        runCommand(activeSessionId, "appforge help")
+                        showSafeHelp = true
+                    }) { Text("AppForge Help") }
+                    TextButton(onClick = { runCommand(activeSessionId, "runtime") }) { Text("Runtime") }
+                }
+                Text(
+                    "Sabit AppForge yardım/ekran sonuçları • Yönetici • Kabuk/PTY: NOT_SUPPORTED • Pano geçmişine kaydedilebilir",
+                    color = TerminalMuted,
+                    fontSize = 10.sp
+                )
+                autoCopyMessage?.let { Text(it, color = TerminalWarning, fontSize = 10.sp) }
+            }
+
             ProjectWorkspaceSelector(
                 projects = projects,
                 selectedProject = selectedProject,
@@ -1349,6 +1433,10 @@ fun TerminalWorkspaceScreen(
                 when (selectedTab) {
                     TerminalWorkspaceTab.TERMINAL ->
                         LocalPtyTerminalPanel(
+                            onCopyContextInvalidated = {
+                                safeAutoCopy.disable()
+                                autoCopyEnabled = false
+                            },
                             sessions = sessions,
                             activeSession =
                                 activeSession,
@@ -1357,6 +1445,8 @@ fun TerminalWorkspaceScreen(
                             accountEmail =
                                 accountEmail,
                             onSelectSession = {
+                                safeAutoCopy.disable()
+                                autoCopyEnabled = false
                                 activeSessionId =
                                     it
                             },
@@ -1378,6 +1468,8 @@ fun TerminalWorkspaceScreen(
                                             added
                                         )
 
+                                    safeAutoCopy.disable()
+                                    autoCopyEnabled = false
                                     activeSessionId =
                                         added.id
                                 } else {
