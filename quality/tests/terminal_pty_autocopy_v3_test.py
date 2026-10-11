@@ -42,6 +42,19 @@ class PtyCopyTests(unittest.TestCase):
                 "-include-runtime", "-d", str(jar)], check=True, timeout=120)
             subprocess.run(["java", "-jar", str(jar)], check=True, timeout=40)
 
+    def test_v3_ui_and_history_loss_regression_contract(self):
+        screen = (PKG / "TerminalWorkspaceScreen.kt").read_text()
+        buffer = (PKG / "AnsiTerminalBuffer.kt").read_text()
+        capture = (PKG / "TerminalPtyCopyCapture.kt").read_text()
+        self.assertNotIn("Kabuk/PTY: NOT_SUPPORTED", screen)
+        self.assertIn("tamamlanan Bash/PTY komutları", screen)
+        self.assertIn("hassas bilgiler her zaman tespit edilemeyebilir", screen)
+        self.assertIn('"OUTPUT_INCOMPLETE" ->', screen)
+        self.assertIn("outputHistoryIncomplete", buffer)
+        self.assertIn("scrollback.removeFirst()", buffer)
+        self.assertIn("output.outputHistoryIncomplete", capture)
+        self.assertIn("historyLimit: Int = 20_000", capture)
+
     def test_shell_hook_and_scoped_wiring(self):
         panel = (PKG / "LocalPtyTerminalPanel.kt").read_text()
         sink = (PKG / "TerminalSafeAutoCopy.kt").read_text()

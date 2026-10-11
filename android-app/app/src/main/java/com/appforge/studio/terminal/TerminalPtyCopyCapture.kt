@@ -22,8 +22,14 @@ internal data class TerminalPtyCapturedCommand(
     val reason: String? = null
 )
 
-internal class TerminalPtyCopyCapture(private val markerToken: String) {
-    init { require(Regex("^[a-f0-9]{32}$").matches(markerToken)) }
+internal class TerminalPtyCopyCapture(
+    private val markerToken: String,
+    private val historyLimit: Int = 20_000
+) {
+    init {
+        require(Regex("^[a-f0-9]{32}$").matches(markerToken))
+        require(historyLimit in 1..20_000)
+    }
 
     private val beginMarker = "\u001b]777;afcopy-begin=$markerToken\u0007"
     private val endPrefix = "\u001b]777;afcopy-end=$markerToken;"
@@ -34,7 +40,7 @@ internal class TerminalPtyCopyCapture(private val markerToken: String) {
     private var unsupportedScreen = false
     private var lastControlTail = ""
     private var bytesSeen = 0
-    private var output = AnsiTerminalBuffer()
+    private var output = AnsiTerminalBuffer(maxScrollbackLines = historyLimit)
     var latestSequence = 0L
         private set
 
@@ -47,7 +53,7 @@ internal class TerminalPtyCopyCapture(private val markerToken: String) {
         lastControlTail = ""
         bytesSeen = 0
         pending.clear()
-        output = AnsiTerminalBuffer()
+        output = AnsiTerminalBuffer(maxScrollbackLines = historyLimit)
     }
 
     fun cancel() {
@@ -76,7 +82,7 @@ internal class TerminalPtyCopyCapture(private val markerToken: String) {
                 unsupportedScreen = false
                 lastControlTail = ""
                 bytesSeen = 0
-                output = AnsiTerminalBuffer()
+                output = AnsiTerminalBuffer(maxScrollbackLines = historyLimit)
             }
 
             val index = pending.indexOf(endPrefix)
@@ -96,6 +102,8 @@ internal class TerminalPtyCopyCapture(private val markerToken: String) {
                         status != 130 && status != 143) {
                         if (overflow) {
                             completed.add(TerminalPtyCapturedCommand(latestSequence, "", status, "OUTPUT_LIMIT"))
+                        } else if (output.outputHistoryIncomplete) {
+                            completed.add(TerminalPtyCapturedCommand(latestSequence, "", status, "OUTPUT_INCOMPLETE"))
                         } else if (unsupportedScreen) {
                             // Interactive alternate-screen apps are outside the Bash copy contract.
                         } else {
@@ -140,7 +148,7 @@ internal class TerminalPtyCopyCapture(private val markerToken: String) {
         bytesSeen += piece.toByteArray(Charsets.UTF_8).size
         if (bytesSeen > MAX_COPY_BYTES) {
             overflow = true
-            output = AnsiTerminalBuffer()
+            output = AnsiTerminalBuffer(maxScrollbackLines = historyLimit)
             return
         }
         output.feed(piece)

@@ -73,6 +73,10 @@ internal class AnsiTerminalBuffer(
     private val scrollback =
         ArrayDeque<List<AnsiTerminalCell>>()
 
+    // A bounded terminal history may silently drop earlier command output.
+    var outputHistoryIncomplete: Boolean = false
+        private set
+
     private var cursorRow = 0
     private var cursorColumn = 0
     private var savedCursorRow = 0
@@ -102,6 +106,7 @@ internal class AnsiTerminalBuffer(
                 columns
             )
         scrollback.clear()
+        outputHistoryIncomplete = false
         cursorRow = 0
         cursorColumn = 0
         savedCursorRow = 0
@@ -118,6 +123,10 @@ internal class AnsiTerminalBuffer(
     }
 
     fun clear() {
+        if (scrollback.isNotEmpty() ||
+            screen.any { row -> row.any { it.character != ' ' } }) {
+            outputHistoryIncomplete = true
+        }
         scrollback.clear()
         for (row in 0 until rows) {
             clearRange(row, 0, columns)
@@ -419,6 +428,7 @@ internal class AnsiTerminalBuffer(
                     maxScrollbackLines
                 ) {
                     scrollback.removeFirst()
+                    outputHistoryIncomplete = true
                 }
             }
 

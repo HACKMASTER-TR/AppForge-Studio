@@ -1326,7 +1326,7 @@ fun TerminalWorkspaceScreen(
                     TextButton(onClick = { runCommand(activeSessionId, "runtime") }) { Text("Runtime") }
                 }
                 Text(
-                    "Sabit AppForge yardım/ekran sonuçları • Yönetici • Kabuk/PTY: NOT_SUPPORTED • Pano geçmişine kaydedilebilir",
+                    "Yönetici • Sabit AppForge sonuçları + tamamlanan Bash/PTY komutları • En çok 512 KiB\nPano geçmişinde tutulabilir; hassas bilgiler her zaman tespit edilemeyebilir.",
                     color = TerminalMuted,
                     fontSize = 10.sp
                 )
@@ -1440,6 +1440,7 @@ fun TerminalWorkspaceScreen(
                                     if (safeAutoCopy.enabled && event.reason != null) {
                                         autoCopyMessage = when (event.reason) {
                                             "OUTPUT_LIMIT" -> "PTY çıktısı 512 KiB sınırını aştı; otomatik kopyalanmadı."
+                                            "OUTPUT_INCOMPLETE" -> "PTY çıktısının bir bölümü geçmişten silindi; eksik metin kopyalanmadı."
                                             "SENSITIVE_OUTPUT" -> "Olası gizli bilgi içeren çıktı otomatik kopyalanmadı."
                                             else -> "PTY çıktısı güvenli biçimde kopyalanamadı."
                                         }
