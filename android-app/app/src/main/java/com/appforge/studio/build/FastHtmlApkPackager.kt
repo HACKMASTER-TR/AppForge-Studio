@@ -90,7 +90,7 @@ internal object FastHtmlApkPackager {
     }
 
     /** Package only static web assets; never run Node, npm or JavaScript source builds. */
-    private fun readHtmlProject(draft: ProjectDraft): Pair<String, Map<String, ByteArray>> {
+    internal fun readHtmlProject(draft: ProjectDraft): Pair<String, Map<String, ByteArray>> {
         val root = File(draft.importedFolder!!).canonicalFile
         require(root.isDirectory) { "HTML kaynak klasörü geçersiz." }
         val chosen = draft.startPage?.let(::File)?.canonicalFile
