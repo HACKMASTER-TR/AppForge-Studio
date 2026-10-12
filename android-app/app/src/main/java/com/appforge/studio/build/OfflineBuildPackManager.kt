@@ -172,7 +172,7 @@ internal object OfflineBuildPackManager {
         // HTML (.html) and HTTPS URL APKs never require the optional offline pack.
         // A dedicated, bundled template produces and signs their APKs locally.
         if (FastHtmlApkPolicy.isCandidate(draft)) {
-            val reason = runCatching { requireFastStaticOutput(draft) }
+            val reason = runCatching { requireFastStaticOutput(context, draft) }
                 .exceptionOrNull()?.message
             return OfflineBuildRequirementCheck(
                 ready = reason == null,
@@ -294,10 +294,13 @@ internal object OfflineBuildPackManager {
     }
 
     /** Only local static AAB requests bypass optional Android/Gradle toolchains. */
-    private fun requireFastStaticOutput(draft: ProjectDraft) {
+    private fun requireFastStaticOutput(context: Context, draft: ProjectDraft) {
         val selected = DeviceBuildCapabilities.requestedOutputs(draft.buildOutput)
         if (DeviceArtifactKind.AAB in selected) {
             FastHtmlAabUnsignedPackager.requireSource(draft)
+            if (draft.signingMode == com.appforge.studio.model.SigningMode.CUSTOM) {
+                FastHtmlAabUploadKey.requireSelection(context, draft)
+            }
         } else {
             FastHtmlApkPolicy.requireSupported(draft)
         }
@@ -308,7 +311,7 @@ internal object OfflineBuildPackManager {
         draft: ProjectDraft
     ) {
         if (FastHtmlApkPolicy.isCandidate(draft)) {
-            requireFastStaticOutput(draft)
+            requireFastStaticOutput(context, draft)
             return
         }
         val check =

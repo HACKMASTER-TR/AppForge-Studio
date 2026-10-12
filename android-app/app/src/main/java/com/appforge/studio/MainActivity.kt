@@ -4401,7 +4401,7 @@ private fun AppForgeApp() {
             status =
                 if (fastHtmlSettingsBlocked) {
                     offlinePackCheck.missing.firstOrNull()
-                        ?: "Hızlı HTML APK ayarları uygun değil."
+                        ?: "Hızlı HTML APK/AAB ayarları uygun değil."
                 } else {
                     "Çevrimdışı derleme paketi eksik."
                 }
@@ -4412,7 +4412,7 @@ private fun AppForgeApp() {
             logs =
                 listOf(
                     if (fastHtmlSettingsBlocked) {
-                        "⛔ Hızlı HTML APK ayarları desteklenmiyor. Çıktı APK, varsayılan imza, varsayılan ikon ve ek Android izni olmamalı."
+                        "⛔ Hızlı HTML çıktısı ayarları desteklenmiyor. Yerel AAB için debug veya Kasaya içe aktarılmış PKCS12 gerekir; özel ikon ve ek Android izinleri desteklenmez."
                     } else {
                         "⛔ Derleme başlatılmadı • gerekli cihaz toolchain paketi eksik."
                     }
@@ -20348,7 +20348,7 @@ private fun BuildSettingsStep(
                 "NATIVE EXE • Windows x64 • CMake + MinGW-w64"
 
             "aab" ->
-                "AAB • Gradle bundleRelease"
+                "AAB • Hızlı yerel HTML veya normal Gradle bundle"
 
             "both" ->
                 "BOTH • FAST APK uygunsa Hybrid + AAB"

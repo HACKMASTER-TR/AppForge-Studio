@@ -109,7 +109,13 @@ internal object FastHtmlAabUnsignedPackager {
         }
         require(draft.sourceBuildEngine.trim().lowercase() == "webview-static" &&
             draft.sourceTechnology.trim().lowercase() in setOf("html", "web-static", "webview"))
-        FastHtmlApkPolicy.requireSupported(draft.copy(buildOutput = "apk"))
+        require(draft.signingMode == com.appforge.studio.model.SigningMode.DEBUG ||
+            draft.signingMode == com.appforge.studio.model.SigningMode.CUSTOM) {
+            "Hızlı AAB yalnız debug veya seçilmiş yükleme anahtarıyla üretilir."
+        }
+        FastHtmlApkPolicy.requireSupported(draft.copy(
+            buildOutput = "apk", signingMode = com.appforge.studio.model.SigningMode.DEBUG
+        ))
         require(draft.minSdk == 26 && draft.targetSdk == 37) {
             "Unsigned static AAB requires pinned SDK 26/37."
         }

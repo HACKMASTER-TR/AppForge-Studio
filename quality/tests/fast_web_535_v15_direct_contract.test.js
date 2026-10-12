@@ -35,7 +35,9 @@ test('AAB JAR/CMS signer stays separate from APK v2/v3 signer', () => {
   assert.doesNotMatch(signer,/ApkSigner\.Builder/);
   assert.match(fast,/ApkSigner\.Builder/);
 });
-test('experimental AAB signer is explicitly not Play portable', () => {
+test('development and explicit PKCS12 AAB modes both disclose Play limitations', () => {
   assert.match(signer,/not\s+(?:\*\s+)?exportable/i);
-  assert.match(engine,/Play yükleme anahtarı olarak taşınabilir değildir/);
+  assert.match(engine,/AAB geliştirme anahtarıyla imzalanır; Play yükleme anahtarı değildir/);
+  assert.match(engine,/AAB seçilmiş PKCS12 ile imzalanır; Play yükleme sertifikası Console'da doğrulanmalıdır/);
+  assert.match(engine,/val customFastSigner = wantsAab && draft.signingMode == SigningMode.CUSTOM/);
 });
