@@ -172,7 +172,7 @@ internal object OfflineBuildPackManager {
         // HTML (.html) and HTTPS URL APKs never require the optional offline pack.
         // A dedicated, bundled template produces and signs their APKs locally.
         if (FastHtmlApkPolicy.isCandidate(draft)) {
-            val reason = runCatching { FastHtmlApkPolicy.requireSupported(draft) }
+            val reason = runCatching { requireFastStaticOutput(draft) }
                 .exceptionOrNull()?.message
             return OfflineBuildRequirementCheck(
                 ready = reason == null,
@@ -293,12 +293,22 @@ internal object OfflineBuildPackManager {
         )
     }
 
+    /** Only local static AAB requests bypass optional Android/Gradle toolchains. */
+    private fun requireFastStaticOutput(draft: ProjectDraft) {
+        val selected = DeviceBuildCapabilities.requestedOutputs(draft.buildOutput)
+        if (DeviceArtifactKind.AAB in selected) {
+            FastHtmlAabUnsignedPackager.requireSource(draft)
+        } else {
+            FastHtmlApkPolicy.requireSupported(draft)
+        }
+    }
+
     fun requireReadyForBuild(
         context: Context,
         draft: ProjectDraft
     ) {
         if (FastHtmlApkPolicy.isCandidate(draft)) {
-            FastHtmlApkPolicy.requireSupported(draft)
+            requireFastStaticOutput(draft)
             return
         }
         val check =

@@ -33,6 +33,21 @@ class FastHtmlAabRoutingTest {
         }
     }
 
+    @Test fun explicitLocalStaticAabAndBothEligibleForIndependentPreflight() {
+        val root = kotlin.io.path.createTempDirectory("appforge-v15-fast-static-").toFile()
+        try {
+            val start = java.io.File(root, "index.html").apply { writeText("<html>ok</html>") }
+            listOf("aab", "both", "apk+aab").forEach { output ->
+                val draft = local().copy(importedFolder = root.path, startPage = start.path,
+                    buildOutput = output)
+                FastHtmlAabUnsignedPackager.requireSource(draft)
+                assertTrue(FastHtmlApkPolicy.isCandidate(draft))
+            }
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     @Test fun foreignEnginesNeverEnterFastRoute() {
         listOf("node-web", "expo", "react-native", "android-gradle", "android-ndk").forEach { engine ->
             assertFalse(FastHtmlApkPolicy.isCandidate(local().apply { sourceBuildEngine = engine }))

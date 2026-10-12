@@ -1,0 +1,41 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const read = p => fs.readFileSync(path.join(root, p), 'utf8');
+const build = 'android-app/app/src/main/java/com/appforge/studio/build/';
+const engine = read(build + 'DeviceBuildEngine.kt');
+const manager = read(build + 'OfflineBuildPackManager.kt');
+const signer = read(build + 'FastHtmlAabJarSigner.kt');
+const source = read(build + 'FastHtmlAabUnsignedPackager.kt');
+const fast = read(build + 'FastHtmlApkPackager.kt');
+test('static AAB and BOTH are explicit and do not switch non-static engines', () => {
+  assert.match(manager,/DeviceArtifactKind\.AAB in selected/);
+  assert.match(manager,/FastHtmlAabUnsignedPackager\.requireSource\(draft\)/);
+  assert.match(source,/draft\.sourceMode == SourceMode\.LOCAL/);
+  assert.match(source,/draft\.minSdk == 26 && draft\.targetSdk == 37/);
+  assert.match(engine,/if \(FastHtmlApkPolicy\.isCandidate\(draft\)\)/);
+  assert.match(engine,/val wantsAab = DeviceArtifactKind\.AAB in fastOutputs/);
+  assert.match(engine,/FastHtmlAabUnsignedPackager\.buildUnsignedCandidate/);
+  assert.match(engine,/FastHtmlAabJarSigner\.signDevelopment/);
+  assert.match(engine,/state\.apk = candidateApk/);
+  assert.match(engine,/state\.aab = candidateSignedAab/);
+  assert.match(engine,/if \(!wantsAab\)/);
+  assert.match(engine,/"node-web" -> buildNodeWeb/);
+  assert.match(engine,/"expo" -> buildExpoProject/);
+});
+test('AAB JAR/CMS signer stays separate from APK v2/v3 signer', () => {
+  assert.match(signer,/JarFile|requireSignedPayload/);
+  assert.match(signer,/SHA256withRSA/);
+  assert.match(signer,/AndroidKeyStore/);
+  assert.match(signer,/META-INF\/APPFORGE\.SF/);
+  assert.match(signer,/META-INF\/APPFORGE\.RSA/);
+  assert.doesNotMatch(signer,/ApkSigner\.Builder/);
+  assert.match(fast,/ApkSigner\.Builder/);
+});
+test('experimental AAB signer is explicitly not Play portable', () => {
+  assert.match(signer,/not\s+(?:\*\s+)?exportable/i);
+  assert.match(engine,/Play yükleme anahtarı olarak taşınabilir değildir/);
+});

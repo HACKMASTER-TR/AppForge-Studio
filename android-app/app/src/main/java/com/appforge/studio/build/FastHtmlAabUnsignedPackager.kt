@@ -110,6 +110,9 @@ internal object FastHtmlAabUnsignedPackager {
         require(draft.sourceBuildEngine.trim().lowercase() == "webview-static" &&
             draft.sourceTechnology.trim().lowercase() in setOf("html", "web-static", "webview"))
         FastHtmlApkPolicy.requireSupported(draft.copy(buildOutput = "apk"))
+        require(draft.minSdk == 26 && draft.targetSdk == 37) {
+            "Unsigned static AAB requires pinned SDK 26/37."
+        }
         val supplied = File(requireNotNull(draft.importedFolder))
         require(!java.nio.file.Files.isSymbolicLink(supplied.toPath()))
         val root = supplied.canonicalFile

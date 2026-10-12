@@ -222,18 +222,70 @@ object DeviceBuildEngine {
             // FAST_HTML_APK_V1: no rootfs, SDK, JDK, Gradle, or download manager.
             // Never fall back silently to a network toolchain on an eligible HTML/URL project.
             if (FastHtmlApkPolicy.isCandidate(draft)) {
-                FastHtmlApkPolicy.requireSupported(draft)
-                state.preflight.add("✅ HTML/HTTPS Hızlı APK • internet ve ek araç paketi yok.")
-                state.preflight.add("✅ APK cihazda imzalanacak; AAB ve özel anahtar desteklenmiyor.")
+                val fastOutputs = DeviceBuildCapabilities.requestedOutputs(draft.buildOutput)
+                val wantsAab = DeviceArtifactKind.AAB in fastOutputs
+                if (wantsAab) {
+                    // Strict local static only. URL / other engines remain unmodified.
+                    FastHtmlAabUnsignedPackager.requireSource(draft)
+                } else {
+                    FastHtmlApkPolicy.requireSupported(draft)
+                }
+                state.preflight.add("✅ Hızlı HTML • internet ve ek derleme paketi yok.")
+                state.preflight.add(if (wantsAab) {
+                    "⚠️ AAB geliştirme anahtarıyla JAR imzalanır; Play yükleme anahtarı olarak taşınabilir değildir."
+                } else {
+                    "✅ APK cihazda imzalanacak; özel anahtar desteklenmiyor."
+                })
                 workspace.deleteRecursively()
-                advanceProgress(state, 15, "HTML APK şablonu hazırlanıyor")
+                check(workspace.mkdirs()) { "Fast HTML private workspace could not be prepared." }
+                advanceProgress(state, 15, "HTML çıktıları hazırlanıyor")
                 checkCancelled(state)
-                val apk = FastHtmlApkPackager.build(context, draft, workspace)
-                checkCancelled(state)
-                state.apk = apk
+                if (!wantsAab) {
+                    // Preserve the existing ~1-second fast APK path byte-for-byte.
+                    val apk = FastHtmlApkPackager.build(context, draft, workspace)
+                    checkCancelled(state)
+                    state.apk = apk
+                } else {
+                    var candidateApk: File? = null
+                    var candidateUnsignedAab: File? = null
+                    var candidateSignedAab: File? = null
+                    try {
+                        if (DeviceArtifactKind.APK in fastOutputs) {
+                            candidateApk = FastHtmlApkPackager.build(
+                                context, draft.copy(buildOutput = "apk"), workspace
+                            )
+                            checkCancelled(state)
+                        }
+                        val unsigned = FastHtmlAabUnsignedPackager.buildUnsignedCandidate(
+                            context, draft, workspace
+                        )
+                        candidateUnsignedAab = unsigned
+                        checkCancelled(state)
+                        candidateSignedAab = FastHtmlAabJarSigner.signDevelopment(
+                            unsigned, workspace
+                        )
+                        checkCancelled(state)
+                        // Publish both to state only after every requested artifact succeeded.
+                        state.apk = candidateApk
+                        state.aab = candidateSignedAab
+                        state.preflight.add("✅ AAB JAR/CMS signer and certificate independently checked.")
+                    } catch (failure: Throwable) {
+                        candidateApk?.delete()
+                        candidateSignedAab?.delete()
+                        state.apk = null
+                        state.aab = null
+                        throw failure
+                    } finally {
+                        candidateUnsignedAab?.delete()
+                    }
+                }
                 state.progress = 100
                 state.status = "success"
-                state.logs.add("✅ HTML/HTTPS APK hazır • sıfır ek araç indirme.")
+                state.logs.add(if (wantsAab) {
+                    "✅ Yerel statik HTML AAB çıktısı hazır • dış araç ve internet kullanılmadı."
+                } else {
+                    "✅ HTML/HTTPS APK hazır • sıfır ek araç indirme."
+                })
                 return
             }
 
