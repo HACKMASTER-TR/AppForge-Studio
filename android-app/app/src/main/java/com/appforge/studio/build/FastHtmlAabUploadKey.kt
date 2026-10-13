@@ -27,6 +27,20 @@ internal object FastHtmlAabUploadKey {
 
     private const val MAX_KEYSTORE_BYTES = 10L * 1024L * 1024L
 
+
+    // V15.1 physical diagnostics: no exception message/cause or private material is logged.
+    // The constant stage token is sufficient to locate failures without revealing secrets.
+    internal enum class Stage {
+        PKCS12_PROVIDER, PKCS12_LOAD, PKCS12_ALIAS, PKCS12_PRIVATE_KEY,
+        PKCS12_CERTIFICATE, PKCS12_KEY_PAIR, PKCS12_SIGNER_SETUP
+    }
+
+    internal fun <T> guarded(stage: Stage, block: () -> T): T = try {
+        block()
+    } catch (_: Exception) {
+        throw IllegalStateException("APPFORGE_FAST_AAB_STAGE_${stage.name}")
+    }
+
     fun requireSelection(context: Context, draft: ProjectDraft) {
         require(draft.signingMode == SigningMode.CUSTOM)
         require(draft.keyAlias.isNotBlank() && draft.storePassword.isNotBlank() &&
@@ -63,23 +77,38 @@ internal object FastHtmlAabUploadKey {
         val storePwd = draft.storePassword.toCharArray()
         val keyPwd = draft.keyPassword.toCharArray()
         try {
-            val store = KeyStore.getInstance("PKCS12")
-            path.inputStream().use { store.load(it, storePwd) }
-            require(store.isKeyEntry(draft.keyAlias)) { "PKCS12 alias geçersiz veya özel anahtar yok." }
-            val key = store.getKey(draft.keyAlias, keyPwd) as? PrivateKey
-                ?: error("PKCS12 özel anahtarı okunamadı.")
-            require(key.algorithm.equals("RSA", true)) { "Hızlı AAB RSA yükleme anahtarı gerektirir." }
-            val chain = store.getCertificateChain(draft.keyAlias)
-                ?.map { it as? X509Certificate ?: error("X509 sertifika gerekli.") }
-                ?.takeIf { it.isNotEmpty() } ?: error("PKCS12 sertifika zinciri eksik.")
+            val store = guarded(Stage.PKCS12_PROVIDER) {
+                KeyStore.getInstance("PKCS12")
+            }
+            guarded(Stage.PKCS12_LOAD) {
+                path.inputStream().use { store.load(it, storePwd) }
+            }
+            guarded(Stage.PKCS12_ALIAS) {
+                require(store.isKeyEntry(draft.keyAlias))
+            }
+            val key = guarded(Stage.PKCS12_PRIVATE_KEY) {
+                store.getKey(draft.keyAlias, keyPwd) as? PrivateKey
+                    ?: error("Missing PKCS12 private key")
+            }
+            val chain = guarded(Stage.PKCS12_CERTIFICATE) {
+                require(key.algorithm.equals("RSA", true))
+                val certificates = store.getCertificateChain(draft.keyAlias)
+                    ?.map { it as? X509Certificate ?: error("X509 required") }
+                    ?.takeIf { it.isNotEmpty() } ?: error("Certificate chain missing")
+                certificates.first().checkValidity()
+                require(certificates.first().publicKey.algorithm.equals("RSA", true))
+                certificates
+            }
             val certificate = chain.first()
-            certificate.checkValidity()
-            require(certificate.publicKey.algorithm.equals("RSA", true))
-            requireMatchingKey(key, certificate.publicKey)
-            return Identity(
-                key, certificate,
-                ApkSigner.SignerConfig.Builder(draft.keyAlias, key, chain).build()
-            )
+            guarded(Stage.PKCS12_KEY_PAIR) {
+                requireMatchingKey(key, certificate.publicKey)
+            }
+            return guarded(Stage.PKCS12_SIGNER_SETUP) {
+                Identity(
+                    key, certificate,
+                    ApkSigner.SignerConfig.Builder(draft.keyAlias, key, chain).build()
+                )
+            }
         } finally {
             storePwd.fill('\u0000')
             keyPwd.fill('\u0000')

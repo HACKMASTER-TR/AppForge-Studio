@@ -259,6 +259,9 @@ object DeviceBuildEngine {
                         val uploadIdentity = if (customFastSigner) {
                             FastHtmlAabUploadKey.load(context, draft)
                         } else null
+                        if (uploadIdentity != null) {
+                            state.logs.add("APPFORGE_FAST_AAB_STAGE_KEY_OPEN_OK")
+                        }
                         if (DeviceArtifactKind.APK in fastOutputs) {
                             candidateApk = FastHtmlApkPackager.build(
                                 context, draft.copy(buildOutput = "apk", signingMode = SigningMode.DEBUG),
@@ -271,6 +274,9 @@ object DeviceBuildEngine {
                         )
                         candidateUnsignedAab = unsigned
                         checkCancelled(state)
+                        if (uploadIdentity != null) {
+                            state.logs.add("APPFORGE_FAST_AAB_STAGE_UNSIGNED_OK")
+                        }
                         candidateSignedAab = if (uploadIdentity == null) {
                             FastHtmlAabJarSigner.signDevelopment(unsigned, workspace)
                         } else {
@@ -279,6 +285,9 @@ object DeviceBuildEngine {
                             )
                         }
                         checkCancelled(state)
+                        if (uploadIdentity != null) {
+                            state.logs.add("APPFORGE_FAST_AAB_STAGE_SIGNED_OK")
+                        }
                         if (uploadIdentity != null && candidateApk != null) {
                             val verified = com.android.apksig.ApkVerifier.Builder(candidateApk)
                                 .build().verify()
