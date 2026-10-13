@@ -6,12 +6,16 @@ import com.android.apksig.ApkSigner
 import com.appforge.studio.io.KeystoreVault
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
+import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.IOException
 import java.security.KeyStore
 import java.security.MessageDigest
+import java.security.NoSuchAlgorithmException
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.Signature
+import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 
 /** AAB upload signing with an explicitly selected, previously imported PKCS12.
@@ -32,13 +36,29 @@ internal object FastHtmlAabUploadKey {
     // The constant stage token is sufficient to locate failures without revealing secrets.
     internal enum class Stage {
         PKCS12_PROVIDER, PKCS12_LOAD, PKCS12_ALIAS, PKCS12_PRIVATE_KEY,
-        PKCS12_CERTIFICATE, PKCS12_KEY_PAIR, PKCS12_SIGNER_SETUP
+        PKCS12_CERTIFICATE, PKCS12_KEY_PAIR, PKCS12_SIGNER_SETUP,
+        PKCS12_INPUT_OPEN, PKCS12_INPUT_READ
     }
 
     internal fun <T> guarded(stage: Stage, block: () -> T): T = try {
         block()
     } catch (_: Exception) {
         throw IllegalStateException("APPFORGE_FAST_AAB_STAGE_${stage.name}")
+    }
+
+    internal fun <T> guardedPkcs12Load(block: () -> T): T = try {
+        block()
+    } catch (failure: Exception) {
+        val category = when (failure) {
+            is IOException -> "IO_EXCEPTION"
+            is CertificateException -> "CERTIFICATE_EXCEPTION"
+            is NoSuchAlgorithmException -> "NO_SUCH_ALGORITHM_EXCEPTION"
+            is RuntimeException -> "RUNTIME_EXCEPTION"
+            else -> "OTHER"
+        }
+        throw IllegalStateException(
+            "APPFORGE_FAST_AAB_STAGE_${Stage.PKCS12_LOAD.name}_$category"
+        )
     }
 
     fun requireSelection(context: Context, draft: ProjectDraft) {
@@ -76,12 +96,30 @@ internal object FastHtmlAabUploadKey {
         val path = File(requireNotNull(Uri.parse(requireNotNull(draft.keystoreUri)).path))
         val storePwd = draft.storePassword.toCharArray()
         val keyPwd = draft.keyPassword.toCharArray()
+        var p12Bytes: ByteArray? = null
         try {
             val store = guarded(Stage.PKCS12_PROVIDER) {
                 KeyStore.getInstance("PKCS12")
             }
-            guarded(Stage.PKCS12_LOAD) {
-                path.inputStream().use { store.load(it, storePwd) }
+            val input = guarded(Stage.PKCS12_INPUT_OPEN) { path.inputStream() }
+            val bytes = guarded(Stage.PKCS12_INPUT_READ) {
+                input.use {
+                    val size = path.length()
+                    require(size in 256..MAX_KEYSTORE_BYTES)
+                    ByteArray(size.toInt()).also { buffer ->
+                        p12Bytes = buffer
+                        var offset = 0
+                        while (offset < buffer.size) {
+                            val count = it.read(buffer, offset, buffer.size - offset)
+                            check(count > 0)
+                            offset += count
+                        }
+                        check(it.read() == -1)
+                    }
+                }
+            }
+            guardedPkcs12Load {
+                store.load(ByteArrayInputStream(bytes), storePwd)
             }
             guarded(Stage.PKCS12_ALIAS) {
                 require(store.isKeyEntry(draft.keyAlias))
@@ -110,6 +148,7 @@ internal object FastHtmlAabUploadKey {
                 )
             }
         } finally {
+            p12Bytes?.fill(0)
             storePwd.fill('\u0000')
             keyPwd.fill('\u0000')
         }

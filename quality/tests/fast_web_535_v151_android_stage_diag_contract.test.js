@@ -26,3 +26,29 @@ test('V15.1 diagnostic milestones are custom-key-only and leave fail-closed clea
   assert.match(engine,/state\.apk = null/);
   assert.match(engine,/state\.aab = null/);
 });
+test('V15.1.1 bounds and closes file input before classified PKCS12 load', () => {
+  assert.match(key,/MAX_KEYSTORE_BYTES = 10L \* 1024L \* 1024L/);
+  assert.match(key,/guarded\(Stage\.PKCS12_INPUT_OPEN\) \{ path\.inputStream\(\) \}/);
+  assert.match(key,/guarded\(Stage\.PKCS12_INPUT_READ\) \{\s*input\.use/);
+  assert.match(key,/require\(size in 256\.\.MAX_KEYSTORE_BYTES\)/);
+  assert.match(key,/ByteArray\(size\.toInt\(\)\)/);
+  assert.match(key,/while \(offset < buffer\.size\)/);
+  assert.match(key,/it\.read\(buffer, offset, buffer\.size - offset\)/);
+  assert.match(key,/check\(count > 0\)/);
+  assert.match(key,/check\(it\.read\(\) == -1\)/);
+  assert.match(key,/check\(it\.read\(\) == -1\)[\s}]*guardedPkcs12Load \{\s*store\.load\(ByteArrayInputStream\(bytes\), storePwd\)/);
+  assert.doesNotMatch(key,/path\.inputStream\(\)\.use \{ store\.load/);
+  assert.match(key,/finally \{\s*p12Bytes\?\.fill\(0\)\s*storePwd\.fill/);
+});
+test('V15.1.1 load categories are fixed and never inspect exception text', () => {
+  const helper = key.slice(key.indexOf('internal fun <T> guardedPkcs12Load'),
+    key.indexOf('fun requireSelection'));
+  for (const [type, category] of [
+    ['IOException','IO_EXCEPTION'], ['CertificateException','CERTIFICATE_EXCEPTION'],
+    ['NoSuchAlgorithmException','NO_SUCH_ALGORITHM_EXCEPTION'],
+    ['RuntimeException','RUNTIME_EXCEPTION']
+  ]) assert.ok(helper.includes(`is ${type} -> "${category}"`));
+  assert.match(helper,/else -> "OTHER"/);
+  assert.ok(helper.includes('"APPFORGE_FAST_AAB_STAGE_${Stage.PKCS12_LOAD.name}_$category"'));
+  assert.doesNotMatch(helper,/failure\.|\.message|\.cause|toString|stackTrace|print|log/i);
+});
