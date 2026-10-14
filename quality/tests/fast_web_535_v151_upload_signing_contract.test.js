@@ -12,6 +12,7 @@ const apk = read(prefix+'build/FastHtmlApkPackager.kt');
 const unsigned = read(prefix+'build/FastHtmlAabUnsignedPackager.kt');
 const offline = read(prefix+'build/OfflineBuildPackManager.kt');
 const ui = read(prefix+'MainActivity.kt');
+const upload = read(prefix+'build/FastHtmlAabUploadKey.kt');
 test('V15.4 custom signing accepts vault-generated and imported PKCS12 with exact registered hash', () => {
   assert.doesNotMatch(key,/require\(!managed\.generated\)/);
   assert.match(key,/requireSupportedVaultManagedKeystore\(managed\)/);
@@ -38,9 +39,16 @@ test('V15.1 dual outputs have matching signer cert and fail closed on any error'
   assert.match(engine,/state.aab = null/);
   assert.match(engine,/checkCancelled\(state\)\s+state.progress = 100/);
 });
-test('V15.1 preflight reports accurate AAB and PKCS12 limits', () => {
-  assert.match(ui,/Hızlı HTML APK\/AAB ayarları/);
-  assert.match(ui,/Kasada kayıtlı PKCS12/);
+test('V15.1 preflight preserves fast-output errors and validates AAB PKCS12 selection', () => {
+  const start = ui.indexOf('val offlinePackCheck =', ui.indexOf('val startBuildWithDraft:'));
+  const end = ui.indexOf('buildBusy =', start);
+  assert.ok(start >= 0 && end > start);
+  const gate = ui.slice(start, end);
+  assert.match(gate,/offlinePackCheck\.engine == "fast-html-apk" -> "fast-output-invalid"/);
+  assert.match(gate,/FAST_HTML_APK_SETTINGS_REQUIRED=YES/);
+  assert.match(gate,/PREFLIGHT_FAILURE=\$preflightFailure/);
+  assert.match(offline,/FastHtmlAabUploadKey\.requireSelection\(context, draft\)/);
+  assert.match(upload,/Hızlı AAB için Kasada kayıtlı PKCS12 seçilmelidir\./);
   assert.match(engine,/Play yükleme sertifikası Console/);
   assert.doesNotMatch(key,/HTTP|https:\/\//);
 });

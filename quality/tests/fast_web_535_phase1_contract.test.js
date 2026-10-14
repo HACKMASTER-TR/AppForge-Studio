@@ -40,7 +40,12 @@ test('fast HTML invalid options stay in Builder, never redirect to offline toolc
   const gate=main.slice(i,end);
   assert.match(gate,/offlinePackCheck\.engine == "fast-html-apk"/);
   assert.match(gate,/offlinePackCheck\.missing\.firstOrNull\(\)/);
-  assert.match(gate,/if \(!fastHtmlSettingsBlocked\)\s*\{\s*openWorkspaceScreen\(/);
+  assert.match(gate,/offlinePackCheck\.engine == "webview-settings" -> "settings-invalid"/);
+  assert.match(gate,/offlinePackCheck\.engine == "fast-html-apk" -> "fast-output-invalid"/);
+  assert.match(gate,/PREFLIGHT_FAILURE=\$preflightFailure/);
+  assert.match(gate,/WEBVIEW_SETTINGS_INVALID=YES/);
+  assert.match(gate,/if \(preflightFailure == "dependency-missing"\)\s*\{\s*openOfflinePack\(\)/);
+  assert.doesNotMatch(gate,/openWorkspaceScreen\(\s*AppScreen\.OFFLINE_PACK/);
   assert.match(gate,/FAST_HTML_APK_SETTINGS_REQUIRED=YES/);
   assert.match(offline,/engine = "fast-html-apk"/);
   assert.match(offline,/"Android SDK \+ JDK \+ Gradle"/);

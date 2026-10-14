@@ -4396,40 +4396,56 @@ private fun AppForgeApp() {
         if (
             !offlinePackCheck.ready
         ) {
-            val fastHtmlSettingsBlocked =
-                offlinePackCheck.engine == "fast-html-apk"
-            status =
-                if (fastHtmlSettingsBlocked) {
-                    offlinePackCheck.missing.firstOrNull()
-                        ?: "Hızlı HTML APK/AAB ayarları uygun değil."
-                } else {
-                    offlinePackCheck.missing.firstOrNull() ?: "Çevrimdışı derleme paketi eksik."
+            // Settings failures must never be presented as missing toolchains.
+            // Unknown failures remain blocked without guessing a recovery route.
+            val preflightFailure =
+                when {
+                    offlinePackCheck.engine == "webview-settings" -> "settings-invalid"
+                    offlinePackCheck.engine == "fast-html-apk" -> "fast-output-invalid"
+                    offlinePackCheck.missing.isNotEmpty() &&
+                        offlinePackCheck.missing.all {
+                            it in setOf(
+                                "Android SDK + JDK + Gradle",
+                                "Node.js + npm",
+                                "Python + Chaquopy",
+                                "Expo SDK 54 + NDK/CMake",
+                                "Windows Native C/C++ toolchain",
+                                "Windows Portable EXE Host"
+                            )
+                        } -> "dependency-missing"
+                    else -> "unclassified"
                 }
+
+            status =
+                offlinePackCheck.missing.firstOrNull()
+                    ?: "Derleme ön kontrolü başarısız: ${offlinePackCheck.engine}"
 
             progress =
                 0
 
             logs =
                 listOf(
-                    if (fastHtmlSettingsBlocked) {
-                        "⛔ Hızlı HTML çıktı ayarları uygun değil: ${offlinePackCheck.missing.joinToString()}. Yerel AAB için debug veya Kasada kayıtlı PKCS12 gerekir."
-                    } else {
-                        "⛔ Derleme başlatılmadı: ${offlinePackCheck.missing.joinToString()}"
-                    }
-                )
+                    "⛔ Derleme başlatılmadı: ${offlinePackCheck.missing.joinToString()}"
+                ) + offlinePackCheck.missing
 
             preflight =
                 listOf(
                     "BUILD_BLOCKED=YES",
-                    if (fastHtmlSettingsBlocked) {
-                        "FAST_HTML_APK_SETTINGS_REQUIRED=YES"
-                    } else {
-                        "OFFLINE_BUILD_READY=NO"
+                    "PREFLIGHT_FAILURE=$preflightFailure",
+                    when (preflightFailure) {
+                        "settings-invalid" -> "WEBVIEW_SETTINGS_INVALID=YES"
+                        "fast-output-invalid" -> "FAST_HTML_APK_SETTINGS_REQUIRED=YES"
+                        "dependency-missing" -> "OFFLINE_BUILD_READY=NO"
+                        else -> "PREFLIGHT_FAILURE_UNCLASSIFIED=YES"
                     },
                     "ENGINE=${offlinePackCheck.engine}"
                 ) +
                     offlinePackCheck.missing.map {
-                        "MISSING=$it"
+                        if (preflightFailure == "dependency-missing") {
+                            "MISSING=$it"
+                        } else {
+                            "ERROR=$it"
+                        }
                     }
 
             buildProjectKey =
@@ -4456,10 +4472,8 @@ private fun AppForgeApp() {
             step =
                 10
 
-            if (!fastHtmlSettingsBlocked) {
-                openWorkspaceScreen(
-                    AppScreen.OFFLINE_PACK
-                )
+            if (preflightFailure == "dependency-missing") {
+                openOfflinePack()
             }
 
             return@buildStart
