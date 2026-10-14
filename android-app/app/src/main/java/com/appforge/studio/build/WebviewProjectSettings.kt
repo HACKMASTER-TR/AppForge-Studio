@@ -4,31 +4,46 @@ import com.appforge.studio.model.ProjectDraft
 
 /** Manifest declarations do not enable native APIs or bypass runtime consent. */
 internal object WebviewProjectSettings {
-    private val additionalPermissionAllowlist =
-        setOf(
-            "BLUETOOTH_SCAN",
-            "BLUETOOTH_CONNECT",
-            "USE_BIOMETRIC",
-            "READ_CALENDAR",
-            "WRITE_CALENDAR",
-            "READ_CONTACTS",
-            "WRITE_CONTACTS",
-            "ACCESS_BACKGROUND_LOCATION",
-            "SCHEDULE_EXACT_ALARM",
-            "READ_MEDIA_IMAGES",
-            "READ_MEDIA_VIDEO",
-            "ACTIVITY_RECOGNITION"
-        )
+    private val permissionAliases = linkedMapOf(
+        "BLUETOOTH" to listOf("BLUETOOTH_SCAN", "BLUETOOTH_CONNECT"),
+        "BIOMETRIC" to listOf("USE_BIOMETRIC"),
+        "CALENDAR" to listOf("READ_CALENDAR", "WRITE_CALENDAR"),
+        "CONTACTS" to listOf("READ_CONTACTS", "WRITE_CONTACTS"),
+        "BACKGROUND_LOCATION" to listOf("ACCESS_BACKGROUND_LOCATION"),
+        "EXACT_ALARM" to listOf("SCHEDULE_EXACT_ALARM"),
+        "MEDIA_IMAGES" to listOf("READ_MEDIA_IMAGES"),
+        "MEDIA_VIDEO" to listOf("READ_MEDIA_VIDEO"),
+        "ACTIVITY_RECOGNITION" to listOf("ACTIVITY_RECOGNITION")
+    )
+    private val additionalPermissionAllowlist = permissionAliases.values.flatten().toSet()
+
+    // Exact spelling is intentional: never repair malformed or dangerous imported input.
+    private fun expandPermission(value: String): List<String>? {
+        permissionAliases[value]?.let { return it }
+        val canonical = value.removePrefix("android.permission.")
+        return if (canonical in additionalPermissionAllowlist) listOf(canonical) else null
+    }
 
     fun additionalPermissions(draft: ProjectDraft): List<String> {
-        val requested = draft.additionalPermissions.map {
-            it.trim().removePrefix("android.permission.").uppercase()
-        }.distinct()
-        val unsupported = requested.filter { it !in additionalPermissionAllowlist }
+        val unsupported = draft.additionalPermissions.filter { expandPermission(it) == null }
         require(unsupported.isEmpty()) {
             "Desteklenmeyen Android izinleri: ${unsupported.joinToString()}. Ek izinler yalnız manifest bildirimi sağlar; WebView API desteği sağlamaz."
         }
-        return requested
+        return draft.additionalPermissions.flatMap { expandPermission(it)!! }.distinct().sorted()
+    }
+
+    // Partial canonical selections must remain visible so OFF can remove every equivalent.
+    fun isAdditionalPermissionEnabled(values: Set<String>, alias: String): Boolean {
+        val equivalents = permissionAliases.getValue(alias)
+        return values.any { value -> expandPermission(value)?.any { it in equivalents } == true }
+    }
+
+    fun toggleAdditionalPermission(values: Set<String>, alias: String, enabled: Boolean): Set<String> {
+        val equivalents = permissionAliases.getValue(alias)
+        val retained = values.filterNot { value ->
+            expandPermission(value)?.any { it in equivalents } == true
+        }.toSet()
+        return if (enabled) retained + equivalents else retained
     }
 
     fun validate(draft: ProjectDraft) {

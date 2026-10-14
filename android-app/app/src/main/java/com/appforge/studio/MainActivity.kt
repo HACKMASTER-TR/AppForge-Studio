@@ -53,6 +53,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.appforge.studio.build.WebviewProjectSettings
 import com.appforge.studio.build.BuildApiClient
 import com.appforge.studio.build.BuildApiException
 import com.appforge.studio.build.BuildCompareResult
@@ -9878,7 +9879,7 @@ private fun productionChecks(
             )
     }
 
-    if ("BACKGROUND_LOCATION" in draft.additionalPermissions && !draft.location) {
+    if (WebviewProjectSettings.isAdditionalPermissionEnabled(draft.additionalPermissions, "BACKGROUND_LOCATION") && !draft.location) {
         checks +=
             ProductionCheck(
                 "Arka plan konumu",
@@ -15331,12 +15332,12 @@ private val extraPermissionSpecs =
     listOf(
         ExtraPermissionSpec("BLUETOOTH", "Bluetooth ve yakın cihazlar", "Android 12+ tarama ve bağlantı izinlerini ekler.", "BLUETOOTH_SCAN / CONNECT"),
         ExtraPermissionSpec("BIOMETRIC", "Biyometrik doğrulama", "Parmak izi veya yüz doğrulama kullanan native projeler içindir.", "USE_BIOMETRIC"),
-        ExtraPermissionSpec("CALENDAR", "Takvim", "Takvim etkinliklerini okuma ve yazma yeteneklerini ekler.", "READ / WRITE_CALENDAR"),
-        ExtraPermissionSpec("CONTACTS", "Kişiler", "Kişi listesini okuma ve kullanıcı onayıyla kayıt ekleme yeteneklerini ekler.", "READ / WRITE_CONTACTS"),
+        ExtraPermissionSpec("CALENDAR", "Takvim", "Takvim okuma/yazma izinlerini manifestte bildirir; WebView takvim API desteği sağlamaz.", "READ / WRITE_CALENDAR"),
+        ExtraPermissionSpec("CONTACTS", "Kişiler", "Kişi okuma/yazma izinlerini manifestte bildirir; WebView kişi API desteği sağlamaz.", "READ / WRITE_CONTACTS"),
         ExtraPermissionSpec("BACKGROUND_LOCATION", "Arka plan konumu", "Yüksek hassasiyetli izindir; yalnız gerçek arka plan konum ihtiyacında aç.", "ACCESS_BACKGROUND_LOCATION"),
         ExtraPermissionSpec("EXACT_ALARM", "Kesin alarm", "Tam zamanında alarm/hatırlatıcı kuran uygulamalar içindir.", "SCHEDULE_EXACT_ALARM"),
-        ExtraPermissionSpec("MEDIA_IMAGES", "Fotoğraf erişimi", "Android 13+ cihazlarda galerideki görselleri okumayı sağlar.", "READ_MEDIA_IMAGES"),
-        ExtraPermissionSpec("MEDIA_VIDEO", "Video erişimi", "Android 13+ cihazlarda galerideki videoları okumayı sağlar.", "READ_MEDIA_VIDEO"),
+        ExtraPermissionSpec("MEDIA_IMAGES", "Fotoğraf erişimi", "READ_MEDIA_IMAGES iznini manifestte bildirir; erişim veya kullanıcı onayı sağlamaz.", "READ_MEDIA_IMAGES"),
+        ExtraPermissionSpec("MEDIA_VIDEO", "Video erişimi", "READ_MEDIA_VIDEO iznini manifestte bildirir; erişim veya kullanıcı onayı sağlamaz.", "READ_MEDIA_VIDEO"),
         ExtraPermissionSpec("ACTIVITY_RECOGNITION", "Fiziksel aktivite", "Adım ve hareket tanıma özellikleri içindir.", "ACTIVITY_RECOGNITION")
     )
 
@@ -15669,17 +15670,15 @@ private fun PermissionsStep(
             FeatureToggleCard(
                 title = spec.title,
                 description = spec.description,
-                checked = spec.key in d.additionalPermissions,
+                checked = WebviewProjectSettings.isAdditionalPermissionEnabled(d.additionalPermissions, spec.key),
                 permission = spec.manifestLabel
             ) { enabled ->
                 update(
                     d.copy(
                         additionalPermissions =
-                            if (enabled) {
-                                d.additionalPermissions + spec.key
-                            } else {
-                                d.additionalPermissions - spec.key
-                            }
+                            WebviewProjectSettings.toggleAdditionalPermission(
+                                d.additionalPermissions, spec.key, enabled
+                            )
                     )
                 )
             }
@@ -15693,7 +15692,7 @@ private fun PermissionsStep(
 
         item {
             NoteCard(
-                "AppForge geniş depolama izni istemez. Dosya işlemleri modern Android dosya seçicileriyle yapılır."
+                "Ek izinler yalnız manifest bildirimi sağlar; native API veya çalışma zamanı onayı sağlamaz. WebView dosya yükleme, geniş galeri izni gerektirmeyen Android sistem seçicisini kullanır."
             )
         }
 
@@ -21675,6 +21674,9 @@ private fun BuildStep(
 
     val stageLabel =
         when {
+            !effectiveBuildBusy && buildId == null && "BUILD_BLOCKED=YES" in preflight ->
+                "Derleme engellendi"
+
             normalizedStatus ==
                 "failed" ||
             normalizedStatus
@@ -28021,9 +28023,8 @@ private fun applyTemplate(current: ProjectDraft, template: RemoteTemplate): Proj
                     ?.let { array ->
                         buildSet {
                             for (index in 0 until array.length()) {
-                                array.optString(index)
-                                    .takeIf { it.isNotBlank() }
-                                    ?.let(::add)
+                                // Preserve invalid imported entries for fail-closed preflight.
+                                add(array.optString(index))
                             }
                         }
                     }
