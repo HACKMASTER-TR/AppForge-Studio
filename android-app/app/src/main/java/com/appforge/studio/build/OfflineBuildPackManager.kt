@@ -171,6 +171,8 @@ internal object OfflineBuildPackManager {
 
         // HTML (.html) and HTTPS URL APKs never require the optional offline pack.
         // A dedicated, bundled template produces and signs their APKs locally.
+        // Shared output-aware policy: only Android outputs use Fast HTML.
+        // Portable EXE and mixed Android+Windows use normal toolchain checks.
         if (FastHtmlApkPolicy.isCandidate(draft)) {
             val reason = runCatching { requireFastStaticOutput(context, draft) }
                 .exceptionOrNull()?.message
@@ -310,6 +312,8 @@ internal object OfflineBuildPackManager {
         context: Context,
         draft: ProjectDraft
     ) {
+        // Shared output-aware policy: only Android outputs use Fast HTML.
+        // Portable EXE and mixed Android+Windows use normal toolchain checks.
         if (FastHtmlApkPolicy.isCandidate(draft)) {
             requireFastStaticOutput(context, draft)
             return

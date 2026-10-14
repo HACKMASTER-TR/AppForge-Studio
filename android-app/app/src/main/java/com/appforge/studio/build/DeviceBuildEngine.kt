@@ -221,6 +221,8 @@ object DeviceBuildEngine {
 
             // FAST_HTML_APK_V1: no rootfs, SDK, JDK, Gradle, or download manager.
             // Never fall back silently to a network toolchain on an eligible HTML/URL project.
+            // Shared output-aware policy keeps Windows/combined artifacts on
+            // the normal engine path and its own publication/cleanup lifecycle.
             if (FastHtmlApkPolicy.isCandidate(draft)) {
                 val fastOutputs = DeviceBuildCapabilities.requestedOutputs(draft.buildOutput)
                 val wantsAab = DeviceArtifactKind.AAB in fastOutputs
@@ -672,6 +674,8 @@ object DeviceBuildEngine {
             state.progress = 100
             state.logs.add("✅ Hazır • Derleme tamamen cihaz üzerinde tamamlandı.")
         } catch (t: Throwable) {
+            // Shared output-aware policy keeps Windows/combined artifacts on
+            // the normal engine path and its own publication/cleanup lifecycle.
             if (FastHtmlApkPolicy.isCandidate(draft)) {
                 state.apk?.delete()
                 state.aab?.delete()

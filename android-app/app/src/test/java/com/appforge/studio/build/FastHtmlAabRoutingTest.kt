@@ -48,6 +48,34 @@ class FastHtmlAabRoutingTest {
         }
     }
 
+    @Test fun allOutputChoicesSelectAndroidFastOrNormalDeviceRoute() {
+        val fastOutputs = listOf("apk", "aab", "both", "apk+aab", "android", "")
+        for (output in fastOutputs) {
+            val draft = local().apply { buildOutput = output }
+            assertTrue("Android-only $output should remain fast", FastHtmlApkPolicy.isCandidate(draft))
+        }
+
+        val normalOutputs = listOf(
+            "exe", "windows-exe", "portable-exe", "windows-portable-exe",
+            "all", "apk+aab+exe", "native-exe", "windows-native-exe"
+        )
+        for (output in normalOutputs) {
+            for (mode in listOf(SourceMode.LOCAL, SourceMode.URL)) {
+                val draft = local().apply {
+                    buildOutput = output
+                    sourceMode = mode
+                    if (mode == SourceMode.URL) webUrl = "https://example.com"
+                }
+                assertFalse("Windows/mixed $output must avoid Android fast", FastHtmlApkPolicy.isCandidate(draft))
+            }
+        }
+
+        // Invalid output must still fail closed, not silently fall into an arbitrary engine.
+        assertThrows(IllegalStateException::class.java) {
+            FastHtmlApkPolicy.isCandidate(local().apply { buildOutput = "invalid-output" })
+        }
+    }
+
     @Test fun foreignEnginesNeverEnterFastRoute() {
         listOf("node-web", "expo", "react-native", "android-gradle", "android-ndk").forEach { engine ->
             assertFalse(FastHtmlApkPolicy.isCandidate(local().apply { sourceBuildEngine = engine }))

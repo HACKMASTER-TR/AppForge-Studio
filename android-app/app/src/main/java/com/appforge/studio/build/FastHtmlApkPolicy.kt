@@ -4,11 +4,23 @@ import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
 import com.appforge.studio.model.SourceMode
 
-/** HTML file or HTTPS URL, APK only. Never selects Gradle/SDK download paths. */
+/** Fast HTML/HTTPS Android-only route (APK, local AAB and APK+AAB).
+ * Any Windows output (including mixed Android+Windows) uses the normal build engine.
+ */
 internal object FastHtmlApkPolicy {
+    // Reuse this output gate in UI preflight, DeviceBuildEngine and cleanup.
+    // Never allow a Windows Portable/Native EXE to be swallowed by Fast HTML.
+    private fun requestsAndroidOnlyOutputs(draft: ProjectDraft): Boolean {
+        val outputs = DeviceBuildCapabilities.requestedOutputs(draft.buildOutput)
+        return outputs.isNotEmpty() && outputs.all { kind ->
+            kind == DeviceArtifactKind.APK || kind == DeviceArtifactKind.AAB
+        }
+    }
+
     fun isCandidate(draft: ProjectDraft): Boolean {
         val engine = draft.sourceBuildEngine.trim().lowercase().ifBlank { "webview-static" }
         if (engine != "webview-static") return false
+        if (!requestsAndroidOnlyOutputs(draft)) return false
         val tech = draft.sourceTechnology.trim().lowercase()
         return draft.sourceMode == SourceMode.URL ||
             tech in setOf("html", "web-static", "webview") &&

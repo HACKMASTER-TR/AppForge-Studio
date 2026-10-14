@@ -60,3 +60,25 @@ test('baked HTML shell does not add JS native bridge or mixed HTTP navigation', 
   assert.match(manifest, /usesCleartextTraffic="false"/);
   assert.match(manifest, /allowBackup="false"/);
 });
+
+// A source-contract guard complements the runtime Kotlin output-selection matrix.
+test('V15.3 Windows and combined output routing uses a shared Android-only fast gate', () => {
+  const policy = read(source + 'FastHtmlApkPolicy.kt');
+  const engine = read(source + 'DeviceBuildEngine.kt');
+  const manager = read(source + 'OfflineBuildPackManager.kt');
+  const kotlinTests = read('android-app/app/src/test/java/com/appforge/studio/build/FastHtmlAabRoutingTest.kt');
+  assert.match(policy, /DeviceBuildCapabilities\.requestedOutputs\(draft\.buildOutput\)/);
+  assert.match(policy, /outputs\.isNotEmpty\(\) && outputs\.all \{ kind ->/);
+  assert.match(policy, /kind == DeviceArtifactKind\.APK \|\| kind == DeviceArtifactKind\.AAB/);
+  assert.match(policy, /if \(!requestsAndroidOnlyOutputs\(draft\)\) return false/);
+  assert.equal(manager.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 2);
+  assert.equal(engine.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 2);
+  assert.match(engine, /val sourceEngine\s*=\s*effectiveSourceEngine\s*\(\s*draft\s*\)/);
+  assert.match(engine, /DeviceArtifactKind\.WINDOWS_EXE in\s+requestedOutputs/);
+  assert.match(engine, /buildWindowsIfRequested\(/);
+  assert.match(kotlinTests, /allOutputChoicesSelectAndroidFastOrNormalDeviceRoute/);
+  for (const output of ['exe','windows-exe','portable-exe','windows-portable-exe',
+    'all','apk+aab+exe','native-exe','windows-native-exe']) {
+    assert.ok(kotlinTests.includes('"' + output + '"'), output);
+  }
+});
