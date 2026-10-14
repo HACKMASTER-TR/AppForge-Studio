@@ -221,19 +221,108 @@ object DeviceBuildEngine {
 
             // FAST_HTML_APK_V1: no rootfs, SDK, JDK, Gradle, or download manager.
             // Never fall back silently to a network toolchain on an eligible HTML/URL project.
+            // Shared output-aware policy keeps Windows/combined artifacts on
+            // the normal engine path and its own publication/cleanup lifecycle.
             if (FastHtmlApkPolicy.isCandidate(draft)) {
-                FastHtmlApkPolicy.requireSupported(draft)
-                state.preflight.add("✅ HTML/HTTPS Hızlı APK • internet ve ek araç paketi yok.")
-                state.preflight.add("✅ APK cihazda imzalanacak; AAB ve özel anahtar desteklenmiyor.")
+                val fastOutputs = DeviceBuildCapabilities.requestedOutputs(draft.buildOutput)
+                val wantsAab = DeviceArtifactKind.AAB in fastOutputs
+                val customFastSigner = wantsAab && draft.signingMode == SigningMode.CUSTOM
+                if (wantsAab) {
+                    // Strict local static only. URL / other engines remain unmodified.
+                    FastHtmlAabUnsignedPackager.requireSource(draft)
+                    if (customFastSigner) FastHtmlAabUploadKey.requireSelection(context, draft)
+                } else {
+                    FastHtmlApkPolicy.requireSupported(draft)
+                }
+                state.preflight.add("✅ Hızlı HTML • internet ve ek derleme paketi yok.")
+                state.preflight.add(if (wantsAab) {
+                    if (customFastSigner) {
+                        "⚠️ AAB seçilmiş PKCS12 ile imzalanır; Play yükleme sertifikası Console'da doğrulanmalıdır."
+                    } else {
+                        "⚠️ AAB geliştirme anahtarıyla imzalanır; Play yükleme anahtarı değildir."
+                    }
+                } else {
+                    "✅ APK cihazda imzalanacak; özel anahtar desteklenmiyor."
+                })
                 workspace.deleteRecursively()
-                advanceProgress(state, 15, "HTML APK şablonu hazırlanıyor")
+                check(workspace.mkdirs()) { "Fast HTML private workspace could not be prepared." }
+                advanceProgress(state, 15, "HTML çıktıları hazırlanıyor")
                 checkCancelled(state)
-                val apk = FastHtmlApkPackager.build(context, draft, workspace)
+                if (!wantsAab) {
+                    // Preserve the existing ~1-second fast APK path byte-for-byte.
+                    val apk = FastHtmlApkPackager.build(context, draft, workspace)
+                    checkCancelled(state)
+                    state.apk = apk
+                } else {
+                    var candidateApk: File? = null
+                    var candidateUnsignedAab: File? = null
+                    var candidateSignedAab: File? = null
+                    try {
+                        val uploadIdentity = if (customFastSigner) {
+                            FastHtmlAabUploadKey.load(context, draft)
+                        } else null
+                        if (uploadIdentity != null) {
+                            state.logs.add("APPFORGE_FAST_AAB_STAGE_KEY_OPEN_OK")
+                        }
+                        if (DeviceArtifactKind.APK in fastOutputs) {
+                            candidateApk = FastHtmlApkPackager.build(
+                                context, draft.copy(buildOutput = "apk", signingMode = SigningMode.DEBUG),
+                                workspace, uploadIdentity?.apkSigner
+                            )
+                            checkCancelled(state)
+                        }
+                        val unsigned = FastHtmlAabUnsignedPackager.buildUnsignedCandidate(
+                            context, draft, workspace
+                        )
+                        candidateUnsignedAab = unsigned
+                        checkCancelled(state)
+                        if (uploadIdentity != null) {
+                            state.logs.add("APPFORGE_FAST_AAB_STAGE_UNSIGNED_OK")
+                        }
+                        candidateSignedAab = if (uploadIdentity == null) {
+                            FastHtmlAabJarSigner.signDevelopment(unsigned, workspace)
+                        } else {
+                            FastHtmlAabJarSigner.signWithIdentity(
+                                unsigned, workspace, uploadIdentity.key, uploadIdentity.certificate
+                            )
+                        }
+                        checkCancelled(state)
+                        if (uploadIdentity != null) {
+                            state.logs.add("APPFORGE_FAST_AAB_STAGE_SIGNED_OK")
+                        }
+                        if (uploadIdentity != null && candidateApk != null) {
+                            val verified = com.android.apksig.ApkVerifier.Builder(candidateApk)
+                                .build().verify()
+                            check(verified.isVerified && verified.signerCertificates.size == 1 &&
+                                java.security.MessageDigest.isEqual(
+                                    verified.signerCertificates.single().encoded,
+                                    uploadIdentity.certificate.encoded
+                                )) { "APK ve AAB sertifikaları eşleşmiyor." }
+                        }
+                        // Publish both to state only after every requested artifact succeeded.
+                        state.apk = candidateApk
+                        state.aab = candidateSignedAab
+                        state.preflight.add(
+                            "✅ AAB JAR/CMS ve sertifika doğrulandı; APK+AAB varsa ortak kimlik kullanıldı."
+                        )
+                    } catch (failure: Throwable) {
+                        candidateApk?.delete()
+                        candidateSignedAab?.delete()
+                        state.apk = null
+                        state.aab = null
+                        throw failure
+                    } finally {
+                        candidateUnsignedAab?.delete()
+                    }
+                }
                 checkCancelled(state)
-                state.apk = apk
                 state.progress = 100
                 state.status = "success"
-                state.logs.add("✅ HTML/HTTPS APK hazır • sıfır ek araç indirme.")
+                state.logs.add(if (wantsAab) {
+                    "✅ Yerel statik HTML AAB çıktısı hazır • dış araç ve internet kullanılmadı."
+                } else {
+                    "✅ HTML/HTTPS APK hazır • sıfır ek araç indirme."
+                })
                 return
             }
 
@@ -585,6 +674,14 @@ object DeviceBuildEngine {
             state.progress = 100
             state.logs.add("✅ Hazır • Derleme tamamen cihaz üzerinde tamamlandı.")
         } catch (t: Throwable) {
+            // Shared output-aware policy keeps Windows/combined artifacts on
+            // the normal engine path and its own publication/cleanup lifecycle.
+            if (FastHtmlApkPolicy.isCandidate(draft)) {
+                state.apk?.delete()
+                state.aab?.delete()
+                state.apk = null
+                state.aab = null
+            }
             if (state.cancelled.get()) {
                 state.status = "cancelled"
             } else {

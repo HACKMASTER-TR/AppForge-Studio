@@ -33,7 +33,10 @@ internal object FastHtmlApkPackager {
     private const val MAX_PROJECT_BYTES = 24L * 1024 * 1024
     private const val MAX_PROJECT_FILES = 250
 
-    fun build(context: Context, draft: ProjectDraft, workspace: File): File {
+    fun build(
+        context: Context, draft: ProjectDraft, workspace: File,
+        uploadSigner: ApkSigner.SignerConfig? = null
+    ): File {
         FastHtmlApkPolicy.requireSupported(draft)
         check(workspace.mkdirs() || workspace.isDirectory)
         val template = File(workspace, "html-template.apk")
@@ -65,7 +68,7 @@ internal object FastHtmlApkPackager {
                 )
                 repackage(zip, unsigned, additions)
             }
-            val signer = getOrCreateSigner()
+            val signer = uploadSigner ?: getOrCreateSigner()
             ApkSigner.Builder(listOf(signer))
                 .setInputApk(unsigned)
                 .setOutputApk(signed)
@@ -90,7 +93,7 @@ internal object FastHtmlApkPackager {
     }
 
     /** Package only static web assets; never run Node, npm or JavaScript source builds. */
-    private fun readHtmlProject(draft: ProjectDraft): Pair<String, Map<String, ByteArray>> {
+    internal fun readHtmlProject(draft: ProjectDraft): Pair<String, Map<String, ByteArray>> {
         val root = File(draft.importedFolder!!).canonicalFile
         require(root.isDirectory) { "HTML kaynak klasörü geçersiz." }
         val chosen = draft.startPage?.let(::File)?.canonicalFile
