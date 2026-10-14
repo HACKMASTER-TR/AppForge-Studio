@@ -140,7 +140,7 @@ jobs:
 
           curl --fail --location --silent --show-error --retry 3             -o "$TOOL"             "https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar"
 
-          printf '%s  %s\\n'             'a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29'             "$TOOL" | sha256sum -c -
+          printf '%s  %s\n'             'a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29'             "$TOOL" | sha256sum -c -
 
           echo "BUNDLETOOL_INTEGRITY=PASS"
 
@@ -158,7 +158,7 @@ jobs:
 
           test -s "$APKS"
 
-          unzip -Z1 "$APKS" | grep -E             '(^|/)nativeprobe.*\\.apk$'
+          unzip -Z1 "$APKS" | grep -E             '(^|/)nativeprobe.*\.apk$'
 
           echo "BUNDLETOOL_BUILD_APKS=PASS"
           echo "NATIVE_FEATURE_SPLIT=PASS"
