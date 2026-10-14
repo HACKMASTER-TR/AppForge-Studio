@@ -1,0 +1,20 @@
+component,source_version,source_location,exec_class,sha_pin_at_source,offline_readiness_evidence,play_distribution_candidate,decision,blocking_evidence
+PRoot launcher,v1.2.8,ProrootRuntimeContract.kt,android-native,yes,packaged ABI and file verification,PFD or main APK,retain base pending analysis,only arm64-v8a is pinned
+Ubuntu rootfs,24.04.4,LinuxRuntimeFoundation.kt,linux ELF and system files,yes,manifest SHA plus rootfs metadata,UNRESOLVED,blocked for Play release,contains Linux executable code and is fetched from Ubuntu CDN
+Temurin JDK,17.0.20.1+1,install-toolchain.sh,linux JVM and executable,yes,binary existence and version,UNRESOLVED,proof required,external code provenance and Android exec restriction
+Gradle,9.3.1 + 8.14.3,install-toolchain.sh,Java application/JAR,downloaded distribution checksum,gradle --version plus prewarm,UNRESOLVED,proof required,downloading code/JAR and plugin dependencies
+Android Gradle Plugin,9.1.1,prepare-offline-pack.sh,Java plugin/JAR,not comprehensively pinned in offline manifest,example assembleDebug,PFD feasibility unresolved,proof required,Maven transitive dependencies
+Android platform,37.0,install-toolchain.sh,android.jar plus SDK data,platform archive SHA1,android.jar existence and aapt2 dump,unresolved,data versus SDK code separation required
+Android Build Tools,36.0.0,install-toolchain.sh,host executables,yes for ARM64 replacements,aapt2 version and resource parse,UNRESOLVED,proof required,third party ARM64 origin and code policy
+SDK Command-line Tools,15859902,install-toolchain.sh,JAR and host executables,yes,SDK manager can run,UNRESOLVED,proof required,contains executable code
+Node.js Expo,22.23.3,install-toolchain.sh,linux ARM64 executable,yes,node and npm version,UNRESOLVED,proof required,interpreter exception cannot be presumed for native code
+Node.js Web,apt Ubuntu version,install-toolchain.sh,linux executable,no fixed Node version marker,command -v and npm cache verify,UNRESOLVED,pin version before approval,non-reproducible package version
+npm dependencies,project dependent,build-node.sh,JAR/JS/ELF mixed,no complete project manifest,npm --offline,UNRESOLVED,project-scoped acceptance,esbuild and rollup native optionals
+Python,3.12,install-toolchain.sh,interpreter plus native modules,Ubuntu apt packages,python version and Python Gradle prewarm,UNRESOLVED,proof required,python interpreter exception not blanket native executable allowance
+Chaquopy,17.0.0,python-template/build.gradle.kts,Gradle plugin and dependencies,not complete manifest,example Python assembleDebug,UNRESOLVED,proof required,third party dependency resolution
+Expo SDK,54,build-expo.sh,JS and native dependencies,project lockfile dependent,Expo version gate,UNRESOLVED,proof required,React Native 0.81 and native libs
+NDK Expo,27.1.12297006,install-toolchain.sh,host toolchain and Android target libs,SHA1 for r27b,ARM64 LLVM wrapper and native smoke,UNRESOLVED,proof required,host ABI wrappers and huge disk cost
+CMake and Ninja,Ubuntu ARM64,install-toolchain.sh,linux executables,apt packages plus wrapper checks,cross compile smoke,UNRESOLVED,proof required,not equivalent to x86_64 SDK host tools
+MinGW-w64,Ubuntu apt versions,install-windows-native-toolchain.sh,linux host cross compiler,apt package version not pinned,PE32+ smoke,UNRESOLVED,proof required,apt native executables and provenance
+Windows Portable Host,windows-host-v1-c7e4b2a,WindowsPortableHostStore.kt,Windows PE template,yes size and SHA256,verified downloaded EXE,UNRESOLVED,policy classification required,375039759 byte executable-format file used as template
+Fast HTML APK/AAB,AppForge 5.0.34,FastHtmlApkPolicy / FastHtmlAabUnsignedPackager,app compiled source,APK/AAB packaged with app,source contract and CI,PFD not required,keep in base,not part of heavy offline pack

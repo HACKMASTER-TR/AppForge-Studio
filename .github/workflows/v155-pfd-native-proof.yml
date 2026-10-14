@@ -1,0 +1,117 @@
+name: AppForge V15.5 PFD Proof CI
+
+on:
+  push:
+    branches:
+      - research/v155-play-offline-delivery-20261014
+    paths:
+      - .github/workflows/v155-pfd-native-proof.yml
+      - tools/play-offline-delivery/**
+
+permissions:
+  contents: read
+
+jobs:
+  pfd-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "HACKMASTER-TR/AppForge-Studio"
+          test "$GITHUB_REF" = "refs/heads/research/v155-play-offline-delivery-20261014"
+          echo "ISOLATED_BRANCH=PASS"
+          echo "PLAY_PUBLISH=DISABLED"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager --install \
+            'platforms;android-36' \
+            'build-tools;36.0.0' \
+            'ndk;28.2.13676358' \
+            'cmake;3.22.1'
+          echo "ANDROID_SDK_COMPONENTS=PASS"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Verify fixture
+        working-directory: tools/play-offline-delivery/pfd-native-proof
+        run: |
+          node --check audit-fixture.js
+          node audit-fixture.js
+
+      - name: Build standalone AAB
+        working-directory: tools/play-offline-delivery/pfd-native-proof
+        run: |
+          gradle --no-daemon --stacktrace :app:bundleDebug
+
+      - name: Verify AAB structure
+        shell: bash
+        working-directory: tools/play-offline-delivery/pfd-native-proof
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          bundles = list(
+              Path("app/build/outputs/bundle/debug").glob("*.aab")
+          )
+
+          assert len(bundles) == 1, (
+              f"Expected one AAB, found {len(bundles)}"
+          )
+
+          bundle = bundles[0]
+          assert bundle.stat().st_size > 1024
+
+          with ZipFile(bundle) as archive:
+              entries = set(archive.namelist())
+              required = {
+                  "base/manifest/AndroidManifest.xml",
+                  "nativeprobe/manifest/AndroidManifest.xml",
+                  "nativeprobe/lib/arm64-v8a/libv155proof.so",
+              }
+              missing = sorted(required - entries)
+              assert not missing, f"Missing AAB entries: {missing}"
+
+          print("AAB_FILE=PASS")
+          print("PFD_MODULE_INCLUDED=PASS")
+          print("ARM64_JNI_LIBRARY_INCLUDED=PASS")
+          print("PFD_AAB_STRUCTURE=PASS")
+          print("PLAY_DELIVERY=NOT_TESTED")
+          PY
+
+      - name: Upload research artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: appforge-v155-pfd-native-proof
+          path: tools/play-offline-delivery/pfd-native-proof/app/build/outputs/bundle/debug/*.aab
+          if-no-files-found: error
+          retention-days: 7

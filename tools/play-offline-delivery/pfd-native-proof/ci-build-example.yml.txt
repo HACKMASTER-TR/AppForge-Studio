@@ -1,0 +1,31 @@
+# NON-ACTIVE example for a separately reviewed and explicitly triggered CI job.
+# Do not add directly to production workflows without permission.
+name: V15.5 PFD Proof (isolated)
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install isolated Android SDK components
+        run: |
+          sdkmanager --install 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Build research fixture AAB (no Play upload)
+        working-directory: tools/play-offline-delivery/pfd-native-proof
+        run: gradle --no-daemon :app:bundleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v155-pfd-proof-aab
+          path: tools/play-offline-delivery/pfd-native-proof/app/build/outputs/bundle/debug/*.aab
+          if-no-files-found: error
