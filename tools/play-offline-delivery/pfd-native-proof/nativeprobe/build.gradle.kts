@@ -18,4 +18,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
-dependencies { implementation(project(":app")) }
+dependencies {
+    implementation(project(":app"))
+    implementation("com.google.android.play:feature-delivery:2.1.0")
+}

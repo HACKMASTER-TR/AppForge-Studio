@@ -5,6 +5,7 @@ const checks=[
   ['separate settings modules', 'settings.gradle.kts', 'include(":app", ":nativeprobe")'],
   ['base registers feature', 'app/build.gradle.kts', 'dynamicFeatures += setOf(":nativeprobe")'],
   ['feature dynamic plugin', 'nativeprobe/build.gradle.kts','id("com.android.dynamic-feature")'],
+  ['feature Play delivery classpath', 'nativeprobe/build.gradle.kts','implementation("com.google.android.play:feature-delivery:2.1.0")'],
   ['PFD on-demand manifest', 'nativeprobe/src/main/AndroidManifest.xml', '<dist:on-demand />'],
   ['no feature exports', 'nativeprobe/src/main/AndroidManifest.xml', 'android:exported="false"'],
   ['SplitCompat bootstrap', 'app/src/main/java/com/appforge/v155proof/ProofApplication.java', 'SplitCompatApplication'],
