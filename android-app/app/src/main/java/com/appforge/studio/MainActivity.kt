@@ -4412,7 +4412,7 @@ private fun AppForgeApp() {
             logs =
                 listOf(
                     if (fastHtmlSettingsBlocked) {
-                        "⛔ Hızlı HTML çıktısı ayarları desteklenmiyor. Yerel AAB için debug veya Kasaya içe aktarılmış PKCS12 gerekir; özel ikon ve ek Android izinleri desteklenmez."
+                        "⛔ Hızlı HTML çıktısı ayarları desteklenmiyor. Yerel AAB için debug veya Kasada kayıtlı PKCS12 gerekir; özel ikon ve ek Android izinleri desteklenmez."
                     } else {
                         "⛔ Derleme başlatılmadı • gerekli cihaz toolchain paketi eksik."
                     }

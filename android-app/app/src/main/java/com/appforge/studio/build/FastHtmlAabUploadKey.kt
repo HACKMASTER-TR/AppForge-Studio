@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.android.apksig.ApkSigner
 import com.appforge.studio.io.KeystoreVault
+import com.appforge.studio.io.ManagedKeystore
 import com.appforge.studio.model.ProjectDraft
 import com.appforge.studio.model.SigningMode
 import java.io.ByteArrayInputStream
@@ -18,8 +19,9 @@ import java.security.Signature
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 
-/** AAB upload signing with an explicitly selected, previously imported PKCS12.
- * Never creates a replacement key. Imported-only enforces an independent backup source.
+/** AAB upload signing with a selected vault-managed PKCS12.
+ * Imported and locally generated identities share the same strict validation.
+ * Never generates or replaces a key during signing. Back up generated keys externally.
  * Play Console upload-certificate enrollment and release approval are outside this class.
  */
 internal object FastHtmlAabUploadKey {
@@ -67,7 +69,7 @@ internal object FastHtmlAabUploadKey {
             draft.keyPassword.isNotBlank()) { "Yükleme anahtarı, alias ve parolaları gerekli." }
         val uri = Uri.parse(draft.keystoreUri ?: error("PKCS12 yükleme anahtarı seçilmedi."))
         require(uri.scheme == "file" && !uri.path.isNullOrBlank()) {
-            "Hızlı AAB için Kasaya içe aktarılmış PKCS12 seçilmelidir."
+            "Hızlı AAB için Kasada kayıtlı PKCS12 seçilmelidir."
         }
         val keyFile = File(requireNotNull(uri.path)).canonicalFile
         val vault = File(context.filesDir, "keystore_vault").canonicalFile
@@ -78,17 +80,20 @@ internal object FastHtmlAabUploadKey {
         val managed = KeystoreVault.load(context).singleOrNull {
             File(it.savedPath).canonicalFile == keyFile
         } ?: error("Seçilen PKCS12 kasaya kayıtlı değil.")
-        require(!managed.generated) {
-            "Hızlı AAB üretim anahtarı dışarıda yedeği bulunan, içe aktarılmış PKCS12 olmalı."
-        }
-        require(managed.originalFileName.lowercase().endsWith(".p12") ||
-            managed.originalFileName.lowercase().endsWith(".pfx")) {
-            "Hızlı AAB için PKCS12 (.p12/.pfx) gerekli."
-        }
+        requireSupportedVaultManagedKeystore(managed)
         val stored = managed.sha256
         val actual = MessageDigest.getInstance("SHA-256").digest(keyFile.readBytes())
             .joinToString(":") { "%02X".format(it.toInt() and 255) }
         require(stored.equals(actual, true)) { "PKCS12 SHA-256 kasadaki parmak iziyle eşleşmiyor." }
+    }
+
+    // Both AppForge-generated and imported vault PKCS12 records pass this check.
+    // Paths, file bounds, SHA256 and cryptographic validation remain in requireSelection/load.
+    internal fun requireSupportedVaultManagedKeystore(managed: ManagedKeystore) {
+        require(managed.originalFileName.lowercase().endsWith(".p12") ||
+            managed.originalFileName.lowercase().endsWith(".pfx")) {
+            "Hızlı AAB için PKCS12 (.p12/.pfx) gerekli."
+        }
     }
 
     fun load(context: Context, draft: ProjectDraft): Identity {

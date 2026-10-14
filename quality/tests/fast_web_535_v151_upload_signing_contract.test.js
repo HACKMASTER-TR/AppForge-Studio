@@ -12,8 +12,9 @@ const apk = read(prefix+'build/FastHtmlApkPackager.kt');
 const unsigned = read(prefix+'build/FastHtmlAabUnsignedPackager.kt');
 const offline = read(prefix+'build/OfflineBuildPackManager.kt');
 const ui = read(prefix+'MainActivity.kt');
-test('V15.1 custom signing requires an imported backed-up PKCS12 with exact registered hash', () => {
-  assert.match(key,/!managed.generated/);
+test('V15.4 custom signing accepts vault-generated and imported PKCS12 with exact registered hash', () => {
+  assert.doesNotMatch(key,/require\(!managed\.generated\)/);
+  assert.match(key,/requireSupportedVaultManagedKeystore\(managed\)/);
   assert.match(key,/managed.sha256/);
   assert.match(key,/stored.equals\(actual, true\)/);
   assert.match(key,/"PKCS12"/);
@@ -39,7 +40,7 @@ test('V15.1 dual outputs have matching signer cert and fail closed on any error'
 });
 test('V15.1 preflight reports accurate AAB and PKCS12 limits', () => {
   assert.match(ui,/Hızlı HTML APK\/AAB ayarları/);
-  assert.match(ui,/Kasaya içe aktarılmış PKCS12/);
+  assert.match(ui,/Kasada kayıtlı PKCS12/);
   assert.match(engine,/Play yükleme sertifikası Console/);
   assert.doesNotMatch(key,/HTTP|https:\/\//);
 });

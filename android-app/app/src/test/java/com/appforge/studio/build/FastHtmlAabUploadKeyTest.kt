@@ -1,5 +1,7 @@
 package com.appforge.studio.build
 
+import com.appforge.studio.io.ManagedKeystore
+
 import java.io.IOException
 import java.security.KeyPairGenerator
 import java.security.NoSuchAlgorithmException
@@ -54,6 +56,27 @@ class FastHtmlAabUploadKeyTest {
             }
             assertEquals("APPFORGE_FAST_AAB_STAGE_${stage.name}", exception.message)
             assertNull(exception.cause)
+        }
+    }
+
+    @Test fun generatedAndImportedPkcs12AreBothAcceptedAndOtherExtensionsRejected() {
+        for (generated in listOf(true, false)) {
+            for (suffix in listOf(".p12", ".pfx")) {
+                val accepted = ManagedKeystore(
+                    id = "FAKE_TEST_ID", name = "fixture", originalFileName = "fixture$suffix",
+                    savedPath = "", algorithm = "RSA 3072 / PKCS12", sha1 = "", sha256 = "",
+                    addedAt = 0L, alias = "fixture", generated = generated
+                )
+                FastHtmlAabUploadKey.requireSupportedVaultManagedKeystore(accepted)
+            }
+            val rejected = ManagedKeystore(
+                id = "FAKE_TEST_ID", name = "fixture", originalFileName = "fixture.jks",
+                savedPath = "", algorithm = "RSA", sha1 = "", sha256 = "",
+                addedAt = 0L, generated = generated
+            )
+            assertThrows(IllegalArgumentException::class.java) {
+                FastHtmlAabUploadKey.requireSupportedVaultManagedKeystore(rejected)
+            }
         }
     }
 
