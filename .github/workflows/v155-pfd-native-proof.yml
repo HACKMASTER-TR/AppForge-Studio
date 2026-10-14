@@ -126,6 +126,45 @@ jobs:
           print("PLAY_DELIVERY=NOT_TESTED")
           PY
 
+      - name: Verify bundletool distribution and split APKs
+        shell: bash
+        working-directory: tools/play-offline-delivery/pfd-native-proof
+        run: |
+          set -euo pipefail
+
+          TOOL="$RUNNER_TEMP/bundletool-all-1.18.3.jar"
+          AAB="app/build/outputs/bundle/debug/app-debug.aab"
+          APKS="$RUNNER_TEMP/appforge-v155-proof.apks"
+
+          test -s "$AAB"
+
+          curl --fail --location --silent --show-error --retry 3             -o "$TOOL"             "https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar"
+
+          printf '%s  %s\\n'             'a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29'             "$TOOL" | sha256sum -c -
+
+          echo "BUNDLETOOL_INTEGRITY=PASS"
+
+          java -jar "$TOOL" validate --bundle="$AAB"
+
+          echo "BUNDLETOOL_VALIDATE=PASS"
+
+          java -jar "$TOOL" dump manifest             --bundle="$AAB"             --module=nativeprobe             > "$RUNNER_TEMP/v155-nativeprobe-manifest.xml"
+
+          grep -Fq 'on-demand'             "$RUNNER_TEMP/v155-nativeprobe-manifest.xml"
+
+          echo "BUNDLETOOL_ON_DEMAND=PASS"
+
+          java -jar "$TOOL" build-apks             --bundle="$AAB"             --output="$APKS"             --mode=default             --aapt2="$ANDROID_HOME/build-tools/36.0.0/aapt2"
+
+          test -s "$APKS"
+
+          unzip -Z1 "$APKS" | grep -E             '(^|/)nativeprobe.*\\.apk$'
+
+          echo "BUNDLETOOL_BUILD_APKS=PASS"
+          echo "NATIVE_FEATURE_SPLIT=PASS"
+          echo "PLAY_UPLOAD=NOT_RUN"
+          echo "DEVICE_INSTALL=NOT_RUN"
+
       - name: Upload research artifact
         uses: actions/upload-artifact@v4
         with:
