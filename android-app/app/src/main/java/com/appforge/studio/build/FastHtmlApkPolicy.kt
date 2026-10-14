@@ -21,6 +21,9 @@ internal object FastHtmlApkPolicy {
         val engine = draft.sourceBuildEngine.trim().lowercase().ifBlank { "webview-static" }
         if (engine != "webview-static") return false
         if (!requestsAndroidOnlyOutputs(draft)) return false
+        if (!draft.iconUri.isNullOrBlank() || draft.camera || draft.microphone ||
+            draft.location || draft.notifications || draft.nfc || draft.deepLinkEnabled ||
+            draft.wakeLock || draft.additionalPermissions.isNotEmpty()) return false
         val tech = draft.sourceTechnology.trim().lowercase()
         return draft.sourceMode == SourceMode.URL ||
             tech in setOf("html", "web-static", "webview") &&

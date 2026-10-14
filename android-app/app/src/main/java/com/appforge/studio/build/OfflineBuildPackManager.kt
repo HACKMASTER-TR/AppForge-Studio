@@ -169,7 +169,12 @@ internal object OfflineBuildPackManager {
         draft: ProjectDraft
     ): OfflineBuildRequirementCheck {
 
-        // HTML (.html) and HTTPS URL APKs never require the optional offline pack.
+        val settingsError = runCatching { WebviewProjectSettings.validate(draft) }
+            .exceptionOrNull()?.message
+        if (settingsError != null) return OfflineBuildRequirementCheck(
+            ready = false, engine = "webview-settings", missing = listOf(settingsError)
+        )
+        // Simple HTML/HTTPS projects use the bundled route; advanced settings need Gradle.
         // A dedicated, bundled template produces and signs their APKs locally.
         // Shared output-aware policy: only Android outputs use Fast HTML.
         // Portable EXE and mixed Android+Windows use normal toolchain checks.

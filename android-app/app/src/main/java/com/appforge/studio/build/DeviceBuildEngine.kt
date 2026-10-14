@@ -36,22 +36,6 @@ internal data class DeviceBuildSnapshot(
     val exe: File?
 )
 
-private val LOCAL_ADDITIONAL_PERMISSION_ALLOWLIST =
-    setOf(
-        "BLUETOOTH_SCAN",
-        "BLUETOOTH_CONNECT",
-        "USE_BIOMETRIC",
-        "READ_CALENDAR",
-        "WRITE_CALENDAR",
-        "READ_CONTACTS",
-        "WRITE_CONTACTS",
-        "ACCESS_BACKGROUND_LOCATION",
-        "SCHEDULE_EXACT_ALARM",
-        "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VIDEO",
-        "ACTIVITY_RECOGNITION"
-    )
-
 object DeviceBuildEngine {
     private data class JobState(
         val id: String,
@@ -696,6 +680,7 @@ object DeviceBuildEngine {
     }
 
     private fun validateCapabilities(draft: ProjectDraft) {
+        WebviewProjectSettings.validate(draft)
         require(draft.packageName.matches(Regex("""^[A-Za-z_]\w*(\.[A-Za-z_]\w*)+$"""))) {
             "Geçersiz Android package name."
         }
@@ -1670,6 +1655,7 @@ object DeviceBuildEngine {
         nodeWebAssets: Boolean = false,
         fastWebBuild: Boolean = false
     ) {
+        WebviewProjectSettings.validate(draft)
         val project = File(workspace, "android-wrapper")
         project.deleteRecursively()
 
@@ -1690,7 +1676,7 @@ object DeviceBuildEngine {
 
         val config = JSONObject()
             .put("sourceMode", draft.sourceMode.name)
-            .put("assetHttpsEnabled", nodeWebAssets && draft.sourceMode == SourceMode.LOCAL)
+            .put("assetHttpsEnabled", (nodeWebAssets || draft.microphone) && draft.sourceMode == SourceMode.LOCAL)
             .put("webUrl", draft.webUrl)
             .put("appName", draft.appName)
             .put("splashEnabled", draft.splashEnabled)
@@ -1701,6 +1687,11 @@ object DeviceBuildEngine {
             .put("fullscreen", draft.fullscreen)
             .put("notifications", draft.notifications)
             .put("camera", draft.camera)
+            .put("microphone", draft.microphone)
+            .put("deepLinkEnabled", draft.deepLinkEnabled)
+            .put("deepLinkScheme", draft.deepLinkScheme)
+            .put("deepLinkHost", draft.deepLinkHost)
+            .put("deepLinkPathPrefix", draft.deepLinkPathPrefix)
             .put("location", draft.location)
             .put("fileUpload", draft.fileUpload)
             .put("downloads", draft.downloads)
@@ -2647,6 +2638,7 @@ object DeviceBuildEngine {
         """.trimIndent()
 
     private fun webManifest(draft: ProjectDraft): String {
+        WebviewProjectSettings.validate(draft)
         val permissions = buildString {
             append("<uses-permission android:name=\"android.permission.INTERNET\" />\n")
             if (draft.notifications) append("<uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />\n")
@@ -2660,22 +2652,7 @@ object DeviceBuildEngine {
             if (draft.wakeLock) append("<uses-permission android:name=\"android.permission.WAKE_LOCK\" />\n")
             if (draft.nfc) append("<uses-permission android:name=\"android.permission.NFC\" />\n")
 
-            draft
-                .additionalPermissions
-                .asSequence()
-                .map {
-                    it
-                        .removePrefix(
-                            "android.permission."
-                        )
-                        .trim()
-                        .uppercase()
-                }
-                .filter {
-                    it in
-                        LOCAL_ADDITIONAL_PERMISSION_ALLOWLIST
-                }
-                .distinct()
+            WebviewProjectSettings.additionalPermissions(draft)
                 .forEach { permission ->
                     append(
                         "<uses-permission android:name=\"android.permission.$permission\" />\n"

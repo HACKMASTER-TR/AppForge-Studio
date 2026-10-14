@@ -4403,7 +4403,7 @@ private fun AppForgeApp() {
                     offlinePackCheck.missing.firstOrNull()
                         ?: "Hızlı HTML APK/AAB ayarları uygun değil."
                 } else {
-                    "Çevrimdışı derleme paketi eksik."
+                    offlinePackCheck.missing.firstOrNull() ?: "Çevrimdışı derleme paketi eksik."
                 }
 
             progress =
@@ -4412,9 +4412,9 @@ private fun AppForgeApp() {
             logs =
                 listOf(
                     if (fastHtmlSettingsBlocked) {
-                        "⛔ Hızlı HTML çıktısı ayarları desteklenmiyor. Yerel AAB için debug veya Kasada kayıtlı PKCS12 gerekir; özel ikon ve ek Android izinleri desteklenmez."
+                        "⛔ Hızlı HTML çıktı ayarları uygun değil: ${offlinePackCheck.missing.joinToString()}. Yerel AAB için debug veya Kasada kayıtlı PKCS12 gerekir."
                     } else {
-                        "⛔ Derleme başlatılmadı • gerekli cihaz toolchain paketi eksik."
+                        "⛔ Derleme başlatılmadı: ${offlinePackCheck.missing.joinToString()}"
                     }
                 )
 

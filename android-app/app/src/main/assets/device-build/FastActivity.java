@@ -190,6 +190,11 @@ public final class FastActivity extends Activity {
             );
         }
 
+        if (config.optBoolean("microphone", false) &&
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(Manifest.permission.RECORD_AUDIO);
+        }
+
         if (
             config.optBoolean(
                 "location",
@@ -369,6 +374,10 @@ public final class FastActivity extends Activity {
                 false
             )
         ) {
+            return false;
+        }
+
+        if (uri.getUserInfo() != null || uri.getPort() != -1) {
             return false;
         }
 
@@ -995,6 +1004,11 @@ public final class FastActivity extends Activity {
 
                     runOnUiThread(
                         () -> {
+                            // Media capture requires the same trusted source boundary as location.
+                            if (!isTrustedGeolocationOrigin(request.getOrigin() == null ? null : request.getOrigin().toString())) {
+                                request.deny();
+                                return;
+                            }
                             java.util.ArrayList<String> granted =
                                 new java.util.ArrayList<>();
 
@@ -1019,6 +1033,11 @@ public final class FastActivity extends Activity {
                                     granted.add(
                                         resource
                                     );
+                                }
+                                if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource) &&
+                                    config.optBoolean("microphone", false) &&
+                                    checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                    granted.add(resource);
                                 }
                             }
 
