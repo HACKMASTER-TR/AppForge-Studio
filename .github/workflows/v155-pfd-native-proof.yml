@@ -165,6 +165,45 @@ jobs:
           echo "PLAY_UPLOAD=NOT_RUN"
           echo "DEVICE_INSTALL=NOT_RUN"
 
+      - name: Build local-testing APK set
+        shell: bash
+        working-directory: tools/play-offline-delivery/pfd-native-proof
+        run: |
+          set -euo pipefail
+
+          TOOL="$RUNNER_TEMP/bundletool-all-1.18.3.jar"
+          AAB="app/build/outputs/bundle/debug/app-debug.aab"
+          APKS="$RUNNER_TEMP/appforge-v155-pfd-local-testing.apks"
+
+          test -s "$TOOL"
+          test -s "$AAB"
+          test ! -e "$APKS"
+
+          java -jar "$TOOL" build-apks             --bundle="$AAB"             --output="$APKS"             --mode=default             --local-testing             --aapt2="$ANDROID_HOME/build-tools/36.0.0/aapt2"
+
+          test -s "$APKS"
+          unzip -tqq "$APKS"
+
+          unzip -Z1 "$APKS"             > "$RUNNER_TEMP/v155-local-testing-entries.txt"
+
+          grep -Eq '(^|/)base[^/]*[.]apk$'             "$RUNNER_TEMP/v155-local-testing-entries.txt"
+
+          grep -Eq '(^|/)nativeprobe[^/]*[.]apk$'             "$RUNNER_TEMP/v155-local-testing-entries.txt"
+
+          echo "LOCAL_TEST_APKS=PASS"
+          echo "BASE_SPLIT=PASS"
+          echo "ON_DEMAND_SPLIT=PASS"
+          echo "REAL_PLAY_DELIVERY=NOT_TESTED"
+          echo "DEVICE_INSTALL=NOT_RUN"
+
+      - name: Upload local-testing APK archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: appforge-v155-pfd-local-testing-apks
+          path: ${{ runner.temp }}/appforge-v155-pfd-local-testing.apks
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload research artifact
         uses: actions/upload-artifact@v4
         with:
