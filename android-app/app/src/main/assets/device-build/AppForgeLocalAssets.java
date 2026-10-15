@@ -20,9 +20,12 @@ final class AppForgeLocalAssets {
         "/assets/site/";
 
     private final AssetManager assets;
+    private final String documentBootstrap;
 
-    AppForgeLocalAssets(AssetManager assets) {
+    AppForgeLocalAssets(AssetManager assets) { this(assets, null); }
+    AppForgeLocalAssets(AssetManager assets, String documentBootstrap) {
         this.assets = assets;
+        this.documentBootstrap = documentBootstrap;
     }
 
     private static boolean isHost(Uri uri) {
@@ -125,6 +128,10 @@ final class AppForgeLocalAssets {
             String mime =
                 mimeType(relative);
 
+            if (request.isForMainFrame() && "text/html".equals(mime) && documentBootstrap != null) {
+                body = withBootstrap(body, documentBootstrap);
+            }
+
             String encoding =
                 mime.startsWith("text/") ||
                 mime.contains("javascript") ||
@@ -142,6 +149,24 @@ final class AppForgeLocalAssets {
         } catch (IOException ignored) {
             return notFound();
         }
+    }
+
+    // Insert ASCII script before application code without re-encoding project HTML or
+    // changing its doctype. The project on disk is never modified.
+    private static InputStream withBootstrap(InputStream body, String javascript) throws IOException {
+        byte[] prefix = new byte[1024];
+        int used=0, count;
+        try {
+            while (used<prefix.length && (count=body.read(prefix,used,prefix.length-used))>0) used+=count;
+            String text=new String(prefix,0,used,java.nio.charset.StandardCharsets.ISO_8859_1);
+            java.util.regex.Matcher doctype=java.util.regex.Pattern.compile("(?is)^(?:\\xEF\\xBB\\xBF)?\\s*<!doctype[^>]*>").matcher(text);
+            int at=doctype.find()?doctype.end():0;
+            java.io.ByteArrayOutputStream first=new java.io.ByteArrayOutputStream();
+            first.write(prefix,0,at);
+            first.write(("<script>"+javascript.replace("</script", "<\\/script")+"</script>").getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+            first.write(prefix,at,used-at);
+            return new java.io.SequenceInputStream(new ByteArrayInputStream(first.toByteArray()),body);
+        } catch(IOException error){body.close();throw error;}
     }
 
     private static WebResourceResponse notFound() {

@@ -67,6 +67,58 @@ public final class FastActivity extends Activity {
     private volatile String
         currentMainUrl = "";
 
+    private AppForgeDocuments documents;
+    private String dispatchCompat(JSONObject message) throws Exception {
+        String method = message.getString("method");
+        org.json.JSONArray args = message.getJSONArray("args");
+        FastNativeBridge bridge = new FastNativeBridge();
+        switch (method) {
+            case "share": return bridge.share(args.optString(0), args.optString(1));
+            case "copy": return bridge.copy(args.optString(0));
+            case "vibrate": return bridge.vibrate(args.optInt(0, 100));
+            case "scanCode": return bridge.scanCode();
+            case "download": return new DownloadBridge().download(args.optString(0));
+            case "status": return new DownloadBridge().status(args.optString(0));
+            case "markCapture": cameraCaptureRequestedByPage = true; return "OK";
+            case "clearCapture": cameraCaptureRequestedByPage = false; return "OK";
+            default: throw new SecurityException("Unknown native method");
+        }
+    }
+
+
+    public final class LocalDocuments {
+        @JavascriptInterface public void send(String token, String raw) {
+            AppForgeDocuments current=documents;
+            if(current==null || raw==null || raw.length()>34000 || !current.matchesCompatToken(token))return;
+            runOnUiThread(()->{if(current==documents)current.receiveLocal(token,raw);});
+        }
+    }
+
+    public final class NativeCompat {
+        @JavascriptInterface public String call(String token, String raw) {
+            AppForgeDocuments current = documents;
+            if (current == null || !current.matchesCompatToken(token) || raw == null || raw.length() > 45000)
+                return "ERROR|Native request denied";
+            final java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+            final java.util.concurrent.atomic.AtomicReference<String> result =
+                new java.util.concurrent.atomic.AtomicReference<>("ERROR|Native request expired");
+            final java.util.concurrent.atomic.AtomicBoolean expired = new java.util.concurrent.atomic.AtomicBoolean();
+            runOnUiThread(() -> {
+                try {
+                    JSONObject message = new JSONObject(raw);
+                    boolean gesture = !"status".equals(message.optString("method"));
+                    if (expired.get() || current != documents || !current.allowsCompat(token, gesture)) return;
+                    result.set(dispatchCompat(message));
+                } catch (Exception error) { result.set("ERROR|Native action failed"); }
+                finally { done.countDown(); }
+            });
+            try {
+                if (!done.await(5, java.util.concurrent.TimeUnit.SECONDS)) expired.set(true);
+            } catch (InterruptedException interrupted) { expired.set(true); Thread.currentThread().interrupt(); }
+            return result.get();
+        }
+    }
+
     private JSONObject config;
     private View splashView;
     private long splashStartedAt;
@@ -86,6 +138,19 @@ public final class FastActivity extends Activity {
         webView = new WebView(this);
 
         configureWebView();
+        String documentOrigin = "LOCAL".equals(config.optString("sourceMode"))
+            ? (config.optBoolean("assetHttpsEnabled", false) ? "https://appassets.androidplatform.net" : "legacy-file")
+            : config.optBoolean("nativeBridgeAllowRemote", false)
+                ? AppForgeDocuments.httpsOrigin(config.optString("webUrl")) : null;
+        documents = new AppForgeDocuments(this, webView, documentOrigin,
+            config.optBoolean("downloads", false),
+            config.optBoolean("nativeBridge", false) && config.optBoolean("shareBridge", false));
+        documents.setLegacy(this::dispatchCompat, config.optBoolean("nativeBridge", false));
+        // Only a private, per-WebView capability can invoke this synchronous legacy adapter.
+        // Unlike caller authentication by main URL, this also excludes cross-origin subframes.
+        webView.addJavascriptInterface(new NativeCompat(), "AppForgeNativeCompat");
+        if ("legacy-file".equals(documentOrigin))
+            webView.addJavascriptInterface(new LocalDocuments(), "AppForgeLocalDocuments");
 
         webView.setBackgroundColor(
             parseColor(
@@ -916,7 +981,13 @@ public final class FastActivity extends Activity {
                     if (!config.optBoolean("assetHttpsEnabled", false)) {
                         return null;
                     }
-                    return new AppForgeLocalAssets(getAssets()).intercept(request);
+                    return new AppForgeLocalAssets(getAssets(), documents == null ? null : documents.bootstrap()).intercept(request);
+                }
+
+                @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap icon) {
+                    currentMainUrl = "";
+                    if (documents != null) documents.pageStarted();
+                    super.onPageStarted(view, url, icon);
                 }
 
                 @Override
@@ -934,6 +1005,7 @@ public final class FastActivity extends Activity {
                             ? url
                             : "";
 
+                    if (documents != null) documents.pageFinished(url);
                     hideSplash();
 
                     applyZoomPolicy(
@@ -971,9 +1043,8 @@ public final class FastActivity extends Activity {
                             ? request.getUrl().toString()
                             : "";
 
-                    return handlePotentialDownload(
-                        url
-                    );
+                    return request != null && request.isForMainFrame() && request.hasGesture()
+                        && handlePotentialDownload(url);
                 }
 
                 @SuppressWarnings("deprecation")
@@ -982,9 +1053,7 @@ public final class FastActivity extends Activity {
                     WebView view,
                     String url
                 ) {
-                    return handlePotentialDownload(
-                        url
-                    );
+                    return false;
                 }
             }
         );
@@ -1318,20 +1387,7 @@ public final class FastActivity extends Activity {
                 }
             }
         );
-        webView.addJavascriptInterface(
-            new DownloadBridge(),
-            "AppForgeDownloads"
-        );
 
-        webView.addJavascriptInterface(
-            new CaptureHintBridge(),
-            "AppForgeCaptureHint"
-        );
-
-        webView.addJavascriptInterface(
-            new FastNativeBridge(),
-            "AppForgeFastNative"
-        );
 
         if (
             config.optBoolean(
@@ -1387,9 +1443,7 @@ public final class FastActivity extends Activity {
             if (config.optBoolean("assetHttpsEnabled", false)) {
                 return AppForgeLocalAssets.isLocalPage(actual);
             }
-            return actual.startsWith(
-                "file://"
-            );
+            return AppForgeDocuments.legacyLocalPage(actual);
         }
 
         if (
@@ -1446,8 +1500,8 @@ public final class FastActivity extends Activity {
             }
 
             return
-                expected.getPort() ==
-                page.getPort();
+                expected.getUserInfo() == null && page.getUserInfo() == null &&
+                AppForgeDocuments.httpsOrigin(expected.toString()).equals(AppForgeDocuments.httpsOrigin(page.toString()));
 
         } catch (
             Throwable ignored
@@ -1482,13 +1536,11 @@ public final class FastActivity extends Activity {
 
     public final class FastNativeBridge {
 
-        @JavascriptInterface
         public boolean isEnabled() {
             return isTrustedNativeBridgePage();
         }
 
 
-        @JavascriptInterface
         public String share(
             String title,
             String text
@@ -1515,54 +1567,19 @@ public final class FastActivity extends Activity {
                     40000
                 );
 
-            runOnUiThread(
-                () -> {
-                    try {
-                        Intent intent =
-                            new Intent(
-                                Intent.ACTION_SEND
-                            );
-
-                        intent.setType(
-                            "text/plain"
-                        );
-
-                        intent.putExtra(
-                            Intent.EXTRA_SUBJECT,
-                            safeTitle
-                        );
-
-                        intent.putExtra(
-                            Intent.EXTRA_TEXT,
-                            safeText
-                        );
-
-                        startActivity(
-                            Intent.createChooser(
-                                intent,
-                                safeTitle.isEmpty()
-                                    ? "Paylaş"
-                                    : safeTitle
-                            )
-                        );
-
-                    } catch (
-                        Throwable error
-                    ) {
-                        Toast.makeText(
-                            FastActivity.this,
-                            "Paylaşım açılamadı.",
-                            Toast.LENGTH_SHORT
-                        ).show();
-                    }
-                }
-            );
-
-            return "OK";
+            try {
+                Intent intent = new Intent(Intent.ACTION_SEND).setType("text/plain");
+                intent.putExtra(Intent.EXTRA_SUBJECT, safeTitle);
+                intent.putExtra(Intent.EXTRA_TEXT, safeText);
+                startActivity(Intent.createChooser(intent, safeTitle.isEmpty() ? "Paylaş" : safeTitle));
+                return "OK";
+            } catch (Exception error) {
+                return "ERROR|Paylaşım açılamadı";
+            }
         }
 
 
-        @JavascriptInterface
+
         public String copy(
             String text
         ) {
@@ -1608,7 +1625,6 @@ public final class FastActivity extends Activity {
         }
 
 
-        @JavascriptInterface
         public String vibrate(
             int milliseconds
         ) {
@@ -1669,7 +1685,6 @@ public final class FastActivity extends Activity {
         }
 
 
-        @JavascriptInterface
         public String scanCode() {
             if (
                 !isTrustedNativeBridgePage() ||
@@ -1882,13 +1897,11 @@ public final class FastActivity extends Activity {
 
     public final class CaptureHintBridge {
 
-        @JavascriptInterface
         public void markCapture() {
             cameraCaptureRequestedByPage =
                 true;
         }
 
-        @JavascriptInterface
         public void clearCapture() {
             cameraCaptureRequestedByPage =
                 false;
@@ -2001,9 +2014,9 @@ public final class FastActivity extends Activity {
         );
     }
 
+    private final java.util.Set<Long> issuedDownloads = new java.util.HashSet<>();
     public final class DownloadBridge {
 
-        @JavascriptInterface
         public boolean isEnabled() {
             return config.optBoolean(
                 "downloads",
@@ -2011,7 +2024,6 @@ public final class FastActivity extends Activity {
             );
         }
 
-        @JavascriptInterface
         public String download(
             String url
         ) {
@@ -2034,6 +2046,7 @@ public final class FastActivity extends Activity {
                 return "ERROR|Geçersiz URL";
             }
 
+            if (documents == null || !documents.allowHttpDownload()) return "ERROR|Download request denied";
             try {
                 String fileName =
                     URLUtil.guessFileName(
@@ -2047,9 +2060,8 @@ public final class FastActivity extends Activity {
                         Uri.parse(url)
                     );
 
-                request.setTitle(
-                    fileName
-                );
+                fileName = AppForgeDocuments.safeDownloadName(fileName);
+                request.setTitle(fileName);
 
                 request.setDescription(
                     "Dosya indiriliyor..."
@@ -2068,10 +2080,11 @@ public final class FastActivity extends Activity {
                         .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
                 );
 
-                request.setDestinationInExternalPublicDir(
-                    Environment.DIRECTORY_DOWNLOADS,
-                    fileName
-                );
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+                } else {
+                    request.setDestinationInExternalFilesDir(FastActivity.this, Environment.DIRECTORY_DOWNLOADS, fileName);
+                }
 
                 DownloadManager manager =
                     (DownloadManager)
@@ -2083,10 +2096,11 @@ public final class FastActivity extends Activity {
                     return "ERROR|DownloadManager null";
                 }
 
-                long id =
-                    manager.enqueue(
-                        request
-                    );
+                String cookies = CookieManager.getInstance().getCookie(url);
+                if (cookies != null && !cookies.isEmpty()) request.addRequestHeader("Cookie", cookies);
+                if (webView != null) request.addRequestHeader("User-Agent", webView.getSettings().getUserAgentString());
+                long id = manager.enqueue(request);
+                issuedDownloads.add(id);
 
                 return (
                     "OK|" +
@@ -2107,7 +2121,6 @@ public final class FastActivity extends Activity {
             }
         }
 
-        @JavascriptInterface
         public String status(
             String idText
         ) {
@@ -2127,6 +2140,7 @@ public final class FastActivity extends Activity {
                     return "ERROR|DownloadManager null";
                 }
 
+                if (!issuedDownloads.contains(id)) return "ERROR|Unknown download";
                 DownloadManager.Query query =
                     new DownloadManager.Query()
                         .setFilterById(id);
@@ -2383,6 +2397,7 @@ public final class FastActivity extends Activity {
         String contentDisposition,
         String mimeType
     ) {
+        if (documents == null || !documents.allowHttpDownload()) return;
         if (
             url == null ||
             !(
@@ -2412,9 +2427,8 @@ public final class FastActivity extends Activity {
                     Uri.parse(url)
                 );
 
-            request.setTitle(
-                fileName
-            );
+            fileName = AppForgeDocuments.safeDownloadName(fileName);
+            request.setTitle(fileName);
 
             request.setDescription(
                 "Dosya indiriliyor..."
@@ -2932,6 +2946,8 @@ public final class FastActivity extends Activity {
             data
         );
 
+        if (documents != null && documents.activityResult(requestCode, resultCode, data)) return;
+
         if (
             requestCode !=
             FILE_CHOOSER_REQUEST
@@ -2993,6 +3009,7 @@ public final class FastActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (documents != null) documents.resume();
 
         if (config != null) {
             getWindow()
@@ -3035,8 +3052,14 @@ public final class FastActivity extends Activity {
         }
     }
 
+    @Override protected void onPause() {
+        if (documents != null) documents.pause();
+        super.onPause();
+    }
+
     @Override
     protected void onDestroy() {
+        if (documents != null) documents.close();
         if (
             webView != null
         ) {

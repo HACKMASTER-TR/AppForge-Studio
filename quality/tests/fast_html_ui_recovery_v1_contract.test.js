@@ -63,7 +63,16 @@ test('fast HTML APK bundles relative CSS/JS and static assets without npm or Gra
   assert.match(shell, /setAllowUniversalAccessFromFileURLs\(false\)/);
   assert.match(shell, /MIXED_CONTENT_NEVER_ALLOW/);
   assert.match(shell, /new Uri\.Builder\(\)\.scheme\("file"\)/);
-  assert.doesNotMatch(shell, /addJavascriptInterface\(/);
+  // Opaque file origins use one capability-checked document transport. Executable
+  // hostile-origin/subframe/replay/settings/byte contracts live in
+  // html_document_bridge_runtime.test.js and execute the production helper.
+  assert.match(shell, /addJavascriptInterface\(new LocalDocuments\(\), "AppForgeLocalDocuments"\)/);
+  assert.equal([...shell.matchAll(/@(?:android\.webkit\.)?JavascriptInterface/g)].length, 1);
+  assert.match(shell, /current\.matchesCompatToken\(token\)/);
+  assert.match(shell, /current\.receiveLocal\(token,raw\)/);
+  assert.match(shell, /setAllowFileAccess\(false\)/);
+  assert.match(shell, /setAllowFileAccessFromFileURLs\(false\)/);
+  assert.match(shell, /String localPath = "\/android_asset\/site\/" \+ entry/);
 });
 
 test('local template recovery never deletes existing project folders', () => {

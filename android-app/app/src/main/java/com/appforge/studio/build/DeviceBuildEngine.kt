@@ -1664,6 +1664,8 @@ object DeviceBuildEngine {
         File(workspace, "runtime/FastActivity.java").copyTo(File(javaDir, "FastActivity.java"), overwrite = true)
         File(workspace, "runtime/AppForgeLocalAssets.java").copyTo(File(javaDir, "AppForgeLocalAssets.java"), overwrite = true)
 
+        File(workspace, "runtime/AppForgeDocuments.java").copyTo(File(javaDir, "AppForgeDocuments.java"), overwrite = true)
+
         val site = File(assetsDir, "site").apply { mkdirs() }
         if (draft.sourceMode == SourceMode.LOCAL) {
             val source = siteRoot ?: error("index.html bulunamadı.")
@@ -1703,9 +1705,13 @@ object DeviceBuildEngine {
             .put("webMediaAutoplayEnabled", draft.webMediaAutoplayEnabled)
             .put("webMixedContentAllowed", draft.webMixedContentAllowed)
             .put("nativeBridge", draft.javascriptBridge)
-            .put("share", draft.shareBridge)
-            .put("clipboard", draft.clipboardBridge)
-            .put("vibration", draft.vibrationBridge)
+            .put("nativeBridgeAllowRemote", draft.remoteBridgeAllowed)
+            .put("qrScanner", draft.qrScanner)
+            .put("versionName", draft.versionName)
+            .put("hasCustomIcon", !draft.iconUri.isNullOrBlank())
+            .put("shareBridge", draft.shareBridge)
+            .put("clipboardBridge", draft.clipboardBridge)
+            .put("vibrationBridge", draft.vibrationBridge)
             .put("offlineCache", draft.offlineCache)
 
         File(assetsDir, "appforge-fast.json").writeText(config.toString())

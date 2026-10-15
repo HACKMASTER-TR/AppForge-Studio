@@ -11,9 +11,17 @@ import java.io.InputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 
-/** Fixed, no-bridge HTML/HTTPS WebView shell. No device toolchain required at runtime. */
+/** Fixed HTML/HTTPS shell with a scoped document message channel. No device toolchain required at runtime. */
 public final class TinyHtmlActivity extends Activity {
     private WebView web;
+    private AppForgeDocuments documents;
+    public final class LocalDocuments {
+        @android.webkit.JavascriptInterface public void send(String token, String raw) {
+            AppForgeDocuments current=documents;
+            if(current==null || raw==null || raw.length()>34000 || !current.matchesCompatToken(token))return;
+            runOnUiThread(()->{if(current==documents)current.receiveLocal(token,raw);});
+        }
+    }
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -21,24 +29,41 @@ public final class TinyHtmlActivity extends Activity {
         // The system WebView already runs CSS and JavaScript; no Node/runtime download.
         web.getSettings().setJavaScriptEnabled(true);
         web.getSettings().setDomStorageEnabled(true);
-        web.getSettings().setAllowFileAccess(true);
+        web.getSettings().setAllowFileAccess(false);
         web.getSettings().setAllowContentAccess(false);
         web.getSettings().setJavaScriptCanOpenWindowsAutomatically(false);
         web.getSettings().setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         web.getSettings().setAllowFileAccessFromFileURLs(false);
         web.getSettings().setAllowUniversalAccessFromFileURLs(false);
         web.setWebViewClient(new WebViewClient() {
+            @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                return new AppForgeLocalAssets(getAssets(), documents == null ? null : documents.bootstrap()).intercept(request);
+            }
+            @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap icon) {
+                if (documents != null) documents.pageStarted();
+            }
+            @Override public void onPageFinished(WebView view, String url) {
+                if (documents != null) documents.pageFinished(url);
+            }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 String scheme = uri.getScheme();
-                return !("https".equalsIgnoreCase(scheme) ||
-                        ("file".equalsIgnoreCase(scheme) &&
-                         "android_asset".equalsIgnoreCase(uri.getPathSegments().isEmpty() ? "" : uri.getPathSegments().get(0))));
+                return !("https".equalsIgnoreCase(scheme) || AppForgeDocuments.legacyLocalPage(uri.toString()));
             }
         });
         setContentView(web);
         try {
             JSONObject config = new JSONObject(new String(readAsset("appforge-html-config.json"), StandardCharsets.UTF_8));
+            String origin = "LOCAL".equals(config.optString("mode")) ? "legacy-file"
+                : config.optBoolean("nativeBridgeAllowRemote", false) ? AppForgeDocuments.httpsOrigin(config.optString("url")) : null;
+            documents = new AppForgeDocuments(this, web, origin, config.optBoolean("downloads", false),
+                config.optBoolean("nativeBridge", false) && config.optBoolean("shareBridge", false));
+            if ("LOCAL".equals(config.optString("mode")))
+                web.addJavascriptInterface(new LocalDocuments(), "AppForgeLocalDocuments");
+            if (config.optBoolean("downloads", false)) web.setDownloadListener((url, agent, disposition, mime, length) -> {
+                try { documents.enqueueHttp(url, agent, disposition, mime); }
+                catch (RuntimeException error) { android.widget.Toast.makeText(this,"Download unavailable",android.widget.Toast.LENGTH_SHORT).show(); }
+            });
             if ("URL".equals(config.optString("mode"))) {
                 String address = config.getString("url");
                 Uri uri = Uri.parse(address);
@@ -75,7 +100,23 @@ public final class TinyHtmlActivity extends Activity {
         else super.onBackPressed();
     }
 
+    @Override protected void onActivityResult(int request, int result, android.content.Intent data) {
+        super.onActivityResult(request, result, data);
+        if (documents != null) documents.activityResult(request, result, data);
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        if (documents != null) documents.resume();
+    }
+
+    @Override protected void onPause() {
+        if (documents != null) documents.pause();
+        super.onPause();
+    }
+
     @Override protected void onDestroy() {
+        if (documents != null) documents.close();
         if (web != null) { web.destroy(); web = null; }
         super.onDestroy();
     }

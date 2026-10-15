@@ -80,6 +80,21 @@ jobs:
 
           echo "Android native toolchain verified: NDK 28.2.13676358 / CMake 3.22.1"
 
+      - name: Compile generated Android wrappers
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          "$SDKMANAGER" "platforms;android-37"
+          test -s "$ANDROID_HOME/platforms/android-37/android.jar"
+          mkdir -p "$RUNNER_TEMP/generated-wrapper-classes"
+          javac --release 8 -Xlint:-options \
+            -cp "$ANDROID_HOME/platforms/android-37/android.jar" \
+            -d "$RUNNER_TEMP/generated-wrapper-classes" \
+            android-app/app/src/main/assets/device-build/*.java \
+            android-app/html-apk-template/src/main/java/com/appforge/htmlstub/*.java
+          node --test quality/tests/html_document_bridge_runtime.test.js quality/tests/web_wrapper_config_contract.test.js
+
       - name: Restore CI debug signing key
         shell: bash
         env:

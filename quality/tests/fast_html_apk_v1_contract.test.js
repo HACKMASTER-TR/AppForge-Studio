@@ -56,7 +56,15 @@ test('baked HTML shell does not add JS native bridge or mixed HTTP navigation', 
   const manifest = read('android-app/html-apk-template/src/main/AndroidManifest.xml');
   assert.match(shell, /setJavaScriptEnabled\(true\)/);
   assert.match(shell, /setAllowUniversalAccessFromFileURLs\(false\)/);
-  assert.doesNotMatch(shell, /addJavascriptInterface\(/);
+  // HTML document export adds one capability-scoped, document-only bridge.
+  // Never allow an unrestricted or additional JavaScript native interface.
+  assert.equal((shell.match(/addJavascriptInterface\s*\(/g) || []).length, 1);
+  assert.match(shell, /addJavascriptInterface\s*\(\s*new\s+LocalDocuments\s*\(\s*\)\s*,\s*"AppForgeLocalDocuments"\s*\)/);
+  const documents = read('android-app/html-apk-template/src/main/java/com/appforge/htmlstub/AppForgeDocuments.java');
+  assert.match(documents, /static boolean legacyLocalPage\(/);
+  assert.match(documents, /void receiveLocal\(/);
+  // Verify transfer and origin security by running executable focused regressions.
+
   assert.match(manifest, /usesCleartextTraffic="false"/);
   assert.match(manifest, /allowBackup="false"/);
 });
