@@ -85,11 +85,18 @@ jobs:
         run: |
           set -euo pipefail
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
-          "$SDKMANAGER" "platforms;android-37"
+          # Android 17 platform package uses the 37.0 identifier.
+          "$SDKMANAGER" --channel=3 "platforms;android-37.0"
+          test -s "$ANDROID_HOME/platforms/android-37.0/android.jar"
+
+          # Keep AGP compileSdk 37 compatible with the SDK folder.
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
+          fi
           test -s "$ANDROID_HOME/platforms/android-37/android.jar"
           mkdir -p "$RUNNER_TEMP/generated-wrapper-classes"
           javac --release 8 -Xlint:-options \
-            -cp "$ANDROID_HOME/platforms/android-37/android.jar" \
+            -cp "$ANDROID_HOME/platforms/android-37.0/android.jar" \
             -d "$RUNNER_TEMP/generated-wrapper-classes" \
             android-app/app/src/main/assets/device-build/*.java \
             android-app/html-apk-template/src/main/java/com/appforge/htmlstub/*.java
