@@ -54,6 +54,19 @@ public final class TinyHtmlActivity extends Activity {
         setContentView(web);
         try {
             JSONObject config = new JSONObject(new String(readAsset("appforge-html-config.json"), StandardCharsets.UTF_8));
+            web.getSettings().setJavaScriptEnabled(config.optBoolean("webJavaScriptEnabled", true));
+            web.getSettings().setDomStorageEnabled(config.optBoolean("webDomStorageEnabled", true));
+            web.getSettings().setBuiltInZoomControls(config.optBoolean("webZoomEnabled", true));
+            web.getSettings().setDisplayZoomControls(false);
+            web.getSettings().setSupportZoom(config.optBoolean("webZoomEnabled", true));
+            web.getSettings().setUseWideViewPort(config.optBoolean("webWideViewPortEnabled", true));
+            web.getSettings().setLoadWithOverviewMode(config.optBoolean("webOverviewModeEnabled", true));
+            web.getSettings().setMediaPlaybackRequiresUserGesture(!config.optBoolean("webMediaAutoplayEnabled", true));
+            web.getSettings().setCacheMode(config.optBoolean("offlineCache", true) ?
+                android.webkit.WebSettings.LOAD_DEFAULT : android.webkit.WebSettings.LOAD_NO_CACHE);
+            web.setBackgroundColor(android.graphics.Color.parseColor(config.optString("backgroundColor", "#07101F")));
+            getWindow().setStatusBarColor(android.graphics.Color.parseColor(config.optString("statusBarColor", "#07101F")));
+            getWindow().setNavigationBarColor(android.graphics.Color.parseColor(config.optString("navigationBarColor", "#07101F")));
             String origin = "LOCAL".equals(config.optString("mode")) ? "legacy-file"
                 : config.optBoolean("nativeBridgeAllowRemote", false) ? AppForgeDocuments.httpsOrigin(config.optString("url")) : null;
             documents = new AppForgeDocuments(this, web, origin, config.optBoolean("downloads", false),

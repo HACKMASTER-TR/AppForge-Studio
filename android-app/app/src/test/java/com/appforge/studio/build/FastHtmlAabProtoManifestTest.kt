@@ -59,14 +59,26 @@ class FastHtmlAabProtoManifestTest {
         }
     }
 
-    /** Embedded exactly verified CI protobuf fixture. Cannot silently skip in CI. */
+    private fun currentManifest(): Pair<ByteArray, String> {
+        val build = java.io.File(requireNotNull(System.getProperty("appforge.templateAssets")))
+        val pin = java.io.File(build,"generated/html-integrity/assets/html-template-integrity.txt")
+            .readLines().single { it.startsWith("html-aab-manifest ") }.substringAfter(' ')
+        val bytes = java.util.zip.ZipFile(java.io.File(build,"generated/html-aab-template/assets/html-aab-template.aab")).use {
+            it.getInputStream(it.getEntry("base/manifest/AndroidManifest.xml")).readBytes()
+        }
+        return bytes to pin
+    }
+
+    /** Historical providerless fixture is rejected; identity round trip uses actual new AGP output. */
     @Test fun realPinnedCompiledManifestRoundTrip() {
-        val original = Base64.getDecoder().decode(PINNED_PROTO_B64)
+        val historical = Base64.getDecoder().decode(PINNED_PROTO_B64)
+        assertThrows(IllegalStateException::class.java) { FastHtmlAabProtoManifest.rewrite(historical, draft()) }
+        val (original, pin) = currentManifest()
         val digest = MessageDigest.getInstance("SHA-256").digest(original).joinToString("") { "%02x".format(it.toInt() and 255) }
-        assertEquals("42ce28b60c895c315870ce6fb3de01c176fbbf29b805efc2e09e7b363aea2256", digest)
+        assertEquals(pin, digest)
         val draft = draft().copy(appName = "Örnek Web Uygulaması", versionCode = 9501,
             versionName = "9.5.1", packageName = "com.example.compiled.aab")
-        val edited = FastHtmlAabProtoManifest.rewrite(original, draft)
+        val edited = FastHtmlAabProtoManifest.rewrite(original, draft, pin)
         assertEquals("V14 must not rewrite fixture input in place", digest, MessageDigest.getInstance("SHA-256")
             .digest(original).joinToString("") { "%02x".format(it.toInt() and 255) })
         assertFalse(edited.contentEquals(original))
@@ -134,10 +146,10 @@ class FastHtmlAabProtoManifestTest {
         return String(pbBytes(attr(activity, "name"), 3), Charsets.UTF_8)
     }
     @Test fun realManifestRewritesMaxVersionAndKeepsActivityIdentity() {
-        val original = Base64.getDecoder().decode(PINNED_PROTO_B64)
+        val (original, pin) = currentManifest()
         val draft = draft().copy(appName = "Örnek HTML", packageName = "io.example.unstable",
             versionCode = Int.MAX_VALUE, versionName = "42.0.0")
-        val rewritten = FastHtmlAabProtoManifest.rewrite(original, draft)
+        val rewritten = FastHtmlAabProtoManifest.rewrite(original, draft, pin)
         assertEquals(Int.MAX_VALUE.toLong(), parsedVersionCode(rewritten))
         assertEquals("com.appforge.htmlstub.TinyHtmlActivity", parsedActivity(rewritten))
         assertEquals("26", String(pbBytes(attr(xmlElement(manifest(rewritten), "uses-sdk"), "minSdkVersion"), 3)))

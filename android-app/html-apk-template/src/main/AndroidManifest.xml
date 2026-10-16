@@ -5,6 +5,9 @@
         android:usesCleartextTraffic="false"
         android:allowBackup="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <provider android:name="com.appforge.htmlstub.AppForgeShareProvider"
+            android:authorities="${applicationId}.appforge.documents"
+            android:exported="false" android:grantUriPermissions="true" />
         <activity
             android:name="com.appforge.htmlstub.TinyHtmlActivity"
             android:exported="true">

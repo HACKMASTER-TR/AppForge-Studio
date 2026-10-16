@@ -229,6 +229,7 @@ enum class AppScreen { HOME, BUILDER, OFFLINE_PACK }
 data class Check(val ready: Boolean, val engine: String, val missing: List<String>)
 fun verify(input: Check, classification: String?, redirect: Boolean = false) {
     val offlinePackCheck = input
+    val normalRouteReasons = listOf("selected feature requires normal runtime")
     var status = ""
     var progress = 42
     var logs = listOf<String>()
@@ -261,6 +262,7 @@ ${gate}
     check(buildProjectKey == null && buildId == null && buildNo == null)
     check(apkUrl == null && aabUrl == null && exeUrl == null)
     check("BUILD_BLOCKED=YES" in preflight)
+    normalRouteReasons.forEach { check("NORMAL_ENGINE_REQUIRED: $it" in preflight) }
     check("PREFLIGHT_FAILURE=$classification" in preflight)
     check("ENGINE=\${input.engine}" in preflight)
     if (input.missing.isNotEmpty()) check(status == input.missing.first())

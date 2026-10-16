@@ -51,15 +51,8 @@ internal object FastHtmlApkPackager {
                 }
             }
             check(template.length() in 1024..MAX_TEMPLATE_BYTES) { "Gömülü HTML APK şablonu eksik veya geçersiz." }
-            val config = JSONObject()
-                .put("mode", draft.sourceMode.name)
-                .put("url", if (draft.sourceMode == SourceMode.URL) draft.webUrl else "")
-                .put("entry", htmlProject?.first ?: "")
-                .put("downloads", draft.downloads)
-                .put("nativeBridge", draft.javascriptBridge)
-                .put("shareBridge", draft.shareBridge)
-                .put("nativeBridgeAllowRemote", draft.remoteBridgeAllowed)
-                .toString().toByteArray(Charsets.UTF_8)
+            TemplateIntegrity.requireAsset(context, ASSET, template.readBytes())
+            val config = runtimeConfig(draft, htmlProject?.first ?: "")
             val additions = mutableMapOf("assets/appforge-html-config.json" to config)
             htmlProject?.second?.let(additions::putAll)
             ZipFile(template).use { zip ->
@@ -95,6 +88,18 @@ internal object FastHtmlApkPackager {
             template.delete()
         }
     }
+
+    internal fun runtimeConfig(draft: ProjectDraft, entry: String): ByteArray = JSONObject()
+        .put("mode", draft.sourceMode.name).put("url", if (draft.sourceMode == SourceMode.URL) draft.webUrl else "")
+        .put("entry", entry).put("downloads", draft.downloads)
+        .put("nativeBridge", draft.javascriptBridge).put("shareBridge", draft.shareBridge)
+        .put("nativeBridgeAllowRemote", draft.remoteBridgeAllowed)
+        .put("webJavaScriptEnabled", draft.webJavaScriptEnabled).put("webDomStorageEnabled", draft.webDomStorageEnabled)
+        .put("webZoomEnabled", draft.webZoomEnabled).put("webWideViewPortEnabled", draft.webWideViewPortEnabled)
+        .put("webOverviewModeEnabled", draft.webOverviewModeEnabled).put("webMediaAutoplayEnabled", draft.webMediaAutoplayEnabled)
+        .put("backgroundColor", draft.backgroundColor).put("statusBarColor", draft.statusBarColor)
+        .put("navigationBarColor", draft.navigationBarColor)
+        .put("offlineCache", draft.offlineCache).toString().toByteArray(Charsets.UTF_8)
 
     /** Package only static web assets; never run Node, npm or JavaScript source builds. */
     internal fun readHtmlProject(draft: ProjectDraft): Pair<String, Map<String, ByteArray>> {

@@ -524,6 +524,36 @@ val generateFastHtmlAabTemplate = tasks.register<Copy>("generateFastHtmlAabTempl
     }
 }
 
+// Exact template digests are generated only from this build's compiled artifacts.
+// The resulting metadata and templates are covered together by the Studio APK signature.
+val generateFastHtmlIntegrity = tasks.register("generateFastHtmlIntegrity") {
+    dependsOn(generateFastHtmlTemplate, generateFastHtmlAabTemplate)
+    val output = layout.buildDirectory.dir("generated/html-integrity/assets")
+    outputs.dir(output)
+    // Always recompute; stale metadata may never accompany a rebuilt template.
+    outputs.upToDateWhen { false }
+    doLast {
+        val apk = layout.buildDirectory.file("generated/html-template/assets/html-apk-template.apk").get().asFile
+        val aab = layout.buildDirectory.file("generated/html-aab-template/assets/html-aab-template.aab").get().asFile
+        fun hash(bytes: ByteArray) = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+            .joinToString("") { "%02x".format(it.toInt() and 255) }
+        val manifest = java.util.zip.ZipFile(aab).use { zip ->
+            zip.getInputStream(requireNotNull(zip.getEntry("base/manifest/AndroidManifest.xml"))).use { it.readBytes() }
+        }
+        val directory = output.get().asFile
+        check(directory.mkdirs() || directory.isDirectory)
+        directory.resolve("html-template-integrity.txt").writeText(
+            "html-apk-template.apk " + hash(apk.readBytes()) + "\n" +
+            "html-aab-template.aab " + hash(aab.readBytes()) + "\n" +
+            "html-aab-manifest " + hash(manifest) + "\n", Charsets.US_ASCII
+        )
+    }
+}
+android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/html-integrity/assets"))
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+    dependsOn(generateFastHtmlIntegrity)
+}
+
 android.sourceSets.getByName("main").assets.srcDir(
     layout.buildDirectory.dir("generated/html-aab-template/assets").get().asFile
 )
@@ -532,6 +562,13 @@ android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("ge
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
     dependsOn(generateFastHtmlTemplate)
     dependsOn(generateFastHtmlAabTemplate)
+}
+
+// Unit checks consume the same compiled templates that are embedded in Studio.
+tasks.withType<Test>().configureEach {
+    dependsOn(generateFastHtmlIntegrity)
+    inputs.files(generateFastHtmlTemplate, generateFastHtmlAabTemplate, generateFastHtmlIntegrity)
+    systemProperty("appforge.templateAssets", layout.buildDirectory.get().asFile.absolutePath)
 }
 
 androidComponents {

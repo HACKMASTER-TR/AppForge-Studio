@@ -52,6 +52,14 @@ internal object WebviewProjectSettings {
         val outputs = DeviceBuildCapabilities.requestedOutputs(draft.buildOutput)
         if (outputs.none { it == DeviceArtifactKind.APK || it == DeviceArtifactKind.AAB }) return
 
+        require(draft.appCategory == "auto") { "App category injection is unsupported; select auto." }
+        require(draft.primaryColor == "#6B7CFF") { "Primary color injection is unsupported; retain default." }
+        require(!draft.umpConsentEnabled || draft.admobEnabled) { "UMP consent injection is unsupported." }
+        require(!draft.qrScanner && !draft.mediaPlayerBridge && !draft.admobEnabled && !draft.billingEnabled &&
+            !draft.firebaseAnalyticsEnabled && !draft.firebaseCrashlyticsEnabled && !draft.firebaseMessagingEnabled) {
+            "Automatic QR/Media3/AdMob/Billing/Firebase integration is unsupported; build blocked."
+        }
+
         // Advanced settings must not relax the Fast HTML URL security boundary.
         // Keep node-web compatibility independent, apart from its existing microphone check.
         if (engine == "webview-static" && draft.sourceMode == com.appforge.studio.model.SourceMode.URL) {

@@ -52,8 +52,10 @@ fun main() {
     check(!FastHtmlApkPolicy.isCandidate(draft)); WebviewProjectSettings.validate(draft)
     val text = Wrapper.webManifest(draft)
     val names = Regex("<uses-permission android:name=\\"([^\\"]+)\\"").findAll(text).map { it.groupValues[1] }.toList()
+    check(names.contains("android.permission.VIBRATE"))
+    check(!Wrapper.webManifest(draft.copy(vibrationBridge=false)).contains("android.permission.VIBRATE"))
     check(names.toSet().size == names.size)
-    check(names.filter { it != "android.permission.INTERNET" && it != "android.permission.ACCESS_NETWORK_STATE" }.toSet() == expected.map { "android.permission.$it" }.toSet())
+    check(names.filter { it != "android.permission.INTERNET" && it != "android.permission.ACCESS_NETWORK_STATE" && it != "android.permission.VIBRATE" }.toSet() == expected.map { "android.permission.$it" }.toSet())
    }
   }
   expected.forEach { canonical ->

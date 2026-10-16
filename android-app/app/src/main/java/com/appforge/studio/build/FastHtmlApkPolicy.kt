@@ -17,9 +17,28 @@ internal object FastHtmlApkPolicy {
         }
     }
 
+    /** Every selected capability absent from Tiny must use the normal prereq-checked engine. */
+    fun normalRouteReasons(draft: ProjectDraft): List<String> = buildList {
+        if (draft.fileUpload) add("fileUpload requires normal file chooser")
+        if (draft.clipboardBridge || draft.vibrationBridge) add("clipboard/haptics require normal native bridge")
+        if (draft.networkState) add("network state permission requires normal manifest")
+        if (draft.fullscreen) add("fullscreen requires normal window")
+        if (draft.orientation != "unspecified") add("orientation requires normal manifest")
+        if (draft.splashEnabled || draft.splashText.isNotBlank()) add("splash requires normal runtime")
+        if (draft.backgroundColor != "#07101F" || draft.statusBarColor != "#07101F" ||
+            draft.navigationBarColor != "#07101F") add("theme colors require normal runtime")
+        if (draft.webMixedContentAllowed) add("mixed content requires normal security preflight")
+        if (draft.signingMode != SigningMode.DEBUG && draft.buildOutput.trim().lowercase() == "apk")
+            add("custom APK signing requires normal engine")
+        if (!draft.iconUri.isNullOrBlank() || draft.camera || draft.microphone || draft.location ||
+            draft.notifications || draft.nfc || draft.deepLinkEnabled || draft.wakeLock ||
+            draft.additionalPermissions.isNotEmpty()) add("Android capabilities require normal manifest/runtime")
+    }
+
     fun isCandidate(draft: ProjectDraft): Boolean {
         val engine = draft.sourceBuildEngine.trim().lowercase().ifBlank { "webview-static" }
         if (engine != "webview-static") return false
+        if (normalRouteReasons(draft).isNotEmpty()) return false
         if (!requestsAndroidOnlyOutputs(draft)) return false
         if (!draft.iconUri.isNullOrBlank() || draft.camera || draft.microphone ||
             draft.location || draft.notifications || draft.nfc || draft.deepLinkEnabled ||
@@ -32,6 +51,7 @@ internal object FastHtmlApkPolicy {
     }
 
     fun requireSupported(draft: ProjectDraft) {
+        WebviewProjectSettings.validate(draft)
         require(isCandidate(draft)) { "Hızlı APK yalnız .html ve URL projelerinde kullanılabilir." }
         require(DeviceBuildCapabilities.requestedOutputs(draft.buildOutput) == setOf(DeviceArtifactKind.APK)) {
             "Hızlı HTML/URL motoru yalnız APK üretir. Lütfen çıktı türünü APK olarak seçin."

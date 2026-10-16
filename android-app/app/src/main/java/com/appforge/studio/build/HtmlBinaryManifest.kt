@@ -43,6 +43,7 @@ internal object HtmlBinaryManifest {
         var versionNameIndex = -1
         var minSdkSeen = 0
         var targetSdkSeen = 0
+        var providers = 0
         while (offset + 8 <= source.size) {
             val kind = u16(source, offset)
             val header = u16(source, offset + 2)
@@ -71,13 +72,19 @@ internal object HtmlBinaryManifest {
                 require(poolStart >= 0 && header == 16 && length >= 36)
                 val elementName = strings.getOrNull(u32(source, offset + 20))
                 if (elementName == "manifest") manifestSeen++
+                if (elementName == "provider") providers++
+                val providerAttributes = mutableMapOf<String, Int>()
                 val attrsStart = u16(source, offset + 24) + offset + 16
                 val attrSize = u16(source, offset + 26)
                 val attrCount = u16(source, offset + 28)
                 require(attrSize == 20 && attrsStart >= offset + 36 && attrsStart + attrCount * 20 <= offset + length)
                 repeat(attrCount) { i ->
                     val at = attrsStart + i * 20
-                    when (strings.getOrNull(u32(source, at + 4))) {
+                    val attributeName = strings.getOrNull(u32(source, at + 4))
+                    if (elementName == "provider") {
+                        require(attributeName != null && providerAttributes.put(attributeName, at) == null)
+                    }
+                    when (attributeName) {
                         "versionCode" -> if (elementName == "manifest") {
                             require(source[at + 15].toInt() and 255 == TYPE_INT_DEC)
                             put32(source, at + 16, versionCode)
@@ -99,15 +106,33 @@ internal object HtmlBinaryManifest {
                         }
                     }
                 }
+                if (elementName == "provider") {
+                    fun stringAttribute(name: String): String? {
+                        val at = providerAttributes[name] ?: error("Missing provider $name")
+                        require(source[at + 15].toInt() and 255 == TYPE_STRING)
+                        return strings.getOrNull(u32(source, at + 16))
+                    }
+                    require(stringAttribute("name") == "$TEMPLATE_PACKAGE.AppForgeShareProvider")
+                    require(stringAttribute("authorities") == "$TEMPLATE_PACKAGE.appforge.documents")
+                    for ((name, enabled) in listOf("exported" to false, "grantUriPermissions" to true)) {
+                        val at = providerAttributes[name] ?: error("Missing provider $name")
+                        require(source[at + 15].toInt() and 255 == 0x12)
+                        require((0..3).any { source[at + 16 + it].toInt() != 0 } == enabled)
+                    }
+                }
             }
             offset += length
         }
-        require(offset == source.size && poolStart >= 0 && manifestSeen == 1)
+        require(offset == source.size && poolStart >= 0 && manifestSeen == 1 && providers == 1)
         require(versionCodeSeen == 1 && versionNameIndex in strings.indices)
         require(minSdkSeen == 1 && targetSdkSeen == 1)
         val mutable = strings.toMutableList()
         require(mutable.count { it == TEMPLATE_PACKAGE } == 1) { "Şablon package işareti bulunamadı." }
         require(mutable.count { it == TEMPLATE_LABEL } == 1) { "Şablon label işareti bulunamadı." }
+        val authority = "$TEMPLATE_PACKAGE.appforge.documents"
+        require(mutable.count { it == authority } == 1) { "Missing unique share authority." }
+        require(packageName != TEMPLATE_PACKAGE) { "Shell package must be replaced." }
+        mutable[mutable.indexOf(authority)] = "$packageName.appforge.documents"
         mutable[mutable.indexOf(TEMPLATE_PACKAGE)] = packageName
         mutable[mutable.indexOf(TEMPLATE_LABEL)] = appName
         mutable[versionNameIndex] = versionName

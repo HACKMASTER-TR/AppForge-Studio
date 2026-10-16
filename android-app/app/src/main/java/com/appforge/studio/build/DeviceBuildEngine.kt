@@ -202,6 +202,9 @@ object DeviceBuildEngine {
             )
 
             validateCapabilities(draft)
+            FastHtmlApkPolicy.normalRouteReasons(draft).takeIf { it.isNotEmpty() }?.let { reasons ->
+                state.logs.add("Normal Android engine required: " + reasons.joinToString("; "))
+            }
 
             // FAST_HTML_APK_V1: no rootfs, SDK, JDK, Gradle, or download manager.
             // Never fall back silently to a network toolchain on an eligible HTML/URL project.
@@ -1664,6 +1667,7 @@ object DeviceBuildEngine {
         File(workspace, "runtime/FastActivity.java").copyTo(File(javaDir, "FastActivity.java"), overwrite = true)
         File(workspace, "runtime/AppForgeLocalAssets.java").copyTo(File(javaDir, "AppForgeLocalAssets.java"), overwrite = true)
 
+        File(workspace, "runtime/AppForgeShareProvider.java").copyTo(File(javaDir, "AppForgeShareProvider.java"), overwrite = true)
         File(workspace, "runtime/AppForgeDocuments.java").copyTo(File(javaDir, "AppForgeDocuments.java"), overwrite = true)
 
         val site = File(assetsDir, "site").apply { mkdirs() }
@@ -2654,6 +2658,7 @@ object DeviceBuildEngine {
                 append("<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />\n")
                 append("<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />\n")
             }
+            if (draft.javascriptBridge && draft.vibrationBridge) append("<uses-permission android:name=\"android.permission.VIBRATE\" />\n")
             if (draft.networkState) append("<uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\" />\n")
             if (draft.wakeLock) append("<uses-permission android:name=\"android.permission.WAKE_LOCK\" />\n")
             if (draft.nfc) append("<uses-permission android:name=\"android.permission.NFC\" />\n")
@@ -2691,6 +2696,9 @@ object DeviceBuildEngine {
                     android:label="${xml(draft.appName.ifBlank { "AppForge App" })}"
                     android:theme="@android:style/Theme.Material.NoActionBar"
                     android:usesCleartextTraffic="$usesCleartextTraffic">
+                    <provider android:name="com.appforge.runtime.AppForgeShareProvider"
+                        android:authorities="${xml(draft.packageName)}.appforge.documents"
+                        android:exported="false" android:grantUriPermissions="true" />
                     <activity
                         android:name="com.appforge.runtime.FastActivity"
                         android:exported="true"

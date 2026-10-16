@@ -45,7 +45,7 @@ test('both routes configure document downloads/share and fail-closed remote opt-
  assert.doesNotMatch(doc,/Uri\.parse\("\*"\)/);
 });
 test('both wrapper helpers remain byte-identical apart from package',()=>{
- for(const name of ['AppForgeDocuments.java','AppForgeLocalAssets.java']){
+ for(const name of ['AppForgeDocuments.java','AppForgeLocalAssets.java','AppForgeShareProvider.java']){
   const a=read('android-app/app/src/main/assets/device-build/'+name).replace(/package [^;]+;/,'');
   const b=read('android-app/html-apk-template/src/main/java/com/appforge/htmlstub/'+name).replace(/package [^;]+;/,'');
   assert.equal(a,b,name);

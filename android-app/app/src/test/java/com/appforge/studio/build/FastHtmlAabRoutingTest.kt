@@ -7,6 +7,11 @@ import org.junit.Test
 
 class FastHtmlAabRoutingTest {
     private fun local() = ProjectDraft().apply {
+        fileUpload = false
+        clipboardBridge = false
+        vibrationBridge = false
+        networkState = false
+        splashEnabled = false
         appName = "Static Test"
         sourceMode = SourceMode.LOCAL
         sourceBuildEngine = "webview-static"

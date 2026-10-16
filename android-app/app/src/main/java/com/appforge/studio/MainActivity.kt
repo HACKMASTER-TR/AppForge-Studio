@@ -4386,6 +4386,10 @@ private fun AppForgeApp() {
         /*
          * OFFLINE_BUILD_PREFLIGHT_GATE_V1
          */
+        val normalRouteReasons = com.appforge.studio.build.FastHtmlApkPolicy.normalRouteReasons(verifiedBuildDraft)
+        if (normalRouteReasons.isNotEmpty()) {
+            preflight = listOf("NORMAL_ENGINE_REQUIRED: " + normalRouteReasons.joinToString("; "))
+        }
         val offlinePackCheck =
             com.appforge.studio.build
                 .OfflineBuildPackManager
@@ -4440,7 +4444,7 @@ private fun AppForgeApp() {
                         else -> "PREFLIGHT_FAILURE_UNCLASSIFIED=YES"
                     },
                     "ENGINE=${offlinePackCheck.engine}"
-                ) +
+                ) + normalRouteReasons.map { "NORMAL_ENGINE_REQUIRED: $it" } +
                     offlinePackCheck.missing.map {
                         if (preflightFailure == "dependency-missing") {
                             "MISSING=$it"
@@ -4544,7 +4548,7 @@ private fun AppForgeApp() {
                     emptyList()
                 }
 
-            preflight = emptyList()
+            preflight = normalRouteReasons.map { "NORMAL_ENGINE_REQUIRED: $it" }
             buildProjectKey =
                 "${effectiveBuildDraft.packageName}|" +
                     "${effectiveBuildDraft.importedFolder.orEmpty()}|" +

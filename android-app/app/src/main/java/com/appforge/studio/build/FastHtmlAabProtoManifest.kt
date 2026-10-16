@@ -22,7 +22,7 @@ internal object FastHtmlAabProtoManifest {
 
     private data class Field(val id: Int, val wire: Int, val bytes: ByteArray, val raw: ByteArray, val value: Long = -1)
 
-    fun rewrite(input: ByteArray, draft: ProjectDraft): ByteArray {
+    fun rewrite(input: ByteArray, draft: ProjectDraft, expectedManifestSha256: String = PINNED_MANIFEST_SHA256): ByteArray {
         require(draft.packageName.length <= 255 && draft.packageName.matches(
             Regex("[A-Za-z_][A-Za-z_0-9]*(\\.[A-Za-z_][A-Za-z_0-9]*)+")
         )) { "Invalid application package." }
@@ -34,7 +34,7 @@ internal object FastHtmlAabProtoManifest {
         requireWireFraming(input)
         require(MessageDigest.getInstance("SHA-256").digest(input).joinToString("") {
             "%02x".format(it.toInt() and 255)
-        } == PINNED_MANIFEST_SHA256) { "Unrecognized compiled HTML manifest template." }
+        } == expectedManifestSha256) { "Unrecognized compiled HTML manifest template." }
         val root = parse(input)
         check(only(root, 1, 2).size == 1 && only(root, 2, 2).isEmpty()) { "Root must be one XmlNode element." }
         val rewritten = updateFields(root) { field ->
@@ -59,6 +59,14 @@ internal object FastHtmlAabProtoManifest {
         check(attribute(attributes(app), ANDROID_NS, "label") == draft.appName)
         val activity = child(elements(app), "activity")
         check(attribute(attributes(activity), ANDROID_NS, "name") == STUB_ACTIVITY)
+        run {
+            val provider = child(elements(app), "provider")
+            val providerAttrs = attributes(provider)
+            check(attribute(providerAttrs, ANDROID_NS, "name") == "$STUB_PACKAGE.AppForgeShareProvider")
+            check(attribute(providerAttrs, ANDROID_NS, "authorities") == "${draft.packageName}.appforge.documents")
+            check(attribute(providerAttrs, ANDROID_NS, "exported") == "false")
+            check(attribute(providerAttrs, ANDROID_NS, "grantUriPermissions") == "true")
+        }
         check(rewritten.size <= MAX_PROTO)
         return rewritten
     }
@@ -83,6 +91,8 @@ internal object FastHtmlAabProtoManifest {
         var appCount = 0
         var sdkCount = 0
         var activityCount = 0
+        var providerCount = 0
+        var authorityCount = 0
         val output = updateFields(fields) { f ->
             when (f.id) {
                 4 -> {
@@ -108,6 +118,10 @@ internal object FastHtmlAabProtoManifest {
                         }
                         kind == "application" && ns == ANDROID_NS && name == "label" -> {
                             check(before == STUB_LABEL); labelCount++; draft.appName
+                        }
+                        kind == "provider" && ns == ANDROID_NS && name == "authorities" -> {
+                            check(before == "$STUB_PACKAGE.appforge.documents"); authorityCount++
+                            "${draft.packageName}.appforge.documents"
                         }
                         kind == "activity" && ns == ANDROID_NS && name == "name" -> {
                             check(before == STUB_ACTIVITY); activityNameCount++; before
@@ -156,6 +170,7 @@ internal object FastHtmlAabProtoManifest {
                         val eligible = when {
                             kind == "manifest" && name == "uses-sdk" -> { sdkCount++; true }
                             kind == "manifest" && name == "application" -> { appCount++; true }
+                            kind == "application" && name == "provider" -> { providerCount++; true }
                             kind == "application" && name == "activity" -> { activityCount++; true }
                             else -> false
                         }
@@ -171,7 +186,8 @@ internal object FastHtmlAabProtoManifest {
             "manifest" -> check(packageCount == 1 && versionCodeCount == 1 &&
                 versionNameCount == 1 && appCount == 1 && sdkCount == 1)
             "uses-sdk" -> check(sdkMinCount == 1 && sdkTargetCount == 1)
-            "application" -> check(labelCount == 1 && activityCount == 1)
+            "application" -> check(labelCount == 1 && activityCount == 1 && providerCount == 1)
+            "provider" -> check(authorityCount == 1)
             "activity" -> check(activityNameCount == 1)
             else -> error("Unexpected AAPT2 XML element.")
         }

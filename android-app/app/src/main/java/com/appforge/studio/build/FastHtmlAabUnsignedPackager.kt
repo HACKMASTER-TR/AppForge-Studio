@@ -16,7 +16,6 @@ import java.util.zip.ZipOutputStream
 internal object FastHtmlAabUnsignedPackager {
     private const val LIMIT = 40 * 1024 * 1024
     private const val ENTRY_LIMIT = 24 * 1024 * 1024
-    private const val PINNED_TEMPLATE_SHA256 = "17ef1e5eb5d5a54edd03b62afe9acc61d34b7380cc7f0b512b130b593d94efad"
     private val required = setOf(
         "BundleConfig.pb", "base/manifest/AndroidManifest.xml",
         "base/dex/classes.dex", "base/resources.pb"
@@ -40,17 +39,15 @@ internal object FastHtmlAabUnsignedPackager {
         require(additions.containsKey("base/assets/site/$jsonEntry")) {
             "Missing HTML entry in AAB additions."
         }
-        val config = org.json.JSONObject().put("mode", "LOCAL").put("url", "")
-            .put("entry", jsonEntry).toString().toByteArray(Charsets.UTF_8)
+        val config = FastHtmlApkPackager.runtimeConfig(snapshot, jsonEntry)
         additions["base/assets/appforge-html-config.json"] = config
 
         val template = context.assets.open("html-aab-template.aab").use { readLimited(it, LIMIT) }
-        require(digest(template) == PINNED_TEMPLATE_SHA256) {
-            "Unknown CI HTML AAB template. Offline unsigned build blocked."
-        }
+        TemplateIntegrity.requireAsset(context, "html-aab-template.aab", template)
         val entries = readTemplate(template)
         val manifest = FastHtmlAabProtoManifest.rewrite(
-            entries.getValue("base/manifest/AndroidManifest.xml"), snapshot
+            entries.getValue("base/manifest/AndroidManifest.xml"), snapshot,
+            TemplateIntegrity.expected(context, "html-aab-manifest")
         )
         require(additions.keys.none { it in entries }) { "Template/source ZIP entry collision." }
         val outputEntries = LinkedHashMap(entries)
