@@ -550,7 +550,7 @@ val generateFastHtmlIntegrity = tasks.register("generateFastHtmlIntegrity") {
         )
     }
 }
-android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/html-integrity/assets"))
+android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/html-integrity/assets").get().asFile)
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
     dependsOn(generateFastHtmlIntegrity)
 }
