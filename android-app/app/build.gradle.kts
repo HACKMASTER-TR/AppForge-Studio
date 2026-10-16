@@ -2,6 +2,7 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
 import java.security.MessageDigest
+import java.util.zip.ZipFile
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.tasks.OutputDirectory
@@ -535,9 +536,9 @@ val generateFastHtmlIntegrity = tasks.register("generateFastHtmlIntegrity") {
     doLast {
         val apk = layout.buildDirectory.file("generated/html-template/assets/html-apk-template.apk").get().asFile
         val aab = layout.buildDirectory.file("generated/html-aab-template/assets/html-aab-template.aab").get().asFile
-        fun hash(bytes: ByteArray) = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+        fun hash(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes)
             .joinToString("") { "%02x".format(it.toInt() and 255) }
-        val manifest = java.util.zip.ZipFile(aab).use { zip ->
+        val manifest = ZipFile(aab).use { zip ->
             zip.getInputStream(requireNotNull(zip.getEntry("base/manifest/AndroidManifest.xml"))).use { it.readBytes() }
         }
         val directory = output.get().asFile
