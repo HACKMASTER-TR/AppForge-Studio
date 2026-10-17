@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertFastHtmlEngineIsolation } from './helpers/fast_html_policy_regression.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const main = read('android-app/app/src/main/java/com/appforge/studio/MainActivity.kt');
@@ -42,7 +43,7 @@ test('HTML URL bypass stays limited to APK without touching native or Expo build
   const policy = read('android-app/app/src/main/java/com/appforge/studio/build/FastHtmlApkPolicy.kt');
   const engine = read('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt');
   assert.match(policy, /setOf\(DeviceArtifactKind\.APK\)/);
-  assert.match(policy, /engine != "webview-static"/);
+  assertFastHtmlEngineIsolation(root);
   assert.match(engine, /FastHtmlApkPackager\.build\(context, draft, workspace\)/);
   assert.match(engine, /"expo" -> buildExpoProject/);
   assert.match(engine, /"android-gradle" -> buildAndroidProject/);

@@ -8,6 +8,7 @@ const read = p => fs.readFileSync(path.join(root,p),'utf8');
 const prefix = 'android-app/app/src/main/java/com/appforge/studio/';
 const key = read(prefix+'build/FastHtmlAabUploadKey.kt');
 const engine = read(prefix+'build/DeviceBuildEngine.kt');
+const terminal = read(prefix+'build/DeviceBuildTerminalState.kt');
 const apk = read(prefix+'build/FastHtmlApkPackager.kt');
 const unsigned = read(prefix+'build/FastHtmlAabUnsignedPackager.kt');
 const offline = read(prefix+'build/OfflineBuildPackManager.kt');
@@ -37,7 +38,23 @@ test('V15.1 dual outputs have matching signer cert and fail closed on any error'
   assert.match(engine,/candidateSignedAab\?\.delete\(\)/);
   assert.match(engine,/state.apk = null/);
   assert.match(engine,/state.aab = null/);
-  assert.match(engine,/checkCancelled\(state\)\s+state.progress = 100/);
+  const fastStart = engine.indexOf('if (FastHtmlApkPolicy.isCandidate(draft))');
+  const fastEnd = engine.indexOf('val sourceEngine =', fastStart);
+  assert.ok(fastStart >= 0 && fastEnd > fastStart);
+  const fast = engine.slice(fastStart, fastEnd);
+  assert.match(fast, /state\.apk = candidateApk\s+state\.aab = candidateSignedAab/);
+  assert.match(fast, /checkCancelled\(state\)\s+state\.complete\(if \(wantsAab\) \{[\s\S]*?\}\)\s+return/);
+  assert.doesNotMatch(fast, /state\.(?:status|progress)\s*=(?!=)/);
+  assert.match(terminal, /fun complete\(message: String\): Boolean = synchronized\(this\) \{\s+if \(terminal\(\) \|\| cancelled\.get\(\)\) return false\s+progress = 100\s+status = "success"\s+logs\.add\(message\)/);
+  assert.match(terminal, /fun artifactsVisible\(\): Boolean = synchronized\(this\) \{\s+status == "success" && !cancelled\.get\(\)/);
+  const snapshot = engine.slice(engine.indexOf('internal fun snapshot('), engine.indexOf('fun artifact('));
+  assert.match(snapshot, /synchronized\(state\) \{\s+DeviceBuildSnapshot\(/);
+  for (const kind of ['apk', 'aab']) {
+    assert.ok(snapshot.includes(`${kind} = state.${kind}.takeIf { state.artifactsVisible() }`));
+  }
+  const artifact = engine.slice(engine.indexOf('fun artifact('), engine.indexOf('fun cancel('));
+  assert.match(artifact, /if \(state.status != "success" \|\| state.cancelled.get\(\)\) return null\s+val file =/);
+  assert.match(engine, /catch \(t: Throwable\) \{\s+state\.fail\(/);
 });
 test('V15.1 preflight preserves fast-output errors and validates AAB PKCS12 selection', () => {
   const start = ui.indexOf('val offlinePackCheck =', ui.indexOf('val startBuildWithDraft:'));

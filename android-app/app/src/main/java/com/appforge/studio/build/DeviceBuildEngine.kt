@@ -17,7 +17,6 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
 
 internal data class DeviceBuildStart(
     val id: String,
@@ -40,11 +39,7 @@ object DeviceBuildEngine {
     private data class JobState(
         val id: String,
         val buildNo: Long,
-        val logs: CopyOnWriteArrayList<String> = CopyOnWriteArrayList(),
         val preflight: CopyOnWriteArrayList<String> = CopyOnWriteArrayList(),
-        val cancelled: AtomicBoolean = AtomicBoolean(false),
-        @Volatile var status: String = "Hazırlanıyor",
-        @Volatile var progress: Int = 1,
         @Volatile var offline: Boolean = false,
         @Volatile var apk: File? = null,
         @Volatile var aab: File? = null,
@@ -52,7 +47,7 @@ object DeviceBuildEngine {
         @Volatile var windowsArtifactKind: DeviceArtifactKind? = null,
         @Volatile var shell: LinuxShellEngine? = null,
         @Volatile var shellSessionId: String? = null
-    )
+    ) : DeviceBuildTerminalState()
 
     private val jobs = ConcurrentHashMap<String, JobState>()
     private val executor = Executors.newFixedThreadPool(2) { runnable ->
@@ -61,8 +56,7 @@ object DeviceBuildEngine {
 
     /* APPFORGE_EVENT_DRIVEN_BUILD_PROGRESS_V1 */
     private fun advanceProgress(state: JobState, value: Int, status: String? = null) {
-        state.progress = maxOf(state.progress, value.coerceIn(0, 99))
-        if (status != null) state.status = status
+        state.advance(value, status)
     }
 
     internal fun start(
@@ -99,18 +93,20 @@ object DeviceBuildEngine {
     }
 
     internal fun snapshot(id: String): DeviceBuildSnapshot? =
-        jobs[id]?.let {
-            DeviceBuildSnapshot(
-                id = it.id,
-                buildNo = it.buildNo,
-                status = it.status,
-                progress = it.progress,
-                logs = it.logs.toList(),
-                preflight = it.preflight.toList(),
-                apk = it.apk,
-                aab = it.aab,
-                exe = it.exe
-            )
+        jobs[id]?.let { state ->
+            synchronized(state) {
+                DeviceBuildSnapshot(
+                    id = state.id,
+                    buildNo = state.buildNo,
+                    status = state.status,
+                    progress = state.progress,
+                    logs = state.logs.toList(),
+                    preflight = state.preflight.toList(),
+                    apk = state.apk.takeIf { state.artifactsVisible() },
+                    aab = state.aab.takeIf { state.artifactsVisible() },
+                    exe = state.exe.takeIf { state.artifactsVisible() }
+                )
+            }
         }
 
     fun artifact(id: String, kind: String): File? {
@@ -122,6 +118,8 @@ object DeviceBuildEngine {
             kind
                 .trim()
                 .lowercase()
+
+        if (state.status != "success" || state.cancelled.get()) return null
 
         val file =
             when (
@@ -165,10 +163,13 @@ object DeviceBuildEngine {
 
     fun cancel(id: String): Boolean {
         val state = jobs[id] ?: return false
-        state.cancelled.set(true)
+        synchronized(state) {
+            if (!state.cancelBuild()) return false
+            state.apk = null
+            state.aab = null
+            state.exe = null
+        }
         state.shellSessionId?.let { session -> state.shell?.cancel(session) }
-        state.status = "cancelled"
-        state.logs.add("⛔ Derleme iptal edildi.")
         return true
     }
 
@@ -303,9 +304,7 @@ object DeviceBuildEngine {
                     }
                 }
                 checkCancelled(state)
-                state.progress = 100
-                state.status = "success"
-                state.logs.add(if (wantsAab) {
+                state.complete(if (wantsAab) {
                     "✅ Yerel statik HTML AAB çıktısı hazır • dış araç ve internet kullanılmadı."
                 } else {
                     "✅ HTML/HTTPS APK hazır • sıfır ek araç indirme."
@@ -657,23 +656,18 @@ object DeviceBuildEngine {
                 }
             }
 
-            state.status = "success"
-            state.progress = 100
-            state.logs.add("✅ Hazır • Derleme tamamen cihaz üzerinde tamamlandı.")
+            state.complete("✅ Hazır • Derleme tamamen cihaz üzerinde tamamlandı.")
         } catch (t: Throwable) {
-            // Shared output-aware policy keeps Windows/combined artifacts on
-            // the normal engine path and its own publication/cleanup lifecycle.
-            if (FastHtmlApkPolicy.isCandidate(draft)) {
+            state.fail("❌ ${t.message ?: t.javaClass.simpleName}")
+            // Android visibility fails closed for every route, including later Windows failure.
+            run {
                 state.apk?.delete()
                 state.aab?.delete()
                 state.apk = null
                 state.aab = null
-            }
-            if (state.cancelled.get()) {
-                state.status = "cancelled"
-            } else {
-                state.status = "failed"
-                state.logs.add("❌ ${t.message ?: t.javaClass.simpleName}")
+                File(context.filesDir, "device-build/artifacts/${state.id}").listFiles()
+                    ?.filter { it.extension in setOf("apk", "aab") }?.forEach { it.delete() }
+                File(context.filesDir, "device-build/artifacts/${state.id}-pending").deleteRecursively()
             }
         } finally {
             state.shellSessionId = null
@@ -683,6 +677,7 @@ object DeviceBuildEngine {
     }
 
     private fun validateCapabilities(draft: ProjectDraft) {
+        WizardReadinessEvaluator.evaluate(draft).requireReady()
         WebviewProjectSettings.validate(draft)
         require(draft.packageName.matches(Regex("""^[A-Za-z_]\w*(\.[A-Za-z_]\w*)+$"""))) {
             "Geçersiz Android package name."
@@ -2345,112 +2340,78 @@ object DeviceBuildEngine {
          * Selection is now scoped to the exact :app Gradle outputs and
          * requested variant.
          */
-        val artifactRoot =
-            File(
-                context.filesDir,
-                "device-build/artifacts/${state.id}"
-            )
-                .apply {
-                    mkdirs()
+        val sources = linkedMapOf<String, File?>()
+        if (DeviceArtifactKind.APK in requestedArtifacts)
+            sources["apk"] = GradleArtifactSelector.selectApk(project, variant)
+        if (DeviceArtifactKind.AAB in requestedArtifacts)
+            sources["aab"] = GradleArtifactSelector.selectAab(project, variant)
+        // Use the same copied normal-route keystore, preserving SAF/JKS/BKS selection.
+        // The fast-route vault-only PKCS12 loader is deliberately not used here.
+        if ("apk" in sources) state.logs.add("📦 Deterministik APK • seçilen variant")
+        if ("aab" in sources) state.logs.add("📦 Deterministik AAB • seçilen variant")
+        val expectedCertificate = if (draft.signingMode == SigningMode.CUSTOM) {
+            val password = draft.storePassword.toCharArray()
+            try {
+                val copiedKey = File(safeWorkspace, "appforge-release.keystore")
+                listOf("PKCS12", "JKS", "BKS").firstNotNullOfOrNull { type ->
+                    runCatching {
+                        java.security.KeyStore.getInstance(type).also { store ->
+                            copiedKey.inputStream().use { store.load(it, password) }
+                        }.getCertificate(draft.keyAlias)
+                    }.getOrNull()
+                } ?: error("Normal Android signer certificate unavailable.")
+            } finally { password.fill('\u0000') }
+        } else null
+        var apkCertificates: List<java.security.cert.X509Certificate>? = null
+        var aabCertificates: List<java.security.cert.Certificate>? = null
+        val collected = AndroidArtifactPublication.collect(
+            File(context.filesDir, "device-build/artifacts"), state.id, project, sources,
+            checkCancelled = { check(!state.cancelled.get()) { "Derleme iptal edildi." } },
+            verify = { kind, file ->
+                if (kind == "apk") {
+                    val result = com.android.apksig.ApkVerifier.Builder(file).build().verify()
+                    require(result.isVerified && result.signerCertificates.isNotEmpty()) { "APK signature invalid." }
+                    apkCertificates = result.signerCertificates
+                    if (expectedCertificate != null) require(result.signerCertificates.any {
+                        it.encoded.contentEquals(expectedCertificate.encoded)
+                    }) { "APK signer identity mismatch." }
+                    val info = context.packageManager.getPackageArchiveInfo(file.absolutePath, 0)
+                    require(info?.packageName == draft.packageName) { "APK package identity mismatch." }
+                } else {
+                    // JAR verification reads every payload; mere META-INF presence is insufficient.
+                    java.util.jar.JarFile(file, true).use { jar ->
+                        val entries = jar.entries().asSequence().filter { !it.isDirectory && !it.name.startsWith("META-INF/") }.toList()
+                        require(entries.isNotEmpty())
+                        var expanded = 0L
+                        entries.forEach { entry ->
+                            require(entry.size in 0..2_147_483_647L) { "Invalid AAB payload size." }
+                            jar.getInputStream(entry).use { input ->
+                                val buffer = ByteArray(65536)
+                                while (true) {
+                                    check(!state.cancelled.get())
+                                    val count = input.read(buffer)
+                                    if (count < 0) break
+                                    expanded += count
+                                    require(expanded <= 2_147_483_647L) { "AAB expanded size exceeded." }
+                                }
+                            }
+                            val certificates = requireNotNull(entry.certificates) { "AAB unsigned payload." }.toList()
+                            require(certificates.isNotEmpty()) { "AAB unsigned payload." }
+                            val expected = expectedCertificate?.let { listOf(it) } ?: apkCertificates
+                            if (expected != null) require(certificates.any { actual ->
+                                expected.any { it.encoded.contentEquals(actual.encoded) }
+                            }) { "AAB signer identity mismatch." }
+                            if (aabCertificates != null) require(certificates.map { it.encoded.toList() }.toSet() ==
+                                aabCertificates!!.map { it.encoded.toList() }.toSet()) { "AAB mixed signer identity." }
+                            aabCertificates = certificates
+                        }
+                    }
                 }
-
-        if (
-            DeviceArtifactKind.APK in
-                requestedArtifacts
-        ) {
-            GradleArtifactSelector
-                .selectApk(
-                    project =
-                        project,
-                    variant =
-                        variant
-                )
-                ?.let {
-                    source ->
-
-                    state.logs.add(
-                        "📦 Deterministik APK • " +
-                            source
-                                .relativeTo(
-                                    project
-                                )
-                                .invariantSeparatorsPath
-                    )
-
-                    val target =
-                        File(
-                            artifactRoot,
-                            "${safeName(draft.appName)}-${state.buildNo}.apk"
-                        )
-
-                    source.copyTo(
-                        target,
-                        overwrite = true
-                    )
-
-                    state.apk =
-                        target
-                }
-        }
-
-        if (
-            DeviceArtifactKind.AAB in
-                requestedArtifacts
-        ) {
-            GradleArtifactSelector
-                .selectAab(
-                    project =
-                        project,
-                    variant =
-                        variant
-                )
-                ?.let {
-                    source ->
-
-                    state.logs.add(
-                        "📦 Deterministik AAB • " +
-                            source
-                                .relativeTo(
-                                    project
-                                )
-                                .invariantSeparatorsPath
-                    )
-
-                    val target =
-                        File(
-                            artifactRoot,
-                            "${safeName(draft.appName)}-${state.buildNo}.aab"
-                        )
-
-                    source.copyTo(
-                        target,
-                        overwrite = true
-                    )
-
-                    state.aab =
-                        target
-                }
-        }
-
-        if (
-            DeviceArtifactKind.APK in requestedArtifacts
-        ) {
-            require(
-                state.apk != null
-            ) {
-                "Gradle tamamlandı ancak APK bulunamadı."
             }
-        }
-
-        if (
-            DeviceArtifactKind.AAB in requestedArtifacts
-        ) {
-            require(
-                state.aab != null
-            ) {
-                "Gradle tamamlandı ancak AAB bulunamadı."
-            }
-        }
+        )
+        check(!state.cancelled.get()) { "Derleme iptal edildi." }
+        state.apk = collected["apk"]
+        state.aab = collected["aab"]
         advanceProgress(state, 93, "Artefaktlar hazır")
     }
 

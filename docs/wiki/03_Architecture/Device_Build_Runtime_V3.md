@@ -14,6 +14,9 @@ related:
   - "[[System_Architecture]]"
   - "[[Build_And_Worker_Architecture]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/AndroidArtifactPublication.kt"
+  - "android-app/app/build.gradle.kts"
+  - "quality/tests/t21_android_publication_runtime.test.js"
   - "android-app/app/src/main/java/com/appforge/studio/build/BuildApiClient.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableHostStore.kt"
@@ -136,3 +139,63 @@ a newer source requires separate exact source/artifact binding.
 
 Full historical architecture and acceptance chronology:
 [[archive/Device_Build_Runtime_V3_History_2026-10-02]].
+
+## T21 wizard readiness boundary
+
+`WizardReadinessEvaluator` in `WebviewProjectSettings.kt` collects settings
+blockers by wizard field and step before UI build start, offline requirements
+and engine execution. Its classification is settings evidence only; filesystem,
+template integrity, toolchain and signer checks remain mandatory at use.
+Default wizard bridges/upload/network/splash still require the normal engine.
+Unsupported category/primary-color injection and automatic provider integrations
+remain explicit early blockers with selections preserved. Fast URL AAB and
+non-pinned AAB SDK selections use the normal engine. Declaration-only permissions
+do not supply native APIs. See `docs/reports/t21-unified-development.md` for the
+inventory and scoped execution evidence; no current physical acceptance is inferred.
+
+T21 continuation distinguishes settings eligibility from experimental status:
+explicit experimental readyOutputs (currently Windows Native EXE) remain selectable
+with a warning; PLANNED/external-only engines and output mismatches fail closed.
+Toolchain/source/signer availability remains checked at execution. Wizard warnings
+and per-step issue links occupy a separate bounded scroll viewport above step
+content; this source structure does not establish Compose/device visual acceptance.
+Provider resolver JVM tests additionally cover expiry, future timestamps, path and
+symlink escape with stubbed Android boundaries; OS grants remain a physical gate.
+
+### T21 routing explanation boundary
+
+`FastHtmlApkPolicy.normalRouteReasons` is scoped to the same static HTML/HTTPS
+source family and Android-only output boundary as fast eligibility. It returns
+no Tiny-versus-normal reasons for Node, Expo, native engines, non-HTML local
+sources, Windows-only or mixed Android/Windows targets. The wizard reports
+engine/host prerequisites separately as nonblocking external-configuration
+information; pure settings eligibility never attests installed tools or keys.
+Experimental Native EXE remains selectable only for its declared outputs and
+retains its nonproduction disclosure. The evaluator also mirrors the engine's
+Expo source-readiness and global unsupported-injection guards before build.
+
+### T21 normal Android publication and selected-source evidence
+
+Normal Gradle APK/AAB collection uses `AndroidArtifactPublication`: select every
+requested output before copying, bound canonical paths, validate format/size and
+signatures, copy into a private job pending directory, compare bytes by SHA-256,
+then finalize each file with explicit rollback on failure/cancellation. Per-file
+renames are not a multi-file atomic filesystem operation. APK/AAB download and
+snapshot visibility requires final job success; a later engine failure clears
+Android fields/files. Windows artifact identity and its signing lifecycle remain
+separate. Recovery removes interrupted directories for the same job identity;
+this is not a startup sweep or cross-process recovery database.
+
+Normal APK verification checks ApkVerifier and Android package identity; AAB reads
+all signed JAR payloads and checks certificate consistency, custom selected normal
+keystore identity, and APK/AAB signer parity when both are requested. Normal AAB
+proto manifest package/permission parity still requires Android acceptance evidence.
+
+Gradle preserves the three exact compiled artifact/manifest integrity pins. A
+separate `html-template-source-inputs.txt` records a versioned, sorted path/byte
+fingerprint of template main sources and selected repository Gradle inputs,
+captured before template preBuild and checked again before embedding metadata.
+It excludes environment, secrets, local properties and generated outputs: it is
+neither a complete source attestation nor an artifact digest. JVM tests exercise
+the fingerprint function, not Gradle/AGP task execution. Android build and physical
+acceptance remain NOT_RUN for this remediation.

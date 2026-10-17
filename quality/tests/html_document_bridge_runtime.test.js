@@ -236,7 +236,7 @@ public class Harness {
   for(String csvMode:new String[]{"save","share"}) {
    init(true);check(call(op("begin").put("mode",csvMode).put("mime","application/csv").put("size",csv.length).put("name","records.csv")).yes("ok"));
    check(call(op("chunk").put("offset",0).put("data",java.util.Base64.getEncoder().encodeToString(csv))).yes("ok"));call(op("finish"));
-   if(csvMode.equals("save")){check(a.picker.type.equals("application/csv"));result(Activity.RESULT_OK,destination("content://documents/csv"));check(java.util.Arrays.equals(a.resolver.bytes.toByteArray(),csv));}
+   if(csvMode.equals("save")){check(a.picker.type.equals("text/csv"));result(Activity.RESULT_OK,destination("content://documents/csv"));check(java.util.Arrays.equals(a.resolver.bytes.toByteArray(),csv));}
    else {for(int i=0;i<200 && a.launched==null;i++)Thread.sleep(5);check(a.picker==null);check(a.resolver.bytes==null);check(a.launched.type.equals("text/csv"));}
   }
   // Hold the real provider creation lock so background/navigation happen before completion.
@@ -273,6 +273,11 @@ public class Harness {
   port.callback.onMessage(port,new WebMessage(duplicate.toString()));check(new JSONObject(port.last.getData()).yes("ok"));
   port.callback.onMessage(port,new WebMessage(duplicate.toString()));check(!new JSONObject(port.last.getData()).yes("ok"));
   init(true);check(begin("save",7).yes("ok"));check(!begin("save",7).yes("ok"));
+  // A competing begin/replay must leave the original transfer able to save exact bytes.
+  check(call(op("chunk").put("offset",0).put("data","JVBERi0A/w==")).yes("ok"));
+  call(op("finish"));result(Activity.RESULT_OK,destination("content://documents/concurrent"));
+  check(java.util.Arrays.equals(a.resolver.bytes.toByteArray(),new byte[]{37,80,68,70,45,0,(byte)255}));
+
   init(true);w.url="https://attacker.test";check(!begin("save",7).yes("ok"));
   init(true);check(!call(op("begin").put("mode","save").put("size",7).put("mime","text/plain")).yes("ok"));
   a=new Activity();w=new WebView();d=new AppForgeDocuments(a,w,"https://trusted.test",false,false);d.pageFinished(w.url);port=w.pair[0];w.touch.onTouch(w,new android.view.MotionEvent());check(!begin("save",7).yes("ok"));

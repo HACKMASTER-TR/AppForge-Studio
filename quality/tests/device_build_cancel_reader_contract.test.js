@@ -107,8 +107,12 @@ test(
 
     const cancelled =
       body.indexOf(
-        "state.cancelled.set(true)"
+        "if (!state.cancelBuild()) return false"
       );
+
+    const terminal = read("android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildTerminalState.kt");
+    assert.match(terminal, /fun cancelBuild\(\): Boolean = synchronized\(this\) \{\s+if \(terminal\(\)\) return false\s+cancelled\.set\(true\)\s+status = "cancelled"/);
+    assert.match(body, /synchronized\(state\) \{\s+if \(!state\.cancelBuild\(\)\) return false/);
 
     const shellCancel =
       body.indexOf(

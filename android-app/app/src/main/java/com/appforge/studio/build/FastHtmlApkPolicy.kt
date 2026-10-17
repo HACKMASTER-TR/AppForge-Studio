@@ -17,37 +17,50 @@ internal object FastHtmlApkPolicy {
         }
     }
 
+    /** Routing explanations apply only when this source/output could otherwise use Tiny. */
+    private fun hasFastRouteSource(draft: ProjectDraft): Boolean {
+        val engine = draft.sourceBuildEngine.trim().lowercase().ifBlank { "webview-static" }
+        val tech = draft.sourceTechnology.trim().lowercase()
+        return engine == "webview-static" && (draft.sourceMode == SourceMode.URL ||
+            tech in setOf("html", "web-static", "webview") &&
+            (draft.startPage?.endsWith(".html", true) == true || draft.importedFolder != null))
+    }
+
     /** Every selected capability absent from Tiny must use the normal prereq-checked engine. */
     fun normalRouteReasons(draft: ProjectDraft): List<String> = buildList {
-        if (draft.fileUpload) add("fileUpload requires normal file chooser")
-        if (draft.clipboardBridge || draft.vibrationBridge) add("clipboard/haptics require normal native bridge")
-        if (draft.networkState) add("network state permission requires normal manifest")
-        if (draft.fullscreen) add("fullscreen requires normal window")
-        if (draft.orientation != "unspecified") add("orientation requires normal manifest")
-        if (draft.splashEnabled || draft.splashText.isNotBlank()) add("splash requires normal runtime")
+        if (!requestsAndroidOnlyOutputs(draft) || !hasFastRouteSource(draft)) return@buildList
+        val outputs = DeviceBuildCapabilities.requestedOutputs(draft.buildOutput)
+        if (DeviceArtifactKind.AAB in outputs) {
+            if (draft.sourceMode == SourceMode.URL) add("URL kaynağından AAB için normal Android motoru gerekir.")
+            if (draft.minSdk != 26 || draft.targetSdk != 37) add("Seçilen AAB SDK aralığı normal Android motorunu gerektirir.")
+            if (draft.buildOutput.trim().lowercase() !in setOf("aab", "both", "apk+aab"))
+                add("Seçilen çıktı birleşimi normal Android motorunu gerektirir.")
+        }
+
+        if (draft.fileUpload) add("Dosya yükleme için normal Android dosya seçicisi gerekir.")
+        if (draft.clipboardBridge || draft.vibrationBridge) add("Pano ve titreşim için normal Android köprüsü gerekir.")
+        if (draft.networkState) add("Ağ durumu izin bildirimi normal Android manifestini gerektirir.")
+        if (draft.fullscreen) add("Tam ekran için normal Android pencere ayarları gerekir.")
+        if (draft.orientation != "unspecified") add("Ekran yönü için normal Android manifesti gerekir.")
+        if (draft.splashEnabled || draft.splashText.isNotBlank()) add("Açılış ekranı için normal Android çalışma zamanı gerekir.")
         if (draft.backgroundColor != "#07101F" || draft.statusBarColor != "#07101F" ||
-            draft.navigationBarColor != "#07101F") add("theme colors require normal runtime")
-        if (draft.webMixedContentAllowed) add("mixed content requires normal security preflight")
+            draft.navigationBarColor != "#07101F") add("Tema renkleri için normal Android çalışma zamanı gerekir.")
+        if (draft.webMixedContentAllowed) add("Karma içerik için normal Android güvenlik kontrolü gerekir.")
         if (draft.signingMode != SigningMode.DEBUG && draft.buildOutput.trim().lowercase() == "apk")
-            add("custom APK signing requires normal engine")
+            add("Özel APK imzası için normal Android motoru gerekir.")
         if (!draft.iconUri.isNullOrBlank() || draft.camera || draft.microphone || draft.location ||
             draft.notifications || draft.nfc || draft.deepLinkEnabled || draft.wakeLock ||
-            draft.additionalPermissions.isNotEmpty()) add("Android capabilities require normal manifest/runtime")
+            draft.additionalPermissions.isNotEmpty()) add("Seçilen Android özellikleri normal manifest ve çalışma zamanı gerektirir.")
     }
 
     fun isCandidate(draft: ProjectDraft): Boolean {
-        val engine = draft.sourceBuildEngine.trim().lowercase().ifBlank { "webview-static" }
-        if (engine != "webview-static") return false
+        if (!hasFastRouteSource(draft)) return false
         if (normalRouteReasons(draft).isNotEmpty()) return false
         if (!requestsAndroidOnlyOutputs(draft)) return false
         if (!draft.iconUri.isNullOrBlank() || draft.camera || draft.microphone ||
             draft.location || draft.notifications || draft.nfc || draft.deepLinkEnabled ||
             draft.wakeLock || draft.additionalPermissions.isNotEmpty()) return false
-        val tech = draft.sourceTechnology.trim().lowercase()
-        return draft.sourceMode == SourceMode.URL ||
-            tech in setOf("html", "web-static", "webview") &&
-            (draft.startPage?.endsWith(".html", true) == true ||
-                draft.importedFolder != null)
+        return true
     }
 
     fun requireSupported(draft: ProjectDraft) {

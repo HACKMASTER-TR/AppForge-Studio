@@ -145,7 +145,7 @@ final class AppForgeDocuments {
             JSONObject message=new JSONObject(raw);id=message.getString("id");
             if(!id.matches("[0-9]{1,12}"))throw new IllegalArgumentException("Invalid request");
             long request=Long.parseLong(id);
-            if(request<=lastRequest)throw new SecurityException("Duplicate or stale request");
+            if(request<=lastRequest){reply(id,false,"Duplicate or stale request",false);return;}
             lastRequest=request;
             String op=message.getString("op");
             if("http".equals(op)) {
@@ -160,7 +160,7 @@ final class AppForgeDocuments {
             }
             if("cancel".equals(op)){ reset(); reply(id,true,"cancelled",true);return; }
             if("begin".equals(op)){
-                if(bytes!=null || document!=null || writing)throw new IllegalStateException("Document request already active");
+                if(bytes!=null || document!=null || writing){reply(id,false,"Document request already active",false);return;}
                 long now=SystemClock.elapsedRealtime();
                 if(gestureAt==0 || now-gestureAt>30000)throw new SecurityException("Tap required to export a document");
                 gestureAt=0;
@@ -220,7 +220,7 @@ final class AppForgeDocuments {
             }
             // User selects a writable content destination. Only a system document destination is accepted.
             Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
-                .setType(mime).putExtra(Intent.EXTRA_TITLE,name);
+                .setType("application/csv".equals(mime)?"text/csv":mime).putExtra(Intent.EXTRA_TITLE,name);
             activity.startActivityForResult(intent,REQUEST);
         } catch(Exception error){reply(id,false,error.getMessage()==null?"Document export failed":error.getMessage(),false);reset();}
     }

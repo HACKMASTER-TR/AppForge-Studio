@@ -26,9 +26,17 @@ test("progress is milestone driven, never timer interpolated", () => {
   assert.doesNotMatch(main, /flowingProgress\s*\+=\s*1/);
 });
 
+const terminal = await readFile(new URL("../../android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildTerminalState.kt", import.meta.url), "utf8");
+
 test("failure and cancel retain last real stage; only success writes 100", () => {
   assert.doesNotMatch(engine, /state\.status = "cancelled"\s*\n\s*state\.progress = 0/);
-  assert.match(engine, /state\.status = "success"\s*\n\s*state\.progress = 100/);
+  assert.doesNotMatch(engine, /state\.status\s*=(?!=)|state\.progress\s*=\s*100\b/);
+  assert.equal((engine.match(/state\.complete\(/g) || []).length, 2);
+  assert.match(engine, /state\.advance\(value, status\)/);
+  assert.match(terminal, /value\.coerceIn\(0, 99\)/);
+  assert.match(terminal, /fun complete\(message: String\): Boolean = synchronized\(this\) \{\s+if \(terminal\(\) \|\| cancelled\.get\(\)\) return false\s+progress = 100\s+status = "success"/);
+  assert.equal((terminal.match(/progress = 100/g) || []).length, 1);
+  assert.doesNotMatch(terminal.slice(terminal.indexOf('fun cancelBuild()')), /progress\s*=/);
   assert.match(main, /if \(buildId == null\) \{\s*progress = 0/);
 });
 

@@ -26,7 +26,7 @@ fun main() {
  listOf("node-web","react-native","expo","python-android","android-gradle").forEach { check(!FastHtmlApkPolicy.isCandidate(base.copy(sourceBuildEngine=it))) }
  check(WebviewProjectSettings.additionalPermissions(base.copy(additionalPermissions=setOf("android.permission.READ_CONTACTS","READ_CONTACTS"))) == listOf("READ_CONTACTS"))
  check(runCatching { WebviewProjectSettings.validate(base.copy(sourceMode=SourceMode.URL,webUrl="http://example.com",microphone=true)) }.isFailure)
- check(runCatching { WebviewProjectSettings.validate(base.copy(additionalPermissions=setOf("INVENTED_PERMISSION"))) }.exceptionOrNull()?.message?.contains("INVENTED_PERMISSION") == true)
+ check(runCatching { WebviewProjectSettings.validate(base.copy(additionalPermissions=setOf("INVENTED_PERMISSION"))) }.exceptionOrNull()?.message?.contains("Desteklenmeyen Android izinleri") == true)
  listOf(base.copy(deepLinkEnabled=true,deepLinkScheme="javascript",deepLinkHost="example.com"),base.copy(deepLinkEnabled=true,deepLinkHost="example.com@evil.com"),base.copy(deepLinkEnabled=true,deepLinkHost="example.com",deepLinkPathPrefix="bad")).forEach { check(runCatching { WebviewProjectSettings.validate(it) }.isFailure) }
 
  listOf(base.copy(qrScanner=true),base.copy(mediaPlayerBridge=true),base.copy(admobEnabled=true),base.copy(billingEnabled=true),
@@ -64,7 +64,7 @@ fun main() {
   }
   listOf("webview-static", "node-web").forEach { engine ->
    val draft = base.copy(buildOutput=output, sourceBuildEngine=engine)
-   rejected(draft.copy(additionalPermissions=setOf("INVENTED_PERMISSION")), "INVENTED_PERMISSION")
+   rejected(draft.copy(additionalPermissions=setOf("INVENTED_PERMISSION")), "Desteklenmeyen Android izinleri")
    listOf(draft.copy(deepLinkEnabled=true, deepLinkScheme="javascript", deepLinkHost="example.com"),
     draft.copy(deepLinkEnabled=true, deepLinkHost="example.com@evil.com"),
     draft.copy(deepLinkEnabled=true, deepLinkHost="example.com", deepLinkPathPrefix="bad")).forEach { rejected(it) }
@@ -94,6 +94,144 @@ fun main() {
   check(FastHtmlApkPolicy.isCandidate(base.copy(buildOutput=output)))
   check(runCatching { FastHtmlApkPolicy.requireSupported(base.copy(buildOutput=output)) }.isFailure)
  }
+ // T21 aggregate diagnostics execute the production evaluator, never a mirrored JS policy.
+ val complete = base.copy()
+ check(WizardReadinessEvaluator.evaluate(complete).ready)
+ check(WizardReadinessEvaluator.evaluate(complete).capability == WizardCapabilityClass.QUICK_SUPPORTED)
+ check(WizardReadinessEvaluator.evaluate(complete.copy(fileUpload=true)).capability == WizardCapabilityClass.NORMAL_SUPPORTED)
+ val defaults = WizardReadinessEvaluator.evaluate(ProjectDraft(appName="Default", importedFolder="/test"))
+ check(defaults.ready && defaults.capability == WizardCapabilityClass.NORMAL_SUPPORTED)
+ check(defaults.normalRouteReasons.size >= 4)
+ check(defaults.normalRouteReasons.all { !it.contains("requires normal") })
+ check(WizardReadinessEvaluator.evaluate(complete.copy(fileUpload=true)).normalRouteReasons.any { it.contains("Dosya yükleme") })
+
+ // Routing regression matrix: Android reasons must never leak into another engine/target.
+ for (mode in listOf(SourceMode.LOCAL, SourceMode.URL)) {
+  for (output in listOf("apk", "aab", "both")) {
+   val selected = complete.copy(sourceMode=mode, webUrl="https://example.com", buildOutput=output)
+   val plain = WizardReadinessEvaluator.evaluate(selected)
+   check(plain.normalRouteReasons.isNotEmpty() == (mode == SourceMode.URL && output != "apk"))
+   advanced.forEach { toggled ->
+    check(WizardReadinessEvaluator.evaluate(toggled.copy(sourceMode=mode,webUrl="https://example.com",buildOutput=output)).normalRouteReasons.isNotEmpty())
+   }
+   check(WizardReadinessEvaluator.evaluate(ProjectDraft(appName="Defaults",importedFolder="/test",sourceMode=mode,webUrl="https://example.com",buildOutput=output)).normalRouteReasons.isNotEmpty())
+   for (engine in listOf("node-web", "expo", "android-gradle")) {
+    for (upload in listOf(false,true)) {
+     val other = WizardReadinessEvaluator.evaluate(selected.copy(sourceBuildEngine=engine,fileUpload=upload))
+     check(other.normalRouteReasons.isEmpty())
+     check(other.diagnostics.any { it.field == "toolchain" })
+    }
+   }
+  }
+ }
+ for (output in listOf("exe", "all", "apk+aab+exe")) {
+  for (upload in listOf(false,true)) {
+   val selected = complete.copy(buildOutput=output,fileUpload=upload)
+   check(FastHtmlApkPolicy.normalRouteReasons(selected).isEmpty())
+   val result = WizardReadinessEvaluator.evaluate(selected)
+   check(result.normalRouteReasons.isEmpty())
+   check(result.diagnostics.any { it.message.contains("Windows Portable") })
+  }
+ }
+ val nativeRouting = WizardReadinessEvaluator.evaluate(complete.copy(sourceBuildEngine="windows-native",buildOutput="native-exe",fileUpload=true))
+ check(nativeRouting.ready && nativeRouting.normalRouteReasons.isEmpty())
+ check(nativeRouting.diagnostics.any { it.message.contains("MinGW-w64") && it.message.contains("deneysel") })
+ check(WizardReadinessEvaluator.evaluate(complete.copy(sourceTechnology="kotlin",startPage="Main.kt",fileUpload=true)).normalRouteReasons.isEmpty())
+ check(WizardReadinessEvaluator.evaluate(complete).diagnostics.any { it.field == "runtimeChecks" && !it.blocking })
+
+ val mixed = complete.copy(appCategory="game",primaryColor="#3F51B5",qrScanner=true,mediaPlayerBridge=true,
+  admobEnabled=true,umpConsentEnabled=true,billingEnabled=true,firebaseAnalyticsEnabled=true,
+  firebaseCrashlyticsEnabled=true,firebaseMessagingEnabled=true,deepLinkEnabled=true,
+  deepLinkScheme="javascript",deepLinkHost="bad@host",deepLinkPathPrefix="bad",orientation="invalid",
+  additionalPermissions=setOf("secret-do-not-echo"),minSdk=40,targetSdk=20,versionCode=0,
+  packageName="bad",signingMode=SigningMode.CUSTOM)
+ val report = WizardReadinessEvaluator.evaluate(mixed)
+ check(!report.ready && report.affectedSteps == setOf(1,2,4,5,6,7,8,9))
+ check(report.diagnostics.filter { it.blocking }.size >= 19)
+ check(report.diagnostics.none { it.turkish().contains("secret-do-not-echo") })
+ check(runCatching { report.requireReady() }.exceptionOrNull()?.message?.contains("firebaseMessagingEnabled") == true)
+ check(mixed.appCategory == "game" && mixed.primaryColor == "#3F51B5")
+ listOf("auto","game","none","invalid").forEach { category ->
+  val result = WizardReadinessEvaluator.evaluate(complete.copy(appCategory=category))
+  check(result.ready == (category == "auto"))
+ }
+ listOf("#3F51B5","#8CC9F6","#ffffff","invalid").forEach { color ->
+  check(!WizardReadinessEvaluator.evaluate(complete.copy(primaryColor=color)).ready)
+ }
+ for (engine in listOf("webview-static","node-web")) {
+  for (output in listOf("apk","aab","both")) {
+   for (category in listOf("auto","game","none")) {
+    for (primary in listOf("#6B7CFF","#3F51B5","#8CC9F6","#123456")) {
+     val appearance = complete.copy(sourceBuildEngine=engine,buildOutput=output,appCategory=category,primaryColor=primary)
+     val result = WizardReadinessEvaluator.evaluate(appearance)
+     check(result.diagnostics.any { it.field=="appCategory" && it.blocking } == (category!="auto"))
+     check(result.diagnostics.any { it.field=="primaryColor" && it.blocking } == (primary!="#6B7CFF"))
+     check(appearance.appCategory==category && appearance.primaryColor==primary)
+    }
+   }
+  }
+ }
+ listOf("#07101F","#FFFFFF","#000000","#80112233").forEach { color ->
+  check(WizardReadinessEvaluator.evaluate(complete.copy(backgroundColor=color,statusBarColor=color,navigationBarColor=color)).ready)
+ }
+ check(!WizardReadinessEvaluator.evaluate(complete.copy(backgroundColor="red")).ready)
+ check(!WizardReadinessEvaluator.evaluate(complete.copy(buildOutput="invalid")).ready)
+ check(!WizardReadinessEvaluator.evaluate(complete.copy(sourceMode=SourceMode.URL,webUrl="https://example.com:99999")).ready)
+ listOf("aab","both","apk+aab").forEach { output ->
+  check(!FastHtmlApkPolicy.isCandidate(complete.copy(buildOutput=output,sourceMode=SourceMode.URL,webUrl="https://example.com")))
+  check(!FastHtmlApkPolicy.isCandidate(complete.copy(buildOutput=output,minSdk=27)))
+ }
+ check(!WizardReadinessEvaluator.evaluate(complete.copy(sourceBuildEngine="expo",sourceBuildReady=false)).ready)
+ for (engine in listOf("android-gradle","windows-native")) {
+  val selected = complete.copy(sourceBuildEngine=engine,buildOutput=if(engine=="windows-native") "native-exe" else "both",admobEnabled=true,firebaseMessagingEnabled=true)
+  val blocked = WizardReadinessEvaluator.evaluate(selected)
+  check(!blocked.ready && blocked.diagnostics.count { it.blocking && it.step==6 } == 2)
+ }
+ // Integration identifiers/config do not make unsupported automatic injection real.
+ for (id in listOf("", "invalid", "ca-app-pub-3940256099942544~3347511713")) {
+  val selected = complete.copy(admobEnabled=true,admobAppId=id,admobBannerUnitId=id,admobInterstitialUnitId=id,admobRewardedUnitId=id)
+  check(!WizardReadinessEvaluator.evaluate(selected).ready)
+  check(WizardReadinessEvaluator.evaluate(selected.copy(admobEnabled=false)).ready)
+ }
+ for (config in listOf(null,"content://missing","content://configured")) {
+  check(!WizardReadinessEvaluator.evaluate(complete.copy(firebaseConfigUri=config,firebaseAnalyticsEnabled=true)).ready)
+  check(!WizardReadinessEvaluator.evaluate(complete.copy(firebaseConfigUri=config,firebaseCrashlyticsEnabled=true)).ready)
+  check(!WizardReadinessEvaluator.evaluate(complete.copy(firebaseConfigUri=config,firebaseMessagingEnabled=true)).ready)
+  check(WizardReadinessEvaluator.evaluate(complete.copy(firebaseConfigUri=config)).ready)
+ }
+ for (ids in listOf("", "invalid", "product_one")) {
+  check(!WizardReadinessEvaluator.evaluate(complete.copy(billingEnabled=true,billingProductIds=ids,billingSubscriptionIds=ids)).ready)
+  check(WizardReadinessEvaluator.evaluate(complete.copy(billingProductIds=ids,billingSubscriptionIds=ids)).ready)
+ }
+ val signed = complete.copy(signingMode=SigningMode.CUSTOM,buildOutput="aab",keystoreUri="content://key",keyAlias="alias",storePassword="sentinel-one",keyPassword="sentinel-two")
+ check(WizardReadinessEvaluator.evaluate(signed).ready)
+ check(WizardReadinessEvaluator.evaluate(signed).diagnostics.none { it.turkish().contains("sentinel") })
+ // Capability disclosure is independent of output eligibility and runtime I/O readiness.
+ val native = complete.copy(sourceBuildEngine="windows-native",buildOutput="native-exe")
+ val nativeReport = WizardReadinessEvaluator.evaluate(native)
+ check(nativeReport.ready && nativeReport.capability == WizardCapabilityClass.NORMAL_SUPPORTED)
+ check(nativeReport.diagnostics.any { !it.blocking && it.message.contains("Deneysel") })
+ check(DeviceBuildCapabilities.forEngine("windows-native")!!.support == DeviceBuildSupport.EXPERIMENTAL)
+ listOf("apk","aab","both","all","exe").forEach {
+  check(!WizardReadinessEvaluator.evaluate(native.copy(buildOutput=it)).ready)
+ }
+ listOf("exe","all","apk+aab+exe").forEach { output ->
+  val portable = WizardReadinessEvaluator.evaluate(complete.copy(buildOutput=output))
+  check(portable.ready && portable.capability == WizardCapabilityClass.NORMAL_SUPPORTED)
+ }
+ check(!WizardReadinessEvaluator.evaluate(complete.copy(buildOutput="native-exe")).ready)
+ listOf("apk","aab","both").forEach { output ->
+  check(WizardReadinessEvaluator.evaluate(complete.copy(sourceBuildEngine="expo",buildOutput=output)).ready)
+ }
+ listOf("exe","all","native-exe").forEach { output ->
+  check(!WizardReadinessEvaluator.evaluate(complete.copy(sourceBuildEngine="expo",buildOutput=output)).ready)
+ }
+ listOf("flutter","dotnet-android","dotnet-maui","windows-web","unity","unknown","android-ndk","react-native").forEach { engine ->
+  listOf("apk","both","native-exe","all").forEach { output ->
+   check(!WizardReadinessEvaluator.evaluate(complete.copy(sourceBuildEngine=engine,buildOutput=output)).ready)
+  }
+ }
+ check(!WizardReadinessEvaluator.evaluate(ProjectDraft(sourceBuildEngine="windows-native")).ready)
  println("routing/settings assertions passed")
 }`);
  execFileSync('kotlinc',[path.join(root,'android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt'), ...['FastHtmlApkPolicy.kt','DeviceBuildCapabilities.kt','WebviewProjectSettings.kt'].map(p=>path.join(root,build,p)),path.join(dir,'BuildConfig.kt'),path.join(dir,'Check.kt'),'-include-runtime','-d',path.join(dir,'check.jar')], {timeout:120000});
@@ -199,4 +337,25 @@ test('production file picker honors OFF, camera consent and Android 8 fallback',
  execFileSync('javac',[path.join(dir,'PickerCheck.java')],{stdio:'pipe'});
  assert.match(execFileSync('java',['-cp',dir,'PickerCheck'],{encoding:'utf8'}),/checks PASS/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+
+test('wizard exposes normal routing reasons before build without changing selections', () => {
+ const ui = read('android-app/app/src/main/java/com/appforge/studio/MainActivity.kt');
+ assert.match(ui, /HTML\/HTTPS Android için normal motor gerekli:/);
+ assert.match(ui, /wizardReadiness\.normalRouteReasons\.joinToString/);
+});
+
+// Structural wiring evidence only; this does not establish Compose compilation or visual acceptance.
+test('wizard warning panel has separate bounded height and every blocking step has navigation', () => {
+ const ui = read('android-app/app/src/main/java/com/appforge/studio/MainActivity.kt');
+ const start = ui.indexOf('val wizardReadiness = com.appforge.studio.build.WizardReadinessEvaluator.evaluate(draft)');
+ const panel = ui.slice(start, ui.indexOf('1 -> SourceStep', start));
+ assert.match(panel, /fillMaxWidth\(\)\.heightIn\(max = 160\.dp\)/);
+ assert.match(panel, /if \(blockingDiagnostics.isNotEmpty\(\) \|\| showWizardHelp\)/);
+ assert.match(panel, /var showWizardHelp by remember \{ mutableStateOf\(false\) \}/);
+ assert.match(panel, /blockingDiagnostics.joinToString/);
+ assert.match(panel, /affectedSteps.sorted\(\).forEach/);
+ assert.match(panel, /TextButton\(onClick = \{ step = issueStep \}\)/);
+ assert.match(panel, /Box\(modifier = Modifier.fillMaxWidth\(\).weight\(1f\)\)/);
 });

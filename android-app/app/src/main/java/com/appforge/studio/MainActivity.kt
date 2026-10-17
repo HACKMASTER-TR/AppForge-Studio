@@ -32,6 +32,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
@@ -44,6 +45,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -4383,6 +4387,17 @@ private fun AppForgeApp() {
                 buildDraft
                     .sourceTechnology
 
+        val wizardReadiness = com.appforge.studio.build.WizardReadinessEvaluator.evaluate(verifiedBuildDraft)
+        if (!wizardReadiness.ready) {
+            draft = verifiedBuildDraft
+            preflight = listOf("BUILD_BLOCKED=YES") + wizardReadiness.diagnostics.map { it.turkish() }
+            status = "Derleme başlamadı. Seçimlerinizi koruduk:\n" +
+                wizardReadiness.diagnostics.filter { it.blocking }.joinToString("\n") { it.turkish() }
+            screen = AppScreen.BUILDER
+            step = wizardReadiness.affectedSteps.minOrNull() ?: 10
+            return@buildStart
+        }
+
         /*
          * OFFLINE_BUILD_PREFLIGHT_GATE_V1
          */
@@ -6994,7 +7009,7 @@ private fun AppForgeApp() {
                         }
                     }
 
-                    Box(
+                    Column(
                         modifier =
                             Modifier
                                 .weight(1f)
@@ -7007,6 +7022,45 @@ private fun AppForgeApp() {
                                 )
                                 .fillMaxWidth()
                     ) {
+                        val wizardReadiness = com.appforge.studio.build.WizardReadinessEvaluator.evaluate(draft)
+                        val blockingDiagnostics = wizardReadiness.diagnostics.filter { it.blocking }
+                        var showWizardHelp by remember { mutableStateOf(false) }
+                        // Optional runtime checks do not reserve a weighted content panel.
+                        TextButton(onClick = { showWizardHelp = !showWizardHelp }) {
+                            Text("Ayar denetimi • derleme kontrolleri ve motor bilgisi", fontSize = 11.sp)
+                        }
+                        if (blockingDiagnostics.isNotEmpty() || showWizardHelp) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().heightIn(max = 160.dp)
+                                    .verticalScroll(rememberScrollState()).padding(12.dp)
+                                    .semantics { liveRegion = LiveRegionMode.Polite },
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text("Motor: ${draft.sourceBuildEngine.ifBlank { draft.sourceTechnology }}", fontSize = 12.sp)
+                                if (showWizardHelp && wizardReadiness.normalRouteReasons.isNotEmpty()) {
+                                    Text("HTML/HTTPS Android için normal motor gerekli:\n" +
+                                        wizardReadiness.normalRouteReasons.joinToString("\n"),
+                                        color = TextSecondary, fontSize = 12.sp)
+                                }
+                                if (showWizardHelp) {
+                                    Text(wizardReadiness.diagnostics.filter { !it.blocking }.joinToString("\n") { it.turkish() },
+                                        color = TextSecondary, fontSize = 12.sp)
+                                }
+                                if (blockingDiagnostics.isNotEmpty()) {
+                                    Text((if (wizardReadiness.affectedSteps.isEmpty()) "Bilgilendirme" else "Kontrol gereken adımlar: " + wizardReadiness.affectedSteps.sorted().joinToString(", ")) +
+                                        "\n" + blockingDiagnostics.joinToString("\n") { it.turkish() },
+                                        color = if (wizardReadiness.ready) TextSecondary else MaterialTheme.colorScheme.error,
+                                        fontSize = 12.sp)
+                                    wizardReadiness.affectedSteps.sorted().forEach { issueStep ->
+                                        TextButton(onClick = { step = issueStep }) {
+                                            Text("Adım $issueStep — hataları düzelt")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // Step components retain their own scroll and keyboard ownership.
+                        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                         when (step) {
                             1 -> SourceStep(draft, status, { draft = it }) {
                                 sourcePicker.launch(arrayOf("text/html", "application/zip", "application/octet-stream"))
@@ -7211,6 +7265,7 @@ private fun AppForgeApp() {
                                 apiKey =
                                     apiKey
                             )
+                        }
                         }
                     }
 
@@ -16535,7 +16590,7 @@ private fun AppearanceStep(
 
         item {
             NoteCard(
-                "Otomatik mod Unity ve oyun işaretli projeleri android:appCategory=\"game\" olarak üretir. Telefonun Gaming Hub'a taşıma kararı üreticiye aittir; istersen türü elle değiştirebilirsin."
+                "HTML/URL ve Node-Web motorlarında kategori enjeksiyonu desteklenmiyor. Oyun/Standart seçimi korunur ve derlemeden önce engel olarak gösterilir; bu motorlarda Otomatik seçin. Gaming Hub davranışı garanti edilmez."
             )
         }
 

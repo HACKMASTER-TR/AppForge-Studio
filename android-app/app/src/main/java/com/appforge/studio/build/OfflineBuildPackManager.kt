@@ -169,6 +169,11 @@ internal object OfflineBuildPackManager {
         draft: ProjectDraft
     ): OfflineBuildRequirementCheck {
 
+        val readiness = WizardReadinessEvaluator.evaluate(draft)
+        if (!readiness.ready) return OfflineBuildRequirementCheck(
+            ready = false, engine = "webview-settings",
+            missing = readiness.diagnostics.filter { it.blocking }.map { it.turkish() }
+        )
         val settingsError = runCatching { WebviewProjectSettings.validate(draft) }
             .exceptionOrNull()?.message
         if (settingsError != null) return OfflineBuildRequirementCheck(

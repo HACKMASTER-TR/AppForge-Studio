@@ -525,6 +525,38 @@ val generateFastHtmlAabTemplate = tasks.register<Copy>("generateFastHtmlAabTempl
     }
 }
 
+// Selected source-input fingerprint, not an artifact hash or a source attestation.
+// No environment, local.properties, signing inputs, timestamps or generated outputs.
+fun fastHtmlSourceFingerprint(): String {
+    val template = rootProject.file("html-apk-template")
+    val selected = template.resolve("src/main").walkTopDown().filter { it.isFile }.toList() +
+        listOf("html-apk-template/build.gradle.kts", "app/build.gradle.kts", "build.gradle.kts",
+            "settings.gradle.kts", "gradle/libs.versions.toml", "gradle/wrapper/gradle-wrapper.properties")
+            .map { rootProject.file(it) }.filter { it.isFile }
+    val digest = MessageDigest.getInstance("SHA-256")
+    digest.update("APPFORGE_TEMPLATE_SELECTED_SOURCE_V1\n".toByteArray(Charsets.UTF_8))
+    selected.distinct().sortedBy { it.relativeTo(rootProject.projectDir).invariantSeparatorsPath }.forEach { file ->
+        val bytes = file.readBytes()
+        val path = file.relativeTo(rootProject.projectDir).invariantSeparatorsPath
+        digest.update((path + "\u0000" + bytes.size + "\u0000").toByteArray(Charsets.UTF_8))
+        digest.update(bytes)
+    }
+    return digest.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
+}
+val fastHtmlSourceRecord = layout.buildDirectory.file("generated/html-source-inputs/fingerprint.txt")
+val captureFastHtmlSourceInputs = tasks.register("captureFastHtmlSourceInputs") {
+    outputs.file(fastHtmlSourceRecord)
+    outputs.upToDateWhen { false }
+    doLast {
+        val record = fastHtmlSourceRecord.get().asFile
+        check(record.parentFile.mkdirs() || record.parentFile.isDirectory)
+        record.writeText(fastHtmlSourceFingerprint() + "\n", Charsets.US_ASCII)
+    }
+}
+project(":html-apk-template").tasks.matching { it.name == "preBuild" }.configureEach {
+    dependsOn(captureFastHtmlSourceInputs)
+}
+
 // Exact template digests are generated only from this build's compiled artifacts.
 // The resulting metadata and templates are covered together by the Studio APK signature.
 val generateFastHtmlIntegrity = tasks.register("generateFastHtmlIntegrity") {
@@ -543,6 +575,11 @@ val generateFastHtmlIntegrity = tasks.register("generateFastHtmlIntegrity") {
         }
         val directory = output.get().asFile
         check(directory.mkdirs() || directory.isDirectory)
+        val selectedSource = fastHtmlSourceRecord.get().asFile.readText(Charsets.US_ASCII).trim()
+        check(selectedSource == fastHtmlSourceFingerprint()) { "Template sources changed during compilation." }
+        directory.resolve("html-template-source-inputs.txt").writeText(
+            "APPFORGE_TEMPLATE_SELECTED_SOURCE_V1 " + selectedSource + "\n", Charsets.US_ASCII
+        )
         directory.resolve("html-template-integrity.txt").writeText(
             "html-apk-template.apk " + hash(apk.readBytes()) + "\n" +
             "html-aab-template.aab " + hash(aab.readBytes()) + "\n" +

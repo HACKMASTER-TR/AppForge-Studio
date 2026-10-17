@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertFastHtmlEngineIsolation } from './helpers/fast_html_policy_regression.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = 'android-app/app/src/main/java/com/appforge/studio/build/';
@@ -32,7 +33,7 @@ test('fast HTML/URL APK bypasses rootfs and offline package without touching oth
 
 test('only HTML/HTTPS URL, APK output, debug/local signing supported', () => {
   const eligibility = read(source + 'FastHtmlApkPolicy.kt');
-  assert.match(eligibility, /engine != "webview-static"/);
+  assertFastHtmlEngineIsolation(root);
   assert.match(eligibility, /setOf\("html", "web-static", "webview"\)/);
   assert.match(eligibility, /setOf\(DeviceArtifactKind\.APK\)/);
   assert.match(eligibility, /scheme\.equals\("https", true\)/);
@@ -80,7 +81,10 @@ test('V15.3 Windows and combined output routing uses a shared Android-only fast 
   assert.match(policy, /kind == DeviceArtifactKind\.APK \|\| kind == DeviceArtifactKind\.AAB/);
   assert.match(policy, /if \(!requestsAndroidOnlyOutputs\(draft\)\) return false/);
   assert.equal(manager.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 2);
-  assert.equal(engine.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 2);
+  // Routing has one candidate gate; failure cleanup now applies to every Android route.
+  assert.equal(engine.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 1);
+  assert.match(engine, /AndroidArtifactPublication\.collect\(/);
+  assert.match(engine, /state.status != "success" \|\| state.cancelled.get\(\)/);
   assert.match(engine, /val sourceEngine\s*=\s*effectiveSourceEngine\s*\(\s*draft\s*\)/);
   assert.match(engine, /DeviceArtifactKind\.WINDOWS_EXE in\s+requestedOutputs/);
   assert.match(engine, /buildWindowsIfRequested\(/);
