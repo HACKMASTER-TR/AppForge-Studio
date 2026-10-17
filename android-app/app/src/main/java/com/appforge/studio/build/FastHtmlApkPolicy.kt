@@ -33,7 +33,7 @@ internal object FastHtmlApkPolicy {
         if (DeviceArtifactKind.AAB in outputs) {
             if (draft.sourceMode == SourceMode.URL) add("URL kaynağından AAB için normal Android motoru gerekir.")
             if (draft.minSdk != 26 || draft.targetSdk != 37) add("Seçilen AAB SDK aralığı normal Android motorunu gerektirir.")
-            if (draft.buildOutput.trim().lowercase() !in setOf("aab", "both", "apk+aab"))
+            if (draft.buildOutput.trim().lowercase() !in setOf("aab", "both", "apk+aab", "android", ""))
                 add("Seçilen çıktı birleşimi normal Android motorunu gerektirir.")
         }
 

@@ -21,7 +21,7 @@ fun main() {
  check(FastHtmlApkPolicy.isCandidate(base.copy(sourceMode=SourceMode.URL,webUrl="https://example.com")))
  val advanced = listOf(base.copy(fileUpload=true),base.copy(clipboardBridge=true),base.copy(vibrationBridge=true),base.copy(networkState=true),base.copy(splashEnabled=true),base.copy(fullscreen=true),base.copy(orientation="portrait"),base.copy(iconUri="content://icon"),base.copy(camera=true),base.copy(microphone=true),base.copy(notifications=true),base.copy(location=true),base.copy(nfc=true),base.copy(wakeLock=true),base.copy(deepLinkEnabled=true,deepLinkHost="example.com"),base.copy(additionalPermissions=setOf("READ_CONTACTS")))
  advanced.forEach { check(!FastHtmlApkPolicy.isCandidate(it)); WebviewProjectSettings.validate(it) }
- listOf("apk","aab","both","apk+aab").forEach { check(FastHtmlApkPolicy.isCandidate(base.copy(buildOutput=it))) }
+ listOf("apk","aab","both","apk+aab","android","").forEach { check(FastHtmlApkPolicy.isCandidate(base.copy(buildOutput=it))) }
  listOf("exe","all","apk+aab+exe","native-exe").forEach { check(!FastHtmlApkPolicy.isCandidate(base.copy(buildOutput=it))) }
  listOf("node-web","react-native","expo","python-android","android-gradle").forEach { check(!FastHtmlApkPolicy.isCandidate(base.copy(sourceBuildEngine=it))) }
  check(WebviewProjectSettings.additionalPermissions(base.copy(additionalPermissions=setOf("android.permission.READ_CONTACTS","READ_CONTACTS"))) == listOf("READ_CONTACTS"))
@@ -177,7 +177,7 @@ fun main() {
  check(!WizardReadinessEvaluator.evaluate(complete.copy(backgroundColor="red")).ready)
  check(!WizardReadinessEvaluator.evaluate(complete.copy(buildOutput="invalid")).ready)
  check(!WizardReadinessEvaluator.evaluate(complete.copy(sourceMode=SourceMode.URL,webUrl="https://example.com:99999")).ready)
- listOf("aab","both","apk+aab").forEach { output ->
+ listOf("aab","both","apk+aab","android","").forEach { output ->
   check(!FastHtmlApkPolicy.isCandidate(complete.copy(buildOutput=output,sourceMode=SourceMode.URL,webUrl="https://example.com")))
   check(!FastHtmlApkPolicy.isCandidate(complete.copy(buildOutput=output,minSdk=27)))
  }
