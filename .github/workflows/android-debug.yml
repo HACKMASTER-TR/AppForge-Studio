@@ -58,6 +58,24 @@ jobs:
         with:
           gradle-version: "9.3.1"
 
+      - name: Set up Node.js 22 for wrapper tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify workflow command dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tool in git find sort tail ln python3 java javac keytool gradle node base64 chmod cp head ls grep gh; do
+            if ! command -v "$tool" > /dev/null; then
+              echo "Missing workflow command: $tool"
+              exit 1
+            fi
+          done
+          node --version
+          python3 --version
+
       - name: Install deterministic Android native toolchain
         shell: bash
         run: |
@@ -97,7 +115,7 @@ jobs:
           fi
           test -s "$ANDROID_HOME/platforms/android-37/android.jar"
           gradle -p android-app :html-apk-template:compileReleaseJavaWithJavac --no-daemon
-          mapfile -t ZXING_JARS < <(rg --files "$HOME/.gradle/caches/modules-2/files-2.1/com.google.zxing/core/3.5.3" | rg '/core-3\.5\.3\.jar$')
+          mapfile -t ZXING_JARS < <(find "$HOME/.gradle/caches/modules-2/files-2.1/com.google.zxing/core/3.5.3" -type f -name 'core-3.5.3.jar')
           test "${#ZXING_JARS[@]}" -eq 1
           python3 - <<'PY'
           import os
