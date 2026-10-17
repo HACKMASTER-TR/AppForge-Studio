@@ -21,7 +21,13 @@ internal object HtmlBinaryManifest {
         versionCode: Int,
         versionName: String,
         minSdk: Int,
-        targetSdk: Int
+        targetSdk: Int,
+        selectedPermissions: Set<String>? = null,
+        applicationCategory: Int? = null,
+        deepLink: List<String>? = null,
+        rewriteDeepLink: Boolean = false,
+        mediaService: Boolean? = null,
+        billing: Boolean? = null
     ): ByteArray {
         require(input.size in 64..1_048_576) { "Geçersiz AndroidManifest.xml boyutu." }
         require(u16(input, 0) == XML && u16(input, 2) == 8 && u32(input, 4) == input.size) {
@@ -43,13 +49,71 @@ internal object HtmlBinaryManifest {
         var versionNameIndex = -1
         var minSdkSeen = 0
         var targetSdkSeen = 0
+        require(applicationCategory == null || applicationCategory in setOf(-1, 0))
+        var categoryCount = 0
+        require(deepLink == null || deepLink.size == 3)
+        var filterStart = -1
+        var filterIsDeepLink = false
+        var deepLinkCount = 0
+        val proxies = setOf("com.android.billingclient.api.ProxyBillingActivity", "com.android.billingclient.api.ProxyBillingActivityV2")
+        val proxyNames = HashSet<String>()
+        var billingMetadata = 0
+        var billingStart = -1
+        var billingElement: String? = null
+        val richKinds=mapOf("com.google.android.gms.common.api.GoogleApiActivity" to "activity",
+            "com.google.android.datatransport.runtime.backends.TransportBackendDiscovery" to "service",
+            "com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService" to "service",
+            "com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver" to "receiver",
+            "androidx.startup.InitializationProvider" to "provider", "androidx.profileinstaller.ProfileInstallReceiver" to "receiver")
+        val richSeen=HashSet<String>()
+        val richRequired=richKinds.keys+setOf("gms-version","signature-permission")
+        var richStart=-1;var richDepth=0;var richRoot=""
+        var serviceCount = 0
+        var serviceStart = -1
         var providers = 0
+        val inventory = setOf("android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE", "android.permission.VIBRATE", "android.permission.POST_NOTIFICATIONS", "android.permission.WAKE_LOCK", "android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION", "android.permission.NFC", "android.permission.BLUETOOTH_SCAN", "android.permission.BLUETOOTH_CONNECT", "android.permission.USE_BIOMETRIC", "android.permission.READ_CALENDAR", "android.permission.WRITE_CALENDAR", "android.permission.READ_CONTACTS", "android.permission.WRITE_CONTACTS", "android.permission.ACCESS_BACKGROUND_LOCATION", "android.permission.SCHEDULE_EXACT_ALARM", "android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VIDEO", "android.permission.ACTIVITY_RECOGNITION", "android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK", "com.android.vending.BILLING", "$TEMPLATE_PACKAGE.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION")
+        val targetSignature="$packageName.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        val templateSelection=selectedPermissions?.map{if(it==targetSignature)"$TEMPLATE_PACKAGE.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" else it}?.toSet()
+        require(templateSelection == null || templateSelection.all { it in inventory })
+        val permissionNames = HashSet<String>()
+        val removed = ArrayList<IntRange>()
+        var permissionStart = -1
+        var omitPermission = false
         while (offset + 8 <= source.size) {
             val kind = u16(source, offset)
             val header = u16(source, offset + 2)
             val length = u32(source, offset + 4)
             require(header >= 8 && length >= header && offset + length <= source.size) {
                 "Android manifest chunk sınırı geçersiz."
+            }
+            if(richStart>=0) {
+                if(kind==START_ELEMENT)richDepth++
+                if(kind==0x0103) {richDepth--;if(richDepth==0){if(billing==false)removed+=richStart until(offset+length);richStart=-1;richRoot=""}}
+            }
+            if (kind == 0x0103 && rewriteDeepLink && strings.getOrNull(u32(source, offset + 20)) == "intent-filter") {
+                require(filterStart >= 0)
+                if (filterIsDeepLink) {
+                    deepLinkCount++
+                    if (deepLink == null) removed += filterStart until (offset + length)
+                }
+                filterStart = -1; filterIsDeepLink = false
+            }
+            if (billingStart >= 0) {
+                require(kind == 0x0103 && strings.getOrNull(u32(source,offset+20)) == billingElement) { "Billing component must be an empty fixed element." }
+                if (billing == false) removed += billingStart until (offset+length)
+                billingStart = -1;billingElement = null
+            }
+            if (serviceStart >= 0) {
+                require(kind == 0x0103 && strings.getOrNull(u32(source, offset+20)) == "service") { "Media service must be an empty pinned element." }
+                if (mediaService == false) removed += serviceStart until (offset+length)
+                serviceStart = -1
+            }
+            if (permissionStart >= 0) {
+                require(kind == 0x0103 && strings.getOrNull(u32(source, offset + 20)) == "uses-permission") {
+                    "Permission must be an empty compiled element."
+                }
+                if (omitPermission) removed += permissionStart until (offset + length)
+                permissionStart = -1
             }
             if (kind == STRINGS) {
                 require(poolStart == -1 && header == 28) { "Beklenmeyen string pool yapısı." }
@@ -71,6 +135,7 @@ internal object HtmlBinaryManifest {
             } else if (kind == START_ELEMENT) {
                 require(poolStart >= 0 && header == 16 && length >= 36)
                 val elementName = strings.getOrNull(u32(source, offset + 20))
+                if (rewriteDeepLink && elementName == "intent-filter") { require(filterStart == -1); filterStart = offset }
                 if (elementName == "manifest") manifestSeen++
                 if (elementName == "provider") providers++
                 val providerAttributes = mutableMapOf<String, Int>()
@@ -81,10 +146,17 @@ internal object HtmlBinaryManifest {
                 repeat(attrCount) { i ->
                     val at = attrsStart + i * 20
                     val attributeName = strings.getOrNull(u32(source, at + 4))
-                    if (elementName == "provider") {
+                    if (elementName in setOf("provider", "service", "activity", "meta-data", "receiver", "permission")) {
                         require(attributeName != null && providerAttributes.put(attributeName, at) == null)
                     }
                     when (attributeName) {
+                        "appCategory" -> if (elementName == "application" && applicationCategory != null) {
+                            require(source[at + 15].toInt() and 255 in setOf(0x10, 0x11))
+                            require((0..3).all { source[at + 16 + it].toInt() == 0 })
+                            put32(source, at + 8, -1) // Numeric enum has no stale raw "game" spelling.
+                            put32(source, at + 16, applicationCategory)
+                            categoryCount++
+                        }
                         "versionCode" -> if (elementName == "manifest") {
                             require(source[at + 15].toInt() and 255 == TYPE_INT_DEC)
                             put32(source, at + 16, versionCode)
@@ -106,7 +178,90 @@ internal object HtmlBinaryManifest {
                         }
                     }
                 }
-                if (elementName == "provider") {
+                if (rewriteDeepLink && elementName == "data") {
+                    require(filterStart >= 0 && !filterIsDeepLink && attrCount == 3)
+                    val expected = mapOf("scheme" to "appforge-template", "host" to "appforge.invalid", "pathPrefix" to "/__appforge__")
+                    val seen = HashSet<String>()
+                    repeat(attrCount) { index ->
+                        val at = attrsStart + index * attrSize
+                        val name = strings[u32(source, at + 4)]
+                        require(seen.add(name) && name in expected && source[at+15].toInt() and 255 == TYPE_STRING)
+                        require(strings[u32(source, at+16)] == expected[name])
+                    }
+                    require(seen == expected.keys); filterIsDeepLink = true
+                }
+                if (elementName == "uses-permission" && selectedPermissions != null) {
+                    require(attrCount == 1)
+                    val at = attrsStart
+                    require(strings.getOrNull(u32(source, at + 4)) == "name" &&
+                        source[at + 15].toInt() and 255 == TYPE_STRING)
+                    val name = strings[u32(source, at + 16)]
+                    require(name in inventory && permissionNames.add(name)) { "Unexpected or duplicate shell permission." }
+                    permissionStart = offset
+                    omitPermission = name !in requireNotNull(templateSelection)
+                }
+                if(elementName in setOf("activity","service","provider","receiver","permission","meta-data")) {
+                    fun text(name:String):String {val at=providerAttributes.getValue(name);require(source[at+15].toInt() and 255==TYPE_STRING);return strings[u32(source,at+16)]}
+                    fun bool(name:String,value:Boolean) {val at=providerAttributes.getValue(name);require(source[at+15].toInt() and 255==0x12);require((0..3).all { source[at+16+it] == (if(value) 0xff.toByte() else 0.toByte()) })}
+                    val component=text("name")
+                    if(component in richKinds) {
+                        require(elementName==richKinds.getValue(component) && richSeen.add(component) && richStart<0)
+                        bool("exported",component=="androidx.profileinstaller.ProfileInstallReceiver")
+                        when(component) {
+                            "com.google.android.gms.common.api.GoogleApiActivity" -> {require(attrCount==3);val t=providerAttributes.getValue("theme");require(source[t+15].toInt() and 255==1 && u32(source,t+16)==0x01030010)}
+                            "com.google.android.datatransport.runtime.backends.TransportBackendDiscovery" -> require(attrCount==2)
+                            "com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService" -> {require(attrCount==3);require(text("permission")=="android.permission.BIND_JOB_SERVICE")}
+                            "com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver" -> require(attrCount==2)
+                            "androidx.startup.InitializationProvider" -> {require(attrCount==3);require(text("authorities")=="$TEMPLATE_PACKAGE.androidx-startup")}
+                            "androidx.profileinstaller.ProfileInstallReceiver" -> {require(attrCount==5);require(text("permission")=="android.permission.DUMP");bool("enabled",true);bool("directBootAware",false)}
+                        }
+                        richStart=offset;richDepth=1;richRoot=component
+                    } else if(elementName=="permission") {
+                        require(component=="$TEMPLATE_PACKAGE.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" && richSeen.add("signature-permission") && attrCount==2)
+                        val level=providerAttributes.getValue("protectionLevel");require(source[level+15].toInt() and 255 in setOf(0x10,0x11) && u32(source,level+16)==2)
+                        require(richStart<0);richStart=offset;richDepth=1;richRoot=component
+                    } else if(elementName=="meta-data" && component=="com.google.android.gms.version") {
+                        require(richSeen.add("gms-version") && attrCount==2)
+                        val value=providerAttributes.getValue("value");require(source[value+15].toInt() and 255==1 && u32(source,value+16)==0x7f060000)
+                        require(richStart<0);richStart=offset;richDepth=1;richRoot=component
+                    }
+                    if(elementName=="service")require(component=="$TEMPLATE_PACKAGE.AppForgeMediaService" || component in richKinds)
+                    if(elementName=="receiver")require(component in richKinds)
+                }
+                if (elementName == "activity" || elementName == "meta-data") {
+                    val at = providerAttributes["name"] ?: error("Component name missing")
+                    require(source[at+15].toInt() and 255 == TYPE_STRING)
+                    val component = strings[u32(source,at+16)]
+                    val proxy = elementName == "activity" && component in proxies
+                    val metadata = elementName == "meta-data" && component == "com.google.android.play.billingclient.version"
+                    if (proxy) {
+                        require(proxyNames.add(component) && attrCount == 4)
+                        val exported = providerAttributes.getValue("exported")
+                        require(source[exported+15].toInt() and 255 == 0x12 && u32(source,exported+16)==0)
+                        val theme = providerAttributes.getValue("theme")
+                        require(source[theme+15].toInt() and 255 == 1 && u32(source,theme+16)==0x01030010)
+                        val config = providerAttributes.getValue("configChanges")
+                        require(source[config+15].toInt() and 255 in setOf(0x10,0x11) && u32(source,config+16)==0x5b0)
+                    }
+                    if (metadata) {
+                        require(++billingMetadata == 1 && attrCount == 2)
+                        val value = providerAttributes.getValue("value")
+                        require(source[value+15].toInt() and 255 == TYPE_STRING && strings[u32(source,value+16)] == "9.1.0")
+                    }
+                    if (proxy || metadata) {billingStart=offset;billingElement=elementName}
+                    if (elementName == "activity") require(proxy || component == "$TEMPLATE_PACKAGE.TinyHtmlActivity" || component in richKinds) { "Unknown shell activity." }
+                }
+                if (elementName == "service" && mediaService != null && strings[u32(source,providerAttributes.getValue("name")+16)] == "$TEMPLATE_PACKAGE.AppForgeMediaService") {
+                    require(++serviceCount == 1 && attrCount == 3)
+                    val name = providerAttributes.getValue("name")
+                    require(source[name+15].toInt() and 255 == TYPE_STRING && strings[u32(source,name+16)] == "$TEMPLATE_PACKAGE.AppForgeMediaService")
+                    val exported = providerAttributes.getValue("exported")
+                    require(source[exported+15].toInt() and 255 == 0x12 && u32(source,exported+16)==0)
+                    val type = providerAttributes.getValue("foregroundServiceType")
+                    require(source[type+15].toInt() and 255 in setOf(0x10,0x11) && u32(source,type+16)==2)
+                    serviceStart = offset
+                }
+                if (elementName == "provider" && strings[u32(source,providerAttributes.getValue("name")+16)] != "androidx.startup.InitializationProvider") {
                     fun stringAttribute(name: String): String? {
                         val at = providerAttributes[name] ?: error("Missing provider $name")
                         require(source[at + 15].toInt() and 255 == TYPE_STRING)
@@ -123,12 +278,25 @@ internal object HtmlBinaryManifest {
             }
             offset += length
         }
-        require(offset == source.size && poolStart >= 0 && manifestSeen == 1 && providers == 1)
+        require(!rewriteDeepLink || deepLinkCount == 1 && filterStart == -1) { "Deep link template slot mismatch." }
+        require(applicationCategory == null || categoryCount == 1) { "Missing or duplicate shell appCategory." }
+        require(richStart==-1 && (richSeen.isEmpty() || richSeen==richRequired)) { "SDK component inventory mismatch." }
+        require(billing==null || richSeen==richRequired)
+        require(billingStart == -1 && proxyNames.size in setOf(0,2) && (proxyNames.isEmpty() == (billingMetadata == 0)))
+        require(billing == null || proxyNames == proxies && billingMetadata == 1) { "Billing component inventory mismatch." }
+        require(serviceStart == -1 && (mediaService == null || serviceCount == 1)) { "Media service inventory mismatch." }
+        require(permissionStart == -1)
+        require(selectedPermissions == null || permissionNames == inventory) { "V2 shell permission inventory mismatch." }
+        require(offset == source.size && poolStart >= 0 && manifestSeen == 1 && providers == (if(richSeen.isEmpty())1 else 2))
         require(versionCodeSeen == 1 && versionNameIndex in strings.indices)
         require(minSdkSeen == 1 && targetSdkSeen == 1)
         val mutable = strings.toMutableList()
         require(mutable.count { it == TEMPLATE_PACKAGE } == 1) { "Şablon package işareti bulunamadı." }
         require(mutable.count { it == TEMPLATE_LABEL } == 1) { "Şablon label işareti bulunamadı." }
+        for ((before,after) in listOf("$TEMPLATE_PACKAGE.androidx-startup" to "$packageName.androidx-startup",
+            "$TEMPLATE_PACKAGE.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" to targetSignature)) {
+            if(!richSeen.isEmpty()){require(mutable.count{it==before}==1);mutable[mutable.indexOf(before)]=after}
+        }
         val authority = "$TEMPLATE_PACKAGE.appforge.documents"
         require(mutable.count { it == authority } == 1) { "Missing unique share authority." }
         require(packageName != TEMPLATE_PACKAGE) { "Shell package must be replaced." }
@@ -137,11 +305,22 @@ internal object HtmlBinaryManifest {
         mutable[mutable.indexOf(TEMPLATE_LABEL)] = appName
         mutable[versionNameIndex] = versionName
 
+        if (rewriteDeepLink && deepLink != null) {
+            for ((before, after) in listOf("appforge-template", "appforge.invalid", "/__appforge__").zip(deepLink)) {
+                require(mutable.count { it == before } == 1)
+                mutable[mutable.indexOf(before)] = after
+            }
+        }
         val pool = encodePool(mutable, isUtf8)
         val out = ByteArrayOutputStream(source.size + pool.size)
         out.write(source, 0, poolStart)
         out.write(pool)
-        out.write(source, poolEnd, source.size - poolEnd)
+        var copied = poolEnd
+        for (range in removed) {
+            out.write(source, copied, range.first - copied)
+            copied = range.last + 1
+        }
+        out.write(source, copied, source.size - copied)
         val result = out.toByteArray()
         put32(result, 4, result.size)
         return result

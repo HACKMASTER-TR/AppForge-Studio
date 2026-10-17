@@ -179,7 +179,7 @@ internal object OfflineBuildPackManager {
         if (settingsError != null) return OfflineBuildRequirementCheck(
             ready = false, engine = "webview-settings", missing = listOf(settingsError)
         )
-        // Simple HTML/HTTPS projects use the bundled route; advanced settings need Gradle.
+        // Supported Fast HTML V2 combinations use bundled templates; remaining features need the normal engine.
         // A dedicated, bundled template produces and signs their APKs locally.
         // Shared output-aware policy: only Android outputs use Fast HTML.
         // Portable EXE and mixed Android+Windows use normal toolchain checks.
@@ -308,6 +308,12 @@ internal object OfflineBuildPackManager {
     /** Only local static AAB requests bypass optional Android/Gradle toolchains. */
     private fun requireFastStaticOutput(context: Context, draft: ProjectDraft) {
         val selected = DeviceBuildCapabilities.requestedOutputs(draft.buildOutput)
+        TemplateIntegrity.requireBundled(context, buildSet {
+            if (DeviceArtifactKind.APK in selected) add("html-apk-template.apk")
+            if (DeviceArtifactKind.AAB in selected) add("html-aab-template.aab")
+        })
+        FastHtmlIcon.read(context, draft)
+        if (draft.sourceMode == com.appforge.studio.model.SourceMode.LOCAL) FastHtmlApkPackager.readHtmlProject(draft)
         if (DeviceArtifactKind.AAB in selected) {
             FastHtmlAabUnsignedPackager.requireSource(draft)
             if (draft.signingMode == com.appforge.studio.model.SigningMode.CUSTOM) {

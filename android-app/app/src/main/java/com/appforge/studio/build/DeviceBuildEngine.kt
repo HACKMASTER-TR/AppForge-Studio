@@ -291,7 +291,8 @@ object DeviceBuildEngine {
                         state.apk = candidateApk
                         state.aab = candidateSignedAab
                         state.preflight.add(
-                            "✅ AAB JAR/CMS ve sertifika doğrulandı; APK+AAB varsa ortak kimlik kullanıldı."
+                            if (uploadIdentity != null) "✅ AAB JAR/CMS ve sertifika doğrulandı; APK+AAB varsa seçilmiş ortak kimlik kullanıldı."
+                            else "✅ AAB JAR/CMS ve geliştirme sertifikası doğrulandı; debug APK/AAB kalıcı geliştirme kimlikleri ayrıdır."
                         )
                     } catch (failure: Throwable) {
                         candidateApk?.delete()
@@ -708,12 +709,13 @@ object DeviceBuildEngine {
             }
         }
 
+        val fastHtml = FastHtmlApkPolicy.isCandidate(draft)
         val unsupported =
             buildList {
-                if (draft.qrScanner) add("QR Scanner")
-                if (draft.mediaPlayerBridge) add("Media3")
+                if (draft.qrScanner && !fastHtml) add("QR Scanner")
+                if (draft.mediaPlayerBridge && !fastHtml) add("Arka plan medya köprüsü")
                 if (draft.admobEnabled) add("AdMob")
-                if (draft.billingEnabled) add("uygulama içi Billing enjeksiyonu")
+                if (draft.billingEnabled && !fastHtml) add("uygulama içi Billing enjeksiyonu")
 
                 if (
                     draft.firebaseAnalyticsEnabled ||
@@ -1720,6 +1722,14 @@ object DeviceBuildEngine {
             parentFile?.mkdirs()
             writeText(webManifest(draft))
         }
+        File(project, "app/src/main/res/values/appforge_theme.xml").apply {
+            parentFile?.mkdirs()
+            writeText("""<resources><color name="appforge_primary">${xml(draft.primaryColor)}</color>
+                <style name="AppForgeTheme" parent="android:style/Theme.Material.NoActionBar">
+                <item name="android:colorPrimary">@color/appforge_primary</item>
+                <item name="android:colorPrimaryDark">@color/appforge_primary</item>
+                <item name="android:colorAccent">@color/appforge_primary</item></style></resources>""".trimIndent())
+        }
         DeviceProjectIcon.install(context, draft, project)
         writeSdkFiles(
             project = project,
@@ -2655,7 +2665,8 @@ object DeviceBuildEngine {
                     android:allowBackup="false"
                     android:hardwareAccelerated="true"
                     android:label="${xml(draft.appName.ifBlank { "AppForge App" })}"
-                    android:theme="@android:style/Theme.Material.NoActionBar"
+                    android:theme="@style/AppForgeTheme"
+                    ${if (draft.appCategory == "game") "android:appCategory=\"game\"" else ""}
                     android:usesCleartextTraffic="$usesCleartextTraffic">
                     <provider android:name="com.appforge.runtime.AppForgeShareProvider"
                         android:authorities="${xml(draft.packageName)}.appforge.documents"

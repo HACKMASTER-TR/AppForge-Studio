@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {extendV2AndroidStubs, extendConnectivityStubs, extendAwakeStubs, extendWebPermissionStubs, nfcStubs, scannerBoundaryStub, mediaBoundaryStub, locationBoundaryStub, billingBoundaryStub} from './helpers/fast_html_v2_android_stubs.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,8 +10,8 @@ const root=path.resolve(import.meta.dirname,'../..');
 const variants=['android-app/app/src/main/assets/device-build','android-app/html-apk-template/src/main/java/com/appforge/htmlstub'];
 const source=dir=>fs.readFileSync(path.join(root,dir,'AppForgeDocuments.java'),'utf8');
 const shipped=dir=>JSON.parse(source(dir).match(/static final String SCRIPT = (".*");/)[1]);
-function browser(dir,{sharing=true,downloads=true,subframe=false,connect=true,legacy=false,local=false}={}){
- const events={}, clicks={}, messages=[], transferred=[];
+function browser(dir,{sharing=true,downloads=true,subframe=false,connect=true,legacy=false,local=false,localLocation=false}={}){
+ const events={}, clicks={}, messages=[], transferred=[],compatMessages=[];
  let bytes=[], mode, finish;
  const port={start(){},postMessage(raw){const m=JSON.parse(raw);messages.push(m);
   if(m.op==='begin'){bytes=[];mode=m.mode;}
@@ -25,10 +26,10 @@ function browser(dir,{sharing=true,downloads=true,subframe=false,connect=true,le
   addEventListener:(type,fn)=>events[type]=fn,dispatchEvent:e=>transferred.push(e)};
  if(local)context.AppForgeLocalDocuments={send(token,raw){assert.equal(token,'secret-token');port.postMessage(raw);}};
  context.window=context;context.top=subframe?{}:context;
- if(legacy)context.AppForgeNativeCompat={call(token,raw){assert.equal(token,'secret-token');const m=JSON.parse(raw);return m.method==='download'?'OK|1|report.pdf':'OK';}};
- vm.runInNewContext(shipped(dir).replaceAll('__SHARE__',String(sharing)).replaceAll('__DOWNLOAD__',String(downloads)).replaceAll('__LEGACY__',String(legacy)).replaceAll('__NATIVE__',String(legacy)).replaceAll('__PORT_TOKEN__','secret-token'),context);
+ if(legacy)context.AppForgeNativeCompat={call(token,raw){assert.equal(token,'secret-token');const m=JSON.parse(raw);compatMessages.push(m);return m.method==='getLocation'?'PENDING':m.method==='download'?'OK|1|report.pdf':'OK';}};
+ vm.runInNewContext(shipped(dir).replaceAll('__SHARE__',String(sharing)).replaceAll('__DOWNLOAD__',String(downloads)).replaceAll('__LEGACY__',String(legacy)).replaceAll('__LOCAL_LOCATION__',String(localLocation)).replaceAll('__NATIVE__',String(legacy)).replaceAll('__PORT_TOKEN__','secret-token'),context);
  if(connect&&!local&&events.message)events.message({data:'secret-token',ports:[port]});
- return {context,events,clicks,messages,port,transferred,get bytes(){return finish;}};
+ return {context,events,clicks,messages,compatMessages,port,transferred,get bytes(){return finish;}};
 }
 for(const dir of variants){
  test(`${dir}: opaque file transport saves and shares exact bytes; subframes get no capability`,async()=>{
@@ -141,6 +142,15 @@ const stubs={
  'android/widget/Toast.java':`package android.widget; public class Toast {public static final int LENGTH_SHORT=0,LENGTH_LONG=1; public static Toast makeText(android.content.Context c,String s,int i){return new Toast();} public void show(){} }`,
  'org/json/JSONObject.java':`package org.json; public class JSONObject { static java.util.Map<String,JSONObject> registry=new java.util.HashMap<>(); java.util.Map<String,Object> map=new java.util.HashMap<>(); public static String quote(String s){return String.valueOf((char)34)+s+(char)34;} public JSONObject(){} public JSONObject(String key){if(!registry.containsKey(key))throw new IllegalArgumentException();map=registry.get(key).map;} public JSONObject put(String k,Object v){map.put(k,v);return this;} public String getString(String k){return (String)map.get(k);} public boolean optBoolean(String k,boolean fallback){return map.containsKey(k)?Boolean.TRUE.equals(map.get(k)):fallback;} public String optString(String k,String fallback){return map.containsKey(k)?optString(k):fallback;} public String optString(String k){return map.get(k)==null?"":map.get(k).toString();} public int getInt(String k){return ((Number)map.get(k)).intValue();} public boolean yes(String k){return Boolean.TRUE.equals(map.get(k));} public String toString(){String k="object"+registry.size();registry.put(k,this);return k;} }`
 };
+extendV2AndroidStubs(stubs);
+extendConnectivityStubs(stubs);
+extendAwakeStubs(stubs);
+extendWebPermissionStubs(stubs);
+Object.assign(stubs,nfcStubs);
+stubs["com/appforge/htmlstub/AppForgeQrScanner.java"]=scannerBoundaryStub;
+stubs["com/appforge/htmlstub/AppForgeMediaService.java"]=mediaBoundaryStub;
+stubs["com/appforge/htmlstub/AppForgeLocation.java"]=locationBoundaryStub;
+stubs["com/appforge/htmlstub/AppForgeBilling.java"]=billingBoundaryStub;
 const tinyHarness=`package com.appforge.htmlstub;
 import android.webkit.*; import org.json.JSONObject;
 public class TinyHarness {
@@ -161,14 +171,90 @@ public class TinyHarness {
    android.content.res.AssetManager.config=new JSONObject().put("mode","LOCAL").put("entry","index.html")
     .put("webJavaScriptEnabled",enabled).put("webDomStorageEnabled",enabled).put("webZoomEnabled",enabled)
     .put("webWideViewPortEnabled",enabled).put("webOverviewModeEnabled",enabled)
-    .put("webMediaAutoplayEnabled",enabled).put("offlineCache",enabled).toString().getBytes("UTF-8");
+    .put("webMixedContentAllowed",enabled).put("webMediaAutoplayEnabled",enabled).put("offlineCache",enabled).toString().getBytes("UTF-8");
    TinyHtmlActivity app=new TinyHtmlActivity();app.onCreate(null);
    java.lang.reflect.Field f=TinyHtmlActivity.class.getDeclaredField("web");f.setAccessible(true);WebView web=(WebView)f.get(app);
    check(web.settings.js==enabled && web.settings.dom==enabled && web.settings.zoom==enabled);
    check(web.settings.wide==enabled && web.settings.overview==enabled && web.settings.gesture!=enabled);
    check(web.settings.cache==(enabled?WebSettings.LOAD_DEFAULT:WebSettings.LOAD_NO_CACHE));
+   check(web.settings.mixed==(enabled?WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE:WebSettings.MIXED_CONTENT_NEVER_ALLOW));
    check(!web.settings.file && !web.settings.fileCross && !web.settings.universal);
   }
+  java.lang.reflect.Method mime=AppForgeLocalAssets.class.getDeclaredMethod("mimeType",String.class);mime.setAccessible(true);
+  String[][] media={{"song.mp3","audio/mpeg"},{"clip.mp4","video/mp4"},{"clip.webm","video/webm"},{"audio.ogg","audio/ogg"},{"audio.wav","audio/wav"},{"audio.m4a","audio/mp4"},{"report.pdf","application/pdf"},{"data.csv","text/csv"}};
+  for(String[] fixture:media)check(mime.invoke(null,fixture[0]).equals(fixture[1]));
+  // Execute the complete V2 Activity with host endpoints, including lifecycle and picker results.
+  for(int sdk:new int[]{26,30,37}) {
+   android.os.Build.VERSION.SDK_INT=sdk;
+   android.content.res.AssetManager.config=new JSONObject().put("mode","LOCAL").put("entry","index.html")
+    .put("fileUpload",true).put("fullscreen",true).put("orientation","landscape")
+    .put("splashEnabled",true).put("splashText","Starting").put("backgroundColor","#123456")
+    .put("statusBarColor","#234567").put("navigationBarColor","#345678").toString().getBytes("UTF-8");
+   TinyHtmlActivity app=new TinyHtmlActivity();app.onCreate(null);app.onResume();
+   java.lang.reflect.Field field=TinyHtmlActivity.class.getDeclaredField("web");field.setAccessible(true);WebView web=(WebView)field.get(app);
+   check(app.orientation==android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+   check(app.window.status==0x234567 && app.window.navigation==0x345678);
+   check(sdk<30?app.window.decor.visibility==7:app.window.controller.hidden==3);
+   check(app.root.children.size()==2);android.widget.TextView splash=(android.widget.TextView)app.root.children.get(1);
+   check(splash.text.equals("Starting")&&splash.background==0x123456);
+   splash.delayed.run();check(app.root.children.size()==1);splash.delayed.run();check(app.root.children.size()==1);
+   web.client.onPageFinished(web,web.url);web.touch.onTouch(web,new android.view.MotionEvent());
+   WebChromeClient.FileChooserParams params=new WebChromeClient.FileChooserParams();params.mode=1;params.types=new String[]{"image/*,text/csv","file:///private"};
+   java.util.List<android.net.Uri[]> calls=new java.util.ArrayList<>();
+   check(web.chrome.onShowFileChooser(web,calls::add,params));check(calls.isEmpty());
+   check(app.picker.action.equals(android.content.Intent.ACTION_OPEN_DOCUMENT));
+   check(app.picker.flags==android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+   check(Boolean.TRUE.equals(app.picker.extras.get(android.content.Intent.EXTRA_ALLOW_MULTIPLE)));
+   check(java.util.Arrays.equals((String[])app.picker.extras.get(android.content.Intent.EXTRA_MIME_TYPES),new String[]{"image/*","text/csv"}));
+   android.content.Intent result=new android.content.Intent("result");result.clip=new android.content.ClipData();
+   result.clip.items.add(android.net.Uri.parse("content://documents/a"));result.clip.items.add(android.net.Uri.parse("content://documents/b"));
+   app.onActivityResult(7201,android.app.Activity.RESULT_OK,result);check(calls.size()==1&&calls.get(0).length==2);
+   web.chrome.onShowFileChooser(web,calls::add,params);app.onActivityResult(7201,0,null);check(calls.get(1)==null);
+   web.chrome.onShowFileChooser(web,calls::add,params);result.clip=null;result.uri=android.net.Uri.parse("file:///private/key");
+   app.onActivityResult(7201,-1,result);check(calls.get(2)==null);
+   web.chrome.onShowFileChooser(web,calls::add,params);result.uri=android.net.Uri.parse("content://test.child.appforge.documents/private");
+   app.onActivityResult(7201,-1,result);check(calls.get(3)==null);
+   web.chrome.onShowFileChooser(web,calls::add,params);result.clip=new android.content.ClipData();
+   for(int i=0;i<33;i++)result.clip.items.add(android.net.Uri.parse("content://documents/"+i));
+   app.onActivityResult(7201,-1,result);check(calls.get(4)==null);
+   web.chrome.onShowFileChooser(web,calls::add,params);web.client.onPageStarted(web,web.url,null);check(calls.get(5)==null);
+   web.client.onPageFinished(web,web.url);web.touch.onTouch(web,new android.view.MotionEvent());
+   web.chrome.onShowFileChooser(web,calls::add,params);check(calls.get(6)==null); // Old picker still in flight.
+   app.onActivityResult(7201,-1,result);check(calls.size()==7); // Stale result cannot reach another callback.
+   app.onPause();check(web.paused&&web.script.contains("media.pause()"));web.chrome.onShowFileChooser(web,calls::add,params);check(calls.get(7)==null);
+   app.onResume();check(!web.paused);web.chrome.onShowFileChooser(web,calls::add,params);check(calls.get(8)==null); // Fresh gesture required.
+   web.touch.onTouch(web,new android.view.MotionEvent());web.chrome.onShowFileChooser(web,calls::add,params);check(calls.size()==9);
+   android.os.Bundle state=new android.os.Bundle();app.onSaveInstanceState(state);check(state.getBoolean("appforge.pickerOutstanding",false));
+   app.onDestroy();check(calls.get(9)==null);
+  }
+  // Remote upload is explicitly user-mediated and does not grant remote native bridge access.
+  for(boolean enabled:new boolean[]{false,true}) {
+   android.content.res.AssetManager.config=new JSONObject().put("mode","URL").put("url","https://trusted.test/app")
+    .put("fileUpload",enabled).put("nativeBridgeAllowRemote",false).toString().getBytes("UTF-8");
+   TinyHtmlActivity app=new TinyHtmlActivity();app.onCreate(null);app.onResume();
+   java.lang.reflect.Field field=TinyHtmlActivity.class.getDeclaredField("web");field.setAccessible(true);WebView web=(WebView)field.get(app);
+   web.client.onPageFinished(web,web.url);web.touch.onTouch(web,new android.view.MotionEvent());
+   WebChromeClient.FileChooserParams params=new WebChromeClient.FileChooserParams();params.mode=0;
+   java.util.List<android.net.Uri[]> calls=new java.util.ArrayList<>();web.chrome.onShowFileChooser(web,calls::add,params);
+   if(enabled) {
+    check(calls.isEmpty()&&app.picker!=null);android.content.Intent result=new android.content.Intent("result");result.clip=new android.content.ClipData();
+    result.clip.items.add(android.net.Uri.parse("content://docs/one"));result.clip.items.add(android.net.Uri.parse("content://docs/two"));
+    app.onActivityResult(7201,-1,result);check(calls.get(0)==null); // Single-selection mode rejects multi-file results.
+    web.url="https://foreign.test/app";web.touch.onTouch(web,new android.view.MotionEvent());web.chrome.onShowFileChooser(web,calls::add,params);check(calls.get(1)==null);
+   } else check(calls.get(0)==null&&app.picker==null);
+   app.onDestroy();
+  }
+  android.content.res.AssetManager.config=new JSONObject().put("mode","URL").put("url","https://trusted.test/app")
+   .put("networkState",true).toString().getBytes("UTF-8");
+  TinyHtmlActivity connected=new TinyHtmlActivity();connected.onCreate(null);connected.onResume();
+  check(android.widget.Toast.last.contains("İnternet yok"));check(connected.networkManager.registrations==1);
+  java.lang.reflect.Field wf=TinyHtmlActivity.class.getDeclaredField("web");wf.setAccessible(true);WebView cw=(WebView)wf.get(connected);
+  connected.networkManager.network=new android.net.Network();connected.networkManager.caps=new android.net.NetworkCapabilities();
+  connected.networkManager.caps.internet=true;connected.networkManager.caps.validated=true;
+  connected.networkManager.callback.onAvailable(connected.networkManager.network);check(cw.reloads==1);
+  connected.networkManager.callback.onCapabilitiesChanged(connected.networkManager.network,connected.networkManager.caps);check(cw.reloads==1);
+  android.net.ConnectivityManager.NetworkCallback old=connected.networkManager.callback;connected.onPause();
+  check(connected.networkManager.removals==1);old.onLost(null);check(cw.reloads==1);connected.onDestroy();
   System.out.println("legacy Tiny origin harness PASS");
  }
 }`;
@@ -288,7 +374,7 @@ public class Harness {
   check(localCall(op("chunk").put("offset",0).put("data","JVBERi0A/w==")).yes("ok"));
   localCall(op("finish"));check(a.picker.type.equals("application/pdf"));
   d.activityResult(AppForgeDocuments.REQUEST,Activity.RESULT_OK,destination("content://documents/local"));
-  for(int i=0;i<200 && a.resolver.bytes==null;i++)Thread.sleep(5);
+  for(int i=0;i<200 && (a.resolver.bytes==null || a.resolver.bytes.size()!=7);i++)Thread.sleep(5);
   check(java.util.Arrays.equals(a.resolver.bytes.toByteArray(),new byte[]{37,80,68,70,45,0,-1}));
   localInit(true,true);check(d.allowsCompat(token(),true));
   check(localCall(op("begin").put("mode","share").put("mime","application/pdf").put("size",7)).yes("ok"));
@@ -302,6 +388,16 @@ public class Harness {
   localInit(true,true);String oldToken=token();d.pageStarted();d.pageFinished(w.url);before=w.script;
   d.receiveLocal(oldToken,op("begin").toString());check(w.script.equals(before));
   w.url="https://attacker.test";d.receiveLocal(token(),op("begin").toString());check(w.script.equals(before));
+  // V2 native actions share the same main-frame capability, origin, gesture and lifecycle boundary.
+  localInit(true,true);final int[] invoked={0};d.setLegacy(m->{invoked[0]++;return "OK";},true);
+  check(localCall(op("legacy").put("method","copy")).yes("ok"));check(invoked[0]==1);
+  before=w.script;d.receiveLocal("forged",op("legacy").put("id","9999").toString());check(w.script.equals(before)&&invoked[0]==1);
+  d.pause();d.receiveLocal(token(),op("legacy").put("id","9998").toString());check(invoked[0]==1);
+  d.resume();check(!localCall(op("legacy").put("method","copy")).yes("ok"));check(invoked[0]==1);
+  w.touch.onTouch(w,new android.view.MotionEvent());android.os.SystemClock.now+=30001;
+  check(!localCall(op("legacy").put("method","copy")).yes("ok"));check(invoked[0]==1);
+  w.touch.onTouch(w,new android.view.MotionEvent());w.url="https://attacker.test";
+  d.receiveLocal(token(),op("legacy").put("id","9997").toString());check(invoked[0]==1);
   System.out.println("native document harness PASS");
  }
 }`;
@@ -313,10 +409,26 @@ for(const dir of variants)test(`${dir}: execute native bytes, SAF, intents, fail
   const pkg=source(dir).match(/package ([^;]+);/)[1];
   const file=path.join(temp,'Harness.java');fs.writeFileSync(file,harness.replaceAll('PACKAGE',pkg));files.push(file,path.join(root,dir,'AppForgeDocuments.java'),path.join(root,dir,'AppForgeLocalAssets.java'),path.join(root,dir,'AppForgeShareProvider.java'));
   if(pkg==='com.appforge.htmlstub'){
-   const tinyFile=path.join(temp,'TinyHarness.java');fs.writeFileSync(tinyFile,tinyHarness);files.push(tinyFile,path.join(root,dir,'TinyHtmlActivity.java'));
+   const tinyFile=path.join(temp,'TinyHarness.java');fs.writeFileSync(tinyFile,tinyHarness);files.push(tinyFile,path.join(root,dir,'TinyHtmlActivity.java'),path.join(root,dir,'AppForgeSelection.java'),path.join(root,dir,'AppForgeConnectivity.java'),path.join(root,dir,'AppForgeAwake.java'),path.join(root,dir,'AppForgeWebPermissions.java'),path.join(root,dir,'AppForgeNfc.java'),path.join(root,dir,'AppForgeDeepLink.java'));
   }
   execFileSync('javac',['--release','8','-Xlint:-options','-d',temp,...files],{stdio:'pipe'});
   assert.match(execFileSync('java',['-cp',temp,pkg+'.Harness'],{encoding:'utf8'}),/harness PASS/);
   if(pkg==='com.appforge.htmlstub')assert.match(execFileSync('java',['-cp',temp,pkg+'.TinyHarness'],{encoding:'utf8'}),/origin harness PASS/);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});
+
+for(const dir of variants)test(`${dir}: local location shim returns only correlated actual fixes/errors and keeps disabled origins unchanged`,async()=>{
+ const off=browser(dir,{legacy:true,local:true});assert.equal(off.context.AppForgeLocation,undefined);
+ const b=browser(dir,{legacy:true,local:true,localLocation:true});let position,error,calls=0;
+ assert.throws(()=>b.context.AppForgeLocation.getCurrentPosition(null),/callback required/);
+ assert.equal(b.context.navigator.geolocation.getCurrentPosition(v=>{position=v;calls++;},e=>{error=e;}),undefined);
+ await new Promise(r=>setImmediate(r));
+ const id=b.compatMessages.at(-1).args[0];assert.equal(b.compatMessages.at(-1).method,'getLocation');
+ b.events['appforge-location']({detail:{id:'forged-unmatched',ok:true,position:{coords:{latitude:0}}}});assert.equal(position,undefined);
+ const actual={coords:{latitude:41.01,longitude:28.97,accuracy:15},timestamp:1700000000000};
+ b.events['appforge-location']({detail:{id,ok:true,position:actual}});assert.equal(position,actual);assert.equal(error,undefined);
+ b.events['appforge-location']({detail:{id,ok:true,position:actual}});assert.equal(calls,1);
+ b.context.AppForgeLocation.getCurrentPosition(()=>assert.fail('Denied request produced coordinates'),e=>{error=e;});
+ await new Promise(r=>setImmediate(r));const deniedId=b.compatMessages.at(-1).args[0];
+ b.events['appforge-location']({detail:{id:deniedId,ok:false,error:{code:1,message:'Denied'}}});assert.equal(error.code,1);
 });

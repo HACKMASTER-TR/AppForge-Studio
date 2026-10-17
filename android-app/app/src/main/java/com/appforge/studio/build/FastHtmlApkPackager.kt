@@ -52,6 +52,7 @@ internal object FastHtmlApkPackager {
             }
             check(template.length() in 1024..MAX_TEMPLATE_BYTES) { "Gömülü HTML APK şablonu eksik veya geçersiz." }
             TemplateIntegrity.requireAsset(context, ASSET, template.readBytes())
+            val icon = FastHtmlIcon.read(context, draft)
             val config = runtimeConfig(draft, htmlProject?.first ?: "")
             val additions = mutableMapOf("assets/appforge-html-config.json" to config)
             htmlProject?.second?.let(additions::putAll)
@@ -61,8 +62,14 @@ internal object FastHtmlApkPackager {
                 additions["AndroidManifest.xml"] = HtmlBinaryManifest.rewrite(
                     zip.getInputStream(manifest).use { it.readBytes() },
                     draft.packageName, draft.appName, draft.versionCode, draft.versionName,
-                    draft.minSdk, draft.targetSdk
+                    draft.minSdk, draft.targetSdk, FastHtmlApkPolicy.templatePermissions(draft), FastHtmlApkPolicy.applicationCategory(draft),
+                    if (draft.deepLinkEnabled) listOf(draft.deepLinkScheme,draft.deepLinkHost,draft.deepLinkPathPrefix) else null, true, draft.mediaPlayerBridge, draft.billingEnabled
                 )
+                val resources = zip.getInputStream(requireNotNull(zip.getEntry("resources.arsc"))).use { it.readBytes() }
+                additions["resources.arsc"] = FastHtmlResourceColor.binary(resources, draft.primaryColor, draft.packageName)
+                val iconPath = FastHtmlResourceColor.binaryIconPath(resources)
+                require(zip.getEntry(iconPath) != null) { "Pinned icon resource missing." }
+                if (icon != null) additions[iconPath] = icon
                 repackage(zip, unsigned, additions)
             }
             val signer = uploadSigner ?: getOrCreateSigner()
@@ -91,14 +98,29 @@ internal object FastHtmlApkPackager {
 
     internal fun runtimeConfig(draft: ProjectDraft, entry: String): ByteArray = JSONObject()
         .put("mode", draft.sourceMode.name).put("url", if (draft.sourceMode == SourceMode.URL) draft.webUrl else "")
+        .put("deepLinkEnabled", draft.deepLinkEnabled).put("deepLinkScheme", draft.deepLinkScheme)
+        .put("deepLinkHost", draft.deepLinkHost).put("deepLinkPathPrefix", draft.deepLinkPathPrefix)
+        .put("camera", draft.camera).put("microphone", draft.microphone).put("location", draft.location)
+        .put("billingEnabled", draft.billingEnabled).put("billingProductIds", if(draft.billingEnabled) draft.billingProductIds else "")
+        .put("billingSubscriptionIds", if(draft.billingEnabled) draft.billingSubscriptionIds else "")
+        .put("consumableProductIds", if(draft.billingEnabled) draft.consumableProductIds else "")
+        .put("removeAdsProductId", if(draft.billingEnabled) draft.removeAdsProductId else "")
+        .put("purchaseVerificationUrl", if(draft.billingEnabled) draft.purchaseVerificationUrl else "")
+        .put("mediaPlayerBridge", draft.mediaPlayerBridge).put("qrScanner", draft.qrScanner).put("nfc", draft.nfc).put("wakeLock", draft.wakeLock)
         .put("entry", entry).put("downloads", draft.downloads)
         .put("nativeBridge", draft.javascriptBridge).put("shareBridge", draft.shareBridge)
         .put("nativeBridgeAllowRemote", draft.remoteBridgeAllowed)
         .put("webJavaScriptEnabled", draft.webJavaScriptEnabled).put("webDomStorageEnabled", draft.webDomStorageEnabled)
         .put("webZoomEnabled", draft.webZoomEnabled).put("webWideViewPortEnabled", draft.webWideViewPortEnabled)
+        .put("webMixedContentAllowed", draft.webMixedContentAllowed)
         .put("webOverviewModeEnabled", draft.webOverviewModeEnabled).put("webMediaAutoplayEnabled", draft.webMediaAutoplayEnabled)
+        .put("primaryColor", draft.primaryColor).put("appCategory", draft.appCategory)
         .put("backgroundColor", draft.backgroundColor).put("statusBarColor", draft.statusBarColor)
         .put("navigationBarColor", draft.navigationBarColor)
+        .put("networkState", draft.networkState).put("notifications", draft.notifications).put("fileUpload", draft.fileUpload).put("fullscreen", draft.fullscreen)
+        .put("orientation", draft.orientation).put("splashEnabled", draft.splashEnabled)
+        .put("splashText", draft.splashText).put("appName", draft.appName)
+        .put("clipboardBridge", draft.clipboardBridge).put("vibrationBridge", draft.vibrationBridge)
         .put("offlineCache", draft.offlineCache).toString().toByteArray(Charsets.UTF_8)
 
     /** Package only static web assets; never run Node, npm or JavaScript source builds. */
@@ -113,7 +135,8 @@ internal object FastHtmlApkPackager {
 
         val allowed = setOf(
             "html", "css", "js", "mjs", "json", "txt", "svg", "png", "jpg", "jpeg",
-            "webp", "gif", "ico", "woff", "woff2", "ttf", "otf"
+            "webp", "gif", "ico", "woff", "woff2", "ttf", "otf",
+            "mp3", "mp4", "webm", "ogg", "wav", "m4a", "pdf", "csv"
         )
         val excludedDirs = setOf("node_modules", "build", "dist", ".git", ".gradle")
         val assets = LinkedHashMap<String, ByteArray>()

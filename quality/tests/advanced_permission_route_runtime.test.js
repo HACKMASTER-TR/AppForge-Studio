@@ -48,13 +48,14 @@ fun main() {
    check(off == setOf("UNRECOGNIZED"))
    check(WebviewProjectSettings.toggleAdditionalPermission(off, alias, true) == expected.toSet()+"UNRECOGNIZED")
    listOf("apk","aab","both").forEach { output ->
-    val draft = base.copy(buildOutput=output, iconUri="content://icon", additionalPermissions=values)
-    check(!FastHtmlApkPolicy.isCandidate(draft)); WebviewProjectSettings.validate(draft)
+    val draft = base.copy(buildOutput=output, iconUri="content://icons/selected", additionalPermissions=values)
+    check(FastHtmlApkPolicy.isCandidate(draft));check(FastHtmlApkPolicy.normalRouteReasons(draft).isEmpty()); WebviewProjectSettings.validate(draft)
     val text = Wrapper.webManifest(draft)
     val names = Regex("<uses-permission android:name=\\"([^\\"]+)\\"").findAll(text).map { it.groupValues[1] }.toList()
     check(names.contains("android.permission.VIBRATE"))
     check(!Wrapper.webManifest(draft.copy(vibrationBridge=false)).contains("android.permission.VIBRATE"))
     check(names.toSet().size == names.size)
+    check(FastHtmlApkPolicy.templatePermissions(draft) == names.toSet())
     check(names.filter { it != "android.permission.INTERNET" && it != "android.permission.ACCESS_NETWORK_STATE" && it != "android.permission.VIBRATE" }.toSet() == expected.map { "android.permission.$it" }.toSet())
    }
   }
@@ -71,7 +72,7 @@ fun main() {
  val unrelated = setOf("READ_CONTACTS", "READ_MEDIA_VIDEO", "invalid")
  check(WebviewProjectSettings.toggleAdditionalPermission(unrelated,"MEDIA_IMAGES",false) == unrelated)
  listOf("http://example.com", "https://user:pass@example.com", "https:///missing").forEach { url ->
-  check(runCatching { WebviewProjectSettings.validate(base.copy(sourceMode=SourceMode.URL,webUrl=url,iconUri="content://icon",additionalPermissions=setOf("MEDIA_IMAGES"))) }.isFailure)
+  check(runCatching { WebviewProjectSettings.validate(base.copy(sourceMode=SourceMode.URL,webUrl=url,iconUri="content://icons/selected",additionalPermissions=setOf("MEDIA_IMAGES"))) }.isFailure)
  }
  println("permission assertions passed")
 }`);

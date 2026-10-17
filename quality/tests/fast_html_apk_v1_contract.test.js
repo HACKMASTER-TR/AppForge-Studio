@@ -81,8 +81,10 @@ test('V15.3 Windows and combined output routing uses a shared Android-only fast 
   assert.match(policy, /kind == DeviceArtifactKind\.APK \|\| kind == DeviceArtifactKind\.AAB/);
   assert.match(policy, /if \(!requestsAndroidOnlyOutputs\(draft\)\) return false/);
   assert.equal(manager.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 2);
-  // Routing has one candidate gate; failure cleanup now applies to every Android route.
-  assert.equal(engine.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 1);
+  // Routing and the early capability validator share the same output-aware candidate policy.
+  assert.equal(engine.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 2);
+  assert.match(engine, /val fastHtml = FastHtmlApkPolicy\.isCandidate\(draft\)/);
+  assert.match(engine, /draft\.qrScanner && !fastHtml/);
   assert.match(engine, /AndroidArtifactPublication\.collect\(/);
   assert.match(engine, /state.status != "success" \|\| state.cancelled.get\(\)/);
   assert.match(engine, /val sourceEngine\s*=\s*effectiveSourceEngine\s*\(\s*draft\s*\)/);

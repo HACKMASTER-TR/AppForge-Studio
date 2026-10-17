@@ -19,6 +19,26 @@ internal object TemplateIntegrity {
         require(values.map { it.first }.toSet() == setOf("html-apk-template.apk", "html-aab-template.aab", "html-aab-manifest"))
         return values.single { it.first == name }.second
     }
+    /** Bounded read-only preflight; never downloads or regenerates a missing template. */
+    fun requireBundled(context: Context, names: Set<String>) {
+        require(names.isNotEmpty() && names.all { it in setOf("html-apk-template.apk", "html-aab-template.aab") })
+        for (name in names) {
+            val limit = if (name.endsWith(".apk")) 12 * 1024 * 1024 else 40 * 1024 * 1024
+            val buffer = java.io.ByteArrayOutputStream()
+            context.assets.open(name).use { input ->
+                val chunk = ByteArray(8192)
+                while (true) {
+                    val count = input.read(chunk)
+                    if (count < 0) break
+                    require(buffer.size().toLong() + count <= limit) { "Bundled template exceeds size limit." }
+                    buffer.write(chunk, 0, count)
+                }
+            }
+            require(buffer.size() >= 1024) { "Bundled template missing or truncated." }
+            requireAsset(context, name, buffer.toByteArray())
+        }
+    }
+
     fun requireAsset(context: Context, name: String, bytes: ByteArray) {
         requireDigest(bytes, expected(context, name))
     }

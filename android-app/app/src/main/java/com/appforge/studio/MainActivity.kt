@@ -7024,6 +7024,27 @@ private fun AppForgeApp() {
                     ) {
                         val wizardReadiness = com.appforge.studio.build.WizardReadinessEvaluator.evaluate(draft)
                         val blockingDiagnostics = wizardReadiness.diagnostics.filter { it.blocking }
+                        // Show the actual selected route before Build; perform source/template/toolchain I/O off the UI thread.
+                        val fastHtmlSelected = wizardReadiness.capability == com.appforge.studio.build.WizardCapabilityClass.QUICK_SUPPORTED
+                        Text(if (fastHtmlSelected) "Motor: Fast HTML V2 • ${draft.buildOutput.uppercase()}" else
+                            "Motor: ${draft.sourceBuildEngine.ifBlank { draft.sourceTechnology }} • ${if (wizardReadiness.ready) "normal motor" else "engelli seçim"}",
+                            color = TextSecondary, fontSize = 11.sp)
+                        var offlinePreview by remember(draft, step) { mutableStateOf<String?>(null) }
+                        LaunchedEffect(draft, step) {
+                            if (step == 10 && wizardReadiness.ready) {
+                                val snapshot = draft.copy()
+                                val checked = withContext(Dispatchers.IO) {
+                                    runCatching { com.appforge.studio.build.OfflineBuildPackManager.checkBuildRequirements(context, snapshot) }.getOrNull()
+                                }
+                                offlinePreview = when {
+                                    checked == null -> "Çevrimdışı önkontrol tamamlanamadı; kaynak ve şablonları kontrol edin."
+                                    checked.ready -> "Çevrimdışı önkontrol: hazır. Kaynak, şablon ve imza derlemede tekrar denetlenir."
+                                    else -> "Çevrimdışı önkontrol: eksik — " + checked.missing.joinToString("; ")
+                                }
+                            }
+                        }
+                        if (step == 10 && wizardReadiness.ready) Text(offlinePreview ?: "Çevrimdışı önkontrol çalışıyor…",
+                            color = TextSecondary, fontSize = 11.sp, maxLines = 3)
                         var showWizardHelp by remember { mutableStateOf(false) }
                         // Optional runtime checks do not reserve a weighted content panel.
                         TextButton(onClick = { showWizardHelp = !showWizardHelp }) {
@@ -9482,6 +9503,21 @@ private fun QuickCreateScreen(
                                     true,
                                 modifier =
                                     Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = draft.consumableProductIds,
+                                onValueChange = { onDraftChange(draft.copy(consumableProductIds = it)) },
+                                label = { Text("Tüketilebilir ürün ID'leri") },
+                                supportingText = { Text("Ürün ID listesinin alt kümesi; sunucu hakları tekrar vermeyi önlemelidir.") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = draft.purchaseVerificationUrl,
+                                onValueChange = { onDraftChange(draft.copy(purchaseVerificationUrl = it.trim())) },
+                                label = { Text("HTTPS satın alma doğrulama URL'si") },
+                                supportingText = { Text("Google Play receipt doğrulayan kendi sunucunuz gerekir. İnternet yokken Billing pasif kalır; bağlantıda yeniden bağlanır.") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
 
@@ -15757,7 +15793,7 @@ private fun PermissionsStep(
 
         item {
             NoteCard(
-                "Media3 etkinse gerekli medya ve arka plan servis izinleri build sırasında otomatik eklenir."
+                "Fast HTML yerel ses köprüsü seçilirse gerekli medya servisi izinleri eklenir; normal motorda seçim tek başına runtime sağlamaz."
             )
         }
     }
@@ -16590,7 +16626,7 @@ private fun AppearanceStep(
 
         item {
             NoteCard(
-                "HTML/URL ve Node-Web motorlarında kategori enjeksiyonu desteklenmiyor. Oyun/Standart seçimi korunur ve derlemeden önce engel olarak gösterilir; bu motorlarda Otomatik seçin. Gaming Hub davranışı garanti edilmez."
+                "Oyun seçimi Android uygulama kategorisini game olarak yazar. Otomatik ve Standart uygulama Android undefined kategorisini kullanır. Gaming Hub görünürlüğünü işletim sistemi ve mağaza belirler."
             )
         }
 
@@ -17096,7 +17132,7 @@ private fun NativeBridgeStep(
 
                         if (analysis.mediaPlayer) {
                             Text(
-                                "✓ Media3 / arka plan medya • ${
+                                "✓ Arka plan medya • ${
                                     analysis.mediaPlayerReason
                                         ?: "Medya kullanımı bulundu"
                                 }",
@@ -17533,7 +17569,7 @@ private fun NativeBridgeStep(
                             )
 
                             Text(
-                                "Sonraki aşamada Media3 runtime bağlanacak.",
+                                "Fast HTML: paketlenmiş yerel ses AppForgeMedia API ile çalar. Bildirim izni gerekir; uzak akış ve HTML audio otomatik devri desteklenmez.",
                                 color =
                                     Accent,
                                 fontSize =
@@ -20601,7 +20637,7 @@ private fun BuildSettingsStep(
                     )
 
                     Text(
-                        "Media3: ${onOff(draft.mediaPlayerBridge)}",
+                        "Medya köprüsü: ${onOff(draft.mediaPlayerBridge)}",
                         color =
                             TextSecondary,
                         fontSize =

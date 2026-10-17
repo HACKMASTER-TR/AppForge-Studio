@@ -42,15 +42,10 @@ fun main() {
     check(WizardReadinessEvaluator.evaluate(selected).normalRouteReasons.isEmpty())
    } else {
     check(WizardReadinessEvaluator.evaluate(draft).ready)
-    for (selected in listOf(draft.copy(fileUpload=true), draft.copy(camera=true),
-      draft.copy(microphone=true), draft.copy(additionalPermissions=setOf("READ_CONTACTS")))) {
-     val before = selected.copy()
-     val result = WizardReadinessEvaluator.evaluate(selected)
+    if(mode==SourceMode.LOCAL) {
+     val selected=draft.copy(camera=true);val result=WizardReadinessEvaluator.evaluate(selected)
      check(result.ready && result.capability == WizardCapabilityClass.NORMAL_SUPPORTED)
-     check(result.normalRouteReasons.isNotEmpty())
-     check(!FastHtmlApkPolicy.isCandidate(selected))
-     WebviewProjectSettings.validate(selected)
-     check(selected == before) { "selection mutated" }
+     check(result.normalRouteReasons.isNotEmpty() && !FastHtmlApkPolicy.isCandidate(selected))
     }
     val denied = draft.copy(additionalPermissions=setOf("INVENTED_PERMISSION"))
     check(!WizardReadinessEvaluator.evaluate(denied).ready)
@@ -59,6 +54,9 @@ fun main() {
      check(!WizardReadinessEvaluator.evaluate(draft.copy(webUrl="http://example.com")).ready)
      check(!WizardReadinessEvaluator.evaluate(draft.copy(webUrl="https://user:pass@example.com")).ready)
     }
+   }
+   for(selected in listOf(draft.copy(camera=true),draft.copy(microphone=true),draft.copy(location=true))) {
+    check(FastHtmlApkPolicy.isCandidate(selected) == (output !in windows && (mode==SourceMode.URL && output=="apk" || mode==SourceMode.LOCAL && selected.location)))
    }
    check(draft == original) { "routing mutated source/output selections" }
   }

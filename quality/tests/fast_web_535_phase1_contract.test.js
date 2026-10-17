@@ -25,7 +25,9 @@ test('Quick Create defaults are accepted by fast HTML policy', () => {
   assert.match(quick,/buildOutput\s*=\s*"apk"/);
   assert.match(quick,/signingMode\s*=\s*SigningMode\.DEBUG/);
   assert.match(quick,/notifications\s*=\s*false/);
-  assert.match(policy,/!draft\.notifications/);
+  // V2 adds real opt-in notifications; Quick remains OFF and unsafe bridge combinations remain normal.
+  assert.match(policy,/draft\.notifications && \(!draft\.javascriptBridge \|\| !draft\.webJavaScriptEnabled/);
+  assert.match(policy,/if \(draft\.notifications \|\| draft\.mediaPlayerBridge\) add\("android\.permission\.POST_NOTIFICATIONS"\)/);
 });
 test('generated local HTML templates choose APK', () => {
   const i=main.indexOf('AppScreen.TEMPLATES -> TemplatesScreen(');

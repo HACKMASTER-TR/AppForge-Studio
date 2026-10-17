@@ -202,6 +202,15 @@ final class AppForgeLocalAssets {
         if (name.endsWith(".svg"))
             return "image/svg+xml";
 
+        if (name.endsWith(".mp3")) return "audio/mpeg";
+        if (name.endsWith(".mp4")) return "video/mp4";
+        if (name.endsWith(".webm")) return "video/webm";
+        if (name.endsWith(".ogg")) return "audio/ogg";
+        if (name.endsWith(".wav")) return "audio/wav";
+        if (name.endsWith(".m4a")) return "audio/mp4";
+        if (name.endsWith(".pdf")) return "application/pdf";
+        if (name.endsWith(".csv")) return "text/csv";
+
         if (name.endsWith(".wasm"))
             return "application/wasm";
 

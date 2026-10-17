@@ -142,7 +142,11 @@ class FastHtmlAabProtoManifestTest {
     }
     private fun parsedActivity(bytes: ByteArray): String {
         val app = xmlElement(manifest(bytes), "application")
-        val activity = xmlElement(app, "activity")
+        val activity = app.filter { it.first == 5 }.mapNotNull { node ->
+            val nested = parse(node.second as ByteArray).filter { it.first == 1 }
+            if (nested.isEmpty()) null else parse(nested.single().second as ByteArray)
+        }.single { element -> String(pbBytes(element, 3), Charsets.UTF_8) == "activity" &&
+            String(pbBytes(attr(element, "name"), 3), Charsets.UTF_8) == "com.appforge.htmlstub.TinyHtmlActivity" }
         return String(pbBytes(attr(activity, "name"), 3), Charsets.UTF_8)
     }
     @Test fun realManifestRewritesMaxVersionAndKeepsActivityIdentity() {

@@ -45,13 +45,17 @@ internal object FastHtmlAabUnsignedPackager {
         val template = context.assets.open("html-aab-template.aab").use { readLimited(it, LIMIT) }
         TemplateIntegrity.requireAsset(context, "html-aab-template.aab", template)
         val entries = readTemplate(template)
+        val icon = FastHtmlIcon.read(context, snapshot)
+        require(FastHtmlIcon.AAB_PATH in entries) { "Pinned icon resource missing." }
         val manifest = FastHtmlAabProtoManifest.rewrite(
             entries.getValue("base/manifest/AndroidManifest.xml"), snapshot,
-            TemplateIntegrity.expected(context, "html-aab-manifest")
+            TemplateIntegrity.expected(context, "html-aab-manifest"), FastHtmlApkPolicy.templatePermissions(snapshot), FastHtmlApkPolicy.applicationCategory(snapshot), rewriteDeepLinks = true, mediaService = snapshot.mediaPlayerBridge, billing = snapshot.billingEnabled
         )
         require(additions.keys.none { it in entries }) { "Template/source ZIP entry collision." }
         val outputEntries = LinkedHashMap(entries)
         outputEntries["base/manifest/AndroidManifest.xml"] = manifest
+        outputEntries["base/resources.pb"] = FastHtmlResourceColor.proto(entries.getValue("base/resources.pb"), snapshot.primaryColor, snapshot.packageName)
+        if (icon != null) outputEntries[FastHtmlIcon.AAB_PATH] = icon
         outputEntries.putAll(additions)
         require(outputEntries.size <= 2048 && outputEntries.values.sumOf { it.size.toLong() } <= LIMIT) {
             "Unsigned AAB candidate exceeds entry or expanded size budget."

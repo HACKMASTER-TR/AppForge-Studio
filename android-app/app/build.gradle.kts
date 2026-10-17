@@ -682,3 +682,8 @@ tasks.matching {
 }.configureEach {
     dependsOn(prepareAppForgeProrootRuntime)
 }
+
+// Real bundled decoder acceptance, separate from Android camera hardware testing.
+tasks.matching { it.name == "testDebugUnitTest" }.configureEach {
+    dependsOn(":html-apk-template:testDebugUnitTest")
+}

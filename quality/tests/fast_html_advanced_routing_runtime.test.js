@@ -18,8 +18,10 @@ fun main() {
  val base = ProjectDraft(fileUpload=false, clipboardBridge=false, vibrationBridge=false, networkState=false, splashEnabled=false, appName="Test", sourceTechnology="html", importedFolder="/test", startPage="index.html")
  check(FastHtmlApkPolicy.isCandidate(base))
  FastHtmlApkPolicy.requireSupported(base)
+ check(!WizardReadinessEvaluator.evaluate(base.copy(packageName="com.appforge.htmlstub")).ready)
+ check(!WizardReadinessEvaluator.evaluate(base.copy(packageName="com."+"x".repeat(256))).ready)
  check(FastHtmlApkPolicy.isCandidate(base.copy(sourceMode=SourceMode.URL,webUrl="https://example.com")))
- val advanced = listOf(base.copy(fileUpload=true),base.copy(clipboardBridge=true),base.copy(vibrationBridge=true),base.copy(networkState=true),base.copy(splashEnabled=true),base.copy(fullscreen=true),base.copy(orientation="portrait"),base.copy(iconUri="content://icon"),base.copy(camera=true),base.copy(microphone=true),base.copy(notifications=true),base.copy(location=true),base.copy(nfc=true),base.copy(wakeLock=true),base.copy(deepLinkEnabled=true,deepLinkHost="example.com"),base.copy(additionalPermissions=setOf("READ_CONTACTS")))
+ val advanced = listOf(base.copy(camera=true),base.copy(microphone=true))
  advanced.forEach { check(!FastHtmlApkPolicy.isCandidate(it)); WebviewProjectSettings.validate(it) }
  listOf("apk","aab","both","apk+aab","android","").forEach { check(FastHtmlApkPolicy.isCandidate(base.copy(buildOutput=it))) }
  listOf("exe","all","apk+aab+exe","native-exe").forEach { check(!FastHtmlApkPolicy.isCandidate(base.copy(buildOutput=it))) }
@@ -29,15 +31,15 @@ fun main() {
  check(runCatching { WebviewProjectSettings.validate(base.copy(additionalPermissions=setOf("INVENTED_PERMISSION"))) }.exceptionOrNull()?.message?.contains("Desteklenmeyen Android izinleri") == true)
  listOf(base.copy(deepLinkEnabled=true,deepLinkScheme="javascript",deepLinkHost="example.com"),base.copy(deepLinkEnabled=true,deepLinkHost="example.com@evil.com"),base.copy(deepLinkEnabled=true,deepLinkHost="example.com",deepLinkPathPrefix="bad")).forEach { check(runCatching { WebviewProjectSettings.validate(it) }.isFailure) }
 
- listOf(base.copy(qrScanner=true),base.copy(mediaPlayerBridge=true),base.copy(admobEnabled=true),base.copy(billingEnabled=true),
+ listOf(base.copy(admobEnabled=true),base.copy(billingEnabled=true),
   base.copy(firebaseAnalyticsEnabled=true),base.copy(firebaseCrashlyticsEnabled=true),base.copy(firebaseMessagingEnabled=true),
-  base.copy(umpConsentEnabled=true),base.copy(appCategory="business"),base.copy(primaryColor="#FFFFFF")).forEach {
+  base.copy(umpConsentEnabled=true),base.copy(appCategory="business")).forEach {
   check(runCatching { WebviewProjectSettings.validate(it) }.isFailure)
  }
  // Supported WebView switches remain quick; each is consumed by runtime config and Tiny.
- listOf(base.copy(webJavaScriptEnabled=false),base.copy(webDomStorageEnabled=false),base.copy(webZoomEnabled=false),
+ listOf(base.copy(location=true),base.copy(mediaPlayerBridge=true),base.copy(deepLinkEnabled=true,deepLinkHost="example.com"),base.copy(nfc=true),base.copy(additionalPermissions=setOf("READ_CONTACTS")),base.copy(wakeLock=true),base.copy(iconUri="content://icons/selected"),base.copy(webJavaScriptEnabled=false),base.copy(webDomStorageEnabled=false),base.copy(webZoomEnabled=false),
   base.copy(webWideViewPortEnabled=false),base.copy(webOverviewModeEnabled=false),base.copy(webMediaAutoplayEnabled=false),
-  base.copy(offlineCache=false),base.copy(downloads=false),base.copy(javascriptBridge=false),base.copy(shareBridge=false)).forEach {
+  base.copy(offlineCache=false),base.copy(webMixedContentAllowed=true),base.copy(downloads=false),base.copy(javascriptBridge=false),base.copy(shareBridge=false)).forEach {
   check(FastHtmlApkPolicy.isCandidate(it));FastHtmlApkPolicy.requireSupported(it)
  }
  // Exercise the production Kotlin validator, including output aliases and foreign engines.
@@ -47,14 +49,11 @@ fun main() {
   if (message != null) check(error.message?.contains(message) == true)
  }
  val urlBase = base.copy(sourceMode=SourceMode.URL, webUrl="https://example.com/path")
- val urlAdvanced = listOf(urlBase.copy(iconUri="content://icon"), urlBase.copy(camera=true),
-  urlBase.copy(location=true), urlBase.copy(microphone=true),
-  urlBase.copy(deepLinkEnabled=true, deepLinkHost="example.com"),
-  urlBase.copy(additionalPermissions=setOf("READ_CONTACTS")))
+ val urlAdvanced = listOf(urlBase.copy(camera=true),urlBase.copy(microphone=true),urlBase.copy(location=true),urlBase.copy(deepLinkEnabled=true,deepLinkHost="example.com"))
  listOf("apk", "aab", "both", "apk+aab", "android", "all", "apk+aab+exe").forEach { output ->
   urlAdvanced.forEach { advancedUrl ->
    val draft = advancedUrl.copy(buildOutput=output)
-   check(!FastHtmlApkPolicy.isCandidate(draft))
+   check(FastHtmlApkPolicy.isCandidate(draft) == (output=="apk"))
    WebviewProjectSettings.validate(draft)
    listOf("http://example.com", "https://user:pass@example.com", "https://@example.com",
     "https:///missing-host", "https://bad_host", "https://example.com/invalid space",
@@ -98,12 +97,28 @@ fun main() {
  val complete = base.copy()
  check(WizardReadinessEvaluator.evaluate(complete).ready)
  check(WizardReadinessEvaluator.evaluate(complete).capability == WizardCapabilityClass.QUICK_SUPPORTED)
- check(WizardReadinessEvaluator.evaluate(complete.copy(fileUpload=true)).capability == WizardCapabilityClass.NORMAL_SUPPORTED)
+ check(WizardReadinessEvaluator.evaluate(complete.copy(fileUpload=true)).capability == WizardCapabilityClass.QUICK_SUPPORTED)
  val defaults = WizardReadinessEvaluator.evaluate(ProjectDraft(appName="Default", importedFolder="/test"))
- check(defaults.ready && defaults.capability == WizardCapabilityClass.NORMAL_SUPPORTED)
- check(defaults.normalRouteReasons.size >= 4)
+ check(defaults.ready && defaults.capability == WizardCapabilityClass.QUICK_SUPPORTED)
+ check(defaults.normalRouteReasons.isEmpty())
  check(defaults.normalRouteReasons.all { !it.contains("requires normal") })
- check(WizardReadinessEvaluator.evaluate(complete.copy(fileUpload=true)).normalRouteReasons.any { it.contains("Dosya yükleme") })
+ check(WizardReadinessEvaluator.evaluate(complete.copy(fileUpload=true)).normalRouteReasons.isEmpty())
+ // V2: supported advanced combinations preserve all selections and share APK/AAB eligibility.
+ val v2 = complete.copy(fileUpload=true,clipboardBridge=true,vibrationBridge=true,networkState=true,
+  splashEnabled=true,splashText="Starting",fullscreen=true,orientation="portrait",backgroundColor="#123456")
+ for(output in listOf("apk","aab","both","apk+aab")) {
+  val selected=v2.copy(buildOutput=output); val before=selected.copy()
+  check(WizardReadinessEvaluator.evaluate(selected).capability == WizardCapabilityClass.QUICK_SUPPORTED)
+  check(selected == before)
+  check(FastHtmlApkPolicy.templatePermissions(selected) == setOf("android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE", "android.permission.VIBRATE"))
+ }
+ check(FastHtmlApkPolicy.isCandidate(v2.copy(notifications=true)))
+ check(!FastHtmlApkPolicy.isCandidate(v2.copy(notifications=true,javascriptBridge=false)))
+ check(!FastHtmlApkPolicy.isCandidate(v2.copy(notifications=true,webJavaScriptEnabled=false)))
+ check(!FastHtmlApkPolicy.isCandidate(v2.copy(notifications=true,sourceMode=SourceMode.URL,webUrl="https://example.com")))
+ check(FastHtmlApkPolicy.isCandidate(v2.copy(notifications=true,sourceMode=SourceMode.URL,webUrl="https://example.com",remoteBridgeAllowed=true)))
+ check(FastHtmlApkPolicy.templatePermissions(v2.copy(notifications=true)).contains("android.permission.POST_NOTIFICATIONS"))
+ check(FastHtmlApkPolicy.templatePermissions(v2.copy(javascriptBridge=false,networkState=false)) == setOf("android.permission.INTERNET"))
 
  // Routing regression matrix: Android reasons must never leak into another engine/target.
  for (mode in listOf(SourceMode.LOCAL, SourceMode.URL)) {
@@ -112,9 +127,10 @@ fun main() {
    val plain = WizardReadinessEvaluator.evaluate(selected)
    check(plain.normalRouteReasons.isNotEmpty() == (mode == SourceMode.URL && output != "apk"))
    advanced.forEach { toggled ->
-    check(WizardReadinessEvaluator.evaluate(toggled.copy(sourceMode=mode,webUrl="https://example.com",buildOutput=output)).normalRouteReasons.isNotEmpty())
+    val fastWeb = mode==SourceMode.URL && output=="apk" && (toggled.camera || toggled.microphone || toggled.location)
+    check(WizardReadinessEvaluator.evaluate(toggled.copy(sourceMode=mode,webUrl="https://example.com",buildOutput=output)).normalRouteReasons.isNotEmpty() != fastWeb)
    }
-   check(WizardReadinessEvaluator.evaluate(ProjectDraft(appName="Defaults",importedFolder="/test",sourceMode=mode,webUrl="https://example.com",buildOutput=output)).normalRouteReasons.isNotEmpty())
+   check(WizardReadinessEvaluator.evaluate(ProjectDraft(appName="Defaults",importedFolder="/test",sourceMode=mode,webUrl="https://example.com",buildOutput=output)).normalRouteReasons.isNotEmpty() == (mode == SourceMode.URL && output != "apk"))
    for (engine in listOf("node-web", "expo", "android-gradle")) {
     for (upload in listOf(false,true)) {
      val other = WizardReadinessEvaluator.evaluate(selected.copy(sourceBuildEngine=engine,fileUpload=upload))
@@ -147,16 +163,16 @@ fun main() {
   packageName="bad",signingMode=SigningMode.CUSTOM)
  val report = WizardReadinessEvaluator.evaluate(mixed)
  check(!report.ready && report.affectedSteps == setOf(1,2,4,5,6,7,8,9))
- check(report.diagnostics.filter { it.blocking }.size >= 19)
+ check(report.diagnostics.filter { it.blocking }.size >= 16)
  check(report.diagnostics.none { it.turkish().contains("secret-do-not-echo") })
  check(runCatching { report.requireReady() }.exceptionOrNull()?.message?.contains("firebaseMessagingEnabled") == true)
  check(mixed.appCategory == "game" && mixed.primaryColor == "#3F51B5")
  listOf("auto","game","none","invalid").forEach { category ->
   val result = WizardReadinessEvaluator.evaluate(complete.copy(appCategory=category))
-  check(result.ready == (category == "auto"))
+  check(result.ready == (category != "invalid"))
  }
  listOf("#3F51B5","#8CC9F6","#ffffff","invalid").forEach { color ->
-  check(!WizardReadinessEvaluator.evaluate(complete.copy(primaryColor=color)).ready)
+  check(WizardReadinessEvaluator.evaluate(complete.copy(primaryColor=color)).ready == (color != "invalid"))
  }
  for (engine in listOf("webview-static","node-web")) {
   for (output in listOf("apk","aab","both")) {
@@ -164,8 +180,8 @@ fun main() {
     for (primary in listOf("#6B7CFF","#3F51B5","#8CC9F6","#123456")) {
      val appearance = complete.copy(sourceBuildEngine=engine,buildOutput=output,appCategory=category,primaryColor=primary)
      val result = WizardReadinessEvaluator.evaluate(appearance)
-     check(result.diagnostics.any { it.field=="appCategory" && it.blocking } == (category!="auto"))
-     check(result.diagnostics.any { it.field=="primaryColor" && it.blocking } == (primary!="#6B7CFF"))
+     check(result.diagnostics.none { it.field=="appCategory" && it.blocking })
+     check(result.diagnostics.none { it.field=="primaryColor" && it.blocking })
      check(appearance.appCategory==category && appearance.primaryColor==primary)
     }
    }
@@ -358,4 +374,35 @@ test('wizard warning panel has separate bounded height and every blocking step h
  assert.match(panel, /affectedSteps.sorted\(\).forEach/);
  assert.match(panel, /TextButton\(onClick = \{ step = issueStep \}\)/);
  assert.match(panel, /Box\(modifier = Modifier.fillMaxWidth\(\).weight\(1f\)\)/);
+});
+
+
+test('actual DeviceBuildEngine capability guard accepts implemented quick QR/media and still rejects absent SDK/normal-engine injection',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'appforge-engine-guard-'));
+ try {
+  const engine=read(build+'DeviceBuildEngine.kt');
+  const extract=name=>{const start=engine.indexOf('    private fun '+name+'(');assert.ok(start>=0);let end=engine.indexOf('    private ',start+20);if(end<0)end=engine.length;return engine.slice(start,end).replace('private fun '+name,'fun '+name);};
+  fs.writeFileSync(path.join(dir,'BuildConfig.kt'),'package com.appforge.studio\nobject BuildConfig { const val DEBUG=true }');
+  fs.writeFileSync(path.join(dir,'Engine.kt'),`package com.appforge.studio.build
+import com.appforge.studio.model.*
+object EngineGuard {
+${extract('validateCapabilities')}
+${extract('effectiveSourceEngine')}
+}
+fun main(){
+ val base=ProjectDraft(appName="Engine",sourceTechnology="html",importedFolder="/test",startPage="index.html")
+ for(output in listOf("apk","aab","both"))for(qr in listOf(false,true))for(media in listOf(false,true))for(billing in listOf(false,true)){
+  val draft=base.copy(buildOutput=output,qrScanner=qr,mediaPlayerBridge=media,billingEnabled=billing,billingProductIds="coins",purchaseVerificationUrl="https://verify.example/receipt")
+  check(FastHtmlApkPolicy.isCandidate(draft));EngineGuard.validateCapabilities(draft)
+ }
+ for(draft in listOf(base.copy(admobEnabled=true),base.copy(billingEnabled=true),base.copy(firebaseAnalyticsEnabled=true),
+  base.copy(firebaseMessagingEnabled=true),base.copy(firebaseCrashlyticsEnabled=true),base.copy(mediaPlayerBridge=true,javascriptBridge=false),
+  base.copy(qrScanner=true,sourceBuildEngine="node-web"),base.copy(mediaPlayerBridge=true,sourceBuildEngine="node-web"))) {
+  check(runCatching{EngineGuard.validateCapabilities(draft)}.isFailure)
+ }
+ println("ENGINE GUARD PASS")
+}`);
+ execFileSync('kotlinc',[path.join(root,'android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt'),...['FastHtmlApkPolicy.kt','WebviewProjectSettings.kt','DeviceBuildCapabilities.kt'].map(f=>path.join(root,build,f)),path.join(dir,'BuildConfig.kt'),path.join(dir,'Engine.kt'),'-include-runtime','-d',path.join(dir,'engine.jar')],{timeout:120000,stdio:'pipe'});
+ assert.match(execFileSync('java',['-jar',path.join(dir,'engine.jar')],{encoding:'utf8',timeout:30000}),/ENGINE GUARD PASS/);
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

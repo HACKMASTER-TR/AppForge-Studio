@@ -37,29 +37,60 @@ internal object FastHtmlApkPolicy {
                 add("Seçilen çıktı birleşimi normal Android motorunu gerektirir.")
         }
 
-        if (draft.fileUpload) add("Dosya yükleme için normal Android dosya seçicisi gerekir.")
-        if (draft.clipboardBridge || draft.vibrationBridge) add("Pano ve titreşim için normal Android köprüsü gerekir.")
-        if (draft.networkState) add("Ağ durumu izin bildirimi normal Android manifestini gerektirir.")
-        if (draft.fullscreen) add("Tam ekran için normal Android pencere ayarları gerekir.")
-        if (draft.orientation != "unspecified") add("Ekran yönü için normal Android manifesti gerekir.")
-        if (draft.splashEnabled || draft.splashText.isNotBlank()) add("Açılış ekranı için normal Android çalışma zamanı gerekir.")
-        if (draft.backgroundColor != "#07101F" || draft.statusBarColor != "#07101F" ||
-            draft.navigationBarColor != "#07101F") add("Tema renkleri için normal Android çalışma zamanı gerekir.")
-        if (draft.webMixedContentAllowed) add("Karma içerik için normal Android güvenlik kontrolü gerekir.")
+        if (draft.billingEnabled && (!draft.javascriptBridge || !draft.webJavaScriptEnabled || draft.sourceMode == SourceMode.URL && !draft.remoteBridgeAllowed))
+            add("Play Billing için güvenilir JavaScript köprüsü gerekir.")
+        if (draft.mediaPlayerBridge && (draft.sourceMode != SourceMode.LOCAL || !draft.javascriptBridge || !draft.webJavaScriptEnabled))
+            add("Arka plan ses köprüsü için yerel paketlenmiş medya ve JavaScript köprüsü gerekir; uzak akış desteklenmez.")
+        if (draft.location && draft.sourceMode == SourceMode.LOCAL && (!draft.javascriptBridge || !draft.webJavaScriptEnabled))
+            add("Yerel HTML konumu için güvenilir JavaScript köprüsü gerekir.")
+        if (draft.qrScanner && (!draft.javascriptBridge || !draft.webJavaScriptEnabled ||
+                draft.sourceMode == SourceMode.URL && !draft.remoteBridgeAllowed)) add("QR tarayıcı için güvenilir JavaScript köprüsü gerekir.")
+        if (draft.nfc && (!draft.javascriptBridge || !draft.webJavaScriptEnabled ||
+                draft.sourceMode == SourceMode.URL && !draft.remoteBridgeAllowed)) add("NFC için güvenilir JavaScript köprüsü gerekir.")
+        if (draft.notifications && (!draft.javascriptBridge || !draft.webJavaScriptEnabled ||
+                draft.sourceMode == SourceMode.URL && !draft.remoteBridgeAllowed)) add("Yerel bildirim için JavaScript köprüsü gerekir.")
         if (draft.signingMode != SigningMode.DEBUG && draft.buildOutput.trim().lowercase() == "apk")
             add("Özel APK imzası için normal Android motoru gerekir.")
-        if (!draft.iconUri.isNullOrBlank() || draft.camera || draft.microphone || draft.location ||
-            draft.notifications || draft.nfc || draft.deepLinkEnabled || draft.wakeLock ||
-            draft.additionalPermissions.isNotEmpty()) add("Seçilen Android özellikleri normal manifest ve çalışma zamanı gerektirir.")
+        if ((draft.sourceMode != SourceMode.URL && (draft.camera || draft.microphone))) add("Seçilen Android özellikleri normal manifest ve çalışma zamanı gerektirir.")
+    }
+
+    /** Only these declarations exist in the pinned V2 shell. No invented native APIs. */
+    fun applicationCategory(draft: ProjectDraft): Int = when (draft.appCategory) {
+        "game" -> 0
+        "auto", "none" -> -1
+        else -> error("Unsupported application category")
+    }
+
+    fun templatePermissions(draft: ProjectDraft): Set<String> = buildSet {
+        add("android.permission.INTERNET")
+        addAll(WebviewProjectSettings.additionalPermissions(draft).map { "android.permission.$it" })
+        if (draft.nfc) add("android.permission.NFC")
+        if (draft.camera || draft.qrScanner) add("android.permission.CAMERA")
+        if (draft.microphone) add("android.permission.RECORD_AUDIO")
+        if (draft.location) {
+            add("android.permission.ACCESS_COARSE_LOCATION")
+            if (draft.sourceMode == SourceMode.LOCAL) add("android.permission.ACCESS_FINE_LOCATION")
+        }
+        if (draft.wakeLock) add("android.permission.WAKE_LOCK")
+        if (draft.billingEnabled) {
+            add("com.android.vending.BILLING")
+            add("${draft.packageName}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION")
+        }
+        if (draft.networkState || draft.billingEnabled) add("android.permission.ACCESS_NETWORK_STATE")
+        if (draft.mediaPlayerBridge) {
+            add("android.permission.FOREGROUND_SERVICE")
+            add("android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK")
+            add("android.permission.WAKE_LOCK")
+        }
+        if (draft.notifications || draft.mediaPlayerBridge) add("android.permission.POST_NOTIFICATIONS")
+        if (draft.javascriptBridge && draft.vibrationBridge) add("android.permission.VIBRATE")
     }
 
     fun isCandidate(draft: ProjectDraft): Boolean {
         if (!hasFastRouteSource(draft)) return false
         if (normalRouteReasons(draft).isNotEmpty()) return false
         if (!requestsAndroidOnlyOutputs(draft)) return false
-        if (!draft.iconUri.isNullOrBlank() || draft.camera || draft.microphone ||
-            draft.location || draft.notifications || draft.nfc || draft.deepLinkEnabled ||
-            draft.wakeLock || draft.additionalPermissions.isNotEmpty()) return false
+        if ((draft.sourceMode != SourceMode.URL && (draft.camera || draft.microphone))) return false
         return true
     }
 
@@ -71,9 +102,6 @@ internal object FastHtmlApkPolicy {
         }
         require(draft.signingMode == SigningMode.DEBUG) {
             "Hızlı HTML/URL APK v1 cihazda kalıcı anahtarla imzalanır; özel keystore henüz desteklenmiyor."
-        }
-        require(draft.iconUri.isNullOrBlank()) {
-            "Hızlı HTML/URL APK v1 özel ikon işleyemiyor; önce varsayılan simgeyi seçin."
         }
         require(draft.minSdk in 26..37 && draft.targetSdk in draft.minSdk..37)
         require(draft.packageName.matches(Regex("[A-Za-z_][A-Za-z_0-9]*(\\.[A-Za-z_][A-Za-z_0-9]*)+")))
@@ -87,8 +115,7 @@ internal object FastHtmlApkPolicy {
         } else {
             require(!draft.importedFolder.isNullOrBlank()) { "Yerel HTML proje klasörü bulunamadı." }
         }
-        require(!draft.camera && !draft.microphone && !draft.location && !draft.notifications &&
-            !draft.nfc && !draft.deepLinkEnabled && !draft.wakeLock && draft.additionalPermissions.isEmpty()) {
+        require((draft.sourceMode == SourceMode.URL || !draft.camera && !draft.microphone)) {
             "Hızlı HTML/URL APK v1, ek Android izinlerini ve derin bağlantıları desteklemez."
         }
     }

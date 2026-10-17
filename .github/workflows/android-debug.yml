@@ -96,13 +96,25 @@ jobs:
             ln -s android-37.0 "$ANDROID_HOME/platforms/android-37"
           fi
           test -s "$ANDROID_HOME/platforms/android-37/android.jar"
+          gradle -p android-app :html-apk-template:compileReleaseJavaWithJavac --no-daemon
+          mapfile -t ZXING_JARS < <(rg --files "$HOME/.gradle/caches/modules-2/files-2.1/com.google.zxing/core/3.5.3" | rg '/core-3\.5\.3\.jar$')
+          test "${#ZXING_JARS[@]}" -eq 1
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from zipfile import ZipFile
+          jars=list((Path.home()/'.gradle/caches/modules-2/files-2.1/com.android.billingclient/billing/9.1.0').glob('*/*.aar'))
+          assert len(jars)==1
+          with ZipFile(jars[0]) as archive:
+              (Path(os.environ['RUNNER_TEMP'])/'appforge-billing.jar').write_bytes(archive.read('classes.jar'))
+          PY
           mkdir -p "$RUNNER_TEMP/generated-wrapper-classes"
           javac --release 8 -Xlint:-options \
-            -cp "$ANDROID_HOME/platforms/android-37.0/android.jar" \
+            -cp "$ANDROID_HOME/platforms/android-37.0/android.jar:${ZXING_JARS[0]}:$RUNNER_TEMP/appforge-billing.jar" \
             -d "$RUNNER_TEMP/generated-wrapper-classes" \
             android-app/app/src/main/assets/device-build/*.java \
             android-app/html-apk-template/src/main/java/com/appforge/htmlstub/*.java
-          node --test quality/tests/html_document_bridge_runtime.test.js quality/tests/web_wrapper_config_contract.test.js
+          node --test quality/tests/html_document_bridge_runtime.test.js quality/tests/fast_html_v2_runtime.test.js quality/tests/fast_html_media_runtime.test.js quality/tests/fast_html_location_runtime.test.js quality/tests/fast_html_billing_runtime.test.js quality/tests/web_wrapper_config_contract.test.js
 
       - name: Restore CI debug signing key
         shell: bash
