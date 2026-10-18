@@ -31,6 +31,9 @@ cat > "$ROOT/ensure-gradle" <<'EOF'
 set -eu
 
 version="${1:?Gradle version required}"
+if [ -f /workspace/runtime/module-download-telemetry.sh ]; then
+  . /workspace/runtime/module-download-telemetry.sh
+fi
 root="/opt/appforge-device"
 dest="$root/gradle-$version"
 

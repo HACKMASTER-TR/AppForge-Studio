@@ -80,3 +80,31 @@ never from a readiness observer. The latest isolated module can be reversed only
 when no installed dependent requires it; older/shared arbitrary removal stays
 closed. Real device POSIX, free-space and process-death behavior still requires
 acceptance; host fault tests do not replace Android testing.
+
+## Explicit project preparation and observed dependency transfers
+
+ProjectDependencyEvidence performs bounded read-only manifest/lock analysis and
+source/cache fingerprints. ProjectDependencyPreparation requires fresh explicit
+source-execution consent, copies reviewed source and stages the build runtime.
+A tool installation is never a project-ready receipt. Only a successful rebuild
+with Android networks absent throughout, followed by source/tool/cache checks,
+can publish the local offline receipt. Proot is not a malicious-code sandbox;
+trust confirmation is explicit and private signing keys are excluded from this
+preparation build. Device behavior and process-death continuation remain NOT_RUN.
+
+APT observes real archive/partial files against a SHA-256 --print-uris plan;
+unsupported index totals remain unknown. Node preloads observe original response
+emission without installing data consumers or changing TLS/cache semantics.
+Gradle observes typed resource-operation byte results, not console percentages;
+it has no live chunk total and falls back to indeterminate for unsupported
+versions/configuration cache. Child SDK/Chaquopy/native resolvers that bypass
+these boundaries remain indeterminate. No universal pause/resume is claimed.
+Four legacy Android SHA-1 archive callsites now also require reviewed fixed
+SHA-256 pins; provenance is official HTTPS bytes matched to prior immutable
+pins, not a claim of Google-published SHA-256 metadata.
+
+The transaction inventory now includes POSIX permission bits. Bounded persisted
+operation history is diagnostic only; restoring READY never proves readiness.
+A journal write error stops installation rather than promising resumability.
+Module rollback is latest-generation-only and dependent-aware; arbitrary shared
+runtime uninstall/update and unbounded old-generation pruning remain disabled.

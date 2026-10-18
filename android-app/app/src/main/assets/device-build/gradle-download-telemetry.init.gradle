@@ -1,0 +1,52 @@
+// Observe Gradle's typed resource operations; never parse console percentages or alter transport/trust.
+def output = System.getenv('APPFORGE_DOWNLOAD_TELEMETRY')
+if (output && !gradle.startParameter.isConfigurationCacheRequested()) {
+    try {
+        def loader = this.class.classLoader
+        def listenerType = loader.loadClass('org.gradle.internal.operations.BuildOperationListener')
+        def managerType = loader.loadClass('org.gradle.internal.operations.BuildOperationListenerManager')
+        def detailsType = loader.loadClass('org.gradle.internal.resource.ExternalResourceReadBuildOperationType$Details')
+        def resultType = loader.loadClass('org.gradle.internal.resource.ExternalResourceReadBuildOperationType$Result')
+        def active = new java.util.concurrent.ConcurrentHashMap()
+        def publish = { value ->
+            try {
+                def target = new File(output)
+                def temporary = new File(output + '.tmp-gradle-' + java.util.UUID.randomUUID())
+                temporary.text = groovy.json.JsonOutput.toJson(value)
+                java.nio.file.Files.move(temporary.toPath(), target.toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            } catch (Exception ignored) { /* Telemetry failure must not weaken or change dependency resolution. */ }
+        }
+        def handler = { proxy, method, args ->
+            try {
+                if (method.name == 'hashCode') return System.identityHashCode(proxy)
+                if (method.name == 'equals') return proxy.is(args[0])
+                if (method.name == 'toString') return 'AppForgeResourceObserver'
+                if (method.name == 'started' && detailsType.isInstance(args[0].details)) {
+                    def location = detailsType.getMethod('getLocation').invoke(args[0].details)
+                    def name = new java.net.URI(location).path.tokenize('/').last().replaceAll('[^A-Za-z0-9._@+-]', '_').take(150)
+                    def id = 'gradle-' + args[0].id.toString()
+                    active.put(args[0].id, [schema:1, transfer:id, component:'Gradle/Maven: '+name, bytes:0L, total:null, finished:false])
+                    publish(active.get(args[0].id))
+                }
+                if (method.name == 'finished') {
+                    def event = active.remove(args[0].id)
+                    if (event && resultType.isInstance(args[1].result)) {
+                        def size = resultType.getMethod('getBytesRead').invoke(args[1].result) as long
+                        event.bytes = Math.max(0L,size)
+                        event.total = size > 0 ? size : null
+                        event.elapsedMs = Math.max(0L,args[1].endTime-args[1].startTime)
+                        event.finished = true
+                        publish(event)
+                    }
+                }
+            } catch (Exception ignored) { /* Unknown Gradle version: indeterminate UI, not fake progress. */ }
+            return null
+        } as java.lang.reflect.InvocationHandler
+        def listener = java.lang.reflect.Proxy.newProxyInstance(listenerType.classLoader, [listenerType] as Class[], handler)
+        def manager = gradle.services.get(managerType)
+        manager.addListener(listener)
+        gradle.buildFinished { manager.removeListener(listener) }
+    } catch (Exception ignored) {
+        logger.info('AppForge: structured dependency byte telemetry unavailable for this Gradle runtime')
+    }
+}

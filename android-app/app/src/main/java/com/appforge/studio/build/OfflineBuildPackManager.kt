@@ -275,6 +275,7 @@ internal object OfflineBuildPackManager {
                     phase(id,ModulePhase.PREPARING,"Çalışan ortam korunuyor; izole sürüm kopyalanıyor ve doğrulanıyor.")
                     RuntimeGenerationStore(root).prepare(id,canceled={if(installJob?.isActive==false)throw kotlinx.coroutines.CancellationException("İptal edildi")}).use { generation ->
                     val staged=generation.root
+                    DownloadInstrumentation.install(app,staged)
                     phase(id,ModulePhase.INSTALLING,"${OfflineModules.spec(id).title}: araç kurulumu; ölçülemeyen aşamada yüzde gösterilmez.")
                     if(id==OfflineModuleId.NODE_WEB) {
                         val arch=if(Build.SUPPORTED_ABIS.any{it=="arm64-v8a"})"arm64" else if(Build.SUPPORTED_ABIS.any{it=="x86_64"})"x64" else error("Bu platform için Node arşivi desteklenmiyor; paket eksikliği değil.")
@@ -361,6 +362,13 @@ internal object OfflineBuildPackManager {
             throw it
         }
     }
+    internal fun protectedTools(context:Context):Map<String,String> {
+        val root=runtimeRootfs(context)?:error("Runtime yok")
+        return witnesses.filterKeys{moduleReady(context,it)}.values.flatten().distinct().associateWith{digest(File(root,it))}
+    }
+    internal fun verifyProtectedTools(root:File,expected:Map<String,String>) {
+        require(expected.all{(path,hash)->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==hash}){"Proje derlemesi korunan araçları değiştirdi; sürüm etkinleştirilmedi."}
+    }
     fun canRollback(context:Context,id:OfflineModuleId):Boolean {
         val root=runtimeRootfs(context)?:return false
         return RuntimeGenerationStore(root).rollbackAvailable(id) && OfflineModules.all.none{it.id!=id && id in OfflineModules.resolve(it.dependencies) && moduleReady(context,it.id)}
@@ -415,7 +423,7 @@ internal object OfflineBuildPackManager {
                 sessionId = sessionId,
                 rootfs = rootfs,
                 workspace = workspace,
-                command = "APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json "+command,
+                command = "export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; "+command,
                 confirmed = true,
                 timeoutMs = 1_800_000L
             )
@@ -465,7 +473,7 @@ internal object OfflineBuildPackManager {
             }.getOrNull() ==
                 REVISION
 
-    private fun runtimeRootfs(
+    internal fun runtimeRootfs(
         context: Context
     ): File? {
 

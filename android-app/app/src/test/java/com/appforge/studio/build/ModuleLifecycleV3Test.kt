@@ -57,4 +57,19 @@ class ModuleLifecycleV3Test {
         } finally {base.deleteRecursively()}
     }
 
+    @Test fun historyIsBoundedAndDiskWriteFailuresCannotPretendPersistence() {
+        val dir=Files.createTempDirectory("journal-history").toFile()
+        try {
+            val file=File(dir,"journal.json");val journal=ModuleOperationJournal(file)
+            repeat(50){n->journal.save(mapOf(OfflineModuleId.NODE_WEB to ModuleProgress(OfflineModuleId.NODE_WEB,"op-$n",ModulePhase.DOWNLOADING,n.toLong(),100,detail="bytes only")))}
+            assertEquals(32,journal.history().size);assertTrue(file.length()<32768)
+            val count=journal.history().size
+            journal.save(mapOf(OfflineModuleId.NODE_WEB to ModuleProgress(OfflineModuleId.NODE_WEB,"op-49",ModulePhase.DOWNLOADING,80,100)))
+            assertEquals(count,journal.history().size)
+            val blocked=ModuleOperationJournal(File(file,"cannot-write"))
+            assertThrows(java.io.IOException::class.java){blocked.save(emptyMap())}
+            assertEquals(ModulePhase.PAUSED,journal.restore().getValue(OfflineModuleId.NODE_WEB).phase)
+        }finally{dir.deleteRecursively()}
+    }
+
 }

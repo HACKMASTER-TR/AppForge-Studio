@@ -2,6 +2,10 @@
 # Measure curl's actual output file. No terminal percentage parsing, credentials or URLs in telemetry.
 # Package-manager internal transfers remain indeterminate until their own trusted adapter exists.
 if [ -n "${APPFORGE_DOWNLOAD_TELEMETRY:-}" ]; then
+ if [ -f /workspace/runtime/apt-download-telemetry.sh ]; then . /workspace/runtime/apt-download-telemetry.sh; fi
+ if [ -f /workspace/runtime/npm-download-telemetry.cjs ]; then
+  export NODE_OPTIONS="${NODE_OPTIONS:-} --require=/workspace/runtime/npm-download-telemetry.cjs"
+ fi
  curl() {
   af_output=""; af_next=0
   for af_arg in "$@"; do

@@ -82,7 +82,9 @@ test('V15.3 Windows and combined output routing uses a shared Android-only fast 
   assert.match(policy, /if \(!requestsAndroidOnlyOutputs\(draft\)\) return false/);
   assert.equal(manager.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 2);
   // Routing and the early capability validator share the same output-aware candidate policy.
-  assert.equal(engine.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 2);
+  assert.equal(engine.match(/FastHtmlApkPolicy\.isCandidate\(draft\)/g)?.length, 3);
+  // Runtime generation recovery is additionally bypassed for Fast HTML, before any build lease.
+  assert.match(engine, /if\(preparationRoot==null && !FastHtmlApkPolicy\.isCandidate\(draft\)\)OfflineBuildPackManager\.recoverPending\(context\)/);
   assert.match(engine, /val fastHtml = FastHtmlApkPolicy\.isCandidate\(draft\)/);
   assert.match(engine, /draft\.qrScanner && !fastHtml/);
   assert.match(engine, /AndroidArtifactPublication\.collect\(/);

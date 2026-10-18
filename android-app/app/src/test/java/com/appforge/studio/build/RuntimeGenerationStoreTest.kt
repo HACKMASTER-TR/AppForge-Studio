@@ -56,4 +56,29 @@ class RuntimeGenerationStoreTest {
             assertEquals("old",File(active,"valid").readText())
         }finally{base.deleteRecursively()}
     }
+    @Test fun rollbackRejectsPermissionTamperingEvenWhenBytesMatch() {
+        val base=Files.createTempDirectory("generation-mode").toFile()
+        try {
+            val active=File(base,"rootfs").apply{mkdir()};File(active,"valid").writeText("old");val store=RuntimeGenerationStore(active)
+            store.prepare(OfflineModuleId.ANDROID_CORE).use{it.commit(verify={})}
+            val old=base.listFiles()!!.single{it.name.startsWith(".v3-previous-")}
+            val target=File(old,"valid").toPath();val mode=Files.getPosixFilePermissions(target).toMutableSet()
+            if(!mode.remove(java.nio.file.attribute.PosixFilePermission.GROUP_WRITE))mode.add(java.nio.file.attribute.PosixFilePermission.GROUP_WRITE)
+            Files.setPosixFilePermissions(target,mode)
+            assertThrows(IllegalArgumentException::class.java){store.rollback(OfflineModuleId.ANDROID_CORE)}
+            assertEquals("old",File(active,"valid").readText())
+        }finally{base.deleteRecursively()}
+    }
+
+    @Test fun generationRecordCannotCreateDirectoriesThroughForeignSymlink() {
+        val base=Files.createTempDirectory("generation-foreign").toFile()
+        try {
+            val active=File(base,"rootfs").apply{mkdir()};val external=File(base,"user-project").apply{mkdir()}
+            Files.createSymbolicLink(File(active,"opt").toPath(),external.toPath())
+            val store=RuntimeGenerationStore(active)
+            assertThrows(IllegalArgumentException::class.java){store.prepare(OfflineModuleId.ANDROID_CORE).use{it.commit(verify={})}}
+            assertTrue(external.listFiles()!!.isEmpty());assertTrue(active.isDirectory)
+        }finally{base.deleteRecursively()}
+    }
+
 }

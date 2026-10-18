@@ -25,7 +25,9 @@ internal object ModuleInstallOperations {
         journal=ModuleOperationJournal(java.io.File(context.noBackupFilesDir,"offline-module-v3/operation.json"))
         updates.value=journal!!.restore()
     }
-    private fun persist(){runCatching{journal?.save(updates.value)}}
+    val journalError=kotlinx.coroutines.flow.MutableStateFlow("")
+    fun history():List<String> = journal?.history().orEmpty()
+    private fun persist(){try{journal?.save(updates.value);journalError.value=""}catch(e:Exception){journalError.value="İşlem günlüğü yazılamadı; güvenli devam garantisi yok. Depolamayı kontrol edin.";throw e}}
     @Volatile private var pauseRequested=false
     @Synchronized fun start(context:android.content.Context, selected:OfflineModuleId, consent:Boolean) {
         if(busy.value)return
@@ -34,7 +36,7 @@ internal object ModuleInstallOperations {
         try {ModuleDownloadService.start(context.applicationContext)}catch(e:RuntimeException) {
             busy.value=false
             updates.value=updates.value+(selected to ModuleProgress(selected,"start-denied",ModulePhase.ERROR,detail="Android arka plan hizmetini başlatmadı; uygulama önplandayken yeniden deneyin."))
-            persist();return
+            runCatching{persist()};return
         }
         job=scope.launch {
             try { OfflineBuildPackManager.installModules(context.applicationContext,setOf(selected),consent){event->
@@ -46,7 +48,7 @@ internal object ModuleInstallOperations {
                 // Preserve the manager's connection-wait/error state for this operation.
                 if(updates.value[selected]?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
                 updates.value=updates.value+(selected to ModuleProgress(selected,"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
-            } finally {persist();busy.value=false}
+            } finally {try{runCatching{persist()}}finally{busy.value=false}}
         }
     }
     @Synchronized fun cancel(){pauseRequested=false;job?.cancel()}
@@ -56,9 +58,11 @@ internal object ModuleInstallOperations {
 @Composable internal fun OfflineBuildPackScreen(onBack:()->Unit,firstRun:Boolean=false,onFirstRunComplete:((Boolean)->Unit)?=null,project:ProjectDraft?=null) {
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
+    val journalError by ModuleInstallOperations.journalError.collectAsState()
     val events by ModuleInstallOperations.updates.collectAsState()
     val busy by ModuleInstallOperations.busy.collectAsState()
     var ready by remember { mutableStateOf<Map<OfflineModuleId,Boolean>>(emptyMap()) }
+    var history by remember{mutableStateOf<List<String>>(emptyList())}
     var chosen by remember { mutableStateOf<OfflineModuleId?>(null) }
     var sdkConsent by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf("") }
@@ -66,7 +70,8 @@ internal object ModuleInstallOperations {
     val plan=remember(project){project?.let{OfflineModules.forProject(it)}}
     val readinessChanges=events.mapValues{it.value.phase==ModulePhase.READY}
     LaunchedEffect(Unit){withContext(Dispatchers.IO){ModuleInstallOperations.restore(context)}}
-    LaunchedEffect(readinessChanges,busy){ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.moduleReady(context,it.id)}}
+    LaunchedEffect(readinessChanges,busy){history=withContext(Dispatchers.IO){ModuleInstallOperations.history()}
+ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.moduleReady(context,it.id)}}
         rollbackAllowed=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.canRollback(context,it.id)}}}
     fun begin(id:OfflineModuleId) {
         ModuleInstallOperations.start(context,id,sdkConsent)
@@ -113,7 +118,7 @@ internal object ModuleInstallOperations {
                             if(pct!=null) {LinearProgressIndicator(progress={pct/100f},modifier=Modifier.fillMaxWidth());Text("%$pct • ${state.bytesDownloaded/1024/1024} / ${state.bytesTotal!!/1024/1024} MiB")} else {LinearProgressIndicator(modifier=Modifier.fillMaxWidth());Text("${state.bytesDownloaded/1024/1024} MiB • toplam boyut bilinmiyor")}
                             Text("Hız: "+(state.speedBytesPerSecond?.let{"%.1f MiB/sn".format(it/1024/1024)}?:"Hesaplanıyor..."))
                             Text("Ortalama: "+(state.averageSpeedBytesPerSecond?.let{"%.1f MiB/sn".format(it/1024/1024)}?:"Hesaplanıyor..."))
-                            Text("Bağlantı: veri aktarılıyor • hız hareketli ortalamadır")
+                            Text(if(state.speedBytesPerSecond!=null)"Bağlantı: veri aktarılıyor • hız hareketli ortalamadır" else "Yeni bayt bekleniyor; bağlantı durumu henüz doğrulanmadı")
                             Text("Kalan: "+(state.estimatedRemainingMs?.let{"${it/1000} sn"}?:"Hesaplanıyor...")+" • Geçen: ${state.elapsedMs/1000} sn")
                         } else if(busy && state.phase !in setOf(ModulePhase.READY,ModulePhase.ERROR,ModulePhase.CANCELED))LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
                     }
@@ -133,9 +138,12 @@ internal object ModuleInstallOperations {
                     if(module.id!=OfflineModuleId.WINDOWS_PORTABLE)Text("Genel dosya silme kapalı. Son doğrulanmış izole sürüm, bağımlılık kullanımı yoksa geri alınabilir; daha eski modüller önce bağımlılık sırasıyla çözülmelidir.",style=MaterialTheme.typography.bodySmall)
                 }}
             }
+            if(project!=null && !FastHtmlApkPolicy.isCandidate(project))item { ProjectDependencyPreparationCard(project) }
             if(ready[OfflineModuleId.WINDOWS_PORTABLE]==true)item { WindowsModuleSmokeCard() }
             item { Text("Toplam işlem: "+if(busy)"devam ediyor; kurulum iş miktarı ölçülemediği için toplam yüzde yok" else "bekliyor / son modül durumlarını inceleyin") }
             item { Text("Kullanıcının başlattığı kurulum Android veri aktarımı servisiyle izlenir. Android zaman sınırı veya süreç ölümü işlemi durdurabilir. Yeniden açınca kayıt geri yüklenir; devam için onay gerekir, dosyalar yeniden doğrulanır.") }
+            if(journalError.isNotBlank())item{Text(journalError)}
+            if(history.isNotEmpty())item{Column {Text("Son işlem kayıtları (hazır olma kanıtı değildir)");history.takeLast(8).forEach{Text(it)}}}
             if(detail.isNotBlank())item{Text(detail)}
             if(firstRun)item{Button(onClick={onFirstRunComplete?.invoke(true)}){Text("Araç indirmeden devam et")}}
         }

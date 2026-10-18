@@ -41,6 +41,8 @@ object DeviceBuildEngine {
         val buildNo: Long,
         val preflight: CopyOnWriteArrayList<String> = CopyOnWriteArrayList(),
         @Volatile var offline: Boolean = false,
+        @Volatile var executionFinished:Boolean=false,
+        @Volatile var transferFile:File?=null,
         @Volatile var apk: File? = null,
         @Volatile var aab: File? = null,
         @Volatile var exe: File? = null,
@@ -62,14 +64,20 @@ object DeviceBuildEngine {
     internal fun start(
         context: Context,
         draft: ProjectDraft,
-        projectZip: File?
+        projectZip: File?,
+        preparationPermit:BuildModuleUsage.PreparationPermit?=null,
+        preparationRoot:File?=null
     ): DeviceBuildStart {
 
         /*
          * OFFLINE_BUILD_PREFLIGHT_GATE_V1
          */
-        if(!FastHtmlApkPolicy.isCandidate(draft))OfflineBuildPackManager.recoverPending(context)
-        val moduleLease=BuildModuleUsage.buildLease()
+        if(preparationRoot!=null){
+            require(preparationPermit!=null && preparationRoot.isDirectory && preparationRoot.absoluteFile==preparationRoot.canonicalFile)
+            require(preparationRoot.name.matches(Regex("\\.v3-stage-[0-9a-f-]{36}")) && preparationRoot.parentFile.canonicalFile==OfflineBuildPackManager.runtimeRootfs(context)?.parentFile?.canonicalFile)
+        }
+        if(preparationRoot==null && !FastHtmlApkPolicy.isCandidate(draft))OfflineBuildPackManager.recoverPending(context)
+        val moduleLease=BuildModuleUsage.buildLease(preparationPermit)
         try {
         OfflineBuildPackManager
             .requireReadyForBuild(
@@ -88,13 +96,18 @@ object DeviceBuildEngine {
                 context = context.applicationContext,
                 draft = draft.copy(),
                 projectZip = projectZip,
-                state = state
-            )} finally {moduleLease.close()}
+                state = state,
+                runtimeOverride=preparationRoot
+            )} finally {moduleLease.close();state.executionFinished=true}
         }
 
         return DeviceBuildStart(id, buildNo)
         } catch(e:Throwable){moduleLease.close();throw e}
     }
+
+    internal fun transferFile(id:String):File?=jobs[id]?.transferFile
+
+    internal fun isExecuting(id:String):Boolean=jobs[id]?.executionFinished==false
 
     internal fun snapshot(id: String): DeviceBuildSnapshot? =
         jobs[id]?.let { state ->
@@ -181,7 +194,8 @@ object DeviceBuildEngine {
         context: Context,
         draft: ProjectDraft,
         projectZip: File?,
-        state: JobState
+        state: JobState,
+        runtimeOverride:File?=null
     ) {
         val workspace = File(context.cacheDir, "device-build/${state.id}")
 
@@ -426,7 +440,7 @@ object DeviceBuildEngine {
             advanceProgress(state, 8, "Kaynak hazır")
             advanceProgress(state, 10, "Runtime hazırlanıyor")
 
-            val rootfs =
+            val rootfs = runtimeOverride ?:
                 runBlocking {
                     DeviceBuildRuntimeV3
                         .ensureReady(
@@ -438,6 +452,7 @@ object DeviceBuildEngine {
                         }
                 }
 
+            DownloadInstrumentation.install(context,rootfs)
             advanceProgress(state, 12, "Araçlar hazırlanıyor")
             val shell =
                 LinuxShellEngine(
@@ -2037,7 +2052,7 @@ object DeviceBuildEngine {
             }
             append("export ANDROID_SDK_ROOT=${sh(androidSdkRoot)}; ")
             append("export ANDROID_HOME=${sh(androidSdkRoot)}; ")
-            append("export GRADLE_USER_HOME=/root/.gradle-appforge; ")
+            append("export GRADLE_USER_HOME=/root/.gradle-appforge; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; ")
 
             if (nodeRequired) {
                 append(
@@ -2724,11 +2739,12 @@ object DeviceBuildEngine {
         checkCancelled(state)
         val sessionId = "device-${state.id}-$suffix"
         state.shellSessionId = sessionId
+        state.transferFile=File(workspace,"module-download.json").also{it.delete()}
         val result = shell.execute(
             sessionId = sessionId,
             rootfs = rootfs,
             workspace = workspace,
-            command = command,
+            command = "export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; " + command,
             confirmed = true,
             timeoutMs = timeoutMs
         )

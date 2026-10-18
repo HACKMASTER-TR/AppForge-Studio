@@ -8,6 +8,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.*
+import com.appforge.studio.build.ProjectDependencyPreparation
 
 /** User-started data transfer only. No boot/background auto-start or OS survival guarantee. */
 class ModuleDownloadService:Service() {
@@ -18,17 +19,17 @@ class ModuleDownloadService:Service() {
         manager.createNotificationChannel(NotificationChannel(CHANNEL,"Derleme paketi indirmeleri",NotificationManager.IMPORTANCE_LOW))
         fun notification():Notification {
             val events=ModuleInstallOperations.updates.value.values
-            val e=events.lastOrNull{it.phase !in setOf(com.appforge.studio.build.ModulePhase.READY,com.appforge.studio.build.ModulePhase.ERROR)}
+            val e=if(ProjectDependencyPreparation.busy.value)ProjectDependencyPreparation.transfer.value else events.lastOrNull{it.phase !in setOf(com.appforge.studio.build.ModulePhase.READY,com.appforge.studio.build.ModulePhase.ERROR)}
             val open=PendingIntent.getActivity(this,0,Intent(this,MainActivity::class.java),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             return NotificationCompat.Builder(this,CHANNEL).setSmallIcon(android.R.drawable.stat_sys_download)
-                .setContentTitle("AppForge • modüler kurulum").setContentText(e?.detail?.take(160)?:"Kurulum hazırlanıyor")
+                .setContentTitle("AppForge • modüler kurulum").setContentText(e?.detail?.take(160)?:if(ProjectDependencyPreparation.busy.value)ProjectDependencyPreparation.status.value.take(160) else "Kurulum hazırlanıyor")
                 .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true)
-                .setProgress(100,e?.percent?:0,e?.percent==null).build()
+                .setProgress(100,e?.percent?:0,e?.phase!=com.appforge.studio.build.ModulePhase.DOWNLOADING || e?.percent==null).build()
         }
         try { ServiceCompat.startForeground(this,ID,notification(),ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC) }
-        catch(e:RuntimeException){ModuleInstallOperations.cancel();stopSelf();return START_NOT_STICKY}
+        catch(e:RuntimeException){ModuleInstallOperations.cancel();ProjectDependencyPreparation.cancel();stopSelf();return START_NOT_STICKY}
         scope.launch {
-            while(ModuleInstallOperations.busy.value) {
+            while(ModuleInstallOperations.busy.value || ProjectDependencyPreparation.busy.value) {
                 // Notification permission may be denied; the foreground task and in-app state remain valid.
                 runCatching{manager.notify(ID,notification())}
                 delay(1000)
@@ -38,9 +39,9 @@ class ModuleDownloadService:Service() {
         return START_NOT_STICKY
     }
     override fun onTimeout(startId:Int,fgsType:Int) {
-        ModuleInstallOperations.pause();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf(startId)
+        ModuleInstallOperations.pause();ProjectDependencyPreparation.cancel();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf(startId)
     }
-    override fun onDestroy(){if(ModuleInstallOperations.busy.value)ModuleInstallOperations.pause();scope.cancel();super.onDestroy()}
+    override fun onDestroy(){if(ModuleInstallOperations.busy.value)ModuleInstallOperations.pause();if(ProjectDependencyPreparation.busy.value)ProjectDependencyPreparation.cancel();scope.cancel();super.onDestroy()}
     companion object {
         private const val CHANNEL="appforge-module-download-v3"
         private const val ID=7314
