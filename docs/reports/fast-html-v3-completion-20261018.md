@@ -88,3 +88,38 @@ Paket `com.appforge.studio`, sürüm5.0.34/code534, min26/target37; APK v2 imzas
 Sertifika SHA-256: `6908acd060d131ad36178742b8a1f56397b9d8105079c8e762a0f791cf5b61c7`.
 T21 CI referansı: `f04693e62080489f41554ff357bab0789bf87b864aa8c5a9927279667de9d91b`.
 **İmzalar farklı; telefondaki T21 üzerine yükseltme için uygun değildir.** Mevcut kullanıcı verisini silerek kurulum önerilmez. Fiziksel telefon kimliği doğrulanmadı ve kurulum yapılmadı.
+
+## Commit ve dosya envanteri
+
+Uygulama commit’i: `bdecdf990b5e169abdbbef68188bef4c566b544e`. Parent: `ad4ad5725fce7c90e158b986fd912d8ccb0868b7`. Takip eden rapor commit’i yalnız teslim kanıtını tamamlar.
+
+```text
+M	android-app/app/src/main/AndroidManifest.xml
+M	android-app/app/src/main/assets/device-build/install-node-module.sh
+M	android-app/app/src/main/assets/device-build/install-toolchain.sh
+M	android-app/app/src/main/assets/device-build/install-windows-native-toolchain.sh
+A	android-app/app/src/main/assets/device-build/module-download-telemetry.sh
+M	android-app/app/src/main/assets/device-build/prepare-offline-pack.sh
+M	android-app/app/src/main/assets/second_brain_snapshot.json
+A	android-app/app/src/main/java/com/appforge/studio/ModuleDownloadService.kt
+M	android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt
+A	android-app/app/src/main/java/com/appforge/studio/build/BuildModuleUsage.kt
+M	android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt
+M	android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt
+A	android-app/app/src/main/java/com/appforge/studio/build/ExternalDownloadTelemetry.kt
+M	android-app/app/src/main/java/com/appforge/studio/build/FeatureSupportMatrix.kt
+A	android-app/app/src/main/java/com/appforge/studio/build/ModuleOperationJournal.kt
+M	android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt
+A	android-app/app/src/main/java/com/appforge/studio/build/OwnedModuleFiles.kt
+M	android-app/app/src/main/java/com/appforge/studio/build/VerifiedModuleDownload.kt
+M	android-app/app/src/test/java/com/appforge/studio/build/ModularOfflineV3Test.kt
+A	android-app/app/src/test/java/com/appforge/studio/build/ModuleLifecycleV3Test.kt
+M	android-app/app/src/test/java/com/appforge/studio/build/VerifiedModuleDownloadTest.kt
+A	docs/reports/fast-html-v3-completion-20261018.md
+M	docs/wiki/03_Architecture/Modular_Offline_V3.md
+A	quality/tests/module_download_telemetry_v3_runtime.test.js
+```
+
+Tam patch başlangıcı `1e922b835b39f9f0d948e780ff4020f594124afd`; bu başlangıçtan son HEAD’e tüm commit’ler teslim serisine dahil edilir. Son HEAD, patch SHA-256, her parça hash’i, tüm kümülatif dosya envanteri ve temiz uygulama/tree eşleşmesi `/workspace/deliverables/AppForge-V3-completion-20261018/verification.json` dosyasındadır.
+
+Dosyalar çalışma alanında korunur. Ayrı artifact yükleme aracı bulunmadığından ve önceki `/mnt/data` yazımı izin hatası verdiğinden telefona indirilebilir ek sunulduğu garanti edilmez. GitHub’a push veya CI dispatch yapılmadı; entegrasyon yazma reddi farklı uçtan aşılmadı.
