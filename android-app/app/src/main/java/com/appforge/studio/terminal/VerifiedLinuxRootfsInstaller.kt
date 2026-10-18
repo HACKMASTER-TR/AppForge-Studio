@@ -71,6 +71,7 @@ internal class VerifiedLinuxRootfsInstaller(
             )
 
             layout.runtimeDirectory.mkdirs()
+            RootfsActivationTransaction(layout.rootfsDirectory,layout.restoreDirectory,layout.metadataFile).recover()
             layout.stagingDirectory.mkdirs()
             layout.restoreDirectory.mkdirs()
 
@@ -271,79 +272,10 @@ internal class VerifiedLinuxRootfsInstaller(
         stagedRootfs: File,
         manifest: LinuxRootfsManifest
     ) {
-        val current =
-            layout.rootfsDirectory
-
-        val backup =
-            File(
-                layout.restoreDirectory,
-                "rootfs-before-${System.currentTimeMillis()}"
-            )
-
-        var backupCreated = false
-
-        try {
-            if (current.exists()) {
-                check(
-                    current.renameTo(backup)
-                ) {
-                    "Mevcut rootfs güvenli geri yükleme alanına taşınamadı."
-                }
-
-                backupCreated = true
-            }
-
-            check(
-                stagedRootfs.renameTo(current)
-            ) {
-                "Yeni rootfs etkinleştirilemedi."
-            }
-
-            LinuxRootfsMetadataCodec.write(
-                layout.metadataFile,
-                LinuxRootfsMetadata(
-                    distribution = manifest.distribution,
-                    architecture = manifest.architecture,
-                    release = manifest.release,
-                    archiveSha256 = manifest.archiveSha256
-                )
-            )
-
-            pruneRestorePoints(
-                layout.restoreDirectory
-            )
-        } catch (error: Throwable) {
-            if (
-                !current.exists() &&
-                backupCreated &&
-                backup.exists()
-            ) {
-                backup.renameTo(current)
-            }
-
-            throw error
-        }
-    }
-
-    private fun pruneRestorePoints(
-        restoreDirectory: File
-    ) {
-        restoreDirectory
-            .listFiles()
-            .orEmpty()
-            .filter {
-                it.isDirectory &&
-                    it.name.startsWith(
-                        "rootfs-before-"
-                    )
-            }
-            .sortedByDescending {
-                it.lastModified()
-            }
-            .drop(MAX_RESTORE_POINTS)
-            .forEach {
-                it.deleteRecursively()
-            }
+        RootfsActivationTransaction(layout.rootfsDirectory,layout.restoreDirectory,layout.metadataFile).activate(stagedRootfs,writeMetadata={
+            LinuxRootfsMetadataCodec.write(layout.metadataFile,LinuxRootfsMetadata(
+                distribution=manifest.distribution,architecture=manifest.architecture,release=manifest.release,archiveSha256=manifest.archiveSha256))
+        })
     }
 
     companion object {

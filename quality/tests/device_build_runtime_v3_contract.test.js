@@ -72,17 +72,16 @@ test(
 );
 
 test(
-  "runtime revision mismatch rebuilds only build runtime",
+  "runtime revision mismatch stages replacement without erasing the active build runtime",
   () => {
     const runtime =
       read(
         "android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildRuntimeV3.kt"
       );
 
-    assert.match(
-      runtime,
-      /runtimeDirectory[\s\S]*deleteRecursively/
-    );
+    assert.doesNotMatch(runtime, /deleteRecursively\(/);
+    const installer=read("android-app/app/src/main/java/com/appforge/studio/terminal/VerifiedLinuxRootfsInstaller.kt");
+    assert.match(installer,/RootfsActivationTransaction/);
 
     assert.match(
       runtime,

@@ -25,7 +25,7 @@ import java.security.MessageDigest
  *
  * - It does not reuse Terminal's Linux rootfs.
  * - User project source is mounted only through the build workspace.
- * - A runtime revision mismatch destroys only the dedicated build runtime.
+ * - A runtime revision mismatch retains the previous dedicated root during replacement.
  * - Terminal files and Terminal package state are never repaired/purged here.
  */
 internal object DeviceBuildRuntimeV3 {
@@ -40,6 +40,7 @@ internal object DeviceBuildRuntimeV3 {
         Mutex()
 
     fun platformError():String? {
+        if(com.appforge.studio.terminal.ProrootPinnedRuntime.supportedAbi !in Build.SUPPORTED_ABIS)return "Bu APK içindeki Linux yürütücüsü yalnız ${com.appforge.studio.terminal.ProrootPinnedRuntime.supportedAbi} destekliyor; eksik paket değil, cihaz ABI uyumsuzluğu."
         val architecture=LinuxArchitecture.fromAndroidAbis(Build.SUPPORTED_ABIS.toList())?:return "Bu cihaz mimarisi Linux derleme ortamını desteklemiyor; paket eksikliği değil."
         return if(LinuxRuntimeManifestRegistry.find(LinuxDistribution.UBUNTU,architecture)==null)"Bu mimari için doğrulanmış Linux rootfs yok." else null
     }
@@ -47,7 +48,7 @@ internal object DeviceBuildRuntimeV3 {
         val architecture=LinuxArchitecture.fromAndroidAbis(Build.SUPPORTED_ABIS.toList())?:return@runCatching false
         val manifest=LinuxRuntimeManifestRegistry.find(LinuxDistribution.UBUNTU,architecture)?:return@runCatching false
         val layout=LinuxRuntimeLayout(runtimeBaseDirectory(context),LinuxDistribution.UBUNTU,architecture)
-        PackagedLinuxEngine(context).inspect().status==PackagedLinuxEngineStatus.READY && isTrustedRuntime(layout,manifest)
+        PackagedLinuxEngine(context).inspect().status==PackagedLinuxEngineStatus.READY && isTrustedRuntime(layout,manifest) && AndroidRuntimeTrust.ready(layout.rootfsDirectory)
     }.getOrDefault(false)
 
     suspend fun ensureReady(
@@ -59,6 +60,8 @@ internal object DeviceBuildRuntimeV3 {
 
             val appContext =
                 context.applicationContext
+
+            RuntimeArchiveRemoval(runtimeBaseDirectory(appContext)).recover()
 
             val architecture =
                 LinuxArchitecture
@@ -107,6 +110,8 @@ internal object DeviceBuildRuntimeV3 {
                 )
 
             RuntimeGenerationStore(layout.rootfsDirectory).recover()
+            com.appforge.studio.terminal.RootfsActivationTransaction(layout.rootfsDirectory,layout.restoreDirectory,layout.metadataFile).recover()
+            var freshVendorRoot=false
             if (
                 !isTrustedRuntime(
                     layout,
@@ -117,17 +122,11 @@ internal object DeviceBuildRuntimeV3 {
                     "🧼 Clean Device Build Runtime V3 hazırlanıyor."
                 )
 
-                /*
-                 * This is intentionally destructive only inside:
-                 *
-                 * noBackupFilesDir/device-build/runtime-v3
-                 *
-                 * Terminal Linux is outside this tree.
-                 */
-                layout
-                    .runtimeDirectory
-                    .deleteRecursively()
-
+                val installedReceipts=File(layout.rootfsDirectory,"opt/appforge-device/modules-v3")
+                require(!layout.rootfsDirectory.exists() || !installedReceipts.isDirectory || installedReceipts.listFiles().orEmpty().none{it.extension=="json"}) {
+                    "Mevcut runtime doğrulanamadı ve kurulu modüller içeriyor. Dosyalar korunuyor; önce son doğrulanmış snapshot'ı geri alın veya bağımlılık sırasıyla güvenli kaldırmayı kullanın. Otomatik sıfırlama yapılmadı."
+                }
+                // Installer stages and journals root+metadata activation; never erase the active runtime first.
                 VerifiedLinuxRootfsInstaller(
                     appContext
                 ).install(
@@ -152,22 +151,20 @@ internal object DeviceBuildRuntimeV3 {
                     )
                 }
 
-                marker(
-                    layout
-                ).apply {
-                    parentFile?.mkdirs()
-
-                    writeText(
-                        "$REVISION\n",
-                        Charsets.UTF_8
-                    )
-                }
+                freshVendorRoot=true
+                val runtimeMarker=marker(layout)
+                require(!Files.isSymbolicLink(runtimeMarker.toPath()))
+                val temporaryMarker=File(runtimeMarker.path+".part-${java.util.UUID.randomUUID()}")
+                java.io.FileOutputStream(temporaryMarker).use{it.write("$REVISION\n".toByteArray());it.fd.sync()}
+                Files.move(temporaryMarker.toPath(),runtimeMarker.toPath(),java.nio.file.StandardCopyOption.ATOMIC_MOVE,java.nio.file.StandardCopyOption.REPLACE_EXISTING)
             } else {
                 onProgress(
                     "✅ Clean Device Build Runtime V3 hazır."
                 )
             }
 
+            AndroidRuntimeTrust.install(layout.rootfsDirectory)
+            if(freshVendorRoot)BaseRuntimeOwnership.captureFresh(layout.rootfsDirectory)
             configureResolver(
                 appContext,
                 layout.rootfsDirectory
@@ -177,7 +174,7 @@ internal object DeviceBuildRuntimeV3 {
                 isTrustedRuntime(
                     layout,
                     manifest
-                )
+                ) && AndroidRuntimeTrust.ready(layout.rootfsDirectory)
             ) {
                 "Device Build Runtime V3 bütünlük kontrolünden geçmedi."
             }
