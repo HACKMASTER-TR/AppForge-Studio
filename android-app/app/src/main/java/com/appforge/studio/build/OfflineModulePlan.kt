@@ -16,6 +16,7 @@ internal object OfflineModules {
         OfflineModuleSpec(OfflineModuleId.WINDOWS_PORTABLE,"Windows Portable Host","windows-host-v1-c7e4b2a",emptySet(),"GitHub doğrulanmış host",375039759L,375039759L),
         OfflineModuleSpec(OfflineModuleId.WINDOWS_NATIVE,"Windows Native C/C++ • EXPERIMENTAL","windows-native-v1 / Ubuntu çözümlemesi",setOf(OfflineModuleId.LINUX_RUNTIME),"Ubuntu MinGW-w64 POSIX / CMake / Ninja; EXPERIMENTAL")
     )
+    fun refreshExistingInstallation(id:OfflineModuleId,hasReceipt:Boolean)=id==OfflineModuleId.ANDROID_CORE || hasReceipt
     fun spec(id:OfflineModuleId)=all.single{it.id==id}
     fun resolve(selected:Set<OfflineModuleId>):List<OfflineModuleId> {
         val result=linkedSetOf<OfflineModuleId>();val active=HashSet<OfflineModuleId>()

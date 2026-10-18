@@ -42,3 +42,22 @@ test('reviewed Google archives have fixed SHA256 and every legacy call is allowl
  for(const p of pins){assert.match(p.sha256,/^[a-f0-9]{64}$/);assert.match(p.url,/^https:\/\//);assert(p.bytes===null||p.bytes>0);assert(script.includes(p.sha256),`Missing pinned installer digest for ${p.file}`);assert(p.provenance.length>20);}
  assert(script.includes('download_sha256 "$1" "$compat_sha256" "$compat_out"'));
 });
+
+test('reviewed API 37.0 metadata describes the pinned payload without granting a license or permitting SDK fallback',()=>{
+ const metadata=fs.readFileSync(new URL('platform-37.0-package.xml',assets),'utf8');
+ const script=fs.readFileSync(new URL('install-toolchain.sh',assets),'utf8');
+ const prewarm=fs.readFileSync(new URL('prepare-offline-pack.sh',assets),'utf8');
+ const engine=fs.readFileSync(new URL('../../android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt',import.meta.url),'utf8');
+ assert.equal(createHash('sha256').update(metadata).digest('hex'),'7f8001358f1b6432ea6186dd0fe6ba00bb67ea8daf24c708d05a02f5570091d7');
+ const parsed=spawnSync('python3',['-c',`import sys,json,xml.etree.ElementTree as E
+r=E.fromstring(sys.stdin.read());p=next(e for e in r if e.tag.endswith('localPackage'))
+assert p.attrib['path']=='platforms;android-37.0'
+assert next(e for e in p.iter() if e.tag.endswith('api-level')).text=='37.0'
+assert next(e for e in p.iter() if e.tag.endswith('revision'))[0].text=='2'
+assert any(e.tag.endswith('license') and e.attrib.get('id')=='android-sdk-license' and 'Software Development Kit' in (e.text or '') for e in r)
+`],{input:metadata,encoding:'utf8'});assert.equal(parsed.status,0,parsed.stderr);
+ assert(script.includes('test -s "$SDK/licenses/android-sdk-license"'));
+ assert(script.includes('cp /workspace/runtime/platform-37.0-package.xml "$SDK/platforms/android-37.0/package.xml"'));
+ assert(!script.includes('AndroidVersion.ApiLevel=37\nEOF'));
+ assert(prewarm.includes('android.builder.sdkDownload=false'));assert(engine.includes('android.builder.sdkDownload=false'));
+});

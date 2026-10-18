@@ -38,6 +38,7 @@ write_gradle_properties() {
   cat > "$target/gradle.properties" <<'EOF'
 android.aapt2FromMavenOverride=/opt/appforge-device/android-sdk/build-tools/36.0.0/aapt2
 org.gradle.workers.max=2
+android.builder.sdkDownload=false
 org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
 EOF
 

@@ -297,7 +297,7 @@ internal object OfflineBuildPackManager {
                         else -> error("Bilinmeyen modül")
                     }
                     for(command in commands)execute(shell,staged,workspace,id.name.lowercase(),
-                        "APPFORGE_MODULE_REFRESH=1 APPFORGE_MODULE_ID=${id.name} APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 /bin/sh /workspace/runtime/$command",id,operation,progress)
+                        "APPFORGE_MODULE_REFRESH=${if(OfflineModules.refreshExistingInstallation(id,installedVersion(app,id)!=null))1 else 0} APPFORGE_MODULE_ID=${id.name} APPFORGE_ANDROID_CORE_PREPARED=${if(id in setOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE))1 else 0} APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 /bin/sh /workspace/runtime/$command",id,operation,progress)
                     phase(id,ModulePhase.OFFLINE_TEST,"Gerçek dosya/sürüm ve çevrimdışı araç kontrolü yapılıyor.")
                     val probe=when(id) {
                         OfflineModuleId.ANDROID_CORE -> "APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/install-toolchain.sh webview-static && APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/prepare-offline-pack.sh android"
@@ -344,7 +344,7 @@ internal object OfflineBuildPackManager {
         val names=when(id) {
             OfflineModuleId.NODE_WEB->listOf("install-node-module.sh")
             OfflineModuleId.WINDOWS_NATIVE->listOf("install-windows-native-toolchain.sh")
-            else->listOf("install-toolchain.sh","prepare-offline-pack.sh")
+            else->listOf("install-toolchain.sh","prepare-offline-pack.sh","platform-37.0-package.xml")
         }+listOf("apt-download-telemetry.sh","module-download-telemetry.sh","native-download-broker.sh","jvm-telemetry/network-byte-agent.jar","verified-toolchain-sources-v4.json")
         val hash=java.security.MessageDigest.getInstance("SHA-256")
         for(name in names.sorted()){hash.update(name.toByteArray());context.assets.open("device-build/$name").use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;hash.update(b,0,n)}}}

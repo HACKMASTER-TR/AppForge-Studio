@@ -65,6 +65,13 @@ class ModularOfflineV3Test {
         assertFalse(WizardReadinessEvaluator.evaluate(html().copy(buildOutput="invalid")).ready)
         assertNotNull(OfflineModules.forProject(html().copy(buildOutput="invalid")).error)
     }
+    @Test fun newChildModulesReuseExistingToolsAndOnlyRepairsRefresh() {
+        for(id in listOf(OfflineModuleId.NODE_WEB,OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE,OfflineModuleId.WINDOWS_NATIVE)) {
+            assertFalse(OfflineModules.refreshExistingInstallation(id,false))
+            assertTrue(OfflineModules.refreshExistingInstallation(id,true))
+        }
+        assertTrue(OfflineModules.refreshExistingInstallation(OfflineModuleId.ANDROID_CORE,false))
+    }
     @Test fun byteProgressIsHonestAndDownloadCompletionIsNotReady() {
         val meter=DownloadMeasurement(OfflineModuleId.NODE_WEB,"test",0)
         val first=meter.sample(0,1000,0);assertEquals(0,first.percent);assertNull(first.estimatedRemainingMs)

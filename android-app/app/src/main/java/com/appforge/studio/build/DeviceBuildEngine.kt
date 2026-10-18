@@ -2577,6 +2577,7 @@ object DeviceBuildEngine {
         val existing = if (gradleProperties.isFile) gradleProperties.readText() else ""
         val filtered = existing.lineSequence().filterNot {
             it.startsWith("android.aapt2FromMavenOverride=") ||
+                it.trimStart().startsWith("android.builder.sdkDownload=") ||
                 it.startsWith("org.gradle.workers.max=") ||
                 it.startsWith("org.gradle.jvmargs=") ||
                 it.startsWith("org.gradle.caching=")
@@ -2584,6 +2585,7 @@ object DeviceBuildEngine {
         gradleProperties.writeText(
             filtered.trimEnd() + "\n" +
                 "android.aapt2FromMavenOverride=$sdkRoot/build-tools/36.0.0/aapt2\n" +
+                "android.builder.sdkDownload=false\n" +
                 "org.gradle.workers.max=2\n" +
                 "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\n" +
                 if (enableBuildCache) {

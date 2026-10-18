@@ -15,6 +15,7 @@ OFFLINE="${APPFORGE_DEVICE_OFFLINE:-0}"
 SDK_LICENSE_ACCEPTED="${APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED:-0}"
 SDK_LICENSE_MARKER="$ROOT/.android-sdk-license-20260428"
 HOST_ARCH="$(uname -m)"
+REUSE_ANDROID_CORE="${APPFORGE_ANDROID_CORE_PREPARED:-0}"
 EXPO_ARM64_CMAKE_MARKER="$ROOT/.expo-arm64-cmake-host-v2"
 EXPO_ARM64_NDK_VERSION="27.1.12297006"
 EXPO_ARM64_NDK_RELEASE="r27b"
@@ -104,6 +105,8 @@ if [ -f "$READY" ] \
    && [ -f "$SDK_LICENSE_MARKER" ] \
    && [ -x "$SDK/build-tools/36.0.0/aapt2" ] \
    && [ -f "$SDK/platforms/android-37.0/android.jar" ] \
+   && [ -s "$SDK/platforms/android-37.0/package.xml" ] \
+   && [ -s "$SDK/licenses/android-sdk-license" ] \
    && [ -x "$ROOT/gradle-9.3.1/bin/gradle" ] \
    && [ -x "$JAVA_HOME/bin/java" ] \
    && [ -x "$JAVA_HOME/bin/javac" ] \
@@ -257,11 +260,13 @@ repair_stale_node_packages() {
 repair_stale_node_packages
 
 apt-get update
+if [ "$REUSE_ANDROID_CORE" != 1 ]; then
 apt-get install -y --no-install-recommends \
   ca-certificates curl unzip zip xz-utils tar \
   git file \
   libstdc++6 zlib1g libpng16-16 \
   fontconfig libfreetype6
+fi
 
 if [ "$ENGINE" = "expo" ]; then
   case "$HOST_ARCH" in
@@ -1163,6 +1168,16 @@ EOF
   echo "APPFORGE_EXPO_ANDROID_36_PLATFORM=PASS"
 fi
 
+if [ "$REUSE_ANDROID_CORE" = 1 ]; then
+  case "$ENGINE" in python-android|expo) ;; *) echo 'Core reuse is only valid for child modules'; exit 55;;esac
+  test -x "$JAVA_HOME/bin/java" && test -x "$JAVA_HOME/bin/javac"
+  test -x "$ROOT/gradle-9.3.1/bin/gradle" && test -x "$ROOT/gradle-8.14.3/bin/gradle"
+  test -s "$SDK/platforms/android-37.0/android.jar"
+  test -x "$SDK/build-tools/36.0.0/aapt2"
+  test -s "$SDK/platforms/android-37.0/package.xml"
+  test -f "$SDK_LICENSE_MARKER"
+  echo 'APPFORGE_ANDROID_CORE_REUSED_WITHOUT_REINSTALL'
+else
 PLATFORM_ZIP="$ROOT/cache/platform-37.0_r02.zip"
 download_sha1 \
   "https://dl.google.com/android/repository/platform-37.0_r02.zip" \
@@ -1178,13 +1193,10 @@ PLATFORM_DIR="$(dirname "$PLATFORM_JAR")"
 cp -a "$PLATFORM_DIR"/. "$SDK/platforms/android-37.0/"
 test -f "$SDK/platforms/android-37.0/android.jar"
 
-if [ ! -f "$SDK/platforms/android-37.0/source.properties" ]; then
-  cat > "$SDK/platforms/android-37.0/source.properties" <<'EOF'
-Pkg.Desc=Android SDK Platform 37
-Pkg.Revision=2
-AndroidVersion.ApiLevel=37
-EOF
-fi
+# A missing or different source-properties file is corrupt input, not a reason to invent an API.
+grep -qx 'AndroidVersion.ApiLevel=37.0' "$SDK/platforms/android-37.0/source.properties"
+grep -qx 'Pkg.Revision=2' "$SDK/platforms/android-37.0/source.properties"
+
 
 OFFICIAL_BT="$ROOT/cache/build-tools_r36_linux.zip"
 download_sha1 \
@@ -1280,6 +1292,8 @@ EOF
 
 ensure_jdk
 
+fi
+
 if [ "$ENGINE" = "expo" ]; then
   ensure_node_22
   ensure_expo_arm64_cmake_host
@@ -1304,10 +1318,19 @@ if [ -n "${PLATFORM_DIR:-}" ] &&
   cp -a     "$PLATFORM_DIR"/.     "$SDK/platforms/android-37.0/"
 fi
 
+# The pinned archive has no package.xml, and legacy SDK scanning cannot parse API 37.0.
+# Install reviewed declarative metadata matching that exact archive; this downloads no payload
+# and does not create a license acceptance marker.
+test -s "$SDK/licenses/android-sdk-license"
+test -s /workspace/runtime/platform-37.0-package.xml
+cp /workspace/runtime/platform-37.0-package.xml "$SDK/platforms/android-37.0/package.xml"
+
 test -f   "$SDK/platforms/android-37.0/android.jar"
 
-ensure_gradle "9.3.1"
-ensure_gradle "8.14.3"
+if [ "$REUSE_ANDROID_CORE" != 1 ]; then
+  ensure_gradle "9.3.1"
+  ensure_gradle "8.14.3"
+fi
 
 
 echo "APPFORGE_AAPT2_HOST_SMOKE_START"
