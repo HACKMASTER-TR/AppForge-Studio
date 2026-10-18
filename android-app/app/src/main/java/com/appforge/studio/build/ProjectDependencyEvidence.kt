@@ -20,7 +20,7 @@ internal object ProjectDependencyEvidence {
         val manifests=files.filter{it.name in setOf("package.json","package-lock.json","build.gradle","build.gradle.kts","settings.gradle","settings.gradle.kts","gradle.lockfile","verification-metadata.xml","requirements.txt","requirements.lock","pyproject.toml","pom.xml")}.sortedBy{it.relativeTo(root).path}
         val sourceHash=digest(files.sortedBy{it.relativeTo(root).path}.joinToString("\n"){it.relativeTo(root).path+":"+VerifiedModuleDownload.sha(it)})
         val settings=listOf(d.sourceBuildEngine,d.sourceTechnology,d.buildOutput,d.packageName,d.minSdk,d.targetSdk,d.normalHtmlEngine,FeatureSupportMatrix.selections(d).toSortedMap()).joinToString("|")
-        val fingerprint=digest(sourceHash+settings)
+        val fingerprint=digest("source-probe-v6|"+sourceHash+settings)
         val blockers=mutableListOf<String>();val dependencies=mutableListOf<String>()
         val engine=d.sourceBuildEngine.lowercase()
         if(engine in setOf("node-web","expo","react-native")) {
@@ -33,7 +33,11 @@ internal object ProjectDependencyEvidence {
                 if(packages==null)blockers.add("npm packages envanteri yok.") else for(key in packages.keys()) {
                     if(key.isEmpty())continue
                     val p=packages.getJSONObject(key)
-                    if(p.optBoolean("link",false))continue
+                    if(p.optBoolean("link",false)) {
+                        val target=File(root,p.optString("resolved"))
+                        if(!target.isDirectory || !target.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) || Files.isSymbolicLink(target.toPath()))blockers.add("npm workspace bağlantısı proje içinde doğrulanamadı: $key")
+                        continue
+                    }
                     val sri=p.optString("integrity")
                     val valid=sri.split(' ').any{token->val m=Regex("sha(256|384|512)-([A-Za-z0-9+/]+={0,2})").matchEntire(token);m!=null && runCatching{java.util.Base64.getDecoder().decode(m.groupValues[2]).size==m.groupValues[1].toInt()/8}.getOrDefault(false)}
                     if(!valid)blockers.add("npm paketi için SHA-256/384/512 integrity yok: $key")
@@ -49,9 +53,25 @@ internal object ProjectDependencyEvidence {
         }
         val nativeGradle=engine in setOf("android-gradle","android-ndk","universal-cross-platform")
         if(nativeGradle) {
-            if(manifests.none{it.name=="verification-metadata.xml"})blockers.add("Gradle/Maven için güvenilen gradle/verification-metadata.xml gerekir; checksum üretimi tek başına güven kanıtı değildir.")
-            if(manifests.none{it.name=="gradle.lockfile"})blockers.add("Gradle bağımlılık kilidi yok; dinamik sürüm çözümlemesi çevrimdışı hazır sayılmaz.")
+            val roots=if(engine=="universal-cross-platform")manifests.filter{it.name in setOf("settings.gradle","settings.gradle.kts")}.map{it.parentFile}.distinct() else listOf(root)
+            if(roots.isEmpty())blockers.add("Gradle settings kökü bulunamadı.")
+            for(project in roots) {
+                val verification=File(project,"gradle/verification-metadata.xml")
+                if(!verification.isFile)blockers.add("Gradle/Maven için gerçek proje kökünde güvenilen gradle/verification-metadata.xml gerekir.")
+                else if(!validVerification(verification))blockers.add("Gradle checksum metadata geçersiz, boş veya SHA-256 güven kayıtları eksik; dış XML kaynakları açılmaz.")
+                val locks=manifests.filter{it.name=="gradle.lockfile" && it.toPath().startsWith(project.toPath())}
+                if(locks.isEmpty())blockers.add("Gradle bağımlılık kilidi yok; dinamik sürüm çözümlemesi çevrimdışı hazır sayılmaz.")
+                for(lock in locks) {
+                    val lines=lock.readLines().map{it.trim()}.filter{it.isNotEmpty() && !it.startsWith("#")}
+                    if(lines.isEmpty() || lines.any{row->
+                        val coordinate=row.substringBefore('=');val pieces=coordinate.split(':')
+                        !row.startsWith("empty=") && (pieces.size!=3 || pieces.any{!it.matches(Regex("[A-Za-z0-9_.-]+"))} || pieces.last().endsWith("SNAPSHOT",true) || pieces.last().lowercase() in setOf("latest","release") || !row.contains('='))
+                    })blockers.add("Gradle lockfile boş/dinamik veya geçersiz sürüm içeriyor: ${lock.relativeTo(root).path}")
+                    dependencies.addAll(lines.filter{!it.startsWith("empty=")}.map{it.substringBefore('=')})
+                }
+            }
         }
+        if(engine=="python-android" && !File(root,"requirements.txt").isFile)blockers.add("Python projesinde requirements.txt gerekir; bağımlılık yoksa açıkça boş bırakın.")
         for(file in manifests.filter{it.name in setOf("requirements.txt","requirements.lock")}) {
             val rows=file.readText().replace(Regex("\\\\\r?\n")," ").lineSequence().map{it.trim()}.filter{it.isNotBlank() && !it.startsWith("#")}.toList()
             if(rows.any{!it.contains("==") || !Regex("--hash=sha256:[0-9a-fA-F]{64}").containsMatchIn(it)})blockers.add("Python bağımlılıkları tam sürüm ve SHA-256 --hash ile kilitlenmeli.")
@@ -59,6 +79,28 @@ internal object ProjectDependencyEvidence {
         }
         return ProjectDependencyPlan(fingerprint,engine,manifests.map{it.relativeTo(root).path},dependencies.sorted(),blockers.distinct())
     }
+    private fun validVerification(file:File):Boolean=runCatching {
+        require(file.length() in 1..8L*1024*1024)
+        val text=file.readText();require(!text.contains('\u0000') && !Regex("<!\\s*(DOCTYPE|ENTITY)",RegexOption.IGNORE_CASE).containsMatchIn(text))
+        val factory=javax.xml.parsers.DocumentBuilderFactory.newInstance()
+        factory.isNamespaceAware=true;factory.isValidating=false;factory.isExpandEntityReferences=false
+        runCatching{factory.setFeature("http://xml.org/sax/features/external-general-entities",false)}
+        runCatching{factory.setFeature("http://xml.org/sax/features/external-parameter-entities",false)}
+        val builder=factory.newDocumentBuilder()
+        builder.setEntityResolver{_,_->throw SecurityException("Dış XML kaynakları kapalı")}
+        builder.setErrorHandler(object:org.xml.sax.ErrorHandler {
+            override fun warning(e:org.xml.sax.SAXParseException){throw e}
+            override fun error(e:org.xml.sax.SAXParseException){throw e}
+            override fun fatalError(e:org.xml.sax.SAXParseException){throw e}
+        })
+        val doc=builder.parse(org.xml.sax.InputSource(java.io.StringReader(text)))
+        require(doc.documentElement.localName=="verification-metadata")
+        require(doc.getElementsByTagNameNS("*","trust").length==0){"Checksumsuz artifact trust kuralları desteklenmiyor"}
+        val verify=doc.getElementsByTagNameNS("*","verify-metadata")
+        require((0 until verify.length).all{verify.item(it).textContent.trim()=="true"})
+        val hashes=doc.getElementsByTagNameNS("*","sha256");require(hashes.length>0)
+        (0 until hashes.length).all{index->val node=hashes.item(index) as org.w3c.dom.Element;node.parentNode.localName=="artifact" && (node.parentNode as org.w3c.dom.Element).getAttribute("name").isNotBlank() && node.getAttribute("value").matches(Regex("[a-fA-F0-9]{64}"))}
+    }.getOrDefault(false)
     private fun sourceFiles(root:File):List<File> {
         val result=mutableListOf<File>();var bytes=0L
         root.walkTopDown().onEnter{dir->

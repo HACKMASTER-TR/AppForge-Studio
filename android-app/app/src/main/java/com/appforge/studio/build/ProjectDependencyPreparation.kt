@@ -54,8 +54,8 @@ internal object ProjectDependencyPreparation {
                 reviewedSource=File(context.cacheDir,"dependency-review/${java.util.UUID.randomUUID()}/source")
                 ProjectDependencyEvidence.copyReviewedSource(draft,reviewedSource!!)
                 require(ProjectDependencyEvidence.analyze(draft.copy(importedFolder=reviewedSource!!.path)).fingerprint==plan.fingerprint)
+                val activeRoot=DeviceBuildRuntimeV3.ensureReady(context)
                 val protected=OfflineBuildPackManager.protectedTools(context)
-                val activeRoot=OfflineBuildPackManager.runtimeRootfs(context)?:error("Runtime yok")
                 generation=RuntimeGenerationStore(activeRoot).prepareOwner("PROJECT_PREPARATION",canceled={if(!preparationJob.isActive)throw CancellationException("İptal edildi")})
                 status.value=if(offlineVerification)"Gerçek bağlantısız build çalışıyor; kaynak ve cache yeniden doğrulanacak." else "Onaylı proje build/lifecycle kodu çalışıyor; bağımlılıklar hazırlanıyor. Boyut bilinmiyor."
                 val runDraft=draft.copy(importedFolder=reviewedSource!!.path,allowDependencyDownloads=!offlineVerification,signingMode=SigningMode.DEBUG,keystoreUri=null,storePassword="",keyPassword="",keyAlias="")
@@ -69,10 +69,11 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                 require(!offlineVerification || !networkSeen.get()){"Doğrulama sırasında ağ açıldı; offline hazır kaydı yazılmadı."}
                 val after=ProjectDependencyEvidence.analyze(draft);require(after.fingerprint==plan.fingerprint){"Hazırlama sırasında proje değişti; sonuç geçersiz."}
                 OfflineBuildPackManager.verifyProtectedTools(generation!!.root,protected)
+                require(AndroidRuntimeTrust.ready(generation!!.root)){"Proje TLS veya depo yapılandırmasını değiştirdi; çevrimdışı hazır kaydı yazılmadı."}
                 val candidate=File(receipt(context,plan).path+".candidate")
                 ProjectDependencyEvidence.record(candidate,plan,caches(context,generation!!.root),offlineVerification)
                 if(offlineVerification)check(ProjectDependencyEvidence.ready(candidate,plan,caches(context,generation!!.root)))
-                generation!!.commit(verify={OfflineBuildPackManager.verifyProtectedTools(it,protected)})
+                generation!!.commit(verify={OfflineBuildPackManager.verifyProtectedTools(it,protected);require(AndroidRuntimeTrust.ready(it))})
                 require(!offlineVerification || !networkSeen.get()){"Ağ doğrulama bitmeden açıldı; hazır kaydı yayımlanmadı."}
                 java.nio.file.Files.move(candidate.toPath(),receipt(context,plan).toPath(),java.nio.file.StandardCopyOption.ATOMIC_MOVE,java.nio.file.StandardCopyOption.REPLACE_EXISTING)
                 if(offlineVerification)check(ready(context,plan)){"Cache bütünlüğü doğrulanamadı."}

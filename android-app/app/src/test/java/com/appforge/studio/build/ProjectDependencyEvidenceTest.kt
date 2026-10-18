@@ -60,4 +60,23 @@ class ProjectDependencyEvidenceTest {
         }finally{permit.close()}
         BuildModuleUsage.mutationLease().close()
     }
+    @Test fun gradleChecksumsMustParseSecurelyAndVersionsCannotBeDynamic() {
+        val root=Files.createTempDirectory("dependency-gradle-lock").toFile()
+        try {
+            File(root,"settings.gradle").writeText("rootProject.name='fixture'")
+            val verification=File(root,"gradle/verification-metadata.xml").apply{parentFile.mkdirs()}
+            val lock=File(root,"gradle.lockfile").apply{writeText("test:fixed:1.0=compileClasspath")}
+            val d=ProjectDraft(importedFolder=root.path,sourceBuildEngine="android-gradle")
+            verification.writeText("<verification-metadata><components><component group=\"test\" name=\"fixed\" version=\"1.0\"><artifact name=\"fixed-1.0.jar\"><sha256 value=\"${"a".repeat(64)}\"/></artifact></component></components></verification-metadata>")
+            assertTrue(ProjectDependencyEvidence.analyze(d).blockers.isEmpty())
+            lock.writeText("test:fixed:1.+=compileClasspath")
+            assertTrue(ProjectDependencyEvidence.analyze(d).blockers.isNotEmpty())
+            lock.writeText("test:fixed:1.0=compileClasspath")
+            verification.writeText("<!DOCTYPE verification-metadata SYSTEM \"file:///not-readable\"><verification-metadata/>")
+            assertTrue(ProjectDependencyEvidence.analyze(d).blockers.isNotEmpty())
+            verification.writeText("<verification-metadata><components/></verification-metadata>")
+            assertTrue(ProjectDependencyEvidence.analyze(d).blockers.isNotEmpty())
+        }finally{root.deleteRecursively()}
+    }
+
 }
