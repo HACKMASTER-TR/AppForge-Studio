@@ -139,7 +139,7 @@ CPP
 
 repair_interrupted_dpkg
 
-if have_tools; then
+if [ "${APPFORGE_MODULE_REFRESH:-0}" != 1 ] && have_tools; then
   verify_smoke
 
   printf '%s\n' \

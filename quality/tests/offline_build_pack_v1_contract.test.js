@@ -248,8 +248,10 @@ test(
 
     assert.match(
       installer,
-      /platforms;android-37\.0/
+      /--licenses/
     );
+
+    assert.match(installer,/platform-37\.0_r02\.zip/);
 
     assert.match(
       installer,

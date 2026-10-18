@@ -19,6 +19,6 @@ internal class ExternalDownloadTelemetry(private val module:OfflineModuleId,priv
             meter=DownloadMeasurement(module,operation,now-elapsed,if(elapsed>0)0 else bytes)
         }
         previousBytes=bytes
-        meter!!.sample(bytes,total,now).copy(phase=if(event.optBoolean("finished",false))ModulePhase.PREPARING else ModulePhase.DOWNLOADING,detail=event.optString("component","Araç arşivi").take(200)+if(event.optBoolean("finished",false))" • aktarım sonlandı; kurulum/son doğrulama sürüyor." else " • gerçek aktarım baytları ölçülüyor.")
+        meter!!.sample(bytes,total,now).copy(phase=if(event.optBoolean("finished",false) || event.optString("byteMetric") in setOf("staged-files","unavailable"))ModulePhase.PREPARING else ModulePhase.DOWNLOADING,detail=event.optString("component","Araç arşivi").take(200)+if(event.optBoolean("finished",false))" • aktarım sonlandı; kurulum/son doğrulama sürüyor." else " • gerçek aktarım baytları ölçülüyor.")
     }.getOrNull()
 }

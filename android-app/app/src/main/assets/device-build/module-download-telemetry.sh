@@ -3,6 +3,9 @@
 # Package-manager internal transfers remain indeterminate until their own trusted adapter exists.
 if [ -n "${APPFORGE_DOWNLOAD_TELEMETRY:-}" ]; then
  if [ -f /workspace/runtime/apt-download-telemetry.sh ]; then . /workspace/runtime/apt-download-telemetry.sh; fi
+ if [ -f /workspace/runtime/python-telemetry/sitecustomize.py ]; then
+  export PYTHONPATH="/workspace/runtime/python-telemetry${PYTHONPATH:+:$PYTHONPATH}"
+ fi
  if [ -f /workspace/runtime/npm-download-telemetry.cjs ]; then
   export NODE_OPTIONS="${NODE_OPTIONS:-} --require=/workspace/runtime/npm-download-telemetry.cjs"
  fi

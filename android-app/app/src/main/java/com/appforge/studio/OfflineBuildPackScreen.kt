@@ -16,6 +16,7 @@ import kotlinx.coroutines.*
 /** App-scoped operation state survives navigation/rotation; process death is never reported READY. */
 internal object ModuleInstallOperations {
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
+    val activeProgress=kotlinx.coroutines.flow.MutableStateFlow<ModuleProgress?>(null)
     val updates=kotlinx.coroutines.flow.MutableStateFlow<Map<OfflineModuleId,ModuleProgress>>(emptyMap())
     val busy=kotlinx.coroutines.flow.MutableStateFlow(false)
     private var job:Job?=null
@@ -28,6 +29,9 @@ internal object ModuleInstallOperations {
     val journalError=kotlinx.coroutines.flow.MutableStateFlow("")
     fun history():List<String> = journal?.history().orEmpty()
     private fun persist(){try{journal?.save(updates.value);journalError.value=""}catch(e:Exception){journalError.value="İşlem günlüğü yazılamadı; güvenli devam garantisi yok. Depolamayı kontrol edin.";throw e}}
+    @Synchronized private fun publish(event:ModuleProgress) {
+        activeProgress.value=event;updates.value=updates.value+(event.moduleId to event);persist()
+    }
     @Volatile private var pauseRequested=false
     @Synchronized fun start(context:android.content.Context, selected:OfflineModuleId, consent:Boolean) {
         if(busy.value)return
@@ -39,16 +43,40 @@ internal object ModuleInstallOperations {
             runCatching{persist()};return
         }
         job=scope.launch {
-            try { OfflineBuildPackManager.installModules(context.applicationContext,setOf(selected),consent){event->
-                updates.value=updates.value+(event.moduleId to event)
-                persist()
-            }} catch(e:CancellationException) {
+            try {
+                var retries=0
+                while(true) {
+                    val last=java.util.concurrent.atomic.AtomicReference<ModuleProgress?>(null)
+                    try {
+                        OfflineBuildPackManager.installModules(context.applicationContext,setOf(selected),consent){event->
+                            last.set(event);publish(event)
+                        }
+                        break
+                    }catch(e:CancellationException){throw e}
+                    catch(e:Exception) {
+                        val event=last.get()
+                        if(event?.phase!=ModulePhase.WAITING_CONNECTION || retries>=5)throw e
+                        retries++
+                        val started=android.os.SystemClock.elapsedRealtime()
+                        while(!OfflineBuildPackManager.hasValidatedInternet(context.applicationContext)) {
+                            currentCoroutineContext().ensureActive()
+                            require(android.os.SystemClock.elapsedRealtime()-started<24L*60*1000){"Bağlantı bekleme süresi doldu; kısmi arşiv korunur. Devam et ile tekrar deneyin."}
+                            val waiting=event.copy(phase=ModulePhase.WAITING_CONNECTION,bytesTotal=null,estimatedRemainingMs=null,speedBytesPerSecond=null,detail="Bağlantı bekleniyor; onaylı işlem bağlantı gelince güvenle yeniden denenecek. Bekleme: ${(android.os.SystemClock.elapsedRealtime()-started)/1000} sn")
+                            publish(waiting)
+                            delay(1000)
+                        }
+                        val retry=event.copy(phase=ModulePhase.RECONNECTING,detail="Bağlantı geldi; kaynak kimliği, kısmi dosya ve hash yeniden doğrulanıyor. Deneme $retries/5")
+                        publish(retry)
+                        delay((1000L shl (retries-1)).coerceAtMost(30000L))
+                    }
+                }
+            } catch(e:CancellationException) {
                 updates.value=updates.value+(selected to ModuleProgress(selected,"canceled",if(pauseRequested)ModulePhase.PAUSED else ModulePhase.CANCELED,detail=if(pauseRequested)"Duraklatıldı; doğrulanmamış kısmi dosya devam için korunur." else "İptal edildi; çalışan modüller korunur."))
             } catch(e:Exception) {
                 // Preserve the manager's connection-wait/error state for this operation.
                 if(updates.value[selected]?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
                 updates.value=updates.value+(selected to ModuleProgress(selected,"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
-            } finally {try{runCatching{persist()}}finally{busy.value=false}}
+            } finally {try{runCatching{persist()}}finally{activeProgress.value=null;busy.value=false}}
         }
     }
     @Synchronized fun cancel(){pauseRequested=false;job?.cancel()}
@@ -66,16 +94,25 @@ internal object ModuleInstallOperations {
     var chosen by remember { mutableStateOf<OfflineModuleId?>(null) }
     var sdkConsent by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf("") }
+    var availableUpdates by remember{mutableStateOf<Set<OfflineModuleId>>(emptySet())}
+    var confirmPrune by remember{mutableStateOf(false)}
+    var installedVersions by remember{mutableStateOf<Map<OfflineModuleId,String?>>(emptyMap())}
+    var removalReasons by remember{mutableStateOf<Map<OfflineModuleId,String?>>(emptyMap())}
     var rollbackAllowed by remember {mutableStateOf<Map<OfflineModuleId,Boolean>>(emptyMap())}
     val plan=remember(project){project?.let{OfflineModules.forProject(it)}}
     val readinessChanges=events.mapValues{it.value.phase==ModulePhase.READY}
     LaunchedEffect(Unit){withContext(Dispatchers.IO){ModuleInstallOperations.restore(context)}}
-    LaunchedEffect(readinessChanges,busy){history=withContext(Dispatchers.IO){ModuleInstallOperations.history()}
+    LaunchedEffect(readinessChanges,busy){
+        availableUpdates=withContext(Dispatchers.IO){OfflineModules.all.filter{OfflineBuildPackManager.updateAvailable(context,it.id)}.map{it.id}.toSet()}
+        installedVersions=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.installedVersion(context,it.id)}}
+        history=withContext(Dispatchers.IO){ModuleInstallOperations.history()}
 ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.moduleReady(context,it.id)}}
-        rollbackAllowed=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.canRollback(context,it.id)}}}
+        rollbackAllowed=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.canRollback(context,it.id)}}
+        removalReasons=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.removalReason(context,it.id)}}}
     fun begin(id:OfflineModuleId) {
         ModuleInstallOperations.start(context,id,sdkConsent)
     }
+    if(confirmPrune)AlertDialog(onDismissRequest={confirmPrune=false},title={Text("Kullanılmayan eski sürümleri temizle")},text={Text("Aktif ortam, en son geri alma sürümü ve modül sahiplik kayıtlarının kullandığı snapshot'lar korunur. Daha eski geri alma geçmişi kısalabilir. Yalnız hash envanteri doğrulanan özel snapshot kopyaları silinir; kullanıcı projeleri silinmez.")},confirmButton={TextButton(enabled=!busy,onClick={confirmPrune=false;scope.launch{detail=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.pruneUnusedSnapshots(context)}.fold({"${it/1024/1024} MiB eski snapshot temizlendi."},{"Temizleme engellendi: ${it.message}"})}}}){Text("Onayla ve temizle")}},dismissButton={TextButton(onClick={confirmPrune=false}){Text("Vazgeç")}})
     if(chosen!=null) {
         val id=chosen!!;val missing=OfflineModules.resolve(setOf(id)).filter{ready[it]!=true}
         val needsSdk=OfflineModuleId.ANDROID_CORE in missing || OfflineModuleId.EXPO_REACT_NATIVE in missing
@@ -110,7 +147,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineB
                     Text("Bağımlılıklar: "+module.dependencies.joinToString{OfflineModules.spec(it).title}.ifBlank{"Yok"})
                     Text("İndirme: "+(module.downloadBytes?.let{"${it/1024/1024} MiB"}?:"Toplam boyut bilinmiyor"))
                     Text("Disk: "+(module.diskBytes?.let{"${it/1024/1024} MiB"}?:"Güvenilir toplam tahmin yok"))
-                    Text(if(installed)"Hazır • gerçek bütünlük kontrolü geçti" else state?.phase?.turkishLabel()?:"Kurulu değil / doğrulanmadı")
+                    Text(if(!ready.containsKey(module.id))"Bütünlük doğrulanıyor..." else if(installed)"Hazır • gerçek bütünlük kontrolü geçti" else if(module.id in availableUpdates)"Güncelleme gerekli • kayıtlı ortam korunuyor" else state?.phase?.turkishLabel()?:"Kurulu değil / doğrulanmadı")
                     if(state!=null && !installed) {
                         Text(state.detail)
                         if(state.phase==ModulePhase.DOWNLOADING) {
@@ -122,8 +159,8 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineB
                             Text("Kalan: "+(state.estimatedRemainingMs?.let{"${it/1000} sn"}?:"Hesaplanıyor...")+" • Geçen: ${state.elapsedMs/1000} sn")
                         } else if(busy && state.phase !in setOf(ModulePhase.READY,ModulePhase.ERROR,ModulePhase.CANCELED))LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
                     }
-                    Button(enabled=!busy && unsupported==null,onClick={if(installed){scope.launch{val good=withContext(Dispatchers.IO){OfflineBuildPackManager.moduleReady(context,module.id)};detail=if(good)"Bütünlük doğrulandı." else "Bozuk kurulum; hazır değil."}}else chosen=module.id}){Text(if(installed)"Doğrula" else if(state?.phase in setOf(ModulePhase.PAUSED,ModulePhase.WAITING_CONNECTION))"Devam et" else if(state?.phase==ModulePhase.ERROR)"Yeniden dene" else "Kurulum ayrıntıları")}
-                    if(busy && state!=null && state.phase !in setOf(ModulePhase.READY,ModulePhase.ERROR)){ if(module.id in setOf(OfflineModuleId.NODE_WEB,OfflineModuleId.WINDOWS_PORTABLE) && state.phase==ModulePhase.DOWNLOADING)OutlinedButton(onClick={ModuleInstallOperations.pause()}){Text("Duraklat")};OutlinedButton(onClick={ModuleInstallOperations.cancel()}){Text("İptal et")} }
+                    Button(enabled=!busy && ready.containsKey(module.id) && unsupported==null,onClick={if(installed){scope.launch{val good=withContext(Dispatchers.IO){OfflineBuildPackManager.moduleReady(context,module.id)};detail=if(good)"Bütünlük doğrulandı." else "Bozuk kurulum; hazır değil."}}else chosen=module.id}){Text(if(installed)"Doğrula" else if(state?.phase in setOf(ModulePhase.PAUSED,ModulePhase.WAITING_CONNECTION))"Devam et" else if(state?.phase==ModulePhase.ERROR)"Yeniden dene" else "Kurulum ayrıntıları")}
+                    if(busy && state!=null && state.phase !in setOf(ModulePhase.READY,ModulePhase.ERROR)){ if((module.id in setOf(OfflineModuleId.NODE_WEB,OfflineModuleId.WINDOWS_PORTABLE,OfflineModuleId.LINUX_RUNTIME) || state.detail.startsWith("Doğrulanmış native aktarım")) && state.phase==ModulePhase.DOWNLOADING)OutlinedButton(onClick={ModuleInstallOperations.pause()}){Text("Duraklat")};OutlinedButton(onClick={ModuleInstallOperations.cancel()}){Text("İptal et")} }
                     if(installed && module.id==OfflineModuleId.WINDOWS_PORTABLE)OutlinedButton(enabled=!busy,onClick={
                         scope.launch {detail=withContext(Dispatchers.IO){runCatching {
                             BuildModuleUsage.mutationLease().use {OwnedModuleFiles.removePortable(context.noBackupFilesDir,WindowsPortableHostStore.HOST_SHA256)}
@@ -134,10 +171,21 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineB
                         ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.moduleReady(context,it.id)}}
                         rollbackAllowed=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.canRollback(context,it.id)}}
                     }}){Text("Son izole kurulumu geri al / kaldır")}
-                    OutlinedButton(enabled=false,onClick={}){Text("Güncelleme: doğrulanmış yeni sürüm yok")}
+                    if(installed && module.id !in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE)) {
+                        OutlinedButton(enabled=!busy && removalReasons.containsKey(module.id) && removalReasons[module.id]==null,onClick={scope.launch {
+                            detail=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.removeOwnedModule(context,module.id)}.fold({"Modülün sahipli dosya değişiklikleri izole ortamda geri alındı."},{"Kaldırma engellendi: ${it.message}"})}
+                            ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.moduleReady(context,it.id)}}
+                            removalReasons=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.removalReason(context,it.id)}}
+                        }}){Text(if(module.id==OfflineModuleId.LINUX_RUNTIME)"Runtime kaydını kaldır • dosyaları arşivle" else "Sahiplik doğrulamasıyla kaldır")}
+                        if(module.id==OfflineModuleId.LINUX_RUNTIME)Text("Runtime dosyaları özel arşivde korunur; bu işlem disk alanı boşaltmaz.")
+                        removalReasons[module.id]?.let{Text(it,style=MaterialTheme.typography.bodySmall)}
+                    }
+                    installedVersions[module.id]?.let{Text("Kayıtlı sürüm: $it")}
+                    OutlinedButton(enabled=!busy && module.id in availableUpdates,onClick={chosen=module.id}){Text(if(module.id in availableUpdates)"Gömülü doğrulanmış tarif ile güncelle / onar" else "Güncel • doğrulanmış yeni tarif yok")}
                     if(module.id!=OfflineModuleId.WINDOWS_PORTABLE)Text("Genel dosya silme kapalı. Son doğrulanmış izole sürüm, bağımlılık kullanımı yoksa geri alınabilir; daha eski modüller önce bağımlılık sırasıyla çözülmelidir.",style=MaterialTheme.typography.bodySmall)
                 }}
             }
+            if(ready[OfflineModuleId.LINUX_RUNTIME]==true)item{OutlinedButton(enabled=!busy,onClick={confirmPrune=true}){Text("Kullanılmayan eski sürümleri temizle")}}
             if(project!=null && !FastHtmlApkPolicy.isCandidate(project))item { ProjectDependencyPreparationCard(project) }
             if(ready[OfflineModuleId.WINDOWS_PORTABLE]==true)item { WindowsModuleSmokeCard() }
             item { Text("Toplam işlem: "+if(busy)"devam ediyor; kurulum iş miktarı ölçülemediği için toplam yüzde yok" else "bekliyor / son modül durumlarını inceleyin") }

@@ -36,7 +36,9 @@ test('APT observer measures real fixture archive files, verifies SHA256 and pres
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('reviewed Google archives have fixed SHA256 and every legacy call is allowlisted',()=>{
- const pins=JSON.parse(fs.readFileSync(new URL('verified-toolchain-sources-v4.json',assets)));const script=fs.readFileSync(new URL('install-toolchain.sh',assets),'utf8');assert.equal(pins.length,4);
- for(const p of pins){assert.match(p.url,/^https:\/\/dl\.google\.com\/android\/repository\//);assert.match(p.sha256,/^[a-f0-9]{64}$/);assert(p.bytes>0);assert(script.includes(`${p.url}) compat_sha256="${p.sha256}"`));}
+ const pins=JSON.parse(fs.readFileSync(new URL('verified-toolchain-sources-v4.json',assets)));const script=fs.readFileSync(new URL('install-toolchain.sh',assets),'utf8');assert.equal(pins.length,7);
+ const legacy=pins.filter(p=>script.includes(`${p.url}) compat_sha256=`));assert.equal(legacy.length,4);
+ for(const p of legacy){assert.match(p.url,/^https:\/\/dl\.google\.com\/android\/repository\//);assert.match(p.sha256,/^[a-f0-9]{64}$/);assert(p.bytes>0);assert(script.includes(`${p.url}) compat_sha256="${p.sha256}"`));}
+ for(const p of pins){assert.match(p.sha256,/^[a-f0-9]{64}$/);assert.match(p.url,/^https:\/\//);assert(p.bytes===null||p.bytes>0);assert(script.includes(p.sha256),`Missing pinned installer digest for ${p.file}`);assert(p.provenance.length>20);}
  assert(script.includes('download_sha256 "$1" "$compat_sha256" "$compat_out"'));
 });

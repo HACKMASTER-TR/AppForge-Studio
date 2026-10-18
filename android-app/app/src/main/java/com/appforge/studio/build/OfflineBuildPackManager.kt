@@ -256,7 +256,7 @@ internal object OfflineBuildPackManager {
                 val root=DeviceBuildRuntimeV3.ensureReady(app,onBytes={e->
                     val now=android.os.SystemClock.elapsedRealtime()
                     if(e.stage==com.appforge.studio.terminal.LinuxInstallStage.DOWNLOADING) {
-                        val m=rootMeter?:DownloadMeasurement(OfflineModuleId.LINUX_RUNTIME,operation,now).also{rootMeter=it}
+                        val m=rootMeter?:DownloadMeasurement(OfflineModuleId.LINUX_RUNTIME,operation,now,e.completedBytes).also{rootMeter=it}
                         if(now-rootReported>=250 || e.totalBytes==e.completedBytes){
                             progress(m.sample(e.completedBytes,e.totalBytes?.takeIf{it>0},now).copy(detail=e.detail));rootReported=now
                         }
@@ -297,7 +297,7 @@ internal object OfflineBuildPackManager {
                         else -> error("Bilinmeyen modül")
                     }
                     for(command in commands)execute(shell,staged,workspace,id.name.lowercase(),
-                        "APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 /bin/sh /workspace/runtime/$command",id,operation,progress)
+                        "APPFORGE_MODULE_REFRESH=1 APPFORGE_MODULE_ID=${id.name} APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 /bin/sh /workspace/runtime/$command",id,operation,progress)
                     phase(id,ModulePhase.OFFLINE_TEST,"Gerçek dosya/sürüm ve çevrimdışı araç kontrolü yapılıyor.")
                     val probe=when(id) {
                         OfflineModuleId.ANDROID_CORE -> "APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/install-toolchain.sh webview-static && APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/prepare-offline-pack.sh android"
@@ -309,8 +309,9 @@ internal object OfflineBuildPackManager {
                     }
                     execute(shell,staged,workspace,"verify-${id.name.lowercase()}",probe)
                     phase(id,ModulePhase.VERIFYING,"Dosya SHA-256 envanteri atomik kaydediliyor.")
-                    writeAttestation(staged,id)
-                    generation.commit(verify={ candidate -> check(recordMatches(candidate,id)){"Yeni modül sürüm kaydı doğrulanamadı."} })
+                    writeAttestation(app,staged,id)
+                    ModuleOwnershipStore(staged).record(id,generation.previousRootName,RuntimeGenerationStore(root).snapshot(),RuntimeGenerationStore(staged).snapshot(),root)
+                    generation.commit(verify={ candidate -> check(recordMatches(app,candidate,id) && AndroidRuntimeTrust.ready(candidate)){"Yeni modül sürüm kaydı doğrulanamadı."} })
                     }
                     check(moduleReady(app,id)){"Etkinleştirilen modül doğrulanamadı."}
                     phase(id,ModulePhase.READY,"${OfflineModules.spec(id).title} doğrulandı. Projeye özel bağımlılıklar ayrıca kontrol edilir.")
@@ -339,32 +340,59 @@ internal object OfflineBuildPackManager {
         file.inputStream().use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;update(b,0,n)}}
         digest().joinToString(""){"%02x".format(it)}
     }
+    private fun recipeDigest(context:Context,id:OfflineModuleId):String {
+        val names=when(id) {
+            OfflineModuleId.NODE_WEB->listOf("install-node-module.sh")
+            OfflineModuleId.WINDOWS_NATIVE->listOf("install-windows-native-toolchain.sh")
+            else->listOf("install-toolchain.sh","prepare-offline-pack.sh")
+        }+listOf("apt-download-telemetry.sh","module-download-telemetry.sh","native-download-broker.sh","jvm-telemetry/network-byte-agent.jar","verified-toolchain-sources-v4.json")
+        val hash=java.security.MessageDigest.getInstance("SHA-256")
+        for(name in names.sorted()){hash.update(name.toByteArray());context.assets.open("device-build/$name").use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;hash.update(b,0,n)}}}
+        return hash.digest().joinToString(""){"%02x".format(it)}
+    }
+    fun installedVersion(context:Context,id:OfflineModuleId):String?=runCatching {
+        val root=runtimeRootfs(context)?:return@runCatching null
+        val f=receipt(root,id);require(f.isFile && f.length()<=16384 && !java.nio.file.Files.isSymbolicLink(f.toPath()))
+        org.json.JSONObject(f.readText()).getString("version").take(200)
+    }.getOrNull()
+    fun updateAvailable(context:Context,id:OfflineModuleId):Boolean=runCatching {
+        if(id !in witnesses.keys)return@runCatching false
+        val root=runtimeRootfs(context)?:return@runCatching false
+        val f=receipt(root,id);require(f.isFile && f.length()<=16384 && !java.nio.file.Files.isSymbolicLink(f.toPath()))
+        val j=org.json.JSONObject(f.readText())
+        j.optString("version")!=OfflineModules.spec(id).version || j.optString("recipe")!=recipeDigest(context,id)
+    }.getOrDefault(false)
     private fun receipt(root:File,id:OfflineModuleId)=File(root,"opt/appforge-device/modules-v3/${id.name}.json")
-    private fun writeAttestation(root:File,id:OfflineModuleId) {
+    private fun writeAttestation(context:Context,root:File,id:OfflineModuleId) {
         val paths=witnesses.getValue(id)
         val files=org.json.JSONObject()
         paths.forEach{path->val file=File(root,path);require(file.isFile && file.canonicalFile.toPath().startsWith(root.canonicalFile.toPath())){"Modül dosyası eksik veya güvensiz: $path"};files.put(path,digest(file))}
         val target=receipt(root,id).apply{parentFile?.mkdirs()};val part=File(target.path+".part")
-        part.writeText(org.json.JSONObject().put("revision",3).put("version",OfflineModules.spec(id).version).put("files",files).toString())
+        part.writeText(org.json.JSONObject().put("revision",3).put("version",OfflineModules.spec(id).version).put("recipe",recipeDigest(context,id)).put("files",files).toString())
         java.nio.file.Files.move(part.toPath(),target.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING,java.nio.file.StandardCopyOption.ATOMIC_MOVE)
     }
-    private fun recordMatches(root:File,id:OfflineModuleId):Boolean = runCatching {
+    private fun recordMatches(context:Context,root:File,id:OfflineModuleId):Boolean = runCatching {
         val record=receipt(root,id);require(record.isFile && record.length()<=16384 && !java.nio.file.Files.isSymbolicLink(record.toPath()))
         val json=org.json.JSONObject(record.readText());val files=json.getJSONObject("files")
-        json.getInt("revision")==3 && json.getString("version")==OfflineModules.spec(id).version && files.length()==witnesses.getValue(id).size &&
-            witnesses.getValue(id).all{path->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==files.optString(path)}
+        json.getInt("revision")==3 && json.optString("recipe")==recipeDigest(context,id) && json.getString("version")==OfflineModules.spec(id).version && files.length()==witnesses.getValue(id).size &&
+            witnesses.getValue(id).all{path->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==files.optString(path)} && ModuleOwnershipStore(root).verifyNamespace(id)
     }.getOrDefault(false)
     fun recoverPending(context:Context) {
         val root=runtimeRootfs(context)?:return
+        val removal=RuntimeArchiveRemoval(DeviceBuildRuntimeV3.runtimeBaseDirectory(context))
+        if(File(DeviceBuildRuntimeV3.runtimeBaseDirectory(context).parentFile,".runtime-removal-v5.json").exists())BuildModuleUsage.mutationLease().use{removal.recover()}
         val journal=File(root.parentFile,".module-generation.json")
-        if(journal.isFile)runCatching{BuildModuleUsage.mutationLease().use{RuntimeGenerationStore(root).recover()}}.getOrElse {
+        if(journal.isFile || File(root.parentFile,".rootfs-activation.json").isFile)runCatching{BuildModuleUsage.mutationLease().use{RuntimeGenerationStore(root).recover();com.appforge.studio.terminal.RootfsActivationTransaction(root,File(root.parentFile,"restore-points"),File(root.parentFile,".appforge-rootfs.properties")).recover()}}.getOrElse {
             if(it is IllegalStateException && it.message?.contains("Etkin derleme")==true)return
             throw it
         }
     }
     internal fun protectedTools(context:Context):Map<String,String> {
         val root=runtimeRootfs(context)?:error("Runtime yok")
-        return witnesses.filterKeys{moduleReady(context,it)}.values.flatten().distinct().associateWith{digest(File(root,it))}
+        val expected=witnesses.filterKeys{moduleReady(context,it)}.values.flatten().distinct().associateWith{digest(File(root,it))}.toMutableMap()
+        val metadata=File(root,"opt/appforge-device/ownership-v5").listFiles().orEmpty().filter{it.isFile && it.extension=="json"}.toList()+listOf(File(root,BaseRuntimeOwnership.FILE))
+        for(file in metadata.filter{it.isFile}){require(file.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && !java.nio.file.Files.isSymbolicLink(file.toPath()));expected[file.relativeTo(root).invariantSeparatorsPath]=digest(file)}
+        return expected
     }
     internal fun verifyProtectedTools(root:File,expected:Map<String,String>) {
         require(expected.all{(path,hash)->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==hash}){"Proje derlemesi korunan araçları değiştirdi; sürüm etkinleştirilmedi."}
@@ -381,6 +409,39 @@ internal object OfflineBuildPackManager {
             RuntimeGenerationStore(root).rollback(id){if(job?.isActive==false)throw kotlinx.coroutines.CancellationException("İptal edildi")}
         }
     }
+    fun removalReason(context:Context,id:OfflineModuleId):String? {
+        if(id in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE))return "Bu modül ayrı gömülü/runtime/host yaşam döngüsünü kullanır."
+        val runtime=runtimeRootfs(context)
+        val dependent=OfflineModules.all.firstOrNull{spec->
+            spec.id!=id && id in OfflineModules.resolve(spec.dependencies) &&
+                (moduleReady(context,spec.id) || installedVersion(context,spec.id)!=null ||
+                    runtime?.let{r->witnesses[spec.id].orEmpty().any{p->File(r,p).exists()}}==true)
+        }
+        if(dependent!=null)return "${dependent.title} bu modülü kullanıyor."
+        if(id==OfflineModuleId.LINUX_RUNTIME)return if(DeviceBuildRuntimeV3.isReady(context))null else "Runtime bütünlüğü doğrulanamadı."
+        val root=runtimeRootfs(context)?:return "Runtime yok."
+        return ModuleOwnershipStore(root).removalReason(id)
+    }
+    suspend fun removeOwnedModule(context:Context,id:OfflineModuleId) = installMutex.withLock {
+        BuildModuleUsage.mutationLease().use {
+            require(removalReason(context,id)==null){removalReason(context,id)?:"Kaldırma engellendi."}
+            if(id==OfflineModuleId.LINUX_RUNTIME){RuntimeArchiveRemoval(DeviceBuildRuntimeV3.runtimeBaseDirectory(context)).remove();return@withLock}
+            val root=runtimeRootfs(context)?:error("Runtime yok")
+            val protected=witnesses.filterKeys{it!=id && moduleReady(context,it)}.values.flatten().distinct().associateWith{digest(File(root,it))}
+            val job=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
+            RuntimeGenerationStore(root).prepareOwner("REMOVE:${id.name}",canceled={if(job?.isActive==false)throw kotlinx.coroutines.CancellationException()}).use{tx->
+                ModuleOwnershipStore(root).restoreInto(id,tx.root)
+                tx.commit(verify={verifyProtectedTools(it,protected)})
+            }
+        }
+    }
+    suspend fun pruneUnusedSnapshots(context:Context):Long=installMutex.withLock {
+        BuildModuleUsage.mutationLease().use {
+            val root=runtimeRootfs(context)?:error("Runtime yok")
+            val job=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
+            RuntimeGenerationStore(root).pruneUnused(ModuleOwnershipStore(root).protectedSnapshots(),retain=1,canceled={if(job?.isActive==false)throw kotlinx.coroutines.CancellationException()})
+        }
+    }
     fun moduleReady(context:Context,id:OfflineModuleId):Boolean = runCatching {
         when(id) {
             OfflineModuleId.FAST_HTML -> {TemplateIntegrity.requireBundled(context,setOf("html-apk-template.apk","html-aab-template.aab"));true}
@@ -388,7 +449,7 @@ internal object OfflineBuildPackManager {
             OfflineModuleId.LINUX_RUNTIME -> DeviceBuildRuntimeV3.isReady(context)
             else -> {
                 val root=runtimeRootfs(context)?:return@runCatching false
-                recordMatches(root,id) &&
+                recordMatches(context,root,id) &&
                     OfflineModules.spec(id).dependencies.all{moduleReady(context,it)}
             }
         }
@@ -410,10 +471,14 @@ internal object OfflineBuildPackManager {
         val telemetry=File(workspace,"module-download.json")
         telemetry.delete()
         val adapter=module?.let{ExternalDownloadTelemetry(it,operation)}
+        val broker=module?.let{ModuleArtifactBroker(workspace,File(rootfs.parentFile,".module-archive-cache-v5"),it,operation,progress)}
+        val brokerJob=broker?.let{launch(kotlinx.coroutines.Dispatchers.IO){it.serve()}}
+        var lastTelemetry:String?=null
         val poller=launch(kotlinx.coroutines.Dispatchers.IO) {
             while(kotlinx.coroutines.currentCoroutineContext().isActive) {
-                if(adapter!=null && telemetry.isFile && telemetry.length()<=2048)runCatching {
-                    adapter.accept(telemetry.readText(),android.os.SystemClock.elapsedRealtime())?.let(progress)
+                if(broker?.transferring!=true && adapter!=null && telemetry.isFile && telemetry.length()<=2048)runCatching {
+                    val event=telemetry.readText()
+                    if(event!=lastTelemetry){lastTelemetry=event;adapter.accept(event,android.os.SystemClock.elapsedRealtime())?.let(progress)}
                 }
                 kotlinx.coroutines.delay(500)
             }
@@ -423,11 +488,11 @@ internal object OfflineBuildPackManager {
                 sessionId = sessionId,
                 rootfs = rootfs,
                 workspace = workspace,
-                command = "export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; "+command,
+                command = AndroidRuntimeTrust.shellEnvironment + "export APPFORGE_NATIVE_DOWNLOAD_BROKER=${if(broker!=null)"/workspace/native-downloads" else ""}; export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; "+command,
                 confirmed = true,
                 timeoutMs = 1_800_000L
             )
-        } finally {poller.cancel()}
+        } finally {poller.cancel();brokerJob?.cancel()}
 
         check(
             !result.timedOut
@@ -497,7 +562,7 @@ internal object OfflineBuildPackManager {
         ).rootfsDirectory
     }
 
-    private fun hasValidatedInternet(
+    internal fun hasValidatedInternet(
         context: Context
     ): Boolean {
 

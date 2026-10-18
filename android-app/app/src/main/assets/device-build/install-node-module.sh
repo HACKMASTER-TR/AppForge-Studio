@@ -49,6 +49,11 @@ tar -xJf "$ARCHIVE" --no-same-owner --no-same-permissions -C "$STAGE" --strip-co
 PATH="$STAGE/bin:$PATH" "$STAGE/bin/node" "$STAGE/lib/node_modules/npm/bin/npm-cli.js" --version
 # Never overwrite a working installation. An invalid old directory remains for diagnosis.
 if [ -e "$DEST" ]; then
+ if [ "${APPFORGE_MODULE_REFRESH:-0}" = 1 ]; then
+  rm -rf "$DEST"
+  mv "$STAGE" "$DEST"
+  ensure_links;echo 'APPFORGE_NODE_MODULE_READY';exit 0
+ fi
  if cmp -s "$STAGE/bin/node" "$DEST/bin/node" && cmp -s "$STAGE/lib/node_modules/npm/bin/npm-cli.js" "$DEST/lib/node_modules/npm/bin/npm-cli.js"; then
   ensure_links; echo 'APPFORGE_NODE_MODULE_READY'; exit 0
  fi

@@ -19,7 +19,7 @@ class ModuleDownloadService:Service() {
         manager.createNotificationChannel(NotificationChannel(CHANNEL,"Derleme paketi indirmeleri",NotificationManager.IMPORTANCE_LOW))
         fun notification():Notification {
             val events=ModuleInstallOperations.updates.value.values
-            val e=if(ProjectDependencyPreparation.busy.value)ProjectDependencyPreparation.transfer.value else events.lastOrNull{it.phase !in setOf(com.appforge.studio.build.ModulePhase.READY,com.appforge.studio.build.ModulePhase.ERROR)}
+            val e=if(ProjectDependencyPreparation.busy.value)ProjectDependencyPreparation.transfer.value else ModuleInstallOperations.activeProgress.value?:events.lastOrNull{it.phase !in setOf(com.appforge.studio.build.ModulePhase.READY,com.appforge.studio.build.ModulePhase.ERROR)}
             val open=PendingIntent.getActivity(this,0,Intent(this,MainActivity::class.java),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             return NotificationCompat.Builder(this,CHANNEL).setSmallIcon(android.R.drawable.stat_sys_download)
                 .setContentTitle("AppForge • modüler kurulum").setContentText(e?.detail?.take(160)?:if(ProjectDependencyPreparation.busy.value)ProjectDependencyPreparation.status.value.take(160) else "Kurulum hazırlanıyor")

@@ -6,6 +6,7 @@ if (output && !gradle.startParameter.isConfigurationCacheRequested()) {
         def listenerType = loader.loadClass('org.gradle.internal.operations.BuildOperationListener')
         def managerType = loader.loadClass('org.gradle.internal.operations.BuildOperationListenerManager')
         def detailsType = loader.loadClass('org.gradle.internal.resource.ExternalResourceReadBuildOperationType$Details')
+        def progressType = loader.loadClass('org.gradle.internal.operations.OperationProgressDetails')
         def resultType = loader.loadClass('org.gradle.internal.resource.ExternalResourceReadBuildOperationType$Result')
         def active = new java.util.concurrent.ConcurrentHashMap()
         def publish = { value ->
@@ -25,15 +26,30 @@ if (output && !gradle.startParameter.isConfigurationCacheRequested()) {
                     def location = detailsType.getMethod('getLocation').invoke(args[0].details)
                     def name = new java.net.URI(location).path.tokenize('/').last().replaceAll('[^A-Za-z0-9._@+-]', '_').take(150)
                     def id = 'gradle-' + args[0].id.toString()
-                    active.put(args[0].id, [schema:1, transfer:id, component:'Gradle/Maven: '+name, bytes:0L, total:null, finished:false])
+                    active.put(args[0].id, [schema:1, transfer:id, component:'Gradle/Maven: '+name, bytes:0L, total:null, startedMs:args[1].startTime, finished:false])
                     publish(active.get(args[0].id))
+                }
+                if (method.name == 'progress') {
+                    def event = active.get(args[0])
+                    def detail = args[1].details
+                    if (event && progressType.isInstance(detail) && progressType.getMethod('getUnits').invoke(detail) == 'bytes') {
+                        def size = progressType.getMethod('getProgress').invoke(detail) as long
+                        def total = progressType.getMethod('getTotal').invoke(detail) as long
+                        def update = new LinkedHashMap(event)
+                        update.bytes = Math.max(0L, size)
+                        update.total = total > 0 && total >= size ? total : null
+                        update.elapsedMs = Math.max(0L, args[1].time - event.startedMs)
+                        active.put(args[0], update)
+                        publish(update)
+                    }
                 }
                 if (method.name == 'finished') {
                     def event = active.remove(args[0].id)
                     if (event && resultType.isInstance(args[1].result)) {
                         def size = resultType.getMethod('getBytesRead').invoke(args[1].result) as long
                         event.bytes = Math.max(0L,size)
-                        event.total = size > 0 ? size : null
+                        event.total = args[1].failure == null && size > 0 ? size : null
+                        event.failed = args[1].failure != null
                         event.elapsedMs = Math.max(0L,args[1].endTime-args[1].startTime)
                         event.finished = true
                         publish(event)

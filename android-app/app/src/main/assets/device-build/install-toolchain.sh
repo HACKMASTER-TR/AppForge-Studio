@@ -100,6 +100,7 @@ EOF
 chmod 0755 "$ROOT/ensure-gradle"
 
 if [ -f "$READY" ] \
+   && [ "${APPFORGE_MODULE_REFRESH:-0}" != 1 ] \
    && [ -f "$SDK_LICENSE_MARKER" ] \
    && [ -x "$SDK/build-tools/36.0.0/aapt2" ] \
    && [ -f "$SDK/platforms/android-37.0/android.jar" ] \
@@ -280,7 +281,7 @@ case "$ENGINE" in
     apt-get install -y --no-install-recommends nodejs npm
     ;;
   python-android)
-    apt-get install -y --no-install-recommends       python3       python3-pip       python3-venv
+    apt-get install -y --no-install-recommends       python3       python3-pip       python3-venv python3.12 python3.12-minimal libpython3.12-minimal libpython3.12-stdlib
 
     test -x /usr/bin/python3.12
 
@@ -311,7 +312,12 @@ download_sha256() {
   url="$1"; sha="$2"; out="$3"
   if [ -s "$out" ] && echo "$sha  $out" | sha256sum -c - >/dev/null 2>&1; then return; fi
   rm -f "$out"
-  curl -fL --retry 4 --connect-timeout 20 "$url" -o "$out"
+  if [ -n "${APPFORGE_NATIVE_DOWNLOAD_BROKER:-}" ]; then
+    . /workspace/runtime/native-download-broker.sh
+    appforge_native_download "$url" "$sha" "$out"
+  else
+    curl -fL --retry 4 --connect-timeout 20 "$url" -o "$out"
+  fi
   echo "$sha  $out" | sha256sum -c -
 }
 
@@ -367,7 +373,8 @@ ensure_node_22() {
 
 
 ensure_jdk() {
-  [ -x "$JAVA_HOME/bin/java" ] \
+  [ "${APPFORGE_MODULE_REFRESH:-0}" != 1 ] \
+    && [ -x "$JAVA_HOME/bin/java" ] \
     && [ -x "$JAVA_HOME/bin/javac" ] \
     && return
 
@@ -412,13 +419,16 @@ ensure_jdk() {
 ensure_gradle() {
   version="$1"
   dest="$ROOT/gradle-$version"
-  [ -x "$dest/bin/gradle" ] && return
+  [ "${APPFORGE_MODULE_REFRESH:-0}" != 1 ] && [ -x "$dest/bin/gradle" ] && return
   zip="$ROOT/cache/gradle-$version-bin.zip"
   sha_file="$ROOT/cache/gradle-$version-bin.zip.sha256"
-  curl -fL --retry 4 "https://services.gradle.org/distributions/gradle-$version-bin.zip" -o "$zip"
-  curl -fL --retry 4 "https://services.gradle.org/distributions/gradle-$version-bin.zip.sha256" -o "$sha_file"
-  expected="$(tr -d '[:space:]' < "$sha_file")"
-  echo "$expected  $zip" | sha256sum -c -
+  case "$version" in
+    9.3.1) expected="b266d5ff6b90eada6dc3b20cb090e3731302e553a27c5d3e4df1f0d76beaff06" ;;
+    8.14.3) expected="bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531" ;;
+    *) echo "Unreviewed core Gradle version" >&2;return 42 ;;
+  esac
+  download_sha256 "https://services.gradle.org/distributions/gradle-$version-bin.zip" "$expected" "$zip"
+  printf '%s\n' "$expected" > "$sha_file"
   rm -rf "$dest"
   unzip -q "$zip" -d "$ROOT"
   test -x "$dest/bin/gradle"
@@ -905,6 +915,25 @@ ensure_android_commandline_tools() {
   echo "APPFORGE_ANDROID_CMDLINE_TOOLS_READY"
 }
 
+# Official x86_64 host payloads. ARM64 continues to use its verified Ubuntu host adapters.
+ensure_expo_x64_host() {
+  [ "$ENGINE" = expo ] || return 0
+  case "$HOST_ARCH" in x86_64|amd64) ;; *) return 0 ;; esac
+  ndk_zip="$ROOT/cache/android-ndk-r27b-linux.zip"
+  download_sha256 "https://dl.google.com/android/repository/android-ndk-r27b-linux.zip" "33e16af1a6bbabe12cad54b2117085c07eab7e4fa67cdd831805f0e94fd826c1" "$ndk_zip"
+  mkdir -p "$ROOT/ndk-x64-stage" "$SDK/ndk"
+  unzip -q -o "$ndk_zip" -d "$ROOT/ndk-x64-stage"
+  test -f "$ROOT/ndk-x64-stage/android-ndk-r27b/source.properties"
+  [ ! -e "$SDK/ndk/$EXPO_ARM64_NDK_VERSION" ] || mv "$SDK/ndk/$EXPO_ARM64_NDK_VERSION" "$ROOT/ndk-x64-preserved-$(date +%s)"
+  mv "$ROOT/ndk-x64-stage/android-ndk-r27b" "$SDK/ndk/$EXPO_ARM64_NDK_VERSION"
+  cmake_zip="$ROOT/cache/cmake-3.22.1-linux.zip"
+  download_sha256 "https://dl.google.com/android/repository/cmake-3.22.1-linux.zip" "9196644852a978012caf7a4067ba1898debf6cc204c3341562771e31080d6869" "$cmake_zip"
+  mkdir -p "$SDK/cmake/3.22.1"
+  unzip -q -o "$cmake_zip" -d "$SDK/cmake/3.22.1"
+  "$SDK/cmake/3.22.1/bin/cmake" --version
+  "$SDK/ndk/$EXPO_ARM64_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" --version
+}
+
 #
 # APPFORGE_EXPO_SDK36_VIEW_V1
 #
@@ -1044,10 +1073,14 @@ accept_android_sdk_license() {
 
   echo "APPFORGE_ANDROID_SDK_LICENSE_ACCEPT_START"
 
+  SDK_JAVA_OPTIONS="${JAVA_TOOL_OPTIONS:-}"
+  if [ -n "${APPFORGE_DOWNLOAD_TELEMETRY:-}" ] && [ -f /workspace/runtime/jvm-telemetry/network-byte-agent.jar ]; then
+    SDK_JAVA_OPTIONS="$SDK_JAVA_OPTIONS -javaagent:/workspace/runtime/jvm-telemetry/network-byte-agent.jar"
+  fi
   yes |
-    "$SDK/cmdline-tools/latest/bin/sdkmanager" \
+    JAVA_TOOL_OPTIONS="$SDK_JAVA_OPTIONS" "$SDK/cmdline-tools/latest/bin/sdkmanager" \
       --sdk_root="$SDK" \
-      "platforms;android-37.0"
+      --licenses
 
   test -s \
     "$SDK/licenses/android-sdk-license" || {
@@ -1259,6 +1292,7 @@ accept_android_sdk_license
 
 if [ "$ENGINE" = "expo" ]; then
   ensure_expo_arm64_ndk_host
+  ensure_expo_x64_host
   ensure_expo_sdk36_view
 fi
 

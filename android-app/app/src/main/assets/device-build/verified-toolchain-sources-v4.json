@@ -34,5 +34,30 @@
     "bytes": 663976775,
     "provenance": "official HTTPS archive bytes, cross-checked against existing immutable SHA-1 pin",
     "status": "VERIFIED"
+  },
+  {
+    "file": "gradle-9.3.1-bin.zip",
+    "url": "https://services.gradle.org/distributions/gradle-9.3.1-bin.zip",
+    "sha256": "b266d5ff6b90eada6dc3b20cb090e3731302e553a27c5d3e4df1f0d76beaff06",
+    "bytes": null,
+    "provenance": "Official publisher HTTPS .sha256 checked in this task; archive byte size is not assumed",
+    "status": "PUBLISHER_PIN_VERIFIED"
+  },
+  {
+    "file": "gradle-8.14.3-bin.zip",
+    "url": "https://services.gradle.org/distributions/gradle-8.14.3-bin.zip",
+    "sha256": "bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531",
+    "bytes": null,
+    "provenance": "Official publisher HTTPS .sha256 checked in this task; archive byte size is not assumed",
+    "status": "PUBLISHER_PIN_VERIFIED"
+  },
+  {
+    "file": "cmake-3.22.1-linux.zip",
+    "url": "https://dl.google.com/android/repository/cmake-3.22.1-linux.zip",
+    "legacySha1": "fd0a48b4a758310df8c7aa51f59840ed48fe7ed8",
+    "sha256": "9196644852a978012caf7a4067ba1898debf6cc204c3341562771e31080d6869",
+    "bytes": 22308647,
+    "provenance": "Official HTTPS archive bytes, matched to Google repository XML SHA-1; SHA-256 calculated from downloaded bytes",
+    "status": "VERIFIED"
   }
 ]

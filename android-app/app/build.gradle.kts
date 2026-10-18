@@ -3,9 +3,14 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.security.MessageDigest
 import java.util.zip.ZipFile
+import java.util.UUID
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.jvm.tasks.Jar
 
 plugins {
     id("com.android.application")
@@ -147,6 +152,9 @@ fun appForgeDownloadPinnedAsset(
     error("Proroot indirme çok fazla yönlendirme içeriyor.")
 }
 
+val appForgeOfflineBuild = gradle.startParameter.isOffline
+val appForgeProrootCache = File(gradle.gradleUserHomeDir,"appforge/proroot/$appForgeProrootVersion/arm64-v8a")
+
 val appForgeProrootJniRoot = layout.buildDirectory.dir("generated/proroot/jniLibs")
 
 val prepareAppForgeProrootRuntime =
@@ -170,14 +178,31 @@ val prepareAppForgeProrootRuntime =
                         target.length() == asset.size &&
                         appForgeSha256(target) == asset.sha256
 
-                if (!validExisting) {
-                    target.delete()
-                    appForgeDownloadPinnedAsset(
-                        initialUrl = "https://github.com/coderredlab/proroot/releases/download/$appForgeProrootVersion/${asset.name}",
-                        destination = target,
-                        expectedSize = asset.size,
-                        expectedSha256 = asset.sha256
-                    )
+                val cache=appForgeProrootCache.resolve(asset.name)
+                fun verified(file:File)=file.isFile && file.length()==asset.size && appForgeSha256(file)==asset.sha256
+                fun promote(source:File,destination:File) {
+                    destination.parentFile.mkdirs()
+                    require(!Files.isSymbolicLink(destination.toPath()))
+                    val part=File(destination.path+".part-"+UUID.randomUUID())
+                    try {
+                        source.copyTo(part);require(verified(part))
+                        Files.move(part.toPath(),destination.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+                    }finally{part.delete()}
+                }
+                if(validExisting && !verified(cache))promote(target,cache)
+                if(!validExisting) {
+                    if(!verified(cache)) {
+                        check(!appForgeOfflineBuild){"APPFORGE_OFFLINE_PINNED_ASSET_MISSING: ${asset.name}. Prepare the verified Proroot cache before disconnecting."}
+                        cache.parentFile.mkdirs()
+                        val part=File(cache.path+".download-"+UUID.randomUUID())
+                        try {
+                            appForgeDownloadPinnedAsset(
+                                initialUrl = "https://github.com/coderredlab/proroot/releases/download/$appForgeProrootVersion/${asset.name}",
+                                destination = part,expectedSize = asset.size,expectedSha256 = asset.sha256)
+                            promote(part,cache)
+                        }finally{part.delete()}
+                    }
+                    promote(cache,target)
                 }
 
                 require(
@@ -481,6 +506,31 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+}
+
+// Guest-JDK observer only: this class is never loaded by Android or packaged in the HTML shell.
+val compileSdkNetworkObserver = tasks.register<JavaCompile>("compileSdkNetworkObserver") {
+    source(fileTree("src/main/assets/device-build/jvm-telemetry") { include("*.java") })
+    classpath = files()
+    options.release.set(17)
+    options.encoding = "UTF-8"
+    destinationDirectory.set(layout.buildDirectory.dir("jvm-network-observer/classes"))
+}
+abstract class SdkNetworkObserverPackageTask : Jar() {
+    @get:OutputDirectory abstract val assetsDirectory: DirectoryProperty
+}
+val packageSdkNetworkObserver = tasks.register<SdkNetworkObserverPackageTask>("packageSdkNetworkObserver") {
+    dependsOn(compileSdkNetworkObserver)
+    from(compileSdkNetworkObserver.map { it.destinationDirectory.get().asFile })
+    archiveFileName.set("network-byte-agent.jar")
+    assetsDirectory.set(layout.buildDirectory.dir("generated/jvm-transfer/assets"))
+    destinationDirectory.set(assetsDirectory.dir("device-build/jvm-telemetry"))
+    manifest { attributes(mapOf("Premain-Class" to "com.appforge.runtime.NetworkByteAgent")) }
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+}
+androidComponents.onVariants { variant ->
+    variant.sources.assets?.addGeneratedSourceDirectory(packageSdkNetworkObserver) { it.assetsDirectory }
 }
 
 // Build a tiny unsigned shell at AppForge CI build time; users never download toolchains.
