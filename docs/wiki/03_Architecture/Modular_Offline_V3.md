@@ -53,3 +53,17 @@ APT/Gradle rollback, safe ownership-based removal, complete package SHA-256
 migration and per-project dependency acquisition remain incomplete. The screen
 states these limitations rather than providing destructive or misleading actions.
 Physical Android 16 and live SDK-service acceptance must be recorded separately.
+
+## Completion continuation
+
+Unknown feature keys now fail closed. ModuleOperationJournal persists bounded,
+credential-free metadata atomically; restored active/READY records become paused
+until file validation and explicit consent. User-started ModuleDownloadService
+uses dataSync foreground execution, handles Android timeout, and never starts from
+boot or promises survival. BuildModuleUsage excludes module mutation from active
+local builds. Rootfs byte events and direct curl file/header telemetry feed typed
+progress; package-manager internal downloads remain indeterminate. Portable host
+removal has a narrow pinned-hash/allowlisted-file ownership boundary and atomic
+predelete quarantine rollback. Shared APT/rootfs removal and unverified updates
+stay disabled. See `docs/reports/fast-html-v3-completion-20261018.md` for remaining
+acceptance gaps; this continuation does not establish full V3 acceptance.

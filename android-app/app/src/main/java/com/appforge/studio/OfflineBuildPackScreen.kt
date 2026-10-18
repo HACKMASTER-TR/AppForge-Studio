@@ -19,20 +19,34 @@ internal object ModuleInstallOperations {
     val updates=kotlinx.coroutines.flow.MutableStateFlow<Map<OfflineModuleId,ModuleProgress>>(emptyMap())
     val busy=kotlinx.coroutines.flow.MutableStateFlow(false)
     private var job:Job?=null
+    private var journal:ModuleOperationJournal?=null
+    @Synchronized fun restore(context:android.content.Context) {
+        if(journal!=null)return
+        journal=ModuleOperationJournal(java.io.File(context.noBackupFilesDir,"offline-module-v3/operation.json"))
+        updates.value=journal!!.restore()
+    }
+    private fun persist(){runCatching{journal?.save(updates.value)}}
     @Volatile private var pauseRequested=false
     @Synchronized fun start(context:android.content.Context, selected:OfflineModuleId, consent:Boolean) {
         if(busy.value)return
+        restore(context)
         busy.value=true;pauseRequested=false
+        try {ModuleDownloadService.start(context.applicationContext)}catch(e:RuntimeException) {
+            busy.value=false
+            updates.value=updates.value+(selected to ModuleProgress(selected,"start-denied",ModulePhase.ERROR,detail="Android arka plan hizmetini başlatmadı; uygulama önplandayken yeniden deneyin."))
+            persist();return
+        }
         job=scope.launch {
             try { OfflineBuildPackManager.installModules(context.applicationContext,setOf(selected),consent){event->
                 updates.value=updates.value+(event.moduleId to event)
+                persist()
             }} catch(e:CancellationException) {
                 updates.value=updates.value+(selected to ModuleProgress(selected,"canceled",if(pauseRequested)ModulePhase.PAUSED else ModulePhase.CANCELED,detail=if(pauseRequested)"Duraklatıldı; doğrulanmamış kısmi dosya devam için korunur." else "İptal edildi; çalışan modüller korunur."))
             } catch(e:Exception) {
                 // Preserve the manager's connection-wait/error state for this operation.
                 if(updates.value[selected]?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
                 updates.value=updates.value+(selected to ModuleProgress(selected,"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
-            } finally {busy.value=false}
+            } finally {persist();busy.value=false}
         }
     }
     @Synchronized fun cancel(){pauseRequested=false;job?.cancel()}
@@ -50,6 +64,7 @@ internal object ModuleInstallOperations {
     var detail by remember { mutableStateOf("") }
     val plan=remember(project){project?.let{OfflineModules.forProject(it)}}
     val readinessChanges=events.mapValues{it.value.phase==ModulePhase.READY}
+    LaunchedEffect(Unit){withContext(Dispatchers.IO){ModuleInstallOperations.restore(context)}}
     LaunchedEffect(readinessChanges,busy){ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.moduleReady(context,it.id)}}}
     fun begin(id:OfflineModuleId) {
         ModuleInstallOperations.start(context,id,sdkConsent)
@@ -68,12 +83,22 @@ internal object ModuleInstallOperations {
             item { Text("İlk açılışta araç indirme zorunluluğu yok. Fast HTML gömülüdür. Yalnız seçtiğiniz motorun araçlarını kurun.") }
             item { Text("Boş alan: ${context.noBackupFilesDir.usableSpace/1024/1024} MiB. APT/Gradle/npm toplamları proje ve mimariye bağlıdır; doğrulanmış toplam yoksa yüzde gösterilmez.") }
             plan?.let{p->item{Text(p.error?:"Bu proje için: "+p.modules.joinToString{OfflineModules.spec(it).title})}}
-            items(OfflineModules.all.filter{it.id!=OfflineModuleId.LINUX_RUNTIME && (plan==null || it.id in plan.modules)}) { module ->
+            items(OfflineModules.all.filter{(it.id!=OfflineModuleId.LINUX_RUNTIME || plan?.modules?.contains(it.id)==true || events.containsKey(it.id)) && (plan==null || it.id in plan.modules)}) { module ->
                 val state=events[module.id];val installed=ready[module.id]==true
                 val unsupported=if(module.id !in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE))DeviceBuildRuntimeV3.platformError() else null
                 Card(modifier=Modifier.fillMaxWidth()) {Column(modifier=Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                     Text(module.title,style=MaterialTheme.typography.titleMedium)
                     Text(module.version)
+                    Text(when(module.id){
+                        OfflineModuleId.FAST_HTML->"Yerel HTML/HTTPS için gömülü Android şablonları"
+                        OfflineModuleId.LINUX_RUNTIME->"Normal motorların ortak, projelerden ayrı Linux ortamı"
+                        OfflineModuleId.ANDROID_CORE->"Gradle tabanlı Android APK/AAB projeleri"
+                        OfflineModuleId.NODE_WEB->"Node tabanlı web kaynaklarının hazırlanması"
+                        OfflineModuleId.PYTHON_ANDROID->"Chaquopy ile Android Python projeleri"
+                        OfflineModuleId.EXPO_REACT_NATIVE->"Desteklenen Expo/React Native Android yolu"
+                        OfflineModuleId.WINDOWS_PORTABLE->"Android SDK gerektirmeyen Portable EXE host'u"
+                        OfflineModuleId.WINDOWS_NATIVE->"Deneysel Windows C/C++ çapraz derleme"
+                    })
                     if(unsupported!=null)Text(unsupported)
                     Text("Bağımlılıklar: "+module.dependencies.joinToString{OfflineModules.spec(it).title}.ifBlank{"Yok"})
                     Text("İndirme: "+(module.downloadBytes?.let{"${it/1024/1024} MiB"}?:"Toplam boyut bilinmiyor"))
@@ -92,12 +117,18 @@ internal object ModuleInstallOperations {
                     }
                     Button(enabled=!busy && unsupported==null,onClick={if(installed){scope.launch{val good=withContext(Dispatchers.IO){OfflineBuildPackManager.moduleReady(context,module.id)};detail=if(good)"Bütünlük doğrulandı." else "Bozuk kurulum; hazır değil."}}else chosen=module.id}){Text(if(installed)"Doğrula" else if(state?.phase in setOf(ModulePhase.PAUSED,ModulePhase.WAITING_CONNECTION))"Devam et" else if(state?.phase==ModulePhase.ERROR)"Yeniden dene" else "Kurulum ayrıntıları")}
                     if(busy && state!=null && state.phase !in setOf(ModulePhase.READY,ModulePhase.ERROR)){ if(module.id in setOf(OfflineModuleId.NODE_WEB,OfflineModuleId.WINDOWS_PORTABLE) && state.phase==ModulePhase.DOWNLOADING)OutlinedButton(onClick={ModuleInstallOperations.pause()}){Text("Duraklat")};OutlinedButton(onClick={ModuleInstallOperations.cancel()}){Text("İptal et")} }
-                    Text("Güvenli kaldırma: ortak araçların dosya sahipliği ve etkin derlemeler doğrulanmadan kaldırılmaz.",style=MaterialTheme.typography.bodySmall)
+                    if(installed && module.id==OfflineModuleId.WINDOWS_PORTABLE)OutlinedButton(enabled=!busy,onClick={
+                        scope.launch {detail=withContext(Dispatchers.IO){runCatching {
+                            BuildModuleUsage.mutationLease().use {OwnedModuleFiles.removePortable(context.noBackupFilesDir,WindowsPortableHostStore.HOST_SHA256)}
+                        }.fold({"Yalnız doğrulanmış Windows Portable dosyaları kaldırıldı."},{"Kaldırma engellendi: ${it.message}"})};ready=ready+(module.id to OfflineBuildPackManager.moduleReady(context,module.id))}
+                    }){Text("Windows Portable paketini kaldır")}
+                    OutlinedButton(enabled=false,onClick={}){Text("Güncelleme: doğrulanmış yeni sürüm yok")}
+                    if(module.id!=OfflineModuleId.WINDOWS_PORTABLE)Text("Kaldırma pasif: paylaşılan APT/Gradle dosya sahipliği ve atomik geri alma doğrulanmadı.",style=MaterialTheme.typography.bodySmall)
                 }}
             }
             if(ready[OfflineModuleId.WINDOWS_PORTABLE]==true)item { WindowsModuleSmokeCard() }
             item { Text("Toplam işlem: "+if(busy)"devam ediyor; kurulum iş miktarı ölçülemediği için toplam yüzde yok" else "bekliyor / son modül durumlarını inceleyin") }
-            item { Text("Uygulamayı önplanda tutun. Android arka planda işlemi sonlandırabilir; yeniden açıldığında dosyalar doğrulanmadan hazır sayılmaz.") }
+            item { Text("Kullanıcının başlattığı kurulum Android veri aktarımı servisiyle izlenir. Android zaman sınırı veya süreç ölümü işlemi durdurabilir. Yeniden açınca kayıt geri yüklenir; devam için onay gerekir, dosyalar yeniden doğrulanır.") }
             if(detail.isNotBlank())item{Text(detail)}
             if(firstRun)item{Button(onClick={onFirstRunComplete?.invoke(true)}){Text("Araç indirmeden devam et")}}
         }

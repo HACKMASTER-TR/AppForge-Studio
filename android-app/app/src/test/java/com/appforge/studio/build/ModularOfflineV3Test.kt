@@ -7,6 +7,13 @@ import org.junit.Test
 
 class ModularOfflineV3Test {
     private fun html()=ProjectDraft(appName="Test",sourceTechnology="html",importedFolder="/fixture",startPage="index.html")
+    @Test fun unknownFeaturesFailClosedWithoutErasingPreferences() {
+        val d=html().copy(requiredCapabilities=setOf("futureNativeApi"))
+        assertEquals(FeatureSupportState.UNSUPPORTED,FeatureSupportMatrix.feature(d,"futureNativeApi").state)
+        assertFalse(FeatureSupportMatrix.recommend(d,"futureNativeApi",true,d.requiredCapabilities))
+        assertFalse(WizardReadinessEvaluator.evaluate(d).ready)
+        assertEquals(setOf("futureNativeApi"),d.requiredCapabilities)
+    }
     @Test fun defaultsAndSupportedOutputsUseBundledOnly() {
         for(output in listOf("apk","aab","both")) {
             val d=html().copy(buildOutput=output)

@@ -68,6 +68,8 @@ object DeviceBuildEngine {
         /*
          * OFFLINE_BUILD_PREFLIGHT_GATE_V1
          */
+        val moduleLease=BuildModuleUsage.buildLease()
+        try {
         OfflineBuildPackManager
             .requireReadyForBuild(
                 context.applicationContext,
@@ -81,15 +83,16 @@ object DeviceBuildEngine {
         jobs[id] = state
 
         executor.execute {
-            runBuild(
+            try {runBuild(
                 context = context.applicationContext,
                 draft = draft.copy(),
                 projectZip = projectZip,
                 state = state
-            )
+            )} finally {moduleLease.close()}
         }
 
         return DeviceBuildStart(id, buildNo)
+        } catch(e:Throwable){moduleLease.close();throw e}
     }
 
     internal fun snapshot(id: String): DeviceBuildSnapshot? =

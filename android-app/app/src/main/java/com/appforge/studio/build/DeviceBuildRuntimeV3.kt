@@ -52,6 +52,7 @@ internal object DeviceBuildRuntimeV3 {
 
     suspend fun ensureReady(
         context: Context,
+        onBytes: (com.appforge.studio.terminal.LinuxInstallProgress) -> Unit = {},
         onProgress: (String) -> Unit = {}
     ): File =
         installMutex.withLock {
@@ -134,6 +135,7 @@ internal object DeviceBuildRuntimeV3 {
                     layout =
                         layout
                 ) { progress ->
+                    onBytes(progress)
 
                     val percent =
                         progress.percent

@@ -1,5 +1,8 @@
 #!/bin/sh
 set -eu
+if [ -f /workspace/runtime/module-download-telemetry.sh ]; then
+  . /workspace/runtime/module-download-telemetry.sh
+fi
 
 ROOT="/opt/appforge-device"
 SDK="$ROOT/android-sdk"

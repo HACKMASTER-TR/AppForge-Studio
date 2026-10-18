@@ -18,6 +18,12 @@ internal object FeatureSupportMatrix {
 
     fun feature(d: ProjectDraft, key: String): FeatureSupport {
         fun state(s: FeatureSupportState, reason: String, alternative: String? = null) = FeatureSupport(s,reason,alternative)
+        val known=setOf("customSigning","additionalPermissions","capture","audioCapture","watchPosition","webMediaUnknown","bluetoothApi","contactsApi","calendarApi","webNfcApi",
+            "camera","microphone","location","fileUpload","notifications","networkState","wakeLock","nfc","qrScanner","mediaPlayerBridge","billingEnabled",
+            "admobEnabled","firebaseAnalyticsEnabled","firebaseCrashlyticsEnabled","firebaseMessagingEnabled","umpConsentEnabled","javascriptBridge","webJavaScriptEnabled",
+            "remoteBridgeAllowed","clipboardBridge","vibrationBridge","shareBridge","normalHtmlEngine","webDomStorageEnabled","webZoomEnabled","webWideViewPortEnabled",
+            "webOverviewModeEnabled","webMediaAutoplayEnabled","webMixedContentAllowed","downloads","offlineCache","fullscreen","splashEnabled","deepLinkEnabled")
+        if(key !in known)return state(FeatureSupportState.UNSUPPORTED,"Tanınmayan özellik: $key. Doğrulanmış destek kaydı yok; otomatik etkinleştirilemez.")
         val fast=fastRequested(d)
         if(key=="customSigning" && fast && DeviceBuildCapabilities.requestedOutputs(d.buildOutput)==setOf(DeviceArtifactKind.APK))return state(FeatureSupportState.NORMAL_ENGINE_REQUIRED,"Özel APK keystore bu hızlı yolda yok; normal motoru açıkça seçin veya uygun AAB/BOTH kullanın.","Normal Android motoru")
         if(key in setOf("admobEnabled","firebaseAnalyticsEnabled","firebaseCrashlyticsEnabled","firebaseMessagingEnabled","umpConsentEnabled"))

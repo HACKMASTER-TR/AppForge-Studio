@@ -16,7 +16,7 @@ internal object VerifiedModuleDownload {
     fun download(url:String,expected:String,target:File,module:OfflineModuleId,operation:String,
         canceled:()->Boolean={false}, clock:()->Long={System.nanoTime()/1_000_000},
         open:(URL)->HttpURLConnection={it.openConnection() as HttpURLConnection},
-        progress:(ModuleProgress)->Unit={}) {
+        progress:(ModuleProgress)->Unit={}, availableBytes:(File)->Long={it.usableSpace}) {
         val address=URL(url);require(address.protocol=="https" && address.userInfo==null && address.ref==null)
         require(expected.matches(Regex("[0-9a-f]{64}")))
         val parent=requireNotNull(target.parentFile).apply{mkdirs()};require(parent.canonicalFile==parent.absoluteFile)
@@ -47,7 +47,7 @@ internal object VerifiedModuleDownload {
                 require(status==200){"HTTP $status; kısmi dosya hazır sayılmadı."}
                 offset=0;total=connection.contentLengthLong.takeIf{it>0}
             }
-            total?.let{require(it<=1024L*1024*1024 && parent.usableSpace>it-offset+64L*1024*1024)}
+            total?.let{require(it<=1024L*1024*1024 && availableBytes(parent)>it-offset+64L*1024*1024)}
             val start=clock();val meter=DownloadMeasurement(module,operation,start,offset)
             progress(meter.sample(offset,total,start))
             var bytes=offset;var reported=start
@@ -57,6 +57,7 @@ internal object VerifiedModuleDownload {
                     if(canceled())throw java.util.concurrent.CancellationException("İndirme iptal edildi")
                     val n=input.read(b);if(n<0)break
                     bytes+=n;require(bytes<=1024L*1024*1024 && (total==null||bytes<=total!!)){"İndirme boyutu sınırı"}
+                    require(availableBytes(parent)>n+64L*1024*1024){"Yetersiz depolama; çalışan hedef korunur."}
                     out.write(b,0,n)
                     val now=clock();if(now-reported>=250){progress(meter.sample(bytes,total,now));reported=now}
                 }

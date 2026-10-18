@@ -1,5 +1,7 @@
 package com.appforge.studio.build
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -215,6 +217,7 @@ internal object OfflineBuildPackManager {
 
     suspend fun installModules(context:Context, selected:Set<OfflineModuleId>, sdkConsent:Boolean,
         progress:(ModuleProgress)->Unit = {}) = installMutex.withLock {
+        BuildModuleUsage.mutationLease().use {
         require(selected.isNotEmpty()){ "Önce kurulacak modülü seçin." }
         val app=context.applicationContext
         val plan=OfflineModules.resolve(selected)
@@ -247,7 +250,20 @@ internal object OfflineBuildPackManager {
             val linux=pending.filter{it !in setOf(OfflineModuleId.WINDOWS_PORTABLE,OfflineModuleId.FAST_HTML)}
             if(linux.isNotEmpty()) {
                 phase(OfflineModuleId.LINUX_RUNTIME,ModulePhase.INSTALLING,"Ortak Linux ortamı hazırlanıyor; toplam boyut henüz bilinmiyor.")
-                val root=DeviceBuildRuntimeV3.ensureReady(app){phase(OfflineModuleId.LINUX_RUNTIME,ModulePhase.INSTALLING,it)}
+                var rootMeter:DownloadMeasurement?=null
+                var rootReported=0L
+                val root=DeviceBuildRuntimeV3.ensureReady(app,onBytes={e->
+                    val now=android.os.SystemClock.elapsedRealtime()
+                    if(e.stage==com.appforge.studio.terminal.LinuxInstallStage.DOWNLOADING) {
+                        val m=rootMeter?:DownloadMeasurement(OfflineModuleId.LINUX_RUNTIME,operation,now).also{rootMeter=it}
+                        if(now-rootReported>=250 || e.totalBytes==e.completedBytes){
+                            progress(m.sample(e.completedBytes,e.totalBytes?.takeIf{it>0},now).copy(detail=e.detail));rootReported=now
+                        }
+                    } else phase(OfflineModuleId.LINUX_RUNTIME,when(e.stage){
+                        com.appforge.studio.terminal.LinuxInstallStage.VERIFYING->ModulePhase.VERIFYING
+                        com.appforge.studio.terminal.LinuxInstallStage.EXTRACTING->ModulePhase.EXTRACTING
+                        else->ModulePhase.INSTALLING},e.detail)
+                }){}
                 phase(OfflineModuleId.LINUX_RUNTIME,ModulePhase.READY,"Ortak ortam doğrulandı.")
                 copyAssetTree(app,"device-build",File(workspace,"runtime"))
                 val shell=LinuxShellEngine(app)
@@ -272,7 +288,7 @@ internal object OfflineBuildPackManager {
                         else -> error("Bilinmeyen modül")
                     }
                     for(command in commands)execute(shell,root,workspace,id.name.lowercase(),
-                        "APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 /bin/sh /workspace/runtime/$command")
+                        "APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 /bin/sh /workspace/runtime/$command",id,operation,progress)
                     phase(id,ModulePhase.OFFLINE_TEST,"Gerçek dosya/sürüm ve çevrimdışı araç kontrolü yapılıyor.")
                     val probe=when(id) {
                         OfflineModuleId.ANDROID_CORE -> "APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/install-toolchain.sh webview-static && APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/prepare-offline-pack.sh android"
@@ -298,6 +314,7 @@ internal object OfflineBuildPackManager {
         } catch(e:Exception) {
             progress(ModuleProgress(active,operation,if(!hasValidatedInternet(app))ModulePhase.WAITING_CONNECTION else ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=if(!hasValidatedInternet(app))"Bağlantı bekleniyor; kısmi indirme hazır sayılmaz. Bağlantı gelince Devam et seçin." else e.message?:"Kurulum başarısız."));throw e
         } finally { workspace.deleteRecursively() }
+        }
     }
 
     private val witnesses=mapOf(
@@ -341,20 +358,35 @@ internal object OfflineBuildPackManager {
         rootfs: File,
         workspace: File,
         suffix: String,
-        command: String
-    ) {
+        command: String,
+        module:OfflineModuleId?=null,
+        operation:String="",
+        progress:(ModuleProgress)->Unit={}
+    ) = kotlinx.coroutines.coroutineScope {
         val sessionId =
             "offline-pack-$suffix-${UUID.randomUUID()}"
 
-        val result =
+        val telemetry=File(workspace,"module-download.json")
+        telemetry.delete()
+        val adapter=module?.let{ExternalDownloadTelemetry(it,operation)}
+        val poller=launch(kotlinx.coroutines.Dispatchers.IO) {
+            while(kotlinx.coroutines.currentCoroutineContext().isActive) {
+                if(adapter!=null && telemetry.isFile && telemetry.length()<=2048)runCatching {
+                    adapter.accept(telemetry.readText(),android.os.SystemClock.elapsedRealtime())?.let(progress)
+                }
+                kotlinx.coroutines.delay(500)
+            }
+        }
+        val result = try {
             shell.execute(
                 sessionId = sessionId,
                 rootfs = rootfs,
                 workspace = workspace,
-                command = command,
+                command = "APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json "+command,
                 confirmed = true,
                 timeoutMs = 1_800_000L
             )
+        } finally {poller.cancel()}
 
         check(
             !result.timedOut

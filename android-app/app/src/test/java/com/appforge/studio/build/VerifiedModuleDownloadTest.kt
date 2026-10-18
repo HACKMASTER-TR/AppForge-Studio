@@ -83,4 +83,16 @@ class VerifiedModuleDownloadTest {
         } finally {dir.deleteRecursively()}
     }
 
+    @Test fun insufficientStorageNeverPublishesOrOverwritesWorkingArtifact() {
+        val dir=Files.createTempDirectory("module-no-space").toFile()
+        try {
+            val data="new archive".toByteArray();val target=File(dir,"node.tar.xz").apply{writeText("working")}
+            assertThrows(IllegalArgumentException::class.java) {
+                VerifiedModuleDownload.download("https://node.example/test",hash(data),target,OfflineModuleId.NODE_WEB,"disk",open={Connection(data,200)},availableBytes={0L})
+            }
+            assertEquals("working",target.readText())
+            assertFalse(File(target.path+".part").exists())
+        } finally {dir.deleteRecursively()}
+    }
+
 }

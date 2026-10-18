@@ -61,6 +61,9 @@
             android:name=".ProPurchasesActivity"
             android:exported="false" />
 
+        <service android:name=".ModuleDownloadService" android:exported="false"
+            android:stopWithTask="false" android:foregroundServiceType="dataSync" />
+
         <service
             android:name=".BuildProgressService"
             android:exported="false"
