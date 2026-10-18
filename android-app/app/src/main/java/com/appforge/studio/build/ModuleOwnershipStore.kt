@@ -8,7 +8,7 @@ import org.json.JSONObject
 /** Exact install deltas, not filename guesses. Shared or foreign modifications block removal. */
 internal class ModuleOwnershipStore(private val root:File) {
     private val control="opt/appforge-device/ownership-v5"
-    private fun namespace(id:OfflineModuleId,key:String):Boolean {
+    private fun namespacePrefixes(id:OfflineModuleId):List<String> {
         val prefixes=when(id) {
             OfflineModuleId.NODE_WEB->listOf("opt/appforge-device/node-22.23.3/")
             OfflineModuleId.ANDROID_CORE->listOf("opt/appforge-device/android-sdk/platforms/android-37.0/","opt/appforge-device/android-sdk/build-tools/36.0.0/","opt/appforge-device/android-sdk/cmdline-tools/","opt/appforge-device/jdk-17/","opt/appforge-device/gradle-9.3.1/","opt/appforge-device/gradle-8.14.3/")
@@ -17,12 +17,51 @@ internal class ModuleOwnershipStore(private val root:File) {
             OfflineModuleId.WINDOWS_NATIVE->listOf("usr/x86_64-w64-mingw32/","usr/lib/gcc/x86_64-w64-mingw32/","usr/bin/x86_64-w64-mingw32-")
             else->emptyList()
         }
-        return prefixes.any{key.startsWith(it)} || key.startsWith("opt/appforge-device/apt-locks-v5/${id.name}/")
+        return prefixes+"opt/appforge-device/apt-locks-v5/${id.name}/"
     }
+    private fun namespace(id:OfflineModuleId,key:String)=namespacePrefixes(id).any{key.startsWith(it)}
+    // Build/package-manager caches and logs are mutable; project readiness attests caches separately.
+    private fun readinessTracked(key:String)=listOf("root/.gradle-appforge/","root/.gradle/","root/.cache/","root/.npm/","var/cache/","var/log/","var/lib/apt/lists/","tmp/","run/","opt/appforge-device/cache/","opt/appforge-device/npm-cache-v1/","opt/appforge-device/npm-cache-expo54-v1/").none{key==it.trimEnd('/') || key.startsWith(it)}
     fun verifyNamespace(id:OfflineModuleId):Boolean=runCatching {
-        val entries=read(id).getJSONObject("changes");val store=RuntimeGenerationStore(root)
-        val owned=entries.keys().asSequence().filter{namespace(id,it)}.toList();require(owned.isNotEmpty())
-        owned.all{key->store.inspectRelative(key)==decode(entries.getJSONObject(key).optJSONObject("after"))}
+        val own=read(id).getJSONObject("changes");val store=RuntimeGenerationStore(root)
+        val latest=mutableMapOf<String,Pair<Long,RuntimeGenerationStore.Entry?>>()
+        val directory=path(root,control)
+        for(file in directory.listFiles().orEmpty().filter{it.name.endsWith(".json")}) {
+            require(!Files.isSymbolicLink(file.toPath()) && file.length()<=16L*1024*1024)
+            val record=JSONObject(file.readText());require(record.getInt("schema")==1)
+            require(record.getString("module")+".json"==file.name)
+            val order=record.optLong("sequence",0);require(order in 0..1_000_000_000_000L)
+            val changes=record.getJSONObject("changes")
+            for(key in changes.keys()) {
+                require(!metadata(key));path(root,key)
+                if(!readinessTracked(key) || !own.has(key) && !namespace(id,key))continue
+                val expected=decode(changes.getJSONObject(key).optJSONObject("after"))
+                val previous=latest[key]
+                if(previous==null || order>previous.first)latest[key]=order to expected
+                else if(order==previous.first)require(previous.second==expected){"Çakışan eski sahiplik kaydı"}
+            }
+        }
+        require(own.keys().asSequence().any{namespace(id,it)})
+        val keys=(own.keys().asSequence().filter{readinessTracked(it)}.toSet()+latest.keys.filter{namespace(id,it)})
+        require(keys.all{key->store.inspectRelative(key)==latest.getValue(key).second})
+        // An extra file in a private runtime namespace is not silently blessed as installed.
+        for(prefix in namespacePrefixes(id)) {
+            if(!prefix.endsWith('/')) {
+                val parent=path(root,prefix).parentFile
+                for(child in parent.listFiles().orEmpty().filter{it.name.startsWith(prefix.substringAfterLast('/'))})require(latest[child.relativeTo(root).invariantSeparatorsPath]?.second!=null)
+                continue
+            }
+            val base=path(root,prefix.trimEnd('/'))
+            if(!Files.exists(base.toPath(),LinkOption.NOFOLLOW_LINKS))continue
+            require(!Files.isSymbolicLink(base.toPath()) && base.isDirectory)
+            var count=0
+            Files.walkFileTree(base.toPath(),object:SimpleFileVisitor<Path>() {
+                private fun inspect(p:Path){require(++count<=250000);if(p==base.toPath())return;val relative=p.toFile().relativeTo(root).invariantSeparatorsPath;require(latest[relative]?.second!=null){"Sahipsiz runtime dosyası: $relative"}}
+                override fun preVisitDirectory(dir:Path,attrs:java.nio.file.attribute.BasicFileAttributes):FileVisitResult {inspect(dir);return FileVisitResult.CONTINUE}
+                override fun visitFile(file:Path,attrs:java.nio.file.attribute.BasicFileAttributes):FileVisitResult {inspect(file);return FileVisitResult.CONTINUE}
+            })
+        }
+        true
     }.getOrDefault(false)
     private fun metadata(path:String)=path in setOf("opt/appforge-device/modules-v3","opt/appforge-device/apt-locks-v5") || control.startsWith("$path/") || path==control || path.startsWith("$control/") || path=="opt/appforge-device/generations-v4" || path.startsWith("opt/appforge-device/generations-v4/")
     private fun path(base:File,relative:String):File {
@@ -49,21 +88,25 @@ internal class ModuleOwnershipStore(private val root:File) {
         require(before[BaseRuntimeOwnership.FILE]==after[BaseRuntimeOwnership.FILE]){"Vendor sahiplik kaydı değişti."}
         val known=BaseRuntimeOwnership.paths(root).toMutableSet()
         val directory=path(root,control)
+        var sequence=0L
         for(file in directory.listFiles().orEmpty().filter{it.name.endsWith(".json")} ) {
             val relative=file.relativeTo(root).invariantSeparatorsPath
             require(before[relative]==after[relative]){"Başka modülün sahiplik kaydı değişti."}
             require(!Files.isSymbolicLink(file.toPath()) && file.length()<=16L*1024*1024)
-            val owner=JSONObject(file.readText()).getJSONObject("changes")
+            val existing=JSONObject(file.readText());val order=existing.optLong("sequence",0);require(order in 0 until 1_000_000_000_000L)
+            sequence=maxOf(sequence,order)
+            val owner=existing.getJSONObject("changes")
             for(key in owner.keys())if(owner.getJSONObject(key).optJSONObject("after")!=null)known.add(key)
         }
         val unknownRemoved=before.keys.filter{it.isNotEmpty() && !metadata(it) && after[it]==null && it !in known}
         require(unknownRemoved.isEmpty()){"Kurulum sahipliği bilinmeyen dosyaları kaldırdı; eski ortam korundu: "+unknownRemoved.take(3).joinToString()}
 
         val changes=JSONObject()
-        for(key in (before.keys+after.keys).filter{it.isNotEmpty() && !metadata(it) && (before[it]!=after[it] || namespace(id,it))}.sorted())
+        for(key in (before.keys+after.keys).filter{it.isNotEmpty() && !metadata(it) && readinessTracked(it) && (before[it]!=after[it] || namespace(id,it))}.sorted())
             changes.put(key,JSONObject().put("before",entry(before[key])).put("after",entry(after[key])))
         // Repair/update preserves the original ownership baseline; shared writes still fail removal checks.
         old?.getJSONObject("changes")?.let{prior->for(key in prior.keys()) {
+            if(!readinessTracked(key))continue
             val priorEntry=prior.getJSONObject(key)
             if(namespace(id,key) && before[key]==after[key])require(decode(priorEntry.optJSONObject("after"))==after[key]){"Onarılamayan modül dosyası değişmiş: $key"}
             val next=changes.optJSONObject(key)?:JSONObject().put("after",entry(after[key]))
@@ -85,7 +128,7 @@ internal class ModuleOwnershipStore(private val root:File) {
             Files.move(tmp.toPath(),dst.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
         }
         val f=receipt(id);f.parentFile.mkdirs();require(!Files.isSymbolicLink(f.toPath()))
-        val value=JSONObject().put("schema",1).put("module",id.name).put("previous",old?.getString("previous")?:previousRootName).put("changes",changes).put("beforeStore",if(useContentStore)"CAS1" else "SNAPSHOT")
+        val value=JSONObject().put("schema",1).put("module",id.name).put("sequence",sequence+1).put("previous",old?.getString("previous")?:previousRootName).put("changes",changes).put("beforeStore",if(useContentStore)"CAS1" else "SNAPSHOT")
         val tmp=File(f.path+".tmp");require(!Files.isSymbolicLink(tmp.toPath()))
         java.io.FileOutputStream(tmp).use{it.write(value.toString().toByteArray());it.fd.sync()}
         Files.move(tmp.toPath(),f.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)

@@ -96,4 +96,57 @@ class ModuleOwnershipStoreTest {
         }finally{base.deleteRecursively()}
     }
 
+    @Test fun readinessChecksSharedFilesAgainstTheLatestAuthorizedOwner() {
+        val base=Files.createTempDirectory("owned-shared-ready").toFile()
+        try {
+            val root=File(base,"rootfs").apply{mkdir()}
+            install(root,OfflineModuleId.ANDROID_CORE){r->
+                File(r,"opt/appforge-device/jdk-17/bin/java").apply{parentFile.mkdirs();writeText("jdk")}
+                File(r,"usr/lib/shared.so").apply{parentFile.mkdirs();writeText("v1")}
+                File(r,"root/.gradle-appforge/caches/volatile.lock").apply{parentFile.mkdirs();writeText("cache")}
+            }
+            assertTrue(ModuleOwnershipStore(root).verifyNamespace(OfflineModuleId.ANDROID_CORE))
+            install(root,OfflineModuleId.NODE_WEB){r->
+                File(r,"opt/appforge-device/node-22.23.3/bin/node").apply{parentFile.mkdirs();writeText("node")}
+                File(r,"usr/lib/shared.so").writeText("v2")
+            }
+            assertTrue(ModuleOwnershipStore(root).verifyNamespace(OfflineModuleId.ANDROID_CORE))
+            assertTrue(ModuleOwnershipStore(root).verifyNamespace(OfflineModuleId.NODE_WEB))
+            File(root,"root/.gradle-appforge/caches/volatile.lock").writeText("legitimate cache update")
+            assertTrue(ModuleOwnershipStore(root).verifyNamespace(OfflineModuleId.ANDROID_CORE))
+            File(root,"usr/lib/shared.so").writeText("foreign")
+            assertFalse(ModuleOwnershipStore(root).verifyNamespace(OfflineModuleId.ANDROID_CORE))
+            assertFalse(ModuleOwnershipStore(root).verifyNamespace(OfflineModuleId.NODE_WEB))
+        }finally{base.deleteRecursively()}
+    }
+    @Test fun unownedExtraPrivateRuntimeFilesAreNotBlessedByAnOldReceipt() {
+        val base=Files.createTempDirectory("owned-extra-ready").toFile()
+        try {
+            val root=File(base,"rootfs").apply{mkdir()}
+            install(root,OfflineModuleId.NODE_WEB){r->File(r,"opt/appforge-device/node-22.23.3/bin/node").apply{parentFile.mkdirs();writeText("node")}}
+            assertTrue(ModuleOwnershipStore(root).verifyNamespace(OfflineModuleId.NODE_WEB))
+            val extra=File(root,"opt/appforge-device/node-22.23.3/foreign.js");extra.writeText("preserve")
+            assertFalse(ModuleOwnershipStore(root).verifyNamespace(OfflineModuleId.NODE_WEB))
+            assertNotNull(ModuleOwnershipStore(root).removalReason(OfflineModuleId.NODE_WEB))
+            assertEquals("preserve",extra.readText())
+        }finally{base.deleteRecursively()}
+    }
+
+    @Test fun removingOwnedToolsPreservesDependencyCachesAndUserSources() {
+        val base=Files.createTempDirectory("owned-cache-preserve").toFile()
+        try {
+            val root=File(base,"rootfs").apply{mkdir()};File(root,"user-project.txt").writeText("source")
+            install(root,OfflineModuleId.NODE_WEB){r->
+                File(r,"opt/appforge-device/node-22.23.3/bin/node").apply{parentFile.mkdirs();writeText("node")}
+                File(r,"opt/appforge-device/npm-cache-v1/user-dependency").apply{parentFile.mkdirs();writeText("cache")}
+            }
+            File(root,"opt/appforge-device/npm-cache-v1/user-dependency").writeText("new project cache")
+            assertNull(ModuleOwnershipStore(root).removalReason(OfflineModuleId.NODE_WEB))
+            RuntimeGenerationStore(root).prepareOwner("REMOVE:NODE_WEB").use{tx->ModuleOwnershipStore(root).restoreInto(OfflineModuleId.NODE_WEB,tx.root);tx.commit(verify={})}
+            assertEquals("new project cache",File(root,"opt/appforge-device/npm-cache-v1/user-dependency").readText())
+            assertEquals("source",File(root,"user-project.txt").readText())
+            assertFalse(File(root,"opt/appforge-device/node-22.23.3/bin/node").exists())
+        }finally{base.deleteRecursively()}
+    }
+
 }

@@ -271,6 +271,7 @@ internal object OfflineBuildPackManager {
                 for(id in linux.filter{it!=OfflineModuleId.LINUX_RUNTIME}) {
                     active=id
                     if(moduleReady(app,id))continue
+                    val protectedModules=witnesses.keys.filter{it!=id && moduleReady(app,it)}
                     val installJob=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
                     phase(id,ModulePhase.PREPARING,"Çalışan ortam korunuyor; izole sürüm kopyalanıyor ve doğrulanıyor.")
                     RuntimeGenerationStore(root).prepare(id,canceled={if(installJob?.isActive==false)throw kotlinx.coroutines.CancellationException("İptal edildi")}).use { generation ->
@@ -311,6 +312,10 @@ internal object OfflineBuildPackManager {
                     phase(id,ModulePhase.VERIFYING,"Dosya SHA-256 envanteri atomik kaydediliyor.")
                     writeAttestation(app,staged,id)
                     ModuleOwnershipStore(staged).record(id,generation.previousRootName,RuntimeGenerationStore(root).snapshot(),RuntimeGenerationStore(staged).snapshot(),root)
+                    for(existing in protectedModules) {
+                        check(recordMatches(app,staged,existing)){"Kurulum çalışan modülün bütünlüğünü bozdu: ${existing.name}"}
+                        execute(shell,staged,workspace,"protect-${existing.name.lowercase()}",runtimeProbe(existing))
+                    }
                     generation.commit(verify={ candidate -> check(recordMatches(app,candidate,id) && AndroidRuntimeTrust.ready(candidate)){"Yeni modül sürüm kaydı doğrulanamadı."} })
                     }
                     check(moduleReady(app,id)){"Etkinleştirilen modül doğrulanamadı."}
@@ -327,6 +332,15 @@ internal object OfflineBuildPackManager {
             progress(ModuleProgress(active,operation,if(!hasValidatedInternet(app))ModulePhase.WAITING_CONNECTION else ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=if(!hasValidatedInternet(app))"Bağlantı bekleniyor; kısmi indirme hazır sayılmaz. Bağlantı gelince Devam et seçin." else e.message?:"Kurulum başarısız."));throw e
         } finally { workspace.deleteRecursively() }
         }
+    }
+
+    private fun runtimeProbe(id:OfflineModuleId):String=when(id) {
+        OfflineModuleId.ANDROID_CORE->"/opt/appforge-device/jdk-17/bin/java -version && /opt/appforge-device/android-sdk/build-tools/36.0.0/aapt2 version && JAVA_HOME=/opt/appforge-device/jdk-17 /opt/appforge-device/gradle-9.3.1/bin/gradle --offline --version"
+        OfflineModuleId.NODE_WEB->"/opt/appforge-device/node-22.23.3/bin/node --version"
+        OfflineModuleId.PYTHON_ANDROID->"/usr/bin/python3.12 --version"
+        OfflineModuleId.EXPO_REACT_NATIVE->"/opt/appforge-device/android-sdk/cmake/3.22.1/bin/cmake --version && /opt/appforge-device/android-sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --version"
+        OfflineModuleId.WINDOWS_NATIVE->"/usr/bin/x86_64-w64-mingw32-gcc-posix --version && /usr/bin/cmake --version && /usr/bin/ninja --version"
+        else->error("Bu modül paylaşılan native ortama ait değil")
     }
 
     private val witnesses=mapOf(
@@ -347,6 +361,7 @@ internal object OfflineBuildPackManager {
             else->listOf("install-toolchain.sh","prepare-offline-pack.sh","platform-37.0-package.xml")
         }+listOf("apt-download-telemetry.sh","module-download-telemetry.sh","native-download-broker.sh","jvm-telemetry/network-byte-agent.jar","verified-toolchain-sources-v4.json")
         val hash=java.security.MessageDigest.getInstance("SHA-256")
+        hash.update("ownership-probe-v6".toByteArray())
         for(name in names.sorted()){hash.update(name.toByteArray());context.assets.open("device-build/$name").use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;hash.update(b,0,n)}}}
         return hash.digest().joinToString(""){"%02x".format(it)}
     }
@@ -390,11 +405,12 @@ internal object OfflineBuildPackManager {
     internal fun protectedTools(context:Context):Map<String,String> {
         val root=runtimeRootfs(context)?:error("Runtime yok")
         val expected=witnesses.filterKeys{moduleReady(context,it)}.values.flatten().distinct().associateWith{digest(File(root,it))}.toMutableMap()
-        val metadata=File(root,"opt/appforge-device/ownership-v5").listFiles().orEmpty().filter{it.isFile && it.extension=="json"}.toList()+listOf(File(root,BaseRuntimeOwnership.FILE))
+        val metadata=File(root,"opt/appforge-device/ownership-v5").listFiles().orEmpty().filter{it.isFile && it.extension=="json"}.toList()+listOf(File(root,BaseRuntimeOwnership.FILE),File(root,"root/.gradle-appforge/init.d/appforge-resource-bytes.gradle"))
         for(file in metadata.filter{it.isFile}){require(file.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && !java.nio.file.Files.isSymbolicLink(file.toPath()));expected[file.relativeTo(root).invariantSeparatorsPath]=digest(file)}
         return expected
     }
     internal fun verifyProtectedTools(root:File,expected:Map<String,String>) {
+        for(id in witnesses.keys.filter{witnesses.getValue(it).all(expected::containsKey)})require(ModuleOwnershipStore(root).verifyNamespace(id)){"Proje, kurulu modülün sahipli sistem dosyalarını değiştirdi: ${id.name}"}
         require(expected.all{(path,hash)->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==hash}){"Proje derlemesi korunan araçları değiştirdi; sürüm etkinleştirilmedi."}
     }
     fun canRollback(context:Context,id:OfflineModuleId):Boolean {
