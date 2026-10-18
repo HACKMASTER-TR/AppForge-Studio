@@ -27,8 +27,8 @@ test('fast HTML/URL APK bypasses rootfs and offline package without touching oth
   assert.ok(engine.indexOf('FastHtmlApkPackager.build') < engine.indexOf('DeviceBuildRuntimeV3\n'));
   assert.match(offline, /if \(FastHtmlApkPolicy\.isCandidate\(draft\)\)/);
   assert.match(offline, /FastHtmlApkPolicy\.requireSupported\(draft\)/);
-  assert.match(offline, /"node-web"/);
-  assert.match(offline, /"expo"/);
+  assert.match(offline, /OfflineModules\.forProject\(draft\)/);
+  assert.match(read(source + "OfflineModulePlan.kt"), /"expo"/);
 });
 
 test('only HTML/HTTPS URL, APK output, debug/local signing supported', () => {

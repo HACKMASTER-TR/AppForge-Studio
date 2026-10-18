@@ -21,7 +21,7 @@ internal object FastHtmlApkPolicy {
     private fun hasFastRouteSource(draft: ProjectDraft): Boolean {
         val engine = draft.sourceBuildEngine.trim().lowercase().ifBlank { "webview-static" }
         val tech = draft.sourceTechnology.trim().lowercase()
-        return engine == "webview-static" && (draft.sourceMode == SourceMode.URL ||
+        return !draft.normalHtmlEngine && engine == "webview-static" && (draft.sourceMode == SourceMode.URL ||
             tech in setOf("html", "web-static", "webview") &&
             (draft.startPage?.endsWith(".html", true) == true || draft.importedFolder != null))
     }

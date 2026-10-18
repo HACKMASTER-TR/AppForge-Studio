@@ -50,7 +50,7 @@ test('fast HTML invalid options stay in Builder, never redirect to offline toolc
   assert.doesNotMatch(gate,/openWorkspaceScreen\(\s*AppScreen\.OFFLINE_PACK/);
   assert.match(gate,/FAST_HTML_APK_SETTINGS_REQUIRED=YES/);
   assert.match(offline,/engine = "fast-html-apk"/);
-  assert.match(offline,/"Android SDK \+ JDK \+ Gradle"/);
+  assert.match(offline,/OfflineModules\.forProject/);
 });
 test('CI builds AAB shell template without marking runtime packaging complete', () => {
   assert.match(gradle,/val generateFastHtmlAabTemplate = tasks.register<Copy>\("generateFastHtmlAabTemplate"\)/);

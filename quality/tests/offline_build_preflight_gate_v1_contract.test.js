@@ -39,7 +39,7 @@ const engine = read(
 
 const manager = read(
   "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
-);
+) + read("android-app/app/src/main/java/com/appforge/studio/build/OfflineModulePlan.kt");
 
 const screen = read(
   "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
@@ -122,17 +122,17 @@ test(
 
     assert.match(
       manager,
-      /Expo SDK 54 \+ NDK\/CMake/
+      /SDK 54 \/ RN 0\.81/
     );
 
     assert.match(
       manager,
-      /Windows Native C\/C\+\+ toolchain/
+      /Windows Native C\/C\+\+/
     );
 
     assert.match(
       manager,
-      /Windows Portable EXE Host/
+      /Windows Portable Host/
     );
   }
 );
@@ -147,22 +147,22 @@ test(
 
     assert.match(
       manager,
-      /expo\.ready/
+      /OfflineModuleId\.EXPO_REACT_NATIVE/
     );
 
     assert.match(
       manager,
-      /expo-toolchain/
+      /install-toolchain\.sh expo/
     );
 
     assert.match(
       screen,
-      /Expo SDK 54 \/ React Native 0\.81/
+      /OfflineModules\.all/
     );
 
     assert.match(
       screen,
-      /status\.expoToolchainReady/
+      /ready\[module.id\]/
     );
   }
 );
@@ -226,7 +226,7 @@ test("Builder preflight keeps settings failures local and routes only missing de
   try {
     fs.writeFileSync(path.join(dir, "Check.kt"), `
 enum class AppScreen { HOME, BUILDER, OFFLINE_PACK }
-data class Check(val ready: Boolean, val engine: String, val missing: List<String>)
+data class Check(val ready: Boolean, val engine: String, val missing: List<String>,val missingModules:Set<String> = emptySet())
 fun verify(input: Check, classification: String?, redirect: Boolean = false) {
     val offlinePackCheck = input
     val normalRouteReasons = listOf("selected feature requires normal runtime")
@@ -301,9 +301,9 @@ fun main() {
         "windows-native" to "Windows Native C/C++ toolchain",
         "universal-cross-platform" to "Windows Portable EXE Host"
     ).forEach { (engine, missing) ->
-        verify(Check(false, engine, listOf(missing)), "dependency-missing", true)
+        verify(Check(false, engine, listOf(missing),setOf("typed-module")), "dependency-missing", true)
     }
-    verify(Check(false, "node-web", listOf("Android SDK + JDK + Gradle", "Node.js + npm")), "dependency-missing", true)
+    verify(Check(false, "node-web", listOf("Android SDK + JDK + Gradle", "Node.js + npm"),setOf("android","node")), "dependency-missing", true)
     verify(Check(false, "future-engine", listOf("Unknown failure")), "unclassified")
     verify(Check(false, "android-gradle", emptyList()), "unclassified")
     verify(Check(false, "android-gradle", listOf("Android SDK + JDK + Gradle", "Unknown failure")), "unclassified")

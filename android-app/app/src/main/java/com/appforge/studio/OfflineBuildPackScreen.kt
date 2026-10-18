@@ -1,956 +1,144 @@
-@file:OptIn(
-    androidx.compose.material3.ExperimentalMaterial3Api::class
-)
-
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.appforge.studio
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.appforge.studio.build.OfflineBuildPackManager
-import com.appforge.studio.build.OfflineBuildPackStatus
-import com.appforge.studio.build.WindowsPortableExePackager
-import kotlinx.coroutines.launch
-import java.io.File
+import com.appforge.studio.build.*
+import com.appforge.studio.model.ProjectDraft
+import kotlinx.coroutines.*
 
-@Composable
-internal fun OfflineBuildPackScreen(
-    onBack: () -> Unit,
-    firstRun: Boolean = false,
-    onFirstRunComplete: ((Boolean) -> Unit)? = null
-) {
-    val context =
-        LocalContext.current
-
-    val scope =
-        rememberCoroutineScope()
-
-    var status by
-        remember {
-            mutableStateOf(
-                OfflineBuildPackManager.status(
-                    context
-                )
-            )
-        }
-
-    var installing by
-        remember {
-            mutableStateOf(
-                false
-            )
-        }
-
-
-    var showFirstRunSkipDialog by
-        remember {
-            mutableStateOf(
-                false
-            )
-        }
-
-    var detail by
-        remember {
-            mutableStateOf(
-                if (
-                    status.completeTargetReady
-                ) {
-                    "Tam çevrimdışı paket hazır."
-                } else if (
-                    status.currentAndroidEnginesReady &&
-                    status.windowsHostReady
-                ) {
-                    "Android / Node / Python / Expo ve Windows Host hazır. " +
-                        "Cihaz EXE paketleme kabulü bekliyor."
-                } else if (
-                    status.currentAndroidEnginesReady
-                ) {
-                    "Android / Node / Python / Expo paketi hazır. " +
-                        "Windows Host kurulumu bekliyor."
-                } else {
-                    "Paket henüz kurulmadı."
-                }
-            )
-        }
-
-
-    val licensePreferences =
-        remember {
-            context.getSharedPreferences(
-                "appforge_offline_pack",
-                android.content.Context.MODE_PRIVATE
-            )
-        }
-
-    var androidSdkLicenseAccepted by
-        remember {
-            mutableStateOf(
-                licensePreferences
-                    .getBoolean(
-                        "android_sdk_license_2026_04_28",
-                        false
-                    )
-            )
-        }
-
-    var showAndroidSdkLicenseDialog by
-        remember {
-            mutableStateOf(
-                false
-            )
-        }
-
-
-    var windowsSmokeBusy by
-        remember {
-            mutableStateOf(false)
-        }
-
-    var windowsSmokeFile by
-        remember {
-            mutableStateOf<File?>(null)
-        }
-
-    val windowsSmokeSaveLauncher =
-        rememberLauncherForActivityResult(
-            contract =
-                ActivityResultContracts.CreateDocument(
-                    "application/octet-stream"
-                )
-        ) { uri ->
-            val source = windowsSmokeFile
-
-            if (
-                uri != null &&
-                source?.isFile == true
-            ) {
-                val result =
-                    runCatching {
-                        context.contentResolver
-                            .openOutputStream(uri, "w")
-                            ?.use { output ->
-                                source.inputStream()
-                                    .buffered(1024 * 1024)
-                                    .use { input ->
-                                        input.copyTo(
-                                            output,
-                                            1024 * 1024
-                                        )
-                                    }
-                            }
-                            ?: error(
-                                "Windows EXE kayıt hedefi açılamadı."
-                            )
-                    }
-
-                detail =
-                    result.fold(
-                        onSuccess = {
-                            "Windows kabul EXE'si kaydedildi. " +
-                                "Dosyayı gerçek Windows bilgisayarda aç."
-                        },
-                        onFailure = {
-                            "Windows EXE kaydedilemedi: " +
-                                (
-                                    it.message
-                                        ?: it.javaClass.simpleName
-                                )
-                        }
-                    )
-            }
-        }
-
-    fun beginWindowsSmoke() {
-        windowsSmokeBusy = true
-        windowsSmokeFile = null
-        detail =
-            "Cihaz-local Windows EXE kabul dosyası oluşturuluyor..."
-
-        scope.launch {
-            val result =
-                runCatching {
-                    WindowsPortableExePackager
-                        .createAcceptanceSmoke(
-                            context
-                        ) { message ->
-                            scope.launch {
-                                detail = message
-                            }
-                        }
-                }
-
-            windowsSmokeFile =
-                result.getOrNull()
-
-            detail =
-                result.fold(
-                    onSuccess = {
-                        "Cihazda gerçek Portable EXE oluşturuldu. " +
-                            "Şimdi Windows'a kaydet ve çalıştır."
-                    },
-                    onFailure = {
-                        "Cihaz EXE paketleme testi başarısız: " +
-                            (
-                                it.message
-                                    ?: it.javaClass.simpleName
-                            )
-                    }
-                )
-
-            windowsSmokeBusy = false
+/** App-scoped operation state survives navigation/rotation; process death is never reported READY. */
+internal object ModuleInstallOperations {
+    private val scope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
+    val updates=kotlinx.coroutines.flow.MutableStateFlow<Map<OfflineModuleId,ModuleProgress>>(emptyMap())
+    val busy=kotlinx.coroutines.flow.MutableStateFlow(false)
+    private var job:Job?=null
+    @Volatile private var pauseRequested=false
+    @Synchronized fun start(context:android.content.Context, selected:OfflineModuleId, consent:Boolean) {
+        if(busy.value)return
+        busy.value=true;pauseRequested=false
+        job=scope.launch {
+            try { OfflineBuildPackManager.installModules(context.applicationContext,setOf(selected),consent){event->
+                updates.value=updates.value+(event.moduleId to event)
+            }} catch(e:CancellationException) {
+                updates.value=updates.value+(selected to ModuleProgress(selected,"canceled",if(pauseRequested)ModulePhase.PAUSED else ModulePhase.CANCELED,detail=if(pauseRequested)"Duraklatıldı; doğrulanmamış kısmi dosya devam için korunur." else "İptal edildi; çalışan modüller korunur."))
+            } catch(e:Exception) {
+                // Preserve the manager's connection-wait/error state for this operation.
+                if(updates.value[selected]?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
+                updates.value=updates.value+(selected to ModuleProgress(selected,"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
+            } finally {busy.value=false}
         }
     }
+    @Synchronized fun cancel(){pauseRequested=false;job?.cancel()}
+    @Synchronized fun pause(){pauseRequested=true;job?.cancel()}
+}
 
-
-    fun beginInstall() {
-        installing =
-            true
-
-        detail =
-            "Paket kurulumu başlatılıyor..."
-
-        scope.launch {
-
-            val result =
-                runCatching {
-                    OfflineBuildPackManager
-                        .installReadyComponents(
-                            context = context,
-                            androidSdkLicenseAccepted = true
-                        ) {
-                            message ->
-
-                            scope.launch {
-                                detail =
-                                    message
-                            }
-                        }
-                }
-
-            status =
-                OfflineBuildPackManager
-                    .status(
-                        context
-                    )
-
-            detail =
-                result.fold(
-                    onSuccess = {
-                        if (
-                            it.completeTargetReady
-                        ) {
-                            "Tam çevrimdışı paket hazır."
-                        } else if (
-                            it.windowsHostReady
-                        ) {
-                            "Android / Node / Python / Expo ve Windows Host hazır. " +
-                                "Cihaz-local EXE paketleme kabulü bekliyor."
-                        } else {
-                            "Hazır Android bileşenleri kuruldu. " +
-                                "Windows Host kurulumu tamamlanmadı."
-                        }
-                    },
-
-                    onFailure = {
-                        "Kurulum durdu: " +
-                            (
-                                it.message
-                                    ?: it.javaClass.simpleName
-                            )
-                    }
-                )
-
-            installing =
-                false
-        }
+@Composable internal fun OfflineBuildPackScreen(onBack:()->Unit,firstRun:Boolean=false,onFirstRunComplete:((Boolean)->Unit)?=null,project:ProjectDraft?=null) {
+    val context=LocalContext.current
+    val scope=rememberCoroutineScope()
+    val events by ModuleInstallOperations.updates.collectAsState()
+    val busy by ModuleInstallOperations.busy.collectAsState()
+    var ready by remember { mutableStateOf<Map<OfflineModuleId,Boolean>>(emptyMap()) }
+    var chosen by remember { mutableStateOf<OfflineModuleId?>(null) }
+    var sdkConsent by remember { mutableStateOf(false) }
+    var detail by remember { mutableStateOf("") }
+    val plan=remember(project){project?.let{OfflineModules.forProject(it)}}
+    val readinessChanges=events.mapValues{it.value.phase==ModulePhase.READY}
+    LaunchedEffect(readinessChanges,busy){ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.moduleReady(context,it.id)}}}
+    fun begin(id:OfflineModuleId) {
+        ModuleInstallOperations.start(context,id,sdkConsent)
     }
-
-    if (
-        showFirstRunSkipDialog
-    ) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = {
-                showFirstRunSkipDialog =
-                    false
-            },
-
-            title = {
-                Text(
-                    "Çevrimdışı paketleri atla?"
-                )
-            },
-
-            text = {
-                Text(
-                    "Uygulamayı kullanmaya devam edebilirsin. " +
-                        "Ancak Device / Offline Build gerektiren projeler, " +
-                        "gerekli paketler kurulana kadar cihaz üzerinde " +
-                        "derlenemez. Paketleri daha sonra Ayarlar > " +
-                        "Tam Çevrimdışı Derleme Paketi bölümünden kurabilirsin."
-                )
-            },
-
-            confirmButton = {
-                androidx.compose.material3.TextButton(
-                    onClick = {
-                        showFirstRunSkipDialog =
-                            false
-
-                        onFirstRunComplete
-                            ?.invoke(
-                                true
-                            )
-                    }
-                ) {
-                    Text(
-                        "YİNE DE DEVAM ET"
-                    )
-                }
-            },
-
-            dismissButton = {
-                androidx.compose.material3.TextButton(
-                    onClick = {
-                        showFirstRunSkipDialog =
-                            false
-                    }
-                ) {
-                    Text(
-                        "GERİ DÖN VE İNDİR"
-                    )
-                }
-            }
-        )
+    if(chosen!=null) {
+        val id=chosen!!;val missing=OfflineModules.resolve(setOf(id)).filter{ready[it]!=true}
+        val needsSdk=OfflineModuleId.ANDROID_CORE in missing || OfflineModuleId.EXPO_REACT_NATIVE in missing
+        AlertDialog(onDismissRequest={chosen=null},title={Text("Kurulumu onayla")},text={Column {
+            Text("Yalnız eksik modüller: "+missing.joinToString{OfflineModules.spec(it).title})
+            Text("Boyutu doğrulanmamış indirmelerde toplam boyut bilinmiyor gösterilir. Bağımlılıklar ortak kullanılır.")
+            if(needsSdk){Text("Android SDK lisansı yalnız bu kurulum için gereklidir. SDK Manager lisansı cihazda ayrıca doğrular.");TextButton(onClick={android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://developer.android.com/studio/terms")).also{context.startActivity(it)}}){Text("Android SDK lisansını incele")};Row{Checkbox(sdkConsent,{sdkConsent=it});Text("SDK lisansını kabul ediyorum")}}
+        }},confirmButton={TextButton(enabled=!busy && (!needsSdk||sdkConsent),onClick={chosen=null;begin(id)}){Text("Onayla ve kur")}},dismissButton={TextButton(onClick={chosen=null}){Text("Vazgeç")}})
     }
-
-    if (
-        showAndroidSdkLicenseDialog
-    ) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = {
-                showAndroidSdkLicenseDialog =
-                    false
-            },
-
-            title = {
-                Text(
-                    "Android SDK Lisansı"
-                )
-            },
-
-            text = {
-                Column(
-                    verticalArrangement =
-                        Arrangement.spacedBy(
-                            10.dp
-                        )
-                ) {
-                    Text(
-                        "Android SDK araçlarını kullanabilmek için " +
-                            "Google Android SDK Lisans Sözleşmesi'ni " +
-                            "inceleyip kabul etmen gerekir."
-                    )
-
-                    Text(
-                        "Bir kurum veya işveren adına kabul ediyorsan " +
-                            "bunu yapmaya yetkili olman gerekir."
-                    )
-
-                    androidx.compose.material3.TextButton(
-                        onClick = {
-                            val termsUri =
-                                android.net.Uri.Builder()
-                                    .scheme(
-                                        "https"
-                                    )
-                                    .authority(
-                                        "developer.android.com"
-                                    )
-                                    .appendPath(
-                                        "studio"
-                                    )
-                                    .appendPath(
-                                        "terms"
-                                    )
-                                    .build()
-
-                            runCatching {
-                                context.startActivity(
-                                    android.content.Intent(
-                                        android.content.Intent.ACTION_VIEW,
-                                        termsUri
-                                    )
-                                )
-                            }
-                        }
-                    ) {
-                        Text(
-                            "KOŞULLARI AÇ"
-                        )
+    Scaffold(topBar={TopAppBar(title={Text("Modüler Çevrimdışı Derleme V3")},navigationIcon={TextButton(onClick=onBack){Text("Geri")}})}){padding->
+        LazyColumn(modifier=Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            item { Text("İlk açılışta araç indirme zorunluluğu yok. Fast HTML gömülüdür. Yalnız seçtiğiniz motorun araçlarını kurun.") }
+            item { Text("Boş alan: ${context.noBackupFilesDir.usableSpace/1024/1024} MiB. APT/Gradle/npm toplamları proje ve mimariye bağlıdır; doğrulanmış toplam yoksa yüzde gösterilmez.") }
+            plan?.let{p->item{Text(p.error?:"Bu proje için: "+p.modules.joinToString{OfflineModules.spec(it).title})}}
+            items(OfflineModules.all.filter{it.id!=OfflineModuleId.LINUX_RUNTIME && (plan==null || it.id in plan.modules)}) { module ->
+                val state=events[module.id];val installed=ready[module.id]==true
+                val unsupported=if(module.id !in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE))DeviceBuildRuntimeV3.platformError() else null
+                Card(modifier=Modifier.fillMaxWidth()) {Column(modifier=Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                    Text(module.title,style=MaterialTheme.typography.titleMedium)
+                    Text(module.version)
+                    if(unsupported!=null)Text(unsupported)
+                    Text("Bağımlılıklar: "+module.dependencies.joinToString{OfflineModules.spec(it).title}.ifBlank{"Yok"})
+                    Text("İndirme: "+(module.downloadBytes?.let{"${it/1024/1024} MiB"}?:"Toplam boyut bilinmiyor"))
+                    Text("Disk: "+(module.diskBytes?.let{"${it/1024/1024} MiB"}?:"Güvenilir toplam tahmin yok"))
+                    Text(if(installed)"Hazır • gerçek bütünlük kontrolü geçti" else state?.phase?.turkishLabel()?:"Kurulu değil / doğrulanmadı")
+                    if(state!=null && !installed) {
+                        Text(state.detail)
+                        if(state.phase==ModulePhase.DOWNLOADING) {
+                            val pct=state.percent
+                            if(pct!=null) {LinearProgressIndicator(progress={pct/100f},modifier=Modifier.fillMaxWidth());Text("%$pct • ${state.bytesDownloaded/1024/1024} / ${state.bytesTotal!!/1024/1024} MiB")} else {LinearProgressIndicator(modifier=Modifier.fillMaxWidth());Text("${state.bytesDownloaded/1024/1024} MiB • toplam boyut bilinmiyor")}
+                            Text("Hız: "+(state.speedBytesPerSecond?.let{"%.1f MiB/sn".format(it/1024/1024)}?:"Hesaplanıyor..."))
+                            Text("Ortalama: "+(state.averageSpeedBytesPerSecond?.let{"%.1f MiB/sn".format(it/1024/1024)}?:"Hesaplanıyor..."))
+                            Text("Bağlantı: veri aktarılıyor • hız hareketli ortalamadır")
+                            Text("Kalan: "+(state.estimatedRemainingMs?.let{"${it/1000} sn"}?:"Hesaplanıyor...")+" • Geçen: ${state.elapsedMs/1000} sn")
+                        } else if(busy && state.phase !in setOf(ModulePhase.READY,ModulePhase.ERROR,ModulePhase.CANCELED))LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
                     }
-                }
-            },
-
-            confirmButton = {
-                androidx.compose.material3.TextButton(
-                    onClick = {
-                        androidSdkLicenseAccepted =
-                            true
-
-                        licensePreferences
-                            .edit()
-                            .putBoolean(
-                                "android_sdk_license_2026_04_28",
-                                true
-                            )
-                            .putLong(
-                                "android_sdk_license_accepted_at",
-                                System.currentTimeMillis()
-                            )
-                            .apply()
-
-                        showAndroidSdkLicenseDialog =
-                            false
-
-                        beginInstall()
-                    }
-                ) {
-                    Text(
-                        "KABUL ET VE KUR"
-                    )
-                }
-            },
-
-            dismissButton = {
-                androidx.compose.material3.TextButton(
-                    onClick = {
-                        showAndroidSdkLicenseDialog =
-                            false
-                    }
-                ) {
-                    Text(
-                        "İPTAL"
-                    )
-                }
+                    Button(enabled=!busy && unsupported==null,onClick={if(installed){scope.launch{val good=withContext(Dispatchers.IO){OfflineBuildPackManager.moduleReady(context,module.id)};detail=if(good)"Bütünlük doğrulandı." else "Bozuk kurulum; hazır değil."}}else chosen=module.id}){Text(if(installed)"Doğrula" else if(state?.phase in setOf(ModulePhase.PAUSED,ModulePhase.WAITING_CONNECTION))"Devam et" else if(state?.phase==ModulePhase.ERROR)"Yeniden dene" else "Kurulum ayrıntıları")}
+                    if(busy && state!=null && state.phase !in setOf(ModulePhase.READY,ModulePhase.ERROR)){ if(module.id in setOf(OfflineModuleId.NODE_WEB,OfflineModuleId.WINDOWS_PORTABLE) && state.phase==ModulePhase.DOWNLOADING)OutlinedButton(onClick={ModuleInstallOperations.pause()}){Text("Duraklat")};OutlinedButton(onClick={ModuleInstallOperations.cancel()}){Text("İptal et")} }
+                    Text("Güvenli kaldırma: ortak araçların dosya sahipliği ve etkin derlemeler doğrulanmadan kaldırılmaz.",style=MaterialTheme.typography.bodySmall)
+                }}
             }
-        )
-    }
-
-    Scaffold(
-        containerColor =
-            MaterialTheme
-                .colorScheme
-                .background,
-
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        if (
-                            firstRun
-                        ) {
-                            "Çevrimdışı Derleme Kurulumu"
-                        } else {
-                            "Tam Çevrimdışı Derleme Paketi"
-                        },
-                        fontWeight =
-                            FontWeight.Bold
-                    )
-                },
-
-                navigationIcon = {
-                    if (
-                        !firstRun
-                    ) {
-                        IconButton(
-                            onClick =
-                                onBack
-                        ) {
-                            Text(
-                                "←"
-                            )
-                        }
-                    }
-                },
-
-                colors =
-                    TopAppBarDefaults
-                        .topAppBarColors(
-                            containerColor =
-                                MaterialTheme
-                                    .colorScheme
-                                    .surface
-                        )
-            )
-        }
-    ) {
-        padding ->
-
-        LazyColumn(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(
-                        padding
-                    ),
-
-            contentPadding =
-                PaddingValues(
-                    16.dp
-                ),
-
-            verticalArrangement =
-                Arrangement.spacedBy(
-                    12.dp
-                )
-        ) {
-
-            item {
-                Card(
-                    colors =
-                        CardDefaults
-                            .cardColors(
-                                containerColor =
-                                    MaterialTheme
-                                        .colorScheme
-                                        .surfaceVariant
-                            ),
-
-                    shape =
-                        RoundedCornerShape(
-                            20.dp
-                        )
-                ) {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(
-                                    18.dp
-                                ),
-
-                        verticalArrangement =
-                            Arrangement.spacedBy(
-                                10.dp
-                            )
-                    ) {
-                        Text(
-                            "Tek seferlik kurulum",
-                            fontWeight =
-                                FontWeight.Bold
-                        )
-
-                        Text(
-                            "Hedef paket; Android SDK, JDK, Gradle, " +
-                                "Node.js/npm, Python/Chaquopy, Windows Native C/C++ ve Portable EXE " +
-                                "araçlarını cihazda tutacak."
-                        )
-
-                        Text(
-                            "İndirme boyutu cihaz mimarisi ve mevcut cache'e göre değişir. " +
-                                "Expo/NDK dahil tam paket birkaç GB depolama alanı kullanabilir."
-                        )
-
-                        Text(
-                            detail
-                        )
-
-                        Button(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth(),
-
-                            enabled =
-                                !installing,
-
-                            onClick = {
-                                if (
-                                    androidSdkLicenseAccepted
-                                ) {
-                                    beginInstall()
-                                } else {
-                                    showAndroidSdkLicenseDialog =
-                                        true
-                                }
-                            }
-                        ) {
-                            if (
-                                installing
-                            ) {
-                                Row(
-                                    verticalAlignment =
-                                        Alignment.CenterVertically,
-
-                                    horizontalArrangement =
-                                        Arrangement.spacedBy(
-                                            10.dp
-                                        )
-                                ) {
-                                    CircularProgressIndicator()
-
-                                    Text(
-                                        "Hazırlanıyor..."
-                                    )
-                                }
-                            } else {
-                                Text(
-                                    if (
-                                        !androidSdkLicenseAccepted
-                                    ) {
-                                        "ANDROID SDK LİSANSINI İNCELE VE KUR"
-                                    } else if (
-                                        status.currentAndroidEnginesReady
-                                    ) {
-                                        "PAKETİ KONTROL ET / TAMAMLA"
-                                    } else {
-                                        "HAZIR BİLEŞENLERİ İNDİR VE KUR"
-                                    }
-                                )
-                            }
-                        }
-
-
-                        if (
-                            firstRun
-                        ) {
-                            Text(
-                                "Bu paketleri indirmezsen AppForge'u " +
-                                    "kullanmaya devam edebilirsin; ancak " +
-                                    "Device / Offline Build gerektiren projeler " +
-                                    "paketler kurulana kadar cihaz üzerinde " +
-                                    "derlenemez."
-                            )
-
-                            val firstRunPackReady =
-                                status.completeTargetReady
-
-                            if (
-                                firstRunPackReady
-                            ) {
-                                Button(
-                                    modifier =
-                                        Modifier.fillMaxWidth(),
-
-                                    enabled =
-                                        !installing,
-
-                                    onClick = {
-                                        onFirstRunComplete
-                                            ?.invoke(
-                                                false
-                                            )
-                                    }
-                                ) {
-                                    Text(
-                                        "DEVAM ET"
-                                    )
-                                }
-                            }
-
-                            OutlinedButton(
-                                modifier =
-                                    Modifier.fillMaxWidth(),
-
-                                enabled =
-                                    !installing,
-
-                                onClick = {
-                                    showFirstRunSkipDialog =
-                                        true
-                                }
-                            ) {
-                                Text(
-                                    "ŞİMDİLİK ATLA"
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            item {
-                OfflinePackComponentCard(
-                    title =
-                        "Android SDK + JDK + Gradle",
-
-                    subtitle =
-                        "APK/AAB • Android API 37.0 • Build Tools 36 • Gradle cache",
-
-                    ready =
-                        status.androidCoreReady
-                )
-            }
-
-            item {
-                OfflinePackComponentCard(
-                    title =
-                        "Node.js + npm",
-
-                    subtitle =
-                        "React / Vue / Svelte / Vite araç zinciri. " +
-                            "Proje sürümüne özel npm bağımlılıkları " +
-                            "ayrıca cache doğrulamasından geçecek.",
-
-                    ready =
-                        status.nodeToolchainReady
-                )
-            }
-
-            item {
-                OfflinePackComponentCard(
-                    title =
-                        "Python + Chaquopy",
-
-                    subtitle =
-                        "Python Android runtime ve Chaquopy Gradle bağımlılıkları",
-
-                    ready =
-                        status.pythonAndroidReady
-                )
-            }
-
-            item {
-                OfflinePackComponentCard(
-                    title =
-                        "Expo SDK 54 / React Native 0.81",
-
-                    subtitle =
-                        "Node 22 + Android API 36 + NDK 27.1 + CMake/Ninja " +
-                            "cihaz toolchain'i. Projeye özel npm bağımlılıkları " +
-                            "ayrıca cache kontrolünden geçer.",
-
-                    ready =
-                        status.expoToolchainReady
-                )
-            }
-
-            item {
-                OfflinePackComponentCard(
-                    title =
-                        "Windows Native EXE Toolchain",
-
-                    subtitle =
-                        "CMake + Ninja + MinGW-w64 x64 • C/C++ native PE üretimi. " +
-                            "Kaynak/CI ve gerçek Windows kabulü tamamlanana kadar EXPERIMENTAL.",
-
-                    ready =
-                        status.windowsNativeToolchainReady,
-
-                    pendingText =
-                        "KURULMADI"
-                )
-            }
-
-            item {
-                OfflinePackComponentCard(
-                    title =
-                        "Windows Portable EXE",
-
-                    subtitle =
-                        "Generic x64 host • 375025483 byte • SHA-256 sabit. " +
-                            "Cihaz-local paketleme ve fiziksel Windows 11 " +
-                            "normal-proje kabul testleri tamamlandı.",
-
-                    ready =
-                        status.windowsExeReady,
-
-                    pendingText =
-                        if (
-                            status.windowsHostReady
-                        ) {
-                            "HOST KURULDU • CİHAZ EXE TESTİ BEKLİYOR"
-                        } else {
-                            "BEKLİYOR"
-                        }
-                )
-            }
-
-            if (
-                status.windowsHostReady &&
-                !status.windowsExeReady
-            ) {
-                item {
-                    Card(
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    MaterialTheme.colorScheme.surfaceVariant
-                            ),
-                        shape =
-                            RoundedCornerShape(18.dp)
-                    ) {
-                        Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                            verticalArrangement =
-                                Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                "Windows cihaz kabul testi",
-                                fontWeight =
-                                    FontWeight.Bold
-                            )
-
-                            Text(
-                                "Doğrulanmış generic host telefonda kopyalanacak, " +
-                                    "AppForge proje payload'ı eklenecek ve gerçek " +
-                                    "Portable EXE oluşturulacak. Bu işlem internet " +
-                                    "gerektirmez."
-                            )
-
-                            Button(
-                                modifier =
-                                    Modifier.fillMaxWidth(),
-                                enabled =
-                                    !windowsSmokeBusy &&
-                                        !installing,
-                                onClick = {
-                                    beginWindowsSmoke()
-                                }
-                            ) {
-                                Text(
-                                    if (windowsSmokeBusy) {
-                                        "EXE OLUŞTURULUYOR..."
-                                    } else {
-                                        "CİHAZ EXE KABUL DOSYASI OLUŞTUR"
-                                    }
-                                )
-                            }
-
-                            if (
-                                windowsSmokeFile?.isFile == true
-                            ) {
-                                Text(
-                                    "EXE boyutu: " +
-                                        (
-                                            windowsSmokeFile
-                                                ?.length()
-                                                ?: 0L
-                                            ) +
-                                        " byte"
-                                )
-
-                                Button(
-                                    modifier =
-                                        Modifier.fillMaxWidth(),
-                                    onClick = {
-                                        windowsSmokeSaveLauncher
-                                            .launch(
-                                                "AppForge-Windows-Device-Smoke.exe"
-                                            )
-                                    }
-                                ) {
-                                    Text(
-                                        "WINDOWS TEST EXE'SİNİ KAYDET"
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            if(ready[OfflineModuleId.WINDOWS_PORTABLE]==true)item { WindowsModuleSmokeCard() }
+            item { Text("Toplam işlem: "+if(busy)"devam ediyor; kurulum iş miktarı ölçülemediği için toplam yüzde yok" else "bekliyor / son modül durumlarını inceleyin") }
+            item { Text("Uygulamayı önplanda tutun. Android arka planda işlemi sonlandırabilir; yeniden açıldığında dosyalar doğrulanmadan hazır sayılmaz.") }
+            if(detail.isNotBlank())item{Text(detail)}
+            if(firstRun)item{Button(onClick={onFirstRunComplete?.invoke(true)}){Text("Araç indirmeden devam et")}}
         }
     }
 }
 
-@Composable
-private fun OfflinePackComponentCard(
-    title: String,
-    subtitle: String,
-    ready: Boolean,
-    pendingText: String = "BEKLİYOR"
-) {
-    Card(
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    MaterialTheme
-                        .colorScheme
-                        .surface
-            ),
 
-        shape =
-            RoundedCornerShape(
-                18.dp
-            )
-    ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        16.dp
-                    ),
-
-            verticalArrangement =
-                Arrangement.spacedBy(
-                    6.dp
-                )
-        ) {
-            Text(
-                title,
-                fontWeight =
-                    FontWeight.Bold
-            )
-
-            Text(
-                subtitle
-            )
-
-            Text(
-                if (
-                    ready
-                ) {
-                    "HAZIR ✓"
-                } else {
-                    pendingText
-                },
-
-                color =
-                    if (
-                        ready
-                    ) {
-                        MaterialTheme
-                            .colorScheme
-                            .primary
-                    } else {
-                        MaterialTheme
-                            .colorScheme
-                            .secondary
-                    }
-            )
+@Composable private fun WindowsModuleSmokeCard() {
+    val context=LocalContext.current;val scope=rememberCoroutineScope()
+    var smoke by remember{mutableStateOf<java.io.File?>(null)}
+    var busy by remember{mutableStateOf(false)}
+    var detail by remember{mutableStateOf("")}
+    val save=androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/octet-stream")){uri->
+        if(uri!=null && smoke?.isFile==true)scope.launch {
+            detail=withContext(Dispatchers.IO){runCatching {context.contentResolver.openOutputStream(uri,"w")!!.use{output->smoke!!.inputStream().use{it.copyTo(output)}}}.fold({"Windows test dosyası kaydedildi; fiziksel Windows'ta açın."},{"Kaydetme hatası: ${it.message}"})}
         }
     }
+    Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Button(enabled=!busy && !ModuleInstallOperations.busy.value,onClick={busy=true;scope.launch {
+            runCatching {WindowsPortableExePackager.createAcceptanceSmoke(context){}}.onSuccess{smoke=it;detail="Cihaz-local test EXE'si oluşturuldu; Windows çalışması henüz doğrulanmadı."}.onFailure{detail=it.message?:"EXE testi başarısız"};busy=false
+        }}){Text("CİHAZ EXE KABUL DOSYASI OLUŞTUR")}
+        if(smoke?.isFile==true)OutlinedButton(onClick={save.launch("AppForge-Windows-Smoke.exe")}){Text("WINDOWS TEST EXE'SİNİ KAYDET")}
+        if(detail.isNotBlank())Text(detail)
+    }
+}
+
+private fun ModulePhase.turkishLabel():String = when(this) {
+    ModulePhase.RESOLVING -> "Bağımlılıklar hesaplanıyor"
+    ModulePhase.STORAGE_CHECK -> "Depolama kontrol ediliyor"
+    ModulePhase.AWAITING_CONSENT -> "Kullanıcı onayı bekleniyor"
+    ModulePhase.CONNECTING -> "Bağlantı hazırlanıyor"
+    ModulePhase.DOWNLOADING -> "İndiriliyor"
+    ModulePhase.VERIFYING -> "Bütünlük doğrulanıyor"
+    ModulePhase.EXTRACTING -> "Arşiv açılıyor"
+    ModulePhase.INSTALLING -> "Kuruluyor"
+    ModulePhase.PREPARING -> "Bağımlılıklar hazırlanıyor"
+    ModulePhase.OFFLINE_TEST -> "Çevrimdışı kontrol ediliyor"
+    ModulePhase.READY -> "Hazır"
+    ModulePhase.PAUSED -> "Duraklatıldı"
+    ModulePhase.WAITING_CONNECTION -> "Bağlantı bekleniyor; yeniden deneyin"
+    ModulePhase.RECONNECTING -> "Yeniden bağlanıyor"
+    ModulePhase.CANCELED -> "İptal edildi"
+    ModulePhase.ERROR -> "Hata oluştu"
 }

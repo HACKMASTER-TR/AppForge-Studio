@@ -39,6 +39,17 @@ internal object DeviceBuildRuntimeV3 {
     private val installMutex =
         Mutex()
 
+    fun platformError():String? {
+        val architecture=LinuxArchitecture.fromAndroidAbis(Build.SUPPORTED_ABIS.toList())?:return "Bu cihaz mimarisi Linux derleme ortamını desteklemiyor; paket eksikliği değil."
+        return if(LinuxRuntimeManifestRegistry.find(LinuxDistribution.UBUNTU,architecture)==null)"Bu mimari için doğrulanmış Linux rootfs yok." else null
+    }
+    fun isReady(context:Context):Boolean = runCatching {
+        val architecture=LinuxArchitecture.fromAndroidAbis(Build.SUPPORTED_ABIS.toList())?:return@runCatching false
+        val manifest=LinuxRuntimeManifestRegistry.find(LinuxDistribution.UBUNTU,architecture)?:return@runCatching false
+        val layout=LinuxRuntimeLayout(runtimeBaseDirectory(context),LinuxDistribution.UBUNTU,architecture)
+        PackagedLinuxEngine(context).inspect().status==PackagedLinuxEngineStatus.READY && isTrustedRuntime(layout,manifest)
+    }.getOrDefault(false)
+
     suspend fun ensureReady(
         context: Context,
         onProgress: (String) -> Unit = {}

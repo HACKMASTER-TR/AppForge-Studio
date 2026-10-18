@@ -85,7 +85,7 @@ internal fun SettingsHubScreen(
         ),
         SettingsEntry(
             "⬇",
-            "Tam Çevrimdışı Derleme Paketi",
+            "Modüler Çevrimdışı Derleme V3",
             "Android, Node, Python ve Portable EXE için tek seferlik runtime kurulumu",
             onOpenOfflinePack
         ),

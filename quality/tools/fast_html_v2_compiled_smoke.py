@@ -136,11 +136,11 @@ fun main(args:Array<String>) {
 ''')
     jars = [str(work / 'classes'), args.json_jar, args.apksig_jar, args.android_jar]
     classpath = os.pathsep.join(jars)
-    sources = ['DeviceBuildCapabilities.kt', 'WebviewProjectSettings.kt', 'FastHtmlApkPolicy.kt',
+    sources = ['DeviceBuildCapabilities.kt', 'WebviewProjectSettings.kt', 'FeatureSupportMatrix.kt', 'FastHtmlApkPolicy.kt',
                'FastHtmlApkPackager.kt', 'FastHtmlResourceColor.kt', 'FastHtmlIcon.kt', 'HtmlBinaryManifest.kt', 'TemplateIntegrity.kt',
                'FastHtmlAabProtoManifest.kt', 'FastHtmlAabUnsignedPackager.kt',
                'FastHtmlAabJarSigner.kt', 'FastHtmlAabVerification.kt']
-    subprocess.run(['kotlinc', str(model), *(str(build / s) for s in sources), str(work / 'BuildConfig.kt'),
+    subprocess.run(['kotlinc', str(root / 'android-app/app/src/main/java/com/appforge/studio/io/HtmlCapabilityFindings.kt'), str(model), *(str(build / s) for s in sources), str(work / 'BuildConfig.kt'),
                     str(work / 'Smoke.kt'), '-cp', classpath, '-include-runtime', '-d', str(work / 'smoke.jar')], check=True)
     subprocess.run(['java', '-Dappforge.test.icon='+str(work / 'selected-icon.png'), '-Djava.security.manager=allow', '-cp', str(work / 'smoke.jar') + os.pathsep + classpath,
                     'com.appforge.studio.build.SmokeKt', str(work), str(assets_build), password], check=True)

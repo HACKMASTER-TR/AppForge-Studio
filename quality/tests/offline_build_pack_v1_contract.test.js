@@ -52,7 +52,7 @@ test(
 );
 
 test(
-  "one-click pack prepares current Android engines",
+  "selected modules preserve Android and Python preparation without a global install",
   () => {
     const manager =
       read(
@@ -66,7 +66,7 @@ test(
 
     assert.match(
       manager,
-      /node-web/
+      /install-node-module\.sh/
     );
 
     assert.match(
@@ -208,22 +208,22 @@ test(
 
     assert.match(
       manager,
-      /APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED=1/
+      /APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED=/
     );
 
     assert.match(
       screen,
-      /Android SDK Lisansı/
+      /Android SDK lisansı/
     );
 
     assert.match(
       screen,
-      /KABUL ET VE KUR/
+      /Onayla ve kur/
     );
 
     assert.match(
       screen,
-      /android_sdk_license_2026_04_28/
+      /Checkbox\(sdkConsent/
     );
 
     assert.match(
@@ -339,7 +339,7 @@ test(
 
     assert.match(
       settings,
-      /Tam Çevrimdışı Derleme Paketi/
+      /Modüler Çevrimdışı Derleme V3/
     );
 
     assert.match(
@@ -349,7 +349,7 @@ test(
 
     assert.match(
       screen,
-      /HAZIR BİLEŞENLERİ İNDİR VE KUR/
+      /Kurulum ayrıntıları/
     );
   }
 );
@@ -434,12 +434,12 @@ test(
 
     assert.match(
       screen,
-      /HOST KURULDU • CİHAZ EXE TESTİ BEKLİYOR/
+      /WindowsModuleSmokeCard/
     );
 
     assert.match(
       screen,
-      /status\.windowsExeReady/
+      /ready\[OfflineModuleId\.WINDOWS_PORTABLE\]/
     );
   }
 );

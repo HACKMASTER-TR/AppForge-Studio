@@ -41,10 +41,10 @@ fun main() {
     check(FastHtmlApkPolicy.normalRouteReasons(selected).isEmpty())
     check(WizardReadinessEvaluator.evaluate(selected).normalRouteReasons.isEmpty())
    } else {
-    check(WizardReadinessEvaluator.evaluate(draft).ready)
+    check(WizardReadinessEvaluator.evaluate(draft).ready == (mode==SourceMode.LOCAL || output=="apk"))
     if(mode==SourceMode.LOCAL) {
      val selected=draft.copy(camera=true);val result=WizardReadinessEvaluator.evaluate(selected)
-     check(result.ready && result.capability == WizardCapabilityClass.NORMAL_SUPPORTED)
+     check(!result.ready && result.capability == WizardCapabilityClass.UNSUPPORTED_BLOCKED)
      check(result.normalRouteReasons.isNotEmpty() && !FastHtmlApkPolicy.isCandidate(selected))
     }
     val denied = draft.copy(additionalPermissions=setOf("INVENTED_PERMISSION"))
@@ -70,7 +70,7 @@ fun main() {
     const build = 'android-app/app/src/main/java/com/appforge/studio/build/';
     execFileSync('kotlinc', [
       path.join(root, 'android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt'),
-      ...['FastHtmlApkPolicy.kt', 'DeviceBuildCapabilities.kt', 'WebviewProjectSettings.kt']
+      ...['FastHtmlApkPolicy.kt', 'DeviceBuildCapabilities.kt', 'FeatureSupportMatrix.kt','WebviewProjectSettings.kt']
         .map(file => path.join(root, build, file)),
       path.join(dir, 'BuildConfig.kt'), path.join(dir, 'Check.kt'),
       '-include-runtime', '-d', path.join(dir, 'check.jar')

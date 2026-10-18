@@ -86,3 +86,9 @@ when OFF. Products, Play distribution/account and a real verification backend ar
 external prerequisites. Raw purchase tokens are not exposed to JavaScript/logs.
 AdMob, UMP and Firebase SDK integrations remain blocked. No automatic cloud build
 fallback was added. Physical and live Play acceptance remain NOT_RUN.
+
+## Modular routing revision
+
+See [[Modular_Offline_V3]] for the central support matrix, explicit normal-engine
+selection, precise source findings and selected-module installation boundaries.
+This revision does not establish physical Android or live external-service acceptance.

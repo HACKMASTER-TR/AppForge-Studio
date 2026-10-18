@@ -2794,7 +2794,7 @@ private fun AppForgeApp() {
                                 analysis
                                     .detectedLabels()
 
-                            val nextDraft =
+                            val analyzedDraft =
                                 baseDraft.copy(
                                     sourceUri =
                                         uri.toString(),
@@ -2840,29 +2840,28 @@ private fun AppForgeApp() {
                                         },
 
                                     camera =
-                                        analysis.camera,
+                                        baseDraft.camera || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"camera",analysis.camera,analysis.requiredCapabilities)),
 
                                     microphone =
-                                        analysis.microphone,
+                                        baseDraft.microphone || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"microphone",analysis.microphone,analysis.requiredCapabilities)),
 
                                     location =
-                                        analysis.location,
+                                        baseDraft.location || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"location",analysis.location,analysis.requiredCapabilities)),
 
                                     notifications =
-                                        analysis.notifications,
+                                        baseDraft.notifications || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"notifications",analysis.notifications,analysis.requiredCapabilities)),
 
                                     networkState =
-                                        analysis.networkState,
+                                        baseDraft.networkState || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"networkState",analysis.networkState,analysis.requiredCapabilities)),
 
                                     wakeLock =
-                                        analysis.wakeLock,
+                                        baseDraft.wakeLock || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"wakeLock",analysis.wakeLock,analysis.requiredCapabilities)),
 
                                     nfc =
-                                        analysis.nfc,
+                                        baseDraft.nfc || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"nfc",analysis.nfc,analysis.requiredCapabilities)),
 
                                     additionalPermissions =
-                                        analysis
-                                            .additionalPermissions,
+                                        baseDraft.additionalPermissions,
 
                                     fileUpload =
                                         analysis.fileUpload ||
@@ -2884,16 +2883,18 @@ private fun AppForgeApp() {
                                             analysis.qrScanner,
 
                                     mediaPlayerBridge =
-                                        analysis.mediaPlayer,
+                                        baseDraft.mediaPlayerBridge || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"mediaPlayerBridge",analysis.mediaPlayer,analysis.requiredCapabilities)),
 
                                     qrScanner =
-                                        analysis.qrScanner,
+                                        baseDraft.qrScanner || (com.appforge.studio.build.FeatureSupportMatrix.recommend(baseDraft.copy(sourceTechnology=analysis.technologyId,sourceBuildEngine=analysis.buildEngine),"qrScanner",analysis.qrScanner,analysis.requiredCapabilities)),
 
                                     javascriptBridge =
                                         baseDraft.javascriptBridge ||
                                             analysis.mediaPlayer ||
                                             analysis.qrScanner
                                 )
+
+                            val nextDraft = analyzedDraft.copy(requiredCapabilities = analysis.requiredCapabilities,allowDependencyDownloads=false)
 
                             val successMessage =
                                 if (
@@ -4422,17 +4423,7 @@ private fun AppForgeApp() {
                 when {
                     offlinePackCheck.engine == "webview-settings" -> "settings-invalid"
                     offlinePackCheck.engine == "fast-html-apk" -> "fast-output-invalid"
-                    offlinePackCheck.missing.isNotEmpty() &&
-                        offlinePackCheck.missing.all {
-                            it in setOf(
-                                "Android SDK + JDK + Gradle",
-                                "Node.js + npm",
-                                "Python + Chaquopy",
-                                "Expo SDK 54 + NDK/CMake",
-                                "Windows Native C/C++ toolchain",
-                                "Windows Portable EXE Host"
-                            )
-                        } -> "dependency-missing"
+                    offlinePackCheck.missingModules.isNotEmpty() -> "dependency-missing"
                     else -> "unclassified"
                 }
 
@@ -6209,6 +6200,7 @@ private fun AppForgeApp() {
 
                 AppScreen.OFFLINE_PACK_FIRST_RUN ->
                     OfflineBuildPackScreen(
+                        project = null,
                         firstRun =
                             true,
 
@@ -6251,6 +6243,7 @@ private fun AppForgeApp() {
 
                 AppScreen.OFFLINE_PACK ->
                     OfflineBuildPackScreen(
+                        project = if(offlinePackReturnScreen in setOf(AppScreen.BUILDER,AppScreen.QUICK))draft else null,
                         onBack = {
                             screen =
                                 offlinePackReturnScreen
@@ -7082,25 +7075,26 @@ private fun AppForgeApp() {
                         }
                         // Step components retain their own scroll and keyboard ownership.
                         Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                        androidx.compose.runtime.CompositionLocalProvider(LocalFeatureDraft provides draft) {
                         when (step) {
-                            1 -> SourceStep(draft, status, { draft = it }) {
+                            1 -> SourceStep(draft, status, { draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it) }) {
                                 sourcePicker.launch(arrayOf("text/html", "application/zip", "application/octet-stream"))
                             }
 
                             2 -> PermissionsStep(
                                 draft,
                                 sourceAnalysis
-                            ) { draft = it }
+                            ) { draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it) }
 
                             3 -> FeaturesStep(
                                 draft,
                                 sourceAnalysis
-                            ) { draft = it }
+                            ) { draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it) }
 
                             4 -> AppearanceStep(
                                 d = draft,
                                 update = {
-                                    draft = it
+                                    draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it)
                                 },
                                 onPickIcon = {
                                     val currentIcon =
@@ -7154,16 +7148,14 @@ private fun AppForgeApp() {
                                         AppScreen.PRO
                                 },
                                 update = {
-                                    draft =
-                                        it
+                                    draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it)
                                 }
                             )
 
                             6 -> MonetizationStep(
                                 draft = draft,
                                 update = {
-                                    draft =
-                                        it
+                                    draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it)
                                 },
                                 isPro =
                                     proStatus?.active == true,
@@ -7185,8 +7177,7 @@ private fun AppForgeApp() {
                             7 -> DeepLinkStep(
                                 d = draft,
                                 update = {
-                                    draft =
-                                        it
+                                    draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it)
                                 },
                                 isPro =
                                     proStatus?.active == true,
@@ -7198,7 +7189,7 @@ private fun AppForgeApp() {
 
                             8 -> SigningStep(
                                 d = draft,
-                                update = { draft = it },
+                                update = { draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it) },
                                 isPro =
                                     proStatus?.active == true,
                                 onOpenPro = {
@@ -7228,7 +7219,7 @@ private fun AppForgeApp() {
 
                             9 -> BuildSettingsStep(
                                 draft = draft,
-                                update = { draft = it },
+                                update = { draft = com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it) },
                                 serverUrl = serverUrl,
                                 apiKey = apiKey,
                                 statusMessage = status,
@@ -7286,6 +7277,7 @@ private fun AppForgeApp() {
                                 apiKey =
                                     apiKey
                             )
+                        }
                         }
                         }
                     }
@@ -8320,6 +8312,26 @@ private fun QuickCreateScreen(
     isPro: Boolean,
     onOpenPro: () -> Unit
 ) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalFeatureDraft provides draft) {
+        QuickCreateScreenContent(draft,status,{onDraftChange(com.appforge.studio.build.FeatureSupportMatrix.acceptUserChange(draft,it))},onBack,onPickSource,onPickIcon,onPickFirebase,onAdvanced,onPreview,onBuild,isPro,onOpenPro)
+    }
+}
+
+@Composable
+private fun QuickCreateScreenContent(
+    draft: ProjectDraft,
+    status: String,
+    onDraftChange: (ProjectDraft) -> Unit,
+    onBack: () -> Unit,
+    onPickSource: () -> Unit,
+    onPickIcon: () -> Unit,
+    onPickFirebase: () -> Unit,
+    onAdvanced: () -> Unit,
+    onPreview: () -> Unit,
+    onBuild: () -> Unit,
+    isPro: Boolean,
+    onOpenPro: () -> Unit
+) {
     var extraFeaturesExpanded by remember { mutableStateOf(false) }
     // Manual package IDs must not be silently replaced by app-name edits.
     var quickPackageManualOverride by rememberSaveable { mutableStateOf(false) }
@@ -9085,7 +9097,7 @@ private fun QuickCreateScreen(
                         Toggle(
                             "🌉 Native Bridge",
                             draft.javascriptBridge
-                        ) { enabled ->
+                        , featureKey = "javascriptBridge") { enabled ->
 
                             onDraftChange(
                                 draft.copy(
@@ -9121,7 +9133,7 @@ private fun QuickCreateScreen(
                             Toggle(
                                 "📤 Paylaşım",
                                 draft.shareBridge
-                            ) {
+                            , featureKey = "shareBridge") {
                                 onDraftChange(
                                     draft.copy(
                                         shareBridge =
@@ -9133,7 +9145,7 @@ private fun QuickCreateScreen(
                             Toggle(
                                 "📋 Panoya kopyalama",
                                 draft.clipboardBridge
-                            ) {
+                            , featureKey = "clipboardBridge") {
                                 onDraftChange(
                                     draft.copy(
                                         clipboardBridge =
@@ -9145,7 +9157,7 @@ private fun QuickCreateScreen(
                             Toggle(
                                 "📳 Titreşim / Haptic",
                                 draft.vibrationBridge
-                            ) {
+                            , featureKey = "vibrationBridge") {
                                 onDraftChange(
                                     draft.copy(
                                         vibrationBridge =
@@ -9157,7 +9169,7 @@ private fun QuickCreateScreen(
                             Toggle(
                                 "🎵 Medya Oynatıcı / Arka Plan Ses",
                                 draft.mediaPlayerBridge
-                            ) {
+                            , featureKey = "mediaPlayerBridge") {
                                 onDraftChange(
                                     draft.copy(
                                         mediaPlayerBridge =
@@ -9169,7 +9181,7 @@ private fun QuickCreateScreen(
                             Toggle(
                                 "📷 QR / Barkod Tarayıcı",
                                 draft.qrScanner
-                            ) {
+                            , featureKey = "qrScanner") {
                                 onDraftChange(
                                     draft.copy(
                                         qrScanner =
@@ -9191,7 +9203,7 @@ private fun QuickCreateScreen(
                                         "🌐 Uzak site Native Bridge • PRO"
                                     },
                                     draft.remoteBridgeAllowed
-                                ) {
+                                , featureKey = "remoteBridgeAllowed") {
                                     enabled ->
 
                                     handleProFeatureToggle(
@@ -9246,7 +9258,7 @@ private fun QuickCreateScreen(
                                 "💰 AdMob • PRO"
                             },
                             draft.admobEnabled
-                        ) {
+                        , featureKey = "admobEnabled") {
                             enabled ->
 
                             handleProFeatureToggle(
@@ -9379,7 +9391,7 @@ private fun QuickCreateScreen(
                             Toggle(
                                 "🛡️ UMP Consent",
                                 draft.umpConsentEnabled
-                            ) {
+                            , featureKey = "umpConsentEnabled") {
                                 onDraftChange(
                                     draft.copy(
                                         umpConsentEnabled =
@@ -9408,7 +9420,7 @@ private fun QuickCreateScreen(
                                 "🛒 Google Play Billing • PRO"
                             },
                             draft.billingEnabled
-                        ) {
+                        , featureKey = "billingEnabled") {
                             enabled ->
 
                             handleProFeatureToggle(
@@ -9540,7 +9552,7 @@ private fun QuickCreateScreen(
                                 "📊 Firebase Analytics • PRO"
                             },
                             draft.firebaseAnalyticsEnabled
-                        ) {
+                        , featureKey = "firebaseAnalyticsEnabled") {
                             enabled ->
 
                             handleProFeatureToggle(
@@ -9575,7 +9587,7 @@ private fun QuickCreateScreen(
                                 "💥 Firebase Crashlytics • PRO"
                             },
                             draft.firebaseCrashlyticsEnabled
-                        ) {
+                        , featureKey = "firebaseCrashlyticsEnabled") {
                             enabled ->
 
                             handleProFeatureToggle(
@@ -9610,7 +9622,7 @@ private fun QuickCreateScreen(
                                 "🔔 Firebase Cloud Messaging • PRO"
                             },
                             draft.firebaseMessagingEnabled
-                        ) {
+                        , featureKey = "firebaseMessagingEnabled") {
                             enabled ->
 
                             handleProFeatureToggle(
@@ -14622,6 +14634,10 @@ private fun SourceStep(
             Arrangement.spacedBy(if (formCompact) 10.dp else 14.dp)
     ) {
         item {
+            Toggle("Normal Android HTML motorunu açıkça seç",d.normalHtmlEngine, featureKey = "normalHtmlEngine"){update(d.copy(normalHtmlEngine=it))}
+            Text(if(d.normalHtmlEngine)"Normal motor seçildi; gerçek Android araçları gerekir." else "Fast HTML seçildi; desteklenmeyen özellik sessiz fallback yapmaz.",color=TextSecondary,fontSize=12.sp)
+        }
+        item {
             Section(
                 "1. Proje",
                 "Uygulama, sürüm, Android SDK ve kaynak ayarlarını yapılandır."
@@ -15446,23 +15462,23 @@ private fun PermissionsStep(
         LocalConfiguration.current
             .screenWidthDp < 380
 
-    val permissionCount =
-        listOf(
-            d.camera,
-            d.microphone,
-            d.location,
-            d.notifications,
-            d.networkState,
-            d.wakeLock,
-            d.nfc
-        ).count { it }
-            + d.additionalPermissions.size
+    val permissionCount = com.appforge.studio.build.FastHtmlApkPolicy.templatePermissions(d).count{it!="android.permission.INTERNET"}
 
     LazyColumn(
         contentPadding = PaddingValues(if (formCompact) 12.dp else 20.dp),
         verticalArrangement =
             Arrangement.spacedBy(if (formCompact) 8.dp else 12.dp)
     ) {
+        if(com.appforge.studio.build.FeatureSupportMatrix.conflicts(d).isNotEmpty())item {
+            Text("Kaydedilmiş uyumsuz tercihler korunuyor. Kaynak API bulguları varsa seçenek kapatmak kaynak gereksinimini kaldırmaz.",color=TextSecondary)
+            OutlinedButton(onClick={
+                fun retain(key:String,on:Boolean)=on && com.appforge.studio.build.FeatureSupportMatrix.feature(d,key).selectable
+                update(d.copy(camera=retain("camera",d.camera),microphone=retain("microphone",d.microphone),
+                    qrScanner=retain("qrScanner",d.qrScanner),mediaPlayerBridge=retain("mediaPlayerBridge",d.mediaPlayerBridge),
+                    admobEnabled=retain("admobEnabled",d.admobEnabled),firebaseAnalyticsEnabled=retain("firebaseAnalyticsEnabled",d.firebaseAnalyticsEnabled),
+                    firebaseCrashlyticsEnabled=retain("firebaseCrashlyticsEnabled",d.firebaseCrashlyticsEnabled),firebaseMessagingEnabled=retain("firebaseMessagingEnabled",d.firebaseMessagingEnabled),umpConsentEnabled=retain("umpConsentEnabled",d.umpConsentEnabled)))
+            }) { Text("Onayımla uyumsuz seçimleri kapat") }
+        }
         item {
             Section(
                 "2. İzinler",
@@ -15575,6 +15591,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "camera",
                 title = "Kamera",
                 description =
                     if (
@@ -15603,6 +15620,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "microphone",
                 title = "Mikrofon",
                 description =
                     if (analysis?.microphone == true) {
@@ -15627,6 +15645,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "location",
                 title = "Konum",
                 description =
                     if (
@@ -15656,6 +15675,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "networkState",
                 title = "Ağ durumunu okuma",
                 description =
                     if (analysis?.networkState == true) {
@@ -15678,6 +15698,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "wakeLock",
                 title = "Ekranı/işlemi uyanık tutma",
                 description =
                     if (analysis?.wakeLock == true) {
@@ -15700,6 +15721,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "nfc",
                 title = "NFC",
                 description =
                     if (analysis?.nfc == true) {
@@ -15722,6 +15744,7 @@ private fun PermissionsStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "notifications",
                 title = "Bildirimler",
                 description =
                     if (
@@ -16030,6 +16053,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webJavaScriptEnabled",
                 title =
                     "JavaScript",
                 description =
@@ -16062,6 +16086,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webDomStorageEnabled",
                 title =
                     "DOM Storage",
                 description =
@@ -16082,6 +16107,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webZoomEnabled",
                 title =
                     "Yakınlaştırma / Pinch Zoom",
                 description =
@@ -16102,6 +16128,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webWideViewPortEnabled",
                 title =
                     "Geniş Viewport",
                 description =
@@ -16122,6 +16149,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webOverviewModeEnabled",
                 title =
                     "Overview Mode",
                 description =
@@ -16142,6 +16170,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webMediaAutoplayEnabled",
                 title =
                     "Medya Autoplay",
                 description =
@@ -16162,6 +16191,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "webMixedContentAllowed",
                 title =
                     "Mixed Content Uyumluluğu",
                 description =
@@ -16200,6 +16230,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "fileUpload",
                 title =
                     "Dosya yükleme",
                 description =
@@ -16220,6 +16251,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "downloads",
                 title =
                     "DownloadManager",
                 description =
@@ -16240,6 +16272,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "offlineCache",
                 title =
                     "Offline Cache",
                 description =
@@ -16260,6 +16293,7 @@ private fun FeaturesStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "fullscreen",
                 title =
                     "Tam ekran",
                 description =
@@ -16285,15 +16319,26 @@ private fun FeaturesStep(
 }
 
 
+private val LocalFeatureDraft = androidx.compose.runtime.staticCompositionLocalOf<ProjectDraft?> { null }
+
+@Composable private fun featureDecision(label:String,explicitKey:String?=null): com.appforge.studio.build.FeatureSupport? {
+    val d=LocalFeatureDraft.current?:return null
+    val key=explicitKey?:com.appforge.studio.build.FeatureSupportMatrix.keyForLabel(label)?:return null
+    return com.appforge.studio.build.FeatureSupportMatrix.feature(d,key)
+}
+
 @Composable
 private fun FeatureToggleCard(
     title: String,
     description: String,
     checked: Boolean,
+    featureKey: String? = null,
     permission: String? = null,
     recommended: Boolean = false,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val support=featureDecision(title,featureKey)
+    val enabled=support?.selectable != false
     val formCompact =
         LocalConfiguration.current
             .screenWidthDp < 380
@@ -16338,6 +16383,7 @@ private fun FeatureToggleCard(
                         FontWeight.Medium
                 )
 
+                if(support!=null && support.state!=com.appforge.studio.build.FeatureSupportState.SUPPORTED)Text(support.reason+(support.alternative?.let{" Alternatif: $it"}?:""),color=TextSecondary,fontSize=12.sp)
                 Text(
                     description,
                     color =
@@ -16378,8 +16424,8 @@ private fun FeatureToggleCard(
             Switch(
                 checked =
                     checked,
-                onCheckedChange =
-                    onCheckedChange
+                enabled = enabled,
+                onCheckedChange = { if(enabled) onCheckedChange(it) }
             )
         }
     }
@@ -16897,7 +16943,7 @@ private fun AppearanceStep(
                     Toggle(
                         "Android 12+ Splash",
                         d.splashEnabled
-                    ) {
+                    , featureKey = "splashEnabled") {
                         update(
                             d.copy(
                                 splashEnabled =
@@ -17237,6 +17283,7 @@ private fun NativeBridgeStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "javascriptBridge",
                 title =
                     "JavaScript Bridge",
                 description =
@@ -17264,6 +17311,7 @@ private fun NativeBridgeStep(
             ) {
                 item {
                     FeatureToggleCard(
+                    featureKey = "remoteBridgeAllowed",
                         title =
                             if (
                                 isPro
@@ -17435,6 +17483,7 @@ private fun NativeBridgeStep(
 
             item {
                 FeatureToggleCard(
+                    featureKey = "shareBridge",
                     title =
                         "Paylaşım",
                     description =
@@ -17455,6 +17504,7 @@ private fun NativeBridgeStep(
 
             item {
                 FeatureToggleCard(
+                    featureKey = "clipboardBridge",
                     title =
                         "Panoya kopyalama",
                     description =
@@ -17475,6 +17525,7 @@ private fun NativeBridgeStep(
 
             item {
                 FeatureToggleCard(
+                    featureKey = "vibrationBridge",
                     title =
                         "Titreşim / Haptic",
                     description =
@@ -17495,6 +17546,7 @@ private fun NativeBridgeStep(
 
             item {
                 FeatureToggleCard(
+                    featureKey = "mediaPlayerBridge",
                     title =
                         "🎵 Medya Oynatıcı / Arka Plan Ses",
                     description =
@@ -17843,6 +17895,7 @@ private fun MonetizationStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "admobEnabled",
                 title =
                     if (
                         isPro
@@ -18026,6 +18079,7 @@ private fun MonetizationStep(
 
             item {
                 FeatureToggleCard(
+                    featureKey = "umpConsentEnabled",
                     title =
                         "UMP / GDPR izin yönetimi",
                     description =
@@ -18063,6 +18117,7 @@ private fun MonetizationStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "billingEnabled",
                 title =
                     if (
                         isPro
@@ -18334,6 +18389,7 @@ private fun MonetizationStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "firebaseAnalyticsEnabled",
                 title =
                     if (
                         isPro
@@ -18375,6 +18431,7 @@ private fun MonetizationStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "firebaseCrashlyticsEnabled",
                 title =
                     if (
                         isPro
@@ -18416,6 +18473,7 @@ private fun MonetizationStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "firebaseMessagingEnabled",
                 title =
                     if (
                         isPro
@@ -18678,6 +18736,7 @@ private fun DeepLinkStep(
 
         item {
             FeatureToggleCard(
+                    featureKey = "deepLinkEnabled",
                 title =
                     if (
                         isPro
@@ -19449,6 +19508,7 @@ private fun SigningStep(
                 )
 
                 FilterChip(
+                    enabled = com.appforge.studio.build.FeatureSupportMatrix.feature(d,"customSigning").selectable,
                     selected =
                         d.signingMode ==
                             SigningMode.CUSTOM,
@@ -28223,8 +28283,11 @@ private fun Section(
 private fun Toggle(
     label: String,
     value: Boolean,
+    featureKey: String? = null,
     onChange: (Boolean) -> Unit
 ) {
+    val support=featureDecision(label,featureKey)
+    val enabled=support?.selectable != false
     val compact =
         LocalConfiguration.current
             .screenWidthDp < 380
@@ -28258,7 +28321,7 @@ private fun Toggle(
                 Alignment.CenterVertically
         ) {
             Text(
-                text = label,
+                text = label+(support?.takeIf{it.state!=com.appforge.studio.build.FeatureSupportState.SUPPORTED}?.let{"\n"+it.reason+(it.alternative?.let{a->" Alternatif: $a"}?:"")}?:""),
                 modifier =
                     Modifier.weight(1f),
                 fontSize =
@@ -28287,7 +28350,8 @@ private fun Toggle(
 
             Switch(
                 checked = value,
-                onCheckedChange = onChange
+                enabled = enabled,
+                onCheckedChange = { if(enabled) onChange(it) }
             )
         }
     }

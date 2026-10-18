@@ -22,7 +22,7 @@ fun main() {
  check(!WizardReadinessEvaluator.evaluate(base.copy(packageName="com."+"x".repeat(256))).ready)
  check(FastHtmlApkPolicy.isCandidate(base.copy(sourceMode=SourceMode.URL,webUrl="https://example.com")))
  val advanced = listOf(base.copy(camera=true),base.copy(microphone=true))
- advanced.forEach { check(!FastHtmlApkPolicy.isCandidate(it)); WebviewProjectSettings.validate(it) }
+ advanced.forEach { check(!FastHtmlApkPolicy.isCandidate(it)); check(runCatching{WebviewProjectSettings.validate(it)}.isFailure); WebviewProjectSettings.validate(it.copy(normalHtmlEngine=true)) }
  listOf("apk","aab","both","apk+aab","android","").forEach { check(FastHtmlApkPolicy.isCandidate(base.copy(buildOutput=it))) }
  listOf("exe","all","apk+aab+exe","native-exe").forEach { check(!FastHtmlApkPolicy.isCandidate(base.copy(buildOutput=it))) }
  listOf("node-web","react-native","expo","python-android","android-gradle").forEach { check(!FastHtmlApkPolicy.isCandidate(base.copy(sourceBuildEngine=it))) }
@@ -54,7 +54,7 @@ fun main() {
   urlAdvanced.forEach { advancedUrl ->
    val draft = advancedUrl.copy(buildOutput=output)
    check(FastHtmlApkPolicy.isCandidate(draft) == (output=="apk"))
-   WebviewProjectSettings.validate(draft)
+   if(output=="apk" || output in listOf("all","apk+aab+exe")) WebviewProjectSettings.validate(draft) else { check(runCatching{WebviewProjectSettings.validate(draft)}.isFailure);WebviewProjectSettings.validate(draft.copy(normalHtmlEngine=true)) }
    listOf("http://example.com", "https://user:pass@example.com", "https://@example.com",
     "https:///missing-host", "https://bad_host", "https://example.com/invalid space",
     "https://example.com/" + "a".repeat(2048)).forEach { unsafe ->
@@ -62,7 +62,7 @@ fun main() {
    }
   }
   listOf("webview-static", "node-web").forEach { engine ->
-   val draft = base.copy(buildOutput=output, sourceBuildEngine=engine)
+   val draft = base.copy(buildOutput=output, sourceBuildEngine=engine,normalHtmlEngine=engine=="webview-static" && output !in listOf("apk","all","apk+aab+exe"))
    rejected(draft.copy(additionalPermissions=setOf("INVENTED_PERMISSION")), "Desteklenmeyen Android izinleri")
    listOf(draft.copy(deepLinkEnabled=true, deepLinkScheme="javascript", deepLinkHost="example.com"),
     draft.copy(deepLinkEnabled=true, deepLinkHost="example.com@evil.com"),
@@ -250,7 +250,7 @@ fun main() {
  check(!WizardReadinessEvaluator.evaluate(ProjectDraft(sourceBuildEngine="windows-native")).ready)
  println("routing/settings assertions passed")
 }`);
- execFileSync('kotlinc',[path.join(root,'android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt'), ...['FastHtmlApkPolicy.kt','DeviceBuildCapabilities.kt','WebviewProjectSettings.kt'].map(p=>path.join(root,build,p)),path.join(dir,'BuildConfig.kt'),path.join(dir,'Check.kt'),'-include-runtime','-d',path.join(dir,'check.jar')], {timeout:120000});
+ execFileSync('kotlinc',[path.join(root,'android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt'), ...['FastHtmlApkPolicy.kt','DeviceBuildCapabilities.kt','FeatureSupportMatrix.kt','WebviewProjectSettings.kt'].map(p=>path.join(root,build,p)),path.join(dir,'BuildConfig.kt'),path.join(dir,'Check.kt'),'-include-runtime','-d',path.join(dir,'check.jar')], {timeout:120000});
  assert.match(execFileSync('java',['-jar',path.join(dir,'check.jar')],{encoding:'utf8'}),/assertions passed/);
  } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });
@@ -402,7 +402,7 @@ fun main(){
  }
  println("ENGINE GUARD PASS")
 }`);
- execFileSync('kotlinc',[path.join(root,'android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt'),...['FastHtmlApkPolicy.kt','WebviewProjectSettings.kt','DeviceBuildCapabilities.kt'].map(f=>path.join(root,build,f)),path.join(dir,'BuildConfig.kt'),path.join(dir,'Engine.kt'),'-include-runtime','-d',path.join(dir,'engine.jar')],{timeout:120000,stdio:'pipe'});
+ execFileSync('kotlinc',[path.join(root,'android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt'),...['FastHtmlApkPolicy.kt','FeatureSupportMatrix.kt','WebviewProjectSettings.kt','DeviceBuildCapabilities.kt'].map(f=>path.join(root,build,f)),path.join(dir,'BuildConfig.kt'),path.join(dir,'Engine.kt'),'-include-runtime','-d',path.join(dir,'engine.jar')],{timeout:120000,stdio:'pipe'});
  assert.match(execFileSync('java',['-jar',path.join(dir,'engine.jar')],{encoding:'utf8',timeout:30000}),/ENGINE GUARD PASS/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

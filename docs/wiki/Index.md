@@ -44,6 +44,8 @@ source_files: []
 
 ## Core Pages
 
+- [[Modular_Offline_V3]]
+
 - [[Windows_Publisher_Authorization]]
 - [[Pro_Code_Lifecycle_Staging]]
 - [[Project_Overview]]

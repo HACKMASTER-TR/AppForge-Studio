@@ -169,6 +169,9 @@ internal object FastHtmlApkPackager {
         }
         val entry = html.relativeTo(root).invariantSeparatorsPath
         require("assets/site/$entry" in assets) { "Seçilen HTML başlangıç dosyası eklenmedi." }
+        val observed=assets.filterKeys{it.endsWith(".html",true)||it.endsWith(".js",true)||it.endsWith(".mjs",true)}
+            .values.flatMap{com.appforge.studio.io.HtmlCapabilityFindings.scan(it.toString(Charsets.UTF_8))}.toSet()
+        FeatureSupportMatrix.requireCompatible(draft.copy(requiredCapabilities=draft.requiredCapabilities+observed))
         return entry to assets
     }
 

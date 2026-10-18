@@ -47,6 +47,7 @@ internal object WebviewProjectSettings {
     }
 
     fun validate(draft: ProjectDraft) {
+        FeatureSupportMatrix.requireCompatible(draft)
         val failures = diagnostics(draft)
         require(failures.isEmpty()) { failures.joinToString("\n") { it.turkish() } }
     }
@@ -199,6 +200,9 @@ internal object WizardReadinessEvaluator {
                 "Özel imza için keystore, takma ad ve parolaları tamamlayın. Anahtar ayrıca derleme sırasında doğrulanır.",
                 WizardCapabilityClass.REQUIRES_EXTERNAL_CONFIGURATION)
         }
+        for ((key, reason) in FeatureSupportMatrix.conflicts(draft)) diagnostics.add(
+            WizardDiagnostic(if(key in setOf("camera","microphone","location","capture","audioCapture","watchPosition"))2 else 9,
+                key,WizardCapabilityClass.UNSUPPORTED_BLOCKED,reason))
         val fastCandidate = outputs.isNotEmpty() && FastHtmlApkPolicy.isCandidate(draft)
         val reasons = if (outputs.isEmpty()) mutableListOf() else FastHtmlApkPolicy.normalRouteReasons(draft).toMutableList()
         if (engine in setOf("webview-static", "node-web") && outputs.any { it == DeviceArtifactKind.APK || it == DeviceArtifactKind.AAB }) {

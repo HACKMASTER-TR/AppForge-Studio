@@ -182,7 +182,7 @@ object DeviceBuildEngine {
         val workspace = File(context.cacheDir, "device-build/${state.id}")
 
         try {
-            state.offline = runCatching {
+            state.offline = !draft.allowDependencyDownloads || runCatching {
                 val manager = context.getSystemService(
                     ConnectivityManager::class.java
                 )

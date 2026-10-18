@@ -3,6 +3,12 @@ set -eu
 
 MODE="${1:?Offline pack mode required}"
 
+# Re-run the actual warmup build without allowing Gradle dependency downloads.
+set --
+if [ "${APPFORGE_DEVICE_OFFLINE:-0}" = 1 ]; then
+  set -- --offline
+fi
+
 ROOT="/opt/appforge-device"
 SDK="$ROOT/android-sdk"
 GRADLE="$ROOT/gradle-9.3.1/bin/gradle"
@@ -112,7 +118,7 @@ EOF
 
     LOG="$BASE/android-gradle.log"
 
-    if ! "$GRADLE" \
+    if ! "$GRADLE" "$@" \
       -p "$PROJECT" \
       --no-daemon \
       --console=plain \
@@ -182,7 +188,7 @@ EOF
 
     LOG="$BASE/python-gradle.log"
 
-    if ! "$GRADLE" \
+    if ! "$GRADLE" "$@" \
       -p "$PROJECT" \
       --no-daemon \
       --console=plain \

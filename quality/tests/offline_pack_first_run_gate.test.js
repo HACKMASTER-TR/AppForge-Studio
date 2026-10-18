@@ -68,17 +68,17 @@ test("first-run gate cannot be bypassed with Android back", () => {
 });
 
 test("first-run screen explains consequences and requires explicit skip", () => {
-  assert.match(pack, /Çevrimdışı paketleri atla\?/);
-  assert.match(pack, /YİNE DE DEVAM ET/);
-  assert.match(pack, /GERİ DÖN VE İNDİR/);
-  assert.match(pack, /ŞİMDİLİK ATLA/);
-  assert.match(pack, /Device \/ Offline Build/);
+  assert.match(pack, /İlk açılışta araç indirme zorunluluğu yok/);
+  assert.match(pack, /Araç indirmeden devam et/);
+  assert.match(pack, /onFirstRunComplete\?\.invoke\(true\)/);
+  assert.match(pack, /if\(firstRun\)/);
+  assert.match(pack, /Fast HTML gömülüdür/);
 });
 
 test("ready first-run pack exposes continue action", () => {
-  assert.match(pack, /status\.completeTargetReady/);
-  assert.match(pack, /status\.windowsNativeToolchainReady/);
-  assert.match(pack, /"DEVAM ET"/);
+  assert.match(pack, /moduleReady\(context,it.id\)/);
+  assert.match(pack, /installed=ready\[module.id\]==true/);
+  assert.match(pack, /"Araç indirmeden devam et"/);
 });
 
 test("normal Settings offline-pack route remains available", () => {
