@@ -327,6 +327,8 @@ download_sha256() {
 }
 
 ensure_node_22() {
+  # npm/npx use /usr/bin/env node, including standalone Expo bootstrap.
+  export PATH="$NODE_HOME/bin:$PATH"
   if [ -x "$NODE_HOME/bin/node" ] &&
      [ -x "$NODE_HOME/bin/npm" ]; then
     "$NODE_HOME/bin/node" --version
