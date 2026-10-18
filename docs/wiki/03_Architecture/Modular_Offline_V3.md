@@ -108,3 +108,94 @@ operation history is diagnostic only; restoring READY never proves readiness.
 A journal write error stops installation rather than promising resumability.
 Module rollback is latest-generation-only and dependent-aware; arbitrary shared
 runtime uninstall/update and unbounded old-generation pruning remain disabled.
+
+## Follow-up: verified transport and complete lifecycle boundaries
+
+ModuleArtifactBroker connects pinned SDK/JDK/Gradle/NDK and signed-APT archive
+requests to the same native resumable byte/SHA-256 downloader. No host target
+path comes from a script; private content-addressed caches survive stage rollback.
+Only curated HTTPS origins and bounded GitHub asset redirects are allowed.
+Range/If-Range headers survive allowed redirects. APT resolves its signed index,
+acquires exact SHA-256 artifacts, records versions and index hashes, and installs
+with --no-download. This is a frozen local acquisition manifest, not a remote
+Ubuntu snapshot-service guarantee. Metadata transfers without an observable body
+remain explicitly indeterminate; sampled staged index files are not network bytes.
+Python HTTP body telemetry adds pip/Chaquopy observation without changing trust.
+
+ModuleOwnershipStore records exact before/after deltas and content-addressed
+original file bytes. Independent modules can be reverted out of order; shared or
+foreign modifications block removal. BaseRuntimeOwnership is captured only from
+a fresh verified root, never inferred from an existing installation. Installers
+cannot silently remove unowned data or alter another ownership receipt. Approved
+recipe hashes distinguish stale installations from current catalog recipes.
+Updates stage and probe the new recipe; existing data is kept on failure. Native
+Node/JDK/Gradle repairs re-extract pinned inputs rather than blessing old binaries.
+
+Registered full-root snapshots may be cleaned only after digest verification;
+the latest rollback root and legacy ownership dependencies remain protected. A
+persisted exact prune plan permits interruption recovery and rejects foreign
+files. Content-addressed before-images preserve uninstall after old clones are
+removed. Linux runtime unregistering archives its private directory and frees no
+disk by itself; dependents block it. Bundled Fast HTML cannot be uninstalled.
+
+RootfsActivationTransaction replaces destructive pre-install clearing, journals
+both root and metadata, and retains old roots at each fault boundary. An invalid
+runtime containing installed modules is not automatically reset. AndroidRuntimeTrust
+bootstraps guest APT HTTPS with public Android system roots and hashed trust
+configuration; signature checks stay enabled. Gradle's Proroot preparation now
+has a verified persistent cache and obeys --offline instead of trying the network.
+
+Foreground operation state identifies the active transfer. A consented in-process
+network wait can reconnect with bounded retry; pause/timeout/process death still
+require safe manual continuation as appropriate. No force-stop survival, live
+service, hardware, or new CI acceptance is implied by this implementation record.
+
+Gradle 9.3.1 typed OperationProgressDetails carries real intermediate byte counts
+and content lengths; the observer now consumes those events and an actual Maven
+fixture verifies live updates and server-stopped offline resolution. Failed
+resource operations never infer a completed total. SDK license JVM observation
+uses a bounded JFR recording sampled on daemon threads; observed socket bytes
+include protocol/TLS overhead and never claim a payload total or percentage.
+Python stdlib HTTP read/readinto and npm original response emission remain
+non-consuming observers. Package-index bodies or native child resolvers bypassing
+these APIs retain an explicit unknown total; no universal pause guarantee is made.
+
+The Android system-root bootstrap also writes a public-certificates-only PKCS12
+trust store for guest Java. APT PEM trust alone does not configure sdkmanager or
+Gradle HTTPS. Guest commands explicitly select this store, while peer, hostname
+and APT signature verification remain enabled. Its standard integrity password
+protects no private key or credential; user-installed CA aliases are excluded.
+A real isolated Core install exposed this trust boundary before acceptance.
+
+The real Core probe found that the pinned API 37.0 archive lacks package.xml and
+legacy scanning drops its decimal API version. Reviewed declarative metadata
+matching API 37.0/revision 2 is now bundled; installation requires the real
+archive and accepted license first. No API properties are invented when missing.
+AGP SDK auto-download is disabled: absent platforms fail instead of silently
+fetching an unplanned SDK. Fresh Python/Expo child modules explicitly reuse the
+verified Core payload, while repairs retain the refresh path. New child installs
+do not request --reinstall for shared APT packages.
+
+Shared-file readiness now resolves the latest authorized ownership sequence,
+checks bytes/modes of all module deltas and rejects unowned private-namespace
+files. This avoids either blessing a foreign library edit or rejecting a signed
+shared-package update solely because an older module recorded its prior hash.
+Before activation, existing ready modules must still match their effective
+inventory and execute minimal offline runtime probes. A failed compatibility
+probe discards the stage and preserves the active generation. These probes
+prove runtime startup, not all application behavior or hardware acceptance.
+
+Volatile Gradle/npm/pip caches, APT indexes and logs remain outside immutable
+module ownership; removal preserves them and project-ready receipts separately
+attest dependency caches. Approved probe recipes carry an ownership-policy
+revision. Project preparation protects ownership receipts, the Gradle observer
+and effective installed system-file inventories, so it cannot silently replace
+module-owned libraries while merely preparing project dependencies. Shared
+package databases with conflicting deltas still block destructive removal.
+
+The standalone Expo fallback now exports its pinned Node directory before npm
+shebang execution; a real toolchain run found the missing-PATH failure. A runtime
+regression covers absence of system Node. Real Core/Python disconnected builds,
+Node standalone installation, Expo x64 tool probes and Windows PE cross-compiles
+are recorded separately from physical Android/Windows acceptance in
+[the completion report](../../reports/fast-html-v3-final-completion-20261018.md).
