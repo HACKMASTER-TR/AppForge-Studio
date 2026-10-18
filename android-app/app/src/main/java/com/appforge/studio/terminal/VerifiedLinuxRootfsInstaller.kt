@@ -98,6 +98,8 @@ internal class VerifiedLinuxRootfsInstaller(
                 downloadVerifiedSource(
                     manifest = manifest,
                     target = archive,
+                    cache = File(appContext.noBackupFilesDir,"verified-rootfs-downloads/"+manifest.archiveSha256+"-"+
+                        java.security.MessageDigest.getInstance("SHA-256").digest(layout.runtimeDirectory.absolutePath.toByteArray()).take(8).joinToString(""){"%02x".format(it)}+".tar.gz"),
                     onProgress = onProgress
                 )
 
@@ -171,111 +173,24 @@ internal class VerifiedLinuxRootfsInstaller(
         }
 
     private suspend fun downloadVerifiedSource(
-        manifest: LinuxRootfsManifest,
-        target: File,
-        onProgress: (LinuxInstallProgress) -> Unit
+        manifest:LinuxRootfsManifest,target:File,cache:File,onProgress:(LinuxInstallProgress)->Unit
     ) {
-        val source =
-            validateSourceUri(
-                manifest.sourceUri
-            )
-
-        val connection =
-            source
-                .toURL()
-                .openConnection() as HttpsURLConnection
-
-        try {
-            connection.instanceFollowRedirects = false
-            connection.connectTimeout = CONNECT_TIMEOUT_MS
-            connection.readTimeout = READ_TIMEOUT_MS
-            connection.requestMethod = "GET"
-            connection.setRequestProperty(
-                "User-Agent",
-                "AppForge-Terminal-Ultimate/2B"
-            )
-            connection.setRequestProperty(
-                "Accept-Encoding",
-                "identity"
-            )
-            connection.connect()
-
-            check(
-                connection.responseCode ==
-                    HttpsURLConnection.HTTP_OK
-            ) {
-                "Rootfs indirilemedi: HTTP ${connection.responseCode}."
-            }
-
-            val declaredLength =
-                connection.contentLengthLong
-                    .takeIf { it >= 0L }
-
-            if (
-                declaredLength != null &&
-                declaredLength > manifest.maxArchiveBytes
-            ) {
-                error(
-                    "Rootfs arşivi izin verilen boyut sınırını aşıyor."
-                )
-            }
-
-            target.parentFile?.mkdirs()
-
-            connection.inputStream.buffered().use { input ->
-                target.outputStream().buffered().use { output ->
-                    val buffer =
-                        ByteArray(DOWNLOAD_BUFFER_BYTES)
-
-                    var total = 0L
-
-                    while (true) {
-                        coroutineContext.ensureActive()
-
-                        val count =
-                            input.read(buffer)
-
-                        if (count < 0) {
-                            break
-                        }
-
-                        if (count == 0) {
-                            continue
-                        }
-
-                        total += count.toLong()
-
-                        check(
-                            total <=
-                                manifest.maxArchiveBytes
-                        ) {
-                            "Rootfs arşivi izin verilen boyut sınırını aşıyor."
-                        }
-
-                        output.write(
-                            buffer,
-                            0,
-                            count
-                        )
-
-                        onProgress(
-                            LinuxInstallProgress(
-                                stage = LinuxInstallStage.DOWNLOADING,
-                                completedBytes = total,
-                                totalBytes = declaredLength,
-                                detail = "Doğrulanmış Ubuntu Base arşivi indiriliyor."
-                            )
-                        )
-                    }
-                }
-            }
-
-            check(target.isFile && target.length() > 0L) {
-                "Rootfs indirmesi boş dosya üretti."
-            }
-        } finally {
-            connection.disconnect()
-        }
+        val source=validateSourceUri(manifest.sourceUri)
+        val operationJob=coroutineContext[kotlinx.coroutines.Job]
+        com.appforge.studio.build.VerifiedModuleDownload.download(
+            source.toString(),manifest.archiveSha256,cache,
+            com.appforge.studio.build.OfflineModuleId.LINUX_RUNTIME,"rootfs-${manifest.archiveSha256.take(12)}",
+            canceled={operationJob?.isActive==false},
+            open={it.openConnection().let{c->(c as HttpsURLConnection).apply{instanceFollowRedirects = false}}},
+            progress={e->onProgress(LinuxInstallProgress(
+                if(e.phase==com.appforge.studio.build.ModulePhase.VERIFYING)LinuxInstallStage.VERIFYING else LinuxInstallStage.DOWNLOADING,
+                e.bytesDownloaded,e.bytesTotal,"SHA-256 sabit rootfs arşivi; güvenli devam ve son bütünlük doğrulaması"))},
+            maxBytes=manifest.maxArchiveBytes
+        )
+        coroutineContext.ensureActive()
+        check(cache.length()<=manifest.maxArchiveBytes && LinuxRuntimeIntegrity.matches(cache,manifest.archiveSha256))
+        target.parentFile?.mkdirs()
+        cache.inputStream().use{input->target.outputStream().use{input.copyTo(it)}}
     }
 
     private fun validateSourceUri(uri: URI): URI {

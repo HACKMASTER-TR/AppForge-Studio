@@ -106,6 +106,7 @@ internal object DeviceBuildRuntimeV3 {
                         architecture
                 )
 
+            RuntimeGenerationStore(layout.rootfsDirectory).recover()
             if (
                 !isTrustedRuntime(
                     layout,

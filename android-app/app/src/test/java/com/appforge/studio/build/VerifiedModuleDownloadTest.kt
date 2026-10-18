@@ -9,12 +9,12 @@ import java.security.MessageDigest
 
 class VerifiedModuleDownloadTest {
     private fun hash(b:ByteArray)=MessageDigest.getInstance("SHA-256").digest(b).joinToString(""){"%02x".format(it)}
-    private class Connection(private val body:ByteArray,private val code:Int,private val range:String?=null,private val known:Boolean=true):HttpURLConnection(URL("https://node.example/test")) {
+    private class Connection(private val body:ByteArray,private val code:Int,private val range:String?=null,private val known:Boolean=true,private val etag:String?=null):HttpURLConnection(URL("https://node.example/test")) {
         var closed=false
         override fun connect(){};override fun usingProxy()=false;override fun disconnect(){closed=true}
         override fun getResponseCode()=code
         override fun getContentLengthLong()=if(known)body.size.toLong() else -1L
-        override fun getHeaderField(name:String)=if(name=="Content-Range")range else null
+        override fun getHeaderField(name:String)=when(name){"Content-Range"->range;"ETag"->etag;else->null}
         override fun getInputStream():InputStream=ByteArrayInputStream(body)
     }
     @Test fun realBytesKnownAndUnknownTotalsAndAtomicVerifiedPublication() {
@@ -93,6 +93,24 @@ class VerifiedModuleDownloadTest {
             assertEquals("working",target.readText())
             assertFalse(File(target.path+".part").exists())
         } finally {dir.deleteRecursively()}
+    }
+
+    @Test fun validatorsAndManifestLimitsProtectResumedArchives() {
+        val dir=Files.createTempDirectory("module-etag").toFile()
+        try {
+            val data="abcdefghij".toByteArray();val target=File(dir,"rootfs.tar.gz")
+            fun partial(){File(target.path+".part").writeBytes(data.copyOf(4));File(target.path+".part.identity").writeText("https://node.example/test\n"+hash(data));File(target.path+".part.validator").writeText("etag-old")}
+            partial()
+            val changed=Connection(data.copyOfRange(4,10),206,"bytes 4-9/10",etag="etag-new")
+            assertThrows(IllegalStateException::class.java){VerifiedModuleDownload.download("https://node.example/test",hash(data),target,OfflineModuleId.LINUX_RUNTIME,"changed",open={changed})}
+            assertEquals("etag-old",changed.getRequestProperty("If-Range"));assertFalse(target.exists());assertFalse(File(target.path+".part").exists())
+            val restart=Connection(data,200,etag="etag-new")
+            VerifiedModuleDownload.download("https://node.example/test",hash(data),target,OfflineModuleId.LINUX_RUNTIME,"restart",open={restart},maxBytes=10)
+            assertArrayEquals(data,target.readBytes())
+            target.delete()
+            assertThrows(IllegalArgumentException::class.java){VerifiedModuleDownload.download("https://node.example/test",hash(data),target,OfflineModuleId.LINUX_RUNTIME,"limit",open={Connection(data,200)},maxBytes=4)}
+            assertFalse(target.exists())
+        }finally{dir.deleteRecursively()}
     }
 
 }

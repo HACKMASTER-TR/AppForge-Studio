@@ -62,10 +62,12 @@ internal object ModuleInstallOperations {
     var chosen by remember { mutableStateOf<OfflineModuleId?>(null) }
     var sdkConsent by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf("") }
+    var rollbackAllowed by remember {mutableStateOf<Map<OfflineModuleId,Boolean>>(emptyMap())}
     val plan=remember(project){project?.let{OfflineModules.forProject(it)}}
     val readinessChanges=events.mapValues{it.value.phase==ModulePhase.READY}
     LaunchedEffect(Unit){withContext(Dispatchers.IO){ModuleInstallOperations.restore(context)}}
-    LaunchedEffect(readinessChanges,busy){ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.moduleReady(context,it.id)}}}
+    LaunchedEffect(readinessChanges,busy){ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.moduleReady(context,it.id)}}
+        rollbackAllowed=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.canRollback(context,it.id)}}}
     fun begin(id:OfflineModuleId) {
         ModuleInstallOperations.start(context,id,sdkConsent)
     }
@@ -122,8 +124,13 @@ internal object ModuleInstallOperations {
                             BuildModuleUsage.mutationLease().use {OwnedModuleFiles.removePortable(context.noBackupFilesDir,WindowsPortableHostStore.HOST_SHA256)}
                         }.fold({"Yalnız doğrulanmış Windows Portable dosyaları kaldırıldı."},{"Kaldırma engellendi: ${it.message}"})};ready=ready+(module.id to OfflineBuildPackManager.moduleReady(context,module.id))}
                     }){Text("Windows Portable paketini kaldır")}
+                    if(rollbackAllowed[module.id]==true)OutlinedButton(enabled=!busy,onClick={scope.launch {
+                        detail=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.rollbackModule(context,module.id)}.fold({"Son izole kurulum geri alındı; önceki ortam korundu."},{"Geri alma engellendi: ${it.message}"})}
+                        ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.moduleReady(context,it.id)}}
+                        rollbackAllowed=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.canRollback(context,it.id)}}
+                    }}){Text("Son izole kurulumu geri al / kaldır")}
                     OutlinedButton(enabled=false,onClick={}){Text("Güncelleme: doğrulanmış yeni sürüm yok")}
-                    if(module.id!=OfflineModuleId.WINDOWS_PORTABLE)Text("Kaldırma pasif: paylaşılan APT/Gradle dosya sahipliği ve atomik geri alma doğrulanmadı.",style=MaterialTheme.typography.bodySmall)
+                    if(module.id!=OfflineModuleId.WINDOWS_PORTABLE)Text("Genel dosya silme kapalı. Son doğrulanmış izole sürüm, bağımlılık kullanımı yoksa geri alınabilir; daha eski modüller önce bağımlılık sırasıyla çözülmelidir.",style=MaterialTheme.typography.bodySmall)
                 }}
             }
             if(ready[OfflineModuleId.WINDOWS_PORTABLE]==true)item { WindowsModuleSmokeCard() }

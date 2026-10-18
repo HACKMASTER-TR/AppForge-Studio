@@ -148,6 +148,7 @@ internal object OfflineBuildPackManager {
             )
         }
 
+        recoverPending(context)
         val plan = OfflineModules.forProject(draft)
         if(plan.error != null)return OfflineBuildRequirementCheck(false,"webview-settings",listOf(plan.error))
         if(plan.modules.any{it !in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE)}) {
@@ -270,14 +271,21 @@ internal object OfflineBuildPackManager {
                 for(id in linux.filter{it!=OfflineModuleId.LINUX_RUNTIME}) {
                     active=id
                     if(moduleReady(app,id))continue
+                    val installJob=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
+                    phase(id,ModulePhase.PREPARING,"Çalışan ortam korunuyor; izole sürüm kopyalanıyor ve doğrulanıyor.")
+                    RuntimeGenerationStore(root).prepare(id,canceled={if(installJob?.isActive==false)throw kotlinx.coroutines.CancellationException("İptal edildi")}).use { generation ->
+                    val staged=generation.root
                     phase(id,ModulePhase.INSTALLING,"${OfflineModules.spec(id).title}: araç kurulumu; ölçülemeyen aşamada yüzde gösterilmez.")
                     if(id==OfflineModuleId.NODE_WEB) {
                         val arch=if(Build.SUPPORTED_ABIS.any{it=="arm64-v8a"})"arm64" else if(Build.SUPPORTED_ABIS.any{it=="x86_64"})"x64" else error("Bu platform için Node arşivi desteklenmiyor; paket eksikliği değil.")
                         val name="node-v22.23.3-linux-$arch.tar.xz"
                         val sha=if(arch=="arm64")"a44aeb94849a299b22df10b9e622ec2f605c2183501bc40590705131de7c740f" else "df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de"
                         val operationJob=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
-                        VerifiedModuleDownload.download("https://nodejs.org/dist/v22.23.3/$name",sha,File(root,"opt/appforge-device/cache/$name"),id,operation,
+                        VerifiedModuleDownload.download("https://nodejs.org/dist/v22.23.3/$name",sha,File(app.noBackupFilesDir,"module-downloads/node/$name"),id,operation,
                             canceled={operationJob?.isActive==false},progress=progress)
+                        val cache=File(staged,"opt/appforge-device/cache/$name")
+                        cache.parentFile.mkdirs();require(cache.canonicalFile.toPath().startsWith(staged.canonicalFile.toPath()))
+                        File(app.noBackupFilesDir,"module-downloads/node/$name").inputStream().use{input->cache.outputStream().use{input.copyTo(it)}}
                     }
                     val commands=when(id) {
                         OfflineModuleId.ANDROID_CORE -> listOf("install-toolchain.sh webview-static","prepare-offline-pack.sh android")
@@ -287,7 +295,7 @@ internal object OfflineBuildPackManager {
                         OfflineModuleId.WINDOWS_NATIVE -> listOf("install-windows-native-toolchain.sh")
                         else -> error("Bilinmeyen modül")
                     }
-                    for(command in commands)execute(shell,root,workspace,id.name.lowercase(),
+                    for(command in commands)execute(shell,staged,workspace,id.name.lowercase(),
                         "APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 /bin/sh /workspace/runtime/$command",id,operation,progress)
                     phase(id,ModulePhase.OFFLINE_TEST,"Gerçek dosya/sürüm ve çevrimdışı araç kontrolü yapılıyor.")
                     val probe=when(id) {
@@ -298,10 +306,12 @@ internal object OfflineBuildPackManager {
                         OfflineModuleId.WINDOWS_NATIVE -> "APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/install-windows-native-toolchain.sh"
                         else -> error("Geçersiz modül")
                     }
-                    execute(shell,root,workspace,"verify-${id.name.lowercase()}",probe)
+                    execute(shell,staged,workspace,"verify-${id.name.lowercase()}",probe)
                     phase(id,ModulePhase.VERIFYING,"Dosya SHA-256 envanteri atomik kaydediliyor.")
-                    writeAttestation(root,id)
-                    check(moduleReady(app,id)){"Kurulum bütünlüğü doğrulanamadı."}
+                    writeAttestation(staged,id)
+                    generation.commit(verify={ candidate -> check(recordMatches(candidate,id)){"Yeni modül sürüm kaydı doğrulanamadı."} })
+                    }
+                    check(moduleReady(app,id)){"Etkinleştirilen modül doğrulanamadı."}
                     phase(id,ModulePhase.READY,"${OfflineModules.spec(id).title} doğrulandı. Projeye özel bağımlılıklar ayrıca kontrol edilir.")
                 }
             }
@@ -337,6 +347,32 @@ internal object OfflineBuildPackManager {
         part.writeText(org.json.JSONObject().put("revision",3).put("version",OfflineModules.spec(id).version).put("files",files).toString())
         java.nio.file.Files.move(part.toPath(),target.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING,java.nio.file.StandardCopyOption.ATOMIC_MOVE)
     }
+    private fun recordMatches(root:File,id:OfflineModuleId):Boolean = runCatching {
+        val record=receipt(root,id);require(record.isFile && record.length()<=16384 && !java.nio.file.Files.isSymbolicLink(record.toPath()))
+        val json=org.json.JSONObject(record.readText());val files=json.getJSONObject("files")
+        json.getInt("revision")==3 && json.getString("version")==OfflineModules.spec(id).version && files.length()==witnesses.getValue(id).size &&
+            witnesses.getValue(id).all{path->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==files.optString(path)}
+    }.getOrDefault(false)
+    fun recoverPending(context:Context) {
+        val root=runtimeRootfs(context)?:return
+        val journal=File(root.parentFile,".module-generation.json")
+        if(journal.isFile)runCatching{BuildModuleUsage.mutationLease().use{RuntimeGenerationStore(root).recover()}}.getOrElse {
+            if(it is IllegalStateException && it.message?.contains("Etkin derleme")==true)return
+            throw it
+        }
+    }
+    fun canRollback(context:Context,id:OfflineModuleId):Boolean {
+        val root=runtimeRootfs(context)?:return false
+        return RuntimeGenerationStore(root).rollbackAvailable(id) && OfflineModules.all.none{it.id!=id && id in OfflineModules.resolve(it.dependencies) && moduleReady(context,it.id)}
+    }
+    suspend fun rollbackModule(context:Context,id:OfflineModuleId) = installMutex.withLock {
+        BuildModuleUsage.mutationLease().use {
+            require(canRollback(context,id)){"Bağımlılık kullanımı, sürüm sırası veya snapshot bütünlüğü geri almaya izin vermiyor."}
+            val root=runtimeRootfs(context)?:error("Runtime yok")
+            val job=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
+            RuntimeGenerationStore(root).rollback(id){if(job?.isActive==false)throw kotlinx.coroutines.CancellationException("İptal edildi")}
+        }
+    }
     fun moduleReady(context:Context,id:OfflineModuleId):Boolean = runCatching {
         when(id) {
             OfflineModuleId.FAST_HTML -> {TemplateIntegrity.requireBundled(context,setOf("html-apk-template.apk","html-aab-template.aab"));true}
@@ -344,10 +380,7 @@ internal object OfflineBuildPackManager {
             OfflineModuleId.LINUX_RUNTIME -> DeviceBuildRuntimeV3.isReady(context)
             else -> {
                 val root=runtimeRootfs(context)?:return@runCatching false
-                val record=receipt(root,id);if(!record.isFile || record.length()>16384)return@runCatching false
-                val json=org.json.JSONObject(record.readText());val files=json.getJSONObject("files")
-                json.getInt("revision")==3 && json.getString("version")==OfflineModules.spec(id).version && files.length()==witnesses.getValue(id).size &&
-                    witnesses.getValue(id).all{path->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==files.optString(path)} &&
+                recordMatches(root,id) &&
                     OfflineModules.spec(id).dependencies.all{moduleReady(context,it)}
             }
         }

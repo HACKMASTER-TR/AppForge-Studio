@@ -68,6 +68,7 @@ object DeviceBuildEngine {
         /*
          * OFFLINE_BUILD_PREFLIGHT_GATE_V1
          */
+        if(!FastHtmlApkPolicy.isCandidate(draft))OfflineBuildPackManager.recoverPending(context)
         val moduleLease=BuildModuleUsage.buildLease()
         try {
         OfflineBuildPackManager

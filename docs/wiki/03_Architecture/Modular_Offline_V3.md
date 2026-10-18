@@ -67,3 +67,16 @@ removal has a narrow pinned-hash/allowlisted-file ownership boundary and atomic
 predelete quarantine rollback. Shared APT/rootfs removal and unverified updates
 stay disabled. See `docs/reports/fast-html-v3-completion-20261018.md` for remaining
 acceptance gaps; this continuation does not establish full V3 acceptance.
+
+## Final development: generation transactions
+
+Rootfs archives now share the pinned resumable transfer boundary, including
+If-Range validators, manifest size limits and persistent private partial files.
+RuntimeGenerationStore clones the private build root without following links,
+verifies the copy, runs module installation and probes against the staged root,
+then journals an atomic activation. Earlier working roots stay immutable as
+rollback generations. Recovery occurs under mutation ownership before builds,
+never from a readiness observer. The latest isolated module can be reversed only
+when no installed dependent requires it; older/shared arbitrary removal stays
+closed. Real device POSIX, free-space and process-death behavior still requires
+acceptance; host fault tests do not replace Android testing.
