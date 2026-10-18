@@ -289,12 +289,19 @@ esac
 
 mkdir -p "$ROOT" "$SDK/platforms" "$SDK/build-tools" "$ROOT/cache"
 
+# Legacy call sites retain their vendor SHA-1 as a secondary check only.
+# Trust is now additionally pinned to SHA-256 of the reviewed official archive.
 download_sha1() {
-  url="$1"; sha="$2"; out="$3"
-  if [ -s "$out" ] && echo "$sha  $out" | sha1sum -c - >/dev/null 2>&1; then return; fi
-  rm -f "$out"
-  curl -fL --retry 4 --connect-timeout 20 "$url" -o "$out"
-  echo "$sha  $out" | sha1sum -c -
+  compat_sha1="$2"; compat_out="$3"
+  case "$1" in
+    https://dl.google.com/android/repository/platform-37.0_r02.zip) compat_sha256="840b23e827f96e64aea4c89a1194aac3dc5f6bad37edb231c5c795d890330e8d" ;;
+    https://dl.google.com/android/repository/platform-36_r02.zip) compat_sha256="37607369a28c5b640b3a7998868d45898ebcb777565a0e85f9acf36f29631d2e" ;;
+    https://dl.google.com/android/repository/build-tools_r36_linux.zip) compat_sha256="5d9ac77fb6ff43d9da518a337b4fcf8f9097113df531d99ccefe80ef7ce8250b" ;;
+    https://dl.google.com/android/repository/android-ndk-r27b-linux.zip) compat_sha256="33e16af1a6bbabe12cad54b2117085c07eab7e4fa67cdd831805f0e94fd826c1" ;;
+    *) echo "Unreviewed archive: no SHA-256 pin" >&2; return 42 ;;
+  esac
+  download_sha256 "$1" "$compat_sha256" "$compat_out"
+  echo "$compat_sha1  $compat_out" | sha1sum -c -
 }
 
 download_sha256() {

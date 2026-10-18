@@ -1,0 +1,38 @@
+[
+  {
+    "file": "platform-37.0_r02.zip",
+    "url": "https://dl.google.com/android/repository/platform-37.0_r02.zip",
+    "legacySha1": "ed8ebf7f8822a4de5686d427f237d2fa30ff7410",
+    "sha256": "840b23e827f96e64aea4c89a1194aac3dc5f6bad37edb231c5c795d890330e8d",
+    "bytes": 67281901,
+    "provenance": "official HTTPS archive bytes, cross-checked against existing immutable SHA-1 pin",
+    "status": "VERIFIED"
+  },
+  {
+    "file": "platform-36_r02.zip",
+    "url": "https://dl.google.com/android/repository/platform-36_r02.zip",
+    "legacySha1": "2c1a80dd4d9f7d0e6dd336ec603d9b5c55a6f576",
+    "sha256": "37607369a28c5b640b3a7998868d45898ebcb777565a0e85f9acf36f29631d2e",
+    "bytes": 65878410,
+    "provenance": "official HTTPS archive bytes, cross-checked against existing immutable SHA-1 pin",
+    "status": "VERIFIED"
+  },
+  {
+    "file": "build-tools_r36_linux.zip",
+    "url": "https://dl.google.com/android/repository/build-tools_r36_linux.zip",
+    "legacySha1": "b0b6376977657e8ad9b969bacf4093601da2c6fb",
+    "sha256": "5d9ac77fb6ff43d9da518a337b4fcf8f9097113df531d99ccefe80ef7ce8250b",
+    "bytes": 63737259,
+    "provenance": "official HTTPS archive bytes, cross-checked against existing immutable SHA-1 pin",
+    "status": "VERIFIED"
+  },
+  {
+    "file": "android-ndk-r27b-linux.zip",
+    "url": "https://dl.google.com/android/repository/android-ndk-r27b-linux.zip",
+    "legacySha1": "6fc476b2e57d7c01ac0c95817746b927035b9749",
+    "sha256": "33e16af1a6bbabe12cad54b2117085c07eab7e4fa67cdd831805f0e94fd826c1",
+    "bytes": 663976775,
+    "provenance": "official HTTPS archive bytes, cross-checked against existing immutable SHA-1 pin",
+    "status": "VERIFIED"
+  }
+]
