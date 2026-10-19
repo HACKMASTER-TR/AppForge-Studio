@@ -164,7 +164,7 @@ internal object DeviceBuildRuntimeV3 {
             }
 
             AndroidRuntimeTrust.install(layout.rootfsDirectory)
-            if(freshVendorRoot)BaseRuntimeOwnership.captureFresh(layout.rootfsDirectory)
+            if(freshVendorRoot){BaseRuntimeOwnership.captureFresh(layout.rootfsDirectory);AptRuntimeBaseline.captureFresh(layout.rootfsDirectory,manifest)}
             configureResolver(
                 appContext,
                 layout.rootfsDirectory

@@ -16,7 +16,7 @@ internal object DownloadInstrumentation {
         require(bin.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()))
         bin.mkdirs()
         val apt=File(bin,"apt-get");require(!Files.isSymbolicLink(apt.toPath()))
-        val aptContent="#!/bin/sh\n. /workspace/runtime/apt-download-telemetry.sh\nappforge_apt_get \"\$@\"\n"
+        val aptContent="#!/bin/sh\nexport APPFORGE_APT_SNAPSHOT=1\n. /workspace/runtime/apt-download-telemetry.sh\nappforge_apt_get \"\$@\"\n"
         val aptTmp=File(bin,"apt-get.tmp-${java.util.UUID.randomUUID()}")
         aptTmp.writeText(aptContent);check(aptTmp.setExecutable(true,false))
         Files.move(aptTmp.toPath(),apt.toPath(),java.nio.file.StandardCopyOption.ATOMIC_MOVE,java.nio.file.StandardCopyOption.REPLACE_EXISTING)

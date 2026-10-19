@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+export APPFORGE_MODULE_ID="${APPFORGE_MODULE_ID:-NODE_WEB}"
 if [ -f /workspace/runtime/module-download-telemetry.sh ]; then
   . /workspace/runtime/module-download-telemetry.sh
 fi

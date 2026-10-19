@@ -1,10 +1,10 @@
 #!/bin/sh
 # APT keeps its own locks, signed-index validation and download/cache semantics.
 # Only documented --print-uris records with SHA256 are used as size/name evidence.
-appforge_apt_get() {
+appforge_apt_get_legacy() {
  at_mode=""
  for at_arg in "$@"; do case "$at_arg" in install|update) at_mode="$at_arg";; esac; done
- if [ "$at_mode" = install ] && [ "${APPFORGE_MODULE_REFRESH:-0}" = 1 ]; then set -- --reinstall "$@";fi
+ if [ "$at_mode" = install ] && [ "${APPFORGE_MODULE_REFRESH:-0}" = 1 ] && [ "${APPFORGE_APT_SNAPSHOT:-0}" != 1 ]; then set -- --reinstall "$@";fi
  set -- "$@" -o Acquire::https::Verify-Peer=true -o Acquire::https::Verify-Host=true -o Acquire::AllowInsecureRepositories=false -o APT::Get::AllowUnauthenticated=false
  if [ -z "$at_mode" ] || [ -z "${APPFORGE_DOWNLOAD_TELEMETRY:-}" ]; then command /usr/bin/apt-get "$@";return $?;fi
  # An isolated methods directory delegates transport to APT's original workers.
@@ -97,14 +97,19 @@ appforge_apt_get() {
     rm -f "$at_lock.part" "$at_plan";return 44
    fi
    [ "$(wc -c < "$at_archive" | tr -d ' ')" = "$at_size" ] || { rm -f "$at_lock.part" "$at_plan";return 44; }
-   cp "$at_archive" "$at_lock_root/archives/$at_sha.deb.part" || return 45
+   if [ "${APPFORGE_APT_SNAPSHOT:-0}" = 1 ];then
+    as_cache_archive "$at_archive" "$at_sha" || return 45
+    [ ! -e "$at_lock_root/archives/$at_sha.deb.part" ] && [ ! -L "$at_lock_root/archives/$at_sha.deb.part" ] || return 45
+    ln "$as_store/archives/$at_sha.deb" "$at_lock_root/archives/$at_sha.deb.part" || return 45
+   else cp "$at_archive" "$at_lock_root/archives/$at_sha.deb.part" || return 45;fi
    printf '%s  %s\n' "$at_sha" "$at_lock_root/archives/$at_sha.deb.part" | sha256sum -c - >/dev/null || return 44
    mv "$at_lock_root/archives/$at_sha.deb.part" "$at_lock_root/archives/$at_sha.deb"
    printf '%s\t%s\t%s\t' "$at_name" "$at_size" "$at_sha" >> "$at_lock.part"
    printf '%s\t%s\t%s\n' "$(dpkg-deb -f "$at_archive" Package)" "$(dpkg-deb -f "$at_archive" Version)" "$(dpkg-deb -f "$at_archive" Architecture)" >> "$at_lock.part"
   done < "$at_plan"
   # Network cannot silently resolve a different artifact between acquisition and install.
-  at_status=0;command /usr/bin/apt-get --no-download "$@" || at_status=$?
+  at_status=0
+  if [ "${APPFORGE_APT_CAPTURE_ONLY:-0}" != 1 ];then command /usr/bin/apt-get --no-download "$@" || at_status=$?;fi
   if [ "$at_status" -eq 0 ]; then
    mv "$at_lock.part" "$at_lock"
    dpkg-query -W -f='${Package}\t${Version}\t${Architecture}\n' | LC_ALL=C sort > "$at_lock_root/installed.tsv.part"
@@ -119,4 +124,13 @@ appforge_apt_get() {
   rmdir "$at_methods" 2>/dev/null || :
  fi
  return "$at_status"
+}
+
+# Managed module installations always use the pinned snapshot. Legacy standalone
+# telemetry tests/terminal APT retain their original behavior outside this opt-in.
+appforge_apt_get() {
+ if [ "${APPFORGE_APT_SNAPSHOT:-0}" = 1 ];then
+  . /workspace/runtime/apt-snapshot-lock.sh
+  appforge_snapshot_apt_get "$@"
+ else appforge_apt_get_legacy "$@";fi
 }

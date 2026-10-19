@@ -275,6 +275,7 @@ internal object OfflineBuildPackManager {
                         val permission=lifecycleStatus(app,id,insideMutation=true).update
                         require(permission.allowed){permission.reason?:"Güncelleme güvenle doğrulanamadı."}
                     }
+                    require(AptSnapshotMigration.blockedReason(root)==null){AptSnapshotMigration.blockedReason(root)!!}
                     val protectedModules=witnesses.keys.filter{it!=id && moduleReady(app,it)}
                     val installJob=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
                     phase(id,ModulePhase.PREPARING,"Çalışan ortam korunuyor; izole sürüm kopyalanıyor ve doğrulanıyor.")
@@ -314,6 +315,8 @@ internal object OfflineBuildPackManager {
                     }
                     execute(shell,staged,workspace,"verify-${id.name.lowercase()}",probe)
                     phase(id,ModulePhase.VERIFYING,"Dosya SHA-256 envanteri atomik kaydediliyor.")
+                    val apt=AptModuleLocks.inspect(staged,id)
+                    check(apt.transactions>0 || id !in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.WINDOWS_NATIVE)){"Doğrulanmış APT snapshot kilidi eksik; eski kurulum hazır kabul edilmez."}
                     writeAttestation(app,staged,id)
                     ModuleOwnershipStore(staged).record(id,generation.previousRootName,RuntimeGenerationStore(root).snapshot(),RuntimeGenerationStore(staged).snapshot(),root)
                     for(existing in protectedModules) {
@@ -363,9 +366,9 @@ internal object OfflineBuildPackManager {
             OfflineModuleId.NODE_WEB->listOf("install-node-module.sh")
             OfflineModuleId.WINDOWS_NATIVE->listOf("install-windows-native-toolchain.sh")
             else->listOf("install-toolchain.sh","prepare-offline-pack.sh","platform-37.0-package.xml")
-        }+listOf("apt-acquire-observer.sh","apt-acquire-observer.awk","apt-acquire-emit.sh","apt-download-telemetry.sh","module-download-telemetry.sh","native-download-broker.sh","jvm-telemetry/network-byte-agent.jar","verified-toolchain-sources-v4.json")
+        }+listOf("apt-acquire-observer.sh","apt-acquire-observer.awk","apt-acquire-emit.sh","apt-download-telemetry.sh","apt-snapshot-lock.sh","apt-snapshot-profile.tsv","apt-module-packages-v1.tsv","module-download-telemetry.sh","native-download-broker.sh","jvm-telemetry/network-byte-agent.jar","verified-toolchain-sources-v4.json")
         val hash=java.security.MessageDigest.getInstance("SHA-256")
-        hash.update("ownership-probe-v7-lifecycle".toByteArray())
+        hash.update("ownership-probe-v8-apt-snapshot".toByteArray())
         for(name in names.sorted()){hash.update(name.toByteArray());context.assets.open("device-build/$name").use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;hash.update(b,0,n)}}}
         return hash.digest().joinToString(""){"%02x".format(it)}
     }
@@ -390,11 +393,12 @@ internal object OfflineBuildPackManager {
         part.writeText(org.json.JSONObject().put("revision",3).put("version",OfflineModules.spec(id).version).put("recipe",recipeDigest(context,id)).put("files",files).toString())
         java.nio.file.Files.move(part.toPath(),target.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING,java.nio.file.StandardCopyOption.ATOMIC_MOVE)
     }
+    fun aptSummary(context:Context,id:OfflineModuleId):AptModuleLocks.Summary? = runtimeRootfs(context)?.let{AptModuleLocks.inspect(it,id)}
     private fun recordMatches(context:Context,root:File,id:OfflineModuleId):Boolean = runCatching {
         val record=receipt(root,id);require(record.isFile && record.length()<=16384 && !java.nio.file.Files.isSymbolicLink(record.toPath()))
         val json=org.json.JSONObject(record.readText());val files=json.getJSONObject("files")
         json.getInt("revision")==3 && json.optString("recipe")==recipeDigest(context,id) && json.getString("version")==OfflineModules.spec(id).version && files.length()==witnesses.getValue(id).size &&
-            witnesses.getValue(id).all{path->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==files.optString(path)} && ModuleOwnershipStore(root).verifyNamespace(id)
+            witnesses.getValue(id).all{path->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==files.optString(path)} && ModuleOwnershipStore(root).verifyNamespace(id) && AptModuleLocks.inspect(root,id).let{it.transactions>0 || id !in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.WINDOWS_NATIVE)}
     }.getOrDefault(false)
     fun recoverPending(context:Context) {
         if(File(context.noBackupFilesDir,"offline-build-pack/.portable-lifecycle.json").exists())
@@ -447,7 +451,7 @@ internal object OfflineBuildPackManager {
         return ModuleLifecyclePolicy.evaluate(ModuleLifecyclePolicy.Facts(id,version!=null,updateAvailable(context,id),ownershipError,
             removeError,rollbackError,if(insideMutation)null else BuildModuleUsage.mutationBlockedReason(),
             if(!insideMutation && hasPendingLifecycle(context,id))"Kesilmiş yaşam döngüsü işlemi önce güvenle kurtarılmalı." else if(id in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE))null else DeviceBuildRuntimeV3.platformError(),
-            dependents,version,inventory?.generation,inventory?.previousVersion,inventory?.fileCount?:0,spaceError,minimum))
+            dependents,version,inventory?.generation,inventory?.previousVersion,inventory?.fileCount?:0,spaceError,minimum,if(native && root!=null)AptSnapshotMigration.blockedReason(root) else null))
     }
     fun canRollback(context:Context,id:OfflineModuleId):Boolean=lifecycleStatus(context,id).rollback.allowed
     suspend fun rollbackModule(context:Context,id:OfflineModuleId) = installMutex.withLock {
@@ -525,12 +529,17 @@ internal object OfflineBuildPackManager {
 
         val telemetry=File(workspace,"module-download.json")
         ExternalTelemetryChannels.clear(telemetry)
+        File(workspace,"apt-phase.json").let{require(!java.nio.file.Files.isSymbolicLink(it.toPath()));it.delete()}
         val channels=module?.let{ExternalTelemetryChannels(telemetry,it,operation)}
         val broker=module?.let{ModuleArtifactBroker(workspace,File(rootfs.parentFile,".module-archive-cache-v5"),it,operation,progress)}
         val brokerJob=broker?.let{launch(kotlinx.coroutines.Dispatchers.IO){it.serve()}}
         val poller=launch(kotlinx.coroutines.Dispatchers.IO) {
             while(kotlinx.coroutines.currentCoroutineContext().isActive) {
-                if(broker?.transferring!=true)channels?.poll(android.os.SystemClock.elapsedRealtime())?.forEach(progress)
+                val consent=module?.let{AptDownloadConsent.poll(workspace,it,operation)}
+                val aptPhase=module?.let{AptPhaseProgress.poll(workspace,it,operation)}
+                if(consent!=null)progress(consent)
+                else if(aptPhase!=null)progress(aptPhase)
+                else if(broker?.transferring!=true)channels?.poll(android.os.SystemClock.elapsedRealtime())?.forEach(progress)
                 kotlinx.coroutines.delay(500)
             }
         }
@@ -539,11 +548,11 @@ internal object OfflineBuildPackManager {
                 sessionId = sessionId,
                 rootfs = rootfs,
                 workspace = workspace,
-                command = AndroidRuntimeTrust.shellEnvironment + "export APPFORGE_NATIVE_DOWNLOAD_BROKER=${if(broker!=null)"/workspace/native-downloads" else ""}; export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; "+command,
+                command = AndroidRuntimeTrust.shellEnvironment + "export APPFORGE_APT_MANAGED_INSTALL=${if(module!=null)1 else 0}; export APPFORGE_APT_REQUIRE_CONSENT=${if(module!=null)1 else 0}; export APPFORGE_NATIVE_DOWNLOAD_BROKER=${if(broker!=null)"/workspace/native-downloads" else ""}; export PYTHONPATH=/workspace/runtime/python-telemetry:\${PYTHONPATH:-}; export PATH=/opt/appforge-device/telemetry-bin:\$PATH; export APPFORGE_DOWNLOAD_TELEMETRY=/workspace/module-download.json; "+command,
                 confirmed = true,
                 timeoutMs = 1_800_000L
             )
-        } finally {poller.cancel();brokerJob?.cancel()}
+        } finally {poller.cancel();brokerJob?.cancel();AptDownloadConsent.clear(operation)}
 
         check(
             !result.timedOut

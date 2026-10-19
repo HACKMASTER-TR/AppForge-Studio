@@ -109,6 +109,7 @@ internal object ModuleInstallOperations {
     val busy by ModuleInstallOperations.busy.collectAsState()
     val usageRevision by BuildModuleUsage.changes.collectAsState()
     var recovered by remember{mutableStateOf(false)}
+    var aptStates by remember{mutableStateOf<Map<OfflineModuleId,String>>(emptyMap())}
     var lifecycleStates by remember{mutableStateOf<Map<OfflineModuleId,ModuleLifecycleStatus>>(emptyMap())}
     var pendingLifecycle by remember{mutableStateOf<Pair<OfflineModuleId,String>?>(null)}
     var ready by remember { mutableStateOf<Map<OfflineModuleId,Boolean>>(emptyMap()) }
@@ -128,6 +129,7 @@ internal object ModuleInstallOperations {
         if(!recovered)return@LaunchedEffect
         val cleanup=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.prunableSnapshotBytes(context)}}
         pruneBytes=cleanup.getOrNull();pruneReason=cleanup.exceptionOrNull()?.message
+        aptStates=withContext(Dispatchers.IO){OfflineModules.all.associate{module->module.id to runCatching{OfflineBuildPackManager.aptSummary(context,module.id)?.let{it.detail+"\n"+it.versions.joinToString("\n")}}.getOrElse{"APT kilidi doğrulanamadı: ${it.message}"}.orEmpty()}}
         lifecycleStates=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.lifecycleStatus(context,it.id)}}
         availableUpdates=withContext(Dispatchers.IO){OfflineModules.all.filter{OfflineBuildPackManager.updateAvailable(context,it.id)}.map{it.id}.toSet()}
         installedVersions=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to OfflineBuildPackManager.installedVersion(context,it.id)}}
@@ -183,6 +185,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                     Text(if(busy && state!=null && state.phase !in setOf(ModulePhase.READY,ModulePhase.REMOVED))state.phase.turkishLabel() else if(!ready.containsKey(module.id))"Bütünlük doğrulanıyor..." else if(installed)"Hazır • gerçek bütünlük kontrolü geçti" else if(module.id in availableUpdates)"Güncelleme gerekli • kayıtlı ortam korunuyor" else state?.phase?.turkishLabel()?:"Kurulu değil / doğrulanmadı")
                     if(state!=null && (busy || !installed)) {
                         Text(state.detail)
+                        if(busy && state.errorCode=="APT_DOWNLOAD_CONSENT")Button(onClick={runCatching{AptDownloadConsent.approve(state.operationId)}.onFailure{detail=it.message?:"APT planı onaylanamadı"}}){Text("Listelenen APT paketlerini indir • Onayla")}
                         if(state.phase==ModulePhase.DOWNLOADING) {
                             val pct=state.percent
                             if(pct!=null) {LinearProgressIndicator(progress={pct/100f},modifier=Modifier.fillMaxWidth());Text("%$pct • ${state.bytesDownloaded/1024/1024} / ${state.bytesTotal!!/1024/1024} MiB")} else {LinearProgressIndicator(modifier=Modifier.fillMaxWidth());Text("${state.bytesDownloaded/1024/1024} MiB • toplam boyut bilinmiyor")}
@@ -195,6 +198,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                     Button(enabled=!busy && ready.containsKey(module.id) && unsupported==null && (installed || lifecycle?.installedVersion==null || lifecycle.update.allowed),onClick={if(installed){scope.launch{val good=withContext(Dispatchers.IO){OfflineBuildPackManager.moduleReady(context,module.id)};detail=if(good)"Bütünlük doğrulandı." else "Bozuk kurulum; hazır değil."}}else chosen=module.id}){Text(if(installed)"Doğrula" else if(state?.phase in setOf(ModulePhase.PAUSED,ModulePhase.WAITING_CONNECTION))"Devam et" else if(state?.phase==ModulePhase.ERROR)"Yeniden dene" else "Kurulum ayrıntıları")}
                     if(busy && state!=null && state.phase !in setOf(ModulePhase.READY,ModulePhase.ERROR)){ if((module.id in setOf(OfflineModuleId.NODE_WEB,OfflineModuleId.WINDOWS_PORTABLE,OfflineModuleId.LINUX_RUNTIME) || state.detail.startsWith("Doğrulanmış native aktarım")) && state.phase==ModulePhase.DOWNLOADING)OutlinedButton(onClick={ModuleInstallOperations.pause()}){Text("Duraklat")};OutlinedButton(onClick={ModuleInstallOperations.cancel()}){Text("İptal et")} }
                     if(lifecycle!=null) {
+                        aptStates[module.id]?.takeIf{it.isNotBlank()}?.let{Text(it,style=MaterialTheme.typography.bodySmall)}
                         Text("Sahiplik envanteri: ${lifecycle.ownedFiles} dosya • generation: ${lifecycle.generation?:"doğrulanmış kayıt yok"}")
                         lifecycle.previousVersion?.let{Text("Önceki doğrulanmış sürüm: $it")}
                         lifecycle.minimumStagingBytes?.let{Text("İzole işlem için en az ${it/1024/1024} MiB boş alan; yeni arşiv boyutu ayrıca gerekir.")}

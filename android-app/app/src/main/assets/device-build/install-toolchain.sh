@@ -11,6 +11,12 @@ JAVA_HOME="$ROOT/jdk-17"
 NODE_VERSION="22.23.3"
 NODE_HOME="$ROOT/node-$NODE_VERSION"
 ENGINE="${1:-webview-static}"
+if [ -z "${APPFORGE_MODULE_ID:-}" ];then
+ if [ "$ENGINE" = python-android ];then APPFORGE_MODULE_ID=PYTHON_ANDROID
+ elif [ "$ENGINE" = expo ];then APPFORGE_MODULE_ID=EXPO_REACT_NATIVE
+ else APPFORGE_MODULE_ID=ANDROID_CORE;fi
+ export APPFORGE_MODULE_ID
+fi
 OFFLINE="${APPFORGE_DEVICE_OFFLINE:-0}"
 SDK_LICENSE_ACCEPTED="${APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED:-0}"
 SDK_LICENSE_MARKER="$ROOT/.android-sdk-license-20260428"
@@ -203,6 +209,12 @@ repair_broken_openjdk() {
   done
 }
 
+# Repairs change dpkg state too. They belong to the isolated module generation,
+# never to an ordinary project build operating on the shared active runtime.
+if [ "${APPFORGE_APT_MANAGED_INSTALL:-0}" != 1 ];then
+ echo 'APPFORGE_APT_MODULAR_INSTALL_REQUIRED: prepare missing tools from the package manager' >&2
+ exit 60
+fi
 repair_broken_openjdk
 
 # Older AppForge device-toolchain revisions installed Node/npm
