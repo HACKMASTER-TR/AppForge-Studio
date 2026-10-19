@@ -98,8 +98,12 @@ internal class ModuleOwnershipStore(private val root:File) {
             val owner=existing.getJSONObject("changes")
             for(key in owner.keys())if(owner.getJSONObject(key).optJSONObject("after")!=null)known.add(key)
         }
-        val unknownRemoved=before.keys.filter{it.isNotEmpty() && !metadata(it) && after[it]==null && it !in known}
-        require(unknownRemoved.isEmpty()){"Kurulum sahipliği bilinmeyen dosyaları kaldırdı; eski ortam korundu: "+unknownRemoved.take(3).joinToString()}
+        val protectedUserChanges=(before.keys+after.keys).filter{key->
+            (key.startsWith("home/") || key.startsWith("root/")) && readinessTracked(key) && before[key]!=after[key]
+        }
+        require(protectedUserChanges.isEmpty()){"Kurulum kullanıcı kaynak/ayar dizinini değiştirdi; çalışan ortam korunur."}
+        val unknownRemoved=before.keys.filter{it.isNotEmpty() && !metadata(it) && readinessTracked(it) && before[it]!=after[it] && it !in known}
+        require(unknownRemoved.isEmpty()){"Kurulum kullanıcıya ait/sahipliği bilinmeyen dosyaları değiştirdi; eski ortam korundu: "+unknownRemoved.take(3).joinToString()}
 
         val changes=JSONObject()
         for(key in (before.keys+after.keys).filter{it.isNotEmpty() && !metadata(it) && readinessTracked(it) && (before[it]!=after[it] || namespace(id,it))}.sorted())
@@ -129,6 +133,11 @@ internal class ModuleOwnershipStore(private val root:File) {
         }
         val f=receipt(id);f.parentFile.mkdirs();require(!Files.isSymbolicLink(f.toPath()))
         val value=JSONObject().put("schema",1).put("module",id.name).put("sequence",sequence+1).put("previous",old?.getString("previous")?:previousRootName).put("changes",changes).put("beforeStore",if(useContentStore)"CAS1" else "SNAPSHOT")
+            .put("lifecycleRevision",2).put("version",OfflineModules.spec(id).version)
+            .put("dependencies",org.json.JSONArray(OfflineModules.spec(id).dependencies.map{it.name}.sorted()))
+            .put("generation",previousRootName.removePrefix(".v3-previous-"))
+            .put("previousVersion",old?.optString("version","")?.takeIf{it.isNotBlank()})
+            .put("installState","VERIFIED_FILES")
         val tmp=File(f.path+".tmp");require(!Files.isSymbolicLink(tmp.toPath()))
         java.io.FileOutputStream(tmp).use{it.write(value.toString().toByteArray());it.fd.sync()}
         Files.move(tmp.toPath(),f.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
@@ -161,6 +170,36 @@ internal class ModuleOwnershipStore(private val root:File) {
         }
         return record to old
     }
+    data class LifecycleInventory(val module:OfflineModuleId,val version:String,val dependencies:Set<OfflineModuleId>,val generation:String,val previousVersion:String?,val fileCount:Int,val manifestSha256:String)
+    fun lifecycleInventory(id:OfflineModuleId):LifecycleInventory {
+        val j=read(id);require(j.optInt("lifecycleRevision")==2){"Eski sahiplik kaydı yaşam döngüsü için doğrulanmış sürüm/generation içermiyor."}
+        require(j.getString("installState")=="VERIFIED_FILES")
+        val version=j.getString("version");require(version.length in 1..300)
+        val generation=j.getString("generation");require(generation.matches(Regex("[0-9a-f-]{36}")))
+        val deps=j.getJSONArray("dependencies");require(deps.length()<=OfflineModuleId.entries.size)
+        val dependencies=(0 until deps.length()).map{OfflineModuleId.valueOf(deps.getString(it))}.toSet()
+        require(dependencies==OfflineModules.spec(id).dependencies){"Sahiplik bağımlılık grafiği geçerli tarifle uyumsuz."}
+        require(verifyNamespace(id)){"Modül dosya/sahiplik bütünlüğü doğrulanamadı."}
+        return LifecycleInventory(id,version,dependencies,generation,j.optString("previousVersion").takeIf{it.isNotBlank()},j.getJSONObject("changes").length(),VerifiedModuleDownload.sha(receipt(id)))
+    }
+    /** Shared OS/package-database restoration is not an independent package uninstall. */
+    fun safeRemovalReason(id:OfflineModuleId):String?=runCatching {
+        lifecycleInventory(id)
+        val (record,_)=validate(id);val changes=record.getJSONObject("changes")
+        for(key in changes.keys()) {
+            val change=changes.getJSONObject(key);val before=decode(change.optJSONObject("before"));val after=decode(change.optJSONObject("after"))
+            if(before==after)continue
+            val privatePath=namespace(id,key) || namespacePrefixes(id).any{it.startsWith("$key/")}
+            val alias=id==OfflineModuleId.NODE_WEB && key in setOf("usr/local/bin/node","usr/local/bin/npm","usr/local/bin/npx") && after?.kind=="link" && after.digest.startsWith("/opt/appforge-device/node-22.23.3/bin/")
+            require(privatePath || alias){"Ortak APT/rootfs dosyası bağımsız kaldırılamaz: $key"}
+            for(other in path(root,control).listFiles().orEmpty().filter{it.extension=="json" && it.name!=id.name+".json"}) {
+                require(!Files.isSymbolicLink(other.toPath()) && other.length()<=16L*1024*1024)
+                val claims=JSONObject(other.readText()).getJSONObject("changes")
+                require(!claims.has(key)){"Başka modül aynı dosyayı kullanıyor: $key"}
+            }
+        }
+        null
+    }.getOrElse{it.message?:"Güvenli kaldırma kanıtı eksik."}
     fun protectedSnapshots():Set<String> {
         val dir=path(root,control)
         return dir.listFiles().orEmpty().filter{it.name.endsWith(".json")}.mapNotNull{f->

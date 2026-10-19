@@ -43,7 +43,7 @@ internal class ModuleOperationJournal(private val file:File) {
             for(id in OfflineModuleId.entries) {
                 val e=json.optJSONObject(id.name)?:continue
                 val previous=ModulePhase.valueOf(e.getString("phase"))
-                val phase=if(previous in setOf(ModulePhase.ERROR,ModulePhase.CANCELED))previous else ModulePhase.PAUSED
+                val phase=if(previous in setOf(ModulePhase.ERROR,ModulePhase.CANCELED,ModulePhase.REMOVED))previous else ModulePhase.PAUSED
                 val bytes=e.getLong("bytes");require(bytes>=0)
                 val total=if(e.has("total") && !e.isNull("total"))e.getLong("total").also{require(it>0 && it>=bytes)} else null
                 put(id,ModuleProgress(id,e.getString("operation").take(100),phase,bytes,total,

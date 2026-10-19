@@ -159,7 +159,7 @@ internal object WindowsPortableHostStore {
             if (
                 isInstalled(
                     appContext
-                )
+                ) && sha256(host)==HOST_SHA256
             ) {
                 onProgress(
                     "4/4 • Windows Portable Host zaten doğrulanmış."
@@ -195,13 +195,11 @@ internal object WindowsPortableHostStore {
                     return@withContext host
                 }
 
-                host.delete()
-                marker.delete()
+                error("Mevcut host sahipliği/hash'i doğrulanamadı; dosya korunur, otomatik üzerine yazma engellendi.")
             } else if (
                 host.exists()
             ) {
-                host.delete()
-                marker.delete()
+                error("Mevcut host sahipliği/hash'i doğrulanamadı; dosya korunur, otomatik üzerine yazma engellendi.")
             }
 
             if (
@@ -527,26 +525,8 @@ internal object WindowsPortableHostStore {
         host: File,
         marker: File
     ) {
-        marker.delete()
-
-        if (
-            host.exists()
-        ) {
-            require(
-                host.delete()
-            ) {
-                "Eski Windows Host silinemedi."
-            }
-        }
-
-        require(
-            part.renameTo(
-                host
-            )
-        ) {
-            "Doğrulanmış Windows Host final konuma taşınamadı."
-        }
-
+        require(!host.exists() && !java.nio.file.Files.isSymbolicLink(host.toPath())){"Mevcut host korunur; etkinleştirme çakışması."}
+        java.nio.file.Files.move(part.toPath(),host.toPath(),java.nio.file.StandardCopyOption.ATOMIC_MOVE)
         require(
             host.isFile &&
                 host.length() ==

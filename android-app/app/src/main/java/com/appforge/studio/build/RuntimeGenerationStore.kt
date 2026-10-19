@@ -20,19 +20,42 @@ internal class RuntimeGenerationStore(private val active:File) {
         FileOutputStream(tmp).use{it.write(value.toString().toByteArray());it.fd.sync()}
         Files.move(tmp.toPath(),journal.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
     }
+    private val activeSeal=File(parent,".v3-active-generation.json")
+    private fun seal(digest:String) {
+        require(digest.matches(Regex("[a-f0-9]{64}")) && !Files.isSymbolicLink(activeSeal.toPath()))
+        val tmp=File(activeSeal.path+".tmp");require(!Files.isSymbolicLink(tmp.toPath()))
+        FileOutputStream(tmp).use{it.write(JSONObject().put("schema",1).put("active",active.name).put("digest",digest).toString().toByteArray());it.fd.sync()}
+        Files.move(tmp.toPath(),activeSeal.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+    }
+    private fun verifyActiveSeal() {
+        require(activeSeal.isFile && !Files.isSymbolicLink(activeSeal.toPath()) && activeSeal.length()<8192){"Eski ortamda generation mühürü yok; geri alma güvenle kanıtlanamıyor."}
+        val j=JSONObject(activeSeal.readText());require(j.getInt("schema")==1 && j.getString("active")==active.name)
+        require(treeDigest(inventory(active,{}))==j.getString("digest")){"Aktif ortam son geçişten sonra değişmiş; kullanıcı dosyaları korunarak geri alma engellendi."}
+    }
     fun recover() {
         if(!journal.exists())return
         require(journal.isFile && !Files.isSymbolicLink(journal.toPath()) && journal.length()<8192)
         val j=JSONObject(journal.readText());require(j.getString("active")==active.name)
         val stage=child(j.getString("stage"));val old=child(j.getString("previous"))
-        if(j.getString("state")!="COMMITTED" && old.exists()) {
-            val failed=child(".v3-discard-${UUID.randomUUID()}")
-            if(active.exists())Files.move(active.toPath(),failed.toPath(),StandardCopyOption.ATOMIC_MOVE)
+        require(j.optInt("schema",0)==2){"Eski işlem günlüğünün bütünlük kanıtı yok; tüm ortamlar korundu, otomatik geçiş kapalı."}
+        if(j.getString("state")=="COMMITTED") {
+            require(treeDigest(inventory(active,{}))==j.getString("stagedDigest")){"Aktifleştirme sonrası ortam değişmiş; kurtarma engellendi, dosyalar korundu."}
+            seal(j.getString("stagedDigest"))
+        } else if(old.exists()) {
+            require(treeDigest(inventory(old,{}))==j.getString("previousDigest")){"Önceki generation bozuk; mevcut ortam değiştirilmedi."}
+            if(active.exists()) {
+                require(treeDigest(inventory(active,{}))==j.getString("stagedDigest")){"Yeni ortamda yabancı değişiklik var; kurtarma tüm dosyaları koruyarak durdu."}
+                // Retain the failed activated environment as quarantine, never erase it.
+                Files.move(active.toPath(),child(".v3-discard-${UUID.randomUUID()}").toPath(),StandardCopyOption.ATOMIC_MOVE)
+            }
             Files.move(old.toPath(),active.toPath(),StandardCopyOption.ATOMIC_MOVE)
-            removeOwned(failed)
+            seal(j.getString("previousDigest"))
+        } else {
+            if(j.getString("state")=="COPYING")checkAnchor()
+            else require(treeDigest(inventory(active,{}))==j.getString("previousDigest")){"Çalışan ortam işlem sırasında değişmiş; kullanıcı verileri ve stage korundu."}
         }
-        if(j.getString("state")!="COMMITTED")removeOwned(stage)
-        journal.delete()
+        if(stage.exists())Files.move(stage.toPath(),child(".v3-discard-${UUID.randomUUID()}").toPath(),StandardCopyOption.ATOMIC_MOVE)
+        Files.delete(journal.toPath())
     }
     fun prepare(module:OfflineModuleId,availableBytes:()->Long={parent.usableSpace},canceled:()->Unit={}):Prepared=prepareOwner(module.name,availableBytes,canceled)
     fun prepareOwner(owner:String,availableBytes:()->Long={parent.usableSpace},canceled:()->Unit={}):Prepared {
@@ -42,9 +65,9 @@ internal class RuntimeGenerationStore(private val active:File) {
         val bytes=before.values.sumOf{it.size}
         require(availableBytes()>bytes+256L*1024*1024){"İzole sürüm için yeterli depolama yok; çalışan modüller değişmedi."}
         val id=UUID.randomUUID().toString();val stage=child(".v3-stage-$id");val old=child(".v3-previous-$id")
-        val j=JSONObject().put("active",active.name).put("stage",stage.name).put("previous",old.name).put("module",owner).put("state","COPYING")
+        val j=JSONObject().put("active",active.name).put("stage",stage.name).put("previous",old.name).put("module",owner).put("state","COPYING").put("schema",2).put("previousDigest",treeDigest(before))
         write(j)
-        try {copyTree(active,stage,canceled)}catch(e:Throwable){removeOwned(stage);journal.delete();throw e}
+        try {copyTree(active,stage,canceled)}catch(e:Throwable){recover();throw e}
         check(inventory(stage,canceled)==before){"Sürüm kopyası bütünlüğü doğrulanamadı."}
         return Prepared(stage,old,j,before,canceled)
     }
@@ -53,6 +76,7 @@ internal class RuntimeGenerationStore(private val active:File) {
         private var committed=false
         fun commit(verify:(File)->Unit,fault:(String)->Unit={}) {
             canceled();verify(root)
+            require(inventory(active,canceled)==before){"Aktif ortam kopyalama sırasında değişti; kullanıcı verileri korunur, geçiş yapılmadı."}
             val after=inventory(root,canceled)
             val changed=(before.keys+after.keys).filter{before[it]!=after[it]}.sorted()
             val ownership=File(root,"opt/appforge-device/generations-v4")
@@ -62,40 +86,49 @@ internal class RuntimeGenerationStore(private val active:File) {
             latest.writeText(JSONObject().put("module",j.getString("module")).put("previous",old.name)
                 .put("previousDigest",treeDigest(before)).put("changed",org.json.JSONArray(changed)).put("schema",1).toString())
             registerSnapshot(old.name,treeDigest(before))
+            val stagedDigest=treeDigest(inventory(root,canceled))
+            j.put("stagedDigest",stagedDigest)
             j.put("state","STAGED");write(j);fault("before-switch")
             Files.move(active.toPath(),old.toPath(),StandardCopyOption.ATOMIC_MOVE)
             try {
                 fault("old-moved")
                 Files.move(root.toPath(),active.toPath(),StandardCopyOption.ATOMIC_MOVE)
                 fault("new-moved")
-                j.put("state","COMMITTED");write(j);committed=true;journal.delete()
+                j.put("state","COMMITTED");write(j);fault("committed-marker");seal(stagedDigest);committed=true;journal.delete()
             }catch(e:Throwable){recover();throw e}
         }
-        override fun close(){if(!committed){recover();removeOwned(root)}}
+        override fun close(){if(!committed)recover()}
     }
-    fun rollbackAvailable(module:OfflineModuleId):Boolean=runCatching {
-        checkAnchor();val f=File(active,"opt/appforge-device/generations-v4/latest.json")
-        require(!Files.isSymbolicLink(f.toPath()) && f.canonicalFile.toPath().startsWith(active.canonicalFile.toPath()))
-        if(!f.isFile || f.length()>4L*1024*1024)return@runCatching false
-        val j=JSONObject(f.readText());j.getString("module")==module.name && child(j.getString("previous")).isDirectory
-    }.getOrDefault(false)
-    fun rollback(module:OfflineModuleId,canceled:()->Unit={}) {
-        recover();checkAnchor()
-        val f=File(active,"opt/appforge-device/generations-v4/latest.json");require(f.length()<=4L*1024*1024)
-        val record=JSONObject(f.readText());require(record.getString("module")==module.name){"Yalnız son izole modül işlemi geri alınabilir."}
-        val old=child(record.getString("previous"))
-        require(treeDigest(inventory(old,canceled))==record.getString("previousDigest")){"Önceki sürüm bütünlüğü bozuk; geri alma yapılmadı."}
-        val stage=child(".v3-stage-${UUID.randomUUID()}")
-        val j=JSONObject().put("active",active.name).put("stage",stage.name).put("previous",old.name).put("state","STAGED").put("module",module.name)
-        // A separate swap journal restores the current generation if the reverse activation fails.
-        val current=child(".v3-previous-${UUID.randomUUID()}")
-        registerSnapshot(current.name,treeDigest(inventory(active,canceled)))
-        j.put("previous",current.name).put("state","COPYING");write(j)
-        try{copyTree(old,stage,canceled)}catch(e:Throwable){recover();throw e}
-        j.put("state","STAGED");write(j)
-        Files.move(active.toPath(),current.toPath(),StandardCopyOption.ATOMIC_MOVE)
-        try {Files.move(stage.toPath(),active.toPath(),StandardCopyOption.ATOMIC_MOVE);j.put("state","COMMITTED");write(j);journal.delete()}
-        catch(e:Throwable){recover();throw e}
+    fun rollbackReason(module:OfflineModuleId):String?=runCatching {
+        checkAnchor();require(!journal.exists()){"Kesilmiş işlem önce güvenle kurtarılmalı."}
+        val f=File(active,"opt/appforge-device/generations-v4/latest.json")
+        require(!Files.isSymbolicLink(f.toPath()) && f.canonicalFile.toPath().startsWith(active.canonicalFile.toPath()) && f.isFile && f.length()<=4L*1024*1024)
+        val j=JSONObject(f.readText());require(j.getString("module")==module.name){"Yalnız son doğrulanmış modül işlemi geri alınabilir."}
+        verifyActiveSeal()
+        val old=child(j.getString("previous"))
+        require(treeDigest(inventory(old,{}))==j.getString("previousDigest")){"Önceki generation bütünlüğü bozuk."}
+        null
+    }.getOrElse{it.message?:"Generation doğrulanamadı."}
+    fun rollbackAvailable(module:OfflineModuleId):Boolean=rollbackReason(module)==null
+    fun rollback(module:OfflineModuleId,availableBytes:()->Long={parent.usableSpace},fault:(String)->Unit={},canceled:()->Unit={}) {
+        recover();checkAnchor();require(rollbackReason(module)==null){rollbackReason(module)?:"Geri alma engellendi."}
+        val record=JSONObject(File(active,"opt/appforge-device/generations-v4/latest.json").readText())
+        val old=child(record.getString("previous"));val target=inventory(old,canceled)
+        require(availableBytes()>target.values.sumOf{it.size}+256L*1024*1024){"Geri alma stage'i için depolama yetersiz; çalışan ortam korundu."}
+        val before=inventory(active,canceled)
+        val stage=child(".v3-stage-${UUID.randomUUID()}");val current=child(".v3-previous-${UUID.randomUUID()}")
+        registerSnapshot(current.name,treeDigest(before))
+        val j=JSONObject().put("schema",2).put("active",active.name).put("stage",stage.name).put("previous",current.name)
+            .put("previousDigest",treeDigest(before)).put("stagedDigest",treeDigest(target)).put("module",module.name).put("state","COPYING")
+        write(j)
+        try {
+            copyTree(old,stage,canceled);require(inventory(stage,canceled)==target);canceled()
+            require(inventory(active,canceled)==before){"Aktif ortam geri alma sırasında değişti; geçiş engellendi."}
+            j.put("state","STAGED");write(j);fault("before-switch")
+            Files.move(active.toPath(),current.toPath(),StandardCopyOption.ATOMIC_MOVE);fault("old-moved")
+            Files.move(stage.toPath(),active.toPath(),StandardCopyOption.ATOMIC_MOVE);fault("new-moved")
+            j.put("state","COMMITTED");write(j);seal(j.getString("stagedDigest"));Files.delete(journal.toPath())
+        }catch(e:Throwable){recover();throw e}
     }
     private val snapshotRegistry=File(parent,".v3-snapshots.json")
     private fun registry():JSONObject {
@@ -110,6 +143,50 @@ internal class RuntimeGenerationStore(private val active:File) {
         Files.move(tmp.toPath(),snapshotRegistry.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
     }
     private fun registerSnapshot(name:String,digest:String) {val j=registry();require(j.length()<2048);j.put(name,digest);saveRegistry(j)}
+    private fun requireOwnedSnapshot(root:File,entries:Map<String,Entry>) {
+        val known=BaseRuntimeOwnership.paths(root).toMutableSet()
+        require(known.isNotEmpty()){"Eski snapshot'ın vendor sahiplik envanteri yok; kullanıcı dosyaları korunur."}
+        known.add(BaseRuntimeOwnership.FILE)
+        known.add("opt/appforge-device/generations-v4/latest.json")
+        known.addAll(OfflineModuleId.entries.map{"opt/appforge-device/modules-v3/${it.name}.json"})
+        val ownership=File(root,"opt/appforge-device/ownership-v5")
+        require(ownership.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()))
+        for(file in ownership.listFiles().orEmpty()) {
+            require(!Files.isSymbolicLink(file.toPath()) && file.isFile && file.length()<=16L*1024*1024)
+            val record=JSONObject(file.readText());require(record.getInt("schema")==1)
+            val id=OfflineModuleId.valueOf(record.getString("module"));require(file.name==id.name+".json")
+            val changes=record.getJSONObject("changes")
+            for(key in changes.keys())if(!changes.getJSONObject(key).isNull("after"))known.add(key)
+            known.add(file.relativeTo(root).invariantSeparatorsPath)
+        }
+        for((key,value) in entries) {
+            if(key.isEmpty() || key in known)continue
+            if(value.kind=="directory" && known.any{it.startsWith("$key/")})continue
+            if(key=="opt/appforge-device/generations-v4/latest.json" && value.kind=="file")continue
+            if(key.startsWith("opt/appforge-device/modules-v3/") && key.substringAfterLast('/') in OfflineModuleId.entries.map{it.name+".json"} && value.kind=="file")continue
+            require(false){"Snapshot içinde kullanıcıya ait/sahipsiz içerik var; otomatik temizlenmez: $key"}
+        }
+    }
+    fun minimumStagingBytes():Long {
+        checkAnchor();var bytes=256L*1024*1024;var count=0
+        Files.walkFileTree(active.toPath(),object:SimpleFileVisitor<Path>() {
+            override fun preVisitDirectory(dir:Path,attrs:BasicFileAttributes):FileVisitResult {require(++count<=250000);return FileVisitResult.CONTINUE}
+            override fun visitFile(file:Path,attrs:BasicFileAttributes):FileVisitResult {require(++count<=250000);if(attrs.isRegularFile)bytes=Math.addExact(bytes,attrs.size());return FileVisitResult.CONTINUE}
+        });return bytes
+    }
+    fun prunableBytes(protected:Set<String>,retain:Int=1):Long {
+        checkAnchor();require(!journal.exists() && retain in 1..10)
+        val j=registry();val keep=protected.toMutableSet()
+        val latest=File(active,"opt/appforge-device/generations-v4/latest.json")
+        require(latest.canonicalFile.toPath().startsWith(active.canonicalFile.toPath()))
+        require(latest.canonicalFile.toPath().startsWith(active.canonicalFile.toPath()))
+        if(latest.isFile){require(!Files.isSymbolicLink(latest.toPath()) && latest.length()<=4L*1024*1024);keep.add(JSONObject(latest.readText()).getString("previous"))}
+        val candidates=j.keys().asSequence().map{child(it)}.filter{it.isDirectory}.sortedByDescending{it.lastModified()}.toList()
+        keep.addAll(candidates.take(retain).map{it.name})
+        return candidates.filter{it.name !in keep}.sumOf{candidate->
+            val files=inventory(candidate,{});requireOwnedSnapshot(candidate,files);require(treeDigest(files)==j.getString(candidate.name)){"Eski snapshot değiştirilmiş; silinebilir alan doğrulanamadı."};files.values.sumOf{it.size}
+        }
+    }
     fun pruneUnused(protected:Set<String>,retain:Int=1,canceled:()->Unit={}):Long {
         recover();checkAnchor();require(retain in 1..10)
         val j=registry();val keep=protected.toMutableSet()
@@ -121,6 +198,7 @@ internal class RuntimeGenerationStore(private val active:File) {
         }
         saveRegistry(j)
         val latest=File(active,"opt/appforge-device/generations-v4/latest.json")
+        require(latest.canonicalFile.toPath().startsWith(active.canonicalFile.toPath()))
         if(latest.isFile){require(!Files.isSymbolicLink(latest.toPath()) && latest.length()<=4L*1024*1024);keep.add(JSONObject(latest.readText()).getString("previous"))}
         val candidates=j.keys().asSequence().map{child(it)}.filter{it.isDirectory}.sortedByDescending{it.lastModified()}.toList()
         keep.addAll(candidates.take(retain).map{it.name})
@@ -130,13 +208,14 @@ internal class RuntimeGenerationStore(private val active:File) {
             val planFile=File(parent,candidate.name+".prune.json");require(!Files.isSymbolicLink(planFile.toPath()))
             val expected:Map<String,Entry>
             if(planFile.exists()) {
-                require(planFile.length()<=64L*1024*1024);val plan=JSONObject(planFile.readText());val entries=plan.getJSONObject("entries")
+                require(planFile.length()<=64L*1024*1024);val plan=JSONObject(planFile.readText());require(plan.optBoolean("ownershipValidated",false)){"Eski temizleme planının sahiplik kanıtı yok; dosyalar korundu."};val entries=plan.getJSONObject("entries")
                 expected=entries.keys().asSequence().associateWith{key->val e=entries.getJSONObject(key);Entry(e.getString("kind"),e.getLong("size"),e.getString("digest"),e.getBoolean("executable"),e.getString("permissions"))}
             }else {
                 expected=inventory(candidate,canceled)
+                requireOwnedSnapshot(candidate,expected)
                 require(treeDigest(expected)==j.getString(candidate.name)){"Eski sürüm değişmiş; temizlenmedi."}
                 val entries=JSONObject();for((key,e) in expected)entries.put(key,JSONObject().put("kind",e.kind).put("size",e.size).put("digest",e.digest).put("executable",e.executable).put("permissions",e.permissions))
-                val bytes=JSONObject().put("entries",entries).toString().toByteArray();require(bytes.size<=64*1024*1024)
+                val bytes=JSONObject().put("ownershipValidated",true).put("entries",entries).toString().toByteArray();require(bytes.size<=64*1024*1024)
                 val tmp=File(planFile.path+".tmp");require(!Files.isSymbolicLink(tmp.toPath()));FileOutputStream(tmp).use{it.write(bytes);it.fd.sync()}
                 Files.move(tmp.toPath(),planFile.toPath(),StandardCopyOption.ATOMIC_MOVE)
             }

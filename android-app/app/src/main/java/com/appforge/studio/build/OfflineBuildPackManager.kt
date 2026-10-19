@@ -271,6 +271,10 @@ internal object OfflineBuildPackManager {
                 for(id in linux.filter{it!=OfflineModuleId.LINUX_RUNTIME}) {
                     active=id
                     if(moduleReady(app,id))continue
+                    if(installedVersion(app,id)!=null) {
+                        val permission=lifecycleStatus(app,id,insideMutation=true).update
+                        require(permission.allowed){permission.reason?:"Güncelleme güvenle doğrulanamadı."}
+                    }
                     val protectedModules=witnesses.keys.filter{it!=id && moduleReady(app,it)}
                     val installJob=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
                     phase(id,ModulePhase.PREPARING,"Çalışan ortam korunuyor; izole sürüm kopyalanıyor ve doğrulanıyor.")
@@ -361,7 +365,7 @@ internal object OfflineBuildPackManager {
             else->listOf("install-toolchain.sh","prepare-offline-pack.sh","platform-37.0-package.xml")
         }+listOf("apt-acquire-observer.sh","apt-acquire-observer.awk","apt-acquire-emit.sh","apt-download-telemetry.sh","module-download-telemetry.sh","native-download-broker.sh","jvm-telemetry/network-byte-agent.jar","verified-toolchain-sources-v4.json")
         val hash=java.security.MessageDigest.getInstance("SHA-256")
-        hash.update("ownership-probe-v6".toByteArray())
+        hash.update("ownership-probe-v7-lifecycle".toByteArray())
         for(name in names.sorted()){hash.update(name.toByteArray());context.assets.open("device-build/$name").use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;hash.update(b,0,n)}}}
         return hash.digest().joinToString(""){"%02x".format(it)}
     }
@@ -393,6 +397,8 @@ internal object OfflineBuildPackManager {
             witnesses.getValue(id).all{path->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==files.optString(path)} && ModuleOwnershipStore(root).verifyNamespace(id)
     }.getOrDefault(false)
     fun recoverPending(context:Context) {
+        if(File(context.noBackupFilesDir,"offline-build-pack/.portable-lifecycle.json").exists())
+            BuildModuleUsage.mutationLease().use{OwnedModuleFiles.recoverPortable(context.noBackupFilesDir)}
         val root=runtimeRootfs(context)?:return
         val removal=RuntimeArchiveRemoval(DeviceBuildRuntimeV3.runtimeBaseDirectory(context))
         if(File(DeviceBuildRuntimeV3.runtimeBaseDirectory(context).parentFile,".runtime-removal-v5.json").exists())BuildModuleUsage.mutationLease().use{removal.recover()}
@@ -413,43 +419,76 @@ internal object OfflineBuildPackManager {
         for(id in witnesses.keys.filter{witnesses.getValue(it).all(expected::containsKey)})require(ModuleOwnershipStore(root).verifyNamespace(id)){"Proje, kurulu modülün sahipli sistem dosyalarını değiştirdi: ${id.name}"}
         require(expected.all{(path,hash)->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==hash}){"Proje derlemesi korunan araçları değiştirdi; sürüm etkinleştirilmedi."}
     }
-    fun canRollback(context:Context,id:OfflineModuleId):Boolean {
-        val root=runtimeRootfs(context)?:return false
-        return RuntimeGenerationStore(root).rollbackAvailable(id) && OfflineModules.all.none{it.id!=id && id in OfflineModules.resolve(it.dependencies) && moduleReady(context,it.id)}
+    fun hasPendingLifecycle(context:Context,id:OfflineModuleId):Boolean = if(id==OfflineModuleId.FAST_HTML)false else if(id==OfflineModuleId.WINDOWS_PORTABLE)
+        File(context.noBackupFilesDir,"offline-build-pack/.portable-lifecycle.json").exists()
+    else runtimeRootfs(context)?.let{File(it.parentFile,".module-generation.json").exists() || File(it.parentFile,".rootfs-activation.json").exists()}==true
+    fun lifecycleStatus(context:Context,id:OfflineModuleId,insideMutation:Boolean=false):ModuleLifecycleStatus {
+        val root=runtimeRootfs(context)
+        val native=id in witnesses.keys
+        val version=installedVersion(context,id)?:if(!native && moduleReady(context,id))OfflineModules.spec(id).version else null
+        val dependents=OfflineModules.all.filter{spec->spec.id!=id && id in OfflineModules.resolve(spec.dependencies) &&
+            (installedVersion(context,spec.id)!=null || moduleReady(context,spec.id) || root?.let{r->witnesses[spec.id].orEmpty().any{File(r,it).exists()}}==true)
+        }.map{it.id}.toSet()
+        val inventory=if(native && root!=null)runCatching{ModuleOwnershipStore(root).lifecycleInventory(id)}.getOrNull() else null
+        val ownershipError=if(native && (root==null || !ModuleOwnershipStore(root).verifyNamespace(id)))"Modülün dosya sahipliği/bütünlüğü doğrulanamadı." else null
+        val removeError=when(id) {
+            OfflineModuleId.FAST_HTML->"Gömülü modül kaldırılamaz."
+            OfflineModuleId.WINDOWS_PORTABLE->OwnedModuleFiles.portableRemovalReason(context.noBackupFilesDir,WindowsPortableHostStore.HOST_SHA256)
+            OfflineModuleId.LINUX_RUNTIME->if(DeviceBuildRuntimeV3.isReady(context))null else "Runtime doğrulanamadı."
+            else->root?.let{ModuleOwnershipStore(it).safeRemovalReason(id)}?:"Runtime yok."
+        }
+        val rollbackError=when {
+            !native->"Bu modül için doğrulanmış generation geri alma yolu yok."
+            root==null->"Runtime yok."
+            else->RuntimeGenerationStore(root).rollbackReason(id)
+        }
+        val minimum=if(native && root?.isDirectory==true)runCatching{RuntimeGenerationStore(root).minimumStagingBytes()}.getOrNull() else 1024L*1024
+        val spaceError=if(native && minimum==null)"İzole sürüm alanı hesaplanamadı." else if(minimum!=null && context.noBackupFilesDir.usableSpace<=minimum)"İzole işlem için en az ${minimum/1024/1024} MiB boş alan gerekli." else null
+        return ModuleLifecyclePolicy.evaluate(ModuleLifecyclePolicy.Facts(id,version!=null,updateAvailable(context,id),ownershipError,
+            removeError,rollbackError,if(insideMutation)null else BuildModuleUsage.mutationBlockedReason(),
+            if(!insideMutation && hasPendingLifecycle(context,id))"Kesilmiş yaşam döngüsü işlemi önce güvenle kurtarılmalı." else if(id in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE))null else DeviceBuildRuntimeV3.platformError(),
+            dependents,version,inventory?.generation,inventory?.previousVersion,inventory?.fileCount?:0,spaceError,minimum))
     }
+    fun canRollback(context:Context,id:OfflineModuleId):Boolean=lifecycleStatus(context,id).rollback.allowed
     suspend fun rollbackModule(context:Context,id:OfflineModuleId) = installMutex.withLock {
         BuildModuleUsage.mutationLease().use {
-            require(canRollback(context,id)){"Bağımlılık kullanımı, sürüm sırası veya snapshot bütünlüğü geri almaya izin vermiyor."}
+            require(lifecycleStatus(context,id,insideMutation=true).rollback.allowed){"Bağımlılık kullanımı, sürüm sırası veya snapshot bütünlüğü geri almaya izin vermiyor."}
             val root=runtimeRootfs(context)?:error("Runtime yok")
             val job=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
             RuntimeGenerationStore(root).rollback(id){if(job?.isActive==false)throw kotlinx.coroutines.CancellationException("İptal edildi")}
         }
     }
-    fun removalReason(context:Context,id:OfflineModuleId):String? {
-        if(id in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE))return "Bu modül ayrı gömülü/runtime/host yaşam döngüsünü kullanır."
-        val runtime=runtimeRootfs(context)
-        val dependent=OfflineModules.all.firstOrNull{spec->
-            spec.id!=id && id in OfflineModules.resolve(spec.dependencies) &&
-                (moduleReady(context,spec.id) || installedVersion(context,spec.id)!=null ||
-                    runtime?.let{r->witnesses[spec.id].orEmpty().any{p->File(r,p).exists()}}==true)
-        }
-        if(dependent!=null)return "${dependent.title} bu modülü kullanıyor."
-        if(id==OfflineModuleId.LINUX_RUNTIME)return if(DeviceBuildRuntimeV3.isReady(context))null else "Runtime bütünlüğü doğrulanamadı."
-        val root=runtimeRootfs(context)?:return "Runtime yok."
-        return ModuleOwnershipStore(root).removalReason(id)
-    }
+    fun removalReason(context:Context,id:OfflineModuleId):String?=lifecycleStatus(context,id).remove.reason
     suspend fun removeOwnedModule(context:Context,id:OfflineModuleId) = installMutex.withLock {
         BuildModuleUsage.mutationLease().use {
-            require(removalReason(context,id)==null){removalReason(context,id)?:"Kaldırma engellendi."}
+            val permission=lifecycleStatus(context,id,insideMutation=true).remove
+            require(permission.allowed){permission.reason?:"Kaldırma engellendi."}
+            if(id==OfflineModuleId.WINDOWS_PORTABLE){OwnedModuleFiles.removePortable(context.noBackupFilesDir,WindowsPortableHostStore.HOST_SHA256);return@withLock}
             if(id==OfflineModuleId.LINUX_RUNTIME){RuntimeArchiveRemoval(DeviceBuildRuntimeV3.runtimeBaseDirectory(context)).remove();return@withLock}
             val root=runtimeRootfs(context)?:error("Runtime yok")
             val protected=witnesses.filterKeys{it!=id && moduleReady(context,it)}.values.flatten().distinct().associateWith{digest(File(root,it))}
             val job=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
             RuntimeGenerationStore(root).prepareOwner("REMOVE:${id.name}",canceled={if(job?.isActive==false)throw kotlinx.coroutines.CancellationException()}).use{tx->
                 ModuleOwnershipStore(root).restoreInto(id,tx.root)
-                tx.commit(verify={verifyProtectedTools(it,protected)})
+                val attestation=receipt(tx.root,id)
+                require(!java.nio.file.Files.isSymbolicLink(attestation.toPath()) && attestation.canonicalFile.toPath().startsWith(tx.root.canonicalFile.toPath()))
+                java.nio.file.Files.deleteIfExists(attestation.toPath())
+                val workspace=File(context.cacheDir,"lifecycle-remove/${UUID.randomUUID()}").apply{mkdirs()}
+                try {
+                    copyAssetTree(context,"device-build",File(workspace,"runtime"))
+                    for(other in witnesses.keys.filter{it!=id && moduleReady(context,it)}) {
+                        check(recordMatches(context,tx.root,other)){"Kaldırma başka modülü etkiledi: ${other.name}"}
+                        execute(LinuxShellEngine(context),tx.root,workspace,"remove-protect-${other.name}",runtimeProbe(other))
+                    }
+                    tx.commit(verify={verifyProtectedTools(it,protected)})
+                } finally {workspace.deleteRecursively()}
             }
         }
+    }
+    fun prunableSnapshotBytes(context:Context):Long {
+        require(BuildModuleUsage.mutationBlockedReason()==null){"Etkin işlem varken temizleme hesabı yapılmaz."}
+        val root=runtimeRootfs(context)?:error("Runtime yok.")
+        return RuntimeGenerationStore(root).prunableBytes(ModuleOwnershipStore(root).protectedSnapshots())
     }
     suspend fun pruneUnusedSnapshots(context:Context):Long=installMutex.withLock {
         BuildModuleUsage.mutationLease().use {
@@ -461,7 +500,7 @@ internal object OfflineBuildPackManager {
     fun moduleReady(context:Context,id:OfflineModuleId):Boolean = runCatching {
         when(id) {
             OfflineModuleId.FAST_HTML -> {TemplateIntegrity.requireBundled(context,setOf("html-apk-template.apk","html-aab-template.aab"));true}
-            OfflineModuleId.WINDOWS_PORTABLE -> WindowsPortableHostStore.isInstalled(context)
+            OfflineModuleId.WINDOWS_PORTABLE -> {WindowsPortableHostStore.requireVerifiedHost(context);true}
             OfflineModuleId.LINUX_RUNTIME -> DeviceBuildRuntimeV3.isReady(context)
             else -> {
                 val root=runtimeRootfs(context)?:return@runCatching false

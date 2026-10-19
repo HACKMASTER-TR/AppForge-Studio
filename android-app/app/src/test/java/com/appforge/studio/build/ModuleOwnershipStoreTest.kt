@@ -7,6 +7,7 @@ import org.junit.Test
 
 class ModuleOwnershipStoreTest {
     private fun install(root:File,id:OfflineModuleId,action:(File)->Unit) {
+        if(!File(root,BaseRuntimeOwnership.FILE).exists())BaseRuntimeOwnership.captureFresh(root)
         RuntimeGenerationStore(root).prepare(id).use{tx->
             action(tx.root)
             ModuleOwnershipStore(tx.root).record(id,tx.previousRootName,RuntimeGenerationStore(root).snapshot(),RuntimeGenerationStore(tx.root).snapshot())
@@ -52,6 +53,7 @@ class ModuleOwnershipStoreTest {
         val base=Files.createTempDirectory("owned-cas-prune").toFile()
         try {
             val root=File(base,"rootfs").apply{mkdir()};File(root,"node").writeText("original")
+            BaseRuntimeOwnership.captureFresh(root)
             repeat(3){n->RuntimeGenerationStore(root).prepare(OfflineModuleId.NODE_WEB).use{tx->
                 File(tx.root,"node").writeText("v$n")
                 ModuleOwnershipStore(tx.root).record(OfflineModuleId.NODE_WEB,tx.previousRootName,RuntimeGenerationStore(root).snapshot(),RuntimeGenerationStore(tx.root).snapshot(),root)
@@ -68,6 +70,7 @@ class ModuleOwnershipStoreTest {
         val base=Files.createTempDirectory("owned-cas-fault").toFile()
         try {
             val root=File(base,"rootfs").apply{mkdir()};File(root,"node").writeText("original")
+            BaseRuntimeOwnership.captureFresh(root)
             repeat(3){n->RuntimeGenerationStore(root).prepare(OfflineModuleId.NODE_WEB).use{tx->
                 File(tx.root,"node").writeText("v$n")
                 ModuleOwnershipStore(tx.root).record(OfflineModuleId.NODE_WEB,tx.previousRootName,RuntimeGenerationStore(root).snapshot(),RuntimeGenerationStore(tx.root).snapshot(),root);tx.commit(verify={})
