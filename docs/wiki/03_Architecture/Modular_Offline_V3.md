@@ -255,3 +255,30 @@ Acquire lifecycle boundaries are also emitted immediately, so a small index that
 finishes between timer ticks retains its own terminal channel. Terminal counters
 cannot be reopened by a late live sample. This is independent from cache-hit
 classification and from module READY validation.
+
+## Lifecycle safety, 2026-10-19
+
+`ModuleLifecyclePolicy` is the shared action-specific decision for update, removal
+and rollback. Missing ownership proof, active module use, pending recovery,
+insufficient clone space and dependent modules fail closed. FAST_HTML remains
+embedded. An update requires a changed, packaged trusted recipe; an unverified
+remote version never enables an update button.
+
+`ModuleOwnershipStore` lifecycle revision 2 records version, dependencies,
+generation, previous version and verified file state. Private namespace removal
+requires exact hashes, reversible CAS content and exclusive ownership. Shared
+APT/dpkg/system changes block removal. Legacy receipts do not prove lifecycle
+safety. A trusted new install may migrate them through a verified generation.
+
+`RuntimeGenerationStore` schema 2 journals both tree digests and seals the active
+generation outside rootfs. Recovery checks previous and staged trees before
+moving either. Rollback requires the latest matching owner and an unchanged
+active tree: subsequent user/cache changes block whole-root rollback. Unknown
+snapshot contents block cleanup even when their digest matches. Failed staged
+roots are quarantined, not silently erased. Host process termination tests cover
+activation boundaries; this does not establish Android or power-loss durability.
+
+Portable removal retains the exact verified host in a journaled private archive.
+It unregisters the module without claiming reclaimed storage. Foreign files and
+symlinks block removal. General lifecycle actions run in the existing application
+operation/service driver with explicit confirmation and persisted phases.
