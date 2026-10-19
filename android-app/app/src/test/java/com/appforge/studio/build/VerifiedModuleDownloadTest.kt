@@ -9,12 +9,12 @@ import java.security.MessageDigest
 
 class VerifiedModuleDownloadTest {
     private fun hash(b:ByteArray)=MessageDigest.getInstance("SHA-256").digest(b).joinToString(""){"%02x".format(it)}
-    private class Connection(private val body:ByteArray,private val code:Int,private val range:String?=null,private val known:Boolean=true,private val etag:String?=null):HttpURLConnection(URL("https://node.example/test")) {
+    private class Connection(private val body:ByteArray,private val code:Int,private val range:String?=null,private val known:Boolean=true,private val etag:String?=null,private val retryAfter:String?=null):HttpURLConnection(URL("https://node.example/test")) {
         var closed=false
         override fun connect(){};override fun usingProxy()=false;override fun disconnect(){closed=true}
         override fun getResponseCode()=code
         override fun getContentLengthLong()=if(known)body.size.toLong() else -1L
-        override fun getHeaderField(name:String)=when(name){"Content-Range"->range;"ETag"->etag;else->null}
+        override fun getHeaderField(name:String)=when(name){"Content-Range"->range;"ETag"->etag;"Retry-After"->retryAfter;else->null}
         override fun getInputStream():InputStream=ByteArrayInputStream(body)
     }
     @Test fun realBytesKnownAndUnknownTotalsAndAtomicVerifiedPublication() {
@@ -110,6 +110,51 @@ class VerifiedModuleDownloadTest {
             target.delete()
             assertThrows(IllegalArgumentException::class.java){VerifiedModuleDownload.download("https://node.example/test",hash(data),target,OfflineModuleId.LINUX_RUNTIME,"limit",open={Connection(data,200)},maxBytes=4)}
             assertFalse(target.exists())
+        }finally{dir.deleteRecursively()}
+    }
+
+    @Test fun transientResponsesRetryButTlsAndDigestFailuresDoNot() {
+        val dir=Files.createTempDirectory("retry-test").toFile()
+        try {
+            val body="verified".toByteArray();val target=File(dir,"artifact")
+            var attempts=0;var waited=0L
+            VerifiedModuleDownload.download("https://node.example/test",hash(body),target,OfflineModuleId.NODE_WEB,"retry",
+                open={attempts++;if(attempts==1)Connection(byteArrayOf(),503)else Connection(body,200)},waitForRetry={waited+=it})
+            assertEquals(2,attempts);assertEquals(1000L,waited);assertArrayEquals(body,target.readBytes())
+            target.delete();attempts=0
+            assertThrows(javax.net.ssl.SSLHandshakeException::class.java){
+                VerifiedModuleDownload.download("https://node.example/test",hash(body),target,OfflineModuleId.NODE_WEB,"tls",
+                    open={attempts++;throw javax.net.ssl.SSLHandshakeException("trust failure")},waitForRetry={error("no retry")})
+            }
+            assertEquals(1,attempts)
+        }finally{dir.deleteRecursively()}
+    }
+
+    @Test fun damagedSealedPartialRestartsWithoutSendingRange() {
+        val dir=Files.createTempDirectory("prefix-test").toFile()
+        try {
+            val body="abcdefghij".toByteArray();val target=File(dir,"artifact")
+            File(target.path+".part").writeText("wrong")
+            File(target.path+".part.identity").writeText("https://node.example/test\n"+hash(body))
+            File(target.path+".part.sha256").writeText(hash("abcd".toByteArray()))
+            val c=Connection(body,200)
+            VerifiedModuleDownload.download("https://node.example/test",hash(body),target,OfflineModuleId.NODE_WEB,"prefix",open={c})
+            assertNull(c.getRequestProperty("Range"));assertArrayEquals(body,target.readBytes())
+            assertFalse(File(target.path+".part.sha256").exists())
+        }finally{dir.deleteRecursively()}
+    }
+
+    @Test fun retryAfterIsHonoredAndLongServerDelayNeverRetriedEarly() {
+        val dir=Files.createTempDirectory("retry-after-test").toFile()
+        try {
+            val body="body".toByteArray();var calls=0;var waited=0L
+            VerifiedModuleDownload.download("https://node.example/test",hash(body),File(dir,"a"),OfflineModuleId.NODE_WEB,"429",
+                open={calls++;if(calls==1)Connection(byteArrayOf(),429,retryAfter="2")else Connection(body,200)},waitForRetry={waited+=it})
+            assertEquals(2,calls);assertEquals(2000L,waited)
+            calls=0
+            assertThrows(IOException::class.java){VerifiedModuleDownload.download("https://node.example/test",hash(body),File(dir,"b"),OfflineModuleId.NODE_WEB,"long",
+                open={calls++;Connection(byteArrayOf(),429,retryAfter="3600")},waitForRetry={error("must not retry early")})}
+            assertEquals(1,calls)
         }finally{dir.deleteRecursively()}
     }
 

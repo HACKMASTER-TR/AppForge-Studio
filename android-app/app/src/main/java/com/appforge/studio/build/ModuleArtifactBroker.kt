@@ -6,7 +6,7 @@ import java.nio.file.*
 import kotlinx.coroutines.*
 
 /** Pinned archive requests contain no host paths. The native cache survives staging rollback. */
-internal class ModuleArtifactBroker(private val workspace:File,private val cache:File,private val module:OfflineModuleId,private val operation:String,private val progress:(ModuleProgress)->Unit,private val open:(URL)->HttpURLConnection={RedirectConnection(it)}) {
+internal class ModuleArtifactBroker(private val workspace:File,private val cache:File,private val module:OfflineModuleId,private val operation:String,private val progress:(ModuleProgress)->Unit,private val open:(URL)->HttpURLConnection={RedirectConnection(it)},private val stopRequested:()->Boolean={false}) {
     @Volatile var transferring=false;private set
     companion object {
         internal fun allowed(url:URL):Boolean {
@@ -65,7 +65,7 @@ internal class ModuleArtifactBroker(private val workspace:File,private val cache
                     progress(ModuleProgress(module,operation,ModulePhase.CONNECTING,detail="Doğrulanmış native aktarım • $component"))
                     val job=currentCoroutineContext()[Job]!!
                     val target=File(cache,"$sha.archive")
-                    VerifiedModuleDownload.download(url.toString(),sha,target,module,operation,canceled={!job.isActive},open=open,progress={progress(it.copy(detail="Doğrulanmış native aktarım • $component • "+it.detail))},maxBytes=2L*1024*1024*1024)
+                    VerifiedModuleDownload.download(url.toString(),sha,target,module,operation,canceled={!job.isActive || stopRequested()},open=open,progress={progress(it.copy(detail="Doğrulanmış native aktarım • $component • "+it.detail))},maxBytes=2L*1024*1024*1024)
                     job.ensureActive();require(directory.usableSpace>target.length()+64L*1024*1024){"Arşiv aktarımı için boş alan yetersiz."}
                     val result=File(directory,"$id.archive");require(!Files.isSymbolicLink(result.toPath()))
                     val part=File(directory,"$id.archive.part");require(!Files.isSymbolicLink(part.toPath()))
@@ -74,7 +74,12 @@ internal class ModuleArtifactBroker(private val workspace:File,private val cache
                     Files.move(part.toPath(),result.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
                     progress(ModuleProgress(module,operation,ModulePhase.PREPARING,detail="Doğrulanmış native arşiv • $component • aktarım bitti; kurulum sürüyor."))
                     val done=File(directory,"$id.ok");require(!Files.isSymbolicLink(done.toPath()));done.writeText("SHA256_VERIFIED")
-                }catch(e:CancellationException){throw e}
+                }catch(e:CancellationException){
+                    if(!currentCoroutineContext().isActive || !stopRequested())throw e
+                    // Abort only the archive acquisition. The shell receives a normal failure and unwinds itself.
+                    val error=File(directory,"$id.error");require(!Files.isSymbolicLink(error.toPath()))
+                    error.writeText("Arşiv aktarımı kullanıcı tarafından durduruldu; kısmi dosya korunur.")
+                }
                 catch(e:Exception){val error=File(directory,"$id.error");require(!Files.isSymbolicLink(error.toPath()));error.writeText("Doğrulanmış arşiv aktarılamadı: "+(e.message?:e.javaClass.simpleName).take(200))}
                 finally{transferring=false;Files.deleteIfExists(request.toPath())}
             }

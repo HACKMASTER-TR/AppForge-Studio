@@ -29,10 +29,20 @@ internal object AptDownloadConsent {
     }
     @Synchronized fun approve(operation:String) {
         val p=pending?:error("Bekleyen doğrulanmış APT planı yok.");require(p.operation==operation)
+        require(!File(p.workspace,"apt-consent.declined").exists()){ "Plan durduruldu; yeni işlem başlatın." }
         val file=File(p.workspace,"apt-consent.approved");val part=File(file.path+".tmp")
         require(!Files.isSymbolicLink(file.toPath()) && !Files.isSymbolicLink(part.toPath()))
         require(VerifiedModuleDownload.sha(File(p.workspace,"apt-consent.plan.tsv"))==p.hash)
         part.writeText(p.hash+"\n");Files.move(part.toPath(),file.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+    }
+    @Synchronized fun reject(operation:String) {
+        val p=pending?:return
+        require(p.operation==operation)
+        val file=File(p.workspace,"apt-consent.declined");val part=File(file.path+".tmp")
+        require(!Files.isSymbolicLink(file.toPath()) && !Files.isSymbolicLink(part.toPath()))
+        require(VerifiedModuleDownload.sha(File(p.workspace,"apt-consent.plan.tsv"))==p.hash)
+        part.writeText(p.hash+"\n")
+        Files.move(part.toPath(),file.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
     }
     @Synchronized fun clear(operation:String){if(pending?.operation==operation)pending=null}
 }

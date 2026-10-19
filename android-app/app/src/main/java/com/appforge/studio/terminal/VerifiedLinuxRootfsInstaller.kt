@@ -29,7 +29,8 @@ internal data class LinuxInstallProgress(
     val stage: LinuxInstallStage,
     val completedBytes: Long = 0L,
     val totalBytes: Long? = null,
-    val detail: String
+    val detail: String,
+    val transfer:com.appforge.studio.build.ModuleProgress?=null
 ) {
     val percent: Int?
         get() =
@@ -184,8 +185,8 @@ internal class VerifiedLinuxRootfsInstaller(
             canceled={operationJob?.isActive==false},
             open={it.openConnection().let{c->(c as HttpsURLConnection).apply{instanceFollowRedirects = false}}},
             progress={e->onProgress(LinuxInstallProgress(
-                if(e.phase==com.appforge.studio.build.ModulePhase.VERIFYING)LinuxInstallStage.VERIFYING else LinuxInstallStage.DOWNLOADING,
-                e.bytesDownloaded,e.bytesTotal,"SHA-256 sabit rootfs arşivi; güvenli devam ve son bütünlük doğrulaması"))},
+                when(e.phase){com.appforge.studio.build.ModulePhase.VERIFYING->LinuxInstallStage.VERIFYING;com.appforge.studio.build.ModulePhase.DOWNLOADING->LinuxInstallStage.DOWNLOADING;else->LinuxInstallStage.PREPARING},
+                e.bytesDownloaded,e.bytesTotal,"SHA-256 sabit rootfs arşivi; güvenli devam ve son bütünlük doğrulaması",e))},
             maxBytes=manifest.maxArchiveBytes
         )
         coroutineContext.ensureActive()

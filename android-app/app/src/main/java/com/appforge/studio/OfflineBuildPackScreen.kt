@@ -19,6 +19,7 @@ internal object ModuleInstallOperations {
     val activeProgress=kotlinx.coroutines.flow.MutableStateFlow<ModuleProgress?>(null)
     val updates=kotlinx.coroutines.flow.MutableStateFlow<Map<OfflineModuleId,ModuleProgress>>(emptyMap())
     val busy=kotlinx.coroutines.flow.MutableStateFlow(false)
+    val stopPending=kotlinx.coroutines.flow.MutableStateFlow(false)
     private var job:Job?=null
     private var journal:ModuleOperationJournal?=null
     @Synchronized fun restore(context:android.content.Context) {
@@ -29,26 +30,40 @@ internal object ModuleInstallOperations {
     val journalError=kotlinx.coroutines.flow.MutableStateFlow("")
     fun history():List<String> = journal?.history().orEmpty()
     private fun persist(){try{journal?.save(updates.value);journalError.value=""}catch(e:Exception){journalError.value="İşlem günlüğü yazılamadı; güvenli devam garantisi yok. Depolamayı kontrol edin.";throw e}}
+    @Volatile private var lastEventAt=0L
     @Synchronized private fun publish(event:ModuleProgress) {
+        lastEventAt=android.os.SystemClock.elapsedRealtime()
         activeProgress.value=event;updates.value=updates.value+(event.moduleId to event);persist()
     }
     @Volatile private var pauseRequested=false
+    private var downloadControl=DownloadControl()
     @Synchronized fun start(context:android.content.Context, selected:OfflineModuleId, consent:Boolean) {
         if(busy.value)return
         restore(context)
-        busy.value=true;pauseRequested=false
+        busy.value=true;pauseRequested=false;downloadControl=DownloadControl();stopPending.value=false
         try {ModuleDownloadService.start(context.applicationContext)}catch(e:RuntimeException) {
             busy.value=false
             updates.value=updates.value+(selected to ModuleProgress(selected,"start-denied",ModulePhase.ERROR,detail="Android arka plan hizmetini başlatmadı; uygulama önplandayken yeniden deneyin."))
             runCatching{persist()};return
         }
         job=scope.launch {
+            val stalledWatch=launch {
+                while(isActive) {
+                    delay(1000)
+                    synchronized(this@ModuleInstallOperations) {
+                        activeProgress.value?.let { event ->
+                            val expired=DownloadCoordinator.withoutStaleRates(event,android.os.SystemClock.elapsedRealtime()-lastEventAt)
+                            if(expired!=event)publish(expired)
+                        }
+                    }
+                }
+            }
             try {
                 var retries=0
                 while(true) {
                     val last=java.util.concurrent.atomic.AtomicReference<ModuleProgress?>(null)
                     try {
-                        OfflineBuildPackManager.installModules(context.applicationContext,setOf(selected),consent){event->
+                        OfflineBuildPackManager.installModules(context.applicationContext,setOf(selected),consent,downloadControl){event->
                             last.set(event);publish(event)
                         }
                         break
@@ -59,9 +74,10 @@ internal object ModuleInstallOperations {
                         retries++
                         val started=android.os.SystemClock.elapsedRealtime()
                         while(!OfflineBuildPackManager.hasValidatedInternet(context.applicationContext)) {
+                            downloadControl.checkpoint()
                             currentCoroutineContext().ensureActive()
                             require(android.os.SystemClock.elapsedRealtime()-started<24L*60*1000){"Bağlantı bekleme süresi doldu; kısmi arşiv korunur. Devam et ile tekrar deneyin."}
-                            val waiting=event.copy(phase=ModulePhase.WAITING_CONNECTION,bytesTotal=null,estimatedRemainingMs=null,speedBytesPerSecond=null,detail="Bağlantı bekleniyor; onaylı işlem bağlantı gelince güvenle yeniden denenecek. Bekleme: ${(android.os.SystemClock.elapsedRealtime()-started)/1000} sn")
+                            val waiting=event.copy(phase=ModulePhase.WAITING_CONNECTION,bytesTotal=null,estimatedRemainingMs=null,speedBytesPerSecond=null,averageSpeedBytesPerSecond=null,detail="Bağlantı bekleniyor; onaylı işlem bağlantı gelince güvenle yeniden denenecek. Bekleme: ${(android.os.SystemClock.elapsedRealtime()-started)/1000} sn")
                             publish(waiting)
                             delay(1000)
                         }
@@ -76,7 +92,7 @@ internal object ModuleInstallOperations {
                 // Preserve the manager's connection-wait/error state for this operation.
                 if(updates.value[selected]?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
                 updates.value=updates.value+(selected to ModuleProgress(selected,"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
-            } finally {try{runCatching{persist()}}finally{activeProgress.value=null;busy.value=false}}
+            } finally {stalledWatch.cancel();try{runCatching{persist()}}finally{activeProgress.value=null;busy.value=false}}
         }
     }
     @Synchronized fun lifecycle(context:android.content.Context,id:OfflineModuleId,action:String) {
@@ -97,8 +113,15 @@ internal object ModuleInstallOperations {
             finally{activeProgress.value=null;busy.value=false}
         }
     }
-    @Synchronized fun cancel(){pauseRequested=false;job?.cancel()}
-    @Synchronized fun pause(){pauseRequested=true;job?.cancel()}
+    @Synchronized fun serviceStopped(){pauseRequested=true;job?.cancel()}
+    @Synchronized fun cancel(){pauseRequested=false;downloadControl.requestCancel();showStopPending()}
+    private fun showStopPending(){
+        stopPending.value=true
+        val event=activeProgress.value?:return
+        publish(event.copy(speedBytesPerSecond=null,averageSpeedBytesPerSecond=null,estimatedRemainingMs=null,
+            detail="Durdurma istendi; çalışan paket işlemi güvenli kontrol noktasına ulaşınca duracak. "+event.detail))
+    }
+    @Synchronized fun pause(){pauseRequested=true;downloadControl.requestPause();showStopPending()}
 }
 
 @Composable internal fun OfflineBuildPackScreen(onBack:()->Unit,firstRun:Boolean=false,onFirstRunComplete:((Boolean)->Unit)?=null,project:ProjectDraft?=null) {
@@ -107,6 +130,7 @@ internal object ModuleInstallOperations {
     val journalError by ModuleInstallOperations.journalError.collectAsState()
     val events by ModuleInstallOperations.updates.collectAsState()
     val busy by ModuleInstallOperations.busy.collectAsState()
+    val stopPending by ModuleInstallOperations.stopPending.collectAsState()
     val usageRevision by BuildModuleUsage.changes.collectAsState()
     var recovered by remember{mutableStateOf(false)}
     var aptStates by remember{mutableStateOf<Map<OfflineModuleId,String>>(emptyMap())}
@@ -185,7 +209,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                     Text(if(busy && state!=null && state.phase !in setOf(ModulePhase.READY,ModulePhase.REMOVED))state.phase.turkishLabel() else if(!ready.containsKey(module.id))"Bütünlük doğrulanıyor..." else if(installed)"Hazır • gerçek bütünlük kontrolü geçti" else if(module.id in availableUpdates)"Güncelleme gerekli • kayıtlı ortam korunuyor" else state?.phase?.turkishLabel()?:"Kurulu değil / doğrulanmadı")
                     if(state!=null && (busy || !installed)) {
                         Text(state.detail)
-                        if(busy && state.errorCode=="APT_DOWNLOAD_CONSENT")Button(onClick={runCatching{AptDownloadConsent.approve(state.operationId)}.onFailure{detail=it.message?:"APT planı onaylanamadı"}}){Text("Listelenen APT paketlerini indir • Onayla")}
+                        if(busy && state.errorCode=="APT_DOWNLOAD_CONSENT")Button(enabled=!stopPending,onClick={runCatching{AptDownloadConsent.approve(state.operationId)}.onFailure{detail=it.message?:"APT planı onaylanamadı"}}){Text("Listelenen APT paketlerini indir • Onayla")}
                         if(state.phase==ModulePhase.DOWNLOADING) {
                             val pct=state.percent
                             if(pct!=null) {LinearProgressIndicator(progress={pct/100f},modifier=Modifier.fillMaxWidth());Text("%$pct • ${state.bytesDownloaded/1024/1024} / ${state.bytesTotal!!/1024/1024} MiB")} else {LinearProgressIndicator(modifier=Modifier.fillMaxWidth());Text("${state.bytesDownloaded/1024/1024} MiB • toplam boyut bilinmiyor")}
@@ -196,7 +220,13 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                         } else if(busy && state.phase !in setOf(ModulePhase.READY,ModulePhase.ERROR,ModulePhase.CANCELED))LinearProgressIndicator(modifier=Modifier.fillMaxWidth())
                     }
                     Button(enabled=!busy && ready.containsKey(module.id) && unsupported==null && (installed || lifecycle?.installedVersion==null || lifecycle.update.allowed),onClick={if(installed){scope.launch{val good=withContext(Dispatchers.IO){OfflineBuildPackManager.moduleReady(context,module.id)};detail=if(good)"Bütünlük doğrulandı." else "Bozuk kurulum; hazır değil."}}else chosen=module.id}){Text(if(installed)"Doğrula" else if(state?.phase in setOf(ModulePhase.PAUSED,ModulePhase.WAITING_CONNECTION))"Devam et" else if(state?.phase==ModulePhase.ERROR)"Yeniden dene" else "Kurulum ayrıntıları")}
-                    if(busy && state!=null && state.phase !in setOf(ModulePhase.READY,ModulePhase.ERROR)){ if((module.id in setOf(OfflineModuleId.NODE_WEB,OfflineModuleId.WINDOWS_PORTABLE,OfflineModuleId.LINUX_RUNTIME) || state.detail.startsWith("Doğrulanmış native aktarım")) && state.phase==ModulePhase.DOWNLOADING)OutlinedButton(onClick={ModuleInstallOperations.pause()}){Text("Duraklat")};OutlinedButton(onClick={ModuleInstallOperations.cancel()}){Text("İptal et")} }
+                    if(busy && state!=null && state.phase !in setOf(ModulePhase.READY,ModulePhase.ERROR,ModulePhase.REMOVING,ModulePhase.ROLLING_BACK)) {
+                        if(stopPending)Text("Durdurma bekleniyor. Paket yöneticisinin çalışan komutu bitmeden süreç kesilmez.")
+                        val directTransfer=state.phase==ModulePhase.DOWNLOADING && (module.id in setOf(OfflineModuleId.NODE_WEB,OfflineModuleId.WINDOWS_PORTABLE,OfflineModuleId.LINUX_RUNTIME) || state.detail.startsWith("Doğrulanmış native aktarım"))
+                        OutlinedButton(enabled=!stopPending,onClick={ModuleInstallOperations.pause()}){Text(if(directTransfer)"Duraklat" else "Kontrol noktasında duraklat")}
+                        if(!directTransfer)Text("Bu aşamada bayt düzeyinde devam sağlanmaz; paket yöneticisinin doğrulanmış önbelleğiyle güvenli yeniden başlatılır.",style=MaterialTheme.typography.bodySmall)
+                        OutlinedButton(enabled=!stopPending,onClick={ModuleInstallOperations.cancel()}){Text("İptal iste")}
+                    }
                     if(lifecycle!=null) {
                         aptStates[module.id]?.takeIf{it.isNotBlank()}?.let{Text(it,style=MaterialTheme.typography.bodySmall)}
                         Text("Sahiplik envanteri: ${lifecycle.ownedFiles} dosya • generation: ${lifecycle.generation?:"doğrulanmış kayıt yok"}")

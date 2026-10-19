@@ -6,6 +6,18 @@ as_phase() {
  printf '{"schema":1,"module":"%s","phase":"%s","detail":"%s"}\n' "$as_owner" "$1" "$2" > /workspace/apt-phase.json.tmp
  mv /workspace/apt-phase.json.tmp /workspace/apt-phase.json
 }
+# A rejected plan exits before any acquisition/dpkg transaction; never terminate dpkg to pause.
+as_wait_for_consent() {
+ as_wait_dir="$1";as_wait_hash="$2"
+ while :;do
+  for as_wait_file in apt-consent.approved apt-consent.declined;do
+   [ ! -L "$as_wait_dir/$as_wait_file" ] || return 60
+  done
+  if [ -f "$as_wait_dir/apt-consent.declined" ] && [ "$(cat "$as_wait_dir/apt-consent.declined")" = "$as_wait_hash" ];then return 130;fi
+  if [ -f "$as_wait_dir/apt-consent.approved" ] && [ "$(cat "$as_wait_dir/apt-consent.approved")" = "$as_wait_hash" ];then return 0;fi
+  sleep 1
+ done
+}
 as_fail() { echo "APPFORGE_APT_LOCK_ERROR: $*" >&2; return 60; }
 as_safe_dir() {
  as_path="$1"
@@ -228,7 +240,8 @@ OPTS
  [ "$as_free_bytes" -gt "$(( as_download_bytes * 2 + 268435456 ))" ] || { as_fail 'download/cache disk space insufficient';return 60; }
  echo "APPFORGE_APT_PLAN:$as_owner:$(wc -l < "$as_transaction/plan.tsv" | tr -d ' '):$(awk -F '\t' '{s+=$2}END{printf "%.0f",s+0}' "$as_transaction/plan.tsv"):$as_stamp"
  if [ "${APPFORGE_APT_REQUIRE_CONSENT:-0}" = 1 ];then
-  for as_control in apt-consent.plan.tsv apt-consent.request.json apt-consent.request.json.tmp apt-consent.approved;do [ ! -L "/workspace/$as_control" ] || return 60;done
+  for as_control in apt-consent.plan.tsv apt-consent.request.json apt-consent.request.json.tmp apt-consent.approved apt-consent.declined;do [ ! -L "/workspace/$as_control" ] || return 60;done
+  rm -f /workspace/apt-consent.declined
   : > /workspace/apt-consent.plan.tsv
   while IFS="$(printf '\t')" read -r as_name as_size as_sha as_url;do
    if [ -f "$as_store/archives/$as_sha.deb" ] && printf '%s  %s\n' "$as_sha" "$as_store/archives/$as_sha.deb" | sha256sum -c - >/dev/null 2>&1;then
@@ -239,7 +252,7 @@ OPTS
    as_consent_hash=$(sha256sum /workspace/apt-consent.plan.tsv | cut -d ' ' -f1)
    printf '{"schema":1,"module":"%s","sha256":"%s"}\n' "$as_owner" "$as_consent_hash" > /workspace/apt-consent.request.json.tmp
    mv /workspace/apt-consent.request.json.tmp /workspace/apt-consent.request.json
-   while [ ! -f /workspace/apt-consent.approved ] || [ "$(cat /workspace/apt-consent.approved)" != "$as_consent_hash" ];do sleep 1;done
+   as_wait_for_consent /workspace "$as_consent_hash" || return $?
    rm -f /workspace/apt-consent.request.json /workspace/apt-consent.approved
   fi
  fi

@@ -216,9 +216,10 @@ internal object OfflineBuildPackManager {
         return status(context)
     }
 
-    suspend fun installModules(context:Context, selected:Set<OfflineModuleId>, sdkConsent:Boolean,
+    suspend fun installModules(context:Context, selected:Set<OfflineModuleId>, sdkConsent:Boolean, control:DownloadControl=DownloadControl(),
         progress:(ModuleProgress)->Unit = {}) = installMutex.withLock {
         BuildModuleUsage.mutationLease().use {
+        control.checkpoint()
         require(selected.isNotEmpty()){ "Önce kurulacak modülü seçin." }
         val app=context.applicationContext
         val plan=OfflineModules.resolve(selected)
@@ -244,16 +245,21 @@ internal object OfflineBuildPackManager {
             if(OfflineModuleId.WINDOWS_PORTABLE in pending) {
                 active=OfflineModuleId.WINDOWS_PORTABLE
                 phase(active,ModulePhase.CONNECTING,"Windows Portable: Android SDK lisansı veya Linux kurulumu gerekmez.")
-                WindowsPortableHostStore.install(app, onProgress={message->phase(OfflineModuleId.WINDOWS_PORTABLE,ModulePhase.INSTALLING,message)}, onBytes={bytes->progress(bytes.copy(operationId=operation))})
+                WindowsPortableHostStore.install(app, onProgress={message->phase(OfflineModuleId.WINDOWS_PORTABLE,ModulePhase.INSTALLING,message)}, onBytes={bytes->control.checkpoint();progress(bytes.copy(operationId=operation))})
                 check(moduleReady(app,active)){"Windows host doğrulaması başarısız."}
                 phase(active,ModulePhase.READY,"SHA-256 doğrulandı; Windows Portable hazır.")
             }
+            control.checkpoint()
             val linux=pending.filter{it !in setOf(OfflineModuleId.WINDOWS_PORTABLE,OfflineModuleId.FAST_HTML)}
             if(linux.isNotEmpty()) {
                 phase(OfflineModuleId.LINUX_RUNTIME,ModulePhase.INSTALLING,"Ortak Linux ortamı hazırlanıyor; toplam boyut henüz bilinmiyor.")
                 var rootMeter:DownloadMeasurement?=null
                 var rootReported=0L
-                val root=DeviceBuildRuntimeV3.ensureReady(app,onBytes={e->
+                val root=DeviceBuildRuntimeV3.ensureReady(app,onBytes=rootBytes@{e->
+                    e.transfer?.let { transfer ->
+                        if(transfer.phase==ModulePhase.DOWNLOADING)control.checkpoint()
+                        progress(transfer.copy(operationId=operation));return@rootBytes
+                    }
                     val now=android.os.SystemClock.elapsedRealtime()
                     if(e.stage==com.appforge.studio.terminal.LinuxInstallStage.DOWNLOADING) {
                         val m=rootMeter?:DownloadMeasurement(OfflineModuleId.LINUX_RUNTIME,operation,now,e.completedBytes).also{rootMeter=it}
@@ -265,10 +271,12 @@ internal object OfflineBuildPackManager {
                         com.appforge.studio.terminal.LinuxInstallStage.EXTRACTING->ModulePhase.EXTRACTING
                         else->ModulePhase.INSTALLING},e.detail)
                 }){}
+                control.checkpoint()
                 phase(OfflineModuleId.LINUX_RUNTIME,ModulePhase.READY,"Ortak ortam doğrulandı.")
                 copyAssetTree(app,"device-build",File(workspace,"runtime"))
                 val shell=LinuxShellEngine(app)
                 for(id in linux.filter{it!=OfflineModuleId.LINUX_RUNTIME}) {
+                    control.checkpoint()
                     active=id
                     if(moduleReady(app,id))continue
                     if(installedVersion(app,id)!=null) {
@@ -289,7 +297,7 @@ internal object OfflineBuildPackManager {
                         val sha=if(arch=="arm64")"a44aeb94849a299b22df10b9e622ec2f605c2183501bc40590705131de7c740f" else "df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de"
                         val operationJob=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
                         VerifiedModuleDownload.download("https://nodejs.org/dist/v22.23.3/$name",sha,File(app.noBackupFilesDir,"module-downloads/node/$name"),id,operation,
-                            canceled={operationJob?.isActive==false},progress=progress)
+                            canceled={operationJob?.isActive==false || control.request!=DownloadControl.Request.NONE},progress=progress)
                         val cache=File(staged,"opt/appforge-device/cache/$name")
                         cache.parentFile.mkdirs();require(cache.canonicalFile.toPath().startsWith(staged.canonicalFile.toPath()))
                         File(app.noBackupFilesDir,"module-downloads/node/$name").inputStream().use{input->cache.outputStream().use{input.copyTo(it)}}
@@ -302,8 +310,12 @@ internal object OfflineBuildPackManager {
                         OfflineModuleId.WINDOWS_NATIVE -> listOf("install-windows-native-toolchain.sh")
                         else -> error("Bilinmeyen modül")
                     }
-                    for(command in commands)execute(shell,staged,workspace,id.name.lowercase(),
-                        "APPFORGE_MODULE_REFRESH=${if(OfflineModules.refreshExistingInstallation(id,installedVersion(app,id)!=null))1 else 0} APPFORGE_MODULE_ID=${id.name} APPFORGE_ANDROID_CORE_PREPARED=${if(id in setOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE))1 else 0} APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 /bin/sh /workspace/runtime/$command",id,operation,progress)
+                    for(command in commands) {
+                        control.checkpoint()
+                        execute(shell,staged,workspace,id.name.lowercase(),
+                        "APPFORGE_MODULE_REFRESH=${if(OfflineModules.refreshExistingInstallation(id,installedVersion(app,id)!=null))1 else 0} APPFORGE_MODULE_ID=${id.name} APPFORGE_ANDROID_CORE_PREPARED=${if(id in setOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE))1 else 0} APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 /bin/sh /workspace/runtime/$command",id,operation,progress,control)
+                    }
+                    control.checkpoint()
                     phase(id,ModulePhase.OFFLINE_TEST,"Gerçek dosya/sürüm ve çevrimdışı araç kontrolü yapılıyor.")
                     val probe=when(id) {
                         OfflineModuleId.ANDROID_CORE -> "APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/install-toolchain.sh webview-static && APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/prepare-offline-pack.sh android"
@@ -323,6 +335,7 @@ internal object OfflineBuildPackManager {
                         check(recordMatches(app,staged,existing)){"Kurulum çalışan modülün bütünlüğünü bozdu: ${existing.name}"}
                         execute(shell,staged,workspace,"protect-${existing.name.lowercase()}",runtimeProbe(existing))
                     }
+                    control.checkpoint()
                     generation.commit(verify={ candidate -> check(recordMatches(app,candidate,id) && AndroidRuntimeTrust.ready(candidate)){"Yeni modül sürüm kaydı doğrulanamadı."} })
                     }
                     check(moduleReady(app,id)){"Etkinleştirilen modül doğrulanamadı."}
@@ -522,7 +535,8 @@ internal object OfflineBuildPackManager {
         command: String,
         module:OfflineModuleId?=null,
         operation:String="",
-        progress:(ModuleProgress)->Unit={}
+        progress:(ModuleProgress)->Unit={},
+        control:DownloadControl=DownloadControl()
     ) = kotlinx.coroutines.coroutineScope {
         val sessionId =
             "offline-pack-$suffix-${UUID.randomUUID()}"
@@ -531,13 +545,16 @@ internal object OfflineBuildPackManager {
         ExternalTelemetryChannels.clear(telemetry)
         File(workspace,"apt-phase.json").let{require(!java.nio.file.Files.isSymbolicLink(it.toPath()));it.delete()}
         val channels=module?.let{ExternalTelemetryChannels(telemetry,it,operation)}
-        val broker=module?.let{ModuleArtifactBroker(workspace,File(rootfs.parentFile,".module-archive-cache-v5"),it,operation,progress)}
+        val broker=module?.let{ModuleArtifactBroker(workspace,File(rootfs.parentFile,".module-archive-cache-v5"),it,operation,progress,stopRequested={control.request!=DownloadControl.Request.NONE})}
         val brokerJob=broker?.let{launch(kotlinx.coroutines.Dispatchers.IO){it.serve()}}
         val poller=launch(kotlinx.coroutines.Dispatchers.IO) {
             while(kotlinx.coroutines.currentCoroutineContext().isActive) {
                 val consent=module?.let{AptDownloadConsent.poll(workspace,it,operation)}
                 val aptPhase=module?.let{AptPhaseProgress.poll(workspace,it,operation)}
-                if(consent!=null)progress(consent)
+                if(consent!=null) {
+                    if(control.request!=DownloadControl.Request.NONE)AptDownloadConsent.reject(operation)
+                    progress(consent)
+                }
                 else if(aptPhase!=null)progress(aptPhase)
                 else if(broker?.transferring!=true)channels?.poll(android.os.SystemClock.elapsedRealtime())?.forEach(progress)
                 kotlinx.coroutines.delay(500)
@@ -553,6 +570,7 @@ internal object OfflineBuildPackManager {
                 timeoutMs = 1_800_000L
             )
         } finally {poller.cancel();brokerJob?.cancel();AptDownloadConsent.clear(operation)}
+        control.checkpoint()
 
         check(
             !result.timedOut

@@ -27,7 +27,7 @@ class ModuleDownloadService:Service() {
                 .setProgress(100,e?.percent?:0,e?.phase!=com.appforge.studio.build.ModulePhase.DOWNLOADING || e?.percent==null).build()
         }
         try { ServiceCompat.startForeground(this,ID,notification(),ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC) }
-        catch(e:RuntimeException){ModuleInstallOperations.cancel();ProjectDependencyPreparation.cancel();stopSelf();return START_NOT_STICKY}
+        catch(e:RuntimeException){ModuleInstallOperations.serviceStopped();ProjectDependencyPreparation.cancel();stopSelf();return START_NOT_STICKY}
         scope.launch {
             while(ModuleInstallOperations.busy.value || ProjectDependencyPreparation.busy.value) {
                 // Notification permission may be denied; the foreground task and in-app state remain valid.
@@ -39,9 +39,9 @@ class ModuleDownloadService:Service() {
         return START_NOT_STICKY
     }
     override fun onTimeout(startId:Int,fgsType:Int) {
-        ModuleInstallOperations.pause();ProjectDependencyPreparation.cancel();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf(startId)
+        ModuleInstallOperations.serviceStopped();ProjectDependencyPreparation.cancel();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf(startId)
     }
-    override fun onDestroy(){if(ModuleInstallOperations.busy.value)ModuleInstallOperations.pause();if(ProjectDependencyPreparation.busy.value)ProjectDependencyPreparation.cancel();scope.cancel();super.onDestroy()}
+    override fun onDestroy(){if(ModuleInstallOperations.busy.value)ModuleInstallOperations.serviceStopped();if(ProjectDependencyPreparation.busy.value)ProjectDependencyPreparation.cancel();scope.cancel();super.onDestroy()}
     companion object {
         private const val CHANNEL="appforge-module-download-v3"
         private const val ID=7314

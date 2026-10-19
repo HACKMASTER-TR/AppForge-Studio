@@ -38,12 +38,15 @@ internal class ExternalDownloadTelemetry(private val module:OfflineModuleId,priv
             else->" • gerçek aktarım baytları ölçülüyor."
         }
         val sample=counter.meter.sample(bytes,if(measured)total else null,now)
-        sample.copy(
+        val result=sample.copy(
             bytesDownloaded=if(measured)sample.bytesDownloaded else 0L,
             phase=phase,errorCode=if(failed)event.optString("errorCode","TRANSFER_INTERRUPTED").take(100) else null,
-            speedBytesPerSecond=if(measured && !failed)sample.speedBytesPerSecond else null,
-            averageSpeedBytesPerSecond=if(measured && !failed)sample.averageSpeedBytesPerSecond else null,
-            estimatedRemainingMs=if(measured && !failed)sample.estimatedRemainingMs else null,
+            speedBytesPerSecond=if(measured && !counter.terminal)sample.speedBytesPerSecond else null,
+            averageSpeedBytesPerSecond=if(measured && !counter.terminal)sample.averageSpeedBytesPerSecond else null,
+            estimatedRemainingMs=if(measured && !counter.terminal)sample.estimatedRemainingMs else null,
             detail=event.optString("component","Araç arşivi").take(200)+detail)
+        DownloadCoordinator.observe(DownloadCoordinator.Transfer(id,"package-manager",id,result,
+            DownloadCoordinator.ResumeCapability.PACKAGE_MANAGER_CHECKPOINT))
+        result
     }.getOrNull()
 }

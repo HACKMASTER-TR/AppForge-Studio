@@ -46,4 +46,20 @@ class ModuleArtifactBrokerTest {
         val unsafe=ModuleArtifactBroker.Companion.RedirectConnection(url){address->Connection(address,byteArrayOf(),302,"http://example.invalid/file")}
         assertThrows(IllegalArgumentException::class.java){unsafe.responseCode}
     }
+    @Test fun requestedPauseFailsOnlyArchiveRequestWithoutCancelingShellService() = runBlocking {
+        val base=Files.createTempDirectory("broker-checkpoint").toFile()
+        try {
+            val workspace=File(base,"work").apply{mkdir()};val directory=File(workspace,"native-downloads").apply{mkdir()}
+            val source=File(base,"source").apply{writeText("archive")};val id="d".repeat(64)
+            val broker=ModuleArtifactBroker(workspace,File(base,"cache"),OfflineModuleId.ANDROID_CORE,"pause",{},
+                open={error("pause must stop before network")},stopRequested={true})
+            val service=launch(Dispatchers.IO){broker.serve()}
+            try {
+                File(directory,"$id.request").writeText("https://dl.google.com/android/repository/test.zip\t${VerifiedModuleDownload.sha(source)}\n")
+                withTimeout(5000){while(!File(directory,"$id.error").exists())delay(10)}
+                assertFalse(File(directory,"$id.ok").exists());assertTrue(service.isActive)
+            }finally{service.cancelAndJoin()}
+        }finally{base.deleteRecursively()}
+    }
+
 }
