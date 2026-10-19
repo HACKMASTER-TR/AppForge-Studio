@@ -2,7 +2,7 @@ package com.appforge.studio.build
 
 import org.json.JSONObject
 
-/** Only structured file-byte telemetry produced by our curl adapter. Never parse terminal percentages. */
+/** Only structured telemetry from trusted transfer observers; distinguish payload, wire and file bytes. Never parse terminal percentages. */
 internal class ExternalDownloadTelemetry(private val module:OfflineModuleId,private val operation:String) {
     private var transfer:String?=null
     private var meter:DownloadMeasurement?=null
@@ -19,6 +19,25 @@ internal class ExternalDownloadTelemetry(private val module:OfflineModuleId,priv
             meter=DownloadMeasurement(module,operation,now-elapsed,if(elapsed>0)0 else bytes)
         }
         previousBytes=bytes
-        meter!!.sample(bytes,total,now).copy(phase=if(event.optBoolean("finished",false) || event.optString("byteMetric") in setOf("staged-files","unavailable"))ModulePhase.PREPARING else ModulePhase.DOWNLOADING,detail=event.optString("component","Araç arşivi").take(200)+if(event.optBoolean("finished",false))" • aktarım sonlandı; kurulum/son doğrulama sürüyor." else " • gerçek aktarım baytları ölçülüyor.")
+        val metric=event.optString("byteMetric")
+        val failed=event.optString("state")=="error"
+        val measured=metric !in setOf("staged-files","unavailable")
+        val finished=event.optBoolean("finished",false) && !failed
+        val phase=when { failed->ModulePhase.ERROR; finished || !measured->ModulePhase.PREPARING; else->ModulePhase.DOWNLOADING }
+        val detail=when {
+            failed->" • aktarım kesildi; indirme tamamlanmadı."
+            !measured->" • ağ aktarımı ölçülemiyor; boyut bilinmiyor, süre hesaplanıyor."
+            finished->" • aktarım sonlandı; kurulum/son doğrulama sürüyor."
+            metric=="wire-bytes"->" • soket baytları; HTTP içerik toplamı bilinmiyor."
+            total==null->" • gerçek aktarım baytları; toplam boyut bilinmiyor."
+            else->" • gerçek aktarım baytları ölçülüyor."
+        }
+        val sample=meter!!.sample(bytes,if(measured)total else null,now)
+        sample.copy(
+            phase=phase,errorCode=if(failed)event.optString("errorCode","TRANSFER_INTERRUPTED").take(100) else null,
+            speedBytesPerSecond=if(measured && !failed)sample.speedBytesPerSecond else null,
+            averageSpeedBytesPerSecond=if(measured && !failed)sample.averageSpeedBytesPerSecond else null,
+            estimatedRemainingMs=if(measured && !failed)sample.estimatedRemainingMs else null,
+            detail=event.optString("component","Araç arşivi").take(200)+detail)
     }.getOrNull()
 }

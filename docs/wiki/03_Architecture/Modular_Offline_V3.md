@@ -199,3 +199,20 @@ regression covers absence of system Node. Real Core/Python disconnected builds,
 Node standalone installation, Expo x64 tool probes and Windows PE cross-compiles
 are recorded separately from physical Android/Windows acceptance in
 [the completion report](../../reports/fast-html-v3-final-completion-20261018.md).
+
+### Transfer observation corrections (2026-10-19)
+
+The Node preload now observes fetch/undici response bodies as well as core HTTP
+responses. Node 22's pinned bundled undici lacks the newer body-chunk diagnostic;
+a scoped onData observer delegates the original callback with unchanged return
+value and arguments. Newer Node uses diagnostic body events. Neither path drains
+or duplicates the body, replaces TLS, or installs a global dispatcher. Unknown
+observer coverage is not inferred from Content-Length as a completed transfer.
+
+Curl telemetry distinguishes interruption from completion and uses the full
+Content-Range size for resumed-file progress. This observes a transfer, not the
+separate downloader's checksum/Range authorization policy. Structured errors do
+not produce READY or an ETA. Staged APT index files do not represent network bytes
+and cannot produce throughput, percent or ETA. SDK JFR wire counts remain distinct
+from payload counts. All observations remain per-transfer, not a guarantee of
+whole-module totals or coverage of arbitrary third-party/native HTTP clients.

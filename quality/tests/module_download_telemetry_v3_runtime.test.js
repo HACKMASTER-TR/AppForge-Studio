@@ -30,3 +30,20 @@ head -c 100 /dev/zero >> "$out"
   assert.equal('percent' in final,false);assert.equal('ready' in final,false);assert.equal('url' in final,false);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('curl telemetry uses full Content-Range total and never marks failed download complete',async()=>{
+ const http=await import('node:http');
+ const server=http.createServer((req,res)=>{
+  if(req.url==='/range'){res.writeHead(206,{'Content-Length':5,'Content-Range':'bytes 5-9/10'});res.end('56789');}
+  else{res.writeHead(200,{'Content-Length':100});res.write('short');setTimeout(()=>res.destroy(),100);}
+ });
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'module-curl-real-'));
+ try{for(const resume of [true,false]){
+  const event=path.join(dir,'event.json'),out=path.join(dir,'out');fs.writeFileSync(out,resume?'01234':'');
+  const child=spawn('sh',['-c','. "$1"; if [ "$4" = yes ];then curl -f --continue-at - "$2" -o "$3";else curl -f "$2" -o "$3";fi','test',helper,`http://127.0.0.1:${server.address().port}/${resume?'range':'broken'}`,out,resume?'yes':'no'],{env:{...process.env,APPFORGE_DOWNLOAD_TELEMETRY:event},stdio:'ignore'});
+  const exit=await new Promise(r=>child.on('exit',r));const e=JSON.parse(fs.readFileSync(event));
+  if(resume){assert.equal(exit,0);assert.equal(e.bytes,10);assert.equal(e.total,10);assert.equal(e.finished,true);}
+  else{assert.notEqual(exit,0);assert.equal(e.finished,false);assert.equal(e.state,'error');assert.match(e.errorCode,/CURL_EXIT_/);assert(e.bytes<100);}
+ }}finally{await new Promise(r=>server.close(r));fs.rmSync(dir,{recursive:true,force:true});}
+});

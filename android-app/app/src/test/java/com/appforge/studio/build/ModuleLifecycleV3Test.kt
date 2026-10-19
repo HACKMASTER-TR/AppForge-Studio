@@ -38,6 +38,16 @@ class ModuleLifecycleV3Test {
         assertNull(adapter.accept("random 75%",5000))
         assertNull(adapter.accept(event(1000,"null"),6000)!!.percent)
     }
+    @Test fun opaqueFileSamplesCannotClaimNetworkSpeedAndInterruptedTransfersCannotComplete() {
+        val adapter=ExternalDownloadTelemetry(OfflineModuleId.ANDROID_CORE,"op")
+        val opaque=adapter.accept("""{"schema":1,"transfer":"apt","bytes":500,"total":1000,"byteMetric":"staged-files","elapsedMs":1000}""",1000)!!
+        assertNull(opaque.percent);assertNull(opaque.speedBytesPerSecond);assertNull(opaque.averageSpeedBytesPerSecond)
+        assertNull(opaque.estimatedRemainingMs);assertEquals(ModulePhase.PREPARING,opaque.phase)
+        assertTrue(opaque.detail.contains("ölçülemiyor"))
+        val interrupted=adapter.accept("""{"schema":1,"transfer":"curl","bytes":500,"total":1000,"finished":true,"state":"error","errorCode":"CURL_EXIT_18"}""",2000)!!
+        assertEquals(ModulePhase.ERROR,interrupted.phase);assertEquals("CURL_EXIT_18",interrupted.errorCode)
+        assertNull(interrupted.estimatedRemainingMs);assertNull(interrupted.speedBytesPerSecond)
+    }
     @Test fun ownedRemovalPreservesForeignFilesAndRestoresOnPredeleteFault() {
         val base=Files.createTempDirectory("owned-host").toFile()
         try {

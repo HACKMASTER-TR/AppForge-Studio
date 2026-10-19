@@ -61,3 +61,17 @@ assert any(e.tag.endswith('license') and e.attrib.get('id')=='android-sdk-licens
  assert(!script.includes('AndroidVersion.ApiLevel=37\nEOF'));
  assert(prewarm.includes('android.builder.sdkDownload=false'));assert(engine.includes('android.builder.sdkDownload=false'));
 });
+
+test('fetch observer measures real undici body bytes for known and chunked transfers',async()=>{
+ const dir=temporary(),body=Buffer.alloc(32000,66);
+ const server=http.createServer((req,res)=>{if(req.url==='/known')res.setHeader('Content-Length',body.length);res.write(body.subarray(0,1000));setTimeout(()=>res.end(body.subarray(1000)),350);});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ try{for(const known of [true,false]){
+  const file=path.join(dir,'event.json');
+  const code=`const fs=require('fs');(async()=>{const b=await(await fetch(process.argv[1])).arrayBuffer();setImmediate(()=>console.log(JSON.stringify({bytes:b.byteLength,event:JSON.parse(fs.readFileSync(process.env.APPFORGE_DOWNLOAD_TELEMETRY))})));})().catch(e=>{console.error(e);process.exitCode=1});`;
+  const child=spawn(process.execPath,['--require',new URL('npm-download-telemetry.cjs',assets).pathname,'-e',code,`http://127.0.0.1:${server.address().port}/${known?'known':'chunked'}`],{env:{...process.env,APPFORGE_DOWNLOAD_TELEMETRY:file}});
+  let output='',error='';child.stdout.on('data',b=>output+=b);child.stderr.on('data',b=>error+=b);
+  assert.equal(await new Promise(r=>child.on('exit',r)),0,error);
+  const result=JSON.parse(output);assert.equal(result.bytes,body.length);assert.equal(result.event.bytes,body.length);assert.equal(result.event.total,known?body.length:null);assert.equal(result.event.finished,true);
+ }}finally{await new Promise(r=>server.close(r));fs.rmSync(dir,{recursive:true,force:true});}
+});
