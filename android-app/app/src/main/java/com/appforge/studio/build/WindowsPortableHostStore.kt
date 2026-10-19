@@ -38,6 +38,8 @@ internal object WindowsPortableHostStore {
         "windows-host.ready"
 
 
+    fun journalTarget(context:Context)=File(hostDirectory(context),HOST_NAME)
+
     fun isInstalled(
         context: Context
     ): Boolean {
@@ -126,6 +128,7 @@ internal object WindowsPortableHostStore {
             val operationJob = kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
             val emitBytes: (ModuleProgress) -> Unit = { event ->
                 if(operationJob?.isActive == false)throw kotlinx.coroutines.CancellationException("İndirme iptal edildi")
+                DownloadNetwork.check()
                 onBytes(event)
             }
             val appContext =
@@ -349,9 +352,7 @@ internal object WindowsPortableHostStore {
 
         val connection =
             (
-                source
-                    .openConnection() as
-                    HttpURLConnection
+                DownloadNetwork.open(source)
                 ).apply {
 
                     instanceFollowRedirects =
@@ -515,7 +516,7 @@ internal object WindowsPortableHostStore {
             )
 
         } finally {
-            connection.disconnect()
+            connection.disconnect();DownloadNetwork.release(connection)
         }
     }
 

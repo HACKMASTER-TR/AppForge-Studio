@@ -245,7 +245,15 @@ internal object OfflineBuildPackManager {
             if(OfflineModuleId.WINDOWS_PORTABLE in pending) {
                 active=OfflineModuleId.WINDOWS_PORTABLE
                 phase(active,ModulePhase.CONNECTING,"Windows Portable: Android SDK lisansı veya Linux kurulumu gerekmez.")
-                WindowsPortableHostStore.install(app, onProgress={message->phase(OfflineModuleId.WINDOWS_PORTABLE,ModulePhase.INSTALLING,message)}, onBytes={bytes->control.checkpoint();progress(bytes.copy(operationId=operation))})
+                val hostSource=java.security.MessageDigest.getInstance("SHA-256").digest(WindowsPortableHostStore.HOST_URL.toByteArray()).joinToString(""){"%02x".format(it)}
+                DownloadCoordinator.bind(operation,WindowsPortableHostStore.HOST_SHA256,WindowsPortableHostStore.journalTarget(app))
+                WindowsPortableHostStore.install(app, onProgress={message->phase(OfflineModuleId.WINDOWS_PORTABLE,ModulePhase.INSTALLING,message)}, onBytes={bytes->
+                    control.checkpoint()
+                    val event=bytes.copy(operationId=operation)
+                    DownloadCoordinator.observe(DownloadCoordinator.Transfer(WindowsPortableHostStore.HOST_SHA256,WindowsPortableHostStore.REVISION,hostSource,event,DownloadCoordinator.ResumeCapability.SAFE_RESTART_ONLY))
+                    progress(event)
+                })
+                DownloadCoordinator.observe(DownloadCoordinator.Transfer(WindowsPortableHostStore.HOST_SHA256,WindowsPortableHostStore.REVISION,hostSource,ModuleProgress(active,operation,ModulePhase.PREPARING,bytesTotal=WindowsPortableHostStore.HOST_BYTES),DownloadCoordinator.ResumeCapability.SAFE_RESTART_ONLY,verificationStatus="SHA256_VERIFIED"))
                 check(moduleReady(app,active)){"Windows host doğrulaması başarısız."}
                 phase(active,ModulePhase.READY,"SHA-256 doğrulandı; Windows Portable hazır.")
             }
@@ -311,6 +319,7 @@ internal object OfflineBuildPackManager {
                         else -> error("Bilinmeyen modül")
                     }
                     for(command in commands) {
+                        DownloadNetwork.requireExternalConsent()
                         control.checkpoint()
                         execute(shell,staged,workspace,id.name.lowercase(),
                         "APPFORGE_MODULE_REFRESH=${if(OfflineModules.refreshExistingInstallation(id,installedVersion(app,id)!=null))1 else 0} APPFORGE_MODULE_ID=${id.name} APPFORGE_ANDROID_CORE_PREPARED=${if(id in setOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE))1 else 0} APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 /bin/sh /workspace/runtime/$command",id,operation,progress,control)
@@ -347,7 +356,7 @@ internal object OfflineBuildPackManager {
                 phase(OfflineModuleId.FAST_HTML,ModulePhase.READY,"Gömülü şablonlar doğrulandı; indirme yok.")
             }
         } catch(e:kotlinx.coroutines.CancellationException) {
-            phase(active,ModulePhase.CANCELED,"İptal edildi; mevcut doğrulanmış modüller korunur.");throw e
+            phase(active,if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else ModulePhase.CANCELED,if(e is DownloadNetwork.PolicyBlocked)"Ağ politikası bekleniyor; doğrulanmış modüller korunur." else "İptal edildi; mevcut doğrulanmış modüller korunur.");throw e
         } catch(e:Exception) {
             progress(ModuleProgress(active,operation,if(!hasValidatedInternet(app))ModulePhase.WAITING_CONNECTION else ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=if(!hasValidatedInternet(app))"Bağlantı bekleniyor; kısmi indirme hazır sayılmaz. Bağlantı gelince Devam et seçin." else e.message?:"Kurulum başarısız."));throw e
         } finally { workspace.deleteRecursively() }
@@ -571,6 +580,7 @@ internal object OfflineBuildPackManager {
             )
         } finally {poller.cancel();brokerJob?.cancel();AptDownloadConsent.clear(operation)}
         control.checkpoint()
+        if(broker?.networkBlocked==true)throw DownloadNetwork.PolicyBlocked()
 
         check(
             !result.timedOut

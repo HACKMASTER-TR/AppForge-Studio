@@ -8,6 +8,7 @@ import kotlinx.coroutines.*
 /** Pinned archive requests contain no host paths. The native cache survives staging rollback. */
 internal class ModuleArtifactBroker(private val workspace:File,private val cache:File,private val module:OfflineModuleId,private val operation:String,private val progress:(ModuleProgress)->Unit,private val open:(URL)->HttpURLConnection={RedirectConnection(it)},private val stopRequested:()->Boolean={false}) {
     @Volatile var transferring=false;private set
+    @Volatile var networkBlocked=false;private set
     companion object {
         internal fun allowed(url:URL):Boolean {
             if(url.protocol!="https" || url.userInfo!=null || url.ref!=null || url.query!=null || url.port !in setOf(-1,443))return false
@@ -23,7 +24,7 @@ internal class ModuleArtifactBroker(private val workspace:File,private val cache
             }
         }
         private fun redirectAllowed(url:URL)=allowed(url) || url.protocol=="https" && url.userInfo==null && url.ref==null && url.port in setOf(-1,443) && url.host=="release-assets.githubusercontent.com"
-        internal class RedirectConnection(address:URL,private val opener:(URL)->HttpURLConnection={it.openConnection() as HttpURLConnection}):HttpURLConnection(address) {
+        internal class RedirectConnection(address:URL,private val opener:(URL)->HttpURLConnection={DownloadNetwork.open(it)}):HttpURLConnection(address) {
             private var actual:HttpURLConnection?=null
             private fun response():HttpURLConnection {
                 actual?.let{return it}
@@ -36,7 +37,7 @@ internal class ModuleArtifactBroker(private val workspace:File,private val cache
                     val status=connection.responseCode
                     if(status in setOf(301,302,303,307,308)) {
                         val location=connection.getHeaderField("Location")?:error("Yönlendirme konumu yok")
-                        destination=URL(destination,location);connection.disconnect()
+                        destination=URL(destination,location);connection.disconnect();DownloadNetwork.release(connection)
                     } else {actual=connection;return connection}
                 }
                 error("Arşiv yönlendirme sınırı")
@@ -46,7 +47,7 @@ internal class ModuleArtifactBroker(private val workspace:File,private val cache
             override fun getContentLengthLong()=response().contentLengthLong
             override fun getInputStream()=response().inputStream
             override fun connect(){response()}
-            override fun disconnect(){actual?.disconnect()}
+            override fun disconnect(){actual?.let{it.disconnect();DownloadNetwork.release(it)}}
             override fun usingProxy()=actual?.usingProxy()?:false
         }
     }
@@ -75,7 +76,8 @@ internal class ModuleArtifactBroker(private val workspace:File,private val cache
                     progress(ModuleProgress(module,operation,ModulePhase.PREPARING,detail="Doğrulanmış native arşiv • $component • aktarım bitti; kurulum sürüyor."))
                     val done=File(directory,"$id.ok");require(!Files.isSymbolicLink(done.toPath()));done.writeText("SHA256_VERIFIED")
                 }catch(e:CancellationException){
-                    if(!currentCoroutineContext().isActive || !stopRequested())throw e
+                    if(!currentCoroutineContext().isActive || (!stopRequested() && e !is DownloadNetwork.PolicyBlocked))throw e
+                    if(e is DownloadNetwork.PolicyBlocked){networkBlocked=true;progress(ModuleProgress(module,operation,ModulePhase.WAITING_CONNECTION,errorCode="NETWORK_POLICY",detail="Ağ politikası bekleniyor; kısmi dosya korunur."))}
                     // Abort only the archive acquisition. The shell receives a normal failure and unwinds itself.
                     val error=File(directory,"$id.error");require(!Files.isSymbolicLink(error.toPath()))
                     error.writeText("Arşiv aktarımı kullanıcı tarafından durduruldu; kısmi dosya korunur.")

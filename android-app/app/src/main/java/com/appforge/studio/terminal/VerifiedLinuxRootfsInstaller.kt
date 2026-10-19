@@ -181,9 +181,9 @@ internal class VerifiedLinuxRootfsInstaller(
         val operationJob=coroutineContext[kotlinx.coroutines.Job]
         com.appforge.studio.build.VerifiedModuleDownload.download(
             source.toString(),manifest.archiveSha256,cache,
-            com.appforge.studio.build.OfflineModuleId.LINUX_RUNTIME,"rootfs-${manifest.archiveSha256.take(12)}",
+            com.appforge.studio.build.OfflineModuleId.LINUX_RUNTIME,"rootfs-${java.util.UUID.randomUUID()}",
             canceled={operationJob?.isActive==false},
-            open={it.openConnection().let{c->(c as HttpsURLConnection).apply{instanceFollowRedirects = false}}},
+            open={com.appforge.studio.build.DownloadNetwork.open(it).let{c->(c as HttpsURLConnection).apply{instanceFollowRedirects = false}}},
             progress={e->onProgress(LinuxInstallProgress(
                 when(e.phase){com.appforge.studio.build.ModulePhase.VERIFYING->LinuxInstallStage.VERIFYING;com.appforge.studio.build.ModulePhase.DOWNLOADING->LinuxInstallStage.DOWNLOADING;else->LinuxInstallStage.PREPARING},
                 e.bytesDownloaded,e.bytesTotal,"SHA-256 sabit rootfs arşivi; güvenli devam ve son bütünlük doğrulaması",e))},

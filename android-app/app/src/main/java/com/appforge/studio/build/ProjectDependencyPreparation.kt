@@ -17,6 +17,8 @@ internal object ProjectDependencyPreparation {
     val status=MutableStateFlow("Proje bağımlılıkları henüz doğrulanmadı.")
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
     private var job:Job?=null
+    private var control=DownloadControl()
+    val stopPending=MutableStateFlow(false)
     private fun caches(context:Context,override:File?=null):List<File> {
         val root=override?:OfflineBuildPackManager.runtimeRootfs(context)?:error("Normal motor runtime yok")
         return listOf(File(root,"root/.gradle-appforge/caches"),File(root,"opt/appforge-device/npm-cache-v1"),File(root,"opt/appforge-device/npm-cache-expo54-v1"),File(root,"root/.cache/pip"))
@@ -26,6 +28,10 @@ internal object ProjectDependencyPreparation {
     @Synchronized fun start(context:Context,draft:ProjectDraft,sourceExecutionConsent:Boolean,offlineVerification:Boolean) {
         if(busy.value)return
         require(sourceExecutionConsent){"Proje build/lifecycle kodunu çalıştırma onayı gerekir."}
+        DownloadNetwork.configure(context)
+        DownloadCoordinator.configure(PersistentDownloads(File(context.noBackupFilesDir,"downloads-v5"),mapOf("private" to context.noBackupFilesDir,"files" to context.filesDir,"cache" to context.cacheDir)))
+        if(!offlineVerification)DownloadNetwork.requireExternalConsent()
+        control=DownloadControl();stopPending.value=false
         transfer.value=null
         busy.value=true
         try{ModuleDownloadService.start(context.applicationContext)}catch(e:RuntimeException){busy.value=false;status.value="Android veri aktarım servisini başlatmadı; işlem başlamadı.";return}
@@ -61,9 +67,12 @@ internal object ProjectDependencyPreparation {
                 val runDraft=draft.copy(importedFolder=reviewedSource!!.path,allowDependencyDownloads=!offlineVerification,signingMode=SigningMode.DEBUG,keystoreUri=null,storePassword="",keyPassword="",keyAlias="")
                 buildId=DeviceBuildEngine.start(context,runDraft,null,permit,generation!!.root).id
                 var channels:ExternalTelemetryChannels?=null
+                var lastTelemetryAt=android.os.SystemClock.elapsedRealtime()
                 while(DeviceBuildEngine.isExecuting(buildId!!)){
-                    DeviceBuildEngine.transferFile(buildId!!)?.let{file->if(channels==null)channels=ExternalTelemetryChannels(file,OfflineModuleId.ANDROID_CORE,"project-$buildId");channels!!.poll(android.os.SystemClock.elapsedRealtime()).forEach{transfer.value=it}}
+                    DeviceBuildEngine.transferFile(buildId!!)?.let{file->if(channels==null)channels=ExternalTelemetryChannels(file,OfflineModuleId.ANDROID_CORE,"project-$buildId");channels!!.poll(android.os.SystemClock.elapsedRealtime()).forEach{lastTelemetryAt=android.os.SystemClock.elapsedRealtime();transfer.value=it}}
+                    transfer.value?.let{transfer.value=DownloadCoordinator.withoutStaleRates(it,android.os.SystemClock.elapsedRealtime()-lastTelemetryAt)}
 currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!!.allNetworks.isNotEmpty()){networkSeen.set(true);DeviceBuildEngine.cancel(buildId!!)};delay(500)}
+                control.checkpoint()
                 val result=DeviceBuildEngine.snapshot(buildId!!)?:error("Build sonucu yok")
                 require(result.status=="success"){"Proje derlemesi başarısız: "+result.logs.takeLast(8).joinToString("\n").take(2000)}
                 require(!offlineVerification || !networkSeen.get()){"Doğrulama sırasında ağ açıldı; offline hazır kaydı yazılmadı."}
@@ -73,6 +82,7 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                 val candidate=File(receipt(context,plan).path+".candidate")
                 ProjectDependencyEvidence.record(candidate,plan,caches(context,generation!!.root),offlineVerification)
                 if(offlineVerification)check(ProjectDependencyEvidence.ready(candidate,plan,caches(context,generation!!.root)))
+                control.checkpoint()
                 generation!!.commit(verify={OfflineBuildPackManager.verifyProtectedTools(it,protected);require(AndroidRuntimeTrust.ready(it))})
                 require(!offlineVerification || !networkSeen.get()){"Ağ doğrulama bitmeden açıldı; hazır kaydı yayımlanmadı."}
                 java.nio.file.Files.move(candidate.toPath(),receipt(context,plan).toPath(),java.nio.file.StandardCopyOption.ATOMIC_MOVE,java.nio.file.StandardCopyOption.REPLACE_EXISTING)
@@ -95,5 +105,7 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
             }
         }
     }
-    @Synchronized fun cancel(){job?.cancel()}
+    @Synchronized fun cancel(){stopPending.value=true;control.requestCancel();status.value="Durdurma istendi; çalışan build komutu güvenli kontrol noktasında bitecek."}
+    @Synchronized fun pause(){stopPending.value=true;control.requestPause();status.value="Kontrol noktasında duraklatma bekleniyor; bayt düzeyinde pause desteklenmez."}
+    @Synchronized fun serviceStopped(){job?.cancel()}
 }

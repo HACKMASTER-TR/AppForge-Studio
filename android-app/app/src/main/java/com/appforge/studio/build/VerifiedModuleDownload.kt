@@ -16,10 +16,12 @@ internal object VerifiedModuleDownload {
     private class TransientHttp(val status:Int,val retryAfterMs:Long?):java.io.IOException("HTTP $status")
     fun download(url:String,expected:String,target:File,module:OfflineModuleId,operation:String,
         canceled:()->Boolean={false}, clock:()->Long={System.nanoTime()/1_000_000},
-        open:(URL)->HttpURLConnection={it.openConnection() as HttpURLConnection},
+        open:(URL)->HttpURLConnection={DownloadNetwork.open(it)},
         progress:(ModuleProgress)->Unit={}, availableBytes:(File)->Long={it.usableSpace},maxBytes:Long=1024L*1024*1024,
         waitForRetry:(Long)->Unit={Thread.sleep(it)}, maxRetries:Int=3) {
         require(maxRetries in 0..5)
+        DownloadNetwork.prepareJournal()
+        val requestPolicy=DownloadNetwork.policy
         val key=target.canonicalPath
         DownloadCoordinator.claim(key)
         val identity=MessageDigest.getInstance("SHA-256").digest(url.toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it)}
@@ -29,10 +31,12 @@ internal object VerifiedModuleDownload {
             progress(event)
         }
         try {
-            var attempt=0
+            var attempt=DownloadCoordinator.bind(operation,expected,target)
+            require(attempt<=maxRetries){"Kalıcı yeniden deneme sınırı doldu; otomatik devam engellendi."}
+            report(ModuleProgress(module,operation,ModulePhase.CONNECTING,detail="Sabit kaynaklı dosya kaydı kuyruğa alındı; henüz aktarım tamamlanmadı."))
             while(true) {
                 try {
-                    transfer(url,expected,target,module,operation,canceled,clock,open,report,availableBytes,maxBytes)
+                    DownloadNetwork.withPolicy(requestPolicy){transfer(url,expected,target,module,operation,canceled,clock,{address->DownloadNetwork.check(requestPolicy);open(address)},report,availableBytes,maxBytes,requestPolicy)}
                     val last=DownloadCoordinator.snapshot(operation).lastOrNull{it.artifactId==expected && it.sourceIdentity==identity}
                     DownloadCoordinator.observe(DownloadCoordinator.Transfer(expected,expected,identity,
                         last?.progress?.copy(phase=ModulePhase.PREPARING)?:ModuleProgress(module,operation,ModulePhase.PREPARING),
@@ -42,9 +46,11 @@ internal object VerifiedModuleDownload {
                 catch(e:java.io.IOException) {
                     // TLS trust/identity failures are permanent. Never retry integrity or policy failures.
                     if(e is javax.net.ssl.SSLException || e !is TransientHttp && e !is java.net.SocketException && e !is java.net.SocketTimeoutException && e !is java.net.UnknownHostException && e !is java.io.EOFException || attempt>=maxRetries || canceled())throw e
+                    DownloadNetwork.check(requestPolicy)
                     val delay=(e as? TransientHttp)?.retryAfterMs ?: (1000L shl attempt)
                     if(delay>60000L)throw e // do not retry earlier than the server's requested delay
                     attempt++
+                    DownloadCoordinator.retry(operation,expected,attempt)
                     report(ModuleProgress(module,operation,ModulePhase.RECONNECTING,errorCode="TRANSFER_RETRY",detail="Geçici aktarım hatası; güvenli yeniden deneme $attempt/$maxRetries"))
                     var remaining=delay
                     while(remaining>0) {
@@ -54,16 +60,16 @@ internal object VerifiedModuleDownload {
                 }
             }
         } catch(e:Exception) {
-            val phase=if(e is java.util.concurrent.CancellationException)ModulePhase.PAUSED else ModulePhase.ERROR
+            val phase=if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else if(e is java.util.concurrent.CancellationException)ModulePhase.PAUSED else ModulePhase.ERROR
             DownloadCoordinator.observe(DownloadCoordinator.Transfer(expected,expected,identity,
-                ModuleProgress(module,operation,phase,errorCode=e.javaClass.simpleName),DownloadCoordinator.ResumeCapability.VERIFIED_HTTP_RANGE))
+                ModuleProgress(module,operation,phase,bytesDownloaded=File(target.path+".part").takeIf{it.isFile}?.length()?:0,bytesTotal=DownloadCoordinator.snapshot(operation).lastOrNull{it.artifactId==expected}?.progress?.bytesTotal,errorCode=e.javaClass.simpleName),DownloadCoordinator.ResumeCapability.VERIFIED_HTTP_RANGE))
             throw e
         } finally {DownloadCoordinator.release(key)}
     }
     private fun transfer(url:String,expected:String,target:File,module:OfflineModuleId,operation:String,
         canceled:()->Boolean={false}, clock:()->Long={System.nanoTime()/1_000_000},
-        open:(URL)->HttpURLConnection={it.openConnection() as HttpURLConnection},
-        progress:(ModuleProgress)->Unit={}, availableBytes:(File)->Long={it.usableSpace},maxBytes:Long=1024L*1024*1024) {
+        open:(URL)->HttpURLConnection={DownloadNetwork.open(it)},
+        progress:(ModuleProgress)->Unit={}, availableBytes:(File)->Long={it.usableSpace},maxBytes:Long=1024L*1024*1024,requestPolicy:DownloadNetworkPolicy=DownloadNetwork.policy) {
         require(maxBytes in 1..(2L*1024*1024*1024))
         val address=URL(url);require(address.protocol=="https" && address.userInfo==null && address.ref==null)
         require(expected.matches(Regex("[0-9a-f]{64}")))
@@ -71,22 +77,34 @@ internal object VerifiedModuleDownload {
         val part=File(target.path+".part");val identity=File(target.path+".part.identity")
         val validator=File(target.path+".part.validator")
         val seal=File(target.path+".part.sha256")
-        for(file in listOf(target,part,identity,validator,seal))require(!Files.isSymbolicLink(file.toPath())){"İndirme yolu symlink olamaz."}
+        val checkpoint=File(part.path+".checkpoint")
+        for(file in listOf(target,part,identity,validator,seal,checkpoint,File(checkpoint.path+".tmp")))require(!Files.isSymbolicLink(file.toPath())){"İndirme yolu symlink olamaz."}
         if(target.isFile && target.length()<=maxBytes && sha(target)==expected)return
-        val sourceIdentity="$url\n$expected"
-        if(!identity.isFile || identity.readText()!=sourceIdentity){part.delete();validator.delete();seal.delete();identity.writeText(sourceIdentity)}
+        val sourceHash=MessageDigest.getInstance("SHA-256").digest(url.toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it)}
+        val sourceIdentity="$sourceHash\n$expected"
+        require(!identity.isFile || identity.length()<=4096){"Kısmi kimlik kaydı boyut sınırı"}
+        val legacyIdentity=identity.isFile && identity.length()<=4096 && identity.readText()=="$url\n$expected"
+        if(legacyIdentity)identity.writeText(sourceIdentity) // V4 sidecar migration; no URL retained
+        if(!identity.isFile || identity.readText()!=sourceIdentity){part.delete();validator.delete();seal.delete();checkpoint.delete();identity.writeText(sourceIdentity)}
+        if(part.isFile && (!seal.isFile || seal.length()!=64L || seal.readText()!=sha(part))) {
+            DownloadPartialCheckpoint.recover(part,sourceHash,expected,maxBytes,trim=true)?.let{seal.writeText(sha(part))}
+        }
+        if(part.isFile && !seal.isFile && !legacyIdentity && sha(part)!=expected) {
+            part.delete();validator.delete();checkpoint.delete()
+        }
         if(seal.isFile && (seal.length()!=64L || !part.isFile || seal.readText()!=sha(part))) {
             part.delete();validator.delete();seal.delete()
         }
         if(part.isFile && part.length()<=maxBytes && sha(part)==expected) {
             progress(ModuleProgress(module,operation,ModulePhase.VERIFYING,part.length(),part.length(),detail="Tam kısmi dosya SHA-256 ile doğrulandı"))
             Files.move(part.toPath(),target.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
-            identity.delete();validator.delete();seal.delete();seal.delete();return
+            identity.delete();validator.delete();seal.delete();checkpoint.delete();checkpoint.delete();return
         }
         var offset=if(part.isFile)part.length() else 0L
         require(offset<=maxBytes){"Kısmi dosya boyut sınırını aşıyor."}
         val previousValidator=validator.takeIf{it.isFile && it.length()<=512}?.readText()?.takeIf{it.isNotBlank() && !it.contains('\r') && !it.contains('\n')}
         if(canceled())throw java.util.concurrent.CancellationException("İndirme iptal edildi")
+        DownloadNetwork.check(requestPolicy)
         val connection=open(address)
         try {
             connection.connectTimeout=20000;connection.readTimeout=20000;connection.instanceFollowRedirects=false
@@ -119,16 +137,27 @@ internal object VerifiedModuleDownload {
             total?.let{require(it<=maxBytes && availableBytes(parent)>it-offset+64L*1024*1024)}
             val start=clock();val meter=DownloadMeasurement(module,operation,start,offset)
             progress(meter.sample(offset,total,start))
-            var bytes=offset;var reported=start
+            var bytes=offset;var reported=start;var checkpointBytes=offset;var checkpointAt=start
+            val prefixDigest=MessageDigest.getInstance("SHA-256")
+            if(offset>0)part.inputStream().use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;prefixDigest.update(b,0,n)}}
             connection.inputStream.use{input->java.io.FileOutputStream(part,offset>0).use{out->
                 val b=ByteArray(65536)
                 while(true) {
                     if(canceled())throw java.util.concurrent.CancellationException("İndirme iptal edildi")
+                    DownloadNetwork.check(requestPolicy)
                     val n=input.read(b);if(n<0)break
                     bytes+=n;require(bytes<=maxBytes && (total==null||bytes<=total!!)){"İndirme boyutu sınırı"}
                     require(availableBytes(parent)>n+64L*1024*1024){"Yetersiz depolama; çalışan hedef korunur."}
-                    out.write(b,0,n)
-                    val now=clock();if(now-reported>=250){progress(meter.sample(bytes,total,now));reported=now}
+                    out.write(b,0,n);prefixDigest.update(b,0,n)
+                    val now=clock()
+                    if(checkpointBytes==offset || bytes-checkpointBytes>=8L*1024*1024 || now-checkpointAt>=1500) {
+                        out.fd.sync()
+                        val digest=runCatching{(prefixDigest.clone() as MessageDigest).digest().joinToString(""){"%02x".format(it)}}.getOrElse{sha(part)}
+                        DownloadPartialCheckpoint.write(part,bytes,digest,sourceHash,expected)
+                        DownloadCoordinator.prefixCheckpoint(operation,expected,bytes)
+                        checkpointBytes=bytes;checkpointAt=now
+                    }
+                    if(now-reported>=250){progress(meter.sample(bytes,total,now));reported=now}
                 }
                 out.fd.sync()
             }}
@@ -137,9 +166,9 @@ internal object VerifiedModuleDownload {
             progress(ModuleProgress(module,operation,ModulePhase.VERIFYING,bytes,total,detail="SHA-256 doğrulanıyor"))
             if(sha(part)!=expected){part.delete();identity.delete();validator.delete();error("SHA-256 uyuşmazlığı; paket kurulmadı.")}
             Files.move(part.toPath(),target.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
-            identity.delete();validator.delete();seal.delete()
+            identity.delete();validator.delete();seal.delete();checkpoint.delete()
         } finally {
-            connection.disconnect()
+            connection.disconnect();DownloadNetwork.release(connection)
             // A persistent prefix digest detects damage before the next Range request. It is not a READY receipt.
             if(part.isFile && part.length()<=maxBytes) {
                 val pending=File(seal.path+".new")

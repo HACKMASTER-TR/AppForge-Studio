@@ -24,6 +24,8 @@ internal object ModuleInstallOperations {
     private var journal:ModuleOperationJournal?=null
     @Synchronized fun restore(context:android.content.Context) {
         if(journal!=null)return
+        DownloadNetwork.configure(context)
+        DownloadCoordinator.configure(PersistentDownloads(java.io.File(context.noBackupFilesDir,"downloads-v5"),mapOf("private" to context.noBackupFilesDir,"files" to context.filesDir,"cache" to context.cacheDir)))
         journal=ModuleOperationJournal(java.io.File(context.noBackupFilesDir,"offline-module-v3/operation.json"))
         updates.value=journal!!.restore()
     }
@@ -39,10 +41,10 @@ internal object ModuleInstallOperations {
     private var downloadControl=DownloadControl()
     @Synchronized fun start(context:android.content.Context, selected:OfflineModuleId, consent:Boolean) {
         if(busy.value)return
-        restore(context)
+        try{restore(context)}catch(e:Exception){journalError.value="İndirme kaydı reddedildi; kurulum başlamadı: ${e.message}";DownloadNetwork.restorePreference();return}
         busy.value=true;pauseRequested=false;downloadControl=DownloadControl();stopPending.value=false
         try {ModuleDownloadService.start(context.applicationContext)}catch(e:RuntimeException) {
-            busy.value=false
+            busy.value=false;DownloadNetwork.restorePreference()
             updates.value=updates.value+(selected to ModuleProgress(selected,"start-denied",ModulePhase.ERROR,detail="Android arka plan hizmetini başlatmadı; uygulama önplandayken yeniden deneyin."))
             runCatching{persist()};return
         }
@@ -87,12 +89,12 @@ internal object ModuleInstallOperations {
                     }
                 }
             } catch(e:CancellationException) {
-                updates.value=updates.value+(selected to ModuleProgress(selected,"canceled",if(pauseRequested)ModulePhase.PAUSED else ModulePhase.CANCELED,detail=if(pauseRequested)"Duraklatıldı; doğrulanmamış kısmi dosya devam için korunur." else "İptal edildi; çalışan modüller korunur."))
+                updates.value=updates.value+(selected to ModuleProgress(selected,"canceled",if(e is DownloadNetwork.PolicyBlocked)ModulePhase.WAITING_CONNECTION else if(pauseRequested)ModulePhase.PAUSED else ModulePhase.CANCELED,errorCode=if(e is DownloadNetwork.PolicyBlocked)"NETWORK_POLICY" else null,detail=if(e is DownloadNetwork.PolicyBlocked)"Ağ politikası/onay bekleniyor; kısmi dosya korunur. Devam et ile tekrar doğrulayın." else if(pauseRequested)"Duraklatıldı; doğrulanmamış kısmi dosya devam için korunur." else "İptal edildi; çalışan modüller korunur."))
             } catch(e:Exception) {
                 // Preserve the manager's connection-wait/error state for this operation.
                 if(updates.value[selected]?.phase !in setOf(ModulePhase.WAITING_CONNECTION,ModulePhase.ERROR))
                 updates.value=updates.value+(selected to ModuleProgress(selected,"failed",ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail=e.message?:"Kurulum başarısız."))
-            } finally {stalledWatch.cancel();try{runCatching{persist()}}finally{activeProgress.value=null;busy.value=false}}
+            } finally {stalledWatch.cancel();try{runCatching{persist()}}finally{activeProgress.value=null;busy.value=false;DownloadNetwork.restorePreference()}}
         }
     }
     @Synchronized fun lifecycle(context:android.content.Context,id:OfflineModuleId,action:String) {
@@ -131,6 +133,12 @@ internal object ModuleInstallOperations {
     val events by ModuleInstallOperations.updates.collectAsState()
     val busy by ModuleInstallOperations.busy.collectAsState()
     val stopPending by ModuleInstallOperations.stopPending.collectAsState()
+    val artifacts by DownloadCoordinator.records.collectAsState()
+    val networkStatus by DownloadNetwork.status.collectAsState()
+    val preparing by ProjectDependencyPreparation.busy.collectAsState()
+    var networkPolicy by remember{mutableStateOf(DownloadNetwork.policy)}
+    var confirmAnyNetwork by remember{mutableStateOf(false)}
+    var mobileModule by remember{mutableStateOf<OfflineModuleId?>(null)}
     val usageRevision by BuildModuleUsage.changes.collectAsState()
     var recovered by remember{mutableStateOf(false)}
     var aptStates by remember{mutableStateOf<Map<OfflineModuleId,String>>(emptyMap())}
@@ -148,7 +156,7 @@ internal object ModuleInstallOperations {
     var installedVersions by remember{mutableStateOf<Map<OfflineModuleId,String?>>(emptyMap())}
     val plan=remember(project){project?.let{OfflineModules.forProject(it)}}
     val readinessChanges=events.mapValues{it.value.phase==ModulePhase.READY}
-    LaunchedEffect(Unit){withContext(Dispatchers.IO){ModuleInstallOperations.restore(context);runCatching{OfflineBuildPackManager.recoverPending(context)}.onFailure{detail="Kurtarma güvenli biçimde durdu: ${it.message}"}};recovered=true}
+    LaunchedEffect(Unit){withContext(Dispatchers.IO){runCatching{ModuleInstallOperations.restore(context)}.onFailure{detail="İndirme günlüğü reddedildi: ${it.message}"};runCatching{OfflineBuildPackManager.recoverPending(context)}.onFailure{detail="Kurtarma güvenli biçimde durdu: ${it.message}"}};recovered=true}
     LaunchedEffect(readinessChanges,busy,usageRevision,recovered){
         if(!recovered)return@LaunchedEffect
         val cleanup=withContext(Dispatchers.IO){runCatching{OfflineBuildPackManager.prunableSnapshotBytes(context)}}
@@ -161,8 +169,16 @@ internal object ModuleInstallOperations {
 ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (OfflineBuildPackManager.moduleReady(context,it.id) && !OfflineBuildPackManager.hasPendingLifecycle(context,it.id))}}
     }
     fun begin(id:OfflineModuleId) {
+        if(DownloadNetwork.policy==DownloadNetworkPolicy.WIFI_PREFERRED && !DownloadNetwork.allowed()){mobileModule=id;return}
         ModuleInstallOperations.start(context,id,sdkConsent)
     }
+    if(confirmAnyNetwork || mobileModule!=null)AlertDialog(onDismissRequest={confirmAnyNetwork=false;mobileModule=null},title={Text("Mobil veri kullanım onayı")},text={
+        Text("Mobil veri ve ölçümlü bağlantı kullanılabilir. Toplam kalan boyut bilinmiyor; yeni alt bağımlılıklar gerekebilir. Dosya bazındaki doğrulanmış miktarlar indirme geçmişinde gösterilir.")
+    },confirmButton={TextButton(enabled=!busy && !preparing,onClick={
+        val id=mobileModule;mobileModule=null;confirmAnyNetwork=false
+        if(id!=null){DownloadNetwork.allowMobileOnce();ModuleInstallOperations.start(context,id,sdkConsent)}
+        else {networkPolicy=DownloadNetworkPolicy.ALLOW_ANY;DownloadNetwork.select(networkPolicy)}
+    }){Text(if(mobileModule!=null)"Yalnız bu işlem için izin ver" else "Bu ağ tercihini kaydet")}},dismissButton={TextButton(onClick={confirmAnyNetwork=false;mobileModule=null}){Text("Reddet; kaydı koru")}})
     pendingLifecycle?.let{(id,action)->
         val permission=if(action=="remove")lifecycleStates[id]?.remove else lifecycleStates[id]?.rollback
         AlertDialog(onDismissRequest={pendingLifecycle=null},title={Text(if(action=="remove")"Modülü kaldırmayı onayla" else "Önceki sürüme dönmeyi onayla")},
@@ -182,6 +198,33 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
     }
     Scaffold(topBar={TopAppBar(title={Text("Modüler Çevrimdışı Derleme V3")},navigationIcon={TextButton(onClick=onBack){Text("Geri")}})}){padding->
         LazyColumn(modifier=Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text("İndirme ağı",style=MaterialTheme.typography.titleMedium);Text(networkStatus)
+                for(policy in DownloadNetworkPolicy.entries)OutlinedButton(enabled=!busy && !preparing,onClick={if(policy==DownloadNetworkPolicy.ALLOW_ANY)confirmAnyNetwork=true else {networkPolicy=policy;DownloadNetwork.select(policy)}}){Text(when(policy){DownloadNetworkPolicy.WIFI_ONLY->"Yalnız Wi-Fi";DownloadNetworkPolicy.WIFI_PREFERRED->"Wi-Fi tercih et; mobil veri için onay iste";DownloadNetworkPolicy.ALLOW_ANY->"Wi-Fi ve mobil veriye izin ver"})}
+                Text("Etkin: ${DownloadNetwork.policy}. VPN veya ölçümlü Wi-Fi, kısıtlı politikada engellenir. Dış paket yöneticilerinde ağ geçişi kısıtı garanti edilemediğinden açık ağ izni gerekir.")
+            }}}
+            items(artifacts.takeLast(32).reversed(),key={"artifact-"+it.operationId+it.artifactId}){record->
+                Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                    Text(OfflineModules.spec(record.moduleId).title,style=MaterialTheme.typography.titleMedium)
+                    Text("Dosya: ${record.artifactId.take(16)} • ${record.downloadState}")
+                    val live=DownloadCoordinator.snapshot(record.operationId).firstOrNull{it.artifactId==record.artifactId}?.progress?.takeIf{busy || preparing}
+                    live?.let{event->
+                        Text("${event.bytesDownloaded/1024/1024} MiB / "+(event.bytesTotal?.let{"${it/1024/1024} MiB • %${event.percent}"}?:"Boyut bilinmiyor"))
+                        Text("Hız: "+(event.speedBytesPerSecond?.let{"%.1f MiB/sn".format(it/1024/1024)}?:"Hesaplanıyor")+" • Kalan: "+(event.estimatedRemainingMs?.let{"${it/1000} sn"}?:"Hesaplanıyor"))
+                    }
+
+                    Text("${record.verifiedPartialBytes/1024/1024} MiB doğrulanmış kısmi / "+(record.expectedBytes?.let{"${it/1024/1024} MiB"}?:"Boyut bilinmiyor"))
+                    Text("Ağ: ${record.networkPolicy} • ${record.resumeCapability} • ${record.verificationState} • retry ${record.retryCount}")
+                    record.failureReason?.let{Text("Hata: $it")}
+                    if(ready[record.moduleId]==true)Text("Modül bağımsız bütünlük kontrolüyle hazır; tarihî dosya kaydı kurulum kanıtı değildir.")
+                    if(record.downloadState==DownloadState.COMPLETED)Text("Dosya SHA-256 ile tamamlandı; modülün Hazır kontrolü ayrıdır.")
+                    else {
+                        Button(enabled=!busy && !preparing && record.stagingIdentity!=null && ready[record.moduleId]!=true,onClick={chosen=record.moduleId}){Text(if(record.downloadState==DownloadState.PAUSED)"Devam et • onayla" else "Güvenli yeniden dene • onayla")}
+                        if(record.stagingIdentity==null)Text("Paket yöneticisi kaydı: aynı projeden tekrar açık kod çalıştırma onayı gerekir; dosya düzeyinde devam sunulmaz.")
+                        OutlinedButton(enabled=!busy && !preparing && record.downloadState!=DownloadState.CANCELLED,onClick={scope.launch{runCatching{withContext(Dispatchers.IO){DownloadCoordinator.cancelRecord(record.operationId,record.artifactId)}}.onFailure{detail=it.message?:"Kayıt güncellenemedi"}}}){Text("Geçmiş kaydını iptal et • dosyaları koru")}
+                    }
+                }}
+            }
             item { Text("İlk açılışta araç indirme zorunluluğu yok. Fast HTML gömülüdür. Yalnız seçtiğiniz motorun araçlarını kurun.") }
             item { Text("Boş alan: ${context.noBackupFilesDir.usableSpace/1024/1024} MiB. APT/Gradle/npm toplamları proje ve mimariye bağlıdır; doğrulanmış toplam yoksa yüzde gösterilmez.") }
             plan?.let{p->item{Text(p.error?:"Bu proje için: "+p.modules.joinToString{OfflineModules.spec(it).title})}}

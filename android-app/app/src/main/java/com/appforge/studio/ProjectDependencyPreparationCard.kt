@@ -21,7 +21,7 @@ import kotlinx.coroutines.*
     if(confirmation!=null)AlertDialog(onDismissRequest={confirmation=null},title={Text("Proje kodunu çalıştırma onayı")},text={Column {
         Text("Kaynak projenin build/lifecycle kodu çalışacak. Hazırlık internet kullanabilir. Doğrulama için ağların kapalı olması gerekir. Yalnız güvendiğiniz kaynakla devam edin; Proot bir güvenlik sandbox'ı değildir.")
         Row{Checkbox(trusted,{trusted=it});Text("Bu kaynak koduna güveniyorum ve bu çalıştırmayı onaylıyorum")}
-    }},confirmButton={TextButton(enabled=trusted && !busy,onClick={val offline=confirmation!!;confirmation=null;ProjectDependencyPreparation.start(context,draft,true,offline);trusted=false}){Text("Onayla ve çalıştır")}},dismissButton={TextButton(onClick={confirmation=null}){Text("Vazgeç")}})
+    }},confirmButton={TextButton(enabled=trusted && !busy,onClick={val offline=confirmation!!;confirmation=null;runCatching{ProjectDependencyPreparation.start(context,draft,true,offline)}.onFailure{info=it.message?:"Hazırlık engellendi"};trusted=false}){Text("Onayla ve çalıştır")}},dismissButton={TextButton(onClick={confirmation=null}){Text("Vazgeç")}})
     Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Text("Proje bağımlılıklarını hazırla",style=MaterialTheme.typography.titleMedium)
         Text("Araç paketi hazır olması proje cache'i hazır demek değildir.")
@@ -42,6 +42,6 @@ import kotlinx.coroutines.*
                 Text("Ortalama: "+(e.averageSpeedBytesPerSecond?.let{"%.1f MiB/sn".format(it/1024/1024)}?:"Hesaplanıyor"))
                 Text("Kalan: "+(e.estimatedRemainingMs?.let{"${it/1000} sn"}?:"Hesaplanıyor")+" • ${e.elapsedMs/1000} sn geçti")
             }?:LinearProgressIndicator(Modifier.fillMaxWidth())
-OutlinedButton(onClick={ProjectDependencyPreparation.cancel()}){Text("Hazırlığı iptal et")}}
+OutlinedButton(enabled=!ProjectDependencyPreparation.stopPending.value,onClick={ProjectDependencyPreparation.pause()}){Text("Kontrol noktasında duraklat")};OutlinedButton(enabled=!ProjectDependencyPreparation.stopPending.value,onClick={ProjectDependencyPreparation.cancel()}){Text("İptal iste; çalışan komutu bitir")}}
     }}
 }
