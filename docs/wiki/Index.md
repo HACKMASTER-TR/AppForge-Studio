@@ -64,3 +64,5 @@ source_files: []
 - [[Device_Build_Runtime_V3]]
 - [[Windows_Output_Artifact_Flow_V2]]
 - [[Release_Integration_V1]]
+
+- [[APT_Snapshot_Offline_Toolchain]] — pinned Ubuntu APT, exact replay locks and safety limits.

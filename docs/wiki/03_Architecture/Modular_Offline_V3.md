@@ -282,3 +282,10 @@ Portable removal retains the exact verified host in a journaled private archive.
 It unregisters the module without claiming reclaimed storage. Foreign files and
 symlinks block removal. General lifecycle actions run in the existing application
 operation/service driver with explicit confirmation and persisted phases.
+
+## Pinned APT snapshot
+
+Managed APT now uses a fixed authenticated Ubuntu snapshot, a packaged per-module
+artifact allowlist, exact replay manifests and a separate package-download consent
+step. See [[APT_Snapshot_Offline_Toolchain]] for integrity, legacy migration blocks
+and host-versus-device acceptance boundaries.
