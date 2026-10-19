@@ -222,6 +222,7 @@ internal object OfflineBuildPackManager {
         control.checkpoint()
         require(selected.isNotEmpty()){ "Önce kurulacak modülü seçin." }
         val app=context.applicationContext
+        DownloadNetwork.configure(app);DownloadNetwork.prepareJournal()
         val plan=OfflineModules.resolve(selected)
         val operation=UUID.randomUUID().toString()
         if(plan.any{it !in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE)})require(DeviceBuildRuntimeV3.platformError()==null){DeviceBuildRuntimeV3.platformError()!!}
@@ -239,7 +240,10 @@ internal object OfflineBuildPackManager {
         require(app.noBackupFilesDir.usableSpace>minimum+256L*1024*1024){"Kurulum için yeterli boş alan yok."}
         val workspace=File(app.cacheDir,"offline-module-v3/${UUID.randomUUID()}").apply{mkdirs()}
         var active=pending.first()
-        fun phase(id:OfflineModuleId,p:ModulePhase,detail:String)=progress(ModuleProgress(id,operation,p,detail=detail))
+        fun phase(id:OfflineModuleId,p:ModulePhase,detail:String) {
+            val event=ModuleProgress(id,operation,p,detail=detail)
+            DownloadCoordinator.modulePhase(event);progress(event)
+        }
         try {
             phase(active,ModulePhase.RESOLVING,"Yalnız gerekli modüller: "+pending.joinToString{OfflineModules.spec(it).title})
             if(OfflineModuleId.WINDOWS_PORTABLE in pending) {
@@ -263,8 +267,10 @@ internal object OfflineBuildPackManager {
                 phase(OfflineModuleId.LINUX_RUNTIME,ModulePhase.INSTALLING,"Ortak Linux ortamı hazırlanıyor; toplam boyut henüz bilinmiyor.")
                 var rootMeter:DownloadMeasurement?=null
                 var rootReported=0L
+                var adoptedRootOperation:String?=null
                 val root=DeviceBuildRuntimeV3.ensureReady(app,onBytes=rootBytes@{e->
                     e.transfer?.let { transfer ->
+                        if(adoptedRootOperation!=transfer.operationId){DownloadCoordinator.adoptArtifacts(transfer.operationId,operation,OfflineModuleId.LINUX_RUNTIME);adoptedRootOperation=transfer.operationId}
                         if(transfer.phase==ModulePhase.DOWNLOADING)control.checkpoint()
                         progress(transfer.copy(operationId=operation));return@rootBytes
                     }

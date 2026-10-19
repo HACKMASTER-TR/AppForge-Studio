@@ -39,7 +39,7 @@ internal object VerifiedModuleDownload {
                     DownloadNetwork.withPolicy(requestPolicy){transfer(url,expected,target,module,operation,canceled,clock,{address->DownloadNetwork.check(requestPolicy);open(address)},report,availableBytes,maxBytes,requestPolicy)}
                     val last=DownloadCoordinator.snapshot(operation).lastOrNull{it.artifactId==expected && it.sourceIdentity==identity}
                     DownloadCoordinator.observe(DownloadCoordinator.Transfer(expected,expected,identity,
-                        last?.progress?.copy(phase=ModulePhase.PREPARING)?:ModuleProgress(module,operation,ModulePhase.PREPARING),
+                        last?.progress?.copy(phase=ModulePhase.PREPARING,bytesDownloaded=target.length(),bytesTotal=target.length())?:ModuleProgress(module,operation,ModulePhase.PREPARING,bytesDownloaded=target.length(),bytesTotal=target.length()),
                         DownloadCoordinator.ResumeCapability.VERIFIED_HTTP_RANGE,verificationStatus="SHA256_VERIFIED"))
                     return
                 }

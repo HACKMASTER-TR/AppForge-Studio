@@ -37,6 +37,8 @@ internal object ProjectDependencyPreparation {
         try{ModuleDownloadService.start(context.applicationContext)}catch(e:RuntimeException){busy.value=false;status.value="Android veri aktarım servisini başlatmadı; işlem başlamadı.";return}
         job=scope.launch {
             val preparationJob=currentCoroutineContext()[Job]!!
+            val graphOperation="project-"+java.util.UUID.randomUUID().toString()
+            fun phase(p:ModulePhase){DownloadCoordinator.modulePhase(ModuleProgress(OfflineModuleId.ANDROID_CORE,graphOperation,p))}
             var permit:BuildModuleUsage.PreparationPermit?=null
             var buildId:String?=null
             var generation:RuntimeGenerationStore.Prepared?=null
@@ -45,6 +47,7 @@ internal object ProjectDependencyPreparation {
             val connectivity=context.getSystemService(ConnectivityManager::class.java)
             val networkSeen=AtomicBoolean(false)
             try {
+                phase(ModulePhase.RESOLVING)
                 val plan=ProjectDependencyEvidence.analyze(draft)
                 require(plan.blockers.isEmpty()){plan.blockers.joinToString("\n")}
                 require(!FastHtmlApkPolicy.isCandidate(draft)){"Fast HTML ek proje bağımlılığı gerektirmez."}
@@ -65,17 +68,19 @@ internal object ProjectDependencyPreparation {
                 generation=RuntimeGenerationStore(activeRoot).prepareOwner("PROJECT_PREPARATION",canceled={if(!preparationJob.isActive)throw CancellationException("İptal edildi")})
                 status.value=if(offlineVerification)"Gerçek bağlantısız build çalışıyor; kaynak ve cache yeniden doğrulanacak." else "Onaylı proje build/lifecycle kodu çalışıyor; bağımlılıklar hazırlanıyor. Boyut bilinmiyor."
                 val runDraft=draft.copy(importedFolder=reviewedSource!!.path,allowDependencyDownloads=!offlineVerification,signingMode=SigningMode.DEBUG,keystoreUri=null,storePassword="",keyPassword="",keyAlias="")
+                phase(if(offlineVerification)ModulePhase.OFFLINE_TEST else ModulePhase.PREPARING)
                 buildId=DeviceBuildEngine.start(context,runDraft,null,permit,generation!!.root).id
                 var channels:ExternalTelemetryChannels?=null
                 var lastTelemetryAt=android.os.SystemClock.elapsedRealtime()
                 while(DeviceBuildEngine.isExecuting(buildId!!)){
-                    DeviceBuildEngine.transferFile(buildId!!)?.let{file->if(channels==null)channels=ExternalTelemetryChannels(file,OfflineModuleId.ANDROID_CORE,"project-$buildId");channels!!.poll(android.os.SystemClock.elapsedRealtime()).forEach{lastTelemetryAt=android.os.SystemClock.elapsedRealtime();transfer.value=it}}
+                    DeviceBuildEngine.transferFile(buildId!!)?.let{file->if(channels==null)channels=ExternalTelemetryChannels(file,OfflineModuleId.ANDROID_CORE,graphOperation);channels!!.poll(android.os.SystemClock.elapsedRealtime()).forEach{lastTelemetryAt=android.os.SystemClock.elapsedRealtime();transfer.value=it}}
                     transfer.value?.let{transfer.value=DownloadCoordinator.withoutStaleRates(it,android.os.SystemClock.elapsedRealtime()-lastTelemetryAt)}
 currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!!.allNetworks.isNotEmpty()){networkSeen.set(true);DeviceBuildEngine.cancel(buildId!!)};delay(500)}
                 control.checkpoint()
                 val result=DeviceBuildEngine.snapshot(buildId!!)?:error("Build sonucu yok")
                 require(result.status=="success"){"Proje derlemesi başarısız: "+result.logs.takeLast(8).joinToString("\n").take(2000)}
                 require(!offlineVerification || !networkSeen.get()){"Doğrulama sırasında ağ açıldı; offline hazır kaydı yazılmadı."}
+                phase(ModulePhase.VERIFYING)
                 val after=ProjectDependencyEvidence.analyze(draft);require(after.fingerprint==plan.fingerprint){"Hazırlama sırasında proje değişti; sonuç geçersiz."}
                 OfflineBuildPackManager.verifyProtectedTools(generation!!.root,protected)
                 require(AndroidRuntimeTrust.ready(generation!!.root)){"Proje TLS veya depo yapılandırmasını değiştirdi; çevrimdışı hazır kaydı yazılmadı."}
@@ -87,9 +92,11 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
                 require(!offlineVerification || !networkSeen.get()){"Ağ doğrulama bitmeden açıldı; hazır kaydı yayımlanmadı."}
                 java.nio.file.Files.move(candidate.toPath(),receipt(context,plan).toPath(),java.nio.file.StandardCopyOption.ATOMIC_MOVE,java.nio.file.StandardCopyOption.REPLACE_EXISTING)
                 if(offlineVerification)check(ready(context,plan)){"Cache bütünlüğü doğrulanamadı."}
+                // Online preparation never claims the offline-probe/READY stage.
+                phase(if(offlineVerification)ModulePhase.READY else ModulePhase.PREPARING)
                 status.value=if(offlineVerification)"Proje çevrimdışı build ile doğrulandı; kaynak/cache değişirse hazır kaydı geçersizleşir." else "Online hazırlık bitti; çevrimdışı hazır değil. Ağları kapatıp açık onayla doğrulayın."
-            }catch(e:CancellationException){status.value="Proje hazırlığı iptal edildi; cache hazır kabul edilmez.";throw e}
-            catch(e:Exception){status.value="Hazırlama engellendi: ${e.message}"}
+            }catch(e:CancellationException){phase(ModulePhase.PAUSED);status.value="Proje hazırlığı iptal edildi; cache hazır kabul edilmez.";throw e}
+            catch(e:Exception){phase(ModulePhase.ERROR);status.value="Hazırlama engellendi: ${e.message}"}
             finally {
                 callback?.let{runCatching{connectivity?.unregisterNetworkCallback(it)}}
                 withContext(NonCancellable){

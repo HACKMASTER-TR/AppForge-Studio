@@ -14,11 +14,86 @@ internal object DownloadCoordinator {
         else progress
     val records=kotlinx.coroutines.flow.MutableStateFlow<List<ArtifactDownloadRecord>>(emptyList())
     private var journal:PersistentDownloads?=null
+    val operations=kotlinx.coroutines.flow.MutableStateFlow<List<DownloadOperationNode>>(emptyList())
+    private fun saveGraph(rows:List<DownloadOperationNode>) {
+        val store=journal?:return
+        store.operationGraph().save(rows);operations.value=rows
+    }
+    private fun upsertGraph(node:DownloadOperationNode) {
+        saveGraph(operations.value.filterNot{it.operationId==node.operationId}+node)
+    }
+    private fun ensureModule(operation:String,module:OfflineModuleId):String {
+        val id=PersistentOperationGraph.moduleId(operation,module)
+        if(operations.value.none{it.operationId==id}) {
+            val now=System.currentTimeMillis()
+            upsertGraph(DownloadOperationNode(id,null,module,OperationStage.MODULE,DownloadState.QUEUED,DownloadNetwork.policy,now,now))
+        }
+        return id
+    }
+    /** Phase events come from the real driver. READY is only a historical observation. */
+    @Synchronized fun modulePhase(event:ModuleProgress) {
+        if(journal==null)return
+        val parent=ensureModule(event.operationId,event.moduleId)
+        val stage=when(event.phase){
+            ModulePhase.RESOLVING->OperationStage.DEPENDENCY_RESOLUTION
+            ModulePhase.VERIFYING->OperationStage.INTEGRITY_VERIFICATION
+            ModulePhase.EXTRACTING,ModulePhase.PREPARING->OperationStage.CACHE_PREPARATION
+            ModulePhase.INSTALLING->OperationStage.INSTALLATION
+            ModulePhase.OFFLINE_TEST->OperationStage.OFFLINE_PROBE
+            else->OperationStage.MODULE
+        }
+        val state=when(event.phase){
+            ModulePhase.READY->DownloadState.COMPLETED
+            ModulePhase.ERROR->DownloadState.FAILED
+            ModulePhase.CANCELED->DownloadState.CANCELLED
+            ModulePhase.PAUSED->DownloadState.PAUSED
+            ModulePhase.WAITING_CONNECTION,ModulePhase.RECONNECTING->DownloadState.WAITING_FOR_NETWORK
+            ModulePhase.AWAITING_CONSENT->DownloadState.WAITING_FOR_CONSENT
+            ModulePhase.INSTALLING->DownloadState.INSTALLING
+            ModulePhase.DOWNLOADING->DownloadState.DOWNLOADING
+            else->DownloadState.PREPARING
+        }
+        val root=operations.value.single{it.operationId==parent}
+        val now=maxOf(System.currentTimeMillis(),root.updatedAt)
+        upsertGraph(root.copy(operationState=state,updatedAt=now,failureReason=if(state==DownloadState.FAILED)"DRIVER_FAILED" else null))
+        if(stage!=OperationStage.MODULE) {
+            val id=PersistentOperationGraph.id(parent,stage.name)
+            val old=operations.value.firstOrNull{it.operationId==id}
+            upsertGraph(DownloadOperationNode(id,parent,event.moduleId,stage,state,root.networkPolicy,old?.createdAt?:now,now))
+        }
+    }
+    private val operationParents=mutableMapOf<String,String>()
+    @Synchronized fun adoptArtifacts(childOperation:String,parentOperation:String,module:OfflineModuleId) {
+        if(journal==null || childOperation==parentOperation)return
+        val parent=ensureModule(parentOperation,module)
+        val key=childOperation+":"+module.name
+        val previous=operationParents[key];require(previous==null || previous==parentOperation)
+        operationParents[key]=parentOperation
+        val rows=records.value.map{if(it.operationId==childOperation && it.moduleId==module)it.copy(parentOperationId=parent)else it}
+        journal!!.save(rows);records.value=rows
+        rows.filter{it.operationId==childOperation && it.moduleId==module}.forEach(::syncArtifact)
+    }
+    @Synchronized fun reconcileModules(events:Map<OfflineModuleId,ModuleProgress>) {
+        if(journal==null)return
+        // Module and artifact files are independently atomic, never a single transaction.
+        // Reopening always requires real module validation and explicit source re-authorization.
+        for((module,event) in events) {
+            val parent=ensureModule(event.operationId,module)
+            val old=operations.value.single{it.operationId==parent}
+            upsertGraph(old.copy(operationState=DownloadState.RECOVERY_REQUIRED,updatedAt=maxOf(old.updatedAt,System.currentTimeMillis()),failureReason="MODULE_JOURNAL_RECONCILIATION"))
+        }
+    }
+    private fun syncArtifact(row:ArtifactDownloadRecord) {
+        val parent=row.parentOperationId?:ensureModule(row.operationId,row.moduleId)
+        if(operations.value.none{it.operationId==parent})ensureModule(row.operationId,row.moduleId)
+        upsertGraph(journal!!.operationGraph().artifact(row,parent))
+    }
     private val retryCounts=mutableMapOf<String,Int>()
     private val targets=mutableMapOf<String,String>()
     @Synchronized fun configure(store:PersistentDownloads) {
         if(journal!=null)return
-        val recovered=store.recover();records.value=recovered;journal=store
+        val recovered=store.recover();val tree=store.operationGraph().recover(recovered)
+        records.value=recovered;operations.value=tree;journal=store
     }
     @Synchronized fun bind(operation:String,artifact:String,target:java.io.File):Int {
         journal?.let{targets[operation+":"+artifact]=it.staging(target)}
@@ -30,15 +105,18 @@ internal object DownloadCoordinator {
         retryCounts[operation+":"+artifact]=count
         val rows=records.value.map{if(it.operationId==operation && it.artifactId==artifact)it.copy(retryCount=count,updatedAt=System.currentTimeMillis())else it}
         journal?.save(rows);records.value=rows
+        rows.filter{it.operationId==operation && it.artifactId==artifact}.forEach{if(journal!=null)syncArtifact(it)}
     }
     @Synchronized fun prefixCheckpoint(operation:String,artifact:String,bytes:Long) {
-        val rows=records.value.map{if(it.operationId==operation && it.artifactId==artifact)it.copy(verifiedPartialBytes=bytes,verificationState="PREFIX_VERIFIED",updatedAt=maxOf(it.updatedAt,System.currentTimeMillis()))else it}
+        val rows=records.value.map{if(it.operationId==operation && it.artifactId==artifact)it.copy(downloadedBytes=maxOf(it.downloadedBytes,bytes),verifiedPartialBytes=bytes,verificationState="PREFIX_VERIFIED",updatedAt=maxOf(it.updatedAt,System.currentTimeMillis()))else it}
         journal?.save(rows);records.value=rows
+        rows.filter{it.operationId==operation && it.artifactId==artifact}.forEach{if(journal!=null)syncArtifact(it)}
     }
     @Synchronized fun cancelRecord(operation:String,artifact:String) {
         check(active.isEmpty()){"Aktif aktarımda uygulama kontrolünü kullanın."}
         val rows=records.value.map{if(it.operationId==operation && it.artifactId==artifact)it.copy(downloadState=DownloadState.CANCELLED,updatedAt=System.currentTimeMillis())else it}
         journal?.save(rows);records.value=rows
+        rows.filter{it.operationId==operation && it.artifactId==artifact}.forEach{if(journal!=null)syncArtifact(it)}
     }
     private var persistedAt=0L
     private fun persist(value:Transfer) {
@@ -64,10 +142,11 @@ internal object DownloadCoordinator {
         if(old?.downloadState==state && now-persistedAt<1000)return
         val bound=targets[p.operationId+":"+value.artifactId]
         // External observers have no pinned source identity; journal them as observation-only records.
-        val row=ArtifactDownloadRecord(p.operationId,p.moduleId,artifact,value.artifactVersion.takeIf{it.matches(Regex("[A-Za-z0-9._+-]{1,100}"))}?:"observed",source,if(bound!=null)artifact else null,p.bytesTotal?:old?.expectedBytes,minOf(old?.verifiedPartialBytes?:0,p.bytesDownloaded),state,value.resumeCapability,DownloadNetwork.policy,retryCounts[p.operationId+":"+artifact]?:old?.retryCount?:0,old?.createdAt?:now,now,if(value.verificationStatus=="SHA256_VERIFIED")"SHA256_VERIFIED" else "UNVERIFIED",bound,p.errorCode?.uppercase()?.replace(Regex("[^A-Z0-9_]"),"_")?.take(100))
+        val completedBytes=if(value.verificationStatus=="SHA256_VERIFIED" && bound!=null)p.bytesTotal?:old?.expectedBytes?:p.bytesDownloaded else p.bytesDownloaded
+        val row=ArtifactDownloadRecord(p.operationId,p.moduleId,artifact,value.artifactVersion.takeIf{it.matches(Regex("[A-Za-z0-9._+-]{1,100}"))}?:"observed",source,if(bound!=null)artifact else null,p.bytesTotal?:old?.expectedBytes,if(value.verificationStatus=="SHA256_VERIFIED")completedBytes else minOf(old?.verifiedPartialBytes?:0,p.bytesDownloaded),state,value.resumeCapability,DownloadNetwork.policy,retryCounts[p.operationId+":"+artifact]?:old?.retryCount?:0,old?.createdAt?:now,now,if(value.verificationStatus=="SHA256_VERIFIED")"SHA256_VERIFIED" else "UNVERIFIED",bound,p.errorCode?.uppercase()?.replace(Regex("[^A-Z0-9_]"),"_")?.take(100),PersistentOperationGraph.moduleId(operationParents[p.operationId+":"+p.moduleId.name]?:p.operationId,p.moduleId),completedBytes)
         val rows=records.value.filterNot{it.operationId==row.operationId && it.artifactId==row.artifactId}.toMutableList()
         if(rows.size>=128){val removable=rows.indexOfFirst{it.downloadState in setOf(DownloadState.COMPLETED,DownloadState.CANCELLED,DownloadState.FAILED)};check(removable>=0){"İndirme geçmişi dolu"};rows.removeAt(removable)}
-        rows.add(row);store.save(rows);records.value=rows;persistedAt=now
+        rows.add(row);store.save(rows);records.value=rows;syncArtifact(row);persistedAt=now
     }
     private val observedAt=mutableMapOf<String,Long>()
     private val transfers=linkedMapOf<String,Transfer>()

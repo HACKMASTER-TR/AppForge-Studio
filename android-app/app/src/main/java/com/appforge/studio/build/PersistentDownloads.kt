@@ -14,12 +14,14 @@ internal data class ArtifactDownloadRecord(
     val sourceIdentityHash:String,val expectedSha256:String?,val expectedBytes:Long?,val verifiedPartialBytes:Long,
     val downloadState:DownloadState,val resumeCapability:DownloadCoordinator.ResumeCapability,
     val networkPolicy:DownloadNetworkPolicy,val retryCount:Int,val createdAt:Long,val updatedAt:Long,
-    val verificationState:String,val stagingIdentity:String?,val failureReason:String?=null
+    val verificationState:String,val stagingIdentity:String?,val failureReason:String?=null,
+    val parentOperationId:String?=null,val downloadedBytes:Long=0
 )
 
 /** Private bounded journal. Records never authorize installation or contain executable source URLs. */
 internal class PersistentDownloads(private val directory:File,private val roots:Map<String,File>,private val availableBytes:(File)->Long={it.usableSpace}) {
     private val file=File(directory,"artifacts.json")
+    fun operationGraph()=PersistentOperationGraph(File(directory,"operations.json"))
     private fun safe(path:File) {
         var current:File?=path.absoluteFile
         while(current!=null){require(!Files.isSymbolicLink(current.toPath())){"İndirme kaydı/staging symlink olamaz."};current=current.parentFile}
@@ -40,6 +42,9 @@ internal class PersistentDownloads(private val directory:File,private val roots:
     }
     private fun validate(r:ArtifactDownloadRecord) {
         require(r.operationId.matches(Regex("[A-Za-z0-9_-]{1,100}")))
+        require(r.parentOperationId==null || r.parentOperationId.matches(Regex("[A-Za-z0-9_-]{1,100}")))
+        require(r.downloadedBytes in 0..(2L*1024*1024*1024))
+        require(r.expectedBytes==null || r.downloadedBytes<=r.expectedBytes)
         require(listOf(r.artifactId,r.sourceIdentityHash).all{it.matches(Regex("[a-f0-9]{64}"))})
         require(r.expectedSha256==null || r.expectedSha256.matches(Regex("[a-f0-9]{64}")))
         require(r.artifactVersion.matches(Regex("[A-Za-z0-9._+-]{1,100}")))
@@ -53,10 +58,10 @@ internal class PersistentDownloads(private val directory:File,private val roots:
     @Synchronized fun read():List<ArtifactDownloadRecord> {
         safe(file);if(!file.exists())return emptyList()
         require(file.isFile && file.length() in 1..262144){"Bozuk veya büyük indirme günlüğü"}
-        val json=JSONObject(file.readText());require(json.getInt("schema")==1){"Desteklenmeyen indirme günlüğü; otomatik migration yapılmadı."}
+        val json=JSONObject(file.readText());val schema=json.getInt("schema");require(schema in 1..2){"Desteklenmeyen indirme günlüğü."}
         val rows=json.getJSONArray("artifacts");require(rows.length()<=128)
         val result=(0 until rows.length()).map{n->val o=rows.getJSONObject(n)
-            ArtifactDownloadRecord(o.getString("operationId"),OfflineModuleId.valueOf(o.getString("moduleId")),o.getString("artifactId"),o.getString("artifactVersion"),o.getString("sourceIdentityHash"),o.optString("expectedSha256").takeIf{it.isNotBlank()},if(o.isNull("expectedBytes"))null else o.getLong("expectedBytes"),o.getLong("verifiedPartialBytes"),DownloadState.valueOf(o.getString("downloadState")),DownloadCoordinator.ResumeCapability.valueOf(o.getString("resumeCapability")),DownloadNetworkPolicy.valueOf(o.getString("networkPolicy")),o.getInt("retryCount"),o.getLong("createdAt"),o.getLong("updatedAt"),o.getString("verificationState"),o.optString("stagingIdentity").takeIf{it.isNotBlank()},o.optString("failureReason").takeIf{it.isNotBlank()}).also(::validate)
+            ArtifactDownloadRecord(o.getString("operationId"),OfflineModuleId.valueOf(o.getString("moduleId")),o.getString("artifactId"),o.getString("artifactVersion"),o.getString("sourceIdentityHash"),o.optString("expectedSha256").takeIf{it.isNotBlank()},if(o.isNull("expectedBytes"))null else o.getLong("expectedBytes"),o.getLong("verifiedPartialBytes"),DownloadState.valueOf(o.getString("downloadState")),DownloadCoordinator.ResumeCapability.valueOf(o.getString("resumeCapability")),DownloadNetworkPolicy.valueOf(o.getString("networkPolicy")),o.getInt("retryCount"),o.getLong("createdAt"),o.getLong("updatedAt"),o.getString("verificationState"),o.optString("stagingIdentity").takeIf{it.isNotBlank()},o.optString("failureReason").takeIf{it.isNotBlank()},if(schema==2)o.optString("parentOperationId").takeIf{it.isNotBlank()} else null,if(schema==2)o.getLong("downloadedBytes") else 0).also(::validate)
         }
         require(result.map{it.operationId+":"+it.artifactId}.distinct().size==result.size)
         return result
@@ -66,8 +71,8 @@ internal class PersistentDownloads(private val directory:File,private val roots:
         require(rows.map{it.operationId+":"+it.artifactId}.distinct().size==rows.size)
         safe(directory);directory.mkdirs();safe(file)
         val array=JSONArray()
-        rows.forEach{r->array.put(JSONObject().put("operationId",r.operationId).put("moduleId",r.moduleId.name).put("artifactId",r.artifactId).put("artifactVersion",r.artifactVersion).put("sourceIdentityHash",r.sourceIdentityHash).put("expectedSha256",r.expectedSha256?:"").put("expectedBytes",r.expectedBytes?:JSONObject.NULL).put("verifiedPartialBytes",r.verifiedPartialBytes).put("downloadState",r.downloadState.name).put("resumeCapability",r.resumeCapability.name).put("networkPolicy",r.networkPolicy.name).put("retryCount",r.retryCount).put("createdAt",r.createdAt).put("updatedAt",r.updatedAt).put("verificationState",r.verificationState).put("stagingIdentity",r.stagingIdentity?:"").put("failureReason",r.failureReason?:""))}
-        val bytes=JSONObject().put("schema",1).put("artifacts",array).toString().toByteArray(Charsets.UTF_8);require(bytes.size<=262144)
+        rows.forEach{r->array.put(JSONObject().put("operationId",r.operationId).put("moduleId",r.moduleId.name).put("artifactId",r.artifactId).put("artifactVersion",r.artifactVersion).put("sourceIdentityHash",r.sourceIdentityHash).put("expectedSha256",r.expectedSha256?:"").put("expectedBytes",r.expectedBytes?:JSONObject.NULL).put("verifiedPartialBytes",r.verifiedPartialBytes).put("downloadState",r.downloadState.name).put("resumeCapability",r.resumeCapability.name).put("networkPolicy",r.networkPolicy.name).put("retryCount",r.retryCount).put("createdAt",r.createdAt).put("updatedAt",r.updatedAt).put("verificationState",r.verificationState).put("stagingIdentity",r.stagingIdentity?:"").put("failureReason",r.failureReason?:"").put("parentOperationId",r.parentOperationId?:"").put("downloadedBytes",r.downloadedBytes))}
+        val bytes=JSONObject().put("schema",2).put("artifacts",array).toString().toByteArray(Charsets.UTF_8);require(bytes.size<=262144)
         require(availableBytes(directory)>bytes.size+65536L){"İndirme günlüğü için yetersiz alan; önceki kayıt korunur."}
         val part=File(file.path+".tmp");safe(part)
         FileOutputStream(part).use{it.write(bytes);it.fd.sync()}
@@ -91,6 +96,6 @@ internal class PersistentDownloads(private val directory:File,private val roots:
                 }
             }
         }
-        r.copy(downloadState=state,verifiedPartialBytes=bytes,verificationState=verification,updatedAt=maxOf(r.updatedAt,System.currentTimeMillis()))
+        r.copy(downloadState=state,downloadedBytes=bytes,verifiedPartialBytes=bytes,verificationState=verification,updatedAt=maxOf(r.updatedAt,System.currentTimeMillis()))
     }.also(::save)
 }

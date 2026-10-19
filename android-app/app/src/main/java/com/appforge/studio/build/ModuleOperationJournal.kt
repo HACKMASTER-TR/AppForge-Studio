@@ -8,7 +8,15 @@ import org.json.JSONObject
 
 /** Private, bounded operation metadata. No project, credential or SDK-consent state is persisted. */
 internal class ModuleOperationJournal(private val file:File) {
+    private fun requireReadable() {
+        var parent:File?=file.absoluteFile
+        while(parent!=null){require(!Files.isSymbolicLink(parent.toPath())){"Modül günlüğü symlink olamaz"};parent=parent.parentFile}
+        if(!file.exists())return
+        require(file.isFile && file.length() in 1..32768){"Bozuk modül günlüğü"}
+        val json=JSONObject(file.readText());require(json.getInt("schema")==1){"Tanınmayan modül günlüğü şeması"}
+    }
     @Synchronized fun save(events:Map<OfflineModuleId,ModuleProgress>) {
+        requireReadable()
         require(!Files.isSymbolicLink(file.toPath()))
         file.parentFile?.mkdirs()
         val previous=readBounded()
@@ -36,7 +44,11 @@ internal class ModuleOperationJournal(private val file:File) {
         val records=readBounded()?.optJSONArray("history")?:return emptyList()
         return ((records.length()-32).coerceAtLeast(0) until records.length()).mapNotNull{index->runCatching{val e=records.getJSONObject(index);e.getString("module").take(40)+" • "+e.getString("phase").take(40)+" • "+e.getString("detail").take(240)}.getOrNull()}
     }
-    @Synchronized fun restore():Map<OfflineModuleId,ModuleProgress> = runCatching {
+    /** Legacy read-only callers get no trusted state on corruption. Drivers must use restoreStrict. */
+    @Synchronized fun restore():Map<OfflineModuleId,ModuleProgress> = runCatching{restoreStrict()}.getOrDefault(emptyMap())
+    @Synchronized fun restoreStrict():Map<OfflineModuleId,ModuleProgress> {
+        requireReadable()
+        return runCatching {
         if(!file.isFile || file.length()>32768 || Files.isSymbolicLink(file.toPath()))return@runCatching emptyMap()
         val json=JSONObject(file.readText());require(json.getInt("schema")==1)
         buildMap {
@@ -50,5 +62,6 @@ internal class ModuleOperationJournal(private val file:File) {
                     detail="Önceki durum: ${previous.name}. Dosyalar yeniden doğrulanmadan hazır sayılmaz; kullanıcı onayıyla devam edin."))
             }
         }
-    }.getOrDefault(emptyMap())
+    }.getOrElse{throw IllegalStateException("Modül günlüğü reddedildi; kaynaklardan yeniden doğrulama gerekir.",it)}
+    }
 }

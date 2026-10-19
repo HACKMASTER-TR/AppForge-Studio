@@ -27,7 +27,8 @@ internal object ModuleInstallOperations {
         DownloadNetwork.configure(context)
         DownloadCoordinator.configure(PersistentDownloads(java.io.File(context.noBackupFilesDir,"downloads-v5"),mapOf("private" to context.noBackupFilesDir,"files" to context.filesDir,"cache" to context.cacheDir)))
         journal=ModuleOperationJournal(java.io.File(context.noBackupFilesDir,"offline-module-v3/operation.json"))
-        updates.value=journal!!.restore()
+        updates.value=journal!!.restoreStrict()
+        DownloadCoordinator.reconcileModules(updates.value)
     }
     val journalError=kotlinx.coroutines.flow.MutableStateFlow("")
     fun history():List<String> = journal?.history().orEmpty()
@@ -48,7 +49,8 @@ internal object ModuleInstallOperations {
             updates.value=updates.value+(selected to ModuleProgress(selected,"start-denied",ModulePhase.ERROR,detail="Android arka plan hizmetini başlatmadı; uygulama önplandayken yeniden deneyin."))
             runCatching{persist()};return
         }
-        job=scope.launch {
+        val operationNetworkContext=DownloadNetwork.takeOperationConsent()
+        job=scope.launch(operationNetworkContext) {
             val stalledWatch=launch {
                 while(isActive) {
                     delay(1000)
@@ -134,6 +136,7 @@ internal object ModuleInstallOperations {
     val busy by ModuleInstallOperations.busy.collectAsState()
     val stopPending by ModuleInstallOperations.stopPending.collectAsState()
     val artifacts by DownloadCoordinator.records.collectAsState()
+    val operationTree by DownloadCoordinator.operations.collectAsState()
     val networkStatus by DownloadNetwork.status.collectAsState()
     val preparing by ProjectDependencyPreparation.busy.collectAsState()
     var networkPolicy by remember{mutableStateOf(DownloadNetwork.policy)}
@@ -201,12 +204,24 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
             item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text("İndirme ağı",style=MaterialTheme.typography.titleMedium);Text(networkStatus)
                 for(policy in DownloadNetworkPolicy.entries)OutlinedButton(enabled=!busy && !preparing,onClick={if(policy==DownloadNetworkPolicy.ALLOW_ANY)confirmAnyNetwork=true else {networkPolicy=policy;DownloadNetwork.select(policy)}}){Text(when(policy){DownloadNetworkPolicy.WIFI_ONLY->"Yalnız Wi-Fi";DownloadNetworkPolicy.WIFI_PREFERRED->"Wi-Fi tercih et; mobil veri için onay iste";DownloadNetworkPolicy.ALLOW_ANY->"Wi-Fi ve mobil veriye izin ver"})}
-                Text("Etkin: ${DownloadNetwork.policy}. VPN veya ölçümlü Wi-Fi, kısıtlı politikada engellenir. Dış paket yöneticilerinde ağ geçişi kısıtı garanti edilemediğinden açık ağ izni gerekir.")
+                Text("Varsayılan politika: ${DownloadNetwork.policy}. VPN veya ölçümlü Wi-Fi, kısıtlı politikada engellenir. Dış paket yöneticilerinde ağ geçişi kısıtı garanti edilemediğinden açık ağ izni gerekir.")
+            }}}
+            item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text("Kalıcı işlem ağacı",style=MaterialTheme.typography.titleMedium)
+                Text("Geçmiş kayıtlar komut veya kurulum yetkisi değildir. Dosya tamamlanması, modül Hazır ve proje Çevrimdışı Hazır ayrı doğrulanır.")
+                operationTree.filter{it.parentOperationId==null}.takeLast(8).reversed().forEach{root->
+                    Text("${OfflineModules.spec(root.moduleId).title} • ${root.operationState} • ${root.operationId.take(12)}")
+                    operationTree.filter{it.parentOperationId==root.operationId}.takeLast(12).forEach{child->
+                        Text("  ${child.stage} • ${child.operationState}"+(if(child.stage==OperationStage.ARTIFACT_DOWNLOAD)" • ${child.downloadCapability}" else ""))
+                    }
+                }
+                Text("APT/npm/Gradle/pip/sdkmanager: kısıtlı ağda BLOCKED. Çevrimdışı bayrağı, alt süreç soketlerini engelleyen bir izolasyon değildir.")
             }}}
             items(artifacts.takeLast(32).reversed(),key={"artifact-"+it.operationId+it.artifactId}){record->
                 Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                     Text(OfflineModules.spec(record.moduleId).title,style=MaterialTheme.typography.titleMedium)
                     Text("Dosya: ${record.artifactId.take(16)} • ${record.downloadState}")
+                    record.parentOperationId?.let{Text("Üst işlem: ${it.take(12)}")}
                     val live=DownloadCoordinator.snapshot(record.operationId).firstOrNull{it.artifactId==record.artifactId}?.progress?.takeIf{busy || preparing}
                     live?.let{event->
                         Text("${event.bytesDownloaded/1024/1024} MiB / "+(event.bytesTotal?.let{"${it/1024/1024} MiB • %${event.percent}"}?:"Boyut bilinmiyor"))

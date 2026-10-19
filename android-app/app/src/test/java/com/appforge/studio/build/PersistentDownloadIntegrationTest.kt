@@ -11,7 +11,7 @@ class PersistentDownloadIntegrationTest {
     @Test fun interruptedRealDownloaderReconcilesJournalWithSealedBytesAndRetainsRetryAcrossReopen() {
         val dir=Files.createTempDirectory("native-persistent").toFile()
         val journalField=DownloadCoordinator::class.java.getDeclaredField("journal").apply{isAccessible=true}
-        val previous=journalField.get(DownloadCoordinator);val oldRows=DownloadCoordinator.records.value
+        val previous=journalField.get(DownloadCoordinator);val oldRows=DownloadCoordinator.records.value;val oldTree=DownloadCoordinator.operations.value
         try {
             journalField.set(DownloadCoordinator,null)
             val store=PersistentDownloads(File(dir,"journal"),mapOf("private" to dir));DownloadCoordinator.configure(store)
@@ -37,8 +37,14 @@ class PersistentDownloadIntegrationTest {
             assertArrayEquals(payload,target.readBytes())
             val complete=reopened.read().first{it.operationId=="persistent-two"}
             assertEquals(DownloadState.COMPLETED,complete.downloadState);assertEquals(2,complete.retryCount)
+            assertEquals(10L,complete.downloadedBytes)
+            val tree=reopened.operationGraph().read()
+            val node=tree.single{it.operationId==PersistentOperationGraph.artifactNodeId(complete)}
+            assertEquals(complete.parentOperationId,node.parentOperationId)
+            assertEquals(10L,node.verifiedBytes)
+            assertTrue(tree.single{it.operationId==node.parentOperationId}.operationState!=DownloadState.COMPLETED)
             assertFalse(File(target.path+".part.identity").exists())
             assertTrue(reopened.recover().all{it.downloadState!=DownloadState.COMPLETED}) // source pin must be re-authorized, not journal-only READY
-        }finally{journalField.set(DownloadCoordinator,previous);DownloadCoordinator.records.value=oldRows;dir.deleteRecursively()}
+        }finally{journalField.set(DownloadCoordinator,previous);DownloadCoordinator.records.value=oldRows;DownloadCoordinator.operations.value=oldTree;dir.deleteRecursively()}
     }
 }
