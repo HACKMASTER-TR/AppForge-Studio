@@ -1,6 +1,11 @@
 ---
 title: Universal download coordination V4
 source_files:
+  - android-app/app/src/main/java/com/appforge/studio/build/PersistentOperationGraph.kt
+  - android-app/app/src/main/java/com/appforge/studio/build/ModuleOperationJournal.kt
+  - android-app/app/src/test/java/com/appforge/studio/build/PersistentOperationGraphTest.kt
+  - android-app/app/src/test/java/com/appforge/studio/build/NetworkSelectionV6Test.kt
+  - android-app/app/src/test/java/com/appforge/studio/build/OperationNetworkConsentTest.kt
   - android-app/app/src/main/java/com/appforge/studio/build/PersistentDownloads.kt
   - android-app/app/src/main/java/com/appforge/studio/build/DownloadNetwork.kt
   - android-app/app/src/test/java/com/appforge/studio/build/PersistentDownloadIntegrationTest.kt
@@ -69,3 +74,39 @@ allows independent targets; shared runtime/module mutations still serialize.
 Android screen-off, notification denial, reboot, process death and FGS timeout
 remain physical acceptance scenarios, not host-test PASS claims. No boot or
 force-stop auto-start guarantee and no duplicate WorkManager scheduler are added.
+
+## V6 continuation (2026-10-19)
+
+Artifact journal schema 2 adds observed downloaded bytes and a module parent ID.
+Schema 1 is read conservatively with zero invented bytes and migrated on recovery;
+unknown versions fail closed. The coordinator writes a bounded, fsynced, atomic
+`operations.json` task tree alongside the artifact and module journals. Module
+phases, project preparation and artifact children share hashed operation IDs.
+Rootfs artifacts created under a terminal transfer ID are adopted by the initiating
+module operation. The files are independently atomic, not a multi-file transaction:
+recovery rehashes artifact files, rebuilds missing children, validates parent/module
+relationships and downgrades previous completion to re-authorization required.
+Neither a historical COMPLETE nor graph stage grants module/project READY.
+Corrupt module journals now surface a blocking error instead of silently disappearing.
+
+Network selection considers validated available networks, so an eligible Wi-Fi can
+be selected even when cellular is the default. Active VPN remains conservatively
+blocked in restrictive modes. Each managed connection retains its exact Android
+Network as well as its captured policy; callbacks recheck that bound network,
+not a different currently active Wi-Fi. A later broader consent never widens an
+older transfer. No process-wide routing or bypass is introduced.
+
+External APT/npm/Gradle/Maven/pip/sdkmanager commands still require explicit
+ALLOW_ANY. Offline flags alone do not prevent lifecycle/build scripts from opening
+sockets. There is no verified per-process network sandbox in the Android PRoot
+launcher, so restricted external execution remains BLOCKED. Native pinned archive
+acquisition supports the restricted policy; this does not imply a complete module
+installation can run under it. Physical Android Wi-Fi/mobile handover, FGS timeout,
+reboot and process-death acceptance remain NOT_RUN until tested on a device.
+
+One-operation mobile approval no longer changes a global temporary policy. A
+single-use consent is claimed by the initiating module coroutine, propagated to
+its children through a thread context element, and revoked on completion. Other
+operations retain the stored preference. Connection callbacks evaluate their own
+captured consent lease. Host coroutine tests cover sibling isolation, dispatcher
+changes, revocation and failed-start cleanup; Android routing remains NOT_RUN.
