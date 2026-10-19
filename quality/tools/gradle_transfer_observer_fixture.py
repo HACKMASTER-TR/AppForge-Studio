@@ -25,5 +25,5 @@ threading.Thread(target=observe,daemon=True).start()
 for phase,flags in [('empty-offline',['--offline']),('online',[]),('cached-offline',['--offline'])]:
  result=subprocess.run(cmd+flags,cwd=p,env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True);(r/(phase+'.log')).write_text(result.stdout);print(phase,result.returncode,flush=True);assert (result.returncode!=0 if phase=='empty-offline' else result.returncode==0),result.stdout[-3000:]
  if phase=='online':
-  event=json.loads((r/'event.json').read_text());assert event['finished'] and event['bytes']==event['total'] and event['bytes']>0;print('actual Gradle typed event',event,flush=True);s.shutdown()
+  channels=[json.loads(f.read_text()) for f in (r/'event.json.events').glob('*.json')];assert len(channels)>=2,'POM and JAR must retain separate transfer channels';assert any(c.get('component','').endswith('.jar') for c in channels);event=json.loads((r/'event.json').read_text());assert event['finished'] and event['bytes']==event['total'] and event['bytes']>0;print('actual Gradle typed event',event,flush=True);s.shutdown()
 stop.set();assert any(not e['finished'] and 0<e['bytes']<(e.get('total') or 0) for e in observed), 'No typed intermediate byte event';print('PASS live typed byte progress and offline fixture',r,flush=True)

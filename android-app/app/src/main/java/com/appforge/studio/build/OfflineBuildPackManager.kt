@@ -359,7 +359,7 @@ internal object OfflineBuildPackManager {
             OfflineModuleId.NODE_WEB->listOf("install-node-module.sh")
             OfflineModuleId.WINDOWS_NATIVE->listOf("install-windows-native-toolchain.sh")
             else->listOf("install-toolchain.sh","prepare-offline-pack.sh","platform-37.0-package.xml")
-        }+listOf("apt-download-telemetry.sh","module-download-telemetry.sh","native-download-broker.sh","jvm-telemetry/network-byte-agent.jar","verified-toolchain-sources-v4.json")
+        }+listOf("apt-acquire-observer.sh","apt-acquire-observer.awk","apt-acquire-emit.sh","apt-download-telemetry.sh","module-download-telemetry.sh","native-download-broker.sh","jvm-telemetry/network-byte-agent.jar","verified-toolchain-sources-v4.json")
         val hash=java.security.MessageDigest.getInstance("SHA-256")
         hash.update("ownership-probe-v6".toByteArray())
         for(name in names.sorted()){hash.update(name.toByteArray());context.assets.open("device-build/$name").use{input->val b=ByteArray(65536);while(true){val n=input.read(b);if(n<0)break;hash.update(b,0,n)}}}
@@ -485,17 +485,13 @@ internal object OfflineBuildPackManager {
             "offline-pack-$suffix-${UUID.randomUUID()}"
 
         val telemetry=File(workspace,"module-download.json")
-        telemetry.delete()
-        val adapter=module?.let{ExternalDownloadTelemetry(it,operation)}
+        ExternalTelemetryChannels.clear(telemetry)
+        val channels=module?.let{ExternalTelemetryChannels(telemetry,it,operation)}
         val broker=module?.let{ModuleArtifactBroker(workspace,File(rootfs.parentFile,".module-archive-cache-v5"),it,operation,progress)}
         val brokerJob=broker?.let{launch(kotlinx.coroutines.Dispatchers.IO){it.serve()}}
-        var lastTelemetry:String?=null
         val poller=launch(kotlinx.coroutines.Dispatchers.IO) {
             while(kotlinx.coroutines.currentCoroutineContext().isActive) {
-                if(broker?.transferring!=true && adapter!=null && telemetry.isFile && telemetry.length()<=2048)runCatching {
-                    val event=telemetry.readText()
-                    if(event!=lastTelemetry){lastTelemetry=event;adapter.accept(event,android.os.SystemClock.elapsedRealtime())?.let(progress)}
-                }
+                if(broker?.transferring!=true)channels?.poll(android.os.SystemClock.elapsedRealtime())?.forEach(progress)
                 kotlinx.coroutines.delay(500)
             }
         }

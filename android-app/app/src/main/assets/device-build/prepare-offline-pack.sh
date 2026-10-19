@@ -124,7 +124,7 @@ EOF
 
     if ! "$GRADLE" "$@" \
       -p "$PROJECT" \
-      --no-daemon \
+      --no-daemon --no-configuration-cache \
       --console=plain \
       :app:assembleDebug \
       >"$LOG" 2>&1
@@ -194,7 +194,7 @@ EOF
 
     if ! "$GRADLE" "$@" \
       -p "$PROJECT" \
-      --no-daemon \
+      --no-daemon --no-configuration-cache \
       --console=plain \
       :app:assembleDebug \
       >"$LOG" 2>&1

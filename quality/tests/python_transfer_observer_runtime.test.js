@@ -15,7 +15,7 @@ test('Python stdlib observes read/readinto with known and unknown totals without
    const output=path.join(dir,'event.json');
    const code=`import http.client,json,os\nc=http.client.HTTPConnection('127.0.0.1',${server.address().port});c.request('GET','/${known?'known':'unknown'}');r=c.getresponse();n=0\nwhile True:\n b=bytearray(8192)\n chunk=r.readinto(b) if ${into?'True':'False'} else len(r.read(8192))\n if not chunk:break\n n+=chunk\nprint(json.dumps({'bytes':n,'event':json.load(open(os.environ['APPFORGE_DOWNLOAD_TELEMETRY']))}))\n`;
    const child=spawn('python3',['-c',code],{env:{...process.env,PYTHONPATH:hook,APPFORGE_DOWNLOAD_TELEMETRY:output}});let text='',err='';child.stdout.on('data',b=>text+=b);child.stderr.on('data',b=>err+=b);assert.equal(await new Promise(r=>child.on('exit',r)),0,err);
-   const result=JSON.parse(text);assert.equal(result.bytes,payload.length);assert.equal(result.event.bytes,payload.length);assert.equal(result.event.finished,true);assert.equal(result.event.total,known?payload.length:null);assert(!('ready'in result.event));
+   const result=JSON.parse(text);assert.deepEqual(JSON.parse(fs.readFileSync(path.join(output+'.events',JSON.parse(fs.readFileSync(output)).transfer+'.json'))),JSON.parse(fs.readFileSync(output)));assert.equal(result.bytes,payload.length);assert.equal(result.event.bytes,payload.length);assert.equal(result.event.finished,true);assert.equal(result.event.total,known?payload.length:null);assert(!('ready'in result.event));
   }
  }finally{await new Promise(r=>server.close(r));fs.rmSync(dir,{recursive:true,force:true});}
 });

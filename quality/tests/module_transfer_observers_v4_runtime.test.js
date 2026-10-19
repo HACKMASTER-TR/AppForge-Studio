@@ -19,7 +19,7 @@ test('Node preload preserves response bytes and reports known/unknown size witho
    const child=spawn(process.execPath,['--require',new URL('npm-download-telemetry.cjs',assets).pathname,'-e',code,`http://127.0.0.1:${server.address().port}/${known?'known':'unknown'}?private-query=test`],{env:{...process.env,APPFORGE_DOWNLOAD_TELEMETRY:file}});
    let output='',error='';child.stdout.on('data',b=>output+=b);child.stderr.on('data',b=>error+=b);
    assert.equal(await new Promise(r=>child.on('exit',r)),0,error);
-   const result=JSON.parse(output);assert.equal(result.bytes,body.length);assert.equal(result.event.bytes,body.length);assert.equal(result.event.finished,true);assert.equal(result.event.total,known?body.length:null);assert(!JSON.stringify(result).includes('private-query'));assert(!('ready'in result.event));
+   const result=JSON.parse(output);assert.deepEqual(JSON.parse(fs.readFileSync(path.join(file+'.events',JSON.parse(fs.readFileSync(file)).transfer+'.json'))),JSON.parse(fs.readFileSync(file)));assert.equal(result.bytes,body.length);assert.equal(result.event.bytes,body.length);assert.equal(result.event.finished,true);assert.equal(result.event.total,known?body.length:null);assert(!JSON.stringify(result).includes('private-query'));assert(!('ready'in result.event));
   }
  }finally{await new Promise(r=>server.close(r));fs.rmSync(dir,{recursive:true,force:true});}
 });
@@ -72,6 +72,6 @@ test('fetch observer measures real undici body bytes for known and chunked trans
   const child=spawn(process.execPath,['--require',new URL('npm-download-telemetry.cjs',assets).pathname,'-e',code,`http://127.0.0.1:${server.address().port}/${known?'known':'chunked'}`],{env:{...process.env,APPFORGE_DOWNLOAD_TELEMETRY:file}});
   let output='',error='';child.stdout.on('data',b=>output+=b);child.stderr.on('data',b=>error+=b);
   assert.equal(await new Promise(r=>child.on('exit',r)),0,error);
-  const result=JSON.parse(output);assert.equal(result.bytes,body.length);assert.equal(result.event.bytes,body.length);assert.equal(result.event.total,known?body.length:null);assert.equal(result.event.finished,true);
+  const result=JSON.parse(output);assert.deepEqual(JSON.parse(fs.readFileSync(path.join(file+'.events',JSON.parse(fs.readFileSync(file)).transfer+'.json'))),JSON.parse(fs.readFileSync(file)));assert.equal(result.bytes,body.length);assert.equal(result.event.bytes,body.length);assert.equal(result.event.total,known?body.length:null);assert.equal(result.event.finished,true);
  }}finally{await new Promise(r=>server.close(r));fs.rmSync(dir,{recursive:true,force:true});}
 });

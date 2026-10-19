@@ -28,6 +28,12 @@ public final class NetworkByteAgent {
             long elapsed = Math.max(0L, (System.nanoTime() - started) / 1_000_000L);
             String label = available ? "SDK Manager: gozlenen sifreli soket baytlari (payload toplami bilinmiyor)" : "SDK Manager: JVM ag olcumu kullanilamiyor; toplam boyut bilinmiyor";
             String body = "{\"schema\":1,\"transfer\":\"" + transfer + "\",\"component\":\"" + label + "\",\"byteMetric\":\"" + (available ? "wire-bytes" : "unavailable") + "\",\"bytes\":" + bytes.get() + ",\"total\":null,\"elapsedMs\":" + elapsed + ",\"finished\":" + finished + "}";
+            Path channels = Paths.get(output.toString() + ".events");
+            Files.createDirectories(channels);
+            Path channel = channels.resolve(transfer + ".json");
+            Path channelPart = channels.resolve(transfer + ".json.part");
+            Files.write(channelPart, body.getBytes(StandardCharsets.UTF_8));
+            Files.move(channelPart, channel, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
             Path temporary = Paths.get(output.toString() + ".jvm-" + transfer);
             Files.write(temporary, body.getBytes(StandardCharsets.UTF_8));
             Files.move(temporary, output, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);

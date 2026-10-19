@@ -60,9 +60,9 @@ internal object ProjectDependencyPreparation {
                 status.value=if(offlineVerification)"Gerçek bağlantısız build çalışıyor; kaynak ve cache yeniden doğrulanacak." else "Onaylı proje build/lifecycle kodu çalışıyor; bağımlılıklar hazırlanıyor. Boyut bilinmiyor."
                 val runDraft=draft.copy(importedFolder=reviewedSource!!.path,allowDependencyDownloads=!offlineVerification,signingMode=SigningMode.DEBUG,keystoreUri=null,storePassword="",keyPassword="",keyAlias="")
                 buildId=DeviceBuildEngine.start(context,runDraft,null,permit,generation!!.root).id
-                val observer=ExternalDownloadTelemetry(OfflineModuleId.ANDROID_CORE,"project-$buildId")
+                var channels:ExternalTelemetryChannels?=null
                 while(DeviceBuildEngine.isExecuting(buildId!!)){
-                    DeviceBuildEngine.transferFile(buildId!!)?.let{file->if(file.isFile && file.length()<=2048)runCatching{observer.accept(file.readText(),android.os.SystemClock.elapsedRealtime())?.let{transfer.value=it}}}
+                    DeviceBuildEngine.transferFile(buildId!!)?.let{file->if(channels==null)channels=ExternalTelemetryChannels(file,OfflineModuleId.ANDROID_CORE,"project-$buildId");channels!!.poll(android.os.SystemClock.elapsedRealtime()).forEach{transfer.value=it}}
 currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!!.allNetworks.isNotEmpty()){networkSeen.set(true);DeviceBuildEngine.cancel(buildId!!)};delay(500)}
                 val result=DeviceBuildEngine.snapshot(buildId!!)?:error("Build sonucu yok")
                 require(result.status=="success"){"Proje derlemesi başarısız: "+result.logs.takeLast(8).joinToString("\n").take(2000)}

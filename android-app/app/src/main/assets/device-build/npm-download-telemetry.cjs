@@ -4,7 +4,8 @@ const fs=require('node:fs');
 const crypto=require('node:crypto');
 const target=process.env.APPFORGE_DOWNLOAD_TELEMETRY;
 if(target){
- const publish=e=>{try{const p=target+'.tmp-'+process.pid+'-'+e.transfer;fs.writeFileSync(p,JSON.stringify(e));fs.renameSync(p,target);}catch{}};
+ const saveChannel=e=>{const d=target+'.events';fs.mkdirSync(d,{recursive:true});const p=d+'/'+e.transfer+'.json';fs.writeFileSync(p+'.part',JSON.stringify(e));fs.renameSync(p+'.part',p);};
+ const publish=e=>{try{saveChannel(e);const p=target+'.tmp-'+process.pid+'-'+e.transfer;fs.writeFileSync(p,JSON.stringify(e));fs.renameSync(p,target);}catch{}};
  for(const protocol of ['http','https']){
   const mod=require('node:'+protocol),original=mod.request;
   mod.request=function(...args){
@@ -40,6 +41,7 @@ if(target){
    ...(record.unavailable?{byteMetric:'unavailable'}:{}),
    elapsedMs:Date.now()-record.start,finished,state:error?'error':finished?'complete':'downloading',
    ...(error?{errorCode:'HTTP_BODY_INTERRUPTED'}:{})};
+  const directory=target+'.events';fs.mkdirSync(directory,{recursive:true});const channel=directory+'/'+record.id+'.json';fs.writeFileSync(channel+'.part',JSON.stringify(e));fs.renameSync(channel+'.part',channel);
   const tmp=target+'.fetch-'+process.pid+'-'+record.id;fs.writeFileSync(tmp,JSON.stringify(e));fs.renameSync(tmp,target);
  }catch{}};
  dc.channel('undici:request:headers').subscribe(({request,response})=>{try{

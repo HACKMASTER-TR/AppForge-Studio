@@ -23,6 +23,12 @@ if _target:
             value = dict(schema=1, transfer=event['id'], component='Python/pip HTTP body',
                          bytes=event['bytes'], total=total if total is not None and event['bytes'] <= total else None,
                          elapsedMs=int((now-event['start'])*1000), finished=finished)
+            directory = _target + '.events'
+            os.makedirs(directory, exist_ok=True)
+            channel = os.path.join(directory, event['id'] + '.json')
+            with open(channel + '.part', 'w') as stream:
+                json.dump(value, stream)
+            os.replace(channel + '.part', channel)
             temporary = _target + '.python-' + str(os.getpid()) + '-' + event['id']
             with open(temporary, 'w') as stream:
                 json.dump(value, stream)

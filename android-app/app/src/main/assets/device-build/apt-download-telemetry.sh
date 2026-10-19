@@ -7,6 +7,26 @@ appforge_apt_get() {
  if [ "$at_mode" = install ] && [ "${APPFORGE_MODULE_REFRESH:-0}" = 1 ]; then set -- --reinstall "$@";fi
  set -- "$@" -o Acquire::https::Verify-Peer=true -o Acquire::https::Verify-Host=true -o Acquire::AllowInsecureRepositories=false -o APT::Get::AllowUnauthenticated=false
  if [ -z "$at_mode" ] || [ -z "${APPFORGE_DOWNLOAD_TELEMETRY:-}" ]; then command /usr/bin/apt-get "$@";return $?;fi
+ # An isolated methods directory delegates transport to APT's original workers.
+ # Its sticky event spool permits the sandboxed _apt worker to report without
+ # disabling APT's user sandbox or making the workspace world-writable.
+ at_acquire_observed=0
+ at_observer=/workspace/runtime/apt-acquire-observer.sh
+ if [ -f "$at_observer" ] && [ -f /workspace/runtime/apt-acquire-observer.awk ];then
+  at_methods=$(mktemp -d /tmp/appforge-apt-methods.XXXXXXXX) || return 46
+  chmod 755 "$at_methods"
+  for at_method in /usr/lib/apt/methods/*;do ln -s "$at_method" "$at_methods/${at_method##*/}";done
+  for at_scheme in http https;do
+   rm -f "$at_methods/$at_scheme"
+   printf '#!/bin/sh\nexec /bin/sh /workspace/runtime/apt-acquire-observer.sh %s "$@"\n' "$at_scheme" > "$at_methods/$at_scheme"
+   chmod 755 "$at_methods/$at_scheme"
+  done
+  APPFORGE_APT_EVENTS="${APPFORGE_DOWNLOAD_TELEMETRY}.apt-events"
+  export APPFORGE_APT_EVENTS
+  mkdir -p "$APPFORGE_APT_EVENTS";chmod 1777 "$APPFORGE_APT_EVENTS"
+  set -- "$@" -o "Dir::Bin::Methods=$at_methods"
+  at_acquire_observed=1
+ fi
  at_plan="${APPFORGE_DOWNLOAD_TELEMETRY}.apt-plan.$$"
  at_raw="$at_plan.raw"
  if [ "$at_mode" = install ]; then
@@ -35,6 +55,9 @@ appforge_apt_get() {
  fi
  at_pid=$!
  at_emit() {
+  # Original acquire channels (or the native broker) own transfer accounting.
+  # Re-sampling validated archive-cache files would count them a second time.
+  [ "$at_acquire_observed" = 0 ] || return 0
   if [ "$at_mode" = update ]; then
    at_bytes=$(find /var/lib/apt/lists/partial -type f -printf '%s\n' 2>/dev/null | awk '{n+=$1}END{printf "%.0f",n+0}')
    printf '{"schema":1,"transfer":"apt-index-%s-%s","component":"APT signed index (sampled partial files)","byteMetric":"staged-files","bytes":%s,"total":null,"finished":false}\n' "$$" "$at_pid" "${at_bytes:-0}" > "${APPFORGE_DOWNLOAD_TELEMETRY}.apt.tmp.$$"
@@ -91,5 +114,9 @@ appforge_apt_get() {
   else rm -f "$at_lock.part";fi
  fi
  rm -f "$at_plan"
+ if [ "$at_acquire_observed" = 1 ];then
+  for at_method in "$at_methods"/*;do rm -f "$at_method";done
+  rmdir "$at_methods" 2>/dev/null || :
+ fi
  return "$at_status"
 }

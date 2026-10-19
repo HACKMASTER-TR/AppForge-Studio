@@ -3,13 +3,16 @@ type: architecture
 status: active
 project: AppForge Studio
 created: 2026-10-18
-updated: 2026-10-18
-last_verified: 2026-10-18
+updated: 2026-10-19
+last_verified: 2026-10-19
 confidence: medium
 related:
   - "[[Fast_HTML_V2]]"
   - "[[Device_Build_Runtime_V3]]"
 source_files:
+  - "android-app/app/src/main/java/com/appforge/studio/build/ExternalTelemetryChannels.kt"
+  - "android-app/app/src/main/assets/device-build/apt-acquire-observer.sh"
+  - "android-app/app/src/main/assets/device-build/apt-acquire-observer.awk"
   - "android-app/app/src/main/java/com/appforge/studio/build/FeatureSupportMatrix.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/OfflineModulePlan.kt"
   - "android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt"
@@ -216,3 +219,39 @@ not produce READY or an ETA. Staged APT index files do not represent network byt
 and cannot produce throughput, percent or ETA. SDK JFR wire counts remain distinct
 from payload counts. All observations remain per-transfer, not a guarantee of
 whole-module totals or coverage of arbitrary third-party/native HTTP clients.
+
+### APT acquire lifecycle and independent channels (2026-10-19)
+
+The earlier APT-index observability limitation is superseded for the managed
+Ubuntu HTTP/HTTPS acquire workers. A transparent line-buffered protocol bridge
+forwards capabilities, configuration, requests and replies to/from the original
+APT binary. It associates URI Start/Done/Failure messages with the requested
+partial filename, Size and Resume-Point. Sampling measures delivered payload-file
+bytes of that active transfer, not a directory aggregate or console percentage.
+APT retains HTTP caching, redirects, Range validation, TLS, its sandbox user,
+archive checksums and signed repository metadata validation. IMS-Hit is cache use,
+not a network download; a failure cannot become finished or READY. Every worker
+has an atomic event channel, including sandboxed workers through a private
+operation's sticky telemetry spool. A real signed Ubuntu index refresh verifies
+live intermediate bytes separately from the loopback protocol regressions.
+
+ExternalTelemetryChannels reads bounded independent transfer channels across APT,
+Gradle/Maven, Node HTTP/fetch, Python HTTP, curl and SDK JVM observations. The
+consumer retains independent rate meters and excludes resume baselines from
+network speed. Both module installation and project dependency preparation use
+this consumer. Before the next module command, only generated telemetry channels
+are cleared; source files, caches and keys are never part of this cleanup.
+Managed Gradle builds disable configuration-cache replay for typed resource
+events; task/build caches remain enabled when selected. Child-process curl can
+use a scoped shim only after the real OS curl binary is installed, and forwards
+to that absolute binary to avoid recursion or false prerequisite availability.
+
+Known HTTP payload lengths produce per-transfer percentage and ETA. Unknown
+payload lengths remain unknown; SDK JVM socket counts explicitly include wire
+rather than payload bytes. Arbitrary third-party native networking outside the
+supported observers is not a universal or TLS-interception coverage claim.
+
+Acquire lifecycle boundaries are also emitted immediately, so a small index that
+finishes between timer ticks retains its own terminal channel. Terminal counters
+cannot be reopened by a late live sample. This is independent from cache-hit
+classification and from module READY validation.

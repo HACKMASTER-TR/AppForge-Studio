@@ -17,7 +17,8 @@ sleep 2
 head -c 100 /dev/zero >> "$out"
 `,{mode:0o700});
   const telemetry=path.join(dir,'progress.json'),output=path.join(dir,'out');
-  const child=spawn('sh',['-c','. "$1"; curl -fL https://example.invalid/test -o "$2"','test',helper,output],{env:{...process.env,PATH:bin+':'+process.env.PATH,APPFORGE_DOWNLOAD_TELEMETRY:telemetry},stdio:'ignore'});
+  const fixtureHelper=path.join(dir,'observer.sh');fs.writeFileSync(fixtureHelper,fs.readFileSync(helper,'utf8').replaceAll('/usr/bin/curl',path.join(bin,'curl')));
+  const child=spawn('sh',['-c','. "$1"; curl -fL https://example.invalid/test -o "$2"','test',fixtureHelper,output],{env:{...process.env,PATH:bin+':'+process.env.PATH,APPFORGE_DOWNLOAD_TELEMETRY:telemetry},stdio:'ignore'});
   const done=new Promise((resolve,reject)=>{child.on('error',reject);child.on('exit',resolve);});
   let sawPartial=false;
   for(let n=0;n<16;n++){

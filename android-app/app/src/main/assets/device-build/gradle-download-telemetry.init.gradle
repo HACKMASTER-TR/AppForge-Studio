@@ -9,8 +9,15 @@ if (output && !gradle.startParameter.isConfigurationCacheRequested()) {
         def progressType = loader.loadClass('org.gradle.internal.operations.OperationProgressDetails')
         def resultType = loader.loadClass('org.gradle.internal.resource.ExternalResourceReadBuildOperationType$Result')
         def active = new java.util.concurrent.ConcurrentHashMap()
+        def processId = java.util.UUID.randomUUID().toString()
         def publish = { value ->
             try {
+                def directory = new File(output + '.events')
+                directory.mkdirs()
+                def channel = new File(directory, value.transfer + '.json')
+                def part = new File(channel.path + '.part-' + java.util.UUID.randomUUID())
+                part.text = groovy.json.JsonOutput.toJson(value)
+                java.nio.file.Files.move(part.toPath(), channel.toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
                 def target = new File(output)
                 def temporary = new File(output + '.tmp-gradle-' + java.util.UUID.randomUUID())
                 temporary.text = groovy.json.JsonOutput.toJson(value)
@@ -25,7 +32,7 @@ if (output && !gradle.startParameter.isConfigurationCacheRequested()) {
                 if (method.name == 'started' && detailsType.isInstance(args[0].details)) {
                     def location = detailsType.getMethod('getLocation').invoke(args[0].details)
                     def name = new java.net.URI(location).path.tokenize('/').last().replaceAll('[^A-Za-z0-9._@+-]', '_').take(150)
-                    def id = 'gradle-' + args[0].id.toString()
+                    def id = 'gradle-' + processId + '-' + args[0].id.toString()
                     active.put(args[0].id, [schema:1, transfer:id, component:'Gradle/Maven: '+name, bytes:0L, total:null, startedMs:args[1].startTime, finished:false])
                     publish(active.get(args[0].id))
                 }
@@ -51,7 +58,9 @@ if (output && !gradle.startParameter.isConfigurationCacheRequested()) {
                         event.total = args[1].failure == null && size > 0 ? size : null
                         event.failed = args[1].failure != null
                         event.elapsedMs = Math.max(0L,args[1].endTime-args[1].startTime)
-                        event.finished = true
+                        event.finished = args[1].failure == null
+                        event.state = event.finished ? 'complete' : 'error'
+                        if (!event.finished) event.errorCode = 'GRADLE_RESOURCE_FAILED'
                         publish(event)
                     }
                 }

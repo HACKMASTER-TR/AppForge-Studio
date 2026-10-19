@@ -2151,6 +2151,9 @@ object DeviceBuildEngine {
 
             append(sh(gradlePath))
             append(" -p . --no-daemon --stacktrace ")
+            // Typed transfer observation is incompatible with configuration-cache
+            // replay. Keep task/build caches; explicitly retain resource events.
+            append("--no-configuration-cache ")
 
             if (useBuildCache) {
                 append("--build-cache ")

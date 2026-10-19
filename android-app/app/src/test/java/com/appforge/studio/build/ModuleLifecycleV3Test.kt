@@ -36,7 +36,9 @@ class ModuleLifecycleV3Test {
         assertEquals(ModulePhase.PREPARING,adapter.accept(event(1000,done=true),3000)!!.phase)
         assertNull(adapter.accept(event(1001),4000))
         assertNull(adapter.accept("random 75%",5000))
-        assertNull(adapter.accept(event(1000,"null"),6000)!!.percent)
+        assertNull(adapter.accept(event(500),5500)) // late live sample cannot reopen a completed transfer
+        val unknown=ExternalDownloadTelemetry(OfflineModuleId.ANDROID_CORE,"unknown")
+        assertNull(unknown.accept(event(1000,"null"),6000)!!.percent)
     }
     @Test fun opaqueFileSamplesCannotClaimNetworkSpeedAndInterruptedTransfersCannotComplete() {
         val adapter=ExternalDownloadTelemetry(OfflineModuleId.ANDROID_CORE,"op")
@@ -47,6 +49,22 @@ class ModuleLifecycleV3Test {
         val interrupted=adapter.accept("""{"schema":1,"transfer":"curl","bytes":500,"total":1000,"finished":true,"state":"error","errorCode":"CURL_EXIT_18"}""",2000)!!
         assertEquals(ModulePhase.ERROR,interrupted.phase);assertEquals("CURL_EXIT_18",interrupted.errorCode)
         assertNull(interrupted.estimatedRemainingMs);assertNull(interrupted.speedBytesPerSecond)
+    }
+    @Test fun parallelTransferMetersAndResumeBaselinesRemainIndependent() {
+        val adapter=ExternalDownloadTelemetry(OfflineModuleId.ANDROID_CORE,"op")
+        fun event(id:String,bytes:Int,elapsed:Int=0,baseline:Int=0)="""{"schema":1,"transfer":"$id","bytes":$bytes,"total":1000,"elapsedMs":$elapsed,"initialBytes":$baseline}"""
+        adapter.accept(event("a",0),0);adapter.accept(event("b",0),100)
+        val a=adapter.accept(event("a",500),1000)!!
+        assertEquals(500.0,a.speedBytesPerSecond!!,0.01);assertEquals(1000L,a.elapsedMs)
+        val b=adapter.accept(event("b",250),1100)!!
+        assertEquals(250.0,b.speedBytesPerSecond!!,0.01)
+        val resumed=adapter.accept(event("resumed",600,1000,500),2000)!!
+        assertEquals(100.0,resumed.averageSpeedBytesPerSecond!!,0.01)
+        assertEquals(60,resumed.percent);assertEquals(4000L,resumed.estimatedRemainingMs)
+        assertNull(adapter.accept(event("bad",600,1000,700),2000))
+        val cached=adapter.accept("""{"schema":1,"transfer":"cache","bytes":1000,"total":1000,"finished":true,"byteMetric":"cached"}""",3000)!!
+        assertEquals(ModulePhase.PREPARING,cached.phase);assertEquals(0L,cached.bytesDownloaded);assertNull(cached.percent)
+        assertNull(cached.speedBytesPerSecond);assertTrue(cached.detail.contains("önbelleği"))
     }
     @Test fun ownedRemovalPreservesForeignFilesAndRestoresOnPredeleteFault() {
         val base=Files.createTempDirectory("owned-host").toFile()

@@ -15,10 +15,10 @@ if [ -n "${APPFORGE_DOWNLOAD_TELEMETRY:-}" ]; then
    if [ "$af_next" = 1 ]; then af_output="$af_arg"; af_next=0; fi
    case "$af_arg" in -o|--output) af_next=1;; esac
   done
-  if [ -z "$af_output" ]; then command curl "$@"; return $?; fi
+  if [ -z "$af_output" ]; then command /usr/bin/curl "$@"; return $?; fi
   af_finished=false; af_state=downloading; af_error=null
   af_header="${APPFORGE_DOWNLOAD_TELEMETRY}.headers.$$"
-  command curl --silent --show-error --dump-header "$af_header" "$@" &
+  command /usr/bin/curl --silent --show-error --dump-header "$af_header" "$@" &
   af_pid=$!
   af_emit() {
    af_bytes=0
@@ -27,6 +27,9 @@ if [ -n "${APPFORGE_DOWNLOAD_TELEMETRY:-}" ]; then
    [ -n "$af_total" ] || af_total=null
    if [ "$af_total" != null ] && [ "$af_bytes" -gt "$af_total" ]; then af_total=null; fi
    printf '{"schema":1,"transfer":"%s","bytes":%s,"total":%s,"finished":%s,"state":"%s","errorCode":%s}\n' "$$-$af_pid" "$af_bytes" "$af_total" "$af_finished" "$af_state" "$af_error" > "${APPFORGE_DOWNLOAD_TELEMETRY}.tmp.$$"
+   mkdir -p "${APPFORGE_DOWNLOAD_TELEMETRY}.events"
+   cp "${APPFORGE_DOWNLOAD_TELEMETRY}.tmp.$$" "${APPFORGE_DOWNLOAD_TELEMETRY}.events/curl-$$-$af_pid.json.part"
+   mv "${APPFORGE_DOWNLOAD_TELEMETRY}.events/curl-$$-$af_pid.json.part" "${APPFORGE_DOWNLOAD_TELEMETRY}.events/curl-$$-$af_pid.json"
    mv "${APPFORGE_DOWNLOAD_TELEMETRY}.tmp.$$" "$APPFORGE_DOWNLOAD_TELEMETRY"
   }
   while kill -0 "$af_pid" 2>/dev/null; do af_emit; sleep 1; done
