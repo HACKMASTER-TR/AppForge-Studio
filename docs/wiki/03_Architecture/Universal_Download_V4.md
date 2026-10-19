@@ -3,7 +3,13 @@ title: Universal download coordination V4
 source_files:
   - android-app/app/src/main/java/com/appforge/studio/build/PersistentOperationGraph.kt
   - android-app/app/src/main/java/com/appforge/studio/build/ModuleOperationJournal.kt
+  - android-app/app/src/main/java/com/appforge/studio/build/RuntimeGenerationStore.kt
+  - android-app/app/src/main/java/com/appforge/studio/build/RuntimeArchiveRemoval.kt
+  - android-app/app/src/main/java/com/appforge/studio/build/OwnedModuleFiles.kt
+  - android-app/app/src/main/java/com/appforge/studio/build/ModuleOwnershipStore.kt
+  - android-app/app/src/main/java/com/appforge/studio/terminal/RootfsActivationTransaction.kt
   - android-app/app/src/test/java/com/appforge/studio/build/PersistentOperationGraphTest.kt
+  - android-app/app/src/test/java/com/appforge/studio/build/LifecycleStorageSafetyV7Test.kt
   - android-app/app/src/test/java/com/appforge/studio/build/NetworkSelectionV6Test.kt
   - android-app/app/src/test/java/com/appforge/studio/build/OperationNetworkConsentTest.kt
   - android-app/app/src/main/java/com/appforge/studio/build/PersistentDownloads.kt
@@ -16,6 +22,7 @@ source_files:
   - android-app/app/src/main/java/com/appforge/studio/build/OfflineBuildPackManager.kt
   - android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt
   - android-app/app/src/main/java/com/appforge/studio/ModuleDownloadService.kt
+  - quality/tests/lifecycle_storage_safety_v7_contract.test.js
 ---
 
 # Universal download coordination V4
@@ -110,3 +117,25 @@ its children through a thread context element, and revoked on completion. Other
 operations retain the stored preference. Connection callbacks evaluate their own
 captured consent lease. Host coroutine tests cover sibling isolation, dispatcher
 changes, revocation and failed-start cleanup; Android routing remains NOT_RUN.
+
+## V7 continuation: lifecycle and storage safety (2026-10-19)
+
+`PersistentOperationGraph` now includes `REMOVAL` and `ROLLBACK` stages and
+deterministic terminal-subtree retention pruning (`pruneRetained`). When the
+512-node limit is exceeded, only complete root subtrees whose nodes are all in
+terminal states (`COMPLETED`, `CANCELLED`, `FAILED`) are evicted oldest-first as
+atomic units; active, `PAUSED`, `WAITING_FOR_*`, and `RECOVERY_REQUIRED` subtrees
+are never evicted. `ModuleInstallOperations.lifecycle` records removal and
+rollback transitions in `DownloadCoordinator` and blocks startup if strict
+journal restoration fails.
+
+`ModuleOperationJournal`, `RuntimeGenerationStore`, `RuntimeArchiveRemoval`,
+`OwnedModuleFiles`, `ModuleOwnershipStore`, and `RootfsActivationTransaction`
+enforce pre-write disk-space reserves, ancestor symlink rejection, and non-symlink
+`.tmp` cleanup on write failure. `RuntimeGenerationStore` checks remaining disk
+space before copying each regular file during stage cloning; if interrupted
+during `COPYING` before activation, an unmodified partial clone of the active
+root is safely reclaimed instead of leaking `.v3-discard-*` directories, while
+any modified or post-switch failed generation remains quarantined and inspectable
+via `quarantinedDirectories()` / `quarantinedBytes()`. `RuntimeArchiveRemoval`
+fails closed if both active and backup runtime directories exist during recovery.

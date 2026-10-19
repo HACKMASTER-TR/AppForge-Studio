@@ -1,9 +1,10 @@
-# V3 module lifecycle implementation
+# V3–V7 module lifecycle implementation
 
-Status: PARTIAL — host-verified safe transaction primitives and fail-closed UI;
-full physical-device and all real toolchain lifecycle acceptance remains NOT_RUN.
+Status: PARTIAL — host-verified safe transaction primitives, V7 storage/retention
+hardening, and fail-closed UI; full physical-device and all real toolchain
+lifecycle acceptance remains NOT_RUN.
 
-Baseline: 39cbe7e13e4539d539b9cf0959b726e3ada69c5e.
+Baseline: 002b3eaafc317e12f4121e66ab286a1675477cb5 (V6 HEAD).
 Complete series base: 1e922b835b39f9f0d948e780ff4020f594124afd.
 No GitHub write or device installation is authorized or performed.
 
@@ -15,6 +16,27 @@ private namespace removal, generation disk preflight, digest-sealed activation,
 verified rollback/recovery, unknown-content cleanup refusal, explicit UI consent,
 and application-scoped lifecycle operations preserve existing download telemetry.
 Portable removal is journaled archival. It intentionally retains old bytes.
+
+In V7 (Lifecycle & Storage Safety):
+- `PersistentOperationGraph` adds `REMOVAL` and `ROLLBACK` stages and atomic
+  terminal-subtree retention pruning (`pruneRetained`) so historical terminal
+  trees (`COMPLETED`, `CANCELLED`, `FAILED`) are evicted oldest-first without
+  creating orphans or evicting `RECOVERY_REQUIRED` / active operations.
+- `ModuleInstallOperations.lifecycle` emits `REMOVING`, `REMOVED`, and
+  `ROLLING_BACK` transitions into `DownloadCoordinator` and fails closed if
+  strict journal restoration fails.
+- `ModuleOperationJournal` enforces a 64 KiB disk-space reserve preflight,
+  rejects URLs/credentials in operation metadata, and cleans up non-symlink
+  `.tmp` files on write failure.
+- `RuntimeGenerationStore` enforces per-file copy-time free-space checks during
+  cloning, preflights disk space on all control journals, safely reclaims
+  unmodified partial `COPYING` clones when interrupted before `STAGED`, and
+  exposes `quarantinedDirectories()` / `quarantinedBytes()` for modified or
+  failed post-switch quarantine inspection.
+- `RuntimeArchiveRemoval`, `OwnedModuleFiles`, `ModuleOwnershipStore`, and
+  `RootfsActivationTransaction` enforce ancestor symlink checks, pre-write disk
+  reserve checks, CAS `.part` fsync/cleanup, and fail-closed dual-directory
+  conflict handling on recovery.
 
 ## Actual action matrix
 
@@ -32,7 +54,7 @@ Portable removal is journaled archival. It intentionally retains old bytes.
 SAFE_LIFECYCLE_SUPPORTED is action-specific and conditional, never a blanket
 promise for a module. LIFECYCLE_BLOCKED includes absent proofs, dependents, active
 use, unknown files, changed trees, insufficient space, legacy receipts, and
-pending recovery. Native recipe revision was advanced to ownership-probe-v7-lifecycle.
+pending recovery. Native recipe revision remains ownership-probe-v8-apt-snapshot.
 Package versions, sources and checksums are otherwise unchanged; no hashes invented.
 
 ## Evidence scope and failures
@@ -44,12 +66,12 @@ at before-switch, old-moved, new-moved and committed-marker boundaries and then
 recovered. Portable recovery covers interruption, foreign user data, archive
 preservation and symlink rejection. Existing downloader hash/HTTP tests remain.
 
-Initial ownership tests failed because four synthetic vendor fixtures did not
-capture their baseline; fixtures now explicitly register original vendor files.
-An initial acceptance-test compile failed on public exposure of an internal enum;
-the fixture is now internal. A cleanup test run failed until known metadata parent
-paths were included in the ownership allowlist. No tests or security gates removed.
-Final exact counts and logs are in the delivered verification.json.
+In the V7 offline sandbox VM environment, Node.js contract/behavioral tests
+(including `lifecycle_storage_safety_v7_contract.test.js`), Second Brain V2
+snapshot verification, repository/secret hygiene, wiki audit, and Cloudflare
+control-plane + SQLite tests are executed directly. Host `javac`/`kotlinc`/Gradle
+compilers and Android SDK/emulator/physical devices are absent in this sandbox
+VM and are honestly reported as `NOT_RUN` where applicable.
 
 ## Limits and NOT_RUN
 
