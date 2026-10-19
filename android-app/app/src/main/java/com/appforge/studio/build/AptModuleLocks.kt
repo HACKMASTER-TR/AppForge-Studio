@@ -6,7 +6,7 @@ import java.nio.file.Files
 /** Read-only Android preflight. A marker cannot replace locked bytes, metadata and installed state. */
 internal object AptModuleLocks {
     const val SNAPSHOT="20261018T000000Z"
-    const val CATALOG="792352bd8d53ae00a27138025dba81874c5f4ada989ccab3167ab55c5c6feade"
+    const val CATALOG="77efb669105e5c17fda85dbd653b78b22b0614eaf70c4db8c7d00a8bb4df9e2f"
     const val PROFILE="356b70db7922a69651eac67811f59c78a612709e134b00b324721dd93b6c3ea2"
     private val releases=mapOf("noble" to "cdb2f31d809f589719a53c6ad15f255b27569c4059542ada282aaa21b8e164b0","noble-updates" to "f8db4261891aad2963b51de65b6f2a7f52250df02109b8a16fcfe5692d2187c3","noble-security" to "f444994ac2ed9f6a64365d5baee6f9540f2cad3320d7f574b0efd4c0d514c32c","noble-backports" to "9bb3c4bace14bf88014e5a66c8d431e65da66fd055dc7fdb45423305cf132cce")
     private val required=setOf("identity","profile.sha256","catalog.sha256","requests.txt","baseline.tsv","plan.tsv","packages.tsv","dependencies.tsv","installed.tsv","installed-files.sha256","verification","metadata.sha256")

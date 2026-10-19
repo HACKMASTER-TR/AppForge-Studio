@@ -38,7 +38,7 @@ def main():
     entry={'name':p['Package'],'version':p['Version'],'architecture':p['Architecture'],'sha256':digest,'bytes':int(size),'url':url,'dependencies':p.get('Depends',''),'preDependencies':p.get('Pre-Depends',''),'repositoryMetadata':expected,'verification':'SIGNED_INDEX_RESOLVED_NOT_INSTALLED'}
     packages.append(entry)
     values=[module,arch,p['Package'],p['Version'],p['Architecture'],digest,size,url,p.get('Depends',''),p.get('Pre-Depends','')]
-    assert all('\t' not in x and '\n' not in x for x in values);rows.append('\t'.join(values))
+    assert all('\t' not in x and '\n' not in x for x in values);rows.append('\t'.join(values).rstrip('\t'))
     node=f"{arch}:{p['Package']}:{p['Version']}:{digest}";nodes[node]=entry
     edges.append({'module':module,'architecture':arch,'package':node,'depends':entry['dependencies'],'preDepends':entry['preDependencies'],'resolutionAuthority':'APT solver using exact pinned snapshot and vendor baseline'})
    modules.append({'lockfileVersion':1,'moduleId':module,'architecture':arch,'ubuntu':'noble','snapshot':'20261018T000000Z','baselineRootfsSha256':root_hashes[arch],'packages':packages,'downloadBytes':sum(p['bytes'] for p in packages),'verification':'SIGNED_METADATA_AND_SOLVER_PASS; execution status is separate evidence','noAdditionalApt':module=='EXPO_REACT_NATIVE' and arch=='amd64'})
