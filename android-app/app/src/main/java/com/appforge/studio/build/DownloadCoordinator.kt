@@ -17,7 +17,8 @@ internal object DownloadCoordinator {
     val operations=kotlinx.coroutines.flow.MutableStateFlow<List<DownloadOperationNode>>(emptyList())
     private fun saveGraph(rows:List<DownloadOperationNode>) {
         val store=journal?:return
-        store.operationGraph().save(rows);operations.value=rows
+        val bounded=PersistentOperationGraph.pruneRetained(rows)
+        store.operationGraph().save(bounded);operations.value=bounded
     }
     private fun upsertGraph(node:DownloadOperationNode) {
         saveGraph(operations.value.filterNot{it.operationId==node.operationId}+node)
@@ -40,10 +41,12 @@ internal object DownloadCoordinator {
             ModulePhase.EXTRACTING,ModulePhase.PREPARING->OperationStage.CACHE_PREPARATION
             ModulePhase.INSTALLING->OperationStage.INSTALLATION
             ModulePhase.OFFLINE_TEST->OperationStage.OFFLINE_PROBE
+            ModulePhase.REMOVING,ModulePhase.REMOVED->OperationStage.REMOVAL
+            ModulePhase.ROLLING_BACK->OperationStage.ROLLBACK
             else->OperationStage.MODULE
         }
         val state=when(event.phase){
-            ModulePhase.READY->DownloadState.COMPLETED
+            ModulePhase.READY,ModulePhase.REMOVED->DownloadState.COMPLETED
             ModulePhase.ERROR->DownloadState.FAILED
             ModulePhase.CANCELED->DownloadState.CANCELLED
             ModulePhase.PAUSED->DownloadState.PAUSED

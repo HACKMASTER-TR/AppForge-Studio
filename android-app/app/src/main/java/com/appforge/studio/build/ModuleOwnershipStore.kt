@@ -72,6 +72,8 @@ internal class ModuleOwnershipStore(private val root:File) {
     private fun content(digest:String):File {
         require(digest.matches(Regex("[a-f0-9]{64}")))
         val f=File(root.parentFile,".module-ownership-cas-v5/$digest")
+        var p:File?=f.parentFile.absoluteFile
+        while(p!=null){require(!Files.isSymbolicLink(p.toPath())){"Sahiplik CAS yolu symlink olamaz"};p=p.parentFile}
         require(f.parentFile.canonicalFile==f.parentFile.absoluteFile && !Files.isSymbolicLink(f.toPath()))
         return f
     }
@@ -82,7 +84,7 @@ internal class ModuleOwnershipStore(private val root:File) {
         val f=receipt(id);require(f.isFile && !Files.isSymbolicLink(f.toPath()) && f.length()<=16L*1024*1024)
         return JSONObject(f.readText()).also{require(it.getInt("schema")==1 && it.getString("module")==id.name)}
     }
-    fun record(id:OfflineModuleId,previousRootName:String,before:Map<String,RuntimeGenerationStore.Entry>,after:Map<String,RuntimeGenerationStore.Entry>,beforeRoot:File?=null) {
+    fun record(id:OfflineModuleId,previousRootName:String,before:Map<String,RuntimeGenerationStore.Entry>,after:Map<String,RuntimeGenerationStore.Entry>,beforeRoot:File?=null,availableBytes:(File)->Long={it.usableSpace}) {
         require(previousRootName.matches(Regex("\\.v3-previous-[0-9a-f-]{36}")))
         val old=if(receipt(id).exists())read(id) else null
         require(before[BaseRuntimeOwnership.FILE]==after[BaseRuntimeOwnership.FILE]){"Vendor sahiplik kaydı değişti."}
@@ -126,10 +128,17 @@ internal class ModuleOwnershipStore(private val root:File) {
             val sourceBase=if(prior)File(root.parentFile,old!!.getString("previous")) else beforeRoot!!
             val source=path(sourceBase,key)
             require(source.isFile && !Files.isSymbolicLink(source.toPath()) && VerifiedModuleDownload.sha(source)==original.digest){"Önceki sahipli içerik doğrulanamadı: $key"}
-            dst.parentFile.mkdirs();require(dst.parentFile.usableSpace>source.length()+64L*1024*1024)
+            dst.parentFile.mkdirs();require(availableBytes(dst.parentFile)>source.length()+64L*1024*1024){"Sahiplik CAS deposu için yeterli alan yok."}
             val tmp=File(dst.path+".part-${java.util.UUID.randomUUID()}")
-            Files.copy(source.toPath(),tmp.toPath());require(VerifiedModuleDownload.sha(tmp)==original.digest)
-            Files.move(tmp.toPath(),dst.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+            require(!Files.isSymbolicLink(tmp.toPath()))
+            try {
+                source.inputStream().use{input->java.io.FileOutputStream(tmp).use{out->input.copyTo(out);out.fd.sync()}}
+                require(VerifiedModuleDownload.sha(tmp)==original.digest)
+                Files.move(tmp.toPath(),dst.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+            } catch(e:Throwable) {
+                if(!Files.isSymbolicLink(tmp.toPath()))Files.deleteIfExists(tmp.toPath())
+                throw e
+            }
         }
         val f=receipt(id);f.parentFile.mkdirs();require(!Files.isSymbolicLink(f.toPath()))
         val value=JSONObject().put("schema",1).put("module",id.name).put("sequence",sequence+1).put("previous",old?.getString("previous")?:previousRootName).put("changes",changes).put("beforeStore",if(useContentStore)"CAS1" else "SNAPSHOT")
@@ -138,9 +147,16 @@ internal class ModuleOwnershipStore(private val root:File) {
             .put("generation",previousRootName.removePrefix(".v3-previous-"))
             .put("previousVersion",old?.optString("version","")?.takeIf{it.isNotBlank()})
             .put("installState","VERIFIED_FILES")
+        val bytes=value.toString().toByteArray(Charsets.UTF_8);require(bytes.size<=16*1024*1024)
+        require(availableBytes(f.parentFile)>bytes.size+65536L){"Sahiplik kaydı için yeterli depolama alanı yok."}
         val tmp=File(f.path+".tmp");require(!Files.isSymbolicLink(tmp.toPath()))
-        java.io.FileOutputStream(tmp).use{it.write(value.toString().toByteArray());it.fd.sync()}
-        Files.move(tmp.toPath(),f.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+        try {
+            java.io.FileOutputStream(tmp).use{it.write(bytes);it.fd.sync()}
+            Files.move(tmp.toPath(),f.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+        } catch(e:Throwable) {
+            if(!Files.isSymbolicLink(tmp.toPath()))Files.deleteIfExists(tmp.toPath())
+            throw e
+        }
     }
     private fun validate(id:OfflineModuleId):Pair<JSONObject,File> {
         val record=read(id);val name=record.getString("previous")

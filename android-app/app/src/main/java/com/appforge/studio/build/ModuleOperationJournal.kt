@@ -7,7 +7,7 @@ import java.nio.file.StandardCopyOption
 import org.json.JSONObject
 
 /** Private, bounded operation metadata. No project, credential or SDK-consent state is persisted. */
-internal class ModuleOperationJournal(private val file:File) {
+internal class ModuleOperationJournal(private val file:File,private val availableBytes:(File)->Long={it.usableSpace}) {
     private fun requireReadable() {
         var parent:File?=file.absoluteFile
         while(parent!=null){require(!Files.isSymbolicLink(parent.toPath())){"Modül günlüğü symlink olamaz"};parent=parent.parentFile}
@@ -18,7 +18,11 @@ internal class ModuleOperationJournal(private val file:File) {
     @Synchronized fun save(events:Map<OfflineModuleId,ModuleProgress>) {
         requireReadable()
         require(!Files.isSymbolicLink(file.toPath()))
-        file.parentFile?.mkdirs()
+        val parent=requireNotNull(file.absoluteFile.parentFile);parent.mkdirs()
+        for((_,e) in events) {
+            require(e.operationId.isNotBlank() && !e.operationId.contains("://") && !e.detail.contains("https://") && !e.detail.contains("http://")){"Modül günlüğü URL veya gizli kaynak içeremez"}
+            require(e.bytesDownloaded>=0 && (e.bytesTotal==null || e.bytesTotal>=e.bytesDownloaded)){"Geçersiz modül günlüğü bayt sayacı"}
+        }
         val previous=readBounded()
         val history=previous?.optJSONArray("history")?:org.json.JSONArray()
         for((id,e) in events) {
@@ -31,10 +35,17 @@ internal class ModuleOperationJournal(private val file:File) {
         val json=JSONObject().put("schema",1).put("history",bounded)
         for((id,e) in events)json.put(id.name,JSONObject().put("operation",e.operationId.take(100)).put("phase",e.phase.name)
             .put("bytes",e.bytesDownloaded).put("total",e.bytesTotal).put("detail",e.detail.take(2000)))
+        val bytes=json.toString().toByteArray(Charsets.UTF_8);require(bytes.size<=32768){"Modül günlüğü boyut sınırını aşıyor"}
+        require(availableBytes(parent)>bytes.size+65536L){"Modül günlüğü için depolama alanı yetersiz; önceki kayıt korunur."}
         val part=File(file.path+".tmp")
         require(!Files.isSymbolicLink(part.toPath()))
-        FileOutputStream(part).use {it.write(json.toString().toByteArray(Charsets.UTF_8));it.fd.sync()}
-        Files.move(part.toPath(),file.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+        try {
+            FileOutputStream(part).use {it.write(bytes);it.fd.sync()}
+            Files.move(part.toPath(),file.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+        } catch(e:Throwable) {
+            if(!Files.isSymbolicLink(part.toPath()))Files.deleteIfExists(part.toPath())
+            throw e
+        }
     }
     private fun readBounded():JSONObject?=runCatching {
         require(file.isFile && file.length()<=32768 && !Files.isSymbolicLink(file.toPath()))

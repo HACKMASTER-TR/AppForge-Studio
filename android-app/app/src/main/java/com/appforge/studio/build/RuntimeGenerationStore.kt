@@ -9,36 +9,49 @@ import java.util.UUID
 import org.json.JSONObject
 
 /** Private build-root generations only. Never follows links while copying/deleting. Original projects stay outside. */
-internal class RuntimeGenerationStore(private val active:File) {
+internal class RuntimeGenerationStore(private val active:File,private val defaultAvailableBytes:()->Long={requireNotNull(active.parentFile).canonicalFile.usableSpace}) {
     private val parent=requireNotNull(active.parentFile).canonicalFile
     private val journal=File(parent,".module-generation.json")
-    private fun checkAnchor(){require(active.absoluteFile==active.canonicalFile && active.parentFile.canonicalFile==parent && active.isDirectory)}
+    private fun checkAnchor(){require(active.absoluteFile==active.canonicalFile && active.parentFile.canonicalFile==parent && active.isDirectory && !Files.isSymbolicLink(parent.toPath()))}
     private fun child(name:String):File {require(name.matches(Regex("\\.v3-(stage|previous|discard)-[0-9a-f-]{36}")));return File(parent,name)}
-    private fun write(value:JSONObject) {
-        require(!Files.isSymbolicLink(journal.toPath()))
-        val tmp=File(journal.path+".tmp");require(!Files.isSymbolicLink(tmp.toPath()))
-        FileOutputStream(tmp).use{it.write(value.toString().toByteArray());it.fd.sync()}
-        Files.move(tmp.toPath(),journal.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+    private fun atomicWrite(target:File,bytes:ByteArray,availableBytes:()->Long=defaultAvailableBytes) {
+        require(!Files.isSymbolicLink(parent.toPath()) && !Files.isSymbolicLink(target.toPath()))
+        require(availableBytes()>bytes.size+65536L){"Generation günlüğü için yeterli depolama yok; önceki kayıt korunur."}
+        val tmp=File(target.path+".tmp");require(!Files.isSymbolicLink(tmp.toPath()))
+        try {
+            FileOutputStream(tmp).use{it.write(bytes);it.fd.sync()}
+            Files.move(tmp.toPath(),target.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+        } catch(e:Throwable) {
+            if(!Files.isSymbolicLink(tmp.toPath()))Files.deleteIfExists(tmp.toPath())
+            throw e
+        }
     }
+    private fun write(value:JSONObject,availableBytes:()->Long=defaultAvailableBytes)=atomicWrite(journal,value.toString().toByteArray(Charsets.UTF_8),availableBytes)
     private val activeSeal=File(parent,".v3-active-generation.json")
-    private fun seal(digest:String) {
-        require(digest.matches(Regex("[a-f0-9]{64}")) && !Files.isSymbolicLink(activeSeal.toPath()))
-        val tmp=File(activeSeal.path+".tmp");require(!Files.isSymbolicLink(tmp.toPath()))
-        FileOutputStream(tmp).use{it.write(JSONObject().put("schema",1).put("active",active.name).put("digest",digest).toString().toByteArray());it.fd.sync()}
-        Files.move(tmp.toPath(),activeSeal.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+    private fun seal(digest:String,availableBytes:()->Long=defaultAvailableBytes) {
+        require(digest.matches(Regex("[a-f0-9]{64}")))
+        atomicWrite(activeSeal,JSONObject().put("schema",1).put("active",active.name).put("digest",digest).toString().toByteArray(Charsets.UTF_8),availableBytes)
     }
     private fun verifyActiveSeal() {
         require(activeSeal.isFile && !Files.isSymbolicLink(activeSeal.toPath()) && activeSeal.length()<8192){"Eski ortamda generation mühürü yok; geri alma güvenle kanıtlanamıyor."}
         val j=JSONObject(activeSeal.readText());require(j.getInt("schema")==1 && j.getString("active")==active.name)
         require(treeDigest(inventory(active,{}))==j.getString("digest")){"Aktif ortam son geçişten sonra değişmiş; kullanıcı dosyaları korunarak geri alma engellendi."}
     }
+    private fun cleanStaleTmpSidecars() {
+        for(sidecar in listOf(File(journal.path+".tmp"),File(activeSeal.path+".tmp"),File(snapshotRegistry.path+".tmp"))) {
+            require(!Files.isSymbolicLink(sidecar.toPath())){"Generation geçici dosyası symlink olamaz"}
+            Files.deleteIfExists(sidecar.toPath())
+        }
+    }
     fun recover() {
+        cleanStaleTmpSidecars()
         if(!journal.exists())return
         require(journal.isFile && !Files.isSymbolicLink(journal.toPath()) && journal.length()<8192)
         val j=JSONObject(journal.readText());require(j.getString("active")==active.name)
         val stage=child(j.getString("stage"));val old=child(j.getString("previous"))
         require(j.optInt("schema",0)==2){"Eski işlem günlüğünün bütünlük kanıtı yok; tüm ortamlar korundu, otomatik geçiş kapalı."}
-        if(j.getString("state")=="COMMITTED") {
+        val state=j.getString("state")
+        if(state=="COMMITTED") {
             require(treeDigest(inventory(active,{}))==j.getString("stagedDigest")){"Aktifleştirme sonrası ortam değişmiş; kurtarma engellendi, dosyalar korundu."}
             seal(j.getString("stagedDigest"))
         } else if(old.exists()) {
@@ -51,14 +64,29 @@ internal class RuntimeGenerationStore(private val active:File) {
             Files.move(old.toPath(),active.toPath(),StandardCopyOption.ATOMIC_MOVE)
             seal(j.getString("previousDigest"))
         } else {
-            if(j.getString("state")=="COPYING")checkAnchor()
+            if(state=="COPYING")checkAnchor()
             else require(treeDigest(inventory(active,{}))==j.getString("previousDigest")){"Çalışan ortam işlem sırasında değişmiş; kullanıcı verileri ve stage korundu."}
         }
-        if(stage.exists())Files.move(stage.toPath(),child(".v3-discard-${UUID.randomUUID()}").toPath(),StandardCopyOption.ATOMIC_MOVE)
+        if(stage.exists()) {
+            require(!Files.isSymbolicLink(stage.toPath()))
+            val activeEntries=if(active.isDirectory)runCatching{inventory(active,{})}.getOrNull() else null
+            val stageEntries=if(state=="COPYING" && !old.exists() && stage.isDirectory)runCatching{inventory(stage,{})}.getOrNull() else null
+            // If interrupted during initial clone (COPYING) and every staged entry is an exact unmodified subset of active, reclaim the partial clone safely; otherwise quarantine.
+            if(state=="COPYING" && !old.exists() && activeEntries!=null && stageEntries!=null && treeDigest(activeEntries)==j.getString("previousDigest") && stageEntries.all{(k,v)->activeEntries[k]==v}) {
+                removeOwned(stage)
+            } else {
+                Files.move(stage.toPath(),child(".v3-discard-${UUID.randomUUID()}").toPath(),StandardCopyOption.ATOMIC_MOVE)
+            }
+        }
         Files.delete(journal.toPath())
     }
-    fun prepare(module:OfflineModuleId,availableBytes:()->Long={parent.usableSpace},canceled:()->Unit={}):Prepared=prepareOwner(module.name,availableBytes,canceled)
-    fun prepareOwner(owner:String,availableBytes:()->Long={parent.usableSpace},canceled:()->Unit={}):Prepared {
+    fun quarantinedDirectories():List<File> {
+        checkAnchor()
+        return parent.listFiles().orEmpty().filter{it.name.matches(Regex("\\.v3-discard-[0-9a-f-]{36}"))}.onEach{require(!Files.isSymbolicLink(it.toPath()))}.sortedBy{it.name}
+    }
+    fun quarantinedBytes():Long = quarantinedDirectories().sumOf{dir->inventory(dir,{}).values.sumOf{it.size}}
+    fun prepare(module:OfflineModuleId,availableBytes:()->Long=defaultAvailableBytes,canceled:()->Unit={}):Prepared=prepareOwner(module.name,availableBytes,canceled)
+    fun prepareOwner(owner:String,availableBytes:()->Long=defaultAvailableBytes,canceled:()->Unit={}):Prepared {
         require(owner.matches(Regex("[A-Z0-9_:-]{1,100}")))
         recover();checkAnchor()
         val before=inventory(active,canceled)
@@ -66,12 +94,12 @@ internal class RuntimeGenerationStore(private val active:File) {
         require(availableBytes()>bytes+256L*1024*1024){"İzole sürüm için yeterli depolama yok; çalışan modüller değişmedi."}
         val id=UUID.randomUUID().toString();val stage=child(".v3-stage-$id");val old=child(".v3-previous-$id")
         val j=JSONObject().put("active",active.name).put("stage",stage.name).put("previous",old.name).put("module",owner).put("state","COPYING").put("schema",2).put("previousDigest",treeDigest(before))
-        write(j)
-        try {copyTree(active,stage,canceled)}catch(e:Throwable){recover();throw e}
+        write(j,availableBytes)
+        try {copyTree(active,stage,canceled,availableBytes)}catch(e:Throwable){recover();throw e}
         check(inventory(stage,canceled)==before){"Sürüm kopyası bütünlüğü doğrulanamadı."}
-        return Prepared(stage,old,j,before,canceled)
+        return Prepared(stage,old,j,before,canceled,availableBytes)
     }
-    inner class Prepared internal constructor(val root:File,private val old:File,private val j:JSONObject,private val before:Map<String,Entry>,private val canceled:()->Unit):AutoCloseable {
+    inner class Prepared internal constructor(val root:File,private val old:File,private val j:JSONObject,private val before:Map<String,Entry>,private val canceled:()->Unit,private val availableBytes:()->Long=defaultAvailableBytes):AutoCloseable {
         val previousRootName:String get()=old.name
         private var committed=false
         fun commit(verify:(File)->Unit,fault:(String)->Unit={}) {
@@ -85,16 +113,16 @@ internal class RuntimeGenerationStore(private val active:File) {
             val latest=File(ownership,"latest.json");require(!Files.isSymbolicLink(latest.toPath()))
             latest.writeText(JSONObject().put("module",j.getString("module")).put("previous",old.name)
                 .put("previousDigest",treeDigest(before)).put("changed",org.json.JSONArray(changed)).put("schema",1).toString())
-            registerSnapshot(old.name,treeDigest(before))
+            registerSnapshot(old.name,treeDigest(before),availableBytes)
             val stagedDigest=treeDigest(inventory(root,canceled))
             j.put("stagedDigest",stagedDigest)
-            j.put("state","STAGED");write(j);fault("before-switch")
+            j.put("state","STAGED");write(j,availableBytes);fault("before-switch")
             Files.move(active.toPath(),old.toPath(),StandardCopyOption.ATOMIC_MOVE)
             try {
                 fault("old-moved")
                 Files.move(root.toPath(),active.toPath(),StandardCopyOption.ATOMIC_MOVE)
                 fault("new-moved")
-                j.put("state","COMMITTED");write(j);fault("committed-marker");seal(stagedDigest);committed=true;journal.delete()
+                j.put("state","COMMITTED");write(j,availableBytes);fault("committed-marker");seal(stagedDigest,availableBytes);committed=true;journal.delete()
             }catch(e:Throwable){recover();throw e}
         }
         override fun close(){if(!committed)recover()}
@@ -110,24 +138,24 @@ internal class RuntimeGenerationStore(private val active:File) {
         null
     }.getOrElse{it.message?:"Generation doğrulanamadı."}
     fun rollbackAvailable(module:OfflineModuleId):Boolean=rollbackReason(module)==null
-    fun rollback(module:OfflineModuleId,availableBytes:()->Long={parent.usableSpace},fault:(String)->Unit={},canceled:()->Unit={}) {
+    fun rollback(module:OfflineModuleId,availableBytes:()->Long=defaultAvailableBytes,fault:(String)->Unit={},canceled:()->Unit={}) {
         recover();checkAnchor();require(rollbackReason(module)==null){rollbackReason(module)?:"Geri alma engellendi."}
         val record=JSONObject(File(active,"opt/appforge-device/generations-v4/latest.json").readText())
         val old=child(record.getString("previous"));val target=inventory(old,canceled)
         require(availableBytes()>target.values.sumOf{it.size}+256L*1024*1024){"Geri alma stage'i için depolama yetersiz; çalışan ortam korundu."}
         val before=inventory(active,canceled)
         val stage=child(".v3-stage-${UUID.randomUUID()}");val current=child(".v3-previous-${UUID.randomUUID()}")
-        registerSnapshot(current.name,treeDigest(before))
+        registerSnapshot(current.name,treeDigest(before),availableBytes)
         val j=JSONObject().put("schema",2).put("active",active.name).put("stage",stage.name).put("previous",current.name)
             .put("previousDigest",treeDigest(before)).put("stagedDigest",treeDigest(target)).put("module",module.name).put("state","COPYING")
-        write(j)
+        write(j,availableBytes)
         try {
-            copyTree(old,stage,canceled);require(inventory(stage,canceled)==target);canceled()
+            copyTree(old,stage,canceled,availableBytes);require(inventory(stage,canceled)==target);canceled()
             require(inventory(active,canceled)==before){"Aktif ortam geri alma sırasında değişti; geçiş engellendi."}
-            j.put("state","STAGED");write(j);fault("before-switch")
+            j.put("state","STAGED");write(j,availableBytes);fault("before-switch")
             Files.move(active.toPath(),current.toPath(),StandardCopyOption.ATOMIC_MOVE);fault("old-moved")
             Files.move(stage.toPath(),active.toPath(),StandardCopyOption.ATOMIC_MOVE);fault("new-moved")
-            j.put("state","COMMITTED");write(j);seal(j.getString("stagedDigest"));Files.delete(journal.toPath())
+            j.put("state","COMMITTED");write(j,availableBytes);seal(j.getString("stagedDigest"),availableBytes);Files.delete(journal.toPath())
         }catch(e:Throwable){recover();throw e}
     }
     private val snapshotRegistry=File(parent,".v3-snapshots.json")
@@ -136,13 +164,8 @@ internal class RuntimeGenerationStore(private val active:File) {
         require(!Files.isSymbolicLink(snapshotRegistry.toPath()) && snapshotRegistry.length()<=1024*1024)
         return JSONObject(snapshotRegistry.readText())
     }
-    private fun saveRegistry(j:JSONObject) {
-        require(!Files.isSymbolicLink(snapshotRegistry.toPath()))
-        val tmp=File(snapshotRegistry.path+".tmp");require(!Files.isSymbolicLink(tmp.toPath()))
-        FileOutputStream(tmp).use{it.write(j.toString().toByteArray());it.fd.sync()}
-        Files.move(tmp.toPath(),snapshotRegistry.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
-    }
-    private fun registerSnapshot(name:String,digest:String) {val j=registry();require(j.length()<2048);j.put(name,digest);saveRegistry(j)}
+    private fun saveRegistry(j:JSONObject,availableBytes:()->Long=defaultAvailableBytes)=atomicWrite(snapshotRegistry,j.toString().toByteArray(Charsets.UTF_8),availableBytes)
+    private fun registerSnapshot(name:String,digest:String,availableBytes:()->Long=defaultAvailableBytes) {val j=registry();require(j.length()<2048);j.put(name,digest);saveRegistry(j,availableBytes)}
     private fun requireOwnedSnapshot(root:File,entries:Map<String,Entry>) {
         val known=BaseRuntimeOwnership.paths(root).toMutableSet()
         require(known.isNotEmpty()){"Eski snapshot'ın vendor sahiplik envanteri yok; kullanıcı dosyaları korunur."}
@@ -178,7 +201,6 @@ internal class RuntimeGenerationStore(private val active:File) {
         checkAnchor();require(!journal.exists() && retain in 1..10)
         val j=registry();val keep=protected.toMutableSet()
         val latest=File(active,"opt/appforge-device/generations-v4/latest.json")
-        require(latest.canonicalFile.toPath().startsWith(active.canonicalFile.toPath()))
         require(latest.canonicalFile.toPath().startsWith(active.canonicalFile.toPath()))
         if(latest.isFile){require(!Files.isSymbolicLink(latest.toPath()) && latest.length()<=4L*1024*1024);keep.add(JSONObject(latest.readText()).getString("previous"))}
         val candidates=j.keys().asSequence().map{child(it)}.filter{it.isDirectory}.sortedByDescending{it.lastModified()}.toList()
@@ -216,8 +238,7 @@ internal class RuntimeGenerationStore(private val active:File) {
                 require(treeDigest(expected)==j.getString(candidate.name)){"Eski sürüm değişmiş; temizlenmedi."}
                 val entries=JSONObject();for((key,e) in expected)entries.put(key,JSONObject().put("kind",e.kind).put("size",e.size).put("digest",e.digest).put("executable",e.executable).put("permissions",e.permissions))
                 val bytes=JSONObject().put("ownershipValidated",true).put("entries",entries).toString().toByteArray();require(bytes.size<=64*1024*1024)
-                val tmp=File(planFile.path+".tmp");require(!Files.isSymbolicLink(tmp.toPath()));FileOutputStream(tmp).use{it.write(bytes);it.fd.sync()}
-                Files.move(tmp.toPath(),planFile.toPath(),StandardCopyOption.ATOMIC_MOVE)
+                atomicWrite(planFile,bytes)
             }
             require(treeDigest(expected)==j.getString(candidate.name))
             val current=inventory(candidate,canceled)
@@ -255,13 +276,17 @@ internal class RuntimeGenerationStore(private val active:File) {
             }
         });return result
     }
-    private fun copyTree(from:File,to:File,canceled:()->Unit) {
+    private fun copyTree(from:File,to:File,canceled:()->Unit,availableBytes:()->Long=defaultAvailableBytes) {
         require(!to.exists() && !Files.isSymbolicLink(to.toPath()))
         Files.walkFileTree(from.toPath(),object:SimpleFileVisitor<Path>() {
             override fun preVisitDirectory(dir:Path,attrs:BasicFileAttributes):FileVisitResult {canceled();Files.createDirectory(to.toPath().resolve(from.toPath().relativize(dir)));return FileVisitResult.CONTINUE}
             override fun visitFile(file:Path,attrs:BasicFileAttributes):FileVisitResult {
                 canceled();val dst=to.toPath().resolve(from.toPath().relativize(file))
-                if(Files.isSymbolicLink(file))Files.createSymbolicLink(dst,Files.readSymbolicLink(file)) else {require(attrs.isRegularFile);Files.copy(file,dst,StandardCopyOption.COPY_ATTRIBUTES)}
+                if(Files.isSymbolicLink(file))Files.createSymbolicLink(dst,Files.readSymbolicLink(file)) else {
+                    require(attrs.isRegularFile)
+                    require(availableBytes()>attrs.size()+64L*1024*1024){"Kopyalama sırasında depolama alanı tükendi; aktif ortam korundu."}
+                    Files.copy(file,dst,StandardCopyOption.COPY_ATTRIBUTES)
+                }
                 return FileVisitResult.CONTINUE
             }
             override fun postVisitDirectory(dir:Path,error:java.io.IOException?):FileVisitResult {

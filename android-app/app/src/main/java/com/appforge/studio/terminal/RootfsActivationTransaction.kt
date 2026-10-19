@@ -7,24 +7,33 @@ import java.util.UUID
 import org.json.JSONObject
 
 /** Journaled root+metadata swap. Old roots are retained; failure never recursively deletes user state. */
-internal class RootfsActivationTransaction(private val root:File,private val restore:File,private val metadata:File) {
+internal class RootfsActivationTransaction(private val root:File,private val restore:File,private val metadata:File,private val availableBytes:(File)->Long={it.usableSpace}) {
     private val parent=root.parentFile.canonicalFile
     private val journal=File(parent,".rootfs-activation.json")
-    private fun checked(file:File) {require(file.absoluteFile==file.canonicalFile && file.parentFile.canonicalFile==parent)}
+    private fun safe(file:File){var p:File?=file.absoluteFile;while(p!=null){require(!Files.isSymbolicLink(p.toPath())){"Rootfs geçiş yolu symlink olamaz"};p=p.parentFile}}
+    private fun checked(file:File) {safe(file);require(file.absoluteFile==file.canonicalFile && file.parentFile.canonicalFile==parent)}
     private fun backup(name:String):File {
         require(name.matches(Regex("rootfs-before-[0-9a-f-]{36}")))
         require(restore.canonicalFile==restore.absoluteFile && restore.parentFile.canonicalFile==parent)
-        return File(restore,name).also{require(!Files.isSymbolicLink(it.toPath()))}
+        return File(restore,name).also{safe(it);require(!Files.isSymbolicLink(it.toPath()))}
     }
     private fun write(j:JSONObject) {
         checked(journal);val tmp=File(journal.path+".tmp");checked(tmp)
-        FileOutputStream(tmp).use{it.write(j.toString().toByteArray());it.fd.sync()}
-        Files.move(tmp.toPath(),journal.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+        val bytes=j.toString().toByteArray(Charsets.UTF_8);require(bytes.size<=8192)
+        require(availableBytes(parent)>bytes.size+65536L){"Rootfs geçiş günlüğü için depolama alanı yetersiz."}
+        try {
+            FileOutputStream(tmp).use{it.write(bytes);it.fd.sync()}
+            Files.move(tmp.toPath(),journal.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)
+        } catch(e:Throwable) {
+            if(!Files.isSymbolicLink(tmp.toPath()))Files.deleteIfExists(tmp.toPath())
+            throw e
+        }
     }
     fun recover() {
+        val staleTmp=File(journal.path+".tmp");require(!Files.isSymbolicLink(staleTmp.toPath()));Files.deleteIfExists(staleTmp.toPath())
         if(!journal.exists())return
         checked(root);checked(metadata);checked(journal)
-        require(journal.isFile && journal.length()<=8192)
+        require(journal.isFile && journal.length() in 1..8192)
         val j=JSONObject(journal.readText());require(j.getInt("schema")==1)
         val old=backup(j.getString("old"));val saved=File(restore,old.name+".metadata")
         require(!Files.isSymbolicLink(saved.toPath()) && (!saved.exists() || saved.length()<=32768))
@@ -46,7 +55,10 @@ internal class RootfsActivationTransaction(private val root:File,private val res
         val old=backup("rootfs-before-${UUID.randomUUID()}");restore.mkdirs()
         val saved=File(restore,old.name+".metadata")
         require(!metadata.exists() || metadata.isFile && metadata.length()<=32768)
-        if(metadata.exists())Files.copy(metadata.toPath(),saved.toPath())
+        if(metadata.exists()){
+            require(availableBytes(restore)>metadata.length()+65536L){"Rootfs üstveri yedeği için depolama alanı yetersiz."}
+            Files.copy(metadata.toPath(),saved.toPath())
+        }
         val j=JSONObject().put("schema",1).put("old",old.name).put("hadRoot",root.exists()).put("hadMetadata",metadata.exists()).put("state","PREPARED")
         write(j)
         try {

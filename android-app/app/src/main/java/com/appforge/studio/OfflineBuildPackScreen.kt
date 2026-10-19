@@ -101,19 +101,21 @@ internal object ModuleInstallOperations {
     }
     @Synchronized fun lifecycle(context:android.content.Context,id:OfflineModuleId,action:String) {
         require(action in setOf("remove","rollback"));if(busy.value)return
-        restore(context);busy.value=true
+        try{restore(context)}catch(e:Exception){journalError.value="İndirme kaydı reddedildi; yaşam döngüsü işlemi başlamadı: ${e.message}";return}
+        busy.value=true
         try{ModuleDownloadService.start(context.applicationContext)}catch(e:RuntimeException){busy.value=false;journalError.value="Android yaşam döngüsü hizmetini başlatmadı: ${e.message}";return}
         job=scope.launch {
             val operation=java.util.UUID.randomUUID().toString()
+            fun recordLifecycle(event:ModuleProgress){DownloadCoordinator.modulePhase(event);publish(event)}
             try {
-                publish(ModuleProgress(id,operation,if(action=="remove")ModulePhase.REMOVING else ModulePhase.ROLLING_BACK,detail="Onaylı işlem: bağımlılık, sahiplik, kullanım ve generation bütünlüğü yeniden doğrulanıyor."))
+                recordLifecycle(ModuleProgress(id,operation,if(action=="remove")ModulePhase.REMOVING else ModulePhase.ROLLING_BACK,detail="Onaylı işlem: bağımlılık, sahiplik, kullanım ve generation bütünlüğü yeniden doğrulanıyor."))
                 if(action=="remove")OfflineBuildPackManager.removeOwnedModule(context.applicationContext,id)
                 else OfflineBuildPackManager.rollbackModule(context.applicationContext,id)
                 val resultPhase=if(action=="remove" || OfflineBuildPackManager.installedVersion(context,id)==null)ModulePhase.REMOVED else if(OfflineBuildPackManager.moduleReady(context,id))ModulePhase.READY else ModulePhase.PREPARING
-                publish(ModuleProgress(id,operation,resultPhase,
+                recordLifecycle(ModuleProgress(id,operation,resultPhase,
                     detail=if(action=="remove")"Modül kaydı güvenle kaldırıldı. Arşivlenen runtime/host dosyaları korunur; kullanıcı kaynakları silinmedi." else if(resultPhase==ModulePhase.READY)"Önceki generation SHA-256 envanteriyle doğrulanarak etkinleştirildi." else "Önceki ortam dosyaları geri getirildi; güncel motor önkontrolü geçmeden HAZIR sayılmaz."))
-            } catch(e:CancellationException){publish(ModuleProgress(id,operation,ModulePhase.PAUSED,detail="İşlem kesildi; yeniden açılışta generation günlüğü ve dosyalar doğrulanacak."));throw e}
-            catch(e:Exception){publish(ModuleProgress(id,operation,ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail="İşlem engellendi: ${e.message}"))}
+            } catch(e:CancellationException){recordLifecycle(ModuleProgress(id,operation,ModulePhase.PAUSED,detail="İşlem kesildi; yeniden açılışta generation günlüğü ve dosyalar doğrulanacak."));throw e}
+            catch(e:Exception){recordLifecycle(ModuleProgress(id,operation,ModulePhase.ERROR,errorCode=e.javaClass.simpleName,detail="İşlem engellendi: ${e.message}"))}
             finally{activeProgress.value=null;busy.value=false}
         }
     }
