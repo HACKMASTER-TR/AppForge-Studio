@@ -53,7 +53,7 @@ class CompiledHtmlTemplateIdentityTest {
         val aab = File(build, "generated/html-aab-template/assets/html-aab-template.aab")
         val binary = ZipFile(apk).use { it.getInputStream(it.getEntry("AndroidManifest.xml")).readBytes() }
         val proto = ZipFile(aab).use { it.getInputStream(it.getEntry("base/manifest/AndroidManifest.xml")).readBytes() }
-        val inventory = setOf("android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE",
+        val inventory = setOf("android.permission.ACCESS_LOCAL_NETWORK", "android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE",
             "android.permission.VIBRATE", "android.permission.POST_NOTIFICATIONS", "android.permission.WAKE_LOCK",
             "android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION", "android.permission.NFC",
             "android.permission.BLUETOOTH_SCAN", "android.permission.BLUETOOTH_CONNECT", "android.permission.USE_BIOMETRIC",
@@ -62,15 +62,18 @@ class CompiledHtmlTemplateIdentityTest {
             "android.permission.READ_MEDIA_VIDEO", "android.permission.ACTIVITY_RECOGNITION", "android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK", "com.android.vending.BILLING", "com.appforge.htmlstub.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION")
         assertEquals(inventory, binaryPermissions(binary))
         assertEquals(inventory, protoPermissions(proto))
+        for (target in listOf(36,37)) for (lan in listOf(false,true))
         for (network in listOf(false, true)) for (vibration in listOf(false, true))
             for (notifications in listOf(false, true)) for (bridge in listOf(false, true)) {
-                val draft = ProjectDraft(packageName="com.example.v2", appName="V2", networkState=network,
+                val draft = ProjectDraft(packageName="com.example.v2", appName="V2", networkState=network, targetSdk=target, localNetworkAccess=lan,
                     vibrationBridge=vibration, notifications=notifications, javascriptBridge=bridge)
                 val selected = FastHtmlApkPolicy.templatePermissions(draft)
-                val b = HtmlBinaryManifest.rewrite(binary, draft.packageName, draft.appName, 1, "1.0.0", 26, 37, selected)
+                val b = HtmlBinaryManifest.rewrite(binary, draft.packageName, draft.appName, 1, "1.0.0", 26, target, selected)
                 val a = FastHtmlAabProtoManifest.rewrite(proto, draft, hash(proto), selected)
                 assertEquals(selected, binaryPermissions(b))
                 assertEquals(selected, protoPermissions(a))
+                assertEquals(lan && target>=37, "android.permission.ACCESS_LOCAL_NETWORK" in binaryPermissions(b))
+                assertEquals(lan && target>=37, "android.permission.ACCESS_LOCAL_NETWORK" in protoPermissions(a))
                 val config = org.json.JSONObject(FastHtmlApkPackager.runtimeConfig(draft, "index.html").toString(Charsets.UTF_8))
                 assertEquals(network, "android.permission.ACCESS_NETWORK_STATE" in binaryPermissions(b))
                 assertEquals(vibration && bridge, "android.permission.VIBRATE" in protoPermissions(a))
