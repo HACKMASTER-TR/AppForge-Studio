@@ -10,7 +10,7 @@ import org.json.JSONObject
 internal class ModuleOperationJournal(private val file:File,private val availableBytes:(File)->Long={it.usableSpace}) {
     // Free-form shell/network details are deliberately not persisted. A denylist
     // cannot reliably distinguish credentials, URLs, paths or future error text.
-    private enum class Diagnostic { DRIVER_FAILED, NETWORK_WAIT, CONSENT_REQUIRED, USER_STOP, PROGRESS }
+    private enum class Diagnostic { DRIVER_FAILED, NETWORK_WAIT, CONSENT_REQUIRED, USER_STOP, PROGRESS, TRANSFER_RETRY, NETWORK_POLICY, APT_DOWNLOAD_CONSENT, IO_FAILURE, TLS_FAILURE, CANCELLED }
     private fun correlation(value:String):String = if(value.matches(Regex("id_[a-f0-9]{64}")))value
         else "id_"+java.security.MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it)}
     private fun diagnostic(phase:ModulePhase):String=when(phase) {
@@ -20,6 +20,16 @@ internal class ModuleOperationJournal(private val file:File,private val availabl
         ModulePhase.CANCELED,ModulePhase.PAUSED->Diagnostic.USER_STOP
         else->Diagnostic.PROGRESS
     }.name
+    private fun errorCode(event:ModuleProgress):String=when(event.errorCode) {
+        "TRANSFER_RETRY"->Diagnostic.TRANSFER_RETRY
+        "NETWORK_POLICY"->Diagnostic.NETWORK_POLICY
+        "APT_DOWNLOAD_CONSENT"->Diagnostic.APT_DOWNLOAD_CONSENT
+        "IOException","SocketTimeoutException","UnknownHostException"->Diagnostic.IO_FAILURE
+        "SSLHandshakeException","SSLPeerUnverifiedException"->Diagnostic.TLS_FAILURE
+        "CancellationException"->Diagnostic.CANCELLED
+        else->null
+    }?.name?:diagnostic(event.phase)
+    private fun safeCode(value:String,phase:ModulePhase):String=Diagnostic.entries.firstOrNull{it.name==value}?.name?:diagnostic(phase)
     private fun safeHistory(raw:org.json.JSONArray?):org.json.JSONArray {
         val safe=org.json.JSONArray()
         if(raw==null)return safe
@@ -28,7 +38,7 @@ internal class ModuleOperationJournal(private val file:File,private val availabl
             val module=OfflineModuleId.valueOf(row.getString("module"))
             val phase=ModulePhase.valueOf(row.getString("phase"))
             safe.put(JSONObject().put("module",module.name).put("operation",correlation(row.getString("operation")))
-                .put("phase",phase.name).put("detail",diagnostic(phase)).put("time",row.getLong("time")))
+                .put("phase",phase.name).put("detail",diagnostic(phase)).put("code",safeCode(row.optString("code"),phase)).put("time",row.getLong("time")))
         }
         return safe
     }
@@ -52,13 +62,13 @@ internal class ModuleOperationJournal(private val file:File,private val availabl
         for((id,e) in events) {
             val old=previous?.optJSONObject(id.name)
             if(old?.optString("operation")!=correlation(e.operationId) || old?.optString("phase")!=e.phase.name)
-                history.put(JSONObject().put("module",id.name).put("operation",correlation(e.operationId)).put("phase",e.phase.name).put("detail",diagnostic(e.phase)).put("time",System.currentTimeMillis()))
+                history.put(JSONObject().put("module",id.name).put("operation",correlation(e.operationId)).put("phase",e.phase.name).put("detail",diagnostic(e.phase)).put("code",errorCode(e)).put("time",System.currentTimeMillis()))
         }
         val bounded=org.json.JSONArray()
         for(i in (history.length()-32).coerceAtLeast(0) until history.length())bounded.put(history.getJSONObject(i))
         val json=JSONObject().put("schema",1).put("history",bounded)
         for((id,e) in events)json.put(id.name,JSONObject().put("operation",correlation(e.operationId)).put("phase",e.phase.name)
-            .put("bytes",e.bytesDownloaded).put("total",e.bytesTotal).put("detail",diagnostic(e.phase)))
+            .put("bytes",e.bytesDownloaded).put("total",e.bytesTotal).put("detail",diagnostic(e.phase)).put("code",errorCode(e)))
         val bytes=json.toString().toByteArray(Charsets.UTF_8);require(bytes.size<=32768){"Modül günlüğü boyut sınırını aşıyor"}
         require(availableBytes(parent)>bytes.size+65536L){"Modül günlüğü için depolama alanı yetersiz; önceki kayıt korunur."}
         val part=File(file.path+".tmp")

@@ -21,6 +21,19 @@ class JournalPrivacyAuditTest {
             }
         } finally {dir.deleteRecursively()}
     }
+    @Test fun knownErrorCodesRetainDiagnosticsWithoutPersistingTheirRawMessages() {
+        val dir=Files.createTempDirectory("audit-typed-diagnostic").toFile()
+        try {
+            val file=File(dir,"journal.json");val journal=ModuleOperationJournal(file)
+            journal.save(mapOf(OfflineModuleId.NODE_WEB to ModuleProgress(OfflineModuleId.NODE_WEB,"safe-op",ModulePhase.ERROR,errorCode="SSLHandshakeException",detail="password=SYNTHETIC_MARKER")))
+            val row=JSONObject(file.readText()).getJSONObject("NODE_WEB")
+            assertEquals("TLS_FAILURE",row.getString("code"));assertFalse(file.readText().contains("SYNTHETIC_MARKER"))
+            val first=row.getString("operation")
+            journal.save(mapOf(OfflineModuleId.NODE_WEB to ModuleProgress(OfflineModuleId.NODE_WEB,"safe-op",ModulePhase.ERROR,errorCode="unknown password=SYNTHETIC_MARKER")))
+            assertEquals("DRIVER_FAILED",JSONObject(file.readText()).getJSONObject("NODE_WEB").getString("code"))
+            assertEquals(first,journal.restoreStrict().getValue(OfflineModuleId.NODE_WEB).operationId)
+        } finally {dir.deleteRecursively()}
+    }
     @Test fun legacyRawHistoryIsSanitizedOnReadAndRewrittenWithoutSensitiveCorrelation() {
         val dir=Files.createTempDirectory("audit-legacy-private").toFile()
         try {
