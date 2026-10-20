@@ -9,7 +9,7 @@ import java.util.UUID
 import org.json.JSONObject
 
 /** Private build-root generations only. Never follows links while copying/deleting. Original projects stay outside. */
-internal class RuntimeGenerationStore(private val active:File,private val defaultAvailableBytes:()->Long={requireNotNull(active.parentFile).canonicalFile.usableSpace}) {
+internal class RuntimeGenerationStore @JvmOverloads constructor(private val active:File,private val defaultAvailableBytes:()->Long={requireNotNull(active.parentFile).canonicalFile.usableSpace}) {
     private val parent=requireNotNull(active.absoluteFile.parentFile)
     private val journal=File(parent,".module-generation.json")
     private fun checkAnchor(){require(active.absoluteFile==active.canonicalFile && active.parentFile.canonicalFile==parent && active.isDirectory && !Files.isSymbolicLink(parent.toPath()))}
@@ -102,9 +102,16 @@ internal class RuntimeGenerationStore(private val active:File,private val defaul
         val id=UUID.randomUUID().toString();val stage=child(".v3-stage-$id");val old=child(".v3-previous-$id")
         val j=JSONObject().put("active",active.name).put("stage",stage.name).put("previous",old.name).put("module",owner).put("state","COPYING").put("schema",2).put("previousDigest",treeDigest(before))
         write(j,availableBytes)
-        try {copyTree(active,stage,canceled,availableBytes)}catch(e:Throwable){recover();throw e}
-        check(inventory(stage,canceled)==before){"Sürüm kopyası bütünlüğü doğrulanamadı."}
-        return Prepared(stage,old,j,before,canceled,availableBytes)
+        try {
+            copyTree(active,stage,canceled,availableBytes)
+            check(inventory(stage,canceled)==before){"Sürüm kopyası bütünlüğü doğrulanamadı."}
+            return Prepared(stage,old,j,before,canceled,availableBytes)
+        } catch(e:Throwable) {
+            // Prepared.close does not exist yet. Recover the known clone even if its
+            // post-copy inventory/cancellation check failed; preserve the original cause.
+            try { recover() } catch(cleanup:Throwable) { e.addSuppressed(cleanup) }
+            throw e
+        }
     }
     inner class Prepared internal constructor(val root:File,private val old:File,private val j:JSONObject,private val before:Map<String,Entry>,private val canceled:()->Unit,private val availableBytes:()->Long=defaultAvailableBytes):AutoCloseable {
         val previousRootName:String get()=old.name
