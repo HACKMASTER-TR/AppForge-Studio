@@ -58,12 +58,35 @@ internal object DownloadCoordinator {
         }
         val root=operations.value.single{it.operationId==parent}
         val now=maxOf(System.currentTimeMillis(),root.updatedAt)
-        upsertGraph(root.copy(operationState=state,updatedAt=now,failureReason=if(state==DownloadState.FAILED)"DRIVER_FAILED" else null))
+        val rows=operations.value.toMutableList()
+        rows.removeAll{it.operationId==parent}
+        rows.add(root.copy(operationState=state,updatedAt=now,historyClosed=false,failureReason=if(state==DownloadState.FAILED)"DRIVER_FAILED" else null))
         if(stage!=OperationStage.MODULE) {
             val id=PersistentOperationGraph.id(parent,stage.name)
-            val old=operations.value.firstOrNull{it.operationId==id}
-            upsertGraph(DownloadOperationNode(id,parent,event.moduleId,stage,state,root.networkPolicy,old?.createdAt?:now,now))
+            val old=rows.firstOrNull{it.operationId==id}
+            rows.removeAll{it.operationId==id}
+            rows.add(DownloadOperationNode(id,parent,event.moduleId,stage,state,root.networkPolicy,old?.createdAt?:now,now))
         }
+        if(state==DownloadState.COMPLETED) {
+            val children=rows.filter{it.parentOperationId==parent}
+            val blocked=setOf(DownloadState.RECOVERY_REQUIRED,DownloadState.PAUSED,DownloadState.PAUSE_REQUESTED,
+                DownloadState.FAILED,DownloadState.CANCELLED,DownloadState.WAITING_FOR_NETWORK,DownloadState.WAITING_FOR_CONSENT)
+            val canClose=children.all{n->
+                if(n.stage==OperationStage.ARTIFACT_DOWNLOAD)n.operationState==DownloadState.COMPLETED &&
+                    n.expectedSha256!=null && n.expectedBytes!=null && n.verifiedBytes==n.expectedBytes
+                else n.operationState !in blocked
+            }
+            if(canClose) {
+                // Only the driver's verified terminal phase closes visited stages.
+                // One atomic graph write prevents a closed parent/open child crash gap.
+                rows.replaceAll{n->when {
+                    n.operationId==parent->n.copy(historyClosed=true)
+                    n.parentOperationId==parent && n.stage!=OperationStage.ARTIFACT_DOWNLOAD->n.copy(operationState=DownloadState.COMPLETED,updatedAt=now)
+                    else->n
+                }}
+            }
+        }
+        saveGraph(rows)
     }
     private val operationParents=mutableMapOf<String,String>()
     @Synchronized fun adoptArtifacts(childOperation:String,parentOperation:String,module:OfflineModuleId) {
@@ -83,6 +106,7 @@ internal object DownloadCoordinator {
         for((module,event) in events) {
             val parent=ensureModule(event.operationId,module)
             val old=operations.value.single{it.operationId==parent}
+            if(old.historyClosed)continue // Historical graph closure does not authorize any install.
             upsertGraph(old.copy(operationState=DownloadState.RECOVERY_REQUIRED,updatedAt=maxOf(old.updatedAt,System.currentTimeMillis()),failureReason="MODULE_JOURNAL_RECONCILIATION"))
         }
     }

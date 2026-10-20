@@ -14,7 +14,8 @@ internal data class DownloadOperationNode(
     val createdAt:Long,val updatedAt:Long,val artifactId:String?=null,val artifactVersion:String?=null,
     val sourceIdentityHash:String?=null,val expectedSha256:String?=null,val expectedBytes:Long?=null,
     val downloadedBytes:Long=0,val verifiedBytes:Long=0,val retryCount:Int=0,
-    val downloadCapability:DownloadCapability=DownloadCapability.BLOCKED,val failureReason:String?=null
+    val downloadCapability:DownloadCapability=DownloadCapability.BLOCKED,val failureReason:String?=null,
+    val historyClosed:Boolean=false
 )
 
 /** Observational task tree, not an execution queue or installation receipt.
@@ -65,6 +66,10 @@ internal class PersistentOperationGraph(private val file:File,private val availa
             listOf(n.artifactId,n.sourceIdentityHash,n.expectedSha256).filterNotNull().forEach{require(it.matches(Regex("[a-f0-9]{64}")))}
             require(n.artifactVersion==null || n.artifactVersion.matches(Regex("[A-Za-z0-9._+-]{1,100}")))
             require(n.failureReason==null || n.failureReason.matches(Regex("[A-Z0-9_]{1,100}")))
+            if(n.historyClosed) {
+                require(n.parentOperationId==null && n.operationState==DownloadState.COMPLETED)
+                require(rows.filter{it.parentOperationId==n.operationId}.all{it.operationState==DownloadState.COMPLETED})
+            }
             if(n.parentOperationId==null)require(n.stage==OperationStage.MODULE)
             else {
                 val parent=byId[n.parentOperationId]?:error("Eksik üst işlem kaydı")
@@ -77,17 +82,17 @@ internal class PersistentOperationGraph(private val file:File,private val availa
     @Synchronized fun read():List<DownloadOperationNode>{
         safe(file);if(!file.exists())return emptyList()
         require(file.isFile && file.length() in 1..1048576)
-        val root=JSONObject(file.readText());require(root.getInt("schema")==1){"Tanınmayan işlem ağacı şeması"}
+        val root=JSONObject(file.readText());val schema=root.getInt("schema");require(schema in 1..2){"Tanınmayan işlem ağacı şeması"}
         val arr=root.getJSONArray("nodes");require(arr.length()<=512)
         return (0 until arr.length()).map{index->val o=arr.getJSONObject(index)
             fun optional(key:String)=o.optString(key).takeIf{it.isNotEmpty()}
-            DownloadOperationNode(o.getString("operationId"),optional("parentOperationId"),OfflineModuleId.valueOf(o.getString("moduleId")),OperationStage.valueOf(o.getString("stage")),DownloadState.valueOf(o.getString("operationState")),DownloadNetworkPolicy.valueOf(o.getString("networkPolicy")),o.getLong("createdAt"),o.getLong("updatedAt"),optional("artifactId"),optional("artifactVersion"),optional("sourceIdentityHash"),optional("expectedSha256"),if(o.isNull("expectedBytes"))null else o.getLong("expectedBytes"),o.getLong("downloadedBytes"),o.getLong("verifiedBytes"),o.getInt("retryCount"),DownloadCapability.valueOf(o.getString("downloadCapability")),optional("failureReason"))
+            DownloadOperationNode(o.getString("operationId"),optional("parentOperationId"),OfflineModuleId.valueOf(o.getString("moduleId")),OperationStage.valueOf(o.getString("stage")),DownloadState.valueOf(o.getString("operationState")),DownloadNetworkPolicy.valueOf(o.getString("networkPolicy")),o.getLong("createdAt"),o.getLong("updatedAt"),optional("artifactId"),optional("artifactVersion"),optional("sourceIdentityHash"),optional("expectedSha256"),if(o.isNull("expectedBytes"))null else o.getLong("expectedBytes"),o.getLong("downloadedBytes"),o.getLong("verifiedBytes"),o.getInt("retryCount"),DownloadCapability.valueOf(o.getString("downloadCapability")),optional("failureReason"),schema==2 && o.getBoolean("historyClosed"))
         }.also(::validate)
     }
     @Synchronized fun save(rows:List<DownloadOperationNode>){
         validate(rows);safe(file);val parent=requireNotNull(file.absoluteFile.parentFile);parent.mkdirs()
-        val arr=JSONArray();rows.forEach{n->arr.put(JSONObject().put("operationId",n.operationId).put("parentOperationId",n.parentOperationId?:"").put("moduleId",n.moduleId.name).put("stage",n.stage.name).put("operationState",n.operationState.name).put("networkPolicy",n.networkPolicy.name).put("createdAt",n.createdAt).put("updatedAt",n.updatedAt).put("artifactId",n.artifactId?:"").put("artifactVersion",n.artifactVersion?:"").put("sourceIdentityHash",n.sourceIdentityHash?:"").put("expectedSha256",n.expectedSha256?:"").put("expectedBytes",n.expectedBytes?:JSONObject.NULL).put("downloadedBytes",n.downloadedBytes).put("verifiedBytes",n.verifiedBytes).put("retryCount",n.retryCount).put("downloadCapability",n.downloadCapability.name).put("failureReason",n.failureReason?:""))}
-        val bytes=JSONObject().put("schema",1).put("nodes",arr).toString().toByteArray(Charsets.UTF_8);require(bytes.size<=1048576)
+        val arr=JSONArray();rows.forEach{n->arr.put(JSONObject().put("operationId",n.operationId).put("parentOperationId",n.parentOperationId?:"").put("moduleId",n.moduleId.name).put("stage",n.stage.name).put("operationState",n.operationState.name).put("networkPolicy",n.networkPolicy.name).put("createdAt",n.createdAt).put("updatedAt",n.updatedAt).put("artifactId",n.artifactId?:"").put("artifactVersion",n.artifactVersion?:"").put("sourceIdentityHash",n.sourceIdentityHash?:"").put("expectedSha256",n.expectedSha256?:"").put("expectedBytes",n.expectedBytes?:JSONObject.NULL).put("downloadedBytes",n.downloadedBytes).put("verifiedBytes",n.verifiedBytes).put("retryCount",n.retryCount).put("downloadCapability",n.downloadCapability.name).put("failureReason",n.failureReason?:"").put("historyClosed",n.historyClosed))}
+        val bytes=JSONObject().put("schema",2).put("nodes",arr).toString().toByteArray(Charsets.UTF_8);require(bytes.size<=1048576)
         require(availableBytes(parent)>bytes.size+65536L){"İşlem günlüğü için disk alanı yetersiz"}
         val tmp=File(file.path+".tmp");safe(tmp)
         try {
@@ -101,12 +106,25 @@ internal class PersistentOperationGraph(private val file:File,private val availa
     /** Rebuild artifact children from rehashed records. Missing/mismatched two-file updates never grant READY. */
     @Synchronized fun recover(artifacts:List<ArtifactDownloadRecord>):List<DownloadOperationNode>{
         val now=System.currentTimeMillis()
-        val rows=read().map{n->n.copy(operationState=if(n.operationState==DownloadState.CANCELLED)DownloadState.CANCELLED else DownloadState.RECOVERY_REQUIRED,
-            downloadedBytes=0,verifiedBytes=0,updatedAt=maxOf(now,n.updatedAt),failureReason="REAUTHORIZE_REQUIRED")}.toMutableList()
+        val previous=read()
+        // A closed observation is retained as history only, never as a module receipt.
+        // Legacy records have no closure evidence and still require reauthorization.
+        val closed=previous.filter{it.historyClosed}.map{it.operationId}.toSet()
+        val rows=previous.map{n->if(n.operationId in closed || n.parentOperationId in closed)n else n.copy(
+            operationState=if(n.operationState==DownloadState.CANCELLED)DownloadState.CANCELLED else DownloadState.RECOVERY_REQUIRED,
+            downloadedBytes=0,verifiedBytes=0,updatedAt=maxOf(now,n.updatedAt),failureReason="REAUTHORIZE_REQUIRED",historyClosed=false)}.toMutableList()
         for(r in artifacts) {
             val parent=r.parentOperationId?:moduleId(r.operationId,r.moduleId)
             if(rows.none{it.operationId==parent})rows.add(DownloadOperationNode(parent,null,r.moduleId,OperationStage.MODULE,DownloadState.RECOVERY_REQUIRED,r.networkPolicy,r.createdAt,maxOf(now,r.updatedAt),failureReason="JOURNAL_RECONCILIATION"))
             val p=rows.single{it.operationId==parent};require(p.moduleId==r.moduleId && p.stage==OperationStage.MODULE)
+            val historical=rows.firstOrNull{it.operationId==artifactNodeId(r)}
+            if(p.historyClosed && historical!=null && historical.operationState==DownloadState.COMPLETED &&
+                historical.sourceIdentityHash==r.sourceIdentityHash && historical.expectedSha256==r.expectedSha256 &&
+                historical.expectedBytes==r.expectedBytes && r.downloadState==DownloadState.RECOVERY_REQUIRED)continue
+            if(p.historyClosed) {
+                // Contradictory/missing child evidence: preserve all records for recovery.
+                rows.replaceAll{if(it.operationId==parent || it.parentOperationId==parent)it.copy(historyClosed=false,operationState=DownloadState.RECOVERY_REQUIRED,failureReason="JOURNAL_RECONCILIATION")else it}
+            }
             val child=artifact(r,parent)
             rows.removeAll{it.operationId==child.operationId};rows.add(child)
         }
