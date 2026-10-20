@@ -139,3 +139,32 @@ root is safely reclaimed instead of leaking `.v3-discard-*` directories, while
 any modified or post-switch failed generation remains quarantined and inspectable
 via `quarantinedDirectories()` / `quarantinedBytes()`. `RuntimeArchiveRemoval`
 fails closed if both active and backup runtime directories exist during recovery.
+
+## First V7 independent audit corrections (2026-10-20)
+
+These corrections apply to the independently reconstructed first V7 tree
+`a120d01a0d1e640ed5ae8288bf047a1fecc3bb48`, not the unavailable later c98 source.
+Recovery validates original, noncanonical caller paths and every ancestor before
+sidecar cleanup. Missing roots remain legal during a journaled rename gap; invalid
+journal structure or symlink namespaces preserve foreign contents. This assumes
+app-private directories, not an adversarial concurrent filesystem sandbox.
+
+Generation preparation now includes its final staged inventory in the exception
+scope. Cancellation before Prepared exists recovers an unchanged partial clone;
+uncertain changed stages remain quarantined. Cleanup failures are suppressed on
+the original error rather than replacing it. The Java File-only constructor stays
+available for the existing child-JVM crash recovery fixture.
+
+Graph schema 2 records explicit historical closure only at a real driver's verified
+READY/REMOVED phase, closing visited non-artifact stages atomically. Paused,
+recovery-required, failed or unresolved artifact children block closure. Closed
+observations survive reopening for retention; legacy/unclosed trees require
+reconciliation. Neither graph history nor its closure flag authorizes execution,
+installation, network use or module READY. Artifact and module files remain
+independently atomic and contradictory evidence remains recovery-required.
+
+Module operation journals persist only enum-based phase diagnostics and bounded
+correlation identifiers, never caller-provided details or shell/network errors.
+Legacy history is sanitized on read and rewritten on the next successful save.
+Malformed journals still fail closed; write/space failures remain observable.
+Physical Android acceptance and later V7 sources remain outside host validation.

@@ -31,7 +31,8 @@ test('purchase screens expose no monthly or add-on offers', () => {
 });
 test('normal-user account form has been retired without deleting stored credentials', () => {
   assert.doesNotMatch(account, /Kayıt Ol|AppForgeAccountClient|forgotPassword|verifyEmail|resetPassword|transferDevice/);
-  assert.match(account, /Hesapsız Kullanım/);
+  assert.match(account, /Text\("AppForge Studio"\)/);
+  assert.match(account, /temel özellikler için üyelik zorunlu değildir/);
   assert.doesNotMatch(account, /clearSession|deleteAccount/);
 });
 test('server verification is required for paid access', () => {

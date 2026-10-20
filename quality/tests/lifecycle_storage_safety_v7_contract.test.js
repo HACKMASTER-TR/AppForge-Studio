@@ -108,7 +108,9 @@ test('V7 ModuleOperationJournal and RuntimeGenerationStore enforce disk prefligh
   const generation = read('android-app/app/src/main/java/com/appforge/studio/build/RuntimeGenerationStore.kt');
 
   assert.match(journal, /internal class ModuleOperationJournal\(private val file:File,private val availableBytes:\(File\)->Long=\{it\.usableSpace\}\)/);
-  assert.match(journal, /!e\.operationId\.contains\(":\/\/"\) && !e\.detail\.contains\("https:\/\/"\) && !e\.detail\.contains\("http:\/\/"\)/);
+  assert.match(journal, /private enum class Diagnostic/);
+  assert.match(journal, /put\("detail",diagnostic\(e\.phase\)\)/);
+  assert.doesNotMatch(journal, /put\("detail",e\.detail/);
   assert.match(journal, /require\(availableBytes\(parent\)>bytes\.size\+65536L\)/);
   assert.match(journal, /if\(!Files\.isSymbolicLink\(part\.toPath\(\)\)\)Files\.deleteIfExists\(part\.toPath\(\)\)/);
 
