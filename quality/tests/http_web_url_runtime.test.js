@@ -9,7 +9,9 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 test('actual Tiny HTTP navigation method accepts selected host and ports without secure-origin or cross-host bypass',()=>{
  const src=read('android-app/html-apk-template/src/main/java/com/appforge/htmlstub/TinyHtmlActivity.java');
  const begin=src.indexOf('    private boolean isAllowedWebNavigation(');
- const method=src.slice(begin,src.indexOf('    @Override public void onCreate',begin));
+ const end=src.indexOf('\n    }\n',begin)+7;
+ assert.ok(end>begin);
+ const method=src.slice(begin,end);
  assert.ok(begin>0);
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'appforge-http-nav-'));
  try {
