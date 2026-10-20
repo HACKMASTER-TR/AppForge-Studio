@@ -7,7 +7,7 @@ import org.json.JSONObject
 
 /** Unregister a private runtime atomically; never recursively delete possibly user-added files. */
 internal class RuntimeArchiveRemoval(private val active:File,private val availableBytes:(File)->Long={it.usableSpace}) {
-    private val parent=active.parentFile.canonicalFile
+    private val parent=active.absoluteFile.parentFile
     private val journal=File(parent,".runtime-removal-v5.json")
     private val receipt=File(parent,".runtime-archive-v5.json")
     private fun safe(path:File){var p:File?=path.absoluteFile;while(p!=null){require(!Files.isSymbolicLink(p.toPath())){"Runtime kaldırma yolu symlink olamaz"};p=p.parentFile}}
@@ -29,13 +29,17 @@ internal class RuntimeArchiveRemoval(private val active:File,private val availab
         }
     }
     fun recover() {
-        val staleTmp=File(journal.path+".tmp");require(!Files.isSymbolicLink(staleTmp.toPath()));Files.deleteIfExists(staleTmp.toPath())
-        if(!journal.exists())return
+        val staleTmp=File(journal.path+".tmp")
+        RecoveryPathAnchor.siblings(active,journal,receipt,staleTmp,File(receipt.path+".tmp"))
+        require(active.name=="runtime-v3")
+        if(!journal.exists()){Files.deleteIfExists(staleTmp.toPath());return}
         safe(journal);require(journal.isFile && journal.length() in 1..8191)
         val j=JSONObject(journal.readText());require(j.optInt("schema",1)==1){"Tanınmayan runtime kaldırma günlüğü şeması"}
         val backup=archive(j.getString("archive"))
         require(active.absoluteFile==active.canonicalFile && active.parentFile.canonicalFile==parent && active.name=="runtime-v3")
-        if(j.getString("state")!="COMMITTED") {
+        val state=j.getString("state");require(state in setOf("PREPARED","COMMITTED"))
+        if(state!="COMMITTED" && backup.exists())require(!active.exists()){"Aktif runtime ile kurtarma arşivi birlikte var; ikisi de korundu."}
+        if(state!="COMMITTED") {
             if(backup.exists()) {
                 require(!active.exists()){"Aktif runtime ile kurtarma arşivi birlikte var; ikisi de korundu."}
                 Files.move(backup.toPath(),active.toPath(),StandardCopyOption.ATOMIC_MOVE)
@@ -43,6 +47,7 @@ internal class RuntimeArchiveRemoval(private val active:File,private val availab
         } else if(backup.isDirectory && !receipt.isFile) {
             write(receipt,JSONObject().put("archive",backup.name))
         }
+        Files.deleteIfExists(staleTmp.toPath())
         Files.delete(journal.toPath())
     }
     fun remove(fault:()->Unit={}) {

@@ -10,7 +10,7 @@ import org.json.JSONObject
 
 /** Private build-root generations only. Never follows links while copying/deleting. Original projects stay outside. */
 internal class RuntimeGenerationStore(private val active:File,private val defaultAvailableBytes:()->Long={requireNotNull(active.parentFile).canonicalFile.usableSpace}) {
-    private val parent=requireNotNull(active.parentFile).canonicalFile
+    private val parent=requireNotNull(active.absoluteFile.parentFile)
     private val journal=File(parent,".module-generation.json")
     private fun checkAnchor(){require(active.absoluteFile==active.canonicalFile && active.parentFile.canonicalFile==parent && active.isDirectory && !Files.isSymbolicLink(parent.toPath()))}
     private fun child(name:String):File {require(name.matches(Regex("\\.v3-(stage|previous|discard)-[0-9a-f-]{36}")));return File(parent,name)}
@@ -44,13 +44,19 @@ internal class RuntimeGenerationStore(private val active:File,private val defaul
         }
     }
     fun recover() {
-        cleanStaleTmpSidecars()
-        if(!journal.exists())return
+        RecoveryPathAnchor.siblings(active,journal,activeSeal,snapshotRegistry,
+            File(journal.path+".tmp"),File(activeSeal.path+".tmp"),File(snapshotRegistry.path+".tmp"))
+        if(!journal.exists()){cleanStaleTmpSidecars();return}
         require(journal.isFile && !Files.isSymbolicLink(journal.toPath()) && journal.length()<8192)
         val j=JSONObject(journal.readText());require(j.getString("active")==active.name)
         val stage=child(j.getString("stage"));val old=child(j.getString("previous"))
         require(j.optInt("schema",0)==2){"Eski işlem günlüğünün bütünlük kanıtı yok; tüm ortamlar korundu, otomatik geçiş kapalı."}
         val state=j.getString("state")
+        require(state in setOf("COPYING","STAGED","COMMITTED"))
+        require(j.getString("previousDigest").matches(Regex("[a-f0-9]{64}")))
+        if(state!="COPYING")require(j.getString("stagedDigest").matches(Regex("[a-f0-9]{64}")))
+        RecoveryPathAnchor.siblings(active,stage,old)
+        // Validate the complete record before any temporary-file cleanup.
         if(state=="COMMITTED") {
             require(treeDigest(inventory(active,{}))==j.getString("stagedDigest")){"Aktifleştirme sonrası ortam değişmiş; kurtarma engellendi, dosyalar korundu."}
             seal(j.getString("stagedDigest"))
@@ -78,6 +84,7 @@ internal class RuntimeGenerationStore(private val active:File,private val defaul
                 Files.move(stage.toPath(),child(".v3-discard-${UUID.randomUUID()}").toPath(),StandardCopyOption.ATOMIC_MOVE)
             }
         }
+        cleanStaleTmpSidecars()
         Files.delete(journal.toPath())
     }
     fun quarantinedDirectories():List<File> {

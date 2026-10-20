@@ -1,6 +1,7 @@
 package com.appforge.studio.terminal
 
 import java.io.File
+import com.appforge.studio.build.RecoveryPathAnchor
 import java.io.FileOutputStream
 import java.nio.file.*
 import java.util.UUID
@@ -8,7 +9,7 @@ import org.json.JSONObject
 
 /** Journaled root+metadata swap. Old roots are retained; failure never recursively deletes user state. */
 internal class RootfsActivationTransaction(private val root:File,private val restore:File,private val metadata:File,private val availableBytes:(File)->Long={it.usableSpace}) {
-    private val parent=root.parentFile.canonicalFile
+    private val parent=root.absoluteFile.parentFile
     private val journal=File(parent,".rootfs-activation.json")
     private fun safe(file:File){var p:File?=file.absoluteFile;while(p!=null){require(!Files.isSymbolicLink(p.toPath())){"Rootfs geçiş yolu symlink olamaz"};p=p.parentFile}}
     private fun checked(file:File) {safe(file);require(file.absoluteFile==file.canonicalFile && file.parentFile.canonicalFile==parent)}
@@ -30,14 +31,17 @@ internal class RootfsActivationTransaction(private val root:File,private val res
         }
     }
     fun recover() {
-        val staleTmp=File(journal.path+".tmp");require(!Files.isSymbolicLink(staleTmp.toPath()));Files.deleteIfExists(staleTmp.toPath())
-        if(!journal.exists())return
+        val staleTmp=File(journal.path+".tmp")
+        RecoveryPathAnchor.siblings(root,metadata,journal,restore,staleTmp)
+        if(!journal.exists()){Files.deleteIfExists(staleTmp.toPath());return}
         checked(root);checked(metadata);checked(journal)
         require(journal.isFile && journal.length() in 1..8192)
         val j=JSONObject(journal.readText());require(j.getInt("schema")==1)
         val old=backup(j.getString("old"));val saved=File(restore,old.name+".metadata")
         require(!Files.isSymbolicLink(saved.toPath()) && (!saved.exists() || saved.length()<=32768))
-        if(j.getString("state")!="COMMITTED") {
+        val state=j.getString("state");require(state in setOf("PREPARED","COMMITTED"))
+        j.getBoolean("hadRoot");j.getBoolean("hadMetadata")
+        if(state!="COMMITTED") {
             if(old.exists()) {
                 if(root.exists())Files.move(root.toPath(),File(restore,"failed-rootfs-${UUID.randomUUID()}").toPath(),StandardCopyOption.ATOMIC_MOVE)
                 Files.move(old.toPath(),root.toPath(),StandardCopyOption.ATOMIC_MOVE)
@@ -46,6 +50,7 @@ internal class RootfsActivationTransaction(private val root:File,private val res
             if(saved.isFile)Files.copy(saved.toPath(),metadata.toPath(),StandardCopyOption.REPLACE_EXISTING)
             else if(!j.getBoolean("hadMetadata"))Files.deleteIfExists(metadata.toPath())
         }
+        Files.deleteIfExists(staleTmp.toPath())
         Files.deleteIfExists(journal.toPath())
     }
     fun activate(staged:File,writeMetadata:()->Unit,fault:(String)->Unit={}) {
