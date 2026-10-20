@@ -1240,6 +1240,9 @@ android {
                 "\n"
         )
 
+        putText(zip,base+"app/src/main/res/xml/zz_appforge_network_security.xml",
+            com.appforge.studio.build.WebviewProjectSettings.networkSecurityXml(draft))
+
         putText(
             zip,
             base +
@@ -1252,7 +1255,8 @@ $permissionXml
     <application
         android:allowBackup="true"
         android:label="$appLabel"
-        android:usesCleartextTraffic="${draft.webMixedContentAllowed}">
+        android:usesCleartextTraffic="${com.appforge.studio.build.WebviewProjectSettings.cleartextHost(draft)!=null}"
+        android:networkSecurityConfig="@xml/zz_appforge_network_security">
         <activity
             android:name=".MainActivity"
             android:exported="true"$orientationAttribute>

@@ -4,6 +4,28 @@ import com.appforge.studio.model.ProjectDraft
 
 /** Manifest declarations do not enable native APIs or bypass runtime consent. */
 internal object WebviewProjectSettings {
+    /** Parse only a web navigation URL. No network/DNS lookup and no HTTPS upgrade. */
+    fun webSourceUri(value:String):java.net.URI? = runCatching {
+        require(value.isNotEmpty() && value.length<=2048 && value==value.trim())
+        require(value.none{it.isWhitespace() || it.code<32 || it=='\\'})
+        val uri=java.net.URI(value)
+        require(!uri.isOpaque && (uri.scheme.equals("http",true) || uri.scheme.equals("https",true)))
+        require(!uri.host.isNullOrBlank() && uri.userInfo==null && (uri.port==-1 || uri.port in 1..65535))
+        require(!uri.host.contains('%')) // IPv6 interface/zone identifiers are not portable WebView origins.
+        val host=uri.host.removePrefix("[").removeSuffix("]")
+        if(host.all{it.isDigit() || it=='.'})require(host.split('.').size==4 && host.split('.').all{it.toIntOrNull() in 0..255})
+        uri
+    }.getOrNull()
+    fun cleartextHost(draft:ProjectDraft):String? = if(draft.sourceMode==com.appforge.studio.model.SourceMode.URL)
+        webSourceUri(draft.webUrl)?.takeIf{it.scheme.equals("http",true)}?.host?.removePrefix("[")?.removeSuffix("]")?.lowercase() else null
+    fun networkSecurityXml(draft:ProjectDraft):String {
+        val host=cleartextHost(draft)?:"appforge-cleartext.invalid"
+        require(host.matches(Regex("[a-z0-9.:-]+")))
+        return """<?xml version="1.0" encoding="utf-8"?>
+<network-security-config><base-config cleartextTrafficPermitted="false" />
+<domain-config cleartextTrafficPermitted="${cleartextHost(draft)!=null}"><domain includeSubdomains="false">$host</domain></domain-config>
+</network-security-config>"""
+    }
     private val permissionAliases = linkedMapOf(
         "BLUETOOTH" to listOf("BLUETOOTH_SCAN", "BLUETOOTH_CONNECT"),
         "BIOMETRIC" to listOf("USE_BIOMETRIC"),
@@ -80,10 +102,9 @@ internal object WebviewProjectSettings {
                 "Bu motor otomatik entegrasyonu desteklemiyor; yapılandırma dosyası veya kimlik eklemek yeterli değildir. Seçeneği kapatın veya destekleyen kaynak proje kullanın.")
         }
         if (engine == "webview-static" && draft.sourceMode == com.appforge.studio.model.SourceMode.URL) {
-            val url = runCatching { java.net.URI(draft.webUrl) }.getOrNull()
-            reject(url == null || !url.scheme.equals("https", true) || url.host.isNullOrBlank() ||
-                draft.webUrl.length > 2048 || url.port !in -1..65535, 1, "webUrl",
-                "HTML/URL Android için geçerli HTTPS adresi gerekiyor (en çok 2048 karakter).")
+            val url = webSourceUri(draft.webUrl)
+            reject(url == null, 1, "webUrl",
+                "HTML/URL Android için geçerli HTTP veya HTTPS adresi gerekiyor (en çok 2048 karakter).")
             reject(url?.userInfo != null, 1, "webUrl", "URL içine kullanıcı adı/parola koymayın.")
         }
         runCatching { additionalPermissions(draft) }.exceptionOrNull()?.let {
@@ -105,6 +126,9 @@ internal object WebviewProjectSettings {
             if(!validIds || !validEndpoint)add(WizardDiagnostic(6,"billingConfiguration",WizardCapabilityClass.REQUIRES_EXTERNAL_CONFIGURATION,
                 "Play Billing için 1–64 benzersiz ürün/abonelik ID, doğru tüketilebilir alt kümesi ve HTTPS sunucu doğrulama URL'si gerekir. Sunucu Google Play üzerinden paket/ürün/token/quantity doğrulamalıdır; Play hesabı, ürün yayını ve dağıtım ayrıca gerekir."))
         }
+        if(draft.sourceMode==com.appforge.studio.model.SourceMode.URL && draft.remoteBridgeAllowed)
+            reject(webSourceUri(draft.webUrl)?.scheme?.equals("https",true)!=true,5,"remoteBridgeAllowed",
+                "Uzak Native Bridge yalnız HTTPS origin üzerinde kullanılabilir; HTTP gezinme için bu izni kapatın.")
         if (draft.microphone && draft.sourceMode == com.appforge.studio.model.SourceMode.URL) {
             val url = runCatching { java.net.URI(draft.webUrl) }.getOrNull()
             reject(url == null || !url.scheme.equals("https", true) || url.host.isNullOrBlank() ||
@@ -221,7 +245,7 @@ internal object WizardReadinessEvaluator {
                 "Fast HTML V2: seçili Android çıktıları gömülü APK/AAB şablonundan cihazda üretilir; SDK/JDK/Gradle/Node gerekmez. Şablon bütünlüğü, kaynak ve imza derlemede doğrulanır.", false))
             if (draft.sourceMode == com.appforge.studio.model.SourceMode.URL) diagnostics.add(WizardDiagnostic(1, "offlineScope",
                 WizardCapabilityClass.REQUIRES_EXTERNAL_CONFIGURATION,
-                "HTTPS sayfasını açmak internet gerektirir. Çevrimdışı derleme, uzaktaki içeriği çevrimdışı kullanılabilir yapmaz.", false))
+                "Uzak HTTP/HTTPS sayfasını açmak ağ erişimi gerektirir. Çevrimdışı derleme, uzaktaki içeriği çevrimdışı kullanılabilir yapmaz.", false))
             if (draft.sourceMode == com.appforge.studio.model.SourceMode.URL && !draft.remoteBridgeAllowed &&
                 draft.javascriptBridge && (draft.clipboardBridge || draft.vibrationBridge || draft.shareBridge))
                 diagnostics.add(WizardDiagnostic(3, "remoteBridgeAllowed", WizardCapabilityClass.QUICK_SUPPORTED,

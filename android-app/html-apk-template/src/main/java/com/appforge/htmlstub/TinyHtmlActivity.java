@@ -185,6 +185,18 @@ public final class TinyHtmlActivity extends Activity {
         }
     }
 
+    /** Cleartext is limited to the explicitly selected HTTP host. */
+    private boolean isAllowedWebNavigation(String address) {
+        try {
+            java.net.URI target=new java.net.URI(address);
+            if(target.getHost()==null || target.getUserInfo()!=null || !(target.getPort()==-1 || target.getPort()>0 && target.getPort()<=65535))return false;
+            if("https".equalsIgnoreCase(target.getScheme()))return true;
+            if(!"http".equalsIgnoreCase(target.getScheme()) || config==null || !"URL".equals(config.optString("mode")))return false;
+            java.net.URI selected=new java.net.URI(config.optString("url"));
+            return "http".equalsIgnoreCase(selected.getScheme()) && selected.getHost()!=null && selected.getHost().equalsIgnoreCase(target.getHost());
+        } catch(Exception invalid) { return false; }
+    }
+
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         scannerPermissionRequested = state != null && state.getBoolean("appforge.scannerPermissionRequested", false);
@@ -203,6 +215,8 @@ public final class TinyHtmlActivity extends Activity {
         web.getSettings().setAllowUniversalAccessFromFileURLs(false);
         web.setWebViewClient(new WebViewClient() {
             @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                if(request!=null && "http".equalsIgnoreCase(request.getUrl().getScheme()) && !isAllowedWebNavigation(request.getUrl().toString()))
+                    return new android.webkit.WebResourceResponse("text/plain","UTF-8",403,"HTTP host blocked",java.util.Collections.emptyMap(),new java.io.ByteArrayInputStream(new byte[0]));
                 return new AppForgeLocalAssets(getAssets(), documents == null ? null : documents.bootstrap()).intercept(request);
             }
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap icon) {
@@ -218,10 +232,13 @@ public final class TinyHtmlActivity extends Activity {
                 dismissSplash();
                 deliverDeepLink();
             }
+            @SuppressWarnings("deprecation") @Override public boolean shouldOverrideUrlLoading(WebView view,String url) {
+                return !(isAllowedWebNavigation(url) || AppForgeDocuments.legacyLocalPage(url));
+            }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 String scheme = uri.getScheme();
-                return !("https".equalsIgnoreCase(scheme) || AppForgeDocuments.legacyLocalPage(uri.toString()));
+                return !(isAllowedWebNavigation(uri.toString()) || AppForgeDocuments.legacyLocalPage(uri.toString()));
             }
         });
         web.setWebChromeClient(new android.webkit.WebChromeClient() {
@@ -345,14 +362,14 @@ public final class TinyHtmlActivity extends Activity {
             if ("LOCAL".equals(config.optString("mode")))
                 web.addJavascriptInterface(new LocalDocuments(), "AppForgeLocalDocuments");
             if (config.optBoolean("downloads", false)) web.setDownloadListener((url, agent, disposition, mime, length) -> {
-                try { documents.enqueueHttp(url, agent, disposition, mime); }
+                try { if(!isAllowedWebNavigation(url))throw new IllegalArgumentException("HTTP host blocked"); documents.enqueueHttp(url, agent, disposition, mime); }
                 catch (RuntimeException error) { android.widget.Toast.makeText(this,"Download unavailable",android.widget.Toast.LENGTH_SHORT).show(); }
             });
             if ("URL".equals(config.optString("mode"))) {
                 String address = config.getString("url");
                 Uri uri = Uri.parse(address);
-                if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null || uri.getHost().isEmpty()) {
-                    throw new IllegalArgumentException("HTTPS URL required");
+                if (!isAllowedWebNavigation(address)) {
+                    throw new IllegalArgumentException("HTTP or HTTPS URL required");
                 }
                 web.loadUrl(address);
             } else if ("LOCAL".equals(config.optString("mode"))) {

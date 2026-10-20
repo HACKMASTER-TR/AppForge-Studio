@@ -55,7 +55,7 @@ fun main() {
    val draft = advancedUrl.copy(buildOutput=output)
    check(FastHtmlApkPolicy.isCandidate(draft) == (output=="apk"))
    if(output=="apk" || output in listOf("all","apk+aab+exe")) WebviewProjectSettings.validate(draft) else { check(runCatching{WebviewProjectSettings.validate(draft)}.isFailure);WebviewProjectSettings.validate(draft.copy(normalHtmlEngine=true)) }
-   listOf("http://example.com", "https://user:pass@example.com", "https://@example.com",
+   listOf("ftp://example.com", "https://user:pass@example.com", "https://@example.com",
     "https:///missing-host", "https://bad_host", "https://example.com/invalid space",
     "https://example.com/" + "a".repeat(2048)).forEach { unsafe ->
     rejected(draft.copy(webUrl=unsafe))
@@ -87,7 +87,7 @@ fun main() {
  WebviewProjectSettings.validate(urlBase.copy(sourceBuildEngine="node-web", webUrl="http://example.com", camera=true))
  WebviewProjectSettings.validate(urlBase.copy(sourceBuildEngine=" WEBVIEW-STATIC "))
  WebviewProjectSettings.validate(urlBase.copy(sourceBuildEngine=""))
- check(runCatching { FastHtmlApkPolicy.requireSupported(urlBase.copy(webUrl="http://example.com")) }.isFailure)
+ FastHtmlApkPolicy.requireSupported(urlBase.copy(webUrl="http://example.com"))
  check(runCatching { FastHtmlApkPolicy.requireSupported(urlBase.copy(webUrl="https://user:pass@example.com")) }.isFailure)
  listOf("aab", "both", "apk+aab").forEach { output ->
   check(FastHtmlApkPolicy.isCandidate(base.copy(buildOutput=output)))

@@ -27,7 +27,8 @@ internal object HtmlBinaryManifest {
         deepLink: List<String>? = null,
         rewriteDeepLink: Boolean = false,
         mediaService: Boolean? = null,
-        billing: Boolean? = null
+        billing: Boolean? = null,
+        cleartextTraffic: Boolean? = null
     ): ByteArray {
         require(input.size in 64..1_048_576) { "Geçersiz AndroidManifest.xml boyutu." }
         require(u16(input, 0) == XML && u16(input, 2) == 8 && u32(input, 4) == input.size) {
@@ -51,6 +52,7 @@ internal object HtmlBinaryManifest {
         var targetSdkSeen = 0
         require(applicationCategory == null || applicationCategory in setOf(-1, 0))
         var categoryCount = 0
+        var cleartextCount = 0
         require(deepLink == null || deepLink.size == 3)
         var filterStart = -1
         var filterIsDeepLink = false
@@ -150,6 +152,10 @@ internal object HtmlBinaryManifest {
                         require(attributeName != null && providerAttributes.put(attributeName, at) == null)
                     }
                     when (attributeName) {
+                        "usesCleartextTraffic" -> if(elementName=="application" && cleartextTraffic!=null) {
+                            require(source[at+15].toInt() and 255==0x12 && u32(source,at+16)==0)
+                            put32(source,at+8,-1);put32(source,at+16,if(cleartextTraffic)-1 else 0);cleartextCount++
+                        }
                         "appCategory" -> if (elementName == "application" && applicationCategory != null) {
                             require(source[at + 15].toInt() and 255 in setOf(0x10, 0x11))
                             require((0..3).all { source[at + 16 + it].toInt() == 0 })
@@ -279,6 +285,7 @@ internal object HtmlBinaryManifest {
             offset += length
         }
         require(!rewriteDeepLink || deepLinkCount == 1 && filterStart == -1) { "Deep link template slot mismatch." }
+        require(cleartextTraffic==null || cleartextCount==1)
         require(applicationCategory == null || categoryCount == 1) { "Missing or duplicate shell appCategory." }
         require(richStart==-1 && (richSeen.isEmpty() || richSeen==richRequired)) { "SDK component inventory mismatch." }
         require(billing==null || richSeen==richRequired)
@@ -324,6 +331,40 @@ internal object HtmlBinaryManifest {
         val result = out.toByteArray()
         put32(result, 4, result.size)
         return result
+    }
+
+    /** Only the already SHA-pinned APK's fixed NSC slot may be rewritten. */
+    fun networkSecurity(input:ByteArray,host:String?):ByteArray {
+        require(host==null || host.matches(Regex("[a-z0-9.:-]+")))
+        require(input.size in 64..65536 && u16(input,0)==XML && u32(input,4)==input.size)
+        val source=input.clone();var offset=8;var poolStart=-1;var poolEnd=-1;var utf8=false
+        var strings=emptyList<String>();var domainPolicies=0;var basePolicies=0
+        while(offset<source.size) {
+            val kind=u16(source,offset);val header=u16(source,offset+2);val length=u32(source,offset+4)
+            require(header>=8 && length>=header && offset+length<=source.size)
+            if(kind==STRINGS) {
+                require(poolStart<0 && header==28 && u32(source,offset+12)==0)
+                val count=u32(source,offset+8);val first=u32(source,offset+20);require(count in 1..128 && first>=28+4*count)
+                utf8=u32(source,offset+16) and UTF8_FLAG!=0
+                strings=(0 until count).map { i->val at=offset+first+u32(source,offset+28+i*4);require(at in offset+first until offset+length);readText(source,at,utf8) }
+                poolStart=offset;poolEnd=offset+length
+            } else if(kind==START_ELEMENT) {
+                require(poolStart>=0 && header==16 && length>=36)
+                val element=strings[u32(source,offset+20)]
+                if(element in setOf("domain-config","base-config")) {
+                    val at=offset+16+u16(source,offset+24)
+                    require(u16(source,offset+26)==20 && u16(source,offset+28)==1 && at+20<=offset+length)
+                    require(strings[u32(source,at+4)]=="cleartextTrafficPermitted" && source[at+15].toInt() and 255==0x12 && u32(source,at+16)==0)
+                    if(element=="domain-config") {domainPolicies++;put32(source,at+8,-1);put32(source,at+16,if(host!=null)-1 else 0)} else basePolicies++
+                }
+            }
+            offset+=length
+        }
+        require(offset==source.size && domainPolicies==1 && basePolicies==1 && strings.count{it=="appforge-cleartext.invalid"}==1)
+        val updated=strings.toMutableList();if(host!=null)updated[updated.indexOf("appforge-cleartext.invalid")]=host
+        val pool=encodePool(updated,utf8);val out=ByteArrayOutputStream()
+        out.write(source,0,poolStart);out.write(pool);out.write(source,poolEnd,source.size-poolEnd)
+        return out.toByteArray().also{put32(it,4,it.size)}
     }
 
     private fun encodePool(strings: List<String>, utf8: Boolean): ByteArray {

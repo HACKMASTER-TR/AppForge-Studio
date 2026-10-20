@@ -1741,6 +1741,9 @@ object DeviceBuildEngine {
             parentFile?.mkdirs()
             writeText(webManifest(draft))
         }
+        File(project,"app/src/main/res/xml/zz_appforge_network_security.xml").apply {
+            parentFile?.mkdirs();writeText(WebviewProjectSettings.networkSecurityXml(draft))
+        }
         File(project, "app/src/main/res/values/appforge_theme.xml").apply {
             parentFile?.mkdirs()
             writeText("""<resources><color name="appforge_primary">${xml(draft.primaryColor)}</color>
@@ -2691,7 +2694,8 @@ object DeviceBuildEngine {
                     android:label="${xml(draft.appName.ifBlank { "AppForge App" })}"
                     android:theme="@style/AppForgeTheme"
                     ${if (draft.appCategory == "game") "android:appCategory=\"game\"" else ""}
-                    android:usesCleartextTraffic="$usesCleartextTraffic">
+                    android:usesCleartextTraffic="$usesCleartextTraffic"
+                    android:networkSecurityConfig="@xml/zz_appforge_network_security">
                     <provider android:name="com.appforge.runtime.AppForgeShareProvider"
                         android:authorities="${xml(draft.packageName)}.appforge.documents"
                         android:exported="false" android:grantUriPermissions="true" />

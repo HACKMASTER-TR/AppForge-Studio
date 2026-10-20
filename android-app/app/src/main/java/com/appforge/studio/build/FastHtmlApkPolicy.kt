@@ -107,11 +107,11 @@ internal object FastHtmlApkPolicy {
         require(draft.packageName.matches(Regex("[A-Za-z_][A-Za-z_0-9]*(\\.[A-Za-z_][A-Za-z_0-9]*)+")))
         require(draft.appName.isNotBlank() && draft.appName.length <= 100)
         if (draft.sourceMode == SourceMode.URL) {
-            val address = java.net.URI(draft.webUrl)
-            require(address.scheme.equals("https", true) && !address.host.isNullOrBlank() && draft.webUrl.length <= 2048) {
-                "Hızlı URL APK için geçerli HTTPS adresi gerekiyor."
+            val address = WebviewProjectSettings.webSourceUri(draft.webUrl)
+            require(address != null) {
+                "Hızlı URL APK için geçerli HTTP veya HTTPS adresi gerekiyor."
             }
-            require(address.userInfo.isNullOrBlank()) { "URL içine kullanıcı adı/parola koymayın." }
+            require(address!!.userInfo.isNullOrBlank()) { "URL içine kullanıcı adı/parola koymayın." }
         } else {
             require(!draft.importedFolder.isNullOrBlank()) { "Yerel HTML proje klasörü bulunamadı." }
         }

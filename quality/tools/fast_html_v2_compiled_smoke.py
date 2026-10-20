@@ -132,6 +132,14 @@ fun main(args:Array<String>) {
   check(runCatching{TemplateIntegrity.requireDigest(byteArrayOf(1,2,3),"0".repeat(64))}.isFailure)
   println("PASS production APK+AAB packagers/signers/config/media parity enabled=$enabled (network/exec denied; host asset boundary; ephemeral test identity)")
  }
+ for((index,address)in listOf("http://example.com:8080/path?q=1", "http://192.168.1.8:8080/", "http://localhost:8123/", "https://example.com/").withIndex()) {
+  val draft=ProjectDraft(appName="URL Smoke",packageName="com.example.urltest$index",sourceMode=com.appforge.studio.model.SourceMode.URL,sourceTechnology="html",webUrl=address)
+  val workspace=File(root,"url-$index").apply{mkdir()}
+  val apk=FastHtmlApkPackager.build(context,draft,workspace,signer)
+  check(ApkVerifier.Builder(apk).build().verify().isVerified)
+  ZipFile(apk).use{z->check(org.json.JSONObject(z.getInputStream(z.getEntry("assets/appforge-html-config.json")).readBytes().toString(Charsets.UTF_8)).getString("url")==address)}
+  println("PASS production URL APK original URL preserved and signed $index")
+ }
 }
 ''')
     jars = [str(work / 'classes'), args.json_jar, args.apksig_jar, args.android_jar]
@@ -146,6 +154,17 @@ fun main(args:Array<String>) {
                     'com.appforge.studio.build.SmokeKt', str(work), str(assets_build), password], check=True)
 
     if args.aapt2:
+        for index, host in enumerate(['example.com', '192.168.1.8', 'localhost', None]):
+            apk = work / ('url-' + str(index)) / 'html-output.apk'
+            policy = subprocess.check_output([args.aapt2, 'dump', 'xmltree', str(apk), '--file', 'res/xml/zz_appforge_network_security.xml'], text=True)
+            values = re.findall(r'cleartextTrafficPermitted[^\n]*', policy)
+            assert len(values) == 2 and re.search(r'0x0(?:\s|$)', values[0]), policy
+            assert ('0xffffffff' in values[1]) == (host is not None), policy
+            assert (host in policy) if host else ('appforge-cleartext.invalid' in policy)
+            manifest = subprocess.check_output([args.aapt2, 'dump', 'xmltree', str(apk), '--file', 'AndroidManifest.xml'], text=True)
+            assert 'networkSecurityConfig' in manifest
+            assert ('0xffffffff' in next(line for line in manifest.splitlines() if 'usesCleartextTraffic' in line)) == (host is not None)
+            print('PASS independent AAPT2 default-deny exact-host cleartext policy', index)
         for enabled in ['false', 'true']:
             apk = work / ('work-' + enabled) / 'html-output.apk'
             resources = subprocess.check_output([args.aapt2, 'dump', 'resources', str(apk)], text=True)

@@ -97,6 +97,7 @@ class FastHtmlAabRoutingTest {
         assertThrows(IllegalArgumentException::class.java) { FastHtmlApkPolicy.requireSupported(draft) }
         draft.buildOutput = "apk"
         draft.webUrl = "http://example.com"
-        assertThrows(IllegalArgumentException::class.java) { FastHtmlApkPolicy.requireSupported(draft) }
+        FastHtmlApkPolicy.requireSupported(draft)
+        assertEquals("http://example.com",draft.webUrl)
     }
 }

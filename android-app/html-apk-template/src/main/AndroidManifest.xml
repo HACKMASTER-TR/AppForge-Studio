@@ -32,6 +32,7 @@
         android:roundIcon="@drawable/appforge_icon"
         android:appCategory="game"
         android:usesCleartextTraffic="false"
+        android:networkSecurityConfig="@xml/zz_appforge_network_security"
         android:allowBackup="false"
         android:theme="@style/AppForgeTheme">
         <provider android:name="com.appforge.htmlstub.AppForgeShareProvider"

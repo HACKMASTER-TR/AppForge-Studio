@@ -173,3 +173,21 @@ Module-root identity canonicalizes both raw driver IDs and persisted hashed jour
 correlations through the same idempotent privacy function. Restoring a closed module
 therefore does not create an orphan recovery root. Existing stored legacy parent
 IDs remain unchanged and require conservative reconciliation, never guessed merging.
+
+## HTTP Web URL correction (2026-10-20)
+
+WebviewProjectSettings.webSourceUri is the shared strict HTTP/HTTPS navigation
+validator, preserving the original scheme and URL. This exception is for generated
+web apps only: download managers, Billing endpoints and privileged remote bridges
+retain HTTPS trust requirements. Tiny's runtime navigation gate also permits the
+selected HTTP host and rejects other cleartext hosts. Mixed-content mode is unchanged.
+
+Generated Android projects and exports carry a default-deny Network Security Config
+with an exact selected HTTP host, no subdomains and no port in the domain entry.
+Android NSC is host-based, so it cannot restrict this permission to one port. The
+SHA-pinned Fast HTML template has a disabled slot; the offline packager rewrites
+that compiled XML slot and its manifest flag, without SDK/JDK invocation. Local and
+HTTPS outputs keep the slot disabled. Studio's own application policy is unchanged.
+IP/localhost refer to the Android device/network; local-network permissions and
+WebView secure-context rules still apply. Actual Android loading is a separate
+NOT_RUN acceptance boundary, not inferred from host/AAPT2 or navigation-policy tests.

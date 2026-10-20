@@ -8672,7 +8672,7 @@ private fun QuickCreateScreenContent(
 
                             Text(
                                 text =
-                                    "Güvenli varsayılan ayarlar kullanılır.",
+                                    if (isCleartextWebSourceUrl(draft.webUrl)) "HTTP bağlantısı şifrelenmez. Yalnız güvendiğiniz ağlarda kullanın." else "Güvenli varsayılan ayarlar kullanılır.",
                                 color =
                                     TextSecondary,
                                 fontSize =
@@ -9729,14 +9729,9 @@ private fun QuickCreateScreenContent(
 }
 
 
-private fun isSupportedWebSourceUrl(value: String): Boolean {
-    val normalized = value.trim()
-    if (!normalized.startsWith("https://", true) && !normalized.startsWith("http://", true)) {
-        return false
-    }
-    val parsed = runCatching { Uri.parse(normalized) }.getOrNull() ?: return false
-    return !parsed.host.isNullOrBlank()
-}
+private fun isSupportedWebSourceUrl(value: String): Boolean =
+    WebviewProjectSettings.webSourceUri(value) != null
+
 
 private fun isCleartextWebSourceUrl(value: String): Boolean =
     value.trim().startsWith("http://", true)
@@ -9857,7 +9852,7 @@ private fun productionChecks(
                 ) {
                     "Yerel HTML/ZIP hazır"
                 } else {
-                    "HTTPS URL hazır"
+                    if (isCleartextWebSourceUrl(draft.webUrl)) "HTTP URL hazır — bağlantı şifrelenmez" else "HTTPS URL hazır"
                 }
             } else {
                 "Kaynak eksik veya geçersiz."
@@ -15313,7 +15308,7 @@ private fun SourceStep(
                             webUrlValid
                         ) {
                             Text(
-                                "✓ HTTPS adresi geçerli"
+                                if (isCleartextWebSourceUrl(d.webUrl)) "✓ HTTP adresi geçerli. Bağlantı şifrelenmez; yalnız güvendiğiniz ağlarda kullanın." else "✓ HTTPS adresi geçerli"
                             )
                         } else {
                             Text(
