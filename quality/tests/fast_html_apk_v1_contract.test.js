@@ -31,12 +31,14 @@ test('fast HTML/URL APK bypasses rootfs and offline package without touching oth
   assert.match(read(source + "OfflineModulePlan.kt"), /"expo"/);
 });
 
-test('only HTML/HTTPS URL, APK output, debug/local signing supported', () => {
+test('only HTML/HTTP(S) URL, APK output, debug/local signing supported', () => {
   const eligibility = read(source + 'FastHtmlApkPolicy.kt');
   assertFastHtmlEngineIsolation(root);
   assert.match(eligibility, /setOf\("html", "web-static", "webview"\)/);
   assert.match(eligibility, /setOf\(DeviceArtifactKind\.APK\)/);
-  assert.match(eligibility, /scheme\.equals\("https", true\)/);
+  assert.match(eligibility, /WebviewProjectSettings\.webSourceUri\(draft\.webUrl\)/);
+  const settings=read(source + "WebviewProjectSettings.kt");
+  assert.match(settings, /uri\.scheme\.equals\("http",true\).*uri\.scheme\.equals\("https",true\)/);
   assert.match(eligibility, /SigningMode\.DEBUG/);
   assert.doesNotMatch(eligibility, /"node-web"\s*->/);
 });

@@ -51,7 +51,8 @@ fun main() {
     check(!WizardReadinessEvaluator.evaluate(denied).ready)
     check(runCatching { WebviewProjectSettings.validate(denied) }.isFailure)
     if (mode == SourceMode.URL) {
-     check(!WizardReadinessEvaluator.evaluate(draft.copy(webUrl="http://example.com")).ready)
+     check(WizardReadinessEvaluator.evaluate(draft.copy(webUrl="http://example.com:8080/")).ready == (output=="apk"))
+     check(!WizardReadinessEvaluator.evaluate(draft.copy(webUrl="ftp://example.com")).ready)
      check(!WizardReadinessEvaluator.evaluate(draft.copy(webUrl="https://user:pass@example.com")).ready)
     }
    }

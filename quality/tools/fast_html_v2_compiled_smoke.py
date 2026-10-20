@@ -160,12 +160,12 @@ fun main(args:Array<String>) {
             policy_path = re.search(r'xml/zz_appforge_network_security\s+\(\) \(file\) (res/[^\s]+)', table).group(1)
             policy = subprocess.check_output([args.aapt2, 'dump', 'xmltree', str(apk), '--file', policy_path], text=True)
             values = re.findall(r'cleartextTrafficPermitted[^\n]*', policy)
-            assert len(values) == 2 and re.search(r'0x0(?:\s|$)', values[0]), policy
-            assert ('0xffffffff' in values[1]) == (host is not None), policy
+            assert len(values) == 2 and re.search(r'=(?:false|(?:\(type 0x12\))?0x0)(?:\s|$)', values[0]), policy
+            assert bool(re.search(r'=(?:true|(?:\(type 0x12\))?0xffffffff)(?:\s|$)', values[1])) == (host is not None), policy
             assert (host in policy) if host else ('appforge-cleartext.invalid' in policy)
             manifest = subprocess.check_output([args.aapt2, 'dump', 'xmltree', str(apk), '--file', 'AndroidManifest.xml'], text=True)
             assert 'networkSecurityConfig' in manifest
-            assert ('0xffffffff' in next(line for line in manifest.splitlines() if 'usesCleartextTraffic' in line)) == (host is not None)
+            assert bool(re.search(r'=(?:true|(?:\(type 0x12\))?0xffffffff)(?:\s|$)', next(line for line in manifest.splitlines() if 'usesCleartextTraffic' in line))) == (host is not None)
             print('PASS independent AAPT2 default-deny exact-host cleartext policy', index)
         for enabled in ['false', 'true']:
             apk = work / ('work-' + enabled) / 'html-output.apk'
