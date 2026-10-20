@@ -41,6 +41,23 @@ class RecoveryAnchorAuditTest {
             } finally {base.deleteRecursively()}
         }
     }
+    @Test fun incompatibleGenerationRolesAndCopyingRenameStatePreserveAllSidecars() {
+        val base=Files.createTempDirectory("audit-invalid-transition").toFile()
+        try {
+            val root=File(base,"rootfs").apply{mkdir()};File(root,"user-marker").writeText("keep")
+            val suffix="00000000-0000-0000-0000-000000000000"
+            val old=File(base,".v3-previous-$suffix").apply{mkdir()};File(old,"marker").writeText("old-keep")
+            val journal=File(base,".module-generation.json");val tmp=File(base,".module-generation.json.tmp").apply{writeText("keep-control")}
+            val record=org.json.JSONObject().put("schema",2).put("active","rootfs").put("stage",".v3-stage-$suffix")
+                .put("previous",old.name).put("module","NODE_WEB").put("state","COPYING").put("previousDigest","a".repeat(64))
+            for(candidate in listOf(record,org.json.JSONObject(record.toString()).put("stage",old.name))) {
+                journal.writeText(candidate.toString())
+                assertThrows(Exception::class.java){RuntimeGenerationStore(root).recover()}
+                assertEquals(candidate.toString(),journal.readText());assertEquals("keep-control",tmp.readText())
+                assertEquals("keep",File(root,"user-marker").readText());assertEquals("old-keep",File(old,"marker").readText())
+            }
+        } finally {base.deleteRecursively()}
+    }
     @Test fun symlinkSidecarRejectedBeforeAnyOtherSidecarCleanup() {
         for(kind in 0..2) {
             val base=Files.createTempDirectory("audit-sidecar").toFile()

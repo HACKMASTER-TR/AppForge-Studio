@@ -51,11 +51,14 @@ internal class RuntimeGenerationStore @JvmOverloads constructor(private val acti
         val j=JSONObject(journal.readText());require(j.getString("active")==active.name)
         val stage=child(j.getString("stage"));val old=child(j.getString("previous"))
         require(j.optInt("schema",0)==2){"Eski işlem günlüğünün bütünlük kanıtı yok; tüm ortamlar korundu, otomatik geçiş kapalı."}
+        require(stage.name.startsWith(".v3-stage-") && old.name.startsWith(".v3-previous-")){"Generation journal yol rolleri geçersiz"}
+        require(j.getString("module").matches(Regex("[A-Z0-9_:-]{1,100}")))
         val state=j.getString("state")
         require(state in setOf("COPYING","STAGED","COMMITTED"))
         require(j.getString("previousDigest").matches(Regex("[a-f0-9]{64}")))
         if(state!="COPYING")require(j.getString("stagedDigest").matches(Regex("[a-f0-9]{64}")))
         RecoveryPathAnchor.siblings(active,stage,old)
+        require(state!="COPYING" || !old.exists()){"COPYING kaydı önceki generation geçişi içeremez"}
         // Validate the complete record before any temporary-file cleanup.
         if(state=="COMMITTED") {
             require(treeDigest(inventory(active,{}))==j.getString("stagedDigest")){"Aktifleştirme sonrası ortam değişmiş; kurtarma engellendi, dosyalar korundu."}
