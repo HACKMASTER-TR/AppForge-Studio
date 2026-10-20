@@ -44,7 +44,7 @@ internal class PersistentOperationGraph(private val file:File,private val availa
                     return visited
                 }
                 val byId=working.associateBy{it.operationId}
-                val candidate=working.asSequence().filter{it.parentOperationId==null && it.stage==OperationStage.MODULE}.mapNotNull{root->
+                val candidate=working.asSequence().filter{it.parentOperationId==null && it.stage==OperationStage.MODULE && it.historyClosed}.mapNotNull{root->
                     val ids=subtree(root.operationId)
                     val nodes=ids.mapNotNull(byId::get)
                     if(nodes.all{it.operationState in TERMINAL_STATES})Triple(root,ids,nodes.maxOf{it.updatedAt}) else null

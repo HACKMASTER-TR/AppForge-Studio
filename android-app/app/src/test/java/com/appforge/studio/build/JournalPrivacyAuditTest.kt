@@ -16,7 +16,7 @@ class JournalPrivacyAuditTest {
                 journal.save(mapOf(OfflineModuleId.NODE_WEB to ModuleProgress(OfflineModuleId.NODE_WEB,"audit-$i",ModulePhase.ERROR,detail=text,errorCode=text)))
                 val raw=file.readText();assertFalse(raw.contains("SYNTHETIC_MARKER"));assertFalse(raw.contains("audit.invalid"));assertFalse(raw.contains("/private/user"))
                 val e=JSONObject(raw).getJSONObject("NODE_WEB")
-                assertEquals("DRIVER_FAILED",e.getString("detail"));assertEquals("audit-$i",e.getString("operation"));assertEquals("ERROR",e.getString("phase"))
+                assertEquals("DRIVER_FAILED",e.getString("detail"));assertTrue(e.getString("operation").matches(Regex("id_[a-f0-9]{64}")));assertEquals("ERROR",e.getString("phase"))
                 assertTrue(journal.history().all{it.endsWith("DRIVER_FAILED")})
             }
         } finally {dir.deleteRecursively()}

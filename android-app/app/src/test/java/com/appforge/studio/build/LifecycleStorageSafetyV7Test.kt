@@ -26,7 +26,7 @@ class LifecycleStorageSafetyV7Test {
         val rootNew=PersistentOperationGraph.id("root","new")
         val childNew=PersistentOperationGraph.id("child","new")
         val rows=listOf(
-            node(rootOld,state=DownloadState.COMPLETED,createdAt=1,updatedAt=10),
+            node(rootOld,state=DownloadState.COMPLETED,createdAt=1,updatedAt=10).copy(historyClosed=true),
             node(childOld,parent=rootOld,state=DownloadState.COMPLETED,createdAt=1,updatedAt=12),
             node(rootRecovery,state=DownloadState.COMPLETED,createdAt=2,updatedAt=5),
             node(childRecovery,parent=rootRecovery,state=DownloadState.RECOVERY_REQUIRED,createdAt=2,updatedAt=6),
@@ -91,7 +91,7 @@ class LifecycleStorageSafetyV7Test {
             assertFalse(file.readText().contains("secret.example"))
             assertFalse(file.readText().contains("https://"))
             assertEquals("PROGRESS",JSONObject(file.readText()).getJSONObject("NODE_WEB").getString("detail"))
-            assertEquals("op-3",journal.restoreStrict().getValue(OfflineModuleId.NODE_WEB).operationId)
+            assertTrue(journal.restoreStrict().getValue(OfflineModuleId.NODE_WEB).operationId.matches(Regex("id_[a-f0-9]{64}")))
         } finally {
             dir.deleteRecursively()
         }

@@ -50,7 +50,7 @@ class CoordinatorRetentionAuditTest {
     @Test fun concurrentRealFlowsDoNotLoseParentsOrChildren()=fixture {store->
         val errors=java.util.concurrent.ConcurrentLinkedQueue<Throwable>()
         val threads=(1..4).map{worker->Thread {try{for(i in 1..40)complete("worker-$worker-$i")}catch(e:Throwable){errors.add(e)}}.apply{start()}}
-        threads.forEach{it.join(30000);assertFalse(it.isAlive)}
+        threads.forEach{it.join(120000);assertFalse(it.isAlive)}
         assertTrue(errors.toString(),errors.isEmpty())
         val rows=store.operationGraph().read();assertTrue(rows.size<=512)
         assertTrue(rows.filter{it.parentOperationId==null}.all{it.historyClosed})

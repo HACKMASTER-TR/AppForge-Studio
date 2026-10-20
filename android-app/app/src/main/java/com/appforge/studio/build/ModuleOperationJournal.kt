@@ -11,7 +11,7 @@ internal class ModuleOperationJournal(private val file:File,private val availabl
     // Free-form shell/network details are deliberately not persisted. A denylist
     // cannot reliably distinguish credentials, URLs, paths or future error text.
     private enum class Diagnostic { DRIVER_FAILED, NETWORK_WAIT, CONSENT_REQUIRED, USER_STOP, PROGRESS }
-    private fun correlation(value:String):String = if(value.matches(Regex("[A-Za-z0-9_-]{1,100}")))value
+    private fun correlation(value:String):String = if(value.matches(Regex("id_[a-f0-9]{64}")))value
         else "id_"+java.security.MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it)}
     private fun diagnostic(phase:ModulePhase):String=when(phase) {
         ModulePhase.ERROR->Diagnostic.DRIVER_FAILED

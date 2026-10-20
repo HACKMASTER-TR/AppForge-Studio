@@ -58,7 +58,7 @@ test('V7 terminal subtree pruning algorithm preserves RECOVERY_REQUIRED and acti
       const byId = new Map(working.map(n => [n.operationId, n]));
       const candidates = [];
       for (const rootNode of working) {
-        if (rootNode.parentOperationId !== null || rootNode.stage !== 'MODULE') continue;
+        if (rootNode.parentOperationId !== null || rootNode.stage !== 'MODULE' || !rootNode.historyClosed) continue;
         const ids = subtree(rootNode.operationId);
         const nodes = [...ids].map(k => byId.get(k)).filter(Boolean);
         if (nodes.every(n => terminal.has(n.operationState))) {
@@ -88,7 +88,7 @@ test('V7 terminal subtree pruning algorithm preserves RECOVERY_REQUIRED and acti
   const c3 = id(r3, 'REMOVAL');
 
   const rows = [
-    { operationId: r1, parentOperationId: null, stage: 'MODULE', operationState: 'COMPLETED', createdAt: 1, updatedAt: 10 },
+    { operationId: r1, parentOperationId: null, stage: 'MODULE', operationState: 'COMPLETED', historyClosed: true, createdAt: 1, updatedAt: 10 },
     { operationId: c1, parentOperationId: r1, stage: 'INSTALLATION', operationState: 'COMPLETED', createdAt: 1, updatedAt: 12 },
     { operationId: r2, parentOperationId: null, stage: 'MODULE', operationState: 'COMPLETED', createdAt: 2, updatedAt: 5 },
     { operationId: c2, parentOperationId: r2, stage: 'ARTIFACT_DOWNLOAD', operationState: 'RECOVERY_REQUIRED', createdAt: 2, updatedAt: 6 },
