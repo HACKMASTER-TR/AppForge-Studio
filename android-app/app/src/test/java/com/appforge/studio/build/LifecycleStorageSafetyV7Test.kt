@@ -64,7 +64,8 @@ class LifecycleStorageSafetyV7Test {
             val rollbackStage=PersistentOperationGraph.id(rollbackParent,OperationStage.ROLLBACK.name)
             assertEquals(DownloadState.PREPARING,tree.single{it.operationId==rollbackStage}.operationState)
             val recovered=store.operationGraph().recover(emptyList())
-            assertTrue(recovered.all{it.operationState==DownloadState.RECOVERY_REQUIRED})
+            assertTrue(recovered.filter{it.operationId==removeParent || it.parentOperationId==removeParent}.all{it.operationState==DownloadState.COMPLETED})
+            assertTrue(recovered.filter{it.operationId==rollbackParent || it.parentOperationId==rollbackParent}.all{it.operationState==DownloadState.RECOVERY_REQUIRED})
         } finally {
             journalField.set(DownloadCoordinator,previous)
             DownloadCoordinator.records.value=oldRows
@@ -86,10 +87,11 @@ class LifecycleStorageSafetyV7Test {
             }
             assertArrayEquals(before,file.readBytes())
             assertFalse(File(file.path+".tmp").exists())
-            assertThrows(IllegalArgumentException::class.java) {
-                journal.save(mapOf(OfflineModuleId.NODE_WEB to ModuleProgress(OfflineModuleId.NODE_WEB,"op-3",ModulePhase.DOWNLOADING,10,100,detail="https://secret.example/token")))
-            }
-            assertArrayEquals(before,file.readBytes())
+            journal.save(mapOf(OfflineModuleId.NODE_WEB to ModuleProgress(OfflineModuleId.NODE_WEB,"op-3",ModulePhase.DOWNLOADING,10,100,detail="https://secret.example/token")))
+            assertFalse(file.readText().contains("secret.example"))
+            assertFalse(file.readText().contains("https://"))
+            assertEquals("PROGRESS",JSONObject(file.readText()).getJSONObject("NODE_WEB").getString("detail"))
+            assertEquals("op-3",journal.restoreStrict().getValue(OfflineModuleId.NODE_WEB).operationId)
         } finally {
             dir.deleteRecursively()
         }

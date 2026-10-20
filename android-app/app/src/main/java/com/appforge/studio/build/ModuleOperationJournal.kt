@@ -8,6 +8,30 @@ import org.json.JSONObject
 
 /** Private, bounded operation metadata. No project, credential or SDK-consent state is persisted. */
 internal class ModuleOperationJournal(private val file:File,private val availableBytes:(File)->Long={it.usableSpace}) {
+    // Free-form shell/network details are deliberately not persisted. A denylist
+    // cannot reliably distinguish credentials, URLs, paths or future error text.
+    private enum class Diagnostic { DRIVER_FAILED, NETWORK_WAIT, CONSENT_REQUIRED, USER_STOP, PROGRESS }
+    private fun correlation(value:String):String = if(value.matches(Regex("[A-Za-z0-9_-]{1,100}")))value
+        else "id_"+java.security.MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it)}
+    private fun diagnostic(phase:ModulePhase):String=when(phase) {
+        ModulePhase.ERROR->Diagnostic.DRIVER_FAILED
+        ModulePhase.WAITING_CONNECTION,ModulePhase.RECONNECTING->Diagnostic.NETWORK_WAIT
+        ModulePhase.AWAITING_CONSENT->Diagnostic.CONSENT_REQUIRED
+        ModulePhase.CANCELED,ModulePhase.PAUSED->Diagnostic.USER_STOP
+        else->Diagnostic.PROGRESS
+    }.name
+    private fun safeHistory(raw:org.json.JSONArray?):org.json.JSONArray {
+        val safe=org.json.JSONArray()
+        if(raw==null)return safe
+        for(i in (raw.length()-32).coerceAtLeast(0) until raw.length()) {
+            val row=raw.getJSONObject(i)
+            val module=OfflineModuleId.valueOf(row.getString("module"))
+            val phase=ModulePhase.valueOf(row.getString("phase"))
+            safe.put(JSONObject().put("module",module.name).put("operation",correlation(row.getString("operation")))
+                .put("phase",phase.name).put("detail",diagnostic(phase)).put("time",row.getLong("time")))
+        }
+        return safe
+    }
     private fun requireReadable() {
         var parent:File?=file.absoluteFile
         while(parent!=null){require(!Files.isSymbolicLink(parent.toPath())){"Modül günlüğü symlink olamaz"};parent=parent.parentFile}
@@ -20,21 +44,21 @@ internal class ModuleOperationJournal(private val file:File,private val availabl
         require(!Files.isSymbolicLink(file.toPath()))
         val parent=requireNotNull(file.absoluteFile.parentFile);parent.mkdirs()
         for((_,e) in events) {
-            require(e.operationId.isNotBlank() && !e.operationId.contains("://") && !e.detail.contains("https://") && !e.detail.contains("http://")){"Modül günlüğü URL veya gizli kaynak içeremez"}
+            require(e.operationId.isNotBlank()){"Modül işlem kimliği boş olamaz"}
             require(e.bytesDownloaded>=0 && (e.bytesTotal==null || e.bytesTotal>=e.bytesDownloaded)){"Geçersiz modül günlüğü bayt sayacı"}
         }
         val previous=readBounded()
-        val history=previous?.optJSONArray("history")?:org.json.JSONArray()
+        val history=safeHistory(previous?.optJSONArray("history"))
         for((id,e) in events) {
             val old=previous?.optJSONObject(id.name)
-            if(old?.optString("operation")!=e.operationId.take(100) || old?.optString("phase")!=e.phase.name)
-                history.put(JSONObject().put("module",id.name).put("operation",e.operationId.take(100)).put("phase",e.phase.name).put("detail",e.detail.take(240)).put("time",System.currentTimeMillis()))
+            if(old?.optString("operation")!=correlation(e.operationId) || old?.optString("phase")!=e.phase.name)
+                history.put(JSONObject().put("module",id.name).put("operation",correlation(e.operationId)).put("phase",e.phase.name).put("detail",diagnostic(e.phase)).put("time",System.currentTimeMillis()))
         }
         val bounded=org.json.JSONArray()
         for(i in (history.length()-32).coerceAtLeast(0) until history.length())bounded.put(history.getJSONObject(i))
         val json=JSONObject().put("schema",1).put("history",bounded)
-        for((id,e) in events)json.put(id.name,JSONObject().put("operation",e.operationId.take(100)).put("phase",e.phase.name)
-            .put("bytes",e.bytesDownloaded).put("total",e.bytesTotal).put("detail",e.detail.take(2000)))
+        for((id,e) in events)json.put(id.name,JSONObject().put("operation",correlation(e.operationId)).put("phase",e.phase.name)
+            .put("bytes",e.bytesDownloaded).put("total",e.bytesTotal).put("detail",diagnostic(e.phase)))
         val bytes=json.toString().toByteArray(Charsets.UTF_8);require(bytes.size<=32768){"Modül günlüğü boyut sınırını aşıyor"}
         require(availableBytes(parent)>bytes.size+65536L){"Modül günlüğü için depolama alanı yetersiz; önceki kayıt korunur."}
         val part=File(file.path+".tmp")
@@ -52,7 +76,8 @@ internal class ModuleOperationJournal(private val file:File,private val availabl
         JSONObject(file.readText()).also{require(it.getInt("schema")==1)}
     }.getOrNull()
     @Synchronized fun history():List<String> {
-        val records=readBounded()?.optJSONArray("history")?:return emptyList()
+        requireReadable()
+        val records=safeHistory(readBounded()?.optJSONArray("history"))
         return ((records.length()-32).coerceAtLeast(0) until records.length()).mapNotNull{index->runCatching{val e=records.getJSONObject(index);e.getString("module").take(40)+" • "+e.getString("phase").take(40)+" • "+e.getString("detail").take(240)}.getOrNull()}
     }
     /** Legacy read-only callers get no trusted state on corruption. Drivers must use restoreStrict. */
@@ -69,7 +94,7 @@ internal class ModuleOperationJournal(private val file:File,private val availabl
                 val phase=if(previous in setOf(ModulePhase.ERROR,ModulePhase.CANCELED,ModulePhase.REMOVED))previous else ModulePhase.PAUSED
                 val bytes=e.getLong("bytes");require(bytes>=0)
                 val total=if(e.has("total") && !e.isNull("total"))e.getLong("total").also{require(it>0 && it>=bytes)} else null
-                put(id,ModuleProgress(id,e.getString("operation").take(100),phase,bytes,total,
+                put(id,ModuleProgress(id,correlation(e.getString("operation")),phase,bytes,total,
                     detail="Önceki durum: ${previous.name}. Dosyalar yeniden doğrulanmadan hazır sayılmaz; kullanıcı onayıyla devam edin."))
             }
         }
