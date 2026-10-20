@@ -94,7 +94,9 @@ internal object FastHtmlResourceColor {
     }
 
     /** AAPT2 may shorten APK paths; resolve the single icon ID through the compiled table. */
-    fun binaryIconPath(b: ByteArray): String {
+    fun binaryIconPath(b:ByteArray):String = binaryFilePath(b,"drawable","appforge_icon","png")
+    fun binaryNetworkSecurityPath(b:ByteArray):String = binaryFilePath(b,"xml","zz_appforge_network_security","xml")
+    private fun binaryFilePath(b: ByteArray,resourceType:String,resourceKey:String,extension:String): String {
         require(b.size in 64..LIMIT && s(b,0)==2 && s(b,2)==12 && n(b,4)==b.size && n(b,8)==1)
         var global: List<String>?=null;var found: String?=null;var packages=0
         chunks(b,12,b.size) { pkg,header,length ->
@@ -104,7 +106,7 @@ internal object FastHtmlResourceColor {
                 val types=pool(b,pkg+n(b,pkg+268));val keys=pool(b,pkg+n(b,pkg+276))
                 chunks(b,pkg+header,pkg+length) { at,typeHeader,typeLength -> if(s(b,at)==0x201) {
                     val type=b[at+8].toInt() and 255;require(type in 1..types.size)
-                    if(types[type-1]=="drawable") {
+                    if(types[type-1]==resourceType) {
                         require(b[at+9].toInt()==0)
                         val count=n(b,at+12);val data=at+n(b,at+16)
                         require(count in 1..4096 && at.toLong()+typeHeader+4L*count<=data && data<=at+typeLength)
@@ -114,10 +116,10 @@ internal object FastHtmlResourceColor {
                                 require(offset>=0 && data.toLong()+offset+16<=at+typeLength)
                                 val entry=data+offset;require(s(b,entry)==8 && s(b,entry+2) and 9==0)
                                 val key=n(b,entry+4);require(key in keys.indices)
-                                if(keys[key]=="appforge_icon") {
+                                if(keys[key]==resourceKey) {
                                     require(found==null && s(b,entry+8)==8 && b[entry+11].toInt()==3)
-                                    val path=global?.getOrNull(n(b,entry+12)) ?: error("Icon path string missing")
-                                    require(path.matches(Regex("res/[A-Za-z0-9_/.-]+\\.png")) && !path.contains(".."))
+                                    val path=global?.getOrNull(n(b,entry+12)) ?: error("Resource path string missing")
+                                    require(path.matches(Regex("res/[A-Za-z0-9_/.-]+\\.$extension")) && !path.contains(".."))
                                     found=path
                                 }
                             }
@@ -126,7 +128,7 @@ internal object FastHtmlResourceColor {
                 } }
             }
         }
-        require(packages==1);return requireNotNull(found) { "Pinned drawable/appforge_icon missing." }
+        require(packages==1);return requireNotNull(found) { "Pinned $resourceType/$resourceKey missing." }
     }
 
     private data class Field(val id: Int,val wire: Int,val bytes: ByteArray,val raw: ByteArray,val number: Long=0)

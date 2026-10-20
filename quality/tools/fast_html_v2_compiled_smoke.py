@@ -156,7 +156,9 @@ fun main(args:Array<String>) {
     if args.aapt2:
         for index, host in enumerate(['example.com', '192.168.1.8', 'localhost', None]):
             apk = work / ('url-' + str(index)) / 'html-output.apk'
-            policy = subprocess.check_output([args.aapt2, 'dump', 'xmltree', str(apk), '--file', 'res/xml/zz_appforge_network_security.xml'], text=True)
+            table = subprocess.check_output([args.aapt2, 'dump', 'resources', str(apk)], text=True)
+            policy_path = re.search(r'xml/zz_appforge_network_security\s+\(\) \(file\) (res/[^\s]+)', table).group(1)
+            policy = subprocess.check_output([args.aapt2, 'dump', 'xmltree', str(apk), '--file', policy_path], text=True)
             values = re.findall(r'cleartextTrafficPermitted[^\n]*', policy)
             assert len(values) == 2 and re.search(r'0x0(?:\s|$)', values[0]), policy
             assert ('0xffffffff' in values[1]) == (host is not None), policy

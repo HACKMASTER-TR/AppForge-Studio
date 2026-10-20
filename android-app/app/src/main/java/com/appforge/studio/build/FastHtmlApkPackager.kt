@@ -65,10 +65,10 @@ internal object FastHtmlApkPackager {
                     draft.minSdk, draft.targetSdk, FastHtmlApkPolicy.templatePermissions(draft), FastHtmlApkPolicy.applicationCategory(draft),
                     if (draft.deepLinkEnabled) listOf(draft.deepLinkScheme,draft.deepLinkHost,draft.deepLinkPathPrefix) else null, true, draft.mediaPlayerBridge, draft.billingEnabled, WebviewProjectSettings.cleartextHost(draft)!=null
                 )
-                val networkPath="res/xml/zz_appforge_network_security.xml"
+                val resources = zip.getInputStream(requireNotNull(zip.getEntry("resources.arsc"))).use { it.readBytes() }
+                val networkPath=FastHtmlResourceColor.binaryNetworkSecurityPath(resources)
                 val network=zip.getInputStream(requireNotNull(zip.getEntry(networkPath))).use{it.readBytes()}
                 additions[networkPath]=HtmlBinaryManifest.networkSecurity(network,WebviewProjectSettings.cleartextHost(draft))
-                val resources = zip.getInputStream(requireNotNull(zip.getEntry("resources.arsc"))).use { it.readBytes() }
                 additions["resources.arsc"] = FastHtmlResourceColor.binary(resources, draft.primaryColor, draft.packageName)
                 val iconPath = FastHtmlResourceColor.binaryIconPath(resources)
                 require(zip.getEntry(iconPath) != null) { "Pinned icon resource missing." }

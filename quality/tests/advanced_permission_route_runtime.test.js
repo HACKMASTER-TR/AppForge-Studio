@@ -71,9 +71,10 @@ fun main() {
  }
  val unrelated = setOf("READ_CONTACTS", "READ_MEDIA_VIDEO", "invalid")
  check(WebviewProjectSettings.toggleAdditionalPermission(unrelated,"MEDIA_IMAGES",false) == unrelated)
- listOf("http://example.com", "https://user:pass@example.com", "https:///missing").forEach { url ->
+ listOf("ftp://example.com", "https://user:pass@example.com", "https:///missing").forEach { url ->
   check(runCatching { WebviewProjectSettings.validate(base.copy(sourceMode=SourceMode.URL,webUrl=url,iconUri="content://icons/selected",additionalPermissions=setOf("MEDIA_IMAGES"))) }.isFailure)
  }
+ WebviewProjectSettings.validate(base.copy(sourceMode=SourceMode.URL,webUrl="http://example.com:8080/",additionalPermissions=setOf("MEDIA_IMAGES")))
  println("permission assertions passed")
 }`);
  execFileSync('kotlinc',[path.join(root,'android-app/app/src/main/java/com/appforge/studio/model/ProjectDraft.kt'), ...['FastHtmlApkPolicy.kt','DeviceBuildCapabilities.kt','FeatureSupportMatrix.kt','WebviewProjectSettings.kt'].map(p=>path.join(root,build,p)),path.join(dir,'BuildConfig.kt'),path.join(dir,'Check.kt'),'-include-runtime','-d',path.join(dir,'check.jar')], {timeout:120000});
