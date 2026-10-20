@@ -16203,6 +16203,14 @@ private fun FeaturesStep(
             }
         }
 
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Yerel ağ erişimi (Android 17+): DNS takma adları, yönlendirme ve HTML alt kaynakları için açık tercih", modifier = Modifier.weight(1f))
+                Switch(checked = d.localNetworkAccess, onCheckedChange = { update(d.copy(localNetworkAccess = it)) })
+            }
+            NoteCard("Bilinen LAN/localhost URL'sinde Android 17 izni yükleme öncesi sorulur. Diğer hostların DNS sonucu önceden bilinmez; bu tercih kapalıysa LAN isteği sistemce engellenebilir. HTTP izni ve güvenli bridge kapsamı değişmez.")
+        }
+
         if (
             d.webMixedContentAllowed
         ) {

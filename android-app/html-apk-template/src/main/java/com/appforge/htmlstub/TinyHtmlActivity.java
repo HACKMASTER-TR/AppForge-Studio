@@ -197,8 +197,58 @@ public final class TinyHtmlActivity extends Activity {
         } catch(Exception invalid) { return false; }
     }
 
+    private static final String LAN_PERMISSION = "android.permission.ACCESS_LOCAL_NETWORK";
+    private static final int LAN_REQUEST = 7391;
+    private boolean lanAttempted, lanBlocked, lanRequestInFlight;
+    private android.widget.Button lanRetryButton;
+    private boolean lanRequired() {
+        return android.os.Build.VERSION.SDK_INT >= 37 && getApplicationInfo().targetSdkVersion >= 37 &&
+            config != null && config.optBoolean("localNetworkRequired", false);
+    }
+    private boolean lanGranted() {
+        return !lanRequired() || checkSelfPermission(LAN_PERMISSION) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    }
+    private void startAfterLanPermission(boolean userRetry) {
+        if (lanGranted()) {
+            lanBlocked = false;
+            if (lanRetryButton != null) lanRetryButton.setVisibility(android.view.View.GONE);
+            loadProjectPage();
+            return;
+        }
+        lanBlocked = true;
+        if (lanRequestInFlight) return;
+        if (!lanAttempted || userRetry) {
+            lanAttempted = true;
+            lanRequestInFlight = true;
+            requestPermissions(new String[]{LAN_PERMISSION}, LAN_REQUEST);
+        } else showLanDenied();
+    }
+    private void showLanDenied() {
+        web.stopLoading();
+        web.loadDataWithBaseURL(null, "<html><body>Yerel ağ izni verilmedi. Sayfa yüklenmedi. Yeniden denemek için uygulamadaki düğmeyi veya Android Ayarlar izinlerini kullanın.</body></html>", "text/html", "UTF-8", null);
+        if (lanRetryButton == null) {
+            lanRetryButton = new android.widget.Button(this);
+            lanRetryButton.setText("Yerel ağ iznini yeniden dene");
+            lanRetryButton.setOnClickListener(view -> startAfterLanPermission(true));
+            addContentView(lanRetryButton, new android.widget.FrameLayout.LayoutParams(-1, -2, android.view.Gravity.BOTTOM));
+        }
+        lanRetryButton.setVisibility(android.view.View.VISIBLE);
+        new android.app.AlertDialog.Builder(this).setTitle("Yerel ağ izni gerekli")
+            .setMessage("Android 17 yerel ağ izni olmadan bu içerik yüklenmez. İzin Android Ayarlar'dan da değiştirilebilir.")
+            .setPositiveButton("Yeniden dene", (dialog, which) -> startAfterLanPermission(true))
+            .setNegativeButton("Vazgeç", (dialog, which) -> {}).show();
+    }
+    private void resumeLanPermission() {
+        if (web == null || config == null) return;
+        if (lanBlocked && lanGranted()) startAfterLanPermission(false);
+        else if (!lanBlocked && !lanGranted()) {
+            lanBlocked = true;
+            showLanDenied();
+        }
+    }
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        lanAttempted = state != null && state.getBoolean("appforge.lanAttempted", false);
         scannerPermissionRequested = state != null && state.getBoolean("appforge.scannerPermissionRequested", false);
         notificationPermissionRequested = state != null && state.getBoolean("appforge.notificationPermissionRequested", false);
         multipleFiles = state != null && state.getBoolean("appforge.multipleFiles", false);
@@ -365,6 +415,15 @@ public final class TinyHtmlActivity extends Activity {
                 try { if(!isAllowedWebNavigation(url))throw new IllegalArgumentException("HTTP host blocked"); documents.enqueueHttp(url, agent, disposition, mime); }
                 catch (RuntimeException error) { android.widget.Toast.makeText(this,"Download unavailable",android.widget.Toast.LENGTH_SHORT).show(); }
             });
+            startAfterLanPermission(false);
+        } catch (Exception error) {
+            dismissSplash();
+            web.loadDataWithBaseURL(null, "<html><body>Unable to open this project.</body></html>", "text/html", "UTF-8", null);
+        }
+    }
+
+    private void loadProjectPage() {
+        try {
             if ("URL".equals(config.optString("mode"))) {
                 String address = config.getString("url");
                 Uri uri = Uri.parse(address);
@@ -450,17 +509,20 @@ public final class TinyHtmlActivity extends Activity {
         state.putBoolean("appforge.pickerOutstanding", selection.outstanding());
         state.putBoolean("appforge.multipleFiles", multipleFiles);
         state.putBoolean("appforge.notificationPermissionRequested", notificationPermissionRequested);
+        state.putBoolean("appforge.lanAttempted", lanAttempted);
         super.onSaveInstanceState(state);
     }
 
     @Override public void onRequestPermissionsResult(int request, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(request, permissions, results);
+        if (request == LAN_REQUEST) { lanRequestInFlight = false; if (lanGranted()) startAfterLanPermission(false); else showLanDenied(); return; }
         if (webPermissions != null) webPermissions.result(request);
         if (location != null) location.permissionsResult(request);
     }
 
     @Override protected void onResume() {
         super.onResume();
+        resumeLanPermission();
         foreground = true;
         if (web != null) web.onResume();
         if (awake != null) {

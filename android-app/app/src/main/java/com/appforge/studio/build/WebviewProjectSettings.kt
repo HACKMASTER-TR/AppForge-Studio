@@ -16,6 +16,24 @@ internal object WebviewProjectSettings {
         if(host.all{it.isDigit() || it=='.'})require(host.split('.').size==4 && host.split('.').all{it.toIntOrNull() in 0..255})
         uri
     }.getOrNull()
+    /** No DNS resolution: arbitrary hostnames may resolve privately; explicit consent is separate. */
+    fun isLocalNetworkHost(host:String):Boolean {
+        val h=host.removePrefix("[").removeSuffix("]").lowercase().removeSuffix(".")
+        if(h=="localhost" || h.endsWith(".localhost") || h.endsWith(".local"))return true
+        if(h.contains(':'))return runCatching {
+            require(h.matches(Regex("[0-9a-f:.]+")))
+            val bytes=java.net.InetAddress.getByName(h).address
+            if(bytes.size==4) return@runCatching isLocalNetworkHost(bytes.joinToString("."){(it.toInt() and 255).toString()})
+            bytes.size==16 && (bytes.take(15).all{it==0.toByte()} && bytes[15]==1.toByte() ||
+                (bytes[0].toInt() and 0xfe)==0xfc || (bytes[0].toInt() and 0xff)==0xfe && (bytes[1].toInt() and 0xc0)==0x80)
+        }.getOrDefault(false)
+        val a=h.split('.').map{it.toIntOrNull()?:return false}
+        if(a.size!=4 || a.any{it !in 0..255})return false
+        return a[0]==10 || a[0]==127 || a[0]==192 && a[1]==168 || a[0]==172 && a[1] in 16..31 || a[0]==169 && a[1]==254
+    }
+    fun needsLocalNetwork(draft:ProjectDraft):Boolean = draft.targetSdk>=37 &&
+        (draft.localNetworkAccess || draft.sourceMode==com.appforge.studio.model.SourceMode.URL &&
+            webSourceUri(draft.webUrl)?.host?.let(::isLocalNetworkHost)==true)
     fun cleartextHost(draft:ProjectDraft):String? = if(draft.sourceMode==com.appforge.studio.model.SourceMode.URL)
         webSourceUri(draft.webUrl)?.takeIf{it.scheme.equals("http",true)}?.host?.removePrefix("[")?.removeSuffix("]")?.lowercase() else null
     fun networkSecurityXml(draft:ProjectDraft):String {

@@ -63,6 +63,7 @@ internal object FastHtmlApkPolicy {
 
     fun templatePermissions(draft: ProjectDraft): Set<String> = buildSet {
         add("android.permission.INTERNET")
+        if (WebviewProjectSettings.needsLocalNetwork(draft)) add("android.permission.ACCESS_LOCAL_NETWORK")
         addAll(WebviewProjectSettings.additionalPermissions(draft).map { "android.permission.$it" })
         if (draft.nfc) add("android.permission.NFC")
         if (draft.camera || draft.qrScanner) add("android.permission.CAMERA")

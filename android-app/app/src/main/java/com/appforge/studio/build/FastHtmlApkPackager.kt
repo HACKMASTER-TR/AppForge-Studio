@@ -116,6 +116,7 @@ internal object FastHtmlApkPackager {
         .put("webJavaScriptEnabled", draft.webJavaScriptEnabled).put("webDomStorageEnabled", draft.webDomStorageEnabled)
         .put("webZoomEnabled", draft.webZoomEnabled).put("webWideViewPortEnabled", draft.webWideViewPortEnabled)
         .put("webMixedContentAllowed", draft.webMixedContentAllowed)
+        .put("localNetworkRequired", WebviewProjectSettings.needsLocalNetwork(draft))
         .put("webOverviewModeEnabled", draft.webOverviewModeEnabled).put("webMediaAutoplayEnabled", draft.webMediaAutoplayEnabled)
         .put("primaryColor", draft.primaryColor).put("appCategory", draft.appCategory)
         .put("backgroundColor", draft.backgroundColor).put("statusBarColor", draft.statusBarColor)

@@ -97,7 +97,7 @@ fun main(args:Array<String>) {
    appCategory=if(enabled) "none" else "game",primaryColor=if(enabled) "#BC9CF6" else "#6B7CFF",
    deepLinkEnabled=enabled,deepLinkScheme="sample",deepLinkHost="example.com",deepLinkPathPrefix="/open",
    billingEnabled=enabled,billingProductIds=if(enabled)"one" else "",purchaseVerificationUrl=if(enabled)"https://verify.example/purchase" else "",mediaPlayerBridge=enabled,qrScanner=enabled,nfc=enabled,iconUri=if(enabled)"content://icons/selected" else null,additionalPermissions=if(enabled)setOf("CONTACTS","BLUETOOTH") else emptySet(),wakeLock=enabled,notifications=enabled,networkState=enabled,vibrationBridge=enabled,clipboardBridge=enabled,
-   fullscreen=enabled,orientation=if(enabled)"portrait" else "unspecified",splashEnabled=enabled)
+   localNetworkAccess=enabled,fullscreen=enabled,orientation=if(enabled)"portrait" else "unspecified",splashEnabled=enabled)
   TemplateIntegrity.requireBundled(context,setOf("html-apk-template.apk","html-aab-template.aab"))
   val apk=FastHtmlApkPackager.build(context,draft.copy(buildOutput="apk"),workspace,signer)
   val apkVerification=ApkVerifier.Builder(apk).build().verify()
@@ -118,6 +118,7 @@ fun main(args:Array<String>) {
    check(read(b,"base/assets/site/clip.mp4").contentEquals(media))
    val apkManifest=read(a,"AndroidManifest.xml");val aabManifest=read(b,"base/manifest/AndroidManifest.xml")
    check(apkManifest.isNotEmpty() && aabManifest.toString(Charsets.UTF_8).contains(draft.packageName+".appforge.documents"))
+   check(aabManifest.toString(Charsets.UTF_8).contains("android.permission.ACCESS_LOCAL_NETWORK")==enabled)
    if (enabled) check(aabManifest.toString(Charsets.UTF_8).contains("android.permission.POST_NOTIFICATIONS"))
    else check(!aabManifest.toString(Charsets.UTF_8).contains("android.permission.POST_NOTIFICATIONS"))
   }}
@@ -158,6 +159,8 @@ fun main(args:Array<String>) {
             apk = work / ('url-' + str(index)) / 'html-output.apk'
             table = subprocess.check_output([args.aapt2, 'dump', 'resources', str(apk)], text=True)
             policy_path = re.search(r'xml/zz_appforge_network_security\s+\(\) \(file\) (res/[^\s]+)', table).group(1)
+            manifest_lan = subprocess.check_output([args.aapt2, 'dump', 'xmltree', str(apk), '--file', 'AndroidManifest.xml'], text=True)
+            assert ('android.permission.ACCESS_LOCAL_NETWORK' in manifest_lan) == (index in [1,2])
             policy = subprocess.check_output([args.aapt2, 'dump', 'xmltree', str(apk), '--file', policy_path], text=True)
             values = re.findall(r'cleartextTrafficPermitted[^\n]*', policy)
             assert len(values) == 2 and re.search(r'=(?:false|(?:\(type 0x12\))?0x0)(?:\s|$)', values[0]), policy
@@ -176,6 +179,7 @@ fun main(args:Array<String>) {
             manifest = subprocess.check_output([args.aapt2, 'dump', 'xmltree', str(apk), '--file', 'AndroidManifest.xml'], text=True)
             category = '(?:0xffffffff|-1)' if enabled == 'true' else '0'
             assert re.search(r'appCategory[^\n]*=' + category + r'(?:\s|$)', manifest)
+            assert ('android.permission.ACCESS_LOCAL_NETWORK' in manifest) == (enabled == 'true')
             assert ('ProxyBillingActivity' in manifest) == (enabled == 'true')
             assert ('E: service' in manifest) == (enabled == 'true')
             assert ('scheme' in manifest) == (enabled == 'true')

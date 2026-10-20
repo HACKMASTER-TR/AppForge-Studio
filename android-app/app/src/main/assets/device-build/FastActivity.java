@@ -123,9 +123,60 @@ public final class FastActivity extends Activity {
     private View splashView;
     private long splashStartedAt;
 
+
+    private static final String LAN_PERMISSION = "android.permission.ACCESS_LOCAL_NETWORK";
+    private static final int LAN_REQUEST = 7391;
+    private boolean lanAttempted, lanBlocked, lanRequestInFlight;
+    private android.widget.Button lanRetryButton;
+    private boolean lanRequired() {
+        return android.os.Build.VERSION.SDK_INT >= 37 && getApplicationInfo().targetSdkVersion >= 37 &&
+            config != null && config.optBoolean("localNetworkRequired", false);
+    }
+    private boolean lanGranted() {
+        return !lanRequired() || checkSelfPermission(LAN_PERMISSION) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    }
+    private void startAfterLanPermission(boolean userRetry) {
+        if (lanGranted()) {
+            lanBlocked = false;
+            if (lanRetryButton != null) lanRetryButton.setVisibility(android.view.View.GONE);
+            loadStartPageUnchecked();
+            return;
+        }
+        lanBlocked = true;
+        if (lanRequestInFlight) return;
+        if (!lanAttempted || userRetry) {
+            lanAttempted = true;
+            lanRequestInFlight = true;
+            requestPermissions(new String[]{LAN_PERMISSION}, LAN_REQUEST);
+        } else showLanDenied();
+    }
+    private void showLanDenied() {
+        webView.stopLoading();
+        webView.loadDataWithBaseURL(null, "<html><body>Yerel ağ izni verilmedi. Sayfa yüklenmedi. Yeniden denemek için uygulamadaki düğmeyi veya Android Ayarlar izinlerini kullanın.</body></html>", "text/html", "UTF-8", null);
+        if (lanRetryButton == null) {
+            lanRetryButton = new android.widget.Button(this);
+            lanRetryButton.setText("Yerel ağ iznini yeniden dene");
+            lanRetryButton.setOnClickListener(view -> startAfterLanPermission(true));
+            addContentView(lanRetryButton, new android.widget.FrameLayout.LayoutParams(-1, -2, android.view.Gravity.BOTTOM));
+        }
+        lanRetryButton.setVisibility(android.view.View.VISIBLE);
+        new android.app.AlertDialog.Builder(this).setTitle("Yerel ağ izni gerekli")
+            .setMessage("Android 17 yerel ağ izni olmadan bu içerik yüklenmez. İzin Android Ayarlar'dan da değiştirilebilir.")
+            .setPositiveButton("Yeniden dene", (dialog, which) -> startAfterLanPermission(true))
+            .setNegativeButton("Vazgeç", (dialog, which) -> {}).show();
+    }
+    private void resumeLanPermission() {
+        if (webView == null || config == null) return;
+        if (lanBlocked && lanGranted()) startAfterLanPermission(false);
+        else if (!lanBlocked && !lanGranted()) {
+            lanBlocked = true;
+            showLanDenied();
+        }
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        lanAttempted = savedInstanceState != null && savedInstanceState.getBoolean("appforge.lanAttempted", false);
 
         config = loadConfig();
 
@@ -209,7 +260,6 @@ public final class FastActivity extends Activity {
                 this::applyAppForgeSystemBarMode
             );
 
-        requestConfiguredPermissions();
 
         if (splashView != null) {
             splashView.postDelayed(
@@ -2561,7 +2611,10 @@ public final class FastActivity extends Activity {
         }
     }
 
-    private void loadStartPage() {
+    private void loadStartPage() { startAfterLanPermission(false); }
+
+    private void loadStartPageUnchecked() {
+        requestConfiguredPermissions();
         String sourceMode =
             config.optString(
                 "sourceMode",
@@ -2909,6 +2962,11 @@ public final class FastActivity extends Activity {
         );
     }
 
+    @Override protected void onSaveInstanceState(Bundle state) {
+        state.putBoolean("appforge.lanAttempted", lanAttempted);
+        super.onSaveInstanceState(state);
+    }
+
     @Override
     public void onRequestPermissionsResult(
         int requestCode,
@@ -2920,6 +2978,12 @@ public final class FastActivity extends Activity {
             permissions,
             grantResults
         );
+
+        if (requestCode == LAN_REQUEST) {
+            lanRequestInFlight = false;
+            if (lanGranted()) startAfterLanPermission(false); else showLanDenied();
+            return;
+        }
 
         if (
             requestCode !=
@@ -3009,6 +3073,7 @@ public final class FastActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        resumeLanPermission();
         if (documents != null) documents.resume();
 
         if (config != null) {

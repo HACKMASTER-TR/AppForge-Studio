@@ -1091,6 +1091,8 @@ object ProjectBackupManager {
                     )
                 }
 
+                if (com.appforge.studio.build.WebviewProjectSettings.needsLocalNetwork(draft)) add("android.permission.ACCESS_LOCAL_NETWORK")
+
                 if (
                     draft.notifications
                 ) {
@@ -1278,7 +1280,7 @@ $permissionXml
                 """
         if (android.os.Build.VERSION.SDK_INT >= 21) {
             settings.setMixedContentMode(
-                WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             );
         }
 """
@@ -1302,13 +1304,71 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
+    private WebView webView;
+    private static final String LAN_PERMISSION = "android.permission.ACCESS_LOCAL_NETWORK";
+    private static final int LAN_REQUEST = 7391;
+    private boolean lanAttempted, lanBlocked, lanRequestInFlight;
+    private android.widget.Button lanRetryButton;
+    private boolean lanRequired() {
+        return android.os.Build.VERSION.SDK_INT >= 37 && getApplicationInfo().targetSdkVersion >= 37 &&
+            ${com.appforge.studio.build.WebviewProjectSettings.needsLocalNetwork(draft)};
+    }
+    private boolean lanGranted() {
+        return !lanRequired() || checkSelfPermission(LAN_PERMISSION) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    }
+    private void startAfterLanPermission(boolean userRetry) {
+        if (lanGranted()) {
+            lanBlocked = false;
+            if (lanRetryButton != null) lanRetryButton.setVisibility(android.view.View.GONE);
+            loadStartPageUnchecked();
+            return;
+        }
+        lanBlocked = true;
+        if (lanRequestInFlight) return;
+        if (!lanAttempted || userRetry) {
+            lanAttempted = true;
+            lanRequestInFlight = true;
+            requestPermissions(new String[]{LAN_PERMISSION}, LAN_REQUEST);
+        } else showLanDenied();
+    }
+    private void showLanDenied() {
+        webView.stopLoading();
+        webView.loadDataWithBaseURL(null, "<html><body>Yerel ağ izni verilmedi. Sayfa yüklenmedi. Yeniden denemek için uygulamadaki düğmeyi veya Android Ayarlar izinlerini kullanın.</body></html>", "text/html", "UTF-8", null);
+        if (lanRetryButton == null) {
+            lanRetryButton = new android.widget.Button(this);
+            lanRetryButton.setText("Yerel ağ iznini yeniden dene");
+            lanRetryButton.setOnClickListener(view -> startAfterLanPermission(true));
+            addContentView(lanRetryButton, new android.widget.FrameLayout.LayoutParams(-1, -2, android.view.Gravity.BOTTOM));
+        }
+        lanRetryButton.setVisibility(android.view.View.VISIBLE);
+        new android.app.AlertDialog.Builder(this).setTitle("Yerel ağ izni gerekli")
+            .setMessage("Android 17 yerel ağ izni olmadan bu içerik yüklenmez. İzin Android Ayarlar'dan da değiştirilebilir.")
+            .setPositiveButton("Yeniden dene", (dialog, which) -> startAfterLanPermission(true))
+            .setNegativeButton("Vazgeç", (dialog, which) -> {}).show();
+    }
+    private void resumeLanPermission() {
+        if (webView == null) return;
+        if (lanBlocked && lanGranted()) startAfterLanPermission(false);
+        else if (!lanBlocked && !lanGranted()) {
+            lanBlocked = true;
+            showLanDenied();
+        }
+    }
+
+    private void loadStartPageUnchecked() { webView.loadUrl("${javaEscape(launchUrl)}"); }
+    @Override public void onRequestPermissionsResult(int request, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(request, permissions, results);
+        if (request == LAN_REQUEST) { lanRequestInFlight = false; if (lanGranted()) startAfterLanPermission(false); else showLanDenied(); }
+    }
+    @Override protected void onResume() { super.onResume(); resumeLanPermission(); }
+    @Override protected void onSaveInstanceState(Bundle state) { state.putBoolean("appforge.lanAttempted", lanAttempted); super.onSaveInstanceState(state); }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        WebView webView =
-            new WebView(this);
+        lanAttempted = savedInstanceState != null && savedInstanceState.getBoolean("appforge.lanAttempted", false);
+        webView = new WebView(this);
 
         WebSettings settings =
             webView.getSettings();
@@ -1329,9 +1389,7 @@ $mixedContentLine
             webView
         );
 
-        webView.loadUrl(
-            "${javaEscape(launchUrl)}"
-        );
+        startAfterLanPermission(false);
     }
 }
 """.trimIndent() +
@@ -1600,6 +1658,7 @@ gelişmiş üretim özelliklerinin yapılandırma bilgileri $META içinde korunu
                 "webMediaAutoplayEnabled",
                 d.webMediaAutoplayEnabled
             )
+            put("localNetworkAccess", d.localNetworkAccess)
             put(
                 "webMixedContentAllowed",
                 d.webMixedContentAllowed
@@ -1976,6 +2035,7 @@ gelişmiş üretim özelliklerinin yapılandırma bilgileri $META içinde korunu
                     "webMediaAutoplayEnabled",
                     true
                 ),
+            localNetworkAccess = o.optBoolean("localNetworkAccess", false),
             webMixedContentAllowed =
                 o.optBoolean(
                     "webMixedContentAllowed",

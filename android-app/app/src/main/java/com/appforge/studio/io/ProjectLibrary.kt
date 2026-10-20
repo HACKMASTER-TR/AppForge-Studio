@@ -796,6 +796,7 @@ object ProjectLibrary {
                     "webMediaAutoplayEnabled",
                     true
                 ),
+            localNetworkAccess = obj.optBoolean("localNetworkAccess", false),
             webMixedContentAllowed =
                 obj.optBoolean(
                     "webMixedContentAllowed",
@@ -1434,6 +1435,7 @@ object ProjectLibrary {
                 "webMediaAutoplayEnabled",
                 d.webMediaAutoplayEnabled
             )
+            put("localNetworkAccess", d.localNetworkAccess)
             put(
                 "webMixedContentAllowed",
                 d.webMixedContentAllowed

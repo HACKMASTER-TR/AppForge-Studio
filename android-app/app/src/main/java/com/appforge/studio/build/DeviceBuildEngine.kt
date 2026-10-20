@@ -1724,6 +1724,7 @@ object DeviceBuildEngine {
             .put("webOverviewModeEnabled", draft.webOverviewModeEnabled)
             .put("webMediaAutoplayEnabled", draft.webMediaAutoplayEnabled)
             .put("webMixedContentAllowed", draft.webMixedContentAllowed)
+        .put("localNetworkRequired", WebviewProjectSettings.needsLocalNetwork(draft))
             .put("nativeBridge", draft.javascriptBridge)
             .put("nativeBridgeAllowRemote", draft.remoteBridgeAllowed)
             .put("qrScanner", draft.qrScanner)
@@ -2649,6 +2650,7 @@ object DeviceBuildEngine {
         WebviewProjectSettings.validate(draft)
         val permissions = buildString {
             append("<uses-permission android:name=\"android.permission.INTERNET\" />\n")
+            if (WebviewProjectSettings.needsLocalNetwork(draft)) append("<uses-permission android:name=\"android.permission.ACCESS_LOCAL_NETWORK\" />\n")
             if (draft.notifications) append("<uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />\n")
             if (draft.camera) append("<uses-permission android:name=\"android.permission.CAMERA\" />\n")
             if (draft.microphone) append("<uses-permission android:name=\"android.permission.RECORD_AUDIO\" />\n")

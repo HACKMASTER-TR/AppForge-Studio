@@ -191,3 +191,21 @@ HTTPS outputs keep the slot disabled. Studio's own application policy is unchang
 IP/localhost refer to the Android device/network; local-network permissions and
 WebView secure-context rules still apply. Actual Android loading is a separate
 NOT_RUN acceptance boundary, not inferred from host/AAPT2 or navigation-policy tests.
+
+## Android 17 local network permission (V7 A-01)
+
+`WebviewProjectSettings.needsLocalNetwork` is a separate target>=37 decision from
+host-scoped HTTP cleartext. Known private/link-local/loopback literals, localhost
+and .local URL hosts imply a runtime consent gate. Public ports do not imply LAN;
+arbitrary DNS aliases and LOCAL HTML subresources require the explicit persisted
+`localNetworkAccess` preference, default false. No DNS resolution is used to
+classify arbitrary hostnames. Without opt-in, unknown LAN destinations remain
+subject to OS denial; source analysis is not a complete network graph.
+Both manifest inventories (APK binary and AAB proto), the compiled template slot,
+normal generated manifest and source export use the same declaration policy.
+Tiny and normal FastActivity defer initial page loading to the runtime grant on
+OS>=37 and target>=37. Denial/revocation stops loading, offers explicit native
+retry and preserves other permission callback IDs. No automatic repeated prompt
+or Android 16 permission opt-in is added. Physical API36/API37 dialog, WebView,
+revocation, process death and local DNS acceptance remain NOT_RUN until actually
+executed; host state-machine tests do not establish those outcomes.

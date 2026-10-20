@@ -75,6 +75,7 @@ data class ProjectDraft(
     var webOverviewModeEnabled: Boolean = true,
     var webMediaAutoplayEnabled: Boolean = true,
     var webMixedContentAllowed: Boolean = false,
+    var localNetworkAccess: Boolean = false,
 
     var deepLinkEnabled: Boolean = false,
     var deepLinkScheme: String = "https",

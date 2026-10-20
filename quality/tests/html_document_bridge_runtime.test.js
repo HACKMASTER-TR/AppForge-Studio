@@ -147,6 +147,15 @@ extendConnectivityStubs(stubs);
 extendAwakeStubs(stubs);
 extendWebPermissionStubs(stubs);
 Object.assign(stubs,nfcStubs);
+// Real SDK APIs used by the Android 17 LAN gate; these remain host stubs, not device evidence.
+stubs['android/content/pm/ApplicationInfo.java']='package android.content.pm;public class ApplicationInfo{public int targetSdkVersion=37;}';
+stubs['android/app/Activity.java']=stubs['android/app/Activity.java'].replace('public static final int RESULT_OK', 'public android.content.pm.ApplicationInfo getApplicationInfo(){return new android.content.pm.ApplicationInfo();}public static final int RESULT_OK');
+stubs['android/view/View.java']=stubs['android/view/View.java'].replace('public class View {','public class View {public static final int GONE=8,VISIBLE=0;public interface OnClickListener{void onClick(View v);}public void setVisibility(int n){}');
+stubs['android/widget/Button.java']='package android.widget;public class Button extends android.view.View{public Button(android.content.Context c){}public void setText(String t){}public void setOnClickListener(OnClickListener l){}}';
+stubs['android/widget/FrameLayout.java']='package android.widget;public class FrameLayout{public static class LayoutParams extends android.view.ViewGroup.LayoutParams{public LayoutParams(int w,int h,int g){super(w,h);}}}';
+stubs['android/view/Gravity.java']=stubs['android/view/Gravity.java'].replace('public class Gravity {','public class Gravity {public static final int BOTTOM=80;');
+stubs['android/webkit/WebView.java']=stubs['android/webkit/WebView.java'].replace('public class WebView ', 'public class WebView ').replace('public WebView(){}','public void stopLoading(){}public WebView(){}');
+stubs['android/app/AlertDialog.java']=stubs['android/app/AlertDialog.java'].replace('public AlertDialog create(){','public AlertDialog show(){d.show();return d;}public AlertDialog create(){');
 stubs["com/appforge/htmlstub/AppForgeQrScanner.java"]=scannerBoundaryStub;
 stubs["com/appforge/htmlstub/AppForgeMediaService.java"]=mediaBoundaryStub;
 stubs["com/appforge/htmlstub/AppForgeLocation.java"]=locationBoundaryStub;
