@@ -47,6 +47,26 @@ class CoordinatorRetentionAuditTest {
         val recovered=store.operationGraph().recover(emptyList())
         assertTrue(recovered.all{it.operationState==DownloadState.RECOVERY_REQUIRED})
     }
+    @Test fun privateJournalCorrelationReconcilesTheSameClosedRootWithoutCreatingRecoveryOrphans()=fixture {store->
+        val operation="sensitive-looking-operation-id"
+        complete(operation)
+        val graphBefore=store.operationGraph().read()
+        val root=graphBefore.single{it.parentOperationId==null}
+        assertTrue(root.historyClosed)
+        val dir=Files.createTempDirectory("audit-journal-reconcile").toFile()
+        try {
+            val journal=ModuleOperationJournal(File(dir,"module.json"))
+            journal.save(mapOf(OfflineModuleId.NODE_WEB to ModuleProgress(OfflineModuleId.NODE_WEB,operation,ModulePhase.READY)))
+            val restored=journal.restoreStrict()
+            assertNotEquals(operation,restored.getValue(OfflineModuleId.NODE_WEB).operationId)
+            DownloadCoordinator.operations.value=store.operationGraph().recover(emptyList())
+            DownloadCoordinator.reconcileModules(restored)
+            val after=store.operationGraph().read()
+            assertEquals(graphBefore.size,after.size)
+            assertEquals(root.operationId,after.single{it.parentOperationId==null}.operationId)
+            assertTrue(after.single{it.parentOperationId==null}.historyClosed)
+        } finally {dir.deleteRecursively()}
+    }
     @Test fun concurrentRealFlowsDoNotLoseParentsOrChildren()=fixture {store->
         val errors=java.util.concurrent.ConcurrentLinkedQueue<Throwable>()
         val threads=(1..4).map{worker->Thread {try{for(i in 1..40)complete("worker-$worker-$i")}catch(e:Throwable){errors.add(e)}}.apply{start()}}

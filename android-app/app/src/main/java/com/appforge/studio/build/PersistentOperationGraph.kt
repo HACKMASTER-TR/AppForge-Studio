@@ -25,7 +25,9 @@ internal class PersistentOperationGraph(private val file:File,private val availa
         private val TERMINAL_STATES=setOf(DownloadState.COMPLETED,DownloadState.CANCELLED,DownloadState.FAILED)
         fun id(vararg parts:String)=java.security.MessageDigest.getInstance("SHA-256")
             .digest(parts.joinToString("\u0000").toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it)}
-        fun moduleId(operation:String,module:OfflineModuleId)=id("module",operation,module.name)
+        // Raw in-process IDs and their privacy-safe persisted form must identify
+        // the same observational root. Existing stored parent IDs are not rewritten.
+        fun moduleId(operation:String,module:OfflineModuleId)=id("module",OperationDiagnostics.correlation(operation),module.name)
         fun artifactNodeId(r:ArtifactDownloadRecord)=id("artifact",r.operationId,r.artifactId)
         /** Evicts complete terminal root subtrees oldest-first while preserving active and RECOVERY_REQUIRED trees. */
         fun pruneRetained(rows:List<DownloadOperationNode>,maxNodes:Int=512):List<DownloadOperationNode> {

@@ -168,3 +168,8 @@ correlation identifiers, never caller-provided details or shell/network errors.
 Legacy history is sanitized on read and rewritten on the next successful save.
 Malformed journals still fail closed; write/space failures remain observable.
 Physical Android acceptance and later V7 sources remain outside host validation.
+
+Module-root identity canonicalizes both raw driver IDs and persisted hashed journal
+correlations through the same idempotent privacy function. Restoring a closed module
+therefore does not create an orphan recovery root. Existing stored legacy parent
+IDs remain unchanged and require conservative reconciliation, never guessed merging.
