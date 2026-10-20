@@ -69,14 +69,18 @@ class CompiledHtmlTemplateIdentityTest {
                     vibrationBridge=vibration, notifications=notifications, javascriptBridge=bridge)
                 val selected = FastHtmlApkPolicy.templatePermissions(draft)
                 val b = HtmlBinaryManifest.rewrite(binary, draft.packageName, draft.appName, 1, "1.0.0", 26, target, selected)
-                val a = FastHtmlAabProtoManifest.rewrite(proto, draft, hash(proto), selected)
+                val a = if(target==37) FastHtmlAabProtoManifest.rewrite(proto, draft, hash(proto), selected) else {
+                    // Existing fixed SDK 26/37 AAB boundary remains strict; do not downgrade it for a test.
+                    assertThrows(IllegalArgumentException::class.java) { FastHtmlAabProtoManifest.rewrite(proto, draft, hash(proto), selected) }
+                    null
+                }
                 assertEquals(selected, binaryPermissions(b))
-                assertEquals(selected, protoPermissions(a))
+                if(a!=null) assertEquals(selected, protoPermissions(a))
                 assertEquals(lan && target>=37, "android.permission.ACCESS_LOCAL_NETWORK" in binaryPermissions(b))
-                assertEquals(lan && target>=37, "android.permission.ACCESS_LOCAL_NETWORK" in protoPermissions(a))
+                if(a!=null) assertEquals(lan, "android.permission.ACCESS_LOCAL_NETWORK" in protoPermissions(a))
                 val config = org.json.JSONObject(FastHtmlApkPackager.runtimeConfig(draft, "index.html").toString(Charsets.UTF_8))
                 assertEquals(network, "android.permission.ACCESS_NETWORK_STATE" in binaryPermissions(b))
-                assertEquals(vibration && bridge, "android.permission.VIBRATE" in protoPermissions(a))
+                if(a!=null) assertEquals(vibration && bridge, "android.permission.VIBRATE" in protoPermissions(a))
                 assertEquals(notifications, config.getBoolean("notifications"))
                 assertEquals(bridge, config.getBoolean("nativeBridge"))
             }
