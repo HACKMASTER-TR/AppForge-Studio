@@ -81,7 +81,7 @@ test(
   () => {
     assert.match(
       installer,
-      /READY="\$ROOT\/\.ready-v4"/
+      /READY="\$ROOT\/\.ready-v5"/
     );
 
     assert.match(
@@ -136,6 +136,37 @@ test(
     assert.match(
       installer,
       /APPFORGE_AAPT2_ABI_MISMATCH/
+    );
+  }
+);
+
+
+test(
+  "AGP 9.1 API 37 uses the android-37.0 platform layout",
+  () => {
+    assert.match(
+      installer,
+      /platforms\/android-37\.0/
+    );
+
+    assert.doesNotMatch(
+      installer,
+      /platforms\/android-37\//
+    );
+
+    assert.match(
+      installer,
+      /READY="\$ROOT\/\.ready-v5"/
+    );
+
+    assert.match(
+      installer,
+      /android-37\.0\/android\.jar/
+    );
+
+    assert.match(
+      installer,
+      /android-37\.0\/source\.properties/
     );
   }
 );
