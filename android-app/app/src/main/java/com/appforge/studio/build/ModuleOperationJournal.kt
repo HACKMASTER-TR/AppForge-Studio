@@ -10,26 +10,10 @@ import org.json.JSONObject
 internal class ModuleOperationJournal(private val file:File,private val availableBytes:(File)->Long={it.usableSpace}) {
     // Free-form shell/network details are deliberately not persisted. A denylist
     // cannot reliably distinguish credentials, URLs, paths or future error text.
-    private enum class Diagnostic { DRIVER_FAILED, NETWORK_WAIT, CONSENT_REQUIRED, USER_STOP, PROGRESS, TRANSFER_RETRY, NETWORK_POLICY, APT_DOWNLOAD_CONSENT, IO_FAILURE, TLS_FAILURE, CANCELLED }
-    private fun correlation(value:String):String = if(value.matches(Regex("id_[a-f0-9]{64}")))value
-        else "id_"+java.security.MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it)}
-    private fun diagnostic(phase:ModulePhase):String=when(phase) {
-        ModulePhase.ERROR->Diagnostic.DRIVER_FAILED
-        ModulePhase.WAITING_CONNECTION,ModulePhase.RECONNECTING->Diagnostic.NETWORK_WAIT
-        ModulePhase.AWAITING_CONSENT->Diagnostic.CONSENT_REQUIRED
-        ModulePhase.CANCELED,ModulePhase.PAUSED->Diagnostic.USER_STOP
-        else->Diagnostic.PROGRESS
-    }.name
-    private fun errorCode(event:ModuleProgress):String=when(event.errorCode) {
-        "TRANSFER_RETRY"->Diagnostic.TRANSFER_RETRY
-        "NETWORK_POLICY"->Diagnostic.NETWORK_POLICY
-        "APT_DOWNLOAD_CONSENT"->Diagnostic.APT_DOWNLOAD_CONSENT
-        "IOException","SocketTimeoutException","UnknownHostException"->Diagnostic.IO_FAILURE
-        "SSLHandshakeException","SSLPeerUnverifiedException"->Diagnostic.TLS_FAILURE
-        "CancellationException"->Diagnostic.CANCELLED
-        else->null
-    }?.name?:diagnostic(event.phase)
-    private fun safeCode(value:String,phase:ModulePhase):String=Diagnostic.entries.firstOrNull{it.name==value}?.name?:diagnostic(phase)
+    private fun correlation(value:String)=OperationDiagnostics.correlation(value)
+    private fun diagnostic(phase:ModulePhase)=OperationDiagnostics.diagnostic(phase)
+    private fun errorCode(event:ModuleProgress)=OperationDiagnostics.errorCode(event)
+    private fun safeCode(value:String,phase:ModulePhase)=OperationDiagnostics.safeCode(value,phase)
     private fun safeHistory(raw:org.json.JSONArray?):org.json.JSONArray {
         val safe=org.json.JSONArray()
         if(raw==null)return safe
