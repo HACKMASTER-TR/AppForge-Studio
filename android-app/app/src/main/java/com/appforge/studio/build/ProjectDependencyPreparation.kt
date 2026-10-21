@@ -29,7 +29,7 @@ internal object ProjectDependencyPreparation {
     @Synchronized fun start(context:Context,draft:ProjectDraft,sourceExecutionConsent:Boolean,offlineVerification:Boolean,rustOnly:Boolean=false) {
         check(!busy.value){"Başka proje hazırlığı devam ediyor; yeni işlem/ağ onayı alınmadı."}
         require(sourceExecutionConsent){"Proje build/lifecycle kodunu çalıştırma onayı gerekir."}
-        if(RustProjectPolicy.sourceRoot(draft)!=null && (rustOnly || !RustProjectPolicy.canPrepareNodeDependencies(draft))){startRust(context,draft.copy(),offlineVerification);return}
+        if(RustProjectPolicy.sourceRoot(draft)!=null && (rustOnly || draft.sourceBuildEngine!="node-web")){startRust(context,draft.copy(),offlineVerification);return}
         rustProjectFolder.value=null
         DownloadNetwork.configure(context)
         DownloadCoordinator.configure(PersistentDownloads(File(context.noBackupFilesDir,"downloads-v5"),mapOf("private" to context.noBackupFilesDir,"files" to context.filesDir,"cache" to context.cacheDir)))
