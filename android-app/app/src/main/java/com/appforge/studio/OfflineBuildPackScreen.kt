@@ -26,8 +26,8 @@ internal object ModuleInstallOperations {
     @Synchronized fun restore(context:android.content.Context) {
         if(journal!=null)return
         DownloadNetwork.configure(context)
-        DownloadCoordinator.configure(PersistentDownloads(java.io.File(context.noBackupFilesDir,"downloads-v5"),mapOf("private" to context.noBackupFilesDir,"files" to context.filesDir,"cache" to context.cacheDir)))
-        journal=ModuleOperationJournal(java.io.File(context.noBackupFilesDir,"offline-module-v3/operation.json"))
+        DownloadNetwork.prepareJournal()
+        journal=ModuleOperationJournal(RecoveryPathAnchor.androidPlatformPath(java.io.File(context.noBackupFilesDir,"offline-module-v3/operation.json")))
         updates.value=journal!!.restoreStrict()
         DownloadCoordinator.reconcileModules(updates.value)
     }

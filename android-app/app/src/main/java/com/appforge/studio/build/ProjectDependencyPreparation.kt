@@ -32,7 +32,7 @@ internal object ProjectDependencyPreparation {
         if(RustProjectPolicy.sourceRoot(draft)!=null && (rustOnly || draft.sourceBuildEngine!="node-web")){startRust(context,draft.copy(),offlineVerification);return}
         rustProjectFolder.value=null
         DownloadNetwork.configure(context)
-        DownloadCoordinator.configure(PersistentDownloads(File(context.noBackupFilesDir,"downloads-v5"),mapOf("private" to context.noBackupFilesDir,"files" to context.filesDir,"cache" to context.cacheDir)))
+        DownloadNetwork.prepareJournal()
         if(!offlineVerification)DownloadNetwork.requireExternalConsent()
         control=DownloadControl();stopPending.value=false
         transfer.value=null

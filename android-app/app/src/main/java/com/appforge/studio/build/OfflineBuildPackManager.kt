@@ -330,7 +330,7 @@ internal object OfflineBuildPackManager {
                             val name=artifact.getString("file")
                             require(name.matches(Regex("[A-Za-z0-9_.-]+")))
                             val transferJob=kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]
-                            val cached=File(app.noBackupFilesDir,"module-downloads/rust/$name")
+                            val cached=RecoveryPathAnchor.androidPlatformPath(File(app.noBackupFilesDir,"module-downloads/rust/$name")).also{RecoveryPathAnchor.check(it)}
                             VerifiedModuleDownload.download(artifact.getString("url"),artifact.getString("sha256"),cached,id,operation,
                                 canceled={transferJob?.isActive==false || control.request!=DownloadControl.Request.NONE},progress=progress)
                             val destination=File(staged,"opt/appforge-device/cache/$name")

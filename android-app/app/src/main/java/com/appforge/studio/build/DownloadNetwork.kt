@@ -74,7 +74,10 @@ internal object DownloadNetwork {
     fun restorePreference(){pendingConsent.set(false);consent.get()?.active=false;refresh()}
     fun prepareJournal() {
         val app=context?:return
-        DownloadCoordinator.configure(PersistentDownloads(java.io.File(app.noBackupFilesDir,"downloads-v5"),mapOf("private" to app.noBackupFilesDir,"files" to app.filesDir,"cache" to app.cacheDir)))
+        val roots=mapOf("private" to app.noBackupFilesDir,"files" to app.filesDir,"cache" to app.cacheDir).mapValues { (_,path)->
+            RecoveryPathAnchor.androidPlatformPath(path).also { RecoveryPathAnchor.check(it) }
+        }
+        DownloadCoordinator.configure(PersistentDownloads(java.io.File(roots.getValue("private"),"downloads-v5"),roots))
     }
     fun select(value:DownloadNetworkPolicy){preference=value;context?.getSharedPreferences("download-v5",0)?.edit()?.putString("policy",value.name)?.apply();refresh()}
     private fun facts(c:NetworkCapabilities)=DownloadNetworkFacts(c.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)&&c.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),c.hasTransport(NetworkCapabilities.TRANSPORT_WIFI),c.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR),c.hasTransport(NetworkCapabilities.TRANSPORT_VPN),!c.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED))
