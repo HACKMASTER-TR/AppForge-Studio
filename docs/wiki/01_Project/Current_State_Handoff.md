@@ -83,6 +83,34 @@ Blockers / references: B05 and V3 are divergent; their integration has not been 
 
 Next action: Review evidence record in isolation and plan guarded integration only after explicit authorization.
 
+## rust-all-engines-20261021 — Rust module and scoped local WASM integration
+
+Scope: PARTIAL. Pinned toolchain module and prebuilt WASM packaging; native multi-engine adapters NOT_DONE. No device acceptance.
+
+Lifecycle: **ACTIVE**
+
+- Branch: `feat/rust-all-engines-20261021`
+- Base branch: `fix/v7-a01-a05-20261020`
+- Base exact SHA: `b56bf0a56de91e60beb862e10c8632f1e4f10ff3`
+- Manifest-recorded source SHA: `a7588b80fd6c7f702f87f030fc0da9a2dd170d41`
+- Parent workstream: none recorded
+
+| Evidence stage | State | Binding / reference or reason |
+|---|---|---|
+| implementation | UNKNOWN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
+| targetedTests | UNKNOWN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
+| fullQuality | UNKNOWN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
+| secondBrain | UNKNOWN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
+| hostedCI | NOT_RUN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
+| physicalAcceptance | NOT_RUN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
+| merge | NOT_RUN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
+| release | NOT_RUN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
+| deploy | NOT_RUN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
+
+Blockers / references: Android ARM64 device execution NOT_RUN; JNI/PyO3/JSI/native Windows/Universal orchestration NOT_DONE; In-app Cargo build-consent workflow and verified dependency cache preparation not integrated
+
+Next action: Review local evidence; complete blocked ABI adapters and separately authorize physical acceptance.
+
 ## sb01 — Retired backend introductory-map correction
 
 Scope: Documentation/governance-only: six stale introductory maps corrected; retirement regression coverage added; current-state behavioral coverage repaired for branch-order and detached-HEAD independence. Retirement contracts 22/22, current-state behavior 24/24, full quality 989/989 and Second Brain passed. Exact-SHA hosted Stability Gate run 37890174134 passed; historical run 37887768441 failed on earlier SHA 05ad784d233506d43c8c9d1cfbe9b65e68dff71c and is not accepted. PR #68 remains open and draft; no runtime source changed.

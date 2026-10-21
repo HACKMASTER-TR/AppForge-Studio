@@ -42,6 +42,8 @@ source_files: []
 | Architecture change | [[System_Architecture]] | [[Decision_Index]], affected maps | related source, config, migrations, and tests |
 | Wiki maintenance | [[Wiki_Maintenance_Prompt]] | [[Log]], [[Agent_Rules]] | wiki files and audit scripts |
 
+- [[Rust_Integration_20261021]] — partial local Rust module/WASM integration; native adapters and physical acceptance remain unverified.
+
 ## Core Pages
 
 - [[Modular_Offline_V3]]

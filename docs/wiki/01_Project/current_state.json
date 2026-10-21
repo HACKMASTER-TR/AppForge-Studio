@@ -594,6 +594,60 @@
         "B05 and V3 are divergent; their integration has not been authorized."
       ],
       "nextAction": "Review evidence record in isolation and plan guarded integration only after explicit authorization."
+    },
+    {
+      "id": "rust-all-engines-20261021",
+      "title": "Rust module and scoped local WASM integration",
+      "scope": "PARTIAL. Pinned toolchain module and prebuilt WASM packaging; native multi-engine adapters NOT_DONE. No device acceptance.",
+      "lifecycle": "ACTIVE",
+      "branch": "feat/rust-all-engines-20261021",
+      "baseBranch": "fix/v7-a01-a05-20261020",
+      "baseSha": "b56bf0a56de91e60beb862e10c8632f1e4f10ff3",
+      "sourceSha": "a7588b80fd6c7f702f87f030fc0da9a2dd170d41",
+      "stages": {
+        "implementation": {
+          "state": "UNKNOWN",
+          "reason": "Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited."
+        },
+        "targetedTests": {
+          "state": "UNKNOWN",
+          "reason": "Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited."
+        },
+        "fullQuality": {
+          "state": "UNKNOWN",
+          "reason": "Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited."
+        },
+        "secondBrain": {
+          "state": "UNKNOWN",
+          "reason": "Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited."
+        },
+        "hostedCI": {
+          "state": "NOT_RUN",
+          "reason": "Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited."
+        },
+        "physicalAcceptance": {
+          "state": "NOT_RUN",
+          "reason": "Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited."
+        },
+        "merge": {
+          "state": "NOT_RUN",
+          "reason": "Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited."
+        },
+        "release": {
+          "state": "NOT_RUN",
+          "reason": "Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited."
+        },
+        "deploy": {
+          "state": "NOT_RUN",
+          "reason": "Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited."
+        }
+      },
+      "blockers": [
+        "Android ARM64 device execution NOT_RUN",
+        "JNI/PyO3/JSI/native Windows/Universal orchestration NOT_DONE",
+        "In-app Cargo build-consent workflow and verified dependency cache preparation not integrated"
+      ],
+      "nextAction": "Review local evidence; complete blocked ABI adapters and separately authorize physical acceptance."
     }
   ]
 }
