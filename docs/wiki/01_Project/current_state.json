@@ -598,12 +598,12 @@
     {
       "id": "rust-all-engines-20261021",
       "title": "Rust module and scoped local WASM integration",
-      "scope": "PARTIAL. In-app pinned Cargo vendor/cache preparation, isolated offline WASM builds, durable prepared-copy selection and Node output staging implemented. Native multi-engine adapters and physical acceptance remain unverified.",
+      "scope": "PARTIAL. Managed WASM and explicit Android Gradle JNI preparation implemented; private Android target/compiler staging, source and ELF/JNI/API/package integrity gates. JNI host build proof does not establish Android ARM64 runtime acceptance; other native engine adapters remain incomplete.",
       "lifecycle": "ACTIVE",
       "branch": "feat/rust-all-engines-20261021",
       "baseBranch": "fix/v7-a01-a05-20261020",
       "baseSha": "b56bf0a56de91e60beb862e10c8632f1e4f10ff3",
-      "sourceSha": "d7a77837fbc2cb744d6d0d38ce3349785ec115c6",
+      "sourceSha": "c8b8c2a35b9a89673740ae98c0ee2a5376807bdc",
       "stages": {
         "implementation": {
           "state": "UNKNOWN",

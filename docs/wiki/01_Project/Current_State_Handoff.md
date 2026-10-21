@@ -85,14 +85,14 @@ Next action: Review evidence record in isolation and plan guarded integration on
 
 ## rust-all-engines-20261021 — Rust module and scoped local WASM integration
 
-Scope: PARTIAL. In-app pinned Cargo vendor/cache preparation, isolated offline WASM builds, durable prepared-copy selection and Node output staging implemented. Native multi-engine adapters and physical acceptance remain unverified.
+Scope: PARTIAL. Managed WASM and explicit Android Gradle JNI preparation implemented; private Android target/compiler staging, source and ELF/JNI/API/package integrity gates. JNI host build proof does not establish Android ARM64 runtime acceptance; other native engine adapters remain incomplete.
 
 Lifecycle: **ACTIVE**
 
 - Branch: `feat/rust-all-engines-20261021`
 - Base branch: `fix/v7-a01-a05-20261020`
 - Base exact SHA: `b56bf0a56de91e60beb862e10c8632f1e4f10ff3`
-- Manifest-recorded source SHA: `d7a77837fbc2cb744d6d0d38ce3349785ec115c6`
+- Manifest-recorded source SHA: `c8b8c2a35b9a89673740ae98c0ee2a5376807bdc`
 - Parent workstream: none recorded
 
 | Evidence stage | State | Binding / reference or reason |
