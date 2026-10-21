@@ -32,19 +32,21 @@ def exports(path):
     off=struct.unpack_from('<Q',b,40)[0];size,count=struct.unpack_from('<HH',b,58)
     if size!=64 or not 1<=count<=4096 or off+size*count>len(b):raise ValueError('Invalid ELF sections')
     sections=[struct.unpack_from('<IIQQQQIIQQ',b,off+i*size) for i in range(count)]
-    names=[]
+    names=[];symbols_seen=0
     for section in sections:
         if section[1]!=11:continue
         start,length,link,entry=section[4],section[5],section[6],section[9]
-        if entry!=24 or length%entry or start+length>len(b) or link>=count:raise ValueError('Invalid ELF dynsym')
+        symbols_seen+=length//24
+        if symbols_seen>100000 or entry!=24 or length%entry or start+length>len(b) or link>=count:raise ValueError('Invalid ELF dynsym')
         strings=sections[link]
         if strings[1]!=3 or strings[4]+strings[5]>len(b):raise ValueError('Invalid ELF dynstr')
         table=b[strings[4]:strings[4]+strings[5]]
         for pos in range(start,start+length,entry):
             name,info,other,index,value,sz=struct.unpack_from('<IBBHQQ',b,pos)
             if not index or info>>4 not in (1,2) or info&15!=2 or other&3 not in (0,3):continue
-            if name>=len(table) or b'\0' not in table[name:]:raise ValueError('Invalid ELF symbol name')
-            symbol=table[name:].split(b'\0',1)[0].decode('ascii',errors='strict')
+            text=table[name:name+1025]
+            if name>=len(table) or b'\0' not in text:raise ValueError('Invalid ELF symbol name or length')
+            symbol=text.split(b'\0',1)[0].decode('ascii',errors='strict')
             if symbol.startswith('Java_') or symbol=='JNI_OnLoad':names.append(symbol)
     if not names:raise ValueError('No defined JNI export; C ABI alone is not JNI integration')
     return sorted(set(names))

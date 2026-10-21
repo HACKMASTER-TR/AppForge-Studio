@@ -80,11 +80,12 @@ internal object RustProjectPolicy {
         val offset=b.getLong(40);val entry=b.getShort(58).toInt() and 65535;val count=b.getShort(60).toInt() and 65535
         require(entry==64 && count in 1..4096 && offset>=64 && offset<=bytes.size.toLong()-entry.toLong()*count)
         fun section(i:Int):Int {require(i in 0 until count);return (offset+i*64).toInt()}
-        val names=linkedSetOf<String>()
+        val names=linkedSetOf<String>();var symbolsSeen=0L
         for(i in 0 until count) {
             val sec=section(i);if(b.getInt(sec+4)!=11)continue
             val start=b.getLong(sec+24);val length=b.getLong(sec+32);val width=b.getLong(sec+56)
             require(width==24L && start>=0 && length>=0 && length%24==0L && start<=bytes.size.toLong()-length)
+            symbolsSeen+=length/24;require(symbolsSeen<=100000)
             val strings=section(b.getInt(sec+40));require(b.getInt(strings+4)==3)
             val text=b.getLong(strings+24);val textSize=b.getLong(strings+32)
             require(text>=0 && textSize>=0 && text<=bytes.size.toLong()-textSize)
@@ -94,7 +95,7 @@ internal object RustProjectPolicy {
                 if(b.getShort(p+6).toInt()!=0 && info shr 4 in setOf(1,2) && info and 15==2 && other in setOf(0,3)) {
                     val name=b.getInt(p);require(name>=0 && name.toLong()<textSize)
                     val first=(text+name).toInt();var end=first
-                    while(end<text+textSize && bytes[end]!=0.toByte())end++
+                    while(end<text+textSize && end-first<=1024 && bytes[end]!=0.toByte())end++
                     require(end<text+textSize && end-first<=1024)
                     val symbol=String(bytes,first,end-first,Charsets.US_ASCII)
                     if(symbol.startsWith("Java_") || symbol=="JNI_OnLoad")names.add(symbol)
