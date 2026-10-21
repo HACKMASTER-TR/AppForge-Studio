@@ -542,6 +542,8 @@ object DeviceBuildEngine {
                         state
                     )
                 "android-gradle" -> buildAndroidProject(context, draft, workspace, rootfs, shell, state)
+                // Keeps the existing experimental NDK capability gate; no READY promotion.
+                "android-ndk" -> buildAndroidProject(context, draft, workspace, rootfs, shell, state)
                 "expo" -> buildExpoProject(context, draft, workspace, rootfs, shell, state)
                 "python-android" -> buildPythonProject(context, draft, workspace, rootfs, shell, state)
                 "windows-native" -> buildWindowsNative(context, draft, workspace, rootfs, shell, state)
@@ -1090,6 +1092,8 @@ object DeviceBuildEngine {
                 "Universal Android hedefinde settings.gradle(.kts) bulunamadı."
             }
 
+            val androidDraft=RustProjectPolicy.universalTarget(draft,"android")?:draft
+            if(RustProjectPolicy.sourceRoot(androidDraft)!=null)RustProjectPolicy.stageAndroidJni(androidDraft,androidProject)
             DeviceProjectIcon.install(
                 context,
                 draft,
@@ -1111,7 +1115,7 @@ object DeviceBuildEngine {
 
             buildGradleProject(
                 context = context,
-                draft = draft,
+                draft = androidDraft,
                 project = androidProject,
                 workspace = androidProject,
                 rootfs = rootfs,
@@ -1149,7 +1153,7 @@ object DeviceBuildEngine {
                 context =
                     context,
                 draft =
-                    draft,
+                    RustProjectPolicy.universalTarget(draft,"windows")?:draft,
                 siteRoot =
                     windowsSite,
                 state =
@@ -1260,6 +1264,12 @@ object DeviceBuildEngine {
                 canonicalWorkspace,
                 "source"
             ).canonicalFile
+
+        if(RustProjectPolicy.sourceRoot(draft)!=null) {
+            val prepared=RustProjectPolicy.stageWindowsNative(draft,canonicalWorkspace)
+            publishWindowsNative(context,draft,state,prepared)
+            return
+        }
 
         val cmakeLists =
             copiedSource
@@ -1386,6 +1396,10 @@ object DeviceBuildEngine {
             sourceExe
         )
 
+        publishWindowsNative(context,draft,state,sourceExe)
+    }
+
+    private fun publishWindowsNative(context:Context,draft:ProjectDraft,state:JobState,sourceExe:File) {
         val artifactRoot =
             File(
                 context.filesDir,
@@ -1409,6 +1423,10 @@ object DeviceBuildEngine {
             target
         )
 
+        if(RustProjectPolicy.sourceRoot(draft)!=null) {
+            RustProjectPolicy.requireWindowsPe(target)
+            require(RustProjectPolicy.digest(target)==RustProjectPolicy.digest(RustProjectPolicy.requireWindowsNative(draft))){"Rust Windows yayımında baytlar değişti"}
+        }
         state.exe =
             target
 
@@ -1822,6 +1840,7 @@ object DeviceBuildEngine {
             suffix = "expo-prebuild"
         )
         advanceProgress(state, 52, "Expo Android projesi hazır")
+        RustProjectPolicy.stageReactNativeJsi(draft,File(workspace,"source/android"))
 
         val project =
             File(
@@ -1913,6 +1932,7 @@ object DeviceBuildEngine {
             it.isFile && it.name.equals("requirements.txt", true)
         }?.copyTo(File(project, "app/requirements.txt"), overwrite = true)
 
+        RustProjectPolicy.stagePythonModule(draft,project)
         File(project, "app/build.gradle.kts").writeText(pythonAppGradle(draft))
         val manifest = File(project, "app/src/main/AndroidManifest.xml")
         manifest.writeText(
@@ -2409,6 +2429,8 @@ object DeviceBuildEngine {
             checkCancelled = { check(!state.cancelled.get()) { "Derleme iptal edildi." } },
             verify = { kind, file ->
                 RustProjectPolicy.verifyAndroidJniPackage(draft,kind,file)
+                RustProjectPolicy.verifyPythonPackage(draft,kind,file)
+                RustProjectPolicy.verifyJsiPackage(draft,kind,file)
                 if (kind == "apk") {
                     val result = com.android.apksig.ApkVerifier.Builder(file).build().verify()
                     require(result.isVerified && result.signerCertificates.isNotEmpty()) { "APK signature invalid." }
@@ -2418,9 +2440,9 @@ object DeviceBuildEngine {
                     }) { "APK signer identity mismatch." }
                     val info = context.packageManager.getPackageArchiveInfo(file.absolutePath, 0)
                     require(info?.packageName == draft.packageName) { "APK package identity mismatch." }
-                    if(RustProjectPolicy.sourceRoot(draft)!=null && draft.sourceBuildEngine=="android-gradle")require((info?.applicationInfo?.minSdkVersion?:0)>=26){"Rust JNI APK manifest minSdk26 gerektirir"}
+                    if(RustProjectPolicy.sourceRoot(draft)!=null && draft.sourceBuildEngine in setOf("android-gradle","android-ndk","python-android","expo","react-native"))require((info?.applicationInfo?.minSdkVersion?:0)>=26){"Rust JNI APK manifest minSdk26 gerektirir"}
                 } else {
-                    if(RustProjectPolicy.sourceRoot(draft)!=null && draft.sourceBuildEngine=="android-gradle")java.util.zip.ZipFile(file).use{zip->
+                    if(RustProjectPolicy.sourceRoot(draft)!=null && draft.sourceBuildEngine in setOf("android-gradle","android-ndk","python-android","expo","react-native"))java.util.zip.ZipFile(file).use{zip->
                         val entry=requireNotNull(zip.getEntry("base/manifest/AndroidManifest.xml"));require(entry.size in 1..1_048_576)
                         val bytes=java.io.ByteArrayOutputStream().also{out->zip.getInputStream(entry).use{input->val buffer=ByteArray(8192);var total=0;while(true){val n=input.read(buffer);if(n<0)break;total+=n;require(total<=1_048_576);out.write(buffer,0,n)}}}.toByteArray()
                         require(FastHtmlAabProtoManifest.minimumSdkVersion(bytes)>=26){"Rust JNI AAB manifest minSdk26 gerektirir"}

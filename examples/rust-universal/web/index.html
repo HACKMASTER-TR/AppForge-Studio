@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="tr"><meta charset="utf-8"><title>AppForge Rust WASM</title>
+<p id="result">Rust WASM yükleniyor…</p>
+<script>
+(async () => {
+  try {
+    const response = await fetch('./appforge-rust/appforge_wasm_example.wasm');
+    if (!response.ok) throw new Error('WASM bulunamadı: önce açık onayla derleyin');
+    const {instance} = await WebAssembly.instantiate(await response.arrayBuffer());
+    document.querySelector('#result').textContent = 'Rust sonucu: ' + instance.exports.appforge_add(20, 22);
+  } catch (error) { document.querySelector('#result').textContent = error.message; }
+})();
+</script></html>

@@ -25,9 +25,19 @@ internal object OfflineModules {
         selected.forEach{visit(it)};return result.toList()
     }
     fun forProject(d:ProjectDraft):OfflineModulePlan {
-        if(RustProjectPolicy.sourceRoot(d)!=null) {
+        if(d.sourceBuildEngine=="universal-cross-platform" || RustProjectPolicy.hasRust(d)) {
             try { RustProjectPolicy.requirePackageable(d) }
-            catch(e:Exception) { return OfflineModulePlan(resolve(setOf(OfflineModuleId.RUST)),"Rust hazırlığı doğrulanmadı: "+(e.message?:"bozuk kayıt")) }
+            catch(e:Exception) {
+                val modules=linkedSetOf(OfflineModuleId.RUST)
+                when(d.sourceBuildEngine) {
+                    "windows-native"->modules.add(OfflineModuleId.WINDOWS_NATIVE)
+                    "android-gradle","android-ndk"->modules.add(OfflineModuleId.ANDROID_CORE)
+                    "python-android"->modules.add(OfflineModuleId.PYTHON_ANDROID)
+                    "expo","react-native"->modules.add(OfflineModuleId.EXPO_REACT_NATIVE)
+                    "universal-cross-platform"->runCatching { val outputs=DeviceBuildCapabilities.requestedOutputs(d.buildOutput);if(outputs.any{it in setOf(DeviceArtifactKind.APK,DeviceArtifactKind.AAB)})modules.add(OfflineModuleId.ANDROID_CORE);if(DeviceArtifactKind.WINDOWS_EXE in outputs)modules.add(OfflineModuleId.WINDOWS_PORTABLE) }
+                }
+                return OfflineModulePlan(resolve(modules),"Rust hazırlığı doğrulanmadı: "+(e.message?:"bozuk kayıt"))
+            }
         }
         val conflicts=FeatureSupportMatrix.conflicts(d)
         if(conflicts.isNotEmpty())return OfflineModulePlan(emptyList(),conflicts.joinToString("\n"){it.second})

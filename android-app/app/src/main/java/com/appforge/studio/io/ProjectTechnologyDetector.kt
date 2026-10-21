@@ -41,6 +41,17 @@ object ProjectTechnologyDetector {
             return unknown("Proje klasörü bulunamadı.")
         }
 
+        // Explicit local Rust consumer bindings precede heuristic language scans.
+        // Discovery is not a build/READY receipt and never executes Cargo.
+        val windowsRust=File(root,"appforge-rust-windows.json")
+        if(File(root,"Cargo.toml").isFile && windowsRust.exists()) {
+            val binding=if(!java.nio.file.Files.isSymbolicLink(windowsRust.toPath()) && windowsRust.length() in 1..4096)runCatching{JSONObject(windowsRust.readText())}.getOrNull()else null
+            if(binding?.optInt("schema")==2 && binding.optString("target")=="x86_64-pc-windows-gnu" && binding.optString("library").matches(Regex("[A-Za-z0-9_-]{1,64}\\.dll")) && binding.optString("export").matches(Regex("[A-Za-z_][A-Za-z0-9_]{0,127}")))
+                return ProjectTechnologyInfo("rust-windows-library","Rust / Windows DLL","windows-native",false,"DLL kitaplığı bulundu. Rust hazırlık kartından derleyip dosyayı dışa aktarın; EXE gibi çalıştırılamaz.")
+            if(binding==null || binding.optInt("schema")!=1 || binding.optString("target")!="x86_64-pc-windows-gnu" || !binding.optString("executable").matches(Regex("[A-Za-z0-9_-]{1,64}\\.exe")))return unknown("Rust Windows bağlama bildirimi geçersiz; motor değiştirilmedi.")
+            return ProjectTechnologyInfo("rust-windows-native","Rust / Windows Native","windows-native",false,"Açık Cargo Windows EXE hedefi bulundu. Rust hedefi ve MinGW linker ayrı doğrulanmalı; fiziksel Windows kabulü yapılmadı.")
+        }
+
         val universalManifest =
             File(
                 root,
@@ -274,7 +285,9 @@ object ProjectTechnologyDetector {
                 label = "Expo / React Native",
                 buildEngine = "expo",
                 buildReady = acceptedExpo,
-                reason = if (acceptedExpo) {
+                reason = if (acceptedExpo && File(root,"Cargo.toml").isFile && File(root,"appforge-rust-jsi.json").isFile) {
+                    "Expo SDK 54 / React Native 0.81 kaynak ailesi uyumlu. Rust JSI ayrıca hazırlanmalı; bu bağlamanın fiziksel kabulü yapılmadı."
+                } else if (acceptedExpo) {
                     "Expo SDK 54 / React Native 0.81 cihaz-local APK+AAB yolu fiziksel kabulü geçti."
                 } else {
                     "Expo bulundu; READY cihaz yolu yalnız Expo SDK 54 / React Native 0.81 sürüm ailesi için doğrulandı."
@@ -772,7 +785,7 @@ object ProjectTechnologyDetector {
                 label = "Rust",
                 buildEngine = "unknown",
                 buildReady = false,
-                reason = "Rust kaynakları algılandı. Mevcut AppForge Android Worker doğrudan Cargo/NDK Rust zincirini çalıştırmıyor."
+                reason = "Rust kaynakları bulundu. Yerel WASM için HTML/Node; JNI, PyO3, JSI veya Windows için açık tüketici bildirimi gerekir. Hedef/linker doğrulanmadan motor seçilmez."
             )
         }
 

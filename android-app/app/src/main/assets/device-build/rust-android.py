@@ -16,7 +16,7 @@ def sha(path):
         for b in iter(lambda:f.read(65536),b''):h.update(b)
     return h.hexdigest()
 
-def exports(path):
+def defined_exports(path):
     if path.is_symlink() or not path.is_file() or path.stat().st_size>64*1024*1024:raise ValueError('Unsafe JNI library')
     b=path.read_bytes()
     if len(b)<64 or b[:6]!=b'\x7fELF\x02\x01' or struct.unpack_from('<HH',b,16)!=(3,183):raise ValueError('Expected ARM64 ELF shared library')
@@ -47,9 +47,43 @@ def exports(path):
             text=table[name:name+1025]
             if name>=len(table) or b'\0' not in text:raise ValueError('Invalid ELF symbol name or length')
             symbol=text.split(b'\0',1)[0].decode('ascii',errors='strict')
-            if symbol.startswith('Java_') or symbol=='JNI_OnLoad':names.append(symbol)
-    if not names:raise ValueError('No defined JNI export; C ABI alone is not JNI integration')
+            names.append(symbol)
     return sorted(set(names))
+
+def exports(path):
+    names=[symbol for symbol in defined_exports(path) if symbol.startswith('Java_') or symbol=='JNI_OnLoad']
+    if not names:raise ValueError('No defined JNI export; C ABI alone is not JNI integration')
+    return names
+
+def dynamic_libraries(path):
+    defined_exports(path)  # Bound ELF architecture, segment and section validation.
+    b=path.read_bytes();off=struct.unpack_from('<Q',b,40)[0];count=struct.unpack_from('<H',b,60)[0]
+    sections=[struct.unpack_from('<IIQQQQIIQQ',b,off+i*64) for i in range(count)]
+    needed=[];soname=None;examined=0
+    for section in sections:
+        if section[1]!=6:continue
+        start,size,link,width=section[4],section[5],section[6],section[9]
+        if width!=16 or size%16 or size//16>4096 or start+size>len(b) or link>=count:raise ValueError('Invalid ELF dynamic table')
+        examined+=size//16
+        if examined>65536:raise ValueError('Dynamic table operation limit')
+        strings=sections[link]
+        if strings[1]!=3 or strings[4]+strings[5]>len(b):raise ValueError('Invalid dynamic string table')
+        text=b[strings[4]:strings[4]+strings[5]]
+        for pos in range(start,start+size,16):
+            tag,value=struct.unpack_from('<qQ',b,pos)
+            if tag not in (1,14,15,29):continue
+            raw=text[value:value+1025]
+            if value>=len(text) or b'\0' not in raw:raise ValueError('Invalid ELF dependency name')
+            name=raw.split(b'\0',1)[0].decode('ascii')
+            if tag in (15,29) and name:raise ValueError('Unreviewed Android RPATH/RUNPATH')
+            if tag in (1,14):
+                import re
+                if not re.fullmatch(r'[A-Za-z0-9_+.-]+\.so',name):raise ValueError('Absolute/unsafe Android dependency name')
+                if tag==1:needed.append(name)
+                else:
+                    if soname is not None:raise ValueError('Duplicate ELF SONAME')
+                    soname=name
+    return soname,sorted(set(needed))
 
 def config(root):
     p=root/'appforge-rust-android.json'
@@ -60,9 +94,10 @@ def config(root):
     if not ((root/'app/build.gradle').is_file() or (root/'app/build.gradle.kts').is_file()):raise ValueError('Android app Gradle module required')
     return name
 
-def install_target(prefix,cache,base=None):
-    manifest=json.loads((HERE/'rust-android-target-v1.json').read_text());a=manifest['artifact']
-    if manifest['schema']!=1 or manifest['version']!='1.85.1' or manifest['target']!='aarch64-linux-android':raise ValueError('Unsupported target manifest')
+def install_target(prefix,cache,base=None,target='aarch64-linux-android'):
+    if target not in ('aarch64-linux-android','x86_64-pc-windows-gnu'):raise ValueError('Unsupported native target')
+    manifest=json.loads((HERE/('rust-android-target-v1.json' if target=='aarch64-linux-android' else 'rust-windows-target-v1.json')).read_text());a=manifest['artifact']
+    if manifest['schema']!=1 or manifest['version']!='1.85.1' or manifest['target']!=target:raise ValueError('Unsupported target manifest')
     archive=cache/a['file']
     if archive.is_symlink() or not archive.is_file() or archive.stat().st_size>128*1024*1024 or sha(archive)!=a['sha256']:raise ValueError('Android Rust target SHA-256 mismatch or cache missing')
     if prefix.is_symlink() or prefix.resolve()!=prefix:raise ValueError('Unsafe Rust prefix')
@@ -76,7 +111,7 @@ def install_target(prefix,cache,base=None):
     version=subprocess.check_output([str(prefix/'bin/rustc'),'--version'],text=True)
     if not version.startswith('rustc 1.85.1 '):raise ValueError('Rust target/compiler version mismatch')
     # Install only in caller's disposable generation; never overlay an active toolchain.
-    if (prefix/'lib/rustlib/aarch64-linux-android').exists():raise ValueError('Target already present; fresh isolated stage required')
+    if (prefix/'lib/rustlib'/target).exists():raise ValueError('Target already present; fresh isolated stage required')
     installer=trusted('install-rust-module.py')
     with tarfile.open(archive,'r:xz') as t:
         members=t.getmembers()
@@ -88,9 +123,9 @@ def install_target(prefix,cache,base=None):
         entries=list(pathlib.Path(work).iterdir())
         if len(entries)!=1:raise ValueError('Invalid target archive root')
         subprocess.run(['/bin/sh',str(entries[0]/'install.sh'),'--prefix='+str(prefix),'--disable-ldconfig'],check=True)
-    result=subprocess.check_output([str(prefix/'bin/rustc'),'--print','target-libdir','--target','aarch64-linux-android'],text=True).strip()
-    target=pathlib.Path(result)
-    if not target.resolve().is_relative_to(prefix) or not list(target.glob('libstd-*.rlib')):raise ValueError('Android target not installed')
+    result=subprocess.check_output([str(prefix/'bin/rustc'),'--print','target-libdir','--target',target],text=True).strip()
+    target_dir=pathlib.Path(result)
+    if not target_dir.resolve().is_relative_to(prefix) or not list(target_dir.glob('libstd-*.rlib')):raise ValueError('Native target not installed')
 
 def discover_linker(sdk):
     # Use an already verified toolchain; no SDK download or arbitrary project linker.

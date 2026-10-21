@@ -55,7 +55,8 @@ test('JNI publication checks real SDK and target stays outside active module own
  assert.match(engine,/applicationInfo\?\.minSdkVersion/);
  assert.match(engine,/FastHtmlAabProtoManifest.minimumSdkVersion\(bytes\)>=26/);
  const prep=read('android-app/app/src/main/java/com/appforge/studio/build/ProjectDependencyPreparation.kt');
- assert.match(prep,/--prefix \/workspace\/rust-android-toolchain/);
+ assert.match(prep,/val compilerName="rust-android-toolchain-\$targetIndex"/);
+ assert.match(prep,/--prefix \/workspace\/\$compilerName/);
  const target=JSON.parse(read('android-app/app/src/main/assets/device-build/rust-android-target-v1.json'));
  assert.equal(target.artifact.sha256,'3a165858f18b13d5eeed93a57c7c658f4a7ab03ce3e47239e932a59d1b2b454f');
  assert.equal(target.target,'aarch64-linux-android');
@@ -76,4 +77,52 @@ test('Portable Rust payload is checked before packaging and after final signing'
  assert.match(p,/verifyRustFinalArtifact\(draft,part\)/);
  const engine=read('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt');
  assert.match(engine,/verifyRustFinalArtifact\(draft,finalWindowsExe\)/);
+});
+test('Windows Rust adapter rejects DLL relabelling, unsafe PE and implicit source execution',()=>{
+ const r=spawnSync('python3',['-B','quality/rust_windows_test.py'],{cwd:base,encoding:'utf8'});
+ assert.equal(r.status,0,r.stdout+r.stderr);
+ const p=read('android-app/app/src/main/java/com/appforge/studio/build/ProjectDependencyPreparation.kt');
+ assert.match(p,/val targetId=RustProjectPolicy.preparationTarget\(targetDraft\)/);
+ assert.doesNotMatch(p,/require\(draft.sourceBuildEngine in setOf\("webview-static","node-web"\)\)/);
+ const engine=read('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt');
+ assert.match(engine,/RustProjectPolicy.stageWindowsNative\(draft,canonicalWorkspace\)/);
+ assert.match(engine,/RustProjectPolicy.digest\(target\)==RustProjectPolicy.digest\(RustProjectPolicy.requireWindowsNative\(draft\)\)/);
+});
+test('PyO3 adapter requires exact Python ABI, locked crate and verified target library',()=>{
+ const r=spawnSync('python3',['-B','quality/rust_python_test.py'],{cwd:base,encoding:'utf8'});
+ assert.equal(r.status,0,r.stdout+r.stderr);
+ const engine=read('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt');
+ assert.match(engine,/RustProjectPolicy.stagePythonModule\(draft,project\)/);
+ assert.match(engine,/RustProjectPolicy.verifyPythonPackage\(draft,kind,file\)/);
+});
+
+test('Universal Rust prepares all selected roots and publishes only one verified private project',()=>{
+ const prep=read('android-app/app/src/main/java/com/appforge/studio/build/ProjectDependencyPreparation.kt');
+ assert.match(prep,/for\(\(targetIndex,pair\) in projects.withIndex\(\)\)/);
+ assert.match(prep,/RustPreparedProjects\(storeRoot\).publish\(draft,workspace,plan.fingerprint\)/);
+ const engine=read('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt');
+ assert.match(engine,/RustProjectPolicy.stageAndroidJni\(androidDraft,androidProject\)/);
+ assert.match(engine,/draft = androidDraft/);
+ const portable=read('android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt');
+ assert.match(portable,/RustProjectPolicy.webPayloadDraft\(draft\)/);
+});
+test('DLL export stays a revalidated library and never bypasses EXE publication',()=>{
+ const card=read('android-app/app/src/main/java/com/appforge/studio/ProjectDependencyPreparationCard.kt');
+ assert.match(card,/CreateDocument\("application\/vnd.microsoft.portable-executable"\)/);
+ assert.match(card,/store\(\).restoreLibrary\(draft\)/);
+ assert.match(card,/copied==size/);
+ const store=read('android-app/app/src/main/java/com/appforge/studio/build/RustPreparedProjects.kt');
+ assert.match(store,/PREPARED_LIBRARY_NOT_APPLICATION/);
+ const policy=read('android-app/app/src/main/java/com/appforge/studio/build/RustProjectPolicy.kt');
+ assert.match(policy,/require\(!isWindowsLibrary\(draft\)\)/);
+ assert.match(policy,/windowsDllExports\(file\)/);
+});
+test('Expo Rust requires authored registration, reviewed runtime family and explicit legacy bridge',()=>{
+ const r=spawnSync('python3',['-B','quality/rust_jsi_test.py'],{cwd:base,encoding:'utf8'});
+ assert.equal(r.status,0,r.stdout+r.stderr);
+ const plugin=read('examples/rust-expo-jsi/withRustJsi.cjs');
+ assert.match(plugin,/minSdkVersion 26/);assert.match(plugin,/ANDROID_STL=c\+\+_shared/);
+ const policy=read('android-app/app/src/main/java/com/appforge/studio/build/RustProjectPolicy.kt');
+ assert.match(policy,/androidDynamicLibraries\(file\).first=="libappforge_jsi.so"/);
+ assert.match(policy,/libappforge_jsi.so","libjsi.so/);
 });

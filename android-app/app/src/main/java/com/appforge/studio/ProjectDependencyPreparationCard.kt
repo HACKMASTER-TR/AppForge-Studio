@@ -1,5 +1,7 @@
 package com.appforge.studio
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,7 +17,7 @@ import kotlinx.coroutines.*
     val preparing by ProjectDependencyPreparation.busy.collectAsState()
     var preparedNodeRust by remember(draft){mutableStateOf(false)}
     LaunchedEffect(draft,preparing){preparedNodeRust=withContext(Dispatchers.IO){RustProjectPolicy.canPrepareEngineDependencies(draft)}}
-    if(RustProjectPolicy.sourceRoot(draft)!=null && !preparedNodeRust){RustProjectPreparationCard(draft,onPrepared);return}
+    if(RustProjectPolicy.hasRust(draft) && !preparedNodeRust){RustProjectPreparationCard(draft,onPrepared);return}
     var plan by remember(draft){mutableStateOf<ProjectDependencyPlan?>(null)}
     var info by remember{mutableStateOf("")};var ready by remember{mutableStateOf(false)}
     var confirmation by remember{mutableStateOf<Boolean?>(null)};var trusted by remember{mutableStateOf(false)}
@@ -62,8 +64,20 @@ OutlinedButton(enabled=!ProjectDependencyPreparation.stopPending.value,onClick={
     var confirm by remember{mutableStateOf<Boolean?>(null)};var trusted by remember{mutableStateOf(false)}
     var moduleReady by remember{mutableStateOf(false)};var prepared by remember{mutableStateOf<ProjectDraft?>(null)}
     var detail by remember{mutableStateOf("")}
+    var library by remember{mutableStateOf<java.io.File?>(null)}
     fun store()=RustPreparedProjects(RecoveryPathAnchor.androidPlatformPath(java.io.File(context.filesDir,"rust-prepared-v1")))
-    LaunchedEffect(draft,busy){val restored=withContext(Dispatchers.IO){OfflineBuildPackManager.moduleReady(context,OfflineModuleId.RUST) to store().restore(draft)};moduleReady=restored.first;prepared=restored.second}
+    LaunchedEffect(draft,busy){val restored=withContext(Dispatchers.IO){Triple(OfflineBuildPackManager.moduleReady(context,OfflineModuleId.RUST),store().restore(draft),store().restoreLibrary(draft))};moduleReady=restored.first;prepared=restored.second;library=restored.third}
+    val exportLibrary=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.microsoft.portable-executable")){uri->
+        if(uri!=null)scope.launch {
+            runCatching {withContext(Dispatchers.IO) {
+                val source=store().restoreLibrary(draft)?:error("DLL kaynağı/çıktısı değişti; dışa aktarılmadı")
+                val expected=RustProjectPolicy.digest(source);val size=source.length();val hash=java.security.MessageDigest.getInstance("SHA-256");var copied=0L
+                val output=context.contentResolver.openOutputStream(uri,"w")?:error("Seçilen belge yazılamıyor")
+                output.use{out->source.inputStream().use{input->val buffer=ByteArray(65536);while(true){val n=input.read(buffer);if(n<0)break;copied+=n;require(copied<=size);hash.update(buffer,0,n);out.write(buffer,0,n)}}}
+                require(copied==size && hash.digest().joinToString(""){"%02x".format(it)}==expected && RustProjectPolicy.digest(source)==expected)
+            }}.onSuccess{detail="DLL yazma işlemi tamamlandı; kaynak ve gönderilen baytlar doğrulandı. Windows fiziksel kabulü yapılmadı."}.onFailure{detail="DLL dışa aktarma başarısız: "+(it.message?:"bilinmeyen hata")}
+        }
+    }
     fun begin(offline:Boolean){runCatching{ProjectDependencyPreparation.start(context,draft,true,offline,rustOnly=true)}.onFailure{DownloadNetwork.restorePreference();detail=it.message?:"Rust hazırlığı başlamadı"}}
     if(mobileConsent)AlertDialog(onDismissRequest={mobileConsent=false},title={Text("Bu işlem için ağ kullanım onayı")},text={Text("Mobil/ölçümlü bağlantı ve VPN dahil etkin doğrulanmış ağ, yalnız bu işlem için kullanılabilir. Kalan toplam boyut bilinmiyor. Sonraki işlemlerin izni değişmez.")},confirmButton={TextButton(enabled=!busy,onClick={mobileConsent=false;runCatching{DownloadNetwork.allowMobileOnce();begin(false)}.onFailure{DownloadNetwork.restorePreference();detail=it.message?:"Ağ onayı alınamadı"}}){Text("Yalnız bu işleme izin ver")}},dismissButton={TextButton(onClick={mobileConsent=false}){Text("Reddet • Wi-Fi bekle")}})
     if(confirm!=null)AlertDialog(onDismissRequest={confirm=null},title={Text(if(confirm==true)"Rust kaynak kodunu çalıştırma onayı" else "Kilitli Cargo bağımlılıklarını indirme onayı")},text={Column {
@@ -72,10 +86,12 @@ OutlinedButton(enabled=!ProjectDependencyPreparation.stopPending.value,onClick={
     }},confirmButton={TextButton(enabled=trusted && !busy,onClick={val offline=confirm!!;confirm=null;if(!offline && DownloadNetwork.policy==DownloadNetworkPolicy.WIFI_PREFERRED && !DownloadNetwork.allowed())mobileConsent=true else begin(offline);trusted=false}){Text("Bu işlemi onayla")}},dismissButton={TextButton(onClick={confirm=null;trusted=false}){Text("Vazgeç")}})
     Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Text("Rust projesini hazırla",style=MaterialTheme.typography.titleMedium)
-        Text("Hedef: "+(if(draft.sourceBuildEngine=="android-gradle")"aarch64-linux-android • NDK linker ayrıca gerekir" else "wasm32-unknown-unknown")+" • Cargo.lock ve doğrulanmış Rust modülü gerekir. Android Gradle için açık JNI bildirimiyle ARM64/API26 hedefi kullanılır; PyO3/JSI desteklenmez.")
+        Text("Hedef: "+runCatching{RustProjectPolicy.preparationProjects(draft).joinToString { RustProjectPolicy.preparationTarget(it.second) }}.getOrDefault("Desteklenmeyen motor")+" • Cargo.lock ve doğrulanmış Rust modülü gerekir. Android Gradle için açık JNI bildirimiyle ARM64/API26 hedefi kullanılır; Windows Native için ayrıca MinGW linker gerekir. Python3.12 PyO3 ve Expo54/RN0.81 legacy JSI, açık bağlama bildirimi gerektirir; fiziksel kabul ayrıdır.")
         if(!moduleReady)Text("Önce Rust + Cargo modülünü kurun. WASM için SDK/JDK/Gradle gerekmez; Android JNI için doğrulanmış NDK/Android araçları ayrıca gerekir.")
-        OutlinedButton(enabled=!busy && moduleReady && draft.sourceBuildEngine in setOf("webview-static","node-web","android-gradle"),onClick={trusted=false;confirm=false}){Text("Kilitli Cargo bağımlılıklarını indirmeyi onayla")}
-        Button(enabled=!busy && moduleReady && draft.sourceBuildEngine in setOf("webview-static","node-web","android-gradle"),onClick={trusted=false;confirm=true}){Text("Ağlar kapalıyken Rust hedefini hazırla")}
+        OutlinedButton(enabled=!busy && moduleReady && runCatching{RustProjectPolicy.preparationProjects(draft).all{RustProjectPolicy.preparationTarget(it.second).isNotBlank()}}.getOrDefault(false),onClick={trusted=false;confirm=false}){Text("Kilitli Cargo bağımlılıklarını indirmeyi onayla")}
+        Button(enabled=!busy && moduleReady && runCatching{RustProjectPolicy.preparationProjects(draft).all{RustProjectPolicy.preparationTarget(it.second).isNotBlank()}}.getOrDefault(false),onClick={trusted=false;confirm=true}){Text("Ağlar kapalıyken Rust hedefini hazırla")}
+        if(RustProjectPolicy.isWindowsLibrary(draft))Text("DLL bir kitaplık çıktısıdır; EXE uygulaması veya modül Hazır durumu değildir.")
+        if(library!=null)OutlinedButton(enabled=!busy,onClick={exportLibrary.launch(library!!.name)}){Text("Doğrulanmış DLL dosyasını dışa aktar")}
         if(prepared!=null) {
             Text("Özel kopyada Rust çıktısı ve kaynak hash'leri doğrulandı. Uygulamada çalışma kabulü ayrıdır.")
             OutlinedButton(enabled=!busy && onPrepared!=null,onClick={scope.launch {

@@ -2835,6 +2835,8 @@ private fun AppForgeApp() {
                                                 "universal-cross-platform"
                                         ) {
                                             "all"
+                                        } else if(analysis.buildEngine=="windows-native") {
+                                            "native-exe"
                                         } else {
                                             baseDraft.buildOutput
                                         },

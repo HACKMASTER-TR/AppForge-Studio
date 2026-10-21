@@ -65,6 +65,7 @@ def build(root,target,prefix,source_consent=False,linker=None,vendor=None):
     validate(root)
     if target not in TARGETS:raise ValueError('Unsupported Rust target')
     if target!='wasm32-unknown-unknown' and (not linker or not pathlib.Path(linker).is_file()):raise ValueError('Verified target linker required')
+    if (root/'target').is_symlink() or (root/'target').resolve()!=root/'target':raise ValueError('Unsafe Cargo target directory')
     env=dict(os.environ,PATH=str(prefix/'bin')+os.pathsep+os.environ.get('PATH',''),CARGO_NET_OFFLINE='true',CARGO_TARGET_DIR=str(root/'target'))
     if linker:env['CARGO_TARGET_'+target.upper().replace('-','_')+'_LINKER']=linker
     before=digest(root/'Cargo.lock');before_inputs=source_digest(root)
@@ -73,15 +74,29 @@ def build(root,target,prefix,source_consent=False,linker=None,vendor=None):
     if vendor is not None:
         if vendor.is_symlink() or not vendor.is_dir():raise ValueError('Invalid Cargo vendor directory')
         args.extend(['--config','source.crates-io.replace-with="appforge-vendor"','--config','source.appforge-vendor.directory='+json.dumps(str(vendor))])
-    p=subprocess.run(args,cwd=root,env=env,text=True,stdout=subprocess.PIPE,check=True)
+    p=subprocess.run(args,cwd=root,env=env,text=True,stdout=subprocess.PIPE)
+    if p.returncode:
+        # Cargo JSON diagnostics are on stdout; do not discard the actual failure
+        # or dump source spans/rendered snippets into the operation journal.
+        errors=[]
+        for line in p.stdout.splitlines():
+            try:event=json.loads(line)
+            except json.JSONDecodeError:continue
+            if event.get('reason')=='compiler-message' and event.get('message',{}).get('level')=='error':
+                message=event['message'];errors.append(str(message.get('message',''))[:500])
+                errors.extend(str(child.get('message',''))[:500] for child in message.get('children',[])[:3] if child.get('level') in ('note','help') and 'PATH=' not in str(child.get('message','')))
+        raise ValueError('Cargo offline build failed (exit '+str(p.returncode)+'): '+'; '.join(errors)[:2000])
     artifacts=[]
     for line in p.stdout.splitlines():
         event=json.loads(line)
         if event.get('reason')!='compiler-artifact':continue
+        # Cross builds also emit host proc-macro shared libraries. Only artifacts
+        # of the reviewed root manifest can be application outputs.
+        if pathlib.Path(event.get('manifest_path','')).absolute()!=root/'Cargo.toml':continue
         for value in event.get('filenames',[]):
             f=pathlib.Path(value);f=f if f.is_absolute() else root/f
             if f.suffix not in ('.wasm','.so','.exe','.dll'):continue
-            if f.is_symlink() or not f.resolve().is_relative_to((root/'target').resolve()):raise ValueError('Artifact escapes Cargo target')
+            if f.is_symlink() or not f.resolve().is_relative_to(root/'target'/target):raise ValueError('Artifact escapes selected Cargo target')
             data=f.read_bytes();kind=TARGETS[target]
             if kind=='wasm' and data[:8]!=b'\0asm\x01\0\0\0':raise ValueError('Invalid WASM')
             if kind=='elf' and (data[:4]!=b'\x7fELF' or data[4:6]!=b'\x02\x01' or int.from_bytes(data[18:20],'little')!=183):raise ValueError('Expected Android ARM64 ELF')

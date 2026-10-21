@@ -24,6 +24,10 @@ class RustSafetyTests(unittest.TestCase):
   with self.assertRaisesRegex(ValueError,'symlink'):builder.validate(self.root)
  def test_source_hash_changes(self):
   before=builder.source_digest(self.root);(self.root/'build.rs').write_text('fn main() {}');self.assertNotEqual(before,builder.source_digest(self.root))
+ def test_existing_target_symlink_cannot_redirect_output(self):
+  foreign=self.root/'foreign';foreign.mkdir();(foreign/'keep').write_text('user data');(self.root/'target').symlink_to(foreign,target_is_directory=True)
+  with self.assertRaisesRegex(ValueError,'target directory'):builder.build(self.root,'wasm32-unknown-unknown',self.root,True)
+  self.assertEqual((foreign/'keep').read_text(),'user data')
  def test_unknown_target_rejected(self):
   with self.assertRaisesRegex(ValueError,'Unsupported'):builder.build(self.root,'untrusted',self.root,True)
  def test_native_linker_required(self):

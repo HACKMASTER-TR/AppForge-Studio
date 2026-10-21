@@ -659,7 +659,8 @@ internal object WindowsPortableExePackager {
     /** The shared footer/Authenticode boundary parser locates the final local
      * ZIP; bounded verification never writes project files or re-runs Rust. */
     internal fun verifyRustFinalArtifact(draft:ProjectDraft,file:File) {
-        if(RustProjectPolicy.sourceRoot(draft)==null)return
+        val payloadDraft=RustProjectPolicy.webPayloadDraft(draft)
+        if(RustProjectPolicy.sourceRoot(payloadDraft)==null)return
         val length=readVerifiedPayloadLength(file)
         RandomAccessFile(file,"r").use{raf->
             val footer=portablePayloadFooterEnd(raf,portablePayloadLogicalEnd(raf))
@@ -675,7 +676,7 @@ internal object WindowsPortableExePackager {
                 java.nio.file.Files.newOutputStream(temporary).use{out->val buffer=ByteArray(65536);var left=bytes
                     while(left>0){val n=raf.read(buffer,0,minOf(left,buffer.size.toLong()).toInt());require(n>0){"Windows payload kesik"};out.write(buffer,0,n);left-=n}
                 }
-                RustProjectPolicy.verifyWebArchive(draft,temporary.toFile())
+                RustProjectPolicy.verifyWebArchive(payloadDraft,temporary.toFile())
             }finally{java.nio.file.Files.deleteIfExists(temporary)}
         }
     }
