@@ -7,7 +7,7 @@ internal data class OfflineModuleSpec(val id: OfflineModuleId,val title: String,
 internal data class OfflineModulePlan(val modules:List<OfflineModuleId>,val error:String?=null)
 internal object OfflineModules {
     val all=listOf(
-        OfflineModuleSpec(OfflineModuleId.RUST,"Rust + Cargo","1.85.1 • Linux host + WASM std",setOf(OfflineModuleId.LINUX_RUNTIME),"static.rust-lang.org / SHA-256 pinli dağıtım"),
+        OfflineModuleSpec(OfflineModuleId.RUST,"Rust + Cargo","1.85.1 • host/WASM std • dahili Python 3.12",setOf(OfflineModuleId.LINUX_RUNTIME),"static.rust-lang.org / SHA-256 + imzalı Ubuntu snapshot 20261018T000000Z"),
         OfflineModuleSpec(OfflineModuleId.FAST_HTML,"Fast HTML","CI APK/AAB 26/37",emptySet(),"Gömülü ve SHA-256 doğrulanan şablonlar",0,0),
         OfflineModuleSpec(OfflineModuleId.LINUX_RUNTIME,"Linux derleme ortamı","Device Build Runtime V3",emptySet(),"LinuxRuntimeManifestRegistry / doğrulanmış Ubuntu"),
         OfflineModuleSpec(OfflineModuleId.ANDROID_CORE,"Android SDK + JDK + Gradle","API 37.0 / Build Tools 36 / JDK 17.0.20.1 / Gradle 9.3.1 + 8.14.3",setOf(OfflineModuleId.LINUX_RUNTIME),"Google / Adoptium / services.gradle.org"),

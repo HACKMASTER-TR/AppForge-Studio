@@ -21,7 +21,7 @@ class RustIntegrationTest {
     private fun draft(root:File)=ProjectDraft(sourceMode=SourceMode.LOCAL,importedFolder=root.path,sourceBuildEngine="webview-static")
     private fun receipt(root:File) {
         val dir=File(root,"appforge-rust").apply{mkdir()};val wasm=File(dir,"demo.wasm").apply{writeBytes(byteArrayOf(0,97,115,109,1,0,0,0))}
-        File(dir,"artifacts.json").writeText(JSONObject().put("schema",1).put("target","wasm32-unknown-unknown").put("sourceSha256",RustProjectPolicy.sourceDigest(root)).put("file",wasm.name).put("sha256",RustProjectPolicy.digest(wasm)).toString())
+        File(dir,"artifacts.json").writeText(JSONObject().put("schema",2).put("target","wasm32-unknown-unknown").put("sourceSha256",RustProjectPolicy.sourceDigest(root)).put("file",wasm.name).put("sha256",RustProjectPolicy.digest(wasm)).toString())
     }
     @Test fun rustModuleOnlyNeedsLinuxAndDoesNotPullAndroidOrNode() {
         assertEquals(listOf(OfflineModuleId.LINUX_RUNTIME,OfflineModuleId.RUST),OfflineModules.resolve(setOf(OfflineModuleId.RUST)))
@@ -95,5 +95,37 @@ class RustIntegrationTest {
             assertNotNull(ModuleOwnershipStore(root).safeRemovalReason(OfflineModuleId.RUST))
             assertEquals("keep",File(root,"user-project").readText())
         }finally{base.deleteRecursively()}
+    }
+
+    @Test fun nodeOutputReceivesExactRustWasmWithoutJavascriptInjection()=project {root ->
+        receipt(root);val build=File(root,"target/build-copy").apply{mkdirs()};val site=File(build,"dist").apply{mkdir()}
+        File(site,"index.html").writeText("<html>authored JS only</html>")
+        val draft=draft(root).copy(sourceBuildEngine="node-web")
+        RustProjectPolicy.stageNodeWebPayload(draft,build,site)
+        assertEquals(RustProjectPolicy.digest(File(root,"appforge-rust/demo.wasm")),RustProjectPolicy.digest(File(site,"appforge-rust/demo.wasm")))
+        assertEquals("<html>authored JS only</html>",File(site,"index.html").readText())
+        RustProjectPolicy.stageNodeWebPayload(draft,build,site) // same verified output is reusable
+    }
+    @Test fun conflictingNodeOutputAndForeignDirectoriesArePreserved()=project {root ->
+        receipt(root);val build=File(root,"target/build-copy").apply{mkdirs()};val site=File(build,"dist").apply{mkdir()}
+        val foreign=File(site,"appforge-rust").apply{mkdir()};File(foreign,"demo.wasm").writeText("foreign")
+        assertThrows(IllegalArgumentException::class.java){RustProjectPolicy.stageNodeWebPayload(draft(root).copy(sourceBuildEngine="node-web"),build,site)}
+        assertEquals("foreign",File(foreign,"demo.wasm").readText())
+        assertThrows(IllegalArgumentException::class.java){RustProjectPolicy.stageNodeWebPayload(draft(root),build,root)}
+    }
+
+    @Test fun nonRustDataInputsAndBuildScriptsInvalidateWasmButTargetCacheDoesNot()=project {root ->
+        File(root,"data.bin").writeText("input");receipt(root)
+        val before=RustProjectPolicy.sourceDigest(root)
+        File(root,"target/debug").mkdirs();File(root,"target/debug/cache").writeText("generated")
+        assertEquals(before,RustProjectPolicy.sourceDigest(root))
+        File(root,"data.bin").writeText("changed")
+        assertThrows(IllegalArgumentException::class.java){RustProjectPolicy.requirePackageable(draft(root))}
+    }
+    @Test fun preparedNodeRetainsSeparateDependencyPreparationAndRejectsDrift()=project {root ->
+        receipt(root);val node=draft(root).copy(sourceBuildEngine="node-web")
+        assertTrue(RustProjectPolicy.canPrepareNodeDependencies(node))
+        File(root,"src/lib.rs").appendText("// stale")
+        assertFalse(RustProjectPolicy.canPrepareNodeDependencies(node))
     }
 }

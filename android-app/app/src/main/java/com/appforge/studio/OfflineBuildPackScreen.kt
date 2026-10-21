@@ -131,7 +131,7 @@ internal object ModuleInstallOperations {
     @Synchronized fun pause(){pauseRequested=true;downloadControl.requestPause();showStopPending()}
 }
 
-@Composable internal fun OfflineBuildPackScreen(onBack:()->Unit,firstRun:Boolean=false,onFirstRunComplete:((Boolean)->Unit)?=null,project:ProjectDraft?=null) {
+@Composable internal fun OfflineBuildPackScreen(onBack:()->Unit,firstRun:Boolean=false,onFirstRunComplete:((Boolean)->Unit)?=null,project:ProjectDraft?=null,onRustPrepared:((ProjectDraft)->Unit)?=null) {
     var section by rememberSaveable { mutableStateOf("modules") }
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
@@ -312,7 +312,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
             }
             if(section=="diagnostics" && ready[OfflineModuleId.LINUX_RUNTIME]==true)item{OutlinedButton(enabled=!busy && BuildModuleUsage.mutationBlockedReason()==null && pruneBytes!=null,onClick={confirmPrune=true}){Text("Eski sürümleri temizle • "+(pruneBytes?.let{"${it/1024/1024} MiB doğrulanmış dosya"}?:"boyut doğrulanamadı"))}}
             if(section=="diagnostics")pruneReason?.let{reason->item{Text("Eski sürüm temizleme kapalı: $reason")}}
-            if(section=="modules" && project!=null && !FastHtmlApkPolicy.isCandidate(project))item { ProjectDependencyPreparationCard(project) }
+            if(section=="modules" && project!=null && (!FastHtmlApkPolicy.isCandidate(project) || RustProjectPolicy.sourceRoot(project)!=null))item { ProjectDependencyPreparationCard(project,onRustPrepared) }
             if(section=="modules" && ready[OfflineModuleId.WINDOWS_PORTABLE]==true)item { WindowsModuleSmokeCard() }
             item { Text("Toplam işlem: "+if(busy)"devam ediyor; kurulum iş miktarı ölçülemediği için toplam yüzde yok" else "bekliyor / son modül durumlarını inceleyin") }
             item { Text("Kullanıcının başlattığı kurulum Android veri aktarımı servisiyle izlenir. Android zaman sınırı veya süreç ölümü işlemi durdurabilir. Yeniden açınca kayıt geri yüklenir; devam için onay gerekir, dosyalar yeniden doğrulanır.") }

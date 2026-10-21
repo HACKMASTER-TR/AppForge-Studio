@@ -1618,6 +1618,7 @@ object DeviceBuildEngine {
             "Derlenmiş web index.html bulunamadı."
         }
 
+        RustProjectPolicy.stageNodeWebPayload(draft,File(workspace,"source"),site)
         state.logs.add("✅ Web kaynakları derlendi.")
         state.progress = 55
 

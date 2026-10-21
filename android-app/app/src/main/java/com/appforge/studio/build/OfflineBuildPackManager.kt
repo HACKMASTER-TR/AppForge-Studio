@@ -317,6 +317,9 @@ internal object OfflineBuildPackManager {
                         File(app.noBackupFilesDir,"module-downloads/node/$name").inputStream().use{input->cache.outputStream().use{input.copyTo(it)}}
                     }
                     if(id==OfflineModuleId.RUST) {
+                        val original=File(workspace,"runtime/apt-snapshot-lock.sh").readText()
+                        require(original.split("as_configure() {").size==2){"Rust APT uyarlama noktası değişti; güvenli biçimde duruldu."}
+                        File(workspace,"runtime/rust-apt-base.sh").writeText(original.replace("as_configure() {","as_configure_original() {"))
                         val manifest=org.json.JSONObject(app.assets.open("device-build/rust-toolchain-v1.json").bufferedReader().use{it.readText()})
                         val host=if(Build.SUPPORTED_ABIS.contains("arm64-v8a"))"aarch64-unknown-linux-gnu" else "x86_64-unknown-linux-gnu"
                         val artifacts=manifest.getJSONArray("artifacts")
@@ -337,7 +340,7 @@ internal object OfflineBuildPackManager {
                         }
                     }
                     val commands=when(id) {
-                        OfflineModuleId.RUST -> listOf("install-rust-module.py")
+                        OfflineModuleId.RUST -> listOf("install-rust-prerequisites.sh",if(File(staged,"opt/appforge-device/rust-1.85.1/bin/rustc").isFile)"install-rust-module.py --verify" else "install-rust-module.py")
                         OfflineModuleId.ANDROID_CORE -> listOf("install-toolchain.sh webview-static","prepare-offline-pack.sh android")
                         OfflineModuleId.NODE_WEB -> listOf("install-node-module.sh")
                         OfflineModuleId.PYTHON_ANDROID -> listOf("install-toolchain.sh python-android","prepare-offline-pack.sh python")
@@ -349,12 +352,12 @@ internal object OfflineBuildPackManager {
                         DownloadNetwork.requireExternalConsent()
                         control.checkpoint()
                         execute(shell,staged,workspace,id.name.lowercase(),
-                        "APPFORGE_MODULE_REFRESH=${if(OfflineModules.refreshExistingInstallation(id,installedVersion(app,id)!=null))1 else 0} APPFORGE_MODULE_ID=${id.name} APPFORGE_ANDROID_CORE_PREPARED=${if(id in setOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE))1 else 0} APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 ${if(id==OfflineModuleId.RUST)"/usr/bin/python3" else "/bin/sh"} /workspace/runtime/$command",id,operation,progress,control)
+                        "APPFORGE_MODULE_REFRESH=${if(OfflineModules.refreshExistingInstallation(id,installedVersion(app,id)!=null))1 else 0} APPFORGE_MODULE_ID=${id.name} APPFORGE_ANDROID_CORE_PREPARED=${if(id in setOf(OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.EXPO_REACT_NATIVE))1 else 0} APPFORGE_ANDROID_SDK_LICENSE_ACCEPTED="+(if(sdkConsent)"1" else "0")+" APPFORGE_DEVICE_OFFLINE=0 ${if(id==OfflineModuleId.RUST && command.startsWith("install-rust-module.py"))"/usr/bin/python3.12 -I -S" else "/bin/sh"} /workspace/runtime/$command",id,operation,progress,control)
                     }
                     control.checkpoint()
                     phase(id,ModulePhase.OFFLINE_TEST,"Gerçek dosya/sürüm ve çevrimdışı araç kontrolü yapılıyor.")
                     val probe=when(id) {
-                        OfflineModuleId.RUST -> "/usr/bin/python3 /workspace/runtime/install-rust-module.py --verify"
+                        OfflineModuleId.RUST -> "/usr/bin/python3.12 -I -S /workspace/runtime/install-rust-module.py --verify"
                         OfflineModuleId.ANDROID_CORE -> "APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/install-toolchain.sh webview-static && APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/prepare-offline-pack.sh android"
                         OfflineModuleId.NODE_WEB -> "/opt/appforge-device/node-22.23.3/bin/node --version && /opt/appforge-device/node-22.23.3/bin/node /opt/appforge-device/node-22.23.3/lib/node_modules/npm/bin/npm-cli.js cache verify"
                         OfflineModuleId.PYTHON_ANDROID -> "/usr/bin/python3.12 -c 'import sys; assert sys.version_info[:2] == (3,12)' && APPFORGE_DEVICE_OFFLINE=1 /bin/sh /workspace/runtime/prepare-offline-pack.sh python"
@@ -365,7 +368,7 @@ internal object OfflineBuildPackManager {
                     execute(shell,staged,workspace,"verify-${id.name.lowercase()}",probe)
                     phase(id,ModulePhase.VERIFYING,"Dosya SHA-256 envanteri atomik kaydediliyor.")
                     val apt=AptModuleLocks.inspect(staged,id)
-                    check(apt.transactions>0 || id !in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.WINDOWS_NATIVE)){"Doğrulanmış APT snapshot kilidi eksik; eski kurulum hazır kabul edilmez."}
+                    check(apt.transactions>0 || id !in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST)){"Doğrulanmış APT snapshot kilidi eksik; eski kurulum hazır kabul edilmez."}
                     writeAttestation(app,staged,id)
                     ModuleOwnershipStore(staged).record(id,generation.previousRootName,RuntimeGenerationStore(root).snapshot(),RuntimeGenerationStore(staged).snapshot(),root)
                     for(existing in protectedModules) {
@@ -403,7 +406,7 @@ internal object OfflineBuildPackManager {
 
     private val witnesses=mapOf(
         OfflineModuleId.ANDROID_CORE to listOf("opt/appforge-device/android-sdk/platforms/android-37.0/android.jar","opt/appforge-device/android-sdk/build-tools/36.0.0/aapt2","opt/appforge-device/jdk-17/bin/java","opt/appforge-device/jdk-17/bin/javac","opt/appforge-device/gradle-9.3.1/lib/gradle-launcher-9.3.1.jar"),
-        OfflineModuleId.RUST to listOf("opt/appforge-device/rust-1.85.1/bin/rustc","opt/appforge-device/rust-1.85.1/bin/cargo","opt/appforge-device/rust-1.85.1/.offline-probe.json"),
+        OfflineModuleId.RUST to listOf("usr/bin/python3.12","opt/appforge-device/rust-1.85.1/bin/rustc","opt/appforge-device/rust-1.85.1/bin/cargo","opt/appforge-device/rust-1.85.1/.offline-probe.json"),
         OfflineModuleId.NODE_WEB to listOf("opt/appforge-device/node-22.23.3/bin/node","opt/appforge-device/node-22.23.3/lib/node_modules/npm/bin/npm-cli.js"),
         OfflineModuleId.PYTHON_ANDROID to listOf("usr/bin/python3.12"),
         OfflineModuleId.EXPO_REACT_NATIVE to listOf("opt/appforge-device/expo-sdk-36/platforms/android-36/android.jar","opt/appforge-device/node-22.23.3/bin/node","opt/appforge-device/android-sdk/cmake/3.22.1/bin/cmake","opt/appforge-device/android-sdk/ndk/27.1.12297006/source.properties"),
@@ -415,7 +418,7 @@ internal object OfflineBuildPackManager {
     }
     private fun recipeDigest(context:Context,id:OfflineModuleId):String {
         val names=when(id) {
-            OfflineModuleId.RUST->listOf("install-rust-module.py","rust-toolchain-v1.json","rust-project.py")
+            OfflineModuleId.RUST->listOf("install-rust-module.py","install-rust-prerequisites.sh","rust-toolchain-v1.json")
             OfflineModuleId.NODE_WEB->listOf("install-node-module.sh")
             OfflineModuleId.WINDOWS_NATIVE->listOf("install-windows-native-toolchain.sh")
             else->listOf("install-toolchain.sh","prepare-offline-pack.sh","platform-37.0-package.xml")
@@ -451,7 +454,7 @@ internal object OfflineBuildPackManager {
         val record=receipt(root,id);require(record.isFile && record.length()<=16384 && !java.nio.file.Files.isSymbolicLink(record.toPath()))
         val json=org.json.JSONObject(record.readText());val files=json.getJSONObject("files")
         json.getInt("revision")==3 && json.optString("recipe")==recipeDigest(context,id) && json.getString("version")==OfflineModules.spec(id).version && files.length()==witnesses.getValue(id).size &&
-            witnesses.getValue(id).all{path->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==files.optString(path)} && ModuleOwnershipStore(root).verifyNamespace(id) && AptModuleLocks.inspect(root,id).let{it.transactions>0 || id !in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.WINDOWS_NATIVE)}
+            witnesses.getValue(id).all{path->val f=File(root,path);f.isFile && f.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) && digest(f)==files.optString(path)} && ModuleOwnershipStore(root).verifyNamespace(id) && AptModuleLocks.inspect(root,id).let{it.transactions>0 || id !in setOf(OfflineModuleId.ANDROID_CORE,OfflineModuleId.PYTHON_ANDROID,OfflineModuleId.WINDOWS_NATIVE,OfflineModuleId.RUST)}
     }.getOrDefault(false)
     fun recoverPending(context:Context) {
         if(File(context.noBackupFilesDir,"offline-build-pack/.portable-lifecycle.json").exists())

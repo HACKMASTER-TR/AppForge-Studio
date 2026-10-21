@@ -106,7 +106,7 @@ internal object ProjectDependencyEvidence {
         root.walkTopDown().onEnter{dir->
             require(!Files.isSymbolicLink(dir.toPath())){"Kaynakta symlink desteklenmiyor."}
             val rel=dir.relativeTo(root).invariantSeparatorsPath
-            dir==root || dir.name !in setOf(".git",".gradle","node_modules",".expo",".next")
+            dir==root || dir.name !in setOf(".git",".gradle","node_modules",".expo",".next") && !(dir.parentFile==root && dir.name=="target" && File(root,"Cargo.toml").isFile)
         }.forEach{file->
             require(!Files.isSymbolicLink(file.toPath())){"Kaynakta symlink desteklenmiyor."}
             if(file.isFile){bytes+=file.length();require(bytes<=512L*1024*1024 && result.size<20000){"Kaynak analiz sınırı aşıldı."};result.add(file)}

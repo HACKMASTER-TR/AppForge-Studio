@@ -6244,6 +6244,7 @@ private fun AppForgeApp() {
                 AppScreen.OFFLINE_PACK ->
                     OfflineBuildPackScreen(
                         project = if(offlinePackReturnScreen in setOf(AppScreen.BUILDER,AppScreen.QUICK))draft else null,
+                        onRustPrepared = { prepared -> draft=prepared;screen=offlinePackReturnScreen },
                         onBack = {
                             screen =
                                 offlinePackReturnScreen
