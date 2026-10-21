@@ -39,9 +39,11 @@ Prepared WASM + source/artifact consistency receipt can be packaged in local HTM
 APK/AAB; JS bindings are authored by the project, never injected. Cargo root
 projects without matching preparation are blocked before silent HTML packaging.
 This scoped root-package detector is not a general monorepo/workspace resolver.
-Android Gradle JNI is now implemented for explicit app-module ARM64/API26 projects, with host build/package proof below. Standalone Android NDK orchestration, Node native addon, PyO3/Chaquopy, JSI/Expo, Windows native
-and Universal target orchestration remain NOT_DONE/BLOCKED. Host ctypes is not
-PyO3 acceptance. Node WASM execution is not Android WebView acceptance.
+Android Gradle JNI is implemented for explicit app-module ARM64/API26 projects.
+The continuation below adds real PyO3/Chaquopy, authored Expo/JSI, Windows EXE/DLL
+and explicit Universal target routing. Protected standalone NDK/React Native
+physical-acceptance capability gates remain blocked. Node uses WASM, not a native addon.
+Host execution is not Android WebView or physical-device acceptance.
 
 Android /data/data and /data/user/0 may be aliases of each other. Only these
 two exact system paths are mapped to the other; translated paths then undergo
@@ -81,7 +83,7 @@ original source files. No record grants execution or mobile-data consent.
 Node-Web copies the verified WASM into the bundler output before APK/Portable
 packaging, preserves authored JS and rejects conflicting/escaping output files.
 Android controller/Compose/FGS behavior still needs real-device acceptance. Native
-JNI/PyO3/JSI/Windows toolchain adapters remain BLOCKED; no all-engines readiness.
+Target-specific continuation is documented below; no all-engines physical readiness.
 
 ### Rust prerequisites and source binding continuation
 
@@ -155,3 +157,42 @@ extracts into user files. Only root Cargo build/VCS/dependency caches are exclud
 project behavior is preserved. Actual production Kotlin package creation with
 network/exec denied, host-side materialization and Node WASM export42 are host
 proof; Electron/Windows physical execution remains NOT_RUN.
+
+## Target-specific all-engines continuation
+
+The second obsolete webview/node-only dispatcher guard was removed from
+ProjectDependencyPreparation. A single RustProjectPolicy target planner now drives
+UI, module requirements and the existing consent/FGS/prepared-copy controller.
+Explicit Universal Android and web roots are prepared sequentially in one private
+copy; target identities, source fingerprints and output receipts must all match
+before publication. Overlapping roots, traversal and shell interpolation are rejected.
+
+Windows uses official Rust1.85.1 x86_64-pc-windows-gnu std and an existing compatible
+MinGW linker. Real EXE and DLL compilation/repeat offline builds are evidenced
+externally. DLL exports are bounded-PE-validated and remain library outputs, not
+EXE applications; CreateDocument export revalidates source/artifact hashes.
+There is no automatic unverified ARM64-host linker provisioning.
+
+Python uses pinned PyO30.23.5 with extension-module/abi3-py312, the official
+Chaquopy Python3.12 ARM64 link library and explicit cross-ABI configuration.
+Only root compiler artifacts are selected; host proc-macro .so files are not
+misidentified as Android libraries. Production checks validate PyInit, ELF/16KiB,
+source hashes and exact bytes inside the central directory of Chaquopy app.imy
+in real APK/AAB. A real host CPython import returned42; Android import remains
+a separate device test. The official Maven ZIP hash was computed/pinned from
+HTTPS bytes, not falsely attributed to a publisher .sha256 file.
+
+Expo54/RN0.81 uses authored Java/C++/JSI registration and an opt-in config plugin.
+Rust has an explicit SONAME; final bridge DT_NEEDED must include that Rust library
+and real libjsi, without absolute paths or RPATH. Shared STL is required by RN's
+prefab exports; the example sets it explicitly. New architecture/bridgeless mode
+is rejected rather than advertised. Cross-compilation and packaging are separate
+from running the JavaScript function on physical Android.
+
+Runtime ownership, snapshot, managed-transfer/network policy, rollback and original
+source preservation remain unchanged. Target tools are installed only in private
+prepared workspaces; a project build cannot mark a shared module READY. Foreign
+export files are rejected, not silently removed. Known-gated standalone NDK and
+React Native engines remain blocked until their platform acceptance is established.
+Detailed exact-source tests, genuine failed attempts and NOT_RUN cases live in
+RUST-IMPLEMENTATION-REPORT.md and the accompanying source/evidence delivery.

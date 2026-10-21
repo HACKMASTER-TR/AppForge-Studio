@@ -83,16 +83,16 @@ Blockers / references: B05 and V3 are divergent; their integration has not been 
 
 Next action: Review evidence record in isolation and plan guarded integration only after explicit authorization.
 
-## rust-all-engines-20261021 — Rust module and scoped local WASM integration
+## rust-all-engines-20261021 — Rust module, WASM and explicit target-specific native adapters
 
-Scope: PARTIAL. Managed WASM and Android Gradle JNI implemented; JNI example has independently HTTPS-verified Gradle checksum metadata/locks. Portable WASM site, ZIP central directory and final overlay integrity added. Host proof is separate from Android/Windows physical acceptance; remaining native engine adapters NOT_DONE.
+Scope: PARTIAL pending protected platform gates and physical acceptance. Managed WASM/JNI plus PyO3, authored Expo/JSI, Windows EXE/DLL and explicit Universal target orchestration implemented. Exact final local test evidence is external; no old PASS inherited.
 
 Lifecycle: **ACTIVE**
 
 - Branch: `feat/rust-all-engines-20261021`
 - Base branch: `fix/v7-a01-a05-20261020`
 - Base exact SHA: `b56bf0a56de91e60beb862e10c8632f1e4f10ff3`
-- Manifest-recorded source SHA: `40b2112745168371d95ca9fa55de82263f3d61c7`
+- Manifest-recorded source SHA: `ce5d66812b3e8ddc92dd00efd7194db9f21da07e`
 - Parent workstream: none recorded
 
 | Evidence stage | State | Binding / reference or reason |
@@ -107,9 +107,9 @@ Lifecycle: **ACTIVE**
 | release | NOT_RUN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
 | deploy | NOT_RUN | Exact final source evidence is recorded separately; no inherited acceptance. GitHub writes, merge and release prohibited. |
 
-Blockers / references: Android ARM64/Proroot/FGS/UI physical execution NOT_RUN; JNI/PyO3/JSI/native Windows/Universal target adapters and device linker acceptance BLOCKED/NOT_DONE; Cargo workspace/path/git dependencies and ignored-cache/external build inputs are outside this resolver scope
+Blockers / references: Android ARM64/PRoot/FGS/UI and JNI/PyO3/JSI physical execution NOT_RUN; Standalone NDK/React Native engine physical gates remain BLOCKED; ARM64-host cross-linker availability must be established; Cargo workspace/path/git dependencies and external build inputs remain outside this bounded resolver; Windows physical execution and Android CreateDocument DLL export NOT_RUN
 
-Next action: Review the frozen local source/patch evidence; complete target-specific native ABI adapters only with real linker/runtime evidence. Do not merge/push/release or infer physical acceptance.
+Next action: Finish exact-source local tests and inspect the verified patch/evidence; perform separately authorized physical tests. No push, merge, CI, release or phone installation.
 
 ## sb01 — Retired backend introductory-map correction
 

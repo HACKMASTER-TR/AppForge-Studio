@@ -597,13 +597,13 @@
     },
     {
       "id": "rust-all-engines-20261021",
-      "title": "Rust module and scoped local WASM integration",
-      "scope": "PARTIAL. Managed WASM and Android Gradle JNI implemented; JNI example has independently HTTPS-verified Gradle checksum metadata/locks. Portable WASM site, ZIP central directory and final overlay integrity added. Host proof is separate from Android/Windows physical acceptance; remaining native engine adapters NOT_DONE.",
+      "title": "Rust module, WASM and explicit target-specific native adapters",
+      "scope": "PARTIAL pending protected platform gates and physical acceptance. Managed WASM/JNI plus PyO3, authored Expo/JSI, Windows EXE/DLL and explicit Universal target orchestration implemented. Exact final local test evidence is external; no old PASS inherited.",
       "lifecycle": "ACTIVE",
       "branch": "feat/rust-all-engines-20261021",
       "baseBranch": "fix/v7-a01-a05-20261020",
       "baseSha": "b56bf0a56de91e60beb862e10c8632f1e4f10ff3",
-      "sourceSha": "40b2112745168371d95ca9fa55de82263f3d61c7",
+      "sourceSha": "ce5d66812b3e8ddc92dd00efd7194db9f21da07e",
       "stages": {
         "implementation": {
           "state": "UNKNOWN",
@@ -643,11 +643,12 @@
         }
       },
       "blockers": [
-        "Android ARM64/Proroot/FGS/UI physical execution NOT_RUN",
-        "JNI/PyO3/JSI/native Windows/Universal target adapters and device linker acceptance BLOCKED/NOT_DONE",
-        "Cargo workspace/path/git dependencies and ignored-cache/external build inputs are outside this resolver scope"
+        "Android ARM64/PRoot/FGS/UI and JNI/PyO3/JSI physical execution NOT_RUN",
+        "Standalone NDK/React Native engine physical gates remain BLOCKED; ARM64-host cross-linker availability must be established",
+        "Cargo workspace/path/git dependencies and external build inputs remain outside this bounded resolver",
+        "Windows physical execution and Android CreateDocument DLL export NOT_RUN"
       ],
-      "nextAction": "Review the frozen local source/patch evidence; complete target-specific native ABI adapters only with real linker/runtime evidence. Do not merge/push/release or infer physical acceptance."
+      "nextAction": "Finish exact-source local tests and inspect the verified patch/evidence; perform separately authorized physical tests. No push, merge, CI, release or phone installation."
     }
   ]
 }
