@@ -655,6 +655,7 @@ object DeviceBuildEngine {
                             .verifyFinalArtifact(
                                 finalWindowsExe
                             )
+                        WindowsPortableExePackager.verifyRustFinalArtifact(draft,finalWindowsExe)
 
                         state.logs.add(
                             "✅ Windows Portable EXE • Authenticode sonrası payload doğrulandı."

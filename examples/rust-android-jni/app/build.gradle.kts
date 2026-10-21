@@ -14,3 +14,6 @@ android {
     packaging { jniLibs { keepDebugSymbols += "**/libappforge_jni.so" } }
     buildTypes { getByName("release") { signingConfig = signingConfigs.getByName("debug") } }
 }
+
+// Lock all app dependency configurations; plugin artifacts are checksum-pinned.
+dependencyLocking { lockAllConfigurations() }

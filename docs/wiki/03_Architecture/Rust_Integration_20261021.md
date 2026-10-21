@@ -12,6 +12,8 @@ source_files:
   - "android-app/app/src/main/assets/device-build/rust-project.py"
   - "android-app/app/src/main/assets/device-build/rust-toolchain-v1.json"
   - "android-app/app/src/main/java/com/appforge/studio/OfflineBuildPackScreen.kt"
+  - "android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt"
+  - "examples/rust-android-jni/gradle/verification-metadata.xml"
 ---
 
 # Rust integration — partial, local-only
@@ -133,3 +135,23 @@ Host proof uses official target std, NDK28.2 x86_64 host linker, real Java Activ
 Cargo offline replay, real AGP APK/AAB and production Kotlin verification.
 Android16 ARM64-host installation/linker execution and device JNI execution remain
 NOT_RUN. No hosted CI, phone upgrade or production acceptance is implied.
+
+## Reviewed Gradle trust and Portable WASM continuation
+
+The JNI example now ships locked app dependencies and SHA-256 verification
+metadata. All300 artifact hashes were independently checked against fresh HTTPS
+responses from the project-declared Google/Maven Central repositories. Generation
+from cache alone was not treated as trust. Provenance hashes are recorded next
+to the metadata. A strict --offline build and a deliberately broken-checksum
+negative test validate the records; no checksum rewrite/trusted-artifact wildcard
+is used in the positive build. This closes the earlier missing-metadata example
+blocker, not device cache provisioning or Android physical acceptance.
+
+Windows Portable reuses the pinned375039759-byte host and the existing signing
+and overlay-boundary parsers. Rust site bytes, project ZIP and final EXE payload
+(including after optional signing) are independently source/hash-bound. ZIP
+verification uses the central directory (matching the extractor), verifies size/CRC, is bounded, rejects unsafe Windows paths/case collisions and never
+extracts into user files. Only root Cargo build/VCS/dependency caches are excluded; other
+project behavior is preserved. Actual production Kotlin package creation with
+network/exec denied, host-side materialization and Node WASM export42 are host
+proof; Electron/Windows physical execution remains NOT_RUN.

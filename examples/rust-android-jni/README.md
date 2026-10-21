@@ -23,3 +23,17 @@ The lockfile has no external crate dependencies. Local host tests produced a
 real ARM64 ELF and APK/AAB with the NDK 28.2 x86_64 host linker. Installation and
 JNI execution on Android16 ARM64, FGS/network recovery, and screenshots are
 NOT_RUN. New native targets do not imply PyO3, RN/JSI or Windows support.
+
+## Gradle trust inputs
+
+This example now ships app dependency locks and SHA-256 verification metadata.
+All300 artifact hashes were independently checked against fresh HTTPS responses
+from the declared official Google/Maven Central repositories; provenance and
+metadata/lock hashes are recorded in gradle/trust-provenance.json. No trusted
+artifact wildcard or verification bypass is configured. A future update must
+repeat that review, not automatically rewrite checksums from an arbitrary cache.
+
+The metadata and locks permit the existing in-app preparation analysis; they do
+not imply the device has downloaded those dependencies. Source execution and
+network approvals remain separate; verify with --offline --dependency-verification
+strict after approved cache preparation. Physical Android execution is NOT_RUN.

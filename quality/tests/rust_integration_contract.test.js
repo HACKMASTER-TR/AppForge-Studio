@@ -60,3 +60,20 @@ test('JNI publication checks real SDK and target stays outside active module own
  assert.equal(target.artifact.sha256,'3a165858f18b13d5eeed93a57c7c658f4a7ab03ce3e47239e932a59d1b2b454f');
  assert.equal(target.target,'aarch64-linux-android');
 });
+test('Rust JNI example ships verified Gradle checksums and locking without a trust bypass',()=>{
+ const root='examples/rust-android-jni/';
+ const provenance=JSON.parse(read(root+'gradle/trust-provenance.json'));
+ const metadata=read(root+'gradle/verification-metadata.xml');
+ assert.equal(provenance.artifactsVerified,300);
+ assert.match(metadata,/<verify-metadata>true<\/verify-metadata>/);
+ assert.doesNotMatch(metadata,/<trusted-artifacts>|<trust /);
+ assert.match(read(root+'app/build.gradle.kts'),/dependencyLocking \{ lockAllConfigurations\(\) \}/);
+ assert.match(read(root+'app/gradle.lockfile'),/org.jetbrains.kotlin:kotlin-stdlib:2.2.10=/);
+});
+test('Portable Rust payload is checked before packaging and after final signing',()=>{
+ const p=read('android-app/app/src/main/java/com/appforge/studio/build/WindowsPortableExePackager.kt');
+ assert.match(p,/RustProjectPolicy.requireWebSite/);assert.match(p,/RustProjectPolicy.verifyWebArchive/);
+ assert.match(p,/verifyRustFinalArtifact\(draft,part\)/);
+ const engine=read('android-app/app/src/main/java/com/appforge/studio/build/DeviceBuildEngine.kt');
+ assert.match(engine,/verifyRustFinalArtifact\(draft,finalWindowsExe\)/);
+});

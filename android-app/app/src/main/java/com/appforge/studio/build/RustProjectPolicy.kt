@@ -148,6 +148,46 @@ internal object RustProjectPolicy {
         }
     }
 
+    private fun webArtifact(draft:ProjectDraft):Pair<String,File>? {
+        val root=sourceRoot(draft)?:return null
+        requirePackageable(draft)
+        require(draft.sourceBuildEngine in setOf("webview-static","node-web")){"Bu motorun Rust çıktısı WASM web payload'ı değildir"}
+        val receipt=File(root,"appforge-rust/artifacts.json");val j=JSONObject(receipt.readText())
+        val relative="appforge-rust/"+j.getString("file")
+        return relative to File(root,relative)
+    }
+    fun requireWebSite(draft:ProjectDraft,site:File) {
+        val (path,expected)=webArtifact(draft)?:return
+        val approved=RecoveryPathAnchor.androidPlatformPath(site);RecoveryPathAnchor.check(approved)
+        val actual=File(approved,path);RecoveryPathAnchor.check(actual)
+        require(actual.isFile && actual.length()==expected.length() && digest(actual)==digest(expected)){"Web çıktısı doğrulanmış Rust WASM dosyasını içermiyor/değiştirdi"}
+    }
+    /** Verify the central directory used by the Windows extractor, not only
+     * local ZIP headers. No project paths are extracted or executed. */
+    fun verifyWebArchive(draft:ProjectDraft,archive:File) {
+        val (path,expected)=webArtifact(draft)?:return
+        var found=0;var files=0;var expanded=0L;val paths=hashSetOf<String>()
+        java.util.zip.ZipFile(archive).use { zip ->
+            val entries=zip.entries()
+            while(entries.hasMoreElements()) {
+                val entry=entries.nextElement()
+                require(++files<=10000)
+                require(!entry.name.startsWith('/') && !entry.name.contains('\\') && entry.name.split('/').none{it==".." || it=="."} && !entry.name.contains('\u0000')){"Web arşiv yolu güvenli değil"}
+                val parts=entry.name.split('/').filter{it.isNotEmpty()}
+                require(entry.name.isNotBlank() && entry.name.trim()==entry.name && !entry.name.contains(':') && parts.isNotEmpty() && entry.name.trimEnd('/')==parts.joinToString("/"))
+                require(parts.all{part->!part.endsWith('.') && !part.endsWith(' ') && !Regex("(?i)^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\\..*)?$").matches(part)}){"Windows dosya adı güvenli değil"}
+                require(paths.add(parts.joinToString("/").lowercase(java.util.Locale.ROOT))){"Windows arşivinde büyük/küçük harf veya çift yol çakışması"}
+                val selected=entry.name==path
+                if(selected)require(!entry.isDirectory && ++found==1){"Rust WASM çift/dizin kaydı"}
+                val hash=if(selected)MessageDigest.getInstance("SHA-256")else null;val crc=java.util.zip.CRC32();var bytes=0L;val buffer=ByteArray(65536)
+                zip.getInputStream(entry).use{input->while(true){val n=input.read(buffer);if(n<0)break;expanded+=n;bytes+=n;require(expanded<=500L*1024*1024);crc.update(buffer,0,n);if(selected){require(bytes<=expected.length());hash!!.update(buffer,0,n)}}}
+                require(entry.size==bytes && entry.crc==crc.value){"Windows ZIP merkez dizini boyut/CRC doğrulaması başarısız"}
+                if(selected)require(bytes==expected.length() && hash!!.digest().joinToString(""){"%02x".format(it)}==digest(expected)){"Windows arşivindeki Rust WASM baytları değişti"}
+            }
+        }
+        require(found==1){"Windows payload içinde Rust WASM bulunamadı"}
+    }
+
     /** Explicit project JS owns the binding; the bundler cannot silently drop or
      * substitute a previously verified WASM binary. No JavaScript is injected. */
     fun stageNodeWebPayload(draft:ProjectDraft,buildSource:File,site:File) {

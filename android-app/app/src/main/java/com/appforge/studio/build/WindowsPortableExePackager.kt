@@ -275,6 +275,8 @@ internal object WindowsPortableExePackager {
                 }
             }
 
+            if(local)RustProjectPolicy.requireWebSite(draft,requireNotNull(siteRoot))
+
             require(draft.appName.trim().isNotBlank()) {
                 "Windows uygulama adı gerekli."
             }
@@ -290,6 +292,7 @@ internal object WindowsPortableExePackager {
             val projectZip = if (local) {
                 File(temporaryRoot, "project.zip").also {
                     createProjectZip(localSite!!, it)
+                    RustProjectPolicy.verifyWebArchive(draft,it)
                 }
             } else null
 
@@ -330,6 +333,7 @@ internal object WindowsPortableExePackager {
                 onProgress("Windows EXE • gerçek proje payload'ı ekleniyor...")
                 appendPayload(part, manifestBytes, projectZip, payloadLength)
                 verifyPackagedExe(part, payloadLength)
+                verifyRustFinalArtifact(draft,part)
 
                 if (target.exists()) {
                     require(target.delete()) { "Eski Windows EXE çıktısı silinemedi." }
@@ -490,7 +494,8 @@ internal object WindowsPortableExePackager {
         ).use { zip ->
             zip.setLevel(Deflater.NO_COMPRESSION)
 
-            root.walkTopDown().forEach { candidate ->
+            val rustSource=File(root,"Cargo.toml").isFile
+            root.walkTopDown().onEnter{directory->directory==root || !(rustSource && directory.parentFile==root && directory.name in setOf("target",".git",".gradle","node_modules"))}.forEach { candidate ->
                 if (!candidate.isFile) {
                     return@forEach
                 }
@@ -649,6 +654,30 @@ internal object WindowsPortableExePackager {
         readVerifiedPayloadLength(
             file
         )
+    }
+
+    /** The shared footer/Authenticode boundary parser locates the final local
+     * ZIP; bounded verification never writes project files or re-runs Rust. */
+    internal fun verifyRustFinalArtifact(draft:ProjectDraft,file:File) {
+        if(RustProjectPolicy.sourceRoot(draft)==null)return
+        val length=readVerifiedPayloadLength(file)
+        RandomAccessFile(file,"r").use{raf->
+            val footer=portablePayloadFooterEnd(raf,portablePayloadLogicalEnd(raf))
+            val start=footer-8L-FOOTER_MAGIC.size-length
+            raf.seek(start+PAYLOAD_MAGIC.size)
+            val manifest=raf.readInt();require(manifest in 1..MAX_MANIFEST_BYTES && length>12L+manifest)
+            raf.seek(start+12L+manifest)
+            val bytes=length-12L-manifest
+            val parent=RecoveryPathAnchor.androidPlatformPath(requireNotNull(file.parentFile));RecoveryPathAnchor.check(parent)
+            require(parent.usableSpace>bytes+1024*1024){"Rust Windows son payload doğrulaması için geçici disk alanı yetersiz"}
+            val temporary=java.nio.file.Files.createTempFile(parent.toPath(),".rust-overlay-",".zip")
+            try {
+                java.nio.file.Files.newOutputStream(temporary).use{out->val buffer=ByteArray(65536);var left=bytes
+                    while(left>0){val n=raf.read(buffer,0,minOf(left,buffer.size.toLong()).toInt());require(n>0){"Windows payload kesik"};out.write(buffer,0,n);left-=n}
+                }
+                RustProjectPolicy.verifyWebArchive(draft,temporary.toFile())
+            }finally{java.nio.file.Files.deleteIfExists(temporary)}
+        }
     }
 
     private fun readVerifiedPayloadLength(

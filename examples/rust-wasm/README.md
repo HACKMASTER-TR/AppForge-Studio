@@ -39,3 +39,15 @@ Node-Web examples retain separate npm preparation after WASM is ready. The app
 stages the verified WASM into the bundler output without injecting JavaScript.
 Cargo workspaces/path/git dependencies and build inputs in ignored caches/external
 locations remain unsupported. Physical Android/Windows acceptance remains NOT_RUN.
+
+## Windows Portable
+
+Select the local WebView/static engine and Windows Portable output after explicit
+WASM preparation. The verified host and source/artifact receipt are required.
+Generated root Cargo target/, VCS and dependency caches (.git/.gradle/node_modules) are excluded; original files remain unchanged.
+The packager checks the web-site WASM and embedded ZIP before publishing and after
+optional signing; missing, changed or unsafe payloads fail closed. No SDK/JDK is
+needed to package an already prepared WASM project. This example uses
+WebAssembly.instantiate(ArrayBuffer), so it does not depend on streaming MIME
+behavior. Real Windows execution and Android-device packaging are NOT_RUN until
+separately accepted.
