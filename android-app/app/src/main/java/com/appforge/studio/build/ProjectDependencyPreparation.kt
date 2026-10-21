@@ -15,6 +15,7 @@ internal object ProjectDependencyPreparation {
     val transfer=MutableStateFlow<ModuleProgress?>(null)
     val busy=MutableStateFlow(false)
     val status=MutableStateFlow("Proje bağımlılıkları henüz doğrulanmadı.")
+    val rustProjectFolder=MutableStateFlow<String?>(null)
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
     private var job:Job?=null
     private var control=DownloadControl()
@@ -28,7 +29,8 @@ internal object ProjectDependencyPreparation {
     @Synchronized fun start(context:Context,draft:ProjectDraft,sourceExecutionConsent:Boolean,offlineVerification:Boolean,rustOnly:Boolean=false) {
         check(!busy.value){"Başka proje hazırlığı devam ediyor; yeni işlem/ağ onayı alınmadı."}
         require(sourceExecutionConsent){"Proje build/lifecycle kodunu çalıştırma onayı gerekir."}
-        if(RustProjectPolicy.sourceRoot(draft)!=null && (rustOnly || !RustProjectPolicy.canPrepareNodeDependencies(draft))){startRust(context,draft,offlineVerification);return}
+        if(RustProjectPolicy.sourceRoot(draft)!=null && (rustOnly || !RustProjectPolicy.canPrepareNodeDependencies(draft))){startRust(context,draft.copy(),offlineVerification);return}
+        rustProjectFolder.value=null
         DownloadNetwork.configure(context)
         DownloadCoordinator.configure(PersistentDownloads(File(context.noBackupFilesDir,"downloads-v5"),mapOf("private" to context.noBackupFilesDir,"files" to context.filesDir,"cache" to context.cacheDir)))
         if(!offlineVerification)DownloadNetwork.requireExternalConsent()
@@ -119,8 +121,8 @@ currentCoroutineContext().ensureActive();if(offlineVerification && connectivity!
         require(draft.sourceBuildEngine in setOf("webview-static","node-web")){"Bu motorun Rust ABI adaptörü doğrulanmadı."}
         val connectivity=context.getSystemService(ConnectivityManager::class.java)?:error("Ağ durumu doğrulanamadı")
         if(offlineVerification)require(connectivity.allNetworks.isEmpty()){"Rust build.rs ağ erişimi için sandbox yok; bütün ağları kapatın."}
-        require(OfflineBuildPackManager.moduleReady(context,OfflineModuleId.RUST)){"Önce Rust + Cargo modülünü kurup doğrulayın."}
         DownloadNetwork.configure(context);DownloadNetwork.prepareJournal()
+        rustProjectFolder.value=draft.importedFolder
         control=DownloadControl();stopPending.value=false;transfer.value=null;busy.value=true
         try{ModuleDownloadService.start(context.applicationContext)}catch(e:RuntimeException){busy.value=false;status.value="Android Rust hazırlık hizmetini başlatmadı.";return}
         val networkContext=DownloadNetwork.takeOperationConsent()

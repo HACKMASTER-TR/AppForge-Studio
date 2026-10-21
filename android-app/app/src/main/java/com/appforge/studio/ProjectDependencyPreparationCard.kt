@@ -56,13 +56,14 @@ OutlinedButton(enabled=!ProjectDependencyPreparation.stopPending.value,onClick={
     val installing by ModuleInstallOperations.busy.collectAsState()
     val busy=sourceBusy || installing
     val status by ProjectDependencyPreparation.status.collectAsState()
+    val activeFolder by ProjectDependencyPreparation.rustProjectFolder.collectAsState()
     val transfer by ProjectDependencyPreparation.transfer.collectAsState()
     var mobileConsent by remember{mutableStateOf(false)}
     var confirm by remember{mutableStateOf<Boolean?>(null)};var trusted by remember{mutableStateOf(false)}
     var moduleReady by remember{mutableStateOf(false)};var prepared by remember{mutableStateOf<ProjectDraft?>(null)}
     var detail by remember{mutableStateOf("")}
     fun store()=RustPreparedProjects(RecoveryPathAnchor.androidPlatformPath(java.io.File(context.filesDir,"rust-prepared-v1")))
-    LaunchedEffect(draft,busy){withContext(Dispatchers.IO){moduleReady=OfflineBuildPackManager.moduleReady(context,OfflineModuleId.RUST);prepared=store().restore(draft)}}
+    LaunchedEffect(draft,busy){val restored=withContext(Dispatchers.IO){OfflineBuildPackManager.moduleReady(context,OfflineModuleId.RUST) to store().restore(draft)};moduleReady=restored.first;prepared=restored.second}
     fun begin(offline:Boolean){runCatching{ProjectDependencyPreparation.start(context,draft,true,offline,rustOnly=true)}.onFailure{DownloadNetwork.restorePreference();detail=it.message?:"Rust hazırlığı başlamadı"}}
     if(mobileConsent)AlertDialog(onDismissRequest={mobileConsent=false},title={Text("Bu işlem için ağ kullanım onayı")},text={Text("Mobil/ölçümlü bağlantı ve VPN dahil etkin doğrulanmış ağ, yalnız bu işlem için kullanılabilir. Kalan toplam boyut bilinmiyor. Sonraki işlemlerin izni değişmez.")},confirmButton={TextButton(enabled=!busy,onClick={mobileConsent=false;runCatching{DownloadNetwork.allowMobileOnce();begin(false)}.onFailure{DownloadNetwork.restorePreference();detail=it.message?:"Ağ onayı alınamadı"}}){Text("Yalnız bu işleme izin ver")}},dismissButton={TextButton(onClick={mobileConsent=false}){Text("Reddet • Wi-Fi bekle")}})
     if(confirm!=null)AlertDialog(onDismissRequest={confirm=null},title={Text(if(confirm==true)"Rust kaynak kodunu çalıştırma onayı" else "Kilitli Cargo bağımlılıklarını indirme onayı")},text={Column {
@@ -82,9 +83,9 @@ OutlinedButton(enabled=!ProjectDependencyPreparation.stopPending.value,onClick={
                 if(checked==null){prepared=null;detail="Kaynak/çıktı değişti; hazırlanmış kopya seçilmedi."}else onPrepared?.invoke(checked)
             }}){Text("Hazırlanan kopyayı bu projede kullan")}
         }
-        Text(status);if(detail.isNotBlank())Text(detail)
+        Text(if(activeFolder==draft.importedFolder)"Son işlem (hazır kanıtı değildir): $status" else "Bu projenin hazır durumu yalnız kendi kaynak/çıktı kaydıyla doğrulanır.");if(detail.isNotBlank())Text(detail)
         if(installing && !sourceBusy)Text("Paket işlemi sürüyor; proje hazırlığı başlamaz.")
-        if(sourceBusy){
+        if(sourceBusy && activeFolder==draft.importedFolder){
             val event=transfer
             if(event!=null && event.phase==ModulePhase.DOWNLOADING) {
                 if(event.percent!=null)LinearProgressIndicator(progress={event.percent!!/100f},modifier=Modifier.fillMaxWidth())else LinearProgressIndicator(Modifier.fillMaxWidth())
