@@ -2,11 +2,12 @@ package com.appforge.studio.build
 
 import com.appforge.studio.model.ProjectDraft
 
-internal enum class OfflineModuleId { FAST_HTML, LINUX_RUNTIME, ANDROID_CORE, NODE_WEB, PYTHON_ANDROID, EXPO_REACT_NATIVE, WINDOWS_PORTABLE, WINDOWS_NATIVE }
+internal enum class OfflineModuleId { FAST_HTML, LINUX_RUNTIME, ANDROID_CORE, NODE_WEB, PYTHON_ANDROID, EXPO_REACT_NATIVE, WINDOWS_PORTABLE, WINDOWS_NATIVE, RUST }
 internal data class OfflineModuleSpec(val id: OfflineModuleId,val title: String,val version: String,val dependencies:Set<OfflineModuleId>,val source: String,val downloadBytes:Long?=null,val diskBytes:Long?=null)
 internal data class OfflineModulePlan(val modules:List<OfflineModuleId>,val error:String?=null)
 internal object OfflineModules {
     val all=listOf(
+        OfflineModuleSpec(OfflineModuleId.RUST,"Rust + Cargo","1.85.1 • Linux host + WASM std",setOf(OfflineModuleId.LINUX_RUNTIME),"static.rust-lang.org / SHA-256 pinli dağıtım"),
         OfflineModuleSpec(OfflineModuleId.FAST_HTML,"Fast HTML","CI APK/AAB 26/37",emptySet(),"Gömülü ve SHA-256 doğrulanan şablonlar",0,0),
         OfflineModuleSpec(OfflineModuleId.LINUX_RUNTIME,"Linux derleme ortamı","Device Build Runtime V3",emptySet(),"LinuxRuntimeManifestRegistry / doğrulanmış Ubuntu"),
         OfflineModuleSpec(OfflineModuleId.ANDROID_CORE,"Android SDK + JDK + Gradle","API 37.0 / Build Tools 36 / JDK 17.0.20.1 / Gradle 9.3.1 + 8.14.3",setOf(OfflineModuleId.LINUX_RUNTIME),"Google / Adoptium / services.gradle.org"),
@@ -24,6 +25,10 @@ internal object OfflineModules {
         selected.forEach{visit(it)};return result.toList()
     }
     fun forProject(d:ProjectDraft):OfflineModulePlan {
+        if(RustProjectPolicy.sourceRoot(d)!=null) {
+            try { RustProjectPolicy.requirePackageable(d) }
+            catch(e:Exception) { return OfflineModulePlan(resolve(setOf(OfflineModuleId.RUST)),"Rust hazırlığı doğrulanmadı: "+(e.message?:"bozuk kayıt")) }
+        }
         val conflicts=FeatureSupportMatrix.conflicts(d)
         if(conflicts.isNotEmpty())return OfflineModulePlan(emptyList(),conflicts.joinToString("\n"){it.second})
         val outputs=runCatching{DeviceBuildCapabilities.requestedOutputs(d.buildOutput)}.getOrElse{return OfflineModulePlan(emptyList(),"Desteklenmeyen çıktı; kurulum gereksinimi değildir.")}

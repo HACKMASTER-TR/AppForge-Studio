@@ -220,6 +220,7 @@ object DeviceBuildEngine {
                 }
             )
 
+            RustProjectPolicy.requirePackageable(draft)
             validateCapabilities(draft)
             FastHtmlApkPolicy.normalRouteReasons(draft).takeIf { it.isNotEmpty() }?.let { reasons ->
                 state.logs.add("Normal Android engine required: " + reasons.joinToString("; "))

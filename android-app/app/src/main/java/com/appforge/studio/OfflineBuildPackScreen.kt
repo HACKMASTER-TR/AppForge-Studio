@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -131,6 +132,7 @@ internal object ModuleInstallOperations {
 }
 
 @Composable internal fun OfflineBuildPackScreen(onBack:()->Unit,firstRun:Boolean=false,onFirstRunComplete:((Boolean)->Unit)?=null,project:ProjectDraft?=null) {
+    var section by rememberSaveable { mutableStateOf("modules") }
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     val journalError by ModuleInstallOperations.journalError.collectAsState()
@@ -203,12 +205,13 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
     }
     Scaffold(topBar={TopAppBar(title={Text("Modüler Çevrimdışı Derleme V3")},navigationIcon={TextButton(onClick=onBack){Text("Geri")}})}){padding->
         LazyColumn(modifier=Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            item { ModuleManagerNavigation(section) { section=it } }
+            if(section=="network")item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text("İndirme ağı",style=MaterialTheme.typography.titleMedium);Text(networkStatus)
                 for(policy in DownloadNetworkPolicy.entries)OutlinedButton(enabled=!busy && !preparing,onClick={if(policy==DownloadNetworkPolicy.ALLOW_ANY)confirmAnyNetwork=true else {networkPolicy=policy;DownloadNetwork.select(policy)}}){Text(when(policy){DownloadNetworkPolicy.WIFI_ONLY->"Yalnız Wi-Fi";DownloadNetworkPolicy.WIFI_PREFERRED->"Wi-Fi tercih et; mobil veri için onay iste";DownloadNetworkPolicy.ALLOW_ANY->"Wi-Fi ve mobil veriye izin ver"})}
                 Text("Varsayılan politika: ${DownloadNetwork.policy}. VPN veya ölçümlü Wi-Fi, kısıtlı politikada engellenir. Dış paket yöneticilerinde ağ geçişi kısıtı garanti edilemediğinden açık ağ izni gerekir.")
             }}}
-            item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            if(section=="diagnostics")item { Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text("Kalıcı işlem ağacı",style=MaterialTheme.typography.titleMedium)
                 Text("Geçmiş kayıtlar komut veya kurulum yetkisi değildir. Dosya tamamlanması, modül Hazır ve proje Çevrimdışı Hazır ayrı doğrulanır.")
                 operationTree.filter{it.parentOperationId==null}.takeLast(8).reversed().forEach{root->
@@ -219,7 +222,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                 }
                 Text("APT/npm/Gradle/pip/sdkmanager: kısıtlı ağda BLOCKED. Çevrimdışı bayrağı, alt süreç soketlerini engelleyen bir izolasyon değildir.")
             }}}
-            items(artifacts.takeLast(32).reversed(),key={"artifact-"+it.operationId+it.artifactId}){record->
+            if(section=="history")items(artifacts.takeLast(32).reversed(),key={"artifact-"+it.operationId+it.artifactId}){record->
                 Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                     Text(OfflineModules.spec(record.moduleId).title,style=MaterialTheme.typography.titleMedium)
                     Text("Dosya: ${record.artifactId.take(16)} • ${record.downloadState}")
@@ -245,14 +248,16 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
             item { Text("İlk açılışta araç indirme zorunluluğu yok. Fast HTML gömülüdür. Yalnız seçtiğiniz motorun araçlarını kurun.") }
             item { Text("Boş alan: ${context.noBackupFilesDir.usableSpace/1024/1024} MiB. APT/Gradle/npm toplamları proje ve mimariye bağlıdır; doğrulanmış toplam yoksa yüzde gösterilmez.") }
             plan?.let{p->item{Text(p.error?:"Bu proje için: "+p.modules.joinToString{OfflineModules.spec(it).title})}}
-            items(OfflineModules.all.filter{(it.id!=OfflineModuleId.LINUX_RUNTIME || plan?.modules?.contains(it.id)==true || events.containsKey(it.id)) && (plan==null || it.id in plan.modules)}) { module ->
+            if(section=="modules")items(OfflineModules.all.filter{(it.id!=OfflineModuleId.LINUX_RUNTIME || plan?.modules?.contains(it.id)==true || events.containsKey(it.id)) && (plan==null || it.id in plan.modules)}) { module ->
+                var expanded by rememberSaveable(module.id.name) { mutableStateOf(false) }
                 val state=events[module.id];val installed=ready[module.id]==true
                 val lifecycle=lifecycleStates[module.id]
                 val unsupported=if(module.id !in setOf(OfflineModuleId.FAST_HTML,OfflineModuleId.WINDOWS_PORTABLE))DeviceBuildRuntimeV3.platformError() else null
                 Card(modifier=Modifier.fillMaxWidth()) {Column(modifier=Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Text(module.title,style=MaterialTheme.typography.titleMedium)
-                    Text(module.version)
+                    ModuleCompactHeader(module.title, installed, expanded) { expanded=!expanded }
+                    if(expanded)Text(module.version)
                     Text(when(module.id){
+                        OfflineModuleId.RUST->"Rust + Cargo, Linux host ve WASM; uygulama entegrasyonları ayrı kabul gerektirir"
                         OfflineModuleId.FAST_HTML->"Yerel HTML/HTTPS için gömülü Android şablonları"
                         OfflineModuleId.LINUX_RUNTIME->"Normal motorların ortak, projelerden ayrı Linux ortamı"
                         OfflineModuleId.ANDROID_CORE->"Gradle tabanlı Android APK/AAB projeleri"
@@ -263,12 +268,13 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                         OfflineModuleId.WINDOWS_NATIVE->"Deneysel Windows C/C++ çapraz derleme"
                     })
                     if(unsupported!=null)Text(unsupported)
-                    Text("Bağımlılıklar: "+module.dependencies.joinToString{OfflineModules.spec(it).title}.ifBlank{"Yok"})
-                    Text("İndirme: "+(module.downloadBytes?.let{"${it/1024/1024} MiB"}?:"Toplam boyut bilinmiyor"))
-                    Text("Disk: "+(module.diskBytes?.let{"${it/1024/1024} MiB"}?:"Güvenilir toplam tahmin yok"))
+                    if(expanded)Text("Bağımlılıklar: "+module.dependencies.joinToString{OfflineModules.spec(it).title}.ifBlank{"Yok"})
+                    if(expanded)Text("İndirme: "+(module.downloadBytes?.let{"${it/1024/1024} MiB"}?:"Toplam boyut bilinmiyor"))
+                    if(expanded)Text("Disk: "+(module.diskBytes?.let{"${it/1024/1024} MiB"}?:"Güvenilir toplam tahmin yok"))
                     Text(if(busy && state!=null && state.phase !in setOf(ModulePhase.READY,ModulePhase.REMOVED))state.phase.turkishLabel() else if(!ready.containsKey(module.id))"Bütünlük doğrulanıyor..." else if(installed)"Hazır • gerçek bütünlük kontrolü geçti" else if(module.id in availableUpdates)"Güncelleme gerekli • kayıtlı ortam korunuyor" else state?.phase?.turkishLabel()?:"Kurulu değil / doğrulanmadı")
                     if(state!=null && (busy || !installed)) {
-                        Text(state.detail)
+                        if(expanded || state.phase!=ModulePhase.ERROR)Text(state.detail)
+                        else Text("İşlem tamamlanamadı; ayrıntıları açın.")
                         if(busy && state.errorCode=="APT_DOWNLOAD_CONSENT")Button(enabled=!stopPending,onClick={runCatching{AptDownloadConsent.approve(state.operationId)}.onFailure{detail=it.message?:"APT planı onaylanamadı"}}){Text("Listelenen APT paketlerini indir • Onayla")}
                         if(state.phase==ModulePhase.DOWNLOADING) {
                             val pct=state.percent
@@ -287,7 +293,7 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                         if(!directTransfer)Text("Bu aşamada bayt düzeyinde devam sağlanmaz; paket yöneticisinin doğrulanmış önbelleğiyle güvenli yeniden başlatılır.",style=MaterialTheme.typography.bodySmall)
                         OutlinedButton(enabled=!stopPending,onClick={ModuleInstallOperations.cancel()}){Text("İptal iste")}
                     }
-                    if(lifecycle!=null) {
+                    if(expanded && lifecycle!=null) {
                         aptStates[module.id]?.takeIf{it.isNotBlank()}?.let{Text(it,style=MaterialTheme.typography.bodySmall)}
                         Text("Sahiplik envanteri: ${lifecycle.ownedFiles} dosya • generation: ${lifecycle.generation?:"doğrulanmış kayıt yok"}")
                         lifecycle.previousVersion?.let{Text("Önceki doğrulanmış sürüm: $it")}
@@ -298,20 +304,20 @@ ready=withContext(Dispatchers.IO){OfflineModules.all.associate{it.id to (Offline
                         lifecycle.rollback.reason?.let{Text("Geri alma: $it",style=MaterialTheme.typography.bodySmall)}
                         Text("Kaldırma: ${if(lifecycle.remove.allowed)"güvenli yol mevcut" else "güvenlik nedeniyle kapalı"} • geri alma: ${if(lifecycle.rollback.allowed)"doğrulanmış" else "kapalı"}",style=MaterialTheme.typography.bodySmall)
                     }
-                    installedVersions[module.id]?.let{Text("Kayıtlı sürüm: $it")}
-                    OutlinedButton(enabled=!busy && lifecycle?.update?.allowed==true,onClick={chosen=module.id}){Text(if(module.id in availableUpdates)"Gömülü doğrulanmış tarif ile güncelle / onar" else "Güncel • doğrulanmış yeni tarif yok")}
-                    lifecycle?.update?.reason?.let{Text("Güncelleme: $it",style=MaterialTheme.typography.bodySmall)}
-                    if(module.id!=OfflineModuleId.WINDOWS_PORTABLE)Text("Genel dosya silme kapalı. Son doğrulanmış izole sürüm, bağımlılık kullanımı yoksa geri alınabilir; daha eski modüller önce bağımlılık sırasıyla çözülmelidir.",style=MaterialTheme.typography.bodySmall)
+                    if(expanded)installedVersions[module.id]?.let{Text("Kayıtlı sürüm: $it")}
+                    if(expanded)OutlinedButton(enabled=!busy && lifecycle?.update?.allowed==true,onClick={chosen=module.id}){Text(if(module.id in availableUpdates)"Gömülü doğrulanmış tarif ile güncelle / onar" else "Güncel • doğrulanmış yeni tarif yok")}
+                    if(expanded)lifecycle?.update?.reason?.let{Text("Güncelleme: $it",style=MaterialTheme.typography.bodySmall)}
+                    if(expanded && module.id!=OfflineModuleId.WINDOWS_PORTABLE)Text("Genel dosya silme kapalı. Son doğrulanmış izole sürüm, bağımlılık kullanımı yoksa geri alınabilir; daha eski modüller önce bağımlılık sırasıyla çözülmelidir.",style=MaterialTheme.typography.bodySmall)
                 }}
             }
-            if(ready[OfflineModuleId.LINUX_RUNTIME]==true)item{OutlinedButton(enabled=!busy && BuildModuleUsage.mutationBlockedReason()==null && pruneBytes!=null,onClick={confirmPrune=true}){Text("Eski sürümleri temizle • "+(pruneBytes?.let{"${it/1024/1024} MiB doğrulanmış dosya"}?:"boyut doğrulanamadı"))}}
-            pruneReason?.let{reason->item{Text("Eski sürüm temizleme kapalı: $reason")}}
-            if(project!=null && !FastHtmlApkPolicy.isCandidate(project))item { ProjectDependencyPreparationCard(project) }
-            if(ready[OfflineModuleId.WINDOWS_PORTABLE]==true)item { WindowsModuleSmokeCard() }
+            if(section=="diagnostics" && ready[OfflineModuleId.LINUX_RUNTIME]==true)item{OutlinedButton(enabled=!busy && BuildModuleUsage.mutationBlockedReason()==null && pruneBytes!=null,onClick={confirmPrune=true}){Text("Eski sürümleri temizle • "+(pruneBytes?.let{"${it/1024/1024} MiB doğrulanmış dosya"}?:"boyut doğrulanamadı"))}}
+            if(section=="diagnostics")pruneReason?.let{reason->item{Text("Eski sürüm temizleme kapalı: $reason")}}
+            if(section=="modules" && project!=null && !FastHtmlApkPolicy.isCandidate(project))item { ProjectDependencyPreparationCard(project) }
+            if(section=="modules" && ready[OfflineModuleId.WINDOWS_PORTABLE]==true)item { WindowsModuleSmokeCard() }
             item { Text("Toplam işlem: "+if(busy)"devam ediyor; kurulum iş miktarı ölçülemediği için toplam yüzde yok" else "bekliyor / son modül durumlarını inceleyin") }
             item { Text("Kullanıcının başlattığı kurulum Android veri aktarımı servisiyle izlenir. Android zaman sınırı veya süreç ölümü işlemi durdurabilir. Yeniden açınca kayıt geri yüklenir; devam için onay gerekir, dosyalar yeniden doğrulanır.") }
             if(journalError.isNotBlank())item{Text(journalError)}
-            if(history.isNotEmpty())item{Column {Text("Son işlem kayıtları (hazır olma kanıtı değildir)");history.takeLast(8).forEach{Text(it)}}}
+            if(section=="history" && history.isNotEmpty())item{Column {Text("Son işlem kayıtları (hazır olma kanıtı değildir)");history.takeLast(8).forEach{Text(it)}}}
             if(detail.isNotBlank())item{Text(detail)}
             if(firstRun)item{Button(onClick={onFirstRunComplete?.invoke(true)}){Text("Araç indirmeden devam et")}}
         }
@@ -358,4 +364,27 @@ private fun ModulePhase.turkishLabel():String = when(this) {
     ModulePhase.RECONNECTING -> "Yeniden bağlanıyor"
     ModulePhase.CANCELED -> "İptal edildi"
     ModulePhase.ERROR -> "Hata oluştu"
+}
+
+/** Compact navigation preserves operation state; network consent stays in its own section. */
+@Composable private fun ModuleManagerNavigation(selected:String,onSelect:(String)->Unit) {
+    Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
+        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            listOf("modules" to "Modüller","network" to "Ağ ayarları").forEach { (id,label) ->
+                OutlinedButton(onClick={onSelect(id)},modifier=Modifier.weight(1f),enabled=selected!=id){Text(label)}
+            }
+        }
+        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            listOf("history" to "İndirme geçmişi","diagnostics" to "Gelişmiş / Tanılama").forEach { (id,label) ->
+                OutlinedButton(onClick={onSelect(id)},modifier=Modifier.weight(1f),enabled=selected!=id){Text(label)}
+            }
+        }
+    }
+}
+@Composable private fun ModuleCompactHeader(title:String,verified:Boolean,expanded:Boolean,onDetails:()->Unit) {
+    Column {
+        Text(title,style=MaterialTheme.typography.titleMedium)
+        Text(if(verified)"Doğrulanmış kurulum" else "Kurulum doğrulanmadı",style=MaterialTheme.typography.bodySmall)
+        TextButton(onClick=onDetails,modifier=Modifier.heightIn(min=48.dp)){Text(if(expanded)"Ayrıntıları kapat" else "Ayrıntıları aç")}
+    }
 }

@@ -10,6 +10,7 @@ internal class ModuleOwnershipStore(private val root:File) {
     private val control="opt/appforge-device/ownership-v5"
     private fun namespacePrefixes(id:OfflineModuleId):List<String> {
         val prefixes=when(id) {
+            OfflineModuleId.RUST->listOf("opt/appforge-device/rust-1.85.1/")
             OfflineModuleId.NODE_WEB->listOf("opt/appforge-device/node-22.23.3/")
             OfflineModuleId.ANDROID_CORE->listOf("opt/appforge-device/android-sdk/platforms/android-37.0/","opt/appforge-device/android-sdk/build-tools/36.0.0/","opt/appforge-device/android-sdk/cmdline-tools/","opt/appforge-device/jdk-17/","opt/appforge-device/gradle-9.3.1/","opt/appforge-device/gradle-8.14.3/")
             OfflineModuleId.EXPO_REACT_NATIVE->listOf("opt/appforge-device/android-sdk/ndk/27.1.12297006/","opt/appforge-device/android-sdk/cmake/3.22.1/","opt/appforge-device/android-sdk/platforms/android-36/","usr/lib/llvm-18/")

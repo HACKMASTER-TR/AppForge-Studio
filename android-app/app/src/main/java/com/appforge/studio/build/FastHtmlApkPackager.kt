@@ -140,9 +140,10 @@ internal object FastHtmlApkPackager {
         val allowed = setOf(
             "html", "css", "js", "mjs", "json", "txt", "svg", "png", "jpg", "jpeg",
             "webp", "gif", "ico", "woff", "woff2", "ttf", "otf",
-            "mp3", "mp4", "webm", "ogg", "wav", "m4a", "pdf", "csv"
+            "mp3", "mp4", "webm", "ogg", "wav", "m4a", "pdf", "csv", "wasm"
         )
-        val excludedDirs = setOf("node_modules", "build", "dist", ".git", ".gradle")
+        val excludedDirs = setOf("node_modules", "build", "dist", ".git", ".gradle") +
+            if(File(root,"Cargo.toml").isFile)setOf("target") else emptySet()
         val assets = LinkedHashMap<String, ByteArray>()
         var totalBytes = 0L
         val files = root.walkTopDown().maxDepth(12).onEnter { directory ->
