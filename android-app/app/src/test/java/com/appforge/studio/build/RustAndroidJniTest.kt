@@ -53,6 +53,11 @@ class RustAndroidJniTest {
         }
     }
     @Test fun windowsOutputCannotReuseJniReceipt()=project{_,draft,_->assertThrows(IllegalArgumentException::class.java){RustProjectPolicy.requirePackageable(draft.copy(buildOutput="exe"))}}
+    @Test fun unsupportedPackagedAbiRejected()=project{base,draft,lib->
+        val zip=File(base,"multi.apk")
+        ZipOutputStream(zip.outputStream()).use{out->for(path in listOf("lib/arm64-v8a/${lib.name}","lib/x86_64/libforeign.so")){out.putNextEntry(ZipEntry(path));out.write(lib.readBytes());out.closeEntry()}}
+        assertThrows(IllegalArgumentException::class.java){RustProjectPolicy.verifyAndroidJniPackage(draft,"apk",zip)}
+    }
     @Test fun nativeSourceDriftBlocked()=project{_,draft,_->File(draft.importedFolder!!,"app/build.gradle.kts").appendText("// changed");assertThrows(IllegalArgumentException::class.java){RustProjectPolicy.requirePackageable(draft)}}
     @Test fun minApiMismatchBlocked()=project{_,draft,_->assertThrows(IllegalArgumentException::class.java){RustProjectPolicy.requirePackageable(draft.copy(minSdk=25))}}
     @Test fun noJniSymbolRejected()=project{_,_,lib->lib.writeBytes(elf("c_api_only"));assertThrows(IllegalArgumentException::class.java){RustProjectPolicy.androidJniExports(lib)}}

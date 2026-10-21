@@ -139,6 +139,8 @@ internal object RustProjectPolicy {
         if(sourceRoot(draft)==null || draft.sourceBuildEngine.trim().lowercase()!="android-gradle")return
         val expected=requireAndroidJni(draft);val path=(if(kind=="aab")"base/" else "")+"lib/arm64-v8a/"+expected.name
         java.util.zip.ZipFile(file).use { zip ->
+            val nativePrefix=if(kind=="aab")"base/lib/" else "lib/"
+            require(zip.entries().asSequence().filter{!it.isDirectory && it.name.startsWith(nativePrefix) && it.name.endsWith(".so")}.all{it.name.removePrefix(nativePrefix).substringBefore('/')=="arm64-v8a"}){"Rust JNI yalnız ARM64 için doğrulandı; Gradle abiFilters=arm64-v8a ile sınırlandırın"}
             val entries=zip.entries().asSequence().filter{it.name==path}.toList();require(entries.size==1){"APK/AAB içinde Rust JNI yok veya çift kayıt var"}
             val hash=MessageDigest.getInstance("SHA-256");var size=0L
             zip.getInputStream(entries.single()).use{input->val buf=ByteArray(65536);while(true){val n=input.read(buf);if(n<0)break;size+=n;require(size<=expected.length());hash.update(buf,0,n)}}
